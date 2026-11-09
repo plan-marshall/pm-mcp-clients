@@ -136,7 +136,7 @@ The counts per kind (plans, epics, logs, read reports, unenrolled projects) and 
 * *Logs on their own*: where a plan's logs are due but the plan is not (its own duration is longer, or it is kept), they are one row `logs of <plan>` with the date until which the plan is kept.
 * *Read reports*: one row per project (and one for the machine), counted, with the date they were read before; one step away their subjects.
 * *An unenrolled project*: when it was unenrolled, what its store holds (archived plans and epics, counted, not listed again), and its size.
-* *Open*: a plan or an epic opens read-only, as ended work opens it (link:plan-overview.adoc#ended[Plan Overview, Ended Work]), in place; going back returns to the job with its checks as they were. Opening decides nothing.
+* *Open*: a plan or an epic opens read-only, as ended work opens it (link:plan-overview.adoc#ended[Plan Overview, Ended Work]), in place; going back returns to the job with its checks as they were. Opening decides nothing. In the web app it opens as a column beside the job (`?open=plan:{id}` on the job's address), the rail stays on System, and _Back to the job_ in that column's head is the history's back (link:../web-app/navigation.adoc#lenses[Web App, Navigation, Lenses and the Rail]).
 * *Paged*: the runtime pages the details per project; a client never loads every item of a large job at once. The summary is always the whole job.
 * *Checks*: every item is checked when the job opens. An unchecked item is left out of _Delete_ and kept for good, as _Ignore_ keeps it (<<kept>>); _Check all_ and _None_ act on every item of the job, not only the page shown. The checks are the client's until _Delete_ sends them; another client opening the same job starts with all checked.
 

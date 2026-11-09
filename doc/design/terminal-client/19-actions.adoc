@@ -402,10 +402,13 @@ pm ›
 [source,text]
 ----
 pm › plan chat fix-relay
-Chat · fix-relay · with replan · the whole plan            an empty line ends it
+Chat · fix-relay · with replan · the whole plan          an empty line leaves it
   you     › Can the cursor test also cover the SSE transport?
     ▶  replan answers
-  replan  Yes. TASK-4 tests one transport only; I propose a second test.
+       reads TASK-4
+       reads relay/SseSink.java
+  replan  Yes. TASK-4 tests one transport only; the SSE path has no test
+          (relay/SseSink.java:88). I propose a second test.
   Proposed change   applies after the current task
   - TASK-4  cursor write order: a test for the websocket transport
   + TASK-4  cursor write order: a test per transport, websocket and SSE
@@ -413,13 +416,29 @@ Chat · fix-relay · with replan · the whole plan            an empty line ends
 Accept? [Enter]   r) reject   ?   › ⏎
     ✓  accepted: applies after the current task; relay-hardening told
   you     › ⏎
-✓ The chat is kept with fix-relay.
+Left the chat; it stays with fix-relay.
 …
 ✓ fix-relay changed; the plan's version becomes 8
 pm ›
 ----
 
-* *A message* is one line or several, sent by an empty line; an empty line as its first line ends the chat, as `q` and `Ctrl+D` do. A proposal not yet accepted is dropped with it. A message is never interpreted or read back: the role answers it, and only a change it proposes is read back.
+Stopping a reply while it is written:
+
+[source,text]
+----
+  you     › Rewrite the outline for both transports.
+    ▶  replan answers
+       reads the outline
+  replan  The outline has four parts. The first, the transport, would
+  s) stop the reply   q) leave: the reply goes on   › s
+    Stopped; the reply so far is kept.
+  you     › 
+----
+
+* *A message* is one line or several, sent by an empty line. A message is never interpreted or read back: the role answers it, and only a change it proposes is read back.
+* *Leaving* — an empty line as the first line, `q` or `Ctrl+D`, also at `Accept?` — leaves the chat as _Hide the chat_ does in the web app: the chat stays with its subject, an open proposal included, and prints `Left the chat; it stays with fix-relay.` (`operator.actions.chat.left`); `h) chat` or `plan chat` returns to it where it was, an open proposal printed again with its `Accept?`. A reply being written goes on in the runtime.
+* *A new chat*: `new` as the first line (German `neu`, `operator.actions.chat.new_command`) asks `Start a new chat? y) yes   n) no [Enter]` (`control.chat.new_confirm.title`, with `.body` while a proposal is open, which is dropped); `y` ends this chat and opens an empty one, which begins with `The earlier chat is kept with fix-relay.` (`control.chat.ended`). The earlier transcript stays with the subject for the audit.
+* *The reply as it is written*: each step the role reports is printed at once as a muted line under `▶  replan answers` (`control.chat.step.*`), then the reply a line at a time as each line completes, never a part of a line. While the role writes, the prompt is `s) stop the reply   q) leave: the reply goes on   ›` (`operator.actions.chat.writing`, key `operator.actions.key.stop`, `s` in both languages) and the lines are printed above it (xref:04-console.adoc#line-editor[Line Editor]); `s` stops the reply, which keeps its text so far with the status `stopped` and the line `Stopped; the reply so far is kept.` (`control.chat.stopped`). A reply announced again for a replaced worker prints `The reply starts again.` (`operator.actions.chat.restarted`) and its new lines below; a harness that reports no pieces prints the whole reply when it ends. A reply that fails prints its notice (`control.chat.infeasible`, `control.chat.lost`, `control.chat.too_long_reply`).
 * *The answer* is printed as text after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]); an item from outside the machine stays marked `untrusted` and is printed between quotes.
 * *A proposed change* is a read-back, old against new: `Enter` accepts, `r) reject` drops it; a check that fails prints its reason (`not applied: …`) and the chat goes on.
 * *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a pausing plan takes it at that boundary too and then holds at its point; a paused plan takes it when the operator starts it again (`applies when fix-relay starts again`). A question changes nothing.
@@ -434,7 +453,7 @@ pm ›
 [source,text]
 ----
 pm › plan chat codeberg-issues
-Chat · codeberg-issues · with replan · its archived record   an empty line ends it
+Chat · codeberg-issues · with replan · its archived record   an empty line leaves it
   read only: the archive stays as it is
   you     › Why was it cancelled, and what would a new attempt need?
     ▶  replan answers
@@ -446,7 +465,7 @@ Chat · codeberg-issues · with replan · its archived record   an empty line en
   + Add the Codeberg issue provider on top of relay-v2.
   + follows codeberg-issues, cancelled: replaced by relay-v2
 Start a plan with it? [Enter]   r) reject   ?   › ⏎
-✓ The chat is kept with codeberg-issues.
+The proposal was carried out; the chat has ended and is kept with codeberg-issues.
 A new plan is being started in pm-mcp-clients with this description; go on with its sources.
 [1/2] Sources · What does the plan start from?   project pm-mcp-clients
     ✓  description   "Add the Codeberg issue provider on top of relay-v2. …"
@@ -454,7 +473,7 @@ A new plan is being started in pm-mcp-clients with this description; go on with 
 ----
 
 * The chat changes nothing of the archive; its only proposal is the follow-up plan's description, and `Enter` opens `plan add` at its sources (xref:18-starting.adoc#plan[Starting a Plan]) with that description stored. Nothing starts before _Start the plan_ at the ready step.
-* `r) reject` drops the proposal and the chat goes on; an empty line ends it, and the transcript is kept beside the archive entry, outside the archived record.
+* `r) reject` drops the proposal and the chat goes on; an empty line leaves it, and it stays. The transcript is kept beside the archive entry, outside the archived record.
 
 [#actions-texts]
 == Texts of the Terminal

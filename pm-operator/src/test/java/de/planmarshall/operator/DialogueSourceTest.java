@@ -189,4 +189,22 @@ class DialogueSourceTest {
 
         assertEquals(12, frame.totalSteps());
     }
+
+    @Test
+    @DisplayName("a project setup without total_steps falls back to 10")
+    void projectSetupWithoutTotalStepsFallsBackToDefaultTen() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-proj/setup".equals(request.target())) {
+                response.json(200, "{\"state\":\"project.identity\",\"step\":1,\"completed_steps\":0,\"links\":{}}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = context();
+        var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), "my-proj");
+        var frame = source.fetch();
+
+        assertEquals(10, frame.totalSteps(), "project setup without total_steps must fall back to 10");
+    }
 }

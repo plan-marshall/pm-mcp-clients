@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 470" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">Chat pieces</title>
+  <desc id="d">Left, the chat column: its head with the plan, the role and its model, the scope, the running state, Hide the chat and New chat; an operator turn on a subtle surface at the right; a role turn at full width with a list, inline code and a reference chip, its steps folded; a proposal card with its title, when it applies, a removed and an added line, and Reject (secondary) and Accept (the card's own primary); the pinned open proposal; and the composer with its text area, the microphone, the send act, the dictation hint and the counter. Right, the microphone while it records: a level meter, the time so far, Stop and insert and Cancel; and a role turn while it is written, the waiting mark with its working line and two steps.</desc>
+  <rect width="720" height="470" fill="#F7F7F5"/>
+  <!-- chat column -->
+  <rect x="16" y="16" width="420" height="438" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="32" y="40" font-size="13" fill="#16181D" font-weight="600">◆ fix-relay  with replan</text>
+  <text x="210" y="40" font-size="11" fill="#5F6672">claude sonnet 5.5 · the whole plan</text>
+  <text x="32" y="58" font-size="11" fill="#5F6672">replan answers…</text>
+  <rect x="268" y="46" width="78" height="20" rx="6" fill="#FFFFFF"/>
+  <text x="276" y="60" font-size="11" fill="#3E4450">Hide the chat</text>
+  <rect x="356" y="46" width="64" height="20" rx="6" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="366" y="60" font-size="11" fill="#16181D">New chat</text>
+  <line x1="16" y1="74" x2="436" y2="74" stroke="#E4E4DE"/>
+  <!-- operator turn -->
+  <text x="390" y="94" font-size="11" fill="#5F6672">You</text>
+  <rect x="200" y="100" width="220" height="38" rx="8" fill="#EFEFEA"/>
+  <text x="212" y="116" font-size="12" fill="#16181D">Can the cursor test also cover</text>
+  <text x="212" y="131" font-size="12" fill="#16181D">the SSE transport?</text>
+  <!-- role turn -->
+  <circle cx="40" cy="156" r="9" fill="#EFEFEA" stroke="#CFCFC8"/>
+  <text x="36" y="160" font-size="10" fill="#3E4450">r</text>
+  <text x="56" y="160" font-size="11" fill="#5F6672">replan · claude sonnet 5.5</text>
+  <text x="32" y="180" font-size="12" fill="#16181D">Yes. <tspan font-weight="600">TASK-4</tspan> tests one transport only:</text>
+  <text x="40" y="197" font-size="12" fill="#16181D">• the SSE path has no test</text>
+  <rect x="190" y="186" width="118" height="16" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="198" y="198" font-size="10" fill="#3E4450" font-family="ui-monospace, Menlo, monospace">SseSink.java:88</text>
+  <text x="32" y="216" font-size="11" fill="#5F6672">▸ 3 steps</text>
+  <!-- proposal card -->
+  <rect x="32" y="226" width="388" height="104" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="44" y="246" font-size="12" fill="#16181D" font-weight="600">Change to the plan</text>
+  <text x="262" y="246" font-size="11" fill="#5F6672">applies after the current task</text>
+  <rect x="44" y="254" width="364" height="18" fill="#FBE3E1"/>
+  <text x="50" y="267" font-size="11" fill="#16181D" font-family="ui-monospace, Menlo, monospace">− TASK-4  a test for the websocket transport</text>
+  <rect x="44" y="274" width="364" height="18" fill="#DDF2E5"/>
+  <text x="50" y="287" font-size="11" fill="#16181D" font-family="ui-monospace, Menlo, monospace">+ TASK-4  a test per transport, websocket and SSE</text>
+  <rect x="270" y="300" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="282" y="315" font-size="11" fill="#16181D">Reject</text>
+  <rect x="338" y="300" width="70" height="22" rx="6" fill="#5B4BDB"/>
+  <text x="348" y="315" font-size="11" fill="#FFFFFF">✓ Accept</text>
+  <line x1="16" y1="344" x2="436" y2="344" stroke="#E4E4DE"/>
+  <!-- pinned proposal -->
+  <text x="32" y="362" font-size="11" fill="#3E4450">1 open proposal: Change to the plan · Show it</text>
+  <!-- composer -->
+  <rect x="32" y="372" width="388" height="40" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="44" y="396" font-size="12" fill="#8B95A7">What is the risk of TASK-4?</text>
+  <rect x="352" y="378" width="28" height="28" rx="8" fill="#FFFFFF"/>
+  <path d="M366 384v10M361 391a5 5 0 0 0 10 0M366 396v4" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <rect x="386" y="378" width="28" height="28" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <path d="M394 392l12-6-4 12-2-5z" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="32" y="430" font-size="11" fill="#5F6672">Dictate with your system: Fn Fn</text>
+  <text x="352" y="430" font-size="11" fill="#5F6672">34 of 8000</text>
+  <!-- voice input recording -->
+  <text x="456" y="40" font-size="12" fill="#16181D" font-weight="600">VoiceInput, recording</text>
+  <rect x="456" y="50" width="248" height="72" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <g fill="#3E4450">
+    <rect x="468" y="74" width="4" height="10"/><rect x="476" y="68" width="4" height="22"/><rect x="484" y="72" width="4" height="14"/><rect x="492" y="64" width="4" height="30"/><rect x="500" y="70" width="4" height="18"/><rect x="508" y="76" width="4" height="6"/>
+  </g>
+  <text x="522" y="83" font-size="12" fill="#16181D">Recording · 0:07</text>
+  <rect x="468" y="96" width="104" height="20" rx="6" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="476" y="110" font-size="11" fill="#16181D">Stop and insert</text>
+  <rect x="580" y="96" width="54" height="20" rx="6" fill="#FFFFFF"/>
+  <text x="588" y="110" font-size="11" fill="#3E4450">Cancel</text>
+  <!-- streaming turn -->
+  <text x="456" y="152" font-size="12" fill="#16181D" font-weight="600">ChatTurn, before the first word</text>
+  <rect x="456" y="162" width="248" height="88" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <rect x="468" y="176" width="14" height="18" rx="2" fill="none" stroke="#5F6672" stroke-width="1.5"/>
+  <path d="M471 182l2 2 4-4M471 189l2 2 4-4" stroke="#5F6672" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <text x="490" y="190" font-size="12" fill="#3E4450">replan is reading the whole plan…</text>
+  <text x="490" y="212" font-size="11" fill="#5F6672">reads TASK-4</text>
+  <text x="490" y="230" font-size="11" fill="#5F6672">runs the tests</text>
+  <text x="456" y="282" font-size="11" fill="#5F6672">The diff's lines alone take the diff colours,</text>
+  <text x="456" y="298" font-size="11" fill="#5F6672">each with its sign; Accept is the card's</text>
+  <text x="456" y="314" font-size="11" fill="#5F6672">own primary, Reject secondary: the one</text>
+  <text x="456" y="330" font-size="11" fill="#5F6672">exception to one primary per screen.</text>
+</svg>

@@ -143,6 +143,14 @@ shared design says, and pin that with tests.
 - Adjacent to: the Open Defect "the epic resource carries no running count" (contract owner `plan-marshall-documentation`
   / `pm-mcpd`). If the contract gains the count, this plan's unknown branch stays as the fallback.
 
+## Re-grounding 2026-11-08 (PLAN-34 landing)
+
+Checked at `40dc879e` (PLAN-34, #371): `epicview/EpicViewFormatting.java` and `epicview/EpicViewLevel.java` are not in
+its diff, so `:86-89` (`atOnce`), `:108-126` (`waitText`), `EpicViewLevel:450,629` stand as cited; `EpicCommand.java:155,191`
+are unchanged (PLAN-34 changed only the alongside-landings loop, `:315-333`). `pm-api` `Display` now exists
+(`Display.duration`, `Display.time`, `Display.word`, `Display.title`): format the unknown count through the catalogue as
+before; do not add another formatter. `EpicViewFormatting.eventTime` (`:247-257`) is PLAN-123's, not this plan's.
+
 ## Hand-Off Command
 
 Lane: `runbook`, a small plan.

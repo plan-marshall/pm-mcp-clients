@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], where the chat is also opened_
 
-_Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat-reply-stream[The Reply as It Is Written]_
 
 Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
@@ -84,13 +84,13 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |not applied: {reason}
 |nicht übernommen: {reason}
 
-|`control.chat.end`
-|End the chat
-|Beende den Chat
+|`control.chat.new`
+|New chat
+|Neuer Chat
 
 |`control.chat.ended`
-|The chat is kept with {subject}.
-|Der Chat bleibt bei {subject} gespeichert.
+|The earlier chat is kept with {subject}.
+|Der frühere Chat bleibt bei {subject} gespeichert.
 
 |`control.chat.read_only`
 |read only: the archive stays as it is
@@ -115,4 +115,168 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.unqualified`
 |no configuration of {role} qualifies yet
 |noch keine Konfiguration qualifiziert sich für {role}
+
+|`control.chat.hide`
+|Hide the chat
+|Blende den Chat aus
+
+|`control.chat.working`
+|{role} is reading {scope, select, plan {the whole plan} epic {the whole epic} draft {the decomposition draft} item {{item}} decision {decision {item}} entry {the request} archive {its archived record} other {the whole register}}…
+|{role} liest {scope, select, plan {den ganzen Plan} epic {das ganze Epic} draft {den Entwurf der Zerlegung} item {{item}} decision {Entscheidung {item}} entry {die Anfrage} archive {seinen archivierten Verlauf} other {das ganze Register}}…
+
+|`control.chat.step.read`
+|reads {target}
+|liest {target}
+
+|`control.chat.step.search`
+|searches {target}
+|durchsucht {target}
+
+|`control.chat.step.check`
+|runs {check}
+|prüft {check}
+
+|`control.chat.steps`
+|{count, plural, one {# step} other {# steps}}
+|{count, plural, one {# Schritt} other {# Schritte}}
+
+|`control.chat.stop`
+|Stop the reply
+|Halte die Antwort an
+
+|`control.chat.stopped`
+|Stopped; the reply so far is kept.
+|Angehalten; die Antwort bis hier bleibt.
+
+|`control.chat.infeasible`
+|{role} cannot change that: {reason}
+|{role} kann das nicht ändern: {reason}
+
+|`control.chat.lost`
+|The reply was lost: {reason}
+|Die Antwort ging verloren: {reason}
+
+|`control.chat.too_long_reply`
+|The reply was too long (over 64 KiB); the text so far is kept.
+|Die Antwort war zu lang (über 64 KiB); der Text bis hier bleibt.
+
+|`control.chat.untrusted`
+|From outside · not checked
+|Von außen · ungeprüft
+
+|`control.chat.sending`
+|sending…
+|wird gesendet…
+
+|`control.chat.not_sent`
+|Not sent
+|Nicht gesendet
+
+|`control.chat.edit`
+|Edit the message
+|Bearbeite die Nachricht
+
+|`control.chat.counter`
+|{count} of 8000
+|{count} von 8000
+
+|`control.chat.too_long`
+|At most 8000 characters.
+|Höchstens 8000 Zeichen.
+
+|`control.chat.example`
+|{scope, select, plan {What is the risk of TASK-4?} epic {Which plan blocks the others?} decision {What does option B mean for the pull request?} entry {What is missing from the request?} archive {Why did it end like this?} draft {Which plan of the draft is too large?} item {Should this be fixed or watched?} other {Which item matters most?}}
+|{scope, select, plan {Was ist das Risiko von TASK-4?} epic {Welcher Plan hält die anderen auf?} decision {Was bedeutet Option B für den Pull Request?} entry {Was fehlt der Anfrage?} archive {Warum endete er so?} draft {Welcher Plan des Entwurfs ist zu groß?} item {Soll das behoben oder beobachtet werden?} other {Welcher Eintrag ist am wichtigsten?}}
+
+|`control.chat.empty`
+|Ask {role} about {scope, select, plan {the whole plan} epic {the whole epic} draft {the decomposition draft} item {{item}} decision {decision {item}} entry {the request} archive {its archived record} other {the whole register}}.
+|Frag {role} zu {scope, select, plan {dem ganzen Plan} epic {dem ganzen Epic} draft {dem Entwurf der Zerlegung} item {{item}} decision {Entscheidung {item}} entry {der Anfrage} archive {seinem archivierten Verlauf} other {dem ganzen Register}}.
+
+|`control.chat.starter.plan`
+|{n, select, 1 {What is the riskiest open task?} 2 {Propose an additional test.} other {Why is it in this phase?}}
+|{n, select, 1 {Welcher offene Task ist am riskantesten?} 2 {Schlag einen zusätzlichen Test vor.} other {Warum ist er in dieser Phase?}}
+
+|`control.chat.starter.epic`
+|{n, select, 1 {Which plan blocks the others?} 2 {Is a workstream too large?} other {What is still open for the destination?}}
+|{n, select, 1 {Welcher Plan hält die anderen auf?} 2 {Ist ein Workstream zu groß?} other {Was fehlt noch zum Ziel?}}
+
+|`control.chat.starter.decision`
+|{n, select, 1 {What happens after each option?} other {Which option can be undone?}}
+|{n, select, 1 {Was folgt aus jeder Option?} other {Welche Option lässt sich rückgängig machen?}}
+
+|`control.chat.starter.entry`
+|{n, select, 1 {What is missing from the request?} other {Make the request more precise.}}
+|{n, select, 1 {Was fehlt der Anfrage?} other {Mach die Anfrage genauer.}}
+
+|`control.chat.starter.archive`
+|{n, select, 1 {Why did it end like this?} other {What would a new attempt need?}}
+|{n, select, 1 {Warum endete er so?} other {Was bräuchte ein neuer Versuch?}}
+
+|`control.chat.starter.register`
+|{n, select, 1 {Which item matters most?} other {Which items belong together?}}
+|{n, select, 1 {Welcher Eintrag ist am wichtigsten?} other {Welche Einträge gehören zusammen?}}
+
+|`control.chat.proposal.kind`
+|{kind, select, description {Change to the description} revision {Change to the plan} rows {Change to the staged plans} draft {Change to the draft} item {Change to the item} answer {Proposed answer} follow_up {Follow-up plan} other {Proposed change}}
+|{kind, select, description {Änderung der Beschreibung} revision {Änderung des Plans} rows {Änderung der vorgesehenen Pläne} draft {Änderung des Entwurfs} item {Änderung des Eintrags} answer {Antwortvorschlag} follow_up {Folgeplan} other {Vorgeschlagene Änderung}}
+
+|`control.chat.proposal.announce`
+|Proposal: {kind}
+|Vorschlag: {kind}
+
+|`control.chat.pinned`
+|1 open proposal: {kind}
+|1 offener Vorschlag: {kind}
+
+|`control.chat.pinned.show`
+|Show it
+|Zeig ihn
+
+|`control.chat.replaced`
+|The earlier proposal was replaced.
+|Der vorige Vorschlag wurde ersetzt.
+
+|`control.chat.starter.draft`
+|{n, select, 1 {Which plan of the draft is too large?} other {Which plans depend on each other?}}
+|{n, select, 1 {Welcher Plan des Entwurfs ist zu groß?} other {Welche Pläne hängen voneinander ab?}}
+
+|`control.chat.starter.item`
+|{n, select, 1 {Should this be fixed or watched?} other {Is this a plan of its own?}}
+|{n, select, 1 {Soll das behoben oder beobachtet werden?} other {Ist das ein eigener Plan?}}
+
+|`control.chat.diff.show_all`
+|Show all {count} lines
+|Zeig alle {count} Zeilen
+
+|`control.chat.refs.label`
+|Refer to
+|Verweise auf
+
+|`control.chat.refs.none`
+|Nothing matches.
+|Nichts passt.
+
+|`control.chat.new_confirm.title`
+|Start a new chat?
+|Einen neuen Chat beginnen?
+
+|`control.chat.new_confirm.body`
+|The open proposal ({kind}) is dropped; the earlier chat is kept with {subject}.
+|Der offene Vorschlag ({kind}) wird verworfen; der frühere Chat bleibt bei {subject}.
+
+|`control.chat.ended_elsewhere`
+|Ended in {channel} ({device}); the earlier chat is kept with {subject}.
+|Beendet in {channel} ({device}); der frühere Chat bleibt bei {subject} gespeichert.
+
+|`control.chat.subject_ended`
+|{subject} has ended; the chat has ended with it.
+|{subject} ist beendet; der Chat endet mit ihm.
+
+|`control.chat.carried`
+|The proposal was carried out; the chat has ended and is kept with {subject}.
+|Der Vorschlag wurde übernommen; der Chat ist beendet und bleibt bei {subject} gespeichert.
+
+|`control.chat.entry_closed`
+|{outcome, select, started {The request was started; the chat has ended and goes with it.} other {The request was abandoned; the chat has ended with it.}}
+|{outcome, select, started {Die Anfrage wurde gestartet; der Chat ist beendet und geht mit ihr.} other {Die Anfrage wurde verworfen; der Chat endet mit ihr.}}
 |===

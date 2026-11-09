@@ -41,7 +41,7 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-text-primary` |`#E6EAF2` |`#16181D` |Titles, body.
 |`--color-text-secondary` |`#AEB6C4` |`#3E4450` |Secondary lines.
 |`--color-text-muted` |`#8B95A7` |`#5F6672` |Meta, time, hints.
-|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus, brand mark.
+|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus.
 |`--color-brand-hover` |`#A093FB` |`#4A3BC4` |Hover of the primary act.
 |`--color-brand-subtle` |`#1E2240` |`#EEEBFF` |Selected row, recommendation block.
 |`--color-attention` |`#F2A93B` |`#B86E00` |Dot and edge for "needs you".
@@ -55,6 +55,8 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-epic` |`#B58CFF` |`#7A3FD1` |The epic glyph only (never a fill).
 |`--color-on-brand` |`#0E1116` |`#FFFFFF` |The label on a brand-coloured fill.
 |`--color-overlay` |`rgb(0 0 0 / 0.7)` |`rgb(15 23 42 / 0.5)` |The scrim behind a dialog.
+|`--color-diff-removed` |`#3D1F24` |`#FBE3E1` |The ground of a removed line in a chat proposal's diff, and nowhere else.
+|`--color-diff-added` |`#132E22` |`#DDF2E5` |The ground of an added line in a chat proposal's diff, and nowhere else.
 |===
 
 Every value above is the proposal of VD-P-02 except the two tuned dark brand values and the two tokens the proposal does not name:
@@ -63,6 +65,22 @@ Every value above is the proposal of VD-P-02 except the two tuned dark brand val
 * `--color-brand-hover`, dark: `#8F82F8` → `#A093FB`, which keeps the hover a visible step above the tuned brand.
 * `--color-on-brand`, which the proposal does not name, is the ink on a brand-coloured fill: white in light, the app background in dark.
 * `--color-overlay`, which the proposal does not name, is the scrim behind a dialog: a faint dark veil in light, a deeper one in dark.
+* `--color-diff-removed` and `--color-diff-added`, which the proposal does not name, are the grounds of a diff's lines in a chat proposal (link:chat.adoc#proposal[Chat and Voice, The Change Proposal]), the one exception to one meaning per colour (link:components-tags.adoc#tag-colour[Tags and Kinds, One Meaning per Colour]). The text on them meets 4.5:1 in both themes: `--color-text-primary` 12.3:1 and 12.1:1 in dark, 14.5:1 and 15.1:1 in light; `--color-text-secondary` 7.3:1 and 7.1:1 in dark, 8.0:1 and 8.3:1 in light; `--color-text-muted` 4.9:1 and 4.8:1 in dark, 4.7:1 and 4.9:1 in light (removed, then added). Against the card's `--color-bg-surface` they differ by 1.1:1 to 1.3:1 only, which is enough because the signs `−` and `+` carry the meaning.
+
+=== Mascot Palette Tokens
+
+The five colours of the brand icon, `--color-mascot-*`, are the same in both themes, so no theme block overrides them. What each draws and why is link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]; the contrast is measured against `--color-bg-rail`, `--color-bg-surface`, `--color-bg-app`, `--color-bg-subtle` and a light and a dark browser tab strip (link:brand-mark.adoc#theme[Brand Mark and Mascot, Theme and Contrast]). No state, act, row, tag or text takes them.
+
+[cols="2,1,2,2",options="header"]
+|===
+|Token |Both themes |On the light grounds |On the dark grounds
+
+|`--color-mascot-fur` |`#E17512` |`2.4`–`3.1:1` (inside the outline) |`5.0:1` or more
+|`--color-mascot-gold` |`#F2B630` |`1.4`–`1.8:1` (inside the outline) |`8.5:1` or more
+|`--color-mascot-hat` |`#A0602E` |`3.8:1` or more |`3.1:1` or more
+|`--color-mascot-cream` |`#F6DDB0` |inner detail only |inner detail only
+|`--color-mascot-outline` |`#2A1A10` |`12.8:1` or more |about `1.1:1`; the fills carry the silhouette
+|===
 
 === Type Scale
 
@@ -154,10 +172,11 @@ Contrast ratio between two luminances \(L_1\) (lighter) and \(L_2\) (darker) is 
 [#audit-allowlist]
 == The Audit Allowlist
 
-Two reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it:
+Three reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it, the third in `tokens.css` itself:
 
 * **`PairingQr.svelte`:** SVG QR code modules use `#ffffff` (quiet zone and light modules) and `#000000` (dark modules). QR code optical scanners require strict binary black-on-white module contrast regardless of operating system or browser theme.
-* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake the light-theme brand colour and the attention dot; link:brand-mark.adoc#theme[Brand Mark, Theme and Contrast] names the values.
+* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake their colours and the attention dot. Today they carry the light-theme brand colour of the earlier mark; the D3 brand assets package redraws them on the chosen brand icon in the mascot palette, and link:brand-mark.adoc#favicon[Brand Mark and Mascot, The Browser Tab] names those values.
+* **The mascot palette** (`--color-mascot-*`, <<token-contract>>): the brand icon's literal colours, the same in both themes (link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]). They join `tokens.css` with the D3 brand assets package; `tokens.test.ts` allows their literals there only, and the kind-tint check reads the fur and the gold from them (link:brand-mark.adoc#implementation[Brand Mark and Mascot, Implementation]).
 
 All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`; the `static/` copies are outside that scan and are documented in link:brand-mark.adoc[Brand Mark].
 

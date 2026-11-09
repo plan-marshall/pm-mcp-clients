@@ -200,7 +200,7 @@ pm [1 question] › answer Q-007
 Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
   …
 Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › h
-Chat · fix-relay · with implement · decision Q-007        an empty line ends it
+Chat · fix-relay · with implement · decision Q-007      an empty line leaves it
   you        › What does a rebase mean for the open pull request #214?
     ▶  implement answers
   implement  #214 has 2 review comments on RelayServer.java. A rebase rewrites
@@ -211,6 +211,7 @@ Chat · fix-relay · with implement · decision Q-007        an empty line ends 
   Proposed answer
     merge main into the branch, as long as release/0.9 stays untouched
 Answer in these words? [Enter]   r) reject   ?   › ⏎
+The proposal was carried out; the chat has ended and is kept with Q-007.
   ⠴  interpret is reading your answer       0:02
 
 I understood: Merge main into the branch, provided release/0.9 stays as it is.
@@ -221,7 +222,7 @@ Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
 pm ›
 ----
 
-A revision that removes the need for the decision, and a chat ended without an answer:
+A revision that removes the need for the decision, and a chat left without an answer:
 
 [source,text]
 ----
@@ -229,7 +230,7 @@ pm [2 questions] › answer Q-016
 Question Q-016 · plan storage-v2 · execute · blocks the plan · can be undone
   How is the old store migrated?
 …   h) chat   x) none fits   l) later   ?   › h
-Chat · storage-v2 · with replan · decision Q-016          an empty line ends it
+Chat · storage-v2 · with replan · decision Q-016        an empty line leaves it
   you        › Could the plan avoid the migration altogether?
   replan     Yes: the new store can read the old files as they are.
   Proposed change
@@ -237,15 +238,14 @@ Chat · storage-v2 · with replan · decision Q-016          an empty line ends 
   + TASK-5  read the old files in place; no migration
 Accept? [Enter]   r) reject   ?   › ⏎
     ✓  accepted: applied
-– Q-016 is closed: the revision removed the need for it (nothing is migrated).
-✓ The chat is kept with Q-016.
+– Q-016 is closed: the revision removed the need for it (nothing is migrated); the chat has ended with it.
 pm [1 question] › answer Q-014
 …   h) chat   x) none fits   l) later   ?   › h
-Chat · fix-relay · with replan · decision Q-014           an empty line ends it
+Chat · fix-relay · with replan · decision Q-014         an empty line leaves it
   you        › Why is this asked now and not after the review?
   replan     The task graph needs it before TASK-7 can be planned.
   you        › ⏎
-✓ The chat is kept with Q-014.
+Left the chat; it stays with Q-014.
 Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
   …
 ----
@@ -253,7 +253,8 @@ Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
 * While the terminal has a decision chat (PLAN-115), `h)` (German `t)`) stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs. Without that surface the key is not advertised (the note at the top).
 * The role follows who asked: Q-007 was asked by the task `implement`, so its chat goes to `implement`; Q-016, escalated by a quorum, and Q-014, raised by a server rule, go to the plan's planning role `replan`.
 * A proposed answer is offered only where the part takes own words; `Enter` sends it to `interpret` as the operator's words, and the read-back follows as in <<t-decision-own-words>>. `r) reject` drops it and the chat goes on.
-* A revision accepted in the chat leaves the decision open (`Q-014 stays open; answer it once the chat has ended.`) unless the runtime closes it as withdrawn, as above.
+* A revision accepted in the chat leaves the decision open (`Q-014 stays open; answer it whenever you are ready.`) unless the runtime closes it as withdrawn, and the chat with it, as above.
+* Leaving the chat (an empty first line, `q`, `Ctrl+D`) keeps it and prints the decision again, answerable in all its ways; answering it closes the decision and ends its chat. Left while the role still writes or with a proposal open, the decision's answers are held: its prompt offers `h) chat`, `l) later` and `?` only, under `Answer once the reply has finished.` or `Answer once the proposal is accepted or rejected.` (`operator.decision.chat_wait`), and is drawn again with every answer once the reply has finished or the proposal was decided.
 * Answered in another channel during the chat, the console prints `– Q-007 was answered in the web app (iPad); the chat has ended.` and returns to its prompt.
 * While no configuration of the routed role qualifies, `h` is refused with the reason (`no configuration of implement qualifies yet`); a waiver request has no `h`.
 
@@ -446,4 +447,8 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |`operator.decision.vote_none`
 |No votes for {option}: {label}.
 |Keine Stimmen für {option}: {label}.
+
+|`operator.decision.chat_wait`
+|{reason, select, proposal {Answer once the proposal is accepted or rejected.} other {Answer once the reply has finished.}}
+|{reason, select, proposal {Antworte, sobald der Vorschlag angenommen oder abgelehnt ist.} other {Antworte, sobald die Rolle fertig geschrieben hat.}}
 |===

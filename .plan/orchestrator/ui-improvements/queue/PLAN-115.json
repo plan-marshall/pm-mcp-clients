@@ -2,10 +2,10 @@
   "id": "PLAN-115",
   "slug": "design-d4-chat-and-voice",
   "workstream": "WS-06",
-  "status": "staged",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "plan-115",
+  "pr": "386",
+  "landing": "landings/PLAN-115.md",
   "seq": 115
 }

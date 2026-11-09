@@ -146,7 +146,7 @@ At `start.sources` (`start-epic.sources`) the operator may talk the request thro
 * *The one change it may propose is the description*: a rewrite of one description of the entry, or an addition to it, read back old against new. _Accept_ stores it through the start's own path (`start.store-description`), as the operator's description; where the entry has no description yet, an addition becomes its first. A start chat never changes, adds, or removes another source.
 * *Optional*: starting never waits for a chat, and _Continue_ stays as it is while a chat is open; leaving the entry keeps the chat with it.
 * *The transcript* stays with the entry and goes with its source directory to the plan or the epic at `start.create` (a chat still open then is ended first, its transcript complete), kept for audit and not a source the work reads; abandoning the entry deletes it.
-* *In the web app* the chat is the panel beside the list of sources, as beside a plan view.
+* *In the web app* the chat stands beside the list of sources, the one chat component of link:../web-app/chat.adoc[Web App, Chat and Voice]; the start is a wizard, not a column chain, so the chat stands beside the wizard's content as a side column of `WizardPage`, and on a phone it takes the screen with _Hide the chat_ back to the sources.
 
 [#ready]
 == Ready
