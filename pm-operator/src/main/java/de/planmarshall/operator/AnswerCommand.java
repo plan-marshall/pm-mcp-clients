@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import org.jline.reader.EndOfFileException;
@@ -67,6 +68,8 @@ public final class AnswerCommand implements Callable<Integer> {
     private static final String EVIDENCE_KEY = "evidence";
     private static final String RANGE_KEY = "range";
     private static final String PROJECT_KEY = "project";
+    private static final String WORDS_KEY = "words";
+    private static final String INVALID_CHOICE_KEY = "operator.decision.invalid_choice";
     private static final String BLOCKS_KEY = "blocks";
     private static final String REVERSIBILITY_KEY = "reversibility";
     private static final String ACTION_WAIVE = "waive";
@@ -406,7 +409,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 payload.put(OPTION_KEY, option);
             }
             if (words != null) {
-                payload.put("words", words);
+                payload.put(WORDS_KEY, words);
             }
         }
         if (note != null) {
@@ -719,8 +722,8 @@ public final class AnswerCommand implements Callable<Integer> {
 
         while (true) {
             var result = askRemaining(session, envelope, parts, answers, progress);
-            if (result.exitCode() != null) {
-                return result.exitCode();
+            if (result.exitCode().isPresent()) {
+                return result.exitCode().getAsInt();
             }
             progress = result.progress();
             if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
@@ -739,13 +742,13 @@ public final class AnswerCommand implements Callable<Integer> {
         }
     }
 
-    private record WalkOutcome(@Nullable Integer exitCode, Progress progress) {
+    private record WalkOutcome(OptionalInt exitCode, Progress progress) {
     }
 
     private WalkOutcome askRemaining(DialogueSession session, DecisionEnvelope envelope,
                         List<DecisionPart> parts, Map<Integer, PartAnswer> answers, Progress progress) throws IOException {
         int index = progress.index();
-        String note = progress.note();
+        String currentNote = progress.note();
         while (index < parts.size()) {
             var part = parts.get(index);
             var stake = stakeOf(envelope, part);
@@ -753,13 +756,13 @@ public final class AnswerCommand implements Callable<Integer> {
             printPartPosition(session.out(), part, index, parts.size(), session.locale());
             renderOptions(session.out(), part, stake, session.locale());
 
-            var context = new PartContext(part, index, stake, recommended, answers.get(index), note);
-            var outcome = askPart(session, envelope, context);
+            var partContext = new PartContext(part, index, stake, recommended, answers.get(index), currentNote);
+            var outcome = askPart(session, envelope, partContext);
             if (outcome.signal() == PartSignal.DONE) {
-                return new WalkOutcome(outcome.exitCode(), new Progress(index, note));
+                return new WalkOutcome(OptionalInt.of(outcome.exitCode()), new Progress(index, currentNote));
             }
             if (outcome.signal() == PartSignal.NOTE) {
-                note = outcome.note();
+                currentNote = outcome.note();
             } else if (outcome.signal() == PartSignal.BACK) {
                 index = Math.max(0, index - 1);
             } else {
@@ -767,7 +770,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 index++;
             }
         }
-        return new WalkOutcome(null, new Progress(index, note));
+        return new WalkOutcome(OptionalInt.empty(), new Progress(index, currentNote));
     }
 
     private PartOutcome askPart(DialogueSession session, DecisionEnvelope envelope, PartContext context) throws IOException {
@@ -856,7 +859,7 @@ public final class AnswerCommand implements Callable<Integer> {
         if (picked != null) {
             return new PartOutcome(PartSignal.ANSWER, new PartAnswer(picked.key(), false), context.currentNote(), 0);
         }
-        out.println(getMessage(locale, "operator.decision.invalid_choice"));
+        out.println(getMessage(locale, INVALID_CHOICE_KEY));
         out.flush();
         return null;
     }
@@ -869,7 +872,7 @@ public final class AnswerCommand implements Callable<Integer> {
             return new PartOutcome(PartSignal.ANSWER,
                                 new PartAnswer(context.recommended().key(), false), context.currentNote(), 0);
         }
-        session.out().println(getMessage(session.locale(), "operator.decision.invalid_choice"));
+        session.out().println(getMessage(session.locale(), INVALID_CHOICE_KEY));
         session.out().flush();
         return null;
     }
@@ -1002,11 +1005,15 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static @Nullable Dissent dissentFromOption(DecisionOption option) {
         var support = option.quorumSupport();
-        if (support == null || support.dissentSummary() == null) {
+        if (support == null) {
+            return null;
+        }
+        var summary = support.dissentSummary();
+        if (summary == null) {
             return null;
         }
         var role = firstVoteRole(support);
-        return role == null ? null : new Dissent(role, support.dissentSummary());
+        return role == null ? null : new Dissent(role, summary);
     }
 
     private static @Nullable Dissent dissentFromVoteReason(DecisionPart part, DecisionOption recommendedOpt) {
@@ -1061,7 +1068,7 @@ public final class AnswerCommand implements Callable<Integer> {
             out.println(MessageCatalogue.format(locale, "operator.decision.vote_line", Map.of(
                                 ROLE_KEY, TerminalSanitizer.sanitizeLine(vote.role()),
                                 "model", TerminalSanitizer.sanitizeLine(vote.model()),
-                                "reason", reason)));
+                                REASON_KEY, reason)));
             if (vote.confidencePercent() != null) {
                 out.println("    " + MessageCatalogue.format(locale, "decision.support.self_reported",
                                     Map.of("value", vote.confidencePercent())));
@@ -1244,7 +1251,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 return new ConfirmOutcome(false, reopened - 1, 0);
             }
         }
-        out.println(getMessage(locale, "operator.decision.invalid_choice"));
+        out.println(getMessage(locale, INVALID_CHOICE_KEY));
         out.flush();
         return null;
     }
@@ -1325,7 +1332,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int submitOwnWordsAnswer(DialogueSession session, DecisionEnvelope envelope, String words) throws IOException {
         var payload = new LinkedHashMap<String, Object>();
-        payload.put("words", words);
+        payload.put(WORDS_KEY, words);
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
         var answerPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
         var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
@@ -1378,9 +1385,11 @@ public final class AnswerCommand implements Callable<Integer> {
         return confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim());
     }
 
+    private record ReadBack(boolean repeat, @Nullable PartAnswer answer) {
+    }
+
     private @Nullable PartAnswer readOwnWords(DialogueSession session, DecisionEnvelope envelope,
                         String locale) throws IOException {
-        var out = session.out();
         var wordsPrompt = getMessage(locale, "operator.decision.own_words_prompt") + " › ";
         while (true) {
             var wordsInput = readLineSafe(session.reader(), wordsPrompt);
@@ -1391,22 +1400,31 @@ public final class AnswerCommand implements Callable<Integer> {
             if (interp == null) {
                 return null;
             }
-
-            out.println();
-            var reading = interp.readBackText() != null ? interp.readBackText() : wordsInput.trim();
-            out.println(MessageCatalogue.format(locale, "decision.readback.understood",
-                                Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
-            var answer = readBackDecision(session, locale);
-            if (answer == null) {
-                return null;
-            }
-            if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
-                return new PartAnswer(reading, true);
-            }
-            if (!("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale)))) {
-                return null;
+            var readBack = readBack(session, interp, wordsInput.trim(), locale);
+            if (!readBack.repeat()) {
+                return readBack.answer();
             }
         }
+    }
+
+    private static ReadBack readBack(DialogueSession session, DecisionInterpretation interp,
+                        String wordsInput, String locale) {
+        var out = session.out();
+        out.println();
+        var reading = Objects.requireNonNullElse(interp.readBackText(), wordsInput);
+        out.println(MessageCatalogue.format(locale, "decision.readback.understood",
+                            Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
+        var answer = readBackDecision(session, locale);
+        if (answer == null) {
+            return new ReadBack(false, null);
+        }
+        if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
+            return new ReadBack(false, new PartAnswer(reading, true));
+        }
+        if ("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale))) {
+            return new ReadBack(true, null);
+        }
+        return new ReadBack(false, null);
     }
 
     private static @Nullable DecisionInterpretation clarified(DialogueSession session, DecisionEnvelope envelope,
@@ -1426,7 +1444,7 @@ public final class AnswerCommand implements Callable<Integer> {
             return clarifiedInterp;
         }
         session.out().println(MessageCatalogue.format(locale, "decision.interpret.unclear_bound", Map.of(
-                            "reason", getMessage(locale, "decision.interpret.unclear_reason"))));
+                            REASON_KEY, getMessage(locale, "decision.interpret.unclear_reason"))));
         session.out().flush();
         return null;
     }
@@ -1439,7 +1457,7 @@ public final class AnswerCommand implements Callable<Integer> {
     private static DecisionInterpretation interpret(DialogueSession session, DecisionEnvelope envelope,
                         String words) throws IOException {
         var interpPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_INTERPRET;
-        var interpRes = session.runtime().send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", words))));
+        var interpRes = session.runtime().send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of(WORDS_KEY, words))));
         if (interpRes.status() != 200) {
             throw new OperatorRefusedException("interpret " + envelope.id(), interpRes);
         }
@@ -1509,15 +1527,21 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private static String projectNoun(@Nullable DecisionEnvelope envelope, String locale) {
-        if (envelope != null && envelope.project() != null && !envelope.project().isBlank()) {
-            return envelope.project();
+        if (envelope != null) {
+            var project = envelope.project();
+            if (project != null && !project.isBlank()) {
+                return project;
+            }
         }
         return getMessage(locale, "decision.project.fallback");
     }
 
     private static String planNoun(@Nullable DecisionEnvelope envelope, String locale) {
-        if (envelope != null && envelope.plan() != null && !envelope.plan().isBlank()) {
-            return envelope.plan();
+        if (envelope != null) {
+            var planId = envelope.plan();
+            if (planId != null && !planId.isBlank()) {
+                return planId;
+            }
         }
         return getMessage(locale, "decision.waiver.plan_fallback");
     }
