@@ -556,7 +556,7 @@ class ProjectCommandTest {
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(out.toString().contains("The project is ready"), out.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .anyMatch(r -> "/api/v1/entries/ent-cui".equals(r.target())),
+                                                                    .anyMatch(r -> "/api/v1/entries/ent-cui".equals(r.target())),
                                                 "the run is read at its entry"));
     }
 
@@ -581,7 +581,7 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .anyMatch(r -> "/api/v1/projects/cui-parent/setup".equals(r.target())),
+                                                                    .anyMatch(r -> "/api/v1/projects/cui-parent/setup".equals(r.target())),
                                                 "the run is read at the directory name"));
     }
 
@@ -641,7 +641,7 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .noneMatch(r -> r.target().endsWith("/unenrol")),
+                                                                    .noneMatch(r -> r.target().endsWith("/unenrol")),
                                                 "nothing is sent"));
     }
 
@@ -655,7 +655,7 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .noneMatch(r -> r.target().endsWith("/release")),
+                                                                    .noneMatch(r -> r.target().endsWith("/release")),
                                                 "nothing is sent"));
     }
 
