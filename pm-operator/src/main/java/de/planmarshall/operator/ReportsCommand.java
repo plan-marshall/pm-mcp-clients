@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.report.ReadReportsRequest;
 import de.planmarshall.api.report.ReadReportsResponse;
 import de.planmarshall.api.report.ReportItem;
 import de.planmarshall.api.report.ReportsPage;
@@ -206,8 +207,25 @@ public final class ReportsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (all) {
+                // Read the list first and mark exactly the reports it carried. The wire form is
+                // the ids alone; the removed "all" body is never sent.
+                var listResponse = context.runtime(true).send(HttpRequest.get("/api/v1/reports"));
+                if (listResponse.status() != 200) {
+                    throw new OperatorRefusedException("reports read --all", listResponse);
+                }
+                var page = ReportsPage.fromJson(listResponse.bodyText());
+                var ids = new ArrayList<String>(page.items().size());
+                for (var item : page.items()) {
+                    ids.add(item.id());
+                }
+                if (ids.isEmpty()) {
+                    out.println("0 reports marked read.");
+                    out.flush();
+                    return 0;
+                }
                 var response = context.runtime(true).send(
-                                    HttpRequest.json("POST", "/api/v1/reports/read", "{\"all\":true}"));
+                                    HttpRequest.json("POST", "/api/v1/reports/read",
+                                                        ReadReportsRequest.of(ids).toJson()));
                 if (response.status() == 200 || response.status() == 204) {
                     var parsed = ReadReportsResponse.fromJson(response.bodyText());
                     out.printf("✓ %d reports marked read.%n", parsed.markedCount());

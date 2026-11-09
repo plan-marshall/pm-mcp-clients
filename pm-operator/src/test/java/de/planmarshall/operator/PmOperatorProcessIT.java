@@ -295,15 +295,16 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("reports prints without an interactive terminal, and reports read still refuses (PM-SEC-3)")
+    @DisplayName("reports prints without an interactive terminal, and reports read refuses before it reads the list (PM-SEC-3)")
     void reportsPrintsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.json(200,
+        var server = fixture.start((request, response) -> response.json(200,
                             "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}"));
         try (var process = operator(environment(), "reports")) {
             assertEquals(0, process.awaitExit(WAIT), process.stderr());
             assertNotEquals(0, process.stdout().length, "reports printed nothing");
         }
+        var afterList = server.requests().size();
 
         try (var process = operator(environment(), "reports", "read", "--all")) {
             assertEquals(4, process.awaitExit(WAIT));
@@ -311,6 +312,10 @@ class PmOperatorProcessIT {
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                 "stderr: " + stderr);
         }
+        // The act reads the list first only after the gate lets it through; here the gate refuses, so
+        // the packaged binary must not add a request of its own.
+        assertEquals(afterList, server.requests().size(),
+                            "the refused act must not read the list: " + server.requests());
     }
 
     private SystemSnapshot sampleSnapshot() {

@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -117,10 +118,23 @@ class ReportsCommandTest {
     }
 
     @Test
-    @DisplayName("reports read --all marks all read")
+    @DisplayName("reports read --all reads the list first and marks the ids it read")
     void reportsReadAll() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "items": [
+                                        {"id":"rep-0142","subject":"fix-relay"},
+                                        {"id":"rep-0139","subject":"docs-typo"},
+                                        {"id":"rep-0131","subject":"Onboarded"}
+                                      ],
+                                      "unread_count": 3,
+                                      "has_older": false,
+                                      "older_count": 0
+                                    }
+                                    """);
+            } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"count\":3}");
             } else {
                 response.send(404, null, "");
@@ -128,9 +142,44 @@ class ReportsCommandTest {
         });
 
         int code = execute("reports", "read", "--all");
+
+        var requests = server.requests();
         assertAll(
                             () -> assertEquals(0, code),
+                            () -> assertEquals(2, requests.size(), "one list read and one ids write"),
+                            () -> assertEquals("GET", requests.get(0).method()),
+                            () -> assertEquals("/api/v1/reports", requests.get(0).target()),
+                            () -> assertEquals("POST", requests.get(1).method()),
+                            () -> assertEquals("/api/v1/reports/read", requests.get(1).target()),
+                            () -> assertTrue(requests.get(0).receivedNanos() <= requests.get(1).receivedNanos(),
+                                                "the list read precedes the ids write"),
+                            () -> assertTrue(requests.get(1).bodyText().contains(
+                                                "\"report_ids\":[\"rep-0142\",\"rep-0139\",\"rep-0131\"]"),
+                                                requests.get(1).bodyText()),
+                            () -> assertFalse(requests.get(1).bodyText().contains("\"all\""),
+                                                requests.get(1).bodyText()),
                             () -> assertTrue(out.toString().contains("✓ 3 reports marked read."))
+        );
+    }
+
+    @Test
+    @DisplayName("reports read --all prints nothing read and sends no read on an empty unread list")
+    void reportsReadAllWithoutUnreadReports() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}");
+            } else {
+                response.send(500, null, "");
+            }
+        });
+
+        int code = execute("reports", "read", "--all");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("0 reports marked read.")),
+                            () -> assertEquals(1, server.requests().size(), "only the list read may be sent"),
+                            () -> assertEquals("/api/v1/reports", server.requests().getFirst().target())
         );
     }
 
