@@ -168,6 +168,8 @@ public final class OverviewFormatting {
             case "landing_failed" -> "overview.needs.landing_failed";
             case "findings" -> "overview.needs.findings";
             case "setup" -> "overview.needs.setup";
+            case "credential" -> "overview.needs.credential";
+            case "cleanup_due" -> "overview.needs.cleanup_due";
             default -> null;
         };
         var label = key != null

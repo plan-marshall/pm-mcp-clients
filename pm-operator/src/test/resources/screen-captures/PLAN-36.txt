@@ -1,0 +1,22 @@
+# Screen captures for PLAN-36: "Needs You" in Every Surface
+# On running-work: needs, console !, overview root, ! on waiting row
+
+needs-120x30-en | running-work | - | needs | - | 120x30 | en_US.UTF-8 | -
+needs-120x30-de | running-work | - | needs | - | 120x30 | de_DE.UTF-8 | -
+needs-80x24-en | running-work | - | needs | - | 80x24 | en_US.UTF-8 | -
+needs-80x24-de | running-work | - | needs | - | 80x24 | de_DE.UTF-8 | -
+
+console-exclamation-120x30-en | running-work | - | | exit\n | 120x30 | en_US.UTF-8 | - | !\n
+console-exclamation-120x30-de | running-work | - | | exit\n | 120x30 | de_DE.UTF-8 | - | !\n
+console-exclamation-80x24-en | running-work | - | | exit\n | 80x24 | en_US.UTF-8 | - | !\n
+console-exclamation-80x24-de | running-work | - | | exit\n | 80x24 | de_DE.UTF-8 | - | !\n
+
+overview-root-120x30-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | -
+overview-root-120x30-de | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | -
+overview-root-80x24-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | -
+overview-root-80x24-de | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | -
+
+waiting-row-exclamation-120x30-en | running-work | - | plans | \e\cq | 120x30 | en_US.UTF-8 | - | \n!
+waiting-row-exclamation-120x30-de | running-work | - | plans | \e\cq | 120x30 | de_DE.UTF-8 | - | \n!
+waiting-row-exclamation-80x24-en | running-work | - | plans | \e\cq | 80x24 | en_US.UTF-8 | - | \n!
+waiting-row-exclamation-80x24-de | running-work | - | plans | \e\cq | 80x24 | de_DE.UTF-8 | - | \n!
