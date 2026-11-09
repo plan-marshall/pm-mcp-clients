@@ -393,12 +393,29 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/ignore"));
         if (res.status() == 200) {
-            int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
-            out.printf("✓ Nothing was deleted. %d items are kept for good; cleanup --kept lists them, cleanup --release gives them back.%n", totalItems);
+            printIgnoreDone(out, job);
             out.flush();
             return 0;
         }
         throw new OperatorRefusedException("cleanup --ignore", res);
+    }
+
+    /**
+     * Names what the ignore keeps: the job's item count where the whole job is shown, and no count
+     * where a project filter hides part of it.
+     *
+     * @param out the verb's writer
+     * @param job the job the operator answered
+     */
+    private void printIgnoreDone(PrintWriter out, CleanupJob job) {
+        var locale = context.clientEnvironment().locale();
+        if (project != null && !".".equals(project)) {
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.ignored.whole_job", Map.of()));
+            return;
+        }
+        int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.ignored.count",
+                            Map.of("count", totalItems)));
     }
 
     /**
@@ -909,7 +926,9 @@ public final class CleanupCommand implements Callable<Integer> {
      */
     static String workId(CleanupItemEntry item) {
         var prefix = item.kind() + ":";
-        return item.id().startsWith(prefix) ? item.id().substring(prefix.length()) : item.id();
+        return item.id().regionMatches(true, 0, prefix, 0, prefix.length())
+                            ? item.id().substring(prefix.length())
+                            : item.id();
     }
 
     /**

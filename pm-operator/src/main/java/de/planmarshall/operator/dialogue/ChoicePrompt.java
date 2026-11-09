@@ -544,8 +544,10 @@ public final class ChoicePrompt {
                 line.setLength(0);
             }
             if (part.length() > width) {
-                out.println(line.isEmpty() ? "" : line.toString());
-                line.setLength(0);
+                if (!line.isEmpty()) {
+                    out.println(line);
+                    line.setLength(0);
+                }
                 out.println(chunk(part, width));
                 continue;
             }
