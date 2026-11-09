@@ -430,6 +430,26 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("a project-filtered ignore says the whole job is affected")
+    void cleanupIgnoreWithAProjectSaysTheWholeJob() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/ignore")) {
+                response.json(200, "{\"status\":\"done\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("cleanup", "--ignore", "--project", "pm-mcp-clients");
+
+        assertTrue(out.toString().contains("acts on the whole job"), out.toString());
+    }
+
+    @Test
     @DisplayName("cleanup --remind names the server's date")
     void cleanupRemindNamesTheServersDate() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);

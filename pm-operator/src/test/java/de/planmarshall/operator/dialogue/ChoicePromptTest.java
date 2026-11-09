@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.List;
 
 import de.planmarshall.operator.StartPrompt;
 
@@ -540,6 +541,14 @@ class ChoicePromptTest {
         assertTrue(lines.size() > 1, chunked);
         lines.forEach(line -> assertTrue(line.length() <= 16, line));
         assertEquals("zukunft wieder", lines.getLast());
+    }
+
+    @Test
+    @DisplayName("rule 15: a part with no space inside the width is broken mid-word")
+    void chunkBreaksMidWordWhenNoSpaceFits() {
+        var chunked = ChoicePrompt.chunk("abcdefghij", 4);
+
+        assertEquals(List.of("abcd", "efgh", "ij"), chunked.lines().toList());
     }
 
     private ChoicePrompt keyedPrompt(String input, StringWriter out, String locale) {

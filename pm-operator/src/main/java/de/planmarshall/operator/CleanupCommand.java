@@ -296,6 +296,9 @@ public final class CleanupCommand implements Callable<Integer> {
         if (job == null) {
             return 0;
         }
+        if (displayed == null) {
+            printWholeJobActionNote(out);
+        }
         var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/remind"));
         if (res.status() == 200) {
             printRemindDone(out, res.bodyText());
@@ -384,6 +387,9 @@ public final class CleanupCommand implements Callable<Integer> {
         var job = displayed != null ? displayed : openJob(out);
         if (job == null) {
             return 0;
+        }
+        if (displayed == null) {
+            printWholeJobActionNote(out);
         }
         var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/ignore"));
         if (res.status() == 200) {
