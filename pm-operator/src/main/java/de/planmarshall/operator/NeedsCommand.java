@@ -12,24 +12,19 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
-import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorItem;
-import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.runtime.RuntimeClient;
-
 import de.planmarshall.operator.overview.OverviewFormatting;
 
 import picocli.CommandLine.Command;
@@ -77,8 +72,8 @@ public final class NeedsCommand implements Callable<Integer> {
 
         if (page.items().isEmpty()) {
             var emptyKey = MessageCatalogue.hasKey(locale, "operator.needs.empty")
-                    ? "operator.needs.empty"
-                    : "overview.needs.empty";
+                                ? "operator.needs.empty"
+                                : "overview.needs.empty";
             out.println(MessageCatalogue.format(locale, emptyKey, Map.of()));
             out.flush();
             return 0;
@@ -106,11 +101,11 @@ public final class NeedsCommand implements Callable<Integer> {
         var cmd = OverviewFormatting.formatNeedsItemCommand(item, decisionIds);
 
         out.printf("  %-16s %-16s %-19s %-13s %s%n",
-                "! " + kindLabel,
-                subject,
-                blocks,
-                since,
-                cmd);
+                            "! " + kindLabel,
+                            subject,
+                            blocks,
+                            since,
+                            cmd);
     }
 
     private static Map<String, String> fetchDecisionIds(RuntimeClient client) {

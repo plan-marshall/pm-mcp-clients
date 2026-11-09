@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -85,8 +84,8 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
 
         if (needsOperator != null && !needsOperator.items().isEmpty()) {
             var header = MessageCatalogue.hasKey(locale, "operator.needs.title")
-                    ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
-                    : "Needs you · " + needsOperator.total();
+                                ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
+                                : "Needs you · " + needsOperator.total();
             rows.add(new TuiRow(GROUP_NEEDS_YOU_ID, header, null, false, false));
 
             var items = needsOperator.items();
@@ -99,11 +98,11 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
                 var cmd = OverviewFormatting.formatNeedsItemCommand(item, Map.of());
 
                 var line = String.format("%-16s %-16s %-19s %-13s %s",
-                        "! " + kindLabel,
-                        subject,
-                        blocks,
-                        since,
-                        cmd).stripTrailing();
+                                    "! " + kindLabel,
+                                    subject,
+                                    blocks,
+                                    since,
+                                    cmd).stripTrailing();
 
                 rows.add(new TuiRow(NEEDS_ITEM_PREFIX + i, line, null, true, true));
             }

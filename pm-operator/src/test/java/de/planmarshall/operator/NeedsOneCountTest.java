@@ -14,16 +14,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
@@ -55,17 +54,17 @@ class NeedsOneCountTest {
     @DisplayName("asserts the same counts across needs, overview, status, questions, and badges on running-work")
     void sameCountsAcrossFourSurfaces() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                .webPort(0)
-                .scenario(StandardScenarios.RUNNING_WORK)
-                .build())) {
+                                 .webPort(0)
+                                 .scenario(StandardScenarios.RUNNING_WORK)
+                                 .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(
-                    environment,
-                    tempDir,
-                    true,
-                    ClientEnvironment.capture(environment),
-                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
-                    null
+                                environment,
+                                tempDir,
+                                true,
+                                ClientEnvironment.capture(environment),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                                null
             );
 
             // 1. Surface 1: 'needs' verb
@@ -89,7 +88,7 @@ class NeedsOneCountTest {
             var needsGroupHeader = overviewRows.getFirst();
             assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, needsGroupHeader.id());
             assertTrue(needsGroupHeader.line().contains("Needs you · 12"),
-                    "overview group header should report Needs you · 12: " + needsGroupHeader.line());
+                                "overview group header should report Needs you · 12: " + needsGroupHeader.line());
 
             // 3. Surface 3: 'status'
             var outStatus = new StringWriter();
@@ -103,8 +102,8 @@ class NeedsOneCountTest {
 
             // Sum of items in needs_operator must match total 12
             int statusTotal = statusNeeds.values().stream()
-                    .mapToInt(NeedsOneCountTest::intVal)
-                    .sum();
+                                .mapToInt(NeedsOneCountTest::intVal)
+                                .sum();
             assertEquals(12, statusTotal, "status needs_operator counts sum should be 12");
 
             // 4. Surface 4: 'questions'
@@ -114,23 +113,23 @@ class NeedsOneCountTest {
             assertEquals(0, exitQuestions, "questions should exit 0");
             var questionsOutput = outQuestions.toString();
             assertTrue(questionsOutput.contains("Open Questions · 8 pending"),
-                    "questions should report 8 pending: " + questionsOutput);
+                                "questions should report 8 pending: " + questionsOutput);
             int decisionCount = intVal(statusNeeds.get("decision"));
             int waiverCount = intVal(statusNeeds.get("waiver_request"));
             assertEquals(8, decisionCount + waiverCount,
-                    "decision + waiver_request count in status needs_operator must agree with questions count (8)");
+                                "decision + waiver_request count in status needs_operator must agree with questions count (8)");
 
             // 5. Badges read needs_operator and gain credential and cleanup_due
             var badges = EntryFlow.extractWaitingConsoleBadges("en", statusMap);
             var badgeTexts = badges.stream().map(ConsoleBadge::text).toList();
 
             assertAll(
-                    () -> assertTrue(badgeTexts.contains("6 questions"), "badges should have 6 questions: " + badgeTexts),
-                    () -> assertTrue(badgeTexts.contains("2 waiver requests"), "badges should have 2 waiver requests: " + badgeTexts),
-                    () -> assertTrue(badgeTexts.contains("1 credential"), "badges should have 1 credential: " + badgeTexts),
-                    () -> assertTrue(badgeTexts.contains("1 cleanup due"), "badges should have 1 cleanup due: " + badgeTexts),
-                    () -> assertTrue(badgeTexts.contains("1 integrity pause"), "badges should have 1 integrity pause: " + badgeTexts),
-                    () -> assertTrue(badgeTexts.contains("1 held"), "badges should have 1 held: " + badgeTexts)
+                                () -> assertTrue(badgeTexts.contains("6 questions"), "badges should have 6 questions: " + badgeTexts),
+                                () -> assertTrue(badgeTexts.contains("2 waiver requests"), "badges should have 2 waiver requests: " + badgeTexts),
+                                () -> assertTrue(badgeTexts.contains("1 credential"), "badges should have 1 credential: " + badgeTexts),
+                                () -> assertTrue(badgeTexts.contains("1 cleanup due"), "badges should have 1 cleanup due: " + badgeTexts),
+                                () -> assertTrue(badgeTexts.contains("1 integrity pause"), "badges should have 1 integrity pause: " + badgeTexts),
+                                () -> assertTrue(badgeTexts.contains("1 held"), "badges should have 1 held: " + badgeTexts)
             );
 
             // Total count across waiting badges is 12
@@ -145,16 +144,16 @@ class NeedsOneCountTest {
 
             // 6. Pushed needs_operator.changed for the machine adds an item / notice
             var credNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                    Map.of("kind", "credential", "count", 1, "scope", "github"));
+                                Map.of("kind", "credential", "count", 1, "scope", "github"));
             assertNotNull(credNotice);
             assertTrue(credNotice.contains("Credential github needs attention"),
-                    "credential notice expected: " + credNotice);
+                                "credential notice expected: " + credNotice);
 
             var cleanupNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                    Map.of("kind", "cleanup_due", "count", 1));
+                                Map.of("kind", "cleanup_due", "count", 1));
             assertNotNull(cleanupNotice);
             assertTrue(cleanupNotice.contains("Cleanup is due"),
-                    "cleanup_due notice expected: " + cleanupNotice);
+                                "cleanup_due notice expected: " + cleanupNotice);
         }
     }
 

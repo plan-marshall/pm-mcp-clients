@@ -464,8 +464,8 @@ public final class OverviewFullScreenApp {
             openProject(runtime, savedProjectId, byEpic, saved.selectedId());
         } else {
             var targetId = saved.selectedId() != null
-                    ? saved.selectedId()
-                    : ProjectsOverviewLevel.firstSelectableId(rootRows);
+                                ? saved.selectedId()
+                                : ProjectsOverviewLevel.firstSelectableId(rootRows);
             stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, targetId);
         }
     }
@@ -1274,20 +1274,23 @@ public final class OverviewFullScreenApp {
 
     private void openPlanWaitAct(String planId) {
         try {
+            var hold = actionsClient().hold(planId);
+            if (hold != null) {
+                runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
+                return;
+            }
+        } catch (IOException _) {
+            // proceed to decisions
+        }
+        try {
             var openDecision = actionsClient().openDecision(planId);
             if (openDecision != null && !openDecision.isBlank()) {
                 String decision = openDecision;
                 runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", decision));
                 return;
             }
-            var hold = actionsClient().hold(planId);
-            if (hold != null) {
-                runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
-                return;
-            }
-        } catch (IOException refused) {
-            statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
-            return;
+        } catch (IOException _) {
+            // best effort
         }
         openActions();
     }
@@ -1633,7 +1636,9 @@ public final class OverviewFullScreenApp {
         if (targetKind == TuiLevel.Kind.OVERVIEW) {
             try {
                 fetchNeedsOperator(context.runtime(false));
-            } catch (Exception _) {
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception _) {
                 // best effort
             }
             var cached = cachedProjects.get();

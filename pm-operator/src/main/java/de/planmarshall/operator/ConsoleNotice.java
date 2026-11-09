@@ -191,7 +191,7 @@ public final class ConsoleNotice {
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
                                 Map.of(KEY_PROJECT, scope, "what", safeDetail));
             case "credential" -> {
-                var credKey = !scope.isBlank() ? scope : (!safeDetail.isBlank() ? safeDetail : "unknown");
+                var credKey = scope.isBlank() ? (safeDetail.isBlank() ? "unknown" : safeDetail) : scope;
                 yield MessageCatalogue.format(locale, "operator.console.notice.credential",
                                     Map.of("key", credKey));
             }

@@ -82,14 +82,14 @@ class NeedsIT {
 
     private static String selected(PtySession session) {
         return session.screen().lines().stream()
-                .filter(line -> line.startsWith("\u25b6"))
-                .findFirst()
-                .orElse("");
+                            .filter(line -> line.startsWith("\u25b6"))
+                            .findFirst()
+                            .orElse("");
     }
 
     private static void awaitText(PtySession session, String text) throws InterruptedException {
         assertTrue(session.awaitText(text, DialogueHarness.TIMEOUT),
-                () -> "text '" + text + "' did not appear in:\n" + session.screenText());
+                            () -> "text '" + text + "' did not appear in:\n" + session.screenText());
     }
 
     private static void await(BooleanSupplier condition) {
