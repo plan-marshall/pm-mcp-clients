@@ -361,50 +361,135 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project add enrols the checkout through the enrolment and reports the project")
-    void projectAdd() throws Exception {
-        var projectId = Generators.letterStrings(4, 12).next();
-        var path = "/git/" + Generators.letterStrings(4, 12).next();
+    @DisplayName("interactive project add reaches identity state and asks")
+    void projectAddInteractiveReachesIdentity() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
         var server = fixture.start((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, false).toJson());
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                        """);
+                }
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("project", "add", path);
-
-        var request = server.awaitRequest(Duration.ofSeconds(1));
+        int code = executeWithInput("\n", "project", "add", "/git/cui-parent");
+        var output = out.toString();
         assertAll(
-                            () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(request.bodyText().contains("\"path\":\"" + path + "\""), request.bodyText()),
-                            () -> assertTrue(request.bodyText().contains("\"pilot\":false"), request.bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (standard mode)"),
-                                                out.toString()));
+                () -> assertEquals(0, code, err.toString()),
+                () -> assertTrue(output.contains("Id"), output),
+                () -> assertTrue(output.contains("cui-parent"), output),
+                () -> assertTrue(output.contains("cui-parent is ready"), output),
+                () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                        "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+        );
     }
 
     @Test
-    @DisplayName("project add --pilot enrols the project in pilot mode")
-    void projectAddPilot() throws Exception {
-        var projectId = Generators.letterStrings(4, 12).next();
-        var server = fixture.start((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, true).toJson());
+    @DisplayName("project add --no-input without --pilot exits 3 and names --pilot")
+    void projectAddNoInputWithoutPilotExitsNeedsInput() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.identity","step":2,
+                                     "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                     "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("project", "add", "--pilot");
-
-        var request = server.awaitRequest(Duration.ofSeconds(1));
+        int code = execute("project", "add", "/git/cui-parent", "--no-input");
         assertAll(
-                            () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(request.bodyText().contains("\"path\":\".\""), request.bodyText()),
-                            () -> assertTrue(request.bodyText().contains("\"pilot\":true"), request.bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (pilot mode)"),
-                                                out.toString()));
+                () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
+                () -> assertTrue(err.toString().contains("--pilot"), err.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project add with every answer given runs through to enrolment without a prompt")
+    void projectAddWithAllAnswersRunsWithoutPrompt() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":true,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                        """);
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+        var output = out.toString();
+        assertAll(
+                () -> assertEquals(0, code, err.toString()),
+                () -> assertTrue(output.contains("cui-parent is ready"), output),
+                () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                        "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+        );
+    }
+
+    @Test
+    @DisplayName("no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+    void projectAddNeverSendsDirectEnrol() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+        assertEquals(0, code, err.toString());
+        assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                "no POST /api/v1/enrol is sent");
     }
 
     @Test
