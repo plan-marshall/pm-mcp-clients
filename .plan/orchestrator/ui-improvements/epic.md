@@ -540,6 +540,18 @@ plan spec names the plan, proposal and finding documents it comes from.
   checks keep the `Spinner`; `onboarding.adoc:45` and `cb:58` reworded, sketches unchanged). Folded: S1 and S9 into PLAN-115;
   S12 (`kind-plan` vs the clipboard) into the D3 brand assets package, still to be staged. S10 is declared and temporary.
 
+- 2026-11-09 — D4 REVIEW DECIDED (operator, one by one; PLAN-115 landed at DRAFT). (1) S1: in the terminal an empty first
+  line, `q` or `Ctrl+D` leaves the chat like Hide (the chat and an open proposal stay, `h` returns); an explicit `new` with
+  confirmation starts a fresh chat. (2) S2: a decision's answers are disabled only while the role writes or a proposal waits;
+  answering closes the decision and its chat. (3) S5: `WizardPage` hosts the chat side column like an object column (start,
+  decomposition, project setup). (4) Ended work KEEPS its chat (the orchestrator's first question misframed it as a D4
+  invention; it is the AGREED pre-D4 design; re-asked). (5) The terminal also chooses the speech method and asks its consent
+  (first answer 'list only' withdrawn by the operator; re-asked). (6) _Accept_ in the proposal card is PRIMARY, a written
+  exception to one primary per screen. (7) Empty chat: role + scope now; the 'replan knows …' line follows once the chat
+  contract carries a context summary. (8) Terminal reply streams line by line with a stop key. (9) Values confirmed (120 s /
+  8 MB, 60 s, 50 turns, 64 KiB, `whisper.cpp`). Daemon request: ledger only (Open Defects 7). Applied by three direct PRs
+  (`skip-bot-review`, branch `docs/d4-review-decisions`) that also fix the minor seams and set the client documents AGREED.
+
 ## Open Defects
 
 - 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`). (7) 2026-11-09 (PLAN-115 landing): the D4 daemon surface, not filed — the chat routes with `202` and `client_turn_id`, `POST …/chat/turns/{turn_id}/stop`, `GET …/chat?before=`, the `chat.*` events, `POST /api/v1/transcriptions`, `Permissions-Policy: microphone=(self)` (owner `plan-marshall/plan-marshall-mcp`; the D4 contract and mock package does not depend on it).
