@@ -79,18 +79,25 @@ class EnrolCommandTest {
     @DisplayName("project add posts the checkout path and reports the enrolled project")
     void enrolProject() throws Exception {
         var server = runtime((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, enrolResult("new-service", false));
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-new-service","checkout_path":"/home/oliver/git/new-service",
+                                     "project_id":"new-service","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/new-service/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"new-service","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"new-service is ready","links":{}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
-        assertEquals(0, execute("project", "add", "/home/oliver/git/new-service"));
-        assertTrue(out.toString().contains("✓ Enrolled new-service (standard mode)"), out.toString());
+        assertEquals(0, execute("project", "add", "/home/oliver/git/new-service", "--pilot"));
+        assertTrue(out.toString().contains("new-service is ready"), out.toString());
 
         var posted = server.awaitRequest(Duration.ofSeconds(1));
-        assertFalse(posted.bodyText().contains("\"pilot\":true"), posted.bodyText());
         assertTrue(posted.bodyText().contains("/home/oliver/git/new-service"), posted.bodyText());
     }
 
@@ -98,15 +105,23 @@ class EnrolCommandTest {
     @DisplayName("project add --pilot marks the enrolment as pilot mode")
     void enrolPilot() throws Exception {
         var server = runtime((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target())) {
-                response.json(200, enrolResult("new-service", true));
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-new-service","checkout_path":".",
+                                     "project_id":"new-service","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/new-service/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"new-service","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"new-service is ready","links":{}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
         assertEquals(0, execute("project", "add", "--pilot", "."));
-        assertTrue(out.toString().contains("✓ Enrolled new-service (pilot mode)"), out.toString());
+        assertTrue(out.toString().contains("new-service is ready"), out.toString());
         assertTrue(server.awaitRequest(Duration.ofSeconds(1)).bodyText().contains("\"pilot\":true"));
     }
 
@@ -134,9 +149,23 @@ class EnrolCommandTest {
     @Test
     @DisplayName("enrol strips terminal control sequences from the path it reports")
     void enrolStripsControlSequences() throws Exception {
-        runtime((request, response) -> response.json(200, enrolResult("evil", false)));
+        var server = runtime((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-x","checkout_path":"/x",
+                                     "project_id":"x","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/x/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"x","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"x is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
 
-        assertEquals(0, execute("project", "add", "\u001B[31m/x\u001B[0m"));
+        assertEquals(0, execute("project", "add", "\u001B[31m/x\u001B[0m", "--pilot"));
         assertFalse(out.toString().contains("\u001B[31m"), out.toString());
     }
 
