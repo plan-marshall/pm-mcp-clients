@@ -9,8 +9,11 @@
  */
 package de.planmarshall.operator;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -22,8 +25,6 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReleaseRequest;
-import de.planmarshall.api.resource.EnrolRequest;
-import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.resource.UnenrolRequest;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
@@ -152,8 +153,8 @@ public final class ProjectCommand implements Callable<Integer> {
     }
 
     /**
-     * {@code project add [<path>] [--pilot]}: the direct verb of a project's enrolment, its
-     * arguments the answers of {@code project.identity} to {@code project.enrol} (PM-EXEC-2; CLI
+     * {@code project add [<path>] [--pilot]}: the direct verb of a project's onboarding, its
+     * arguments the answers of {@code project.checkout} and {@code project.identity} (PM-EXEC-2; CLI
      * &amp; Security § Enrolment, Lifecycle Gate &amp; Release; 17-projects.adoc#commands).
      * <p>
      * It reaches the stores only through the runtime's local API, and the operator gate refuses it
@@ -173,6 +174,9 @@ public final class ProjectCommand implements Callable<Integer> {
         @Option(names = "--pilot", description = "Enrol the project in pilot mode (the lifecycle gate)")
         boolean pilot;
 
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
+
         AddCommand(OperatorContext context) {
             this.context = context;
         }
@@ -185,18 +189,15 @@ public final class ProjectCommand implements Callable<Integer> {
             var safePath = OutputSafety.stripControlSequences(path);
             var locale = context.clientEnvironment().locale();
 
-            var request = new EnrolRequest(path, pilot);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/enrol", request.toJson()));
-
-            if (response.status() == 200 || response.status() == 201) {
-                var result = EnrolResult.fromJson(response.bodyText());
-                var id = OutputSafety.stripControlSequences(result.projectId());
-                var mode = text(locale, result.pilot() ? "enrolment.enrol.mode.pilot"
-                                    : "enrolment.enrol.mode.standard");
-                out.println(MessageCatalogue.format(locale, "enrolment.enrol.done", Map.of("id", id, "mode", mode)));
-                out.flush();
-                return 0;
+            if (noInput && !pilot) {
+                err.println(text(locale, "operator.project.add.pilot_required"));
+                err.flush();
+                return EXIT_NEEDS_INPUT;
             }
+
+            var startPayload = JsonTree.write(Map.of("path", path, "pilot", pilot));
+            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/project-onboardings", startPayload));
+
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
@@ -218,7 +219,65 @@ public final class ProjectCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("project add " + safePath, response);
+            if (response.status() != 200 && response.status() != 201) {
+                throw new OperatorRefusedException("project add " + safePath, response);
+            }
+
+            String entryId = null;
+            String projectId = null;
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                if (parsed != null) {
+                    var continueLink = JsonTree.string(parsed, "continue_link");
+                    if (continueLink != null) {
+                        entryId = EntryFlow.entryId(continueLink);
+                    }
+                    if (entryId == null) {
+                        entryId = JsonTree.string(parsed, "entry_id");
+                    }
+                    projectId = JsonTree.string(parsed, "project_id");
+                    if (projectId == null) {
+                        projectId = JsonTree.string(parsed, "id");
+                    }
+                }
+            } catch (IOException _) {
+                // fall back below
+            }
+
+            if (entryId == null && projectId == null) {
+                try {
+                    var name = Path.of(path).getFileName();
+                    projectId = name != null ? name.toString() : path;
+                } catch (Exception _) {
+                    projectId = path;
+                }
+            }
+
+            var source = entryId != null
+                    ? ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId)
+                    : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+
+            var startPrompt = new StartPrompt(context, out, locale, noInput);
+            var dialogue = new StateDialogue(source, out, locale, stateId -> {
+                if ("project.identity".equals(stateId) && pilot) {
+                    return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
+                }
+                return new ChoicePrompt(startPrompt, stateId);
+            });
+
+            try {
+                var finalFrame = dialogue.run();
+                return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            } catch (StartPrompt.StartLeftException _) {
+                return 0;
+            } catch (IOException _) {
+                err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
+                                    Map.of(PARAM_PROJECT, safePath)));
+                err.flush();
+                return 1;
+            }
         }
     }
 
