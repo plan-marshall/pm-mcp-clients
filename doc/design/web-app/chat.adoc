@@ -1,0 +1,313 @@
+= Design: Web App, Chat and Voice
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Chat and Voice
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3] (the chat on a plan, an epic, a review); link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (inside a decision); link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6] (while starting, the decomposition); link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the speech role and its consents)_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-24[PM-WF-24]; link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role] with link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat-reply-stream[The Reply as It Is Written]; link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc#chat-events[Event Catalogue, Chat], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-chat-text[The Chat's Text], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-voice[Voice Input], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#transcriptions[Transcriptions], link:../../../../pm-mcp-core/doc/specification/model-work/01-roles-and-configuration.adoc#transcribe-role[The Speech Role `transcribe`]; link:navigation.adoc#side-columns[Navigation, Side Columns] (where the chat stands); link:../shared/work-actions.adoc#chat[Chatting with the Planning Role] (the dialogue both clients share); link:components-fields.adoc#compose[Compose], link:components.adoc#external-link[ExternalLink], link:components-tags.adoc[Tags and Kinds] (the chip look), link:components-brand.adoc#waiting-mark[WaitingMark]_
+
+Status: `DRAFT`. How the web app shows every chat the operator has with a role, and how the operator dictates text. The dialogue itself — who it goes to, its scope, the read-back of each proposal, and that nothing changes without _Accept_ — is shared by both clients and stated in link:../shared/work-actions.adoc#chat[Chatting with the Planning Role]; this document is its web rendering, its components (link:components-chat.adoc[Components, Chat Pieces]), the voice input of every prose field, and the contract and mock the clients need for it.
+
+[#everywhere]
+== One Chat Everywhere
+
+Every place where the operator talks to a role shows the same `Chat` (link:components-chat.adoc#chat[Chat Pieces, Chat]); only its subject, its scope, its role and what a proposal does differ (link:../shared/work-actions.adoc#chat-places[The Same Chat in Three More Places]).
+
+[cols="2,2,3",options="header"]
+|===
+|Opened from |Role |Beside
+
+|a plan's acts (_Chat_, `c`) |`replan` |the plan's object column
+|an epic's acts, its decomposition, its review (one item or the whole register) |`decompose` |the epic, the draft, the review
+|a decision (_Chat about it first_) |the role of the task that asked |the decision
+|a start's sources (`start.sources`) |`refine` or `decompose` |the sources
+|ended work (read only) |`replan` or `decompose` |the ended plan or epic
+|a question of a project's setup (its decision chat, _Chat about it first_) |the role of the task that asked |the setup step
+|===
+
+* *What goes*: the drawer of the project onboarding, a second chat of its own, and the inert message field of ended work: ended work keeps a working composer, since _read only_ means that its archive never changes (`control.chat.read_only`), and its one proposal is the follow-up plan.
+* *What stays one-shot*: _Ask the steward_ is a consent and a model task (link:../shared/consents.adoc#kinds[Consents, The Kinds]), and the instruct and own-words fields of the decomposition, the review and a decision are `Compose` alone (link:components-fields.adoc#compose[Compose]); none of them is a chat.
+
+[#placement]
+== Placement
+
+The chat is a side column beside the object it belongs to, never a panel above or inside it (link:navigation.adoc#side-columns[Navigation, Side Columns]): `480 px` or `400 px` wide, its own scroll, its address the query `chat=open`, opened and hidden by replacing the address. Where the window cannot show the object and the chat side by side, the chat takes the space and _Hide the chat_ returns to the object; on a phone it takes the screen.
+
+----
+  ◆ fix-relay  with replan · claude sonnet 5.5          the whole plan
+  replan answers…                           [Hide the chat]  [New chat]
+  ─────────────────────────────────────────────────────────────────────
+                                 Today
+                                         ┌────────────────────────────┐
+                                     You │ Can the cursor test also   │
+                                         │ cover the SSE transport?   │
+                                         └────────────────────────────┘
+  (r) replan · claude sonnet 5.5
+  Yes. **TASK-4** tests one transport only:
+  • `CursorWriteOrderTest` covers the websocket path
+  • the SSE path has no test (`relay/SseSink.java:88`)
+  I propose a second test.
+  ▸ 3 steps
+  ┌─ Change to the plan ───────────────── applies after the current task ┐
+  │ A test per transport, websocket and SSE                              │
+  │ − TASK-4  cursor write order: a test for the websocket transport     │
+  │ + TASK-4  cursor write order: a test per transport, websocket and SSE│
+  │ Its epic relay-hardening is told              [Reject]  [Accept]     │
+  └──────────────────────────────────────────────────────────────────────┘
+  ─────────────────────────────────────────────────────────────────────
+  1 open proposal: Change to the plan · Show it
+  [Your message                                         ] (🎙) [ ➤ ]
+  Dictate with your system: Fn Fn                         34 of 8000
+----
+
+* *The head*: the subject's `KindMark` and title, _with_ the role and the model the role runs on in muted text (`web.chat.with`), and the scope (`control.chat.scope`). Under it the running state while the role answers (`control.chat.answers`). At the right _Hide the chat_ (`control.chat.hide`, ghost; `Escape`) and _New chat_ (`control.chat.new`, secondary, because it drops an open proposal).
+* *On a phone* the chat takes the whole screen, the bottom bar included; with the on-screen keyboard open the transcript keeps at least a third of the height, and the pinned proposal folds into the composer's head.
+* *The chat stays*: a subject has one chat, and it stays with its transcript and its context until _New chat_ (or the subject's end). Hiding it, reloading, closing the tab, or opening it again later, on another device or in the terminal client, returns to the same chat where it was; the role answers every message knowing the whole transcript. Nothing ends a chat by itself: an idle chat holds no worker, since the role runs only while it answers.
+* *Hiding keeps it running*: the reply goes on, and the act that opened the chat carries a `CountBadge` of the replies that arrived while it was hidden. The scroll position and the draft are kept per chat.
+* *A decision* keeps its own column beside the chat; its answers stay disabled while the chat is open (link:../shared/decisions.adoc#chat[Decisions, A Chat Before Answering]).
+
+[#transcript]
+== The Transcript
+
+* *Two sides*: the operator's turns are right-aligned on a subtle surface (`--color-bg-subtle`), headed _You_ (`control.chat.you`); the role's turns take the full reading width without a bubble, headed by the role's mark (a round neutral glyph with the role's initial), the role's name and its model in muted text. Consecutive turns of one side are grouped under one head.
+* *Time*: a day line between days (_Today_, _Yesterday_, a date; link:../shared/texts-and-languages.adoc#time[Texts and Languages, Time]); the time of a turn shows on hover and focus and is always in its accessible name.
+* *The role's text* is the Markdown subset of <<markdown>>; the operator's text, a turn from outside the machine and a notice are plain text.
+* *A turn from outside the machine* (`untrusted`) stands on the role's side, headed by its source with its time, and carries a neutral label with its icon, _From outside · not checked_ (`control.chat.untrusted`), never a border alone; it is never passed to the renderer.
+* *A turn from another device* stands on the operator's side like every operator turn, its head naming the device in muted text (`You · iPad`, `web.chat.from_device`).
+* *On hover and focus* a turn offers _Copy_ (`common.copy`); the operator's last turn that was not sent offers _Try again_ (`common.action.retry`) and _Edit the message_ (`control.chat.edit`), which puts its text back into the composer.
+* *A page at a time*: the newest page is read when the chat opens; scrolling to the top reads the page before, without moving the turns in view.
+
+[#working]
+=== The Working Line
+
+* *Before the first word*, the role's line is the `WaitingMark` with its text, `replan is reading the whole plan…` (`control.chat.working`; link:components-brand.adoc#waiting-mark[WaitingMark]). It is the screen's one waiting mark and its own polite status line; the chat adds no live region for it. Another wait on the same screen, and every short one (a send, an accept), takes the `Spinner`.
+* *Steps*: each step the role reports (`chat.turn.progress`, a message key such as `reads TASK-4` or `runs the tests`) is a compact muted line under the working line; once the answer arrives they fold into `3 steps` (`control.chat.steps`), which opens them again.
+* *Stopped before the first word*: the turn shows only its notice, `Stopped; the reply so far is kept.`, with the steps it had.
+* *Streaming*: while the answer is written its text grows in place with a soft caret at its end; the caret is still where reduced motion is asked for. The text is rendered as it arrives, so a list or a code block takes its shape as soon as it is complete.
+* *Without pieces* — a harness that reports no events, or a runtime that does not yet stream the reply — the working line stands until `chat.turn.completed` and the whole reply appears at once; nothing else changes.
+
+[#notices]
+=== Notices
+
+A notice is a centred muted line in the transcript, never a turn:
+
+* `replan cannot change that: <reason>` (`control.chat.infeasible`) when the role finds the change infeasible;
+* `The reply was lost: <reason> · Try again` (`control.chat.lost`, `common.action.retry`), the text so far kept above it;
+* `Stopped; the reply so far is kept.` (`control.chat.stopped`) after _Stop_;
+* `The earlier proposal was replaced.` (`control.chat.replaced`) when a new proposal replaces an open one;
+* after a proposal, with its time, the agreed `fix-relay changed; the plan's version becomes 8` or `rejected: nothing changed` (`control.chat.applied`, `control.chat.rejected`), or `not applied: <reason>` (`control.chat.check_failed`);
+* for a decision answered in another channel, the agreed `Q-007 was answered in the web app (iPad); the chat has ended.` (link:../shared/decisions-texts.adoc#texts[Decisions, Texts]);
+* when the chat was ended on another device, `Ended in the web app (iPad); the earlier chat is kept with fix-relay.` (`control.chat.ended_elsewhere`), with the new chat under it where that device started one, and when its subject ended, `fix-relay has ended; the chat has ended with it.` (`control.chat.subject_ended`).
+
+[#markdown]
+=== The Role's Text
+
+A role's reply (`format: markdown`) is rendered as a closed subset (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-chat-text[The Chat's Text]):
+
+* paragraphs, *bold*, _italic_, `inline code`, block quotes;
+* lists, and tables, which scroll sideways when wide;
+* code blocks in the mono face with their language as a label, a _Copy_ act, sideways scroll, and no syntax colours;
+* links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]), the target's host shown beside a link text that does not name it, so a link the role quotes from outside never hides where it goes; an image as a link to it, never loaded;
+* references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, outside inline code and code blocks, as reference chips (inside code a reference stays code): a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), opening its target, never a copy `Chip`;
+* a fenced Mermaid block as a diagram, drawn as every diagram of a model's text (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[Diagrams]).
+
+Raw HTML and every token outside the subset are shown as their source text. The renderer creates Svelte nodes and holds no HTML string, so it needs no sanitizer (<<renderer-decision>>).
+
+[#proposal]
+== The Change Proposal
+
+* *A card in the transcript* at the turn that proposed it: its title from the proposal's kind (`control.chat.proposal.kind`: _Change to the description_, _Change to the plan_, _Change to the staged plans_, _Proposed answer_, _Follow-up plan_, …), its summary, the line when it applies (`control.chat.at_boundary`, `control.chat.at_start`), and the change as a diff.
+* *The diff*: removed lines with `−`, added lines with `+`, on the diff tokens `--color-diff-removed` and `--color-diff-added`, the changed words marked within a line, words split at spaces and punctuation; collapsed beyond 12 lines with _Show all_ (`control.chat.diff.show_all`). The diff tokens are the one exception to the rule that one colour has one meaning (link:README.adoc#colour[Web App, Colour]), valid only inside a proposal's diff; the signs `−` and `+` carry the meaning without the colour, and both tokens owe the contrast of link:theme-readability.adoc[Theme Readability] in both themes.
+* *Acts*: _Accept_ (`control.chat.accept`) and _Reject_ (`control.chat.reject`), both secondary, _Accept_ first with its check icon: the screen's one primary stays the object column's (link:components.adoc#hierarchy[Components, Hierarchy]); in a decision _Answer in these words_ (`decision.chat.use_words`); for ended work _Start a plan with it_ (`control.chat.follow_up.start`).
+* *It never disappears*: while it is open, a compact copy is pinned above the composer, `1 open proposal: Change to the plan · Show it` (`control.chat.pinned`, `control.chat.pinned.show`), which scrolls to the card; the operator can keep writing. A new proposal replaces the open one only with its notice. After _Accept_ or _Reject_ the card folds into its notice line.
+* *Announced*: a new proposal is announced once, `Proposal: Change to the plan` (`control.chat.proposal.announce`).
+
+[#composer]
+== The Composer
+
+The composer is `Compose` (link:components-fields.adoc#compose[Compose]) with what a chat adds:
+
+* *The field*: a text area that grows from one to eight lines and then scrolls, labelled _Your message_ (`control.chat.message`, visually hidden), with a placeholder that is an example for the scope (`control.chat.example`). `Enter` sends, `Shift+Enter` adds a line, and nothing is sent while a composition (an input method, dictation) is open (`isComposing`).
+* *Send and Stop*: _Send_ (`control.chat.send`) is a secondary `Button` with the arrow icon and its label visually hidden. While the role answers it becomes _Stop the reply_ (`control.chat.stop`, the square icon), which stops it and keeps the text so far. The field stays enabled and keeps the focus while the role answers; `Enter` then sends nothing and the text stays in the field until the reply has ended or was stopped.
+* *Sent at once*: the operator's turn appears at once, `sending…` (`control.chat.sending`), and is confirmed by the runtime's `202`; a failed send keeps the text in the field and marks the turn _Not sent_ (`control.chat.not_sent`) with _Try again_ and _Edit the message_.
+* *The draft* is kept per chat in the browser's storage until it is sent; it survives hiding, reloading and closing the tab.
+* *Length*: a counter shows from 7000 characters, `7240 of 8000` (`control.chat.counter`); beyond 8000 _Send_ is disabled with its reason (`control.chat.too_long`).
+* *References*: typing `#` offers the subject's tasks, files and decisions in a list under the field (`control.chat.refs.label`; `control.chat.refs.none` where nothing matches); choosing one inserts its id, sent as plain text and rendered as a chip in the transcript.
+* *An empty chat* shows one line, `Ask replan about the whole plan.` (`control.chat.empty`), and two or three starters for its scope as chips (`control.chat.starter.<scope>`; the whole register takes `.register`); a starter fills the field and sends nothing.
+* *New chat* ends this chat (`chat.end`) and opens a new one on the same subject (`chat.open`): the column stays, the transcript is empty with its starters, and the role answers without the earlier conversation. The earlier transcript is not deleted: it stays with the subject among its events, and the new chat begins with the notice `The earlier chat is kept with fix-relay.` (`control.chat.ended`). While a proposal is open it asks first, since the proposal is dropped (`control.chat.new_confirm.title` and `.body`). There is no _Clear_: the transcript is the audit's and is never removed.
+* *Ended work* keeps the composer; its acts are the transcript, its questions, and the follow-up proposal.
+* *The microphone* is <<voice>>.
+
+[#live]
+== Scroll and Live
+
+* *Stick to the bottom* while the operator is at the bottom. Scrolled up, the transcript stays where it is and a pill _New reply_ (`web.chat.new_reply`) appears above the composer; it scrolls down.
+* *Following*: the chat opens its subject's stream before it reads the chat, and reads it again after a `reset`, so a proposal decided meanwhile never stays open on screen.
+* *Other devices*: turns, proposals, a decided proposal and the end of the chat from another device arrive through the `chat.*` events and appear in place; a turn being written is shown with its text so far.
+* *Accessibility*: the transcript is `role="log"`; the turn being written is `aria-busy="true"` until it completes, so a screen reader reads the finished reply once, never word by word. Visually hidden announcements stay inside the column's positioned box, so they never widen the page. The focus moves into the field when the chat opens and stays there while the role answers. `Escape` hides the chat and returns the focus to the act that opened it. The chat's own key, where a view defines one, opens it.
+
+[#waiting]
+== Waiting and the Brand
+
+* *Short waits* (a button, under about two seconds) keep the `Spinner`.
+* *The working line* uses the `WaitingMark` (<<working>>), the brand's long wait; on a screen that shows a mascot figure the `Spinner` takes its place.
+* *The mascot is not the chat partner*: a role keeps its neutral glyph, so the operator never takes the mascot for the role.
+
+[#voice]
+== Voice Input
+
+There are two microphones, as in a native chat app: the system's dictation and the app's own.
+
+[#dictation]
+=== The System's Dictation
+
+The keyboard microphone of a phone, macOS dictation (`Fn` twice) and Windows voice typing (`Win+H`) work in every native field without code of the app. Every field is made ready for them:
+
+* only native `<input>` and `<textarea>` (link:components-fields.adoc#field-set[Fields and Forms]);
+* no key handler that swallows a composition or an `insertText` input; `Enter` to send is guarded by `isComposing`;
+* `spellcheck` and `autocapitalize` on for prose, off for secrets, codes and ids;
+* a hint for the platform under the composer and in the help: `Dictate with your system: Fn Fn` (`web.voice.os_hint`).
+
+[#microphone]
+=== The App's Microphone
+
+* *Where*: a microphone `IconButton` (`web.voice.start`) in the composer and in every prose text area (a reason, a description, own words). It is shown only when a method of the speech role is allowed for the machine and the project, available in this browser, and chosen for it (<<methods>>).
+* *Press to talk*: from the press until _Stop and insert_ (`web.voice.stop`) or _Cancel_ (`common.action.cancel`), the field shows a level meter and the time so far (`web.voice.recording`); `Escape` cancels. Then `Turning it into text…` (`web.voice.transcribing`).
+* *The text* is inserted at the cursor as ordinary text the operator can change; it is never sent by itself and is not marked untrusted.
+* *A failure* keeps the recording in memory with `Not turned into text: <reason>` (`web.voice.failed`), _Try again_ and _Discard the recording_ (`web.voice.discard`); it is never stored.
+* *The microphone permission* is asked by the browser on first use; refused, the button says how to allow it in this browser's site settings (`web.voice.denied`).
+
+[#methods]
+=== The Speech Role `transcribe`
+
+What turns speech into text is the speech role `transcribe`, chosen in the machine's onboarding (link:onboarding-steps-4-7.adoc#speech[Onboarding, Roles, The Speech Role]) and changed in the machine settings (link:machine-settings.adoc#speech[Machine Settings, The Speech Role]). Each method is shown with where the audio goes, and each that sends it off the machine is a consent (link:../shared/consents.adoc#speech[Consents, The Speech Consents]):
+
+[cols="2,3,3",options="header"]
+|===
+|Method |Where the audio goes |Available
+
+|_Off_ (the default) |not through the app; the system's own dictation sends it where its settings say |always
+|_The browser's recognition_ |to the speech service of the browser in use: Chrome and Edge their maker's cloud service, Safari Apple's service or the device; Firefox has none |where the browser has it and the project does not narrow it away; the consent `transcribe_browser`
+|_A local model on this machine_ |stays on the machine: the browser sends the recording to the runtime over the paired connection |the model found and checked (`scan_speech_model`)
+|_A speech provider_ |to that provider, with its own credential |a provider and its token; the consent `transcribe_provider`
+|===
+
+* *Which setting wins*: the machine allows methods; a project may narrow them in its configuration, never widen them (a screen of its own for it is not designed yet); each browser chooses among the allowed ones in its own settings (_This browser_), and the browser's recognition is offered there only where the machine allows it.
+* *Both clients*: the role and its consents are shared states; the terminal client chooses them in its roles step, lists and withdraws the speech consents, and records no audio (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles-speech[Terminal Client, Roles, The Speech Role]).
+* *Not the planning models*: no harness or model of a planning role transcribes, so a choice for speech never changes how plans are worked.
+* *Nothing kept*: a recording is not stored after its transcription, on the machine or in the browser.
+
+[#contract]
+== Contract and Mock
+
+What the clients need, built by the D4 contract and mock package of this repository; the runtime side is the specification's (<<rely>>).
+
+* *`pm-api`*: `ChatTurnResource` gains `turn_id`, `kind` (`message`, `proposal`, `notice`), `status` (`streaming`, `complete`, `stopped`, `failed`), `format` (`plain`, `markdown`), its author, `model`, `steps` and `refs`; the open proposal with its `kind`, `summary`, `applies`, its old and new text, and its `state`; `sending` and _Not sent_ are the client's own and never on the wire. `POST …/chat` opens the chat (the act _Chat_); the turn's `POST` carries the client's `client_turn_id`, so _Try again_ after a lost answer never sends twice, and is answered `202` with the turn's id; accept and reject name the proposal the operator saw; `POST …/chat/turns/{turn_id}/stop`; `GET …/chat?before=<turn_id>`; the `EventName`s `chat.turn.started`, `chat.turn.delta`, `chat.turn.progress`, `chat.turn.completed`, `chat.proposal`, `chat.ended`; `POST /api/v1/transcriptions` (the recording as 16 kHz mono WAV, with the field's project) with the error codes `transcription_not_allowed` and `transcription_failed`; the speech role's methods and their availability in the machine's read model; the consent kinds `scan_speech_model`, `transcribe_browser`, `transcribe_provider`.
+* *Texts*: every key of `control.chat.*` (link:../shared/work-actions-chat-texts.adoc#texts[Chatting with the Planning Role, Texts]) and of this document, in English and German; the chat never borrows a `start.*` key.
+* *The mock runtime*: every chat route of every subject (plan, epic, decision with a setup's decision, entry, ended work, review item and register, decomposition: open, turn, accept, reject, end, stop); its realistic timing with a latency, deltas at a reading pace, steps, scripted conversations with lists, code blocks, references and a proposal in a later turn, untrusted turns, a decision's proposed answer, and a second device's turn through `/mock/broadcast`; failures on demand (`infeasible`, `lost`, an HTTP error, slow, stop); the speech role's four methods with a local model found and not found and a scripted transcription; and its ordered timing for the tests, in which an end-to-end test waits on the events, never on time (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc#mock-timing[Mock Runtime, Realistic and Deterministic Timing]).
+
+[#renderer-decision]
+== The Markdown Renderer
+
+* *Chosen*: `marked` (MIT, no dependencies of its own) as the lexer only, and the app's own Svelte renderer for the subset of <<markdown>>: an `html` token is shown as text, a link only with `http` or `https` through `ExternalLink`, an image as a link, a reference as a reference chip. The renderer has its own fixtures, hostile ones among them (`javascript:` links, a raw `<script>`, nested HTML), and is never given an untrusted turn.
+* *Considered*: `svelte-exmarkdown` (Svelte nodes, but 95 transitive packages and no filter of URLs), `@humanspeak/svelte-markdown` (renders raw HTML as elements), an HTML renderer with a sanitizer (needs `{@html}`), and `svelte-markdown` (Svelte 4 only) — each refused for the reason given.
+* *Approved by the operator*: adding `marked` to `pm-web-app` is approved; the dependency is added by the web chat package, not by this design.
+* *Later and separate*: syntax colours for code blocks, through tokens (`shiki` with `codeToTokens`, or `prismjs`), are a dependency decision of their own.
+
+[#texts]
+== Texts
+
+The chat's shared keys, both clients', are `control.chat.*` (link:../shared/work-actions-chat-texts.adoc#texts[Chatting with the Planning Role, Texts]), the speech role's and its consents' `common.transcribe.*` and `common.consent.kind.*` (link:../shared/consents.adoc#texts[Consents, Texts]). The web app's own keys, area `web`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.chat.new_reply`
+|New reply
+|Neue Antwort
+
+|`web.chat.answers_wait`
+|Answer once the chat has ended. Open the chat
+|Antworte, wenn der Chat beendet ist. Öffne den Chat
+
+|`web.chat.with`
+|with {role} · {model}
+|mit {role} · {model}
+
+|`web.chat.from_device`
+|You · {device}
+|Du · {device}
+
+|`web.voice.start`
+|Dictate
+|Diktiere
+
+|`web.voice.recording`
+|Recording · {elapsed}
+|Aufnahme · {elapsed}
+
+|`web.voice.stop`
+|Stop and insert
+|Beende und füge ein
+
+|`web.voice.transcribing`
+|Turning it into text…
+|Wird in Text umgewandelt…
+
+|`web.voice.failed`
+|Not turned into text: {reason}
+|Nicht in Text umgewandelt: {reason}
+
+|`web.voice.discard`
+|Discard the recording
+|Verwirf die Aufnahme
+
+|`web.voice.denied`
+|This browser blocks the microphone. Allow it in the site settings of this browser.
+|Dieser Browser sperrt das Mikrofon. Erlaube es in den Website-Einstellungen dieses Browsers.
+
+|`web.voice.os_hint`
+|Dictate with your system: {platform, select, mac {Fn Fn} windows {Win+H} other {the microphone of your keyboard}}
+|Diktiere mit deinem System: {platform, select, mac {Fn Fn} windows {Win+H} other {das Mikrofon deiner Tastatur}}
+
+|`web.voice.browser_choice`
+|Dictation in this browser
+|Diktieren in diesem Browser
+|===
+
+[#decisions]
+== Decisions of the Operator
+
+* *In the staging window*: the streaming chat and the voice input (link:../../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap], Milestones 8 and 11).
+* *`marked`* approved as the lexer of the role's text (<<renderer-decision>>).
+* *The waiting mark* of the working line is the clipboard whose lines are ticked one after another, as the brand design defines it; this design neither redraws nor specifies it again.
+
+[#rely]
+== What the Staged Packages Rely On
+
+[cols="2,3",options="header"]
+|===
+|Package |Relies on
+
+|the D4 contract and mock package
+|<<contract>>; the runtime's routes, events and errors as specified (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc#chat-events[Event Catalogue, Chat])
+
+|the D4 web chat package
+|<<everywhere>> to <<waiting>>, the pieces of link:components-chat.adoc[Chat Pieces], and <<renderer-decision>>; it adopts the chat on the decomposition, the epic review, the start entry and the project onboarding
+
+|the D4 voice package
+|<<voice>>, the speech role in the onboarding and the machine settings, the per-browser choice, and the terminal's part
+
+|the plans that adopt the chat in their own views (PLAN-51, 52, 53, 55, 58, 59, 65)
+|<<placement>> and the web chat package
+
+|the engine (`pm-mcp-core`, packages `chat-reply-stream` and `transcribe`) and the daemon (`plan-marshall-mcp`)
+|the specification sections named in the head of this document
+|===
