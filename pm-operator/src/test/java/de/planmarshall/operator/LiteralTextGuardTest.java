@@ -61,7 +61,8 @@ class LiteralTextGuardTest {
                         "WorkChatDialogue.java",
                         "PlanSettingsDialogue.java",
                         "OperatorActions.java",
-                        "ProjectCommand.java");
+                        "ProjectCommand.java",
+                        "FindCommand.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(

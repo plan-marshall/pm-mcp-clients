@@ -93,6 +93,7 @@ class ReadVerbExitCodesTest {
                             Arguments.of("plan report", new String[]{"plan", "report", PLAN_ID}),
                             Arguments.of("plan", new String[]{"plan", PLAN_ID}),
                             Arguments.of("plans", new String[]{"plans"}),
+                            Arguments.of("find", new String[]{"find", PLAN_ID}),
                             Arguments.of("lesson check", new String[]{"lesson", "check", PLAN_ID}),
                             Arguments.of("epic", new String[]{"epic", PLAN_ID}),
                             Arguments.of("epic findings", new String[]{"epic", "findings", PLAN_ID}),
