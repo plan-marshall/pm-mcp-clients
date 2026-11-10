@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-auto[An Epic Runs by Itself]; link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
 An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan View]): the whole epic at a glance, from which the operator reaches any of its plans and acts on the epic. It opens from the epic's row in Running Work (link:plan-overview.adoc[Plan Overview]).
 

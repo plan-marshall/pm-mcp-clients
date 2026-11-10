@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[Phase Workflows, Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas, Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work, Epic Intent], link:../../../../pm-mcp-core/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[Model Work, A Worker Off Track]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
 A plan says what it intends before it starts and how it will get there before it executes. An epic says where it ends before it is cut into plans. The clients show both as structured records, never as the Markdown the server renders for a pull request: the goal and its criteria, the outline's deliverables and files, the builder's remaining questions, the epic's done-when checks, and the distribution behind a changed `over_size` multiple.
 

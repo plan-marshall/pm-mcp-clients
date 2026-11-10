@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:intent-and-outline.adoc[Intent and Outline] 
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]_
 
-Status: `DRAFT`. The texts of link:intent-and-outline.adoc[Intent and Outline], for both clients; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `AGREED`. The texts of link:intent-and-outline.adoc[Intent and Outline], for both clients; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts

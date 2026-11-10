@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../shared/plan-view.adoc[Plan View], link:navigation.adoc[Navigation] (the columns, the addresses), link:components.adoc#object-page[Components, ObjectPage], link:../shared/intent-and-outline.adoc[Intent and Outline], link:../shared/texts-and-languages.adoc[Texts and Languages]_
 
-Status: `DRAFT`. The web app's interaction with the shared plan view (link:../shared/plan-view.adoc[Plan View]) in the column model of link:navigation.adoc[Navigation]. The process contract, the records, and the server are unchanged: the narrative is derived from the `ProcessTree` the view already holds.
+Status: `AGREED`. The web app's interaction with the shared plan view (link:../shared/plan-view.adoc[Plan View]) in the column model of link:navigation.adoc[Navigation]. The process contract, the records, and the server are unchanged: the narrative is derived from the `ProcessTree` the view already holds.
 
 [#layout]
 == The Plan in the Column Model
