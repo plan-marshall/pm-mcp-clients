@@ -632,6 +632,24 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-124 landed (PR #385, `be8c8403`, analysed 2026-11-10); see `landings/PLAN-124.md`. One sanitizing writer for the
+  answer verb; every part asked, one `part_answers` POST; costly `?r`, split no preselect; #372's 20 threads answered.
+  Merge rule met (18 threads, 0 open — 2 resolved by CodeRabbit as addressed without a reply; bodies with non-inline
+  items answered); Sonar 0. RESIDUE: refusals print `OperatorRefusedException`'s English "refused by the runtime (HTTP n)"
+  and exit 1, against the design ("printed with the decision as it stands", `14-transcripts-decisions.adoc:190`) and
+  the catalogue rule — the spec itself asked for a non-zero exit (L1-1); dissent misattributed (`dissentForSummary`
+  :983-998); multi-part guard fails open; `--plan` 404 fallback unscoped; German fallback "von das Projekt"; bidi/tag
+  characters pass the sanitizer; direct-path sanitization test vacuous; no Generators in the three new test classes
+  (PR body claims them). Residue route: operator.
+- PLAN-121 landed (PR #390, `06d155c3`, analysed 2026-11-10); see `landings/PLAN-121.md`. `project add` drives the
+  project onboarding; release/unenrol confirm without `--yes`. Merge rule met (8 threads, 0 open, one body); Sonar 0.
+  RESIDUE (3 major): `project add --no-input --pilot` exits 1 with a raw message at any later choice state
+  (`MissingInputException` uncaught, `ProjectCommand.java:221-231`); the start body/source are mock-shaped — `{path:
+  ".", pilot}` without the build environment, `project_id` preferred over the contract's entry, a project id guessed
+  from the path basename (`:204`, `:266-300`; mock given `project_id`); the release/unenrol confirmation is one bare line
+  without the design's "What ends / What stays / Afterwards" block, Enter/typo decline silently. Minors: `q` exits 0
+  (table: 3), "Released by operator" literal, dead pm-api enrol types, a false test-first claim, no Generators.
+  Residue route: operator (L1-1 needs the daemon contract read first).
 - PLAN-120 landed (PR #382, `c0db368d`, analysed 2026-11-09); see `landings/PLAN-120.md`. The terminal reads an unknown
   running count as unknown (`?`) and its _Next plan_ asks before raising; Sonar 0, gate OK. MERGE RULE NOT MET and a FALSE
   REVIEW COUNT: 12 threads, 2 unresolved and unanswered on the final head (a: `ControlCatalogueTest:61` hard-coded

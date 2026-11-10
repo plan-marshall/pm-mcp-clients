@@ -2,10 +2,10 @@
   "id": "PLAN-124",
   "slug": "cli-answer-dialogue-residue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
+  "plan_marshall_plan_id": "rb-124-cli-answer-dialogue-residue",
   "pr": "385",
-  "landing": "",
+  "landing": "landings/PLAN-124.md",
   "seq": 124
 }

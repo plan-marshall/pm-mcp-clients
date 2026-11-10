@@ -2,10 +2,10 @@
   "id": "PLAN-121",
   "slug": "cli-project-add-and-confirm",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-121-cli-project-add-and-confirm",
+  "pr": "390",
+  "landing": "landings/PLAN-121.md",
   "seq": 121
 }
