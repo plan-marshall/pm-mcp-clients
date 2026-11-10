@@ -5,7 +5,6 @@
 :sectnums:
 :source-highlighter: highlight.js
 :nofooter:
-:docs: https://github.com/plan-marshall/plan-marshall-documentation/blob/main/doc
 
 link:../cli/README.adoc[CLI Review] » Verification Results » The Terminal Acts
 
@@ -13,9 +12,10 @@ This document records the eleven checks of the terminal client's acting, answeri
 system model against the merged code. The checks come from
 link:../cli/use-cases/verification.adoc[CLI Review, Use Cases, Verification] (`CLI-UC-V-01` to `CLI-UC-V-10`) and
 link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification] (`CLI-CC-V-06`). Every check ran as
-written in both locales and both sizes, except one part of `CLI-UC-V-05` (no harness can type before a broadcast) and
-`CLI-UC-V-10` (the operator's agreement is not a check a plan can run); each of those parts is `not verified` with its
-reason. Three checks carry a `fail`, each routed as one finding to the epic inbox. Nothing that was found was fixed.
+written, and each row names what ran: the screens cover `en`/`de` at 120 × 30 and 80 × 24, and the test runs are the
+green `mvn` runs of the check's own test names. Two parts are `not verified` with their reason: the typed-text part of
+`CLI-UC-V-05` (no harness can type before a broadcast) and `CLI-UC-V-10` (the operator's agreement is not a check a plan
+can run). Three checks carry a `fail`, each routed as one finding to the epic inbox. Nothing that was found was fixed.
 
 [#subject]
 == What Was Verified
@@ -34,10 +34,11 @@ reason. Three checks carry a `fail`, each routed as one finding to the epic inbo
 |macOS, `aarch64`, operator locale `de_DE`, UTF-8
 
 |Harness
-|The terminal client ran only through `ScreenCaptureIT` of `cli-pty-dialogue-harness`, on a real pseudo-terminal:
-`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24. `pm-operator` itself was never started in the agent's shell: the
-operator gate refuses that by design (`PM-SEC-3`), and a check that needs a person at a real terminal asks the operator,
-never the shell.
+|The screens came from `ScreenCaptureIT` of `cli-pty-dialogue-harness`, on a real pseudo-terminal, in `en_US.UTF-8` and
+`de_DE.UTF-8`, 120 × 30 and 80 × 24; the check names that are tests (`*DialogueIT`, `ActionMenusTest`,
+`SystemViewConsistencyTest`, …) are the green `mvn` runs. `pm-operator` itself was never started in the agent's shell:
+the operator gate refuses that by design (`PM-SEC-3`), and a check that needs a person at a real terminal asks the
+operator, never the shell.
 
 |Mock
 |`ScreenCaptureIT` starts its own `MockRuntime` per capture on an ephemeral port and jumps with
@@ -47,18 +48,23 @@ port, so nothing ran on that block and no process of another plan was reused or 
 is part of these checks.
 
 |Builds
-|`mvn test -pl pm-operator`: `BUILD SUCCESS`, 118 test classes, 0 failures, 0 errors, 0 skipped (job
-`b233918c3af845b2ad0f9464e6cde068`). `mvn verify -Pintegration-tests -pl pm-operator`: `BUILD SUCCESS`, 119 tests,
-0 failures, 0 errors (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`); the whole-tree gate `mvn verify -Ppre-commit`:
-`BUILD SUCCESS` (job `d62a78bf4a684caf98a1b5e71ce44fff`). Five `ScreenCaptureIT` runs, each green (jobs
+|`mvn test -pl pm-operator`: `BUILD SUCCESS`; `pm-operator/target/surefire-reports/` holds 118 `TEST-*.xml`, 0 failures,
+0 errors, 0 skipped (job `b233918c3af845b2ad0f9464e6cde068`). `mvn verify -Pintegration-tests -pl pm-operator`:
+`BUILD SUCCESS`, 119 tests executed, 0 failures, 0 errors (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`;
+`pm-operator/target/failsafe-reports/`). The whole-tree gate `mvn verify -Ppre-commit`: `BUILD SUCCESS` (job
+`d62a78bf4a684caf98a1b5e71ce44fff`). Nine `ScreenCaptureIT` runs, each green (jobs
 `8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`, `9c773b8664da4804b34dd50085f1f609`,
-`4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`).
+`4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`, `b1c4585e060e48349497665885fe7bbf`,
+`b800a8708f9c46a48f7f997c0497cf1f`, `e67fb937aec64c50a019d2cd5c6a76fd`, `0a73032db4894e6e9bf32510e71d269e`), each
+leaving its screens under `pm-operator/target/screens/<set>/`.
 
 |Capture set
 |`pm-operator/src/test/resources/screen-captures/PLAN-33.txt`, created by this plan: the console badge and the two pushed
-notices of `fully-onboarded`, the first guided onboarding state, `onboard --auto --yes`, `config show`, and
-`plan nope`. Where an existing set already shows a check (`10-cli-choice-prompt-pause`, `PLAN-21`, `PLAN-23`,
-`26-cli-system-model`), it was run and its capture is the evidence.
+notices of `fully-onboarded` (both sizes, both locales), the first guided onboarding state and the project-setup identity
+state, `onboard --auto --yes`, `config show`, `plan nope`, the full-screen overview of `reports-and-system`, and the
+pause prompt at 80 × 24. Where an existing set already shows a check, it was run and its capture is the evidence:
+`10-cli-choice-prompt-pause` (V-01), `17-cli-runtime-act-confirm` (V-02), `20-cli-actions-by-state` (V-03), `PLAN-21`
+(V-04), `PLAN-23` (V-07), `26-cli-system-model` (V-08).
 |===
 
 [#dependencies]
@@ -87,7 +93,9 @@ consequence: `1) now  running work is withdrawn at once; it runs again on start`
 running task finishes, then the plan holds`, `3) after the current phase  the running phase finishes, then the plan
 holds`. The `.stdout.txt` of the same capture ends with `Left the pause. Nothing was sent.`; `pause-9-120x30-en`
 answers `9 is not offered here: 1-3, q, ?` and redraws the same options; `pause-enter-120x30-en` ends with `Chosen:
-after the current task` and `✓ fix-relay pausing after the task`.
+after the current task` and `✓ fix-relay pausing after the task`. The 80 × 24 German captures
+(`PLAN-33/pause-q-80x24-de.txt`, `pause-9-80x24-de.txt`) show the same three consequences and end with `Verlassen: Das
+Anhalten. Es wurde nichts gesendet.`; the German leave key is `v` (`ChoicePrompt.java:740`).
 |None for this check. The plan state is unchanged by `q`, proven against `/mock/acts`, not only by the screen.
 
 |CLI-UC-V-02
@@ -95,17 +103,23 @@ after the current task` and `✓ fix-relay pausing after the task`.
 |`RuntimeStopDialogueIT` passes (8 tests). Its prompt offers `1) Stop when done`, `2) Stop now`, and `k) keep it
 running`; `keepRunningSendsNothing` types `k`, asserts exit `0` and `harness.assertNoAct()`.
 `PmOperatorTest.stopNoInputStopsAtTheChoice` asserts `runtime stop --no-input` returns `StartDialogue.EXIT_MISSING_INPUT`
-(= `3`), prints `runtime stop needs the choice of when; …` and sends no stop request.
+(= `3`), prints `runtime stop needs the choice of when; …` and sends no stop request. The screens of all four arms are in
+`pm-operator/target/screens/17-cli-runtime-act-confirm/`: `stop-screen-120x30-en.txt` and `-80x24-en.txt` name the three
+choices with their consequence, `stop-screen-120x30-de.txt` and `stop-screen-80x24-de.txt` show them in German
+(`1) Stoppe, wenn fertig`, `2) Stoppe jetzt`, `l) lass sie laufen`).
 |None.
 
 |CLI-UC-V-03
 |`pass`
-|`ActionMenusTest` passes (15 tests). `waitingPlan` asserts five entries with `Decide Q-009…` first, trigger `!`, action
-`decide`, then Pause, Cancel, Chat, Plan settings; `waitingForYouPlan` repeats it for the runtime's other spelling;
-`pausedPlan` asserts Start (`s`), Abandon (`x`), Chat, Plan settings in that order, and `pausedPlanKeepsItsOrder` proves
-an open decision does not displace Start. The menu is what the full-screen binds to `a` (`TuiKeyAction.ACTIONS` in
-`TuiKeyRegistry`, footer `a actions` in `overview-refused-120x30-en.txt`); `!` is the separate shortcut that jumps to
-what waits, which is why the check and the footer name different keys.
+|`ActionMenusTest` passes (15 tests). `waitingPlan` asserts five entries with `Decide Q-009…` first, then Pause, Cancel,
+Chat, Plan settings; `waitingForYouPlan` repeats it for the runtime's other spelling; `pausedPlan` asserts Start (`s`),
+Abandon (`x`), Chat, Plan settings in that order, and `pausedPlanKeepsItsOrder` proves an open decision does not displace
+Start. The screens agree in all four arms:
+`pm-operator/target/screens/20-cli-actions-by-state/actions-waiting-120x30-en.after.txt` shows `!  Decide Q-009…` first,
+then `p  Pause…`, `x  Cancel…`, `h  Chat…`, `o  Plan settings…`, and `actions-paused-80x24-de.after.txt` shows `s  Starte
+den Plan`, `x  Gib den Plan auf…`, `t  Chat…`, `e  Plan-Einstellungen…`. The menu is what the full-screen binds to `a`
+(`TuiKeyAction.ACTIONS`, `TuiKeyRegistry.java:596`); `!` is the separate shortcut that jumps to what waits, and the
+overview's footer names `! what waits` (`overview-refused-120x30-en.txt`).
 |None.
 
 |CLI-UC-V-04
@@ -122,7 +136,9 @@ English words it shows are the decision's payload (description, question, option
 identifiers (`plan fix-relay`, `execute`, `implement`, `quorum-b`, `[Enter]`).
 |The check's sample says `other: 1-2` and `RelayServer.java, lines 42-58`. The mock's Q-007 offers three options, so the
 prompt names `1-3`, and the hint is printed as `RelayServer.java:42-58`. The substance — the range of the offered keys
-and the file with its lines — is there; the spelling follows the mock's payload.
+and the file with its lines — is there; the spelling follows the mock's payload. The `[Enter]` in the German prompt is a
+key cap, kept as the keyboard names the key (as `[Esc]` is), and the German catalogue carries it
+(`operator.decision.confirm_parts_prompt` in `decisions.de.properties`); it is not a prose word.
 
 |CLI-UC-V-05, notices and badge part
 |`pass`
@@ -132,7 +148,9 @@ prompt line; `notice-answered-120x30-en.txt` shows `– Q-007 was answered in th
 Nothing was sent from here.` above the prompt. Both notices are printed through `LineReader.printAbove`
 (`PmConsole.java:652`), the JLine call that draws above the prompt; the IT asserts the notice is drawn once, not once
 per redraw. The badge capture `PLAN-33/badge-120x30-en.txt` shows
-`pm [setup cui-parent 2/10 · 3 questions · 1 integrity pause · +1] ›` in `fully-onboarded`.
+`pm [setup cui-parent 2/10 · 3 questions · 1 integrity pause · +1] ›` in `fully-onboarded`. The 80 × 24 arms are in the
+same set (`notice-opened-80x24-en.txt`, `-de.txt`, `notice-answered-80x24-en.txt`, `-de.txt`; German `◆ Frage Q-042 ·
+plan fix-relay · blockiert den Plan`).
 |The check's badge sample is `pm [3 questions] ›`. `fully-onboarded` carries an open project setup and an integrity
 pause, so the badge names them too; `3 questions` is one of its segments (`ConsolePromptTest` composes the badge from
 such segments).
@@ -154,10 +172,14 @@ step 1`; the guided path renders all 17 titles up to `This machine is ready` (= 
 `[1/7] Sprache · Wähle deine Sprachen`), and every state line is a catalogue text, never a link name
 (`StateDialogueTest` renders only facts the catalogue labels). `ProjectSetupDialogueIT` passes (4 tests): `project setup
 cui-parent` shows `Id`, `cui-parent`, `Name`, and `Pilot: this version of PM-MCP runs plans only in pilot projects: no`,
-then `cui-parent is ready` and `POST /api/v1/projects/cui-parent/setup`. *Fails as written* on its `onboard --auto --yes`
+then `cui-parent is ready` and `POST /api/v1/projects/cui-parent/setup`; the four screen arms are
+`PLAN-33/project-setup-120x30-en.txt` to `-80x24-de.txt` (German `[2/10] Identität · Wie soll das Projekt heißen?`, `Id
+(in Befehlen verwendet, ändert sich nie): cui-parent`). *Fails as written* on its `onboard --auto --yes`
 clause: the verb no longer exists. `onboard-auto-yes-120x30-en.stdout.txt` holds `Unmatched arguments from index 0:
 'onboard', '--auto', '--yes'` and `Did you mean: pm-operator lesson or pm-operator questions or pm-operator enrol-harness?`,
-exit `2`. The automatic path now starts from the entry's first choice `1) Decide everything for me…`.
+exit `2` (the `expected-exit` column of `PLAN-33.txt:31`, checked by the green `ScreenCaptureIT` run); the 80 × 24 arms
+are `onboard-auto-yes-80x24-en.txt` and `-de.txt`. The automatic path now starts from the entry's first choice
+`1) Decide everything for me…`.
 |The check names a verb the design replaced. Finding `plan-33-001` names the check and the plan whose dialogue it
 concerns.
 
@@ -179,25 +201,30 @@ prints the cleanup's own body in English — see <<residue,Residue>>.
 |CLI-UC-V-08
 |`pass`
 |The first line of `pm-operator/target/screens/26-cli-system-model/system-print-draining-120x30-en.txt` is
-`draining · 2 left`; the full-screen draining capture carries `draining · 1 left` on its first content row.
-`SystemViewConsistencyTest` passes (5 tests): `bothViewsShowTheSameListeners` asserts the same listeners line in the
-printed view and in the full-screen rows for `en` and `de`, and `bothViewsShowTheSameTokenUnits` asserts the same token
-units on the row of each model in both views. `config show` exits `1` in
-`PLAN-33/config-show-120x30-en.stdout.txt` (`Unable to load settings: HTTP 404`).
+`draining · 2 left`; the full-screen draining capture
+`pm-operator/target/screens/26-cli-system-model/system-screen-draining-120x30-en.after.txt` carries `draining · 1 left`
+on its first content row. `SystemViewConsistencyTest` passes (5 tests): `bothViewsShowTheSameListeners` asserts the same
+listeners line in the printed view and in the full-screen rows for `en` and `de`, and `bothViewsShowTheSameTokenUnits`
+asserts the same token units on the row of each model in both views. `config show` exits `1` in
+`PLAN-33/config-show-120x30-en.stdout.txt` (`Unable to load settings: HTTP 404`); the exit code is the `expected-exit`
+column of `PLAN-33.txt:35`, checked by the green `ScreenCaptureIT` run. The German arms are
+`26-cli-system-model/system-print-draining-120x30-de.txt` and `system-screen-draining-120x30-de.after.txt`.
 |The two draining captures are two mock runs, so the drain count and the network listener differ between them (the
 drain advances while a capture settles). The consistency of the two views is proven from one snapshot by the unit test,
 not by comparing two runs.
 
 |CLI-UC-V-09
 |`fail`
-|`plan nope --print` prints `Plan nope not found.` and exits `1`
-(`PLAN-33/plan-nope-120x30-en.stdout.txt`, German `plan-nope-120x30-de.stdout.txt`); the catalogue holds no `No plan
-nope`. The full-screen overview in `reports-and-system` shows `Nothing runs. Start a plan in a project, or enrol one.`
-(`PLAN-33/overview-refused-120x30-en.txt`), and that scenario serves no `/api/v1/projects` route, so the read is refused
-and `OverviewFullScreenApp.fetchProjects` swallows the failure, leaving the list empty (`OverviewFullScreenApp.java:486`),
-which `ProjectsOverviewLevel.rows` renders as the empty state (`ProjectsOverviewLevel.java:86`). An error still looks
-like an empty state.
-|Both clauses fail; one finding (`plan-33-002`) covers them.
+|`plan nope --print` prints `Plan nope not found.` and exits `1` (`PLAN-33/plan-nope-120x30-en.stdout.txt`,
+`-de.stdout.txt`, `-80x24-en.stdout.txt`, `-80x24-de.stdout.txt`; the exit code is the `expected-exit` column of
+`PLAN-33.txt:38-41`, checked by the green `ScreenCaptureIT` run); the catalogue holds no `No plan nope`. The full-screen
+overview in `reports-and-system` shows `Nothing runs. Start a plan in a project, or enrol one.` in all four arms
+(`PLAN-33/overview-refused-120x30-en.txt`, and the German `Es läuft nichts. Starte einen Plan in einem Projekt, oder
+registriere eines.` in `overview-refused-120x30-de.txt` / `-80x24-de.txt`), and that scenario serves no
+`/api/v1/projects` route, so the read is refused and `OverviewFullScreenApp.fetchProjects` swallows the failure, leaving
+the list empty (`OverviewFullScreenApp.java:486`), which `ProjectsOverviewLevel.rows` renders as the empty state
+(`ProjectsOverviewLevel.java:86`). An error still looks like an empty state.
+|Both clauses fail; one finding (`plan-33-002`) covers them. The German arm prints the refusal in English too.
 
 |CLI-UC-V-10
 |`not verified`
@@ -315,8 +342,15 @@ are German. These are hard-coded literals in `CleanupCommand.printJob` (`Cleanup
 confirmation's text), not the mock's payload, and the German catalogue holds the keys. `CLI-UC-V-07`'s clauses are
 language-neutral, so the check passes; the untranslated body is outside every check of this plan.
 
-* The German console screen (`reports-and-system`) prints `▪ 5 ungelesene Berichte … · reports shows them` — an English
-sentence beside the German one. Outside the eleven checks (it belongs to `CLI-CC-V-01`/`-V-02`); recorded, not filed.
+* The German console screen prints English sentences beside the German ones:
+`▪ 7 ungelesene Berichte seit … · reports shows them` (`PLAN-23-cleanup-choose-120x30-de.after.txt:3`, also in
+`26-cli-system-model/system-screen-draining-120x30-de.txt`), and the paused plan's action menu reads `t  Chat… (no
+configuration of replan qualifies yet)` (`20-cli-actions-by-state/actions-paused-80x24-de.after.txt:8`). Outside the
+eleven checks (they belong to `CLI-CC-V-01`/`-V-02`); recorded, not filed.
+
+* The German arm of `CLI-UC-V-09` prints the refusal in English: `plan-nope-80x24-de.stdout.txt` holds `Plan nope not
+found.` The check fails anyway (on the text and on the overview), so the finding carries the check, not the translation;
+the translation is this note.
 
 * `CLI-UC-V-05`'s typed-text clause has no PTY evidence; the harness cannot type before a broadcast.
 
@@ -329,9 +363,9 @@ test reports it cites:
 * `asciidoc validate --path …/verification-results/verify-cli-acts.adoc`: 1 file, 0 errors, 0 warnings.
 * `asciidoc verify-links --file …/verification-results/verify-cli-acts.adoc`: 4 links, 0 broken, 0 format violations.
 * The same two checks over the changed link:../cli/use-cases/analysis.adoc[Use Cases, Analysis]: 36 links, 0 broken. Its
-  `validate` reports 4 errors and 5 warnings — missing `:toclevels:`/`:toc-title:`/`:sectnums:`/`:source-highlighter:`
-  attributes and five list-formatting warnings in its original text. The same findings are reported for the file at
-  `0913d6f3` before this plan's edit, so nothing new was introduced.
+  `validate` reports 4 errors and 5 warnings — the missing attributes `:toclevels: 3`, `:toc-title: Table of Contents`,
+  `:sectnums:` and `:source-highlighter: highlight.js`, and five list-formatting warnings in its original text. The same
+  findings are reported for the file at `0913d6f3` before this plan's edit, so nothing new was introduced.
 
 The `doc-review` skill's own phases (its parallel corpus reviewers, its fix pass, and its decision conversation with the
 operator) review the concept corpus of `plan-marshall-documentation`; they do not apply to a verification result file

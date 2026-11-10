@@ -27,7 +27,7 @@ The client reads well and acts badly:
 This analysis is the state the review found. The checks of
 link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] re-ran the acting use cases
 against the merged code on 2026-11-10 (commit `0913d6f3`): the six items above are now dialogues that act, ask and can
-be left, and the pushed notices reach the console. The verdicts moved accordingly; two checks fail and are routed.
+be left, and the pushed notices reach the console. The verdicts moved accordingly; three checks fail and are routed.
 ====
 
 The design of the terminal client (`doc/design/terminal-client/`) describes all of these dialogues in detail, with
@@ -188,10 +188,11 @@ record.
 
 [NOTE]
 ====
-This is the state the review found. Since then the dialogues that act have their PTY tests with the three cases (`q`
-sends nothing, an unknown input re-asks, the main path sends the act), each proving the `q` case against
-`GET /mock/acts` — see `CLI-CC-V-06` of link:../../verification-results/verify-cli-acts.adoc[Verification Results,
-The Terminal Acts], which also names the one gap left (the waiver's `q` case).
+This is the state the review found. Since then the eight dialogues the regression guard names (pause, cancel, answer,
+waiver, onboarding, project setup, cleanup, runtime stop) have their PTY tests with the three cases — `q` sends nothing,
+an unknown input re-asks, the main path sends the act — each proving the `q` case against `GET /mock/acts`; see
+`CLI-CC-V-06` of link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts], which
+also names the one gap left (the waiver's `q` case).
 ====
 
 `TuiCapabilityIT` proves that each view opens and that the fallbacks work. `TranscriptDialogueIT` proves `status`,
