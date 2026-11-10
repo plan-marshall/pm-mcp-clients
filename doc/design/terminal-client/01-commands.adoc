@@ -39,7 +39,7 @@ pm-operator projects [--list]                                  the explorer of t
 pm-operator project add [<path>] [--pilot]                [op]  onboard a project; the working directory is the proposed checkout;
                                                                 --pilot enrols it in pilot mode (17-projects)
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
-pm-operator project setup --entry <entry_id>              [op]  the same for a run that has no project id yet (17-projects)
+pm-operator project setup --entry -- <entry_id>            [op]  the same for a run that has no project id yet (17-projects)
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator project release <project_id> [--reason <text>]
                                                           [op]  release a project: no new work starts in it (UC-PRJ-3, 17-projects)
@@ -122,10 +122,15 @@ In the console and as direct verbs:
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
   needs                       the list of what waits across projects, in runtime order (UC-PLN-7)
+  find <text> [--print]       the work that matches part of an id or a title, or a pull request number:
+                              grouped by kind in runtime order, running work first and ended work
+                              marked; a choice in a terminal, prints with --print (UC-PLN-8)
 
 In the console only:
   web [qr|copy [ssh]]         the ways into the web app; the code's QR code again; copy the URL or the ssh command
                               (a new code is the verb web pair, other devices the verb web enable --lan)
+  /                           the find field: a part of an id or a title, or a pull request number; Enter lists
+                              the matches, Esc returns to the prompt with nothing sent (UC-PLN-8)
   help [<verb>]               the verbs and console commands
   exit                        leave the console (as Ctrl+D)
 ----
@@ -148,6 +153,7 @@ In the console only:
 * *No designer*: designing a plan's process (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]) is offered in the web app only (link:../web-app/process-designer.adoc[Web App, Process Designer]); `help` says so in one line (`operator.help.designer`, link:../web-app/process-designer-texts.adoc#texts[its text]) and offers no verb for it.
 * *The console commands* `plans`, `plan <plan_id>`, `epic <epic_id>`, `questions` and `answer` run inside the console and as direct verbs (`pm-operator questions`, `pm-operator epic <epic_id>`, which prints the epic's view); `web` without a verb of the specification, `help` and `exit` exist only inside the console and are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
 * *The sub-verbs beside the lines of the tree* — decided here, once: `plan findings` and `plan watches` stay, reads of a plan's review and of what listens on it; `plan resolve` stays, the act that resolves what holds a plan (UC-CTL-4); `plan settings` stays, the act that reads or changes a plan's own settings (UC-CTL-5); `epic review` and `epic instruct` stay, the act that checks a decomposition and agrees the cut, and the one that shapes one staged plan; `runtime stop|restart|upgrade --drain` stays as the alias of `--when-done` a script can type.
+* *`find <text>`* goes to work by name (UC-PLN-8). The runtime answers `GET /api/v1/find?q=`; the client searches nothing itself and shows what comes back grouped by kind in the order served — running work first, ended work after it and marked with its outcome — each match with its title, where it belongs (`project › epic › plan`), and the command that opens it: a plan `plan <id>`, an epic `epic <id>`, a decision `answer <id>`, a report `reports open <id>`, and a project `projects --filter <id>` — no verb opens one project, so the explorer is its one view and opens filtered to it. In a terminal the matches are a choice and selecting one opens it where it belongs; `--print` prints and exits. An empty text is refused with the catalogue's own text, never with a usage line: the operator typed a name, not a syntax. `find` is a read, so it runs without the operator checks, and `/` at the console's prompt opens the same search (xref:04-console.adoc#prompt[The Console, The Prompt]).
 * *No `onboard`, and none of what it carried*: the verb is folded (above), and `onboard --auto` and `onboard --step` go with it — no line of this tree names them, and no state of the onboarding takes them. The entry is the bare `pm-operator` and `config <aspect>`.
 * *Open items of this tree*, each with its owner:
 ** `profile`, `decision-log`, `waive`, `grant-access` and `sweep` stand in the verb listing above and no registered verb answers them. Owner: `plan-marshall/pm-mcp-clients` — each needs its verb with its options, or its removal, decided per verb.

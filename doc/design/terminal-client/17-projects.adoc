@@ -23,8 +23,10 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
   project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (identity, own,
                                         team, architecture, landing, roles, descriptions, commit); without
                                         a step it asks which, release and unenrol among the choices
-  project setup --entry <entry_id>      the same for a run that has no project id yet, addressed by the
-                                        entry its continue link carries
+  project setup --entry -- <entry_id>
+                                        the same for a run that has no project id yet, addressed by the
+                                        entry its continue link carries; `--` ends the options, so an
+                                        id that starts with `--` is never read as one
   project release <project_id> [--reason <text>]
                                         end every plan and epic of the project as released, delete its
                                         pending entries; no plan runs in it afterwards; the reason is asked
@@ -288,7 +290,7 @@ pm [setup cui-parent 3/10 · setup pm-mcp-clients 4/10] › project setup pm-mcp
   …
 ----
 
-* `Enter` on the empty prompt continues the most recent run; `project setup <project_id>` continues a specific one, `project setup --entry <entry_id>` a run that is still being added, and `project add <path>` of a checkout whose run is open continues that run.
+* `Enter` on the empty prompt continues the most recent run; `project setup <project_id>` continues a specific one, `project setup --entry -- <entry_id>` a run that is still being added, and `project add <path>` of a checkout whose run is open continues that run. The `--` ends the options, so an entry id that starts with `--` is never read as one (`PmConsole` passes it as an argument, not through a command line it parses back).
 * A run before its enrolment is listed in the explorer under _Being added_ (<<explorer>>).
 
 [#release]

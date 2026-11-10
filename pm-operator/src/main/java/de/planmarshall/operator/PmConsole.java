@@ -380,6 +380,14 @@ public final class PmConsole {
             return;
         }
 
+        // `/` at the prompt opens the find field (shared/needs-and-find.adoc#terminal): the text
+        // after it, or what the field takes, is the verb `find`'s text. `/` is free at the prompt
+        // and is no verb of its own; inside the overview it stays the list filter.
+        if (line.startsWith("/")) {
+            openFind(line.substring(1).strip(), out, reader, terminal);
+            return;
+        }
+
         // `tui` is the alias of `plans`; `!` is the alias of `needs`. The rewrite keeps trailing arguments.
         String command = line;
         if ("tui".equals(verb)) {
@@ -396,6 +404,44 @@ public final class PmConsole {
             default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
+    }
+
+    /**
+     * Runs the console's {@code /} field: the text already typed after the slash, or the field the
+     * prompt opens, plus the verb {@code find} (shared/needs-and-find.adoc#terminal).
+     *
+     * <p>{@code Esc} at the field returns to the prompt with nothing sent, and an empty text is
+     * refused with the catalogue's own text, never with a usage line: the operator typed a name,
+     * not a syntax.
+     *
+     * @param text     the text typed after the slash, empty when the field is to open
+     * @param out      the console's writer
+     * @param reader   the console's line reader, which draws the field
+     * @param terminal the terminal the console owns
+     */
+    private void openFind(String text, PrintWriter out, LineReader reader, Terminal terminal) {
+        var locale = locale();
+        var query = text;
+        if (query.isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "overview.find.title", Map.of()));
+            out.flush();
+            query = FindCommand.readField(reader, MessageCatalogue.format(locale, "overview.find.hint", Map.of())
+                                + StartPrompt.SUFFIX);
+            if (query == null) {
+                // Esc leaves the field: nothing is sent, and the prompt is drawn again as it was.
+                out.println();
+                out.flush();
+                return;
+            }
+        }
+        if (query.isBlank()) {
+            out.println(MessageCatalogue.format(locale, "overview.find.no_text", Map.of()));
+            out.flush();
+            return;
+        }
+        // `--` ends the options: the typed text is a name, so one that starts with `-` is never read
+        // as an option or as the project selector.
+        runOperatorVerb(List.of("find", "--", query), out, reader, terminal);
     }
 
     /**
