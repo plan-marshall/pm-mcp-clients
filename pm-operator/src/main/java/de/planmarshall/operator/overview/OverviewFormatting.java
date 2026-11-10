@@ -10,7 +10,6 @@
 package de.planmarshall.operator.overview;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -219,61 +218,6 @@ public final class OverviewFormatting {
             case "held" -> MessageCatalogue.format(locale, "overview.state.held", Map.of());
             default -> clean(phaseState);
         };
-    }
-
-    /**
-     * Formats an elapsed duration from an Instant to {@code clock.instant()}.
-     *
-     * @param instant start instant
-     * @param clock   reference clock
-     * @return human-readable duration (e.g. {@code "18 min"}, {@code "1 h 12 min"})
-     */
-    public static String formatDuration(@Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
-        return formatSeconds(seconds);
-    }
-
-    /**
-     * Formats an elapsed duration from an ISO-8601 timestamp to {@code clock.instant()}.
-     *
-     * @param timestampIso ISO-8601 timestamp or pre-formatted duration string
-     * @param clock        reference clock
-     * @return human-readable duration (e.g. {@code "18 min"}, {@code "1 h 12 min"})
-     */
-    public static String formatDuration(@Nullable String timestampIso, Clock clock) {
-        if (timestampIso == null || timestampIso.isBlank()) {
-            return "";
-        }
-        var parsed = parseInstant(timestampIso);
-        if (parsed == null) {
-            return clean(timestampIso);
-        }
-        return formatDuration(parsed, clock);
-    }
-
-    /**
-     * Formats a duration in seconds as {@code "<m> min"} or {@code "<h> h <m> min"}.
-     *
-     * @param seconds non-negative seconds
-     * @return formatted duration string
-     */
-    public static String formatSeconds(long seconds) {
-        if (seconds < 60L) {
-            return Math.max(1L, seconds) + " s";
-        }
-        long totalMinutes = seconds / 60L;
-        long hours = totalMinutes / 60L;
-        long minutes = totalMinutes % 60L;
-        if (hours == 0L) {
-            return minutes + " min";
-        }
-        if (minutes == 0L) {
-            return hours + " h";
-        }
-        return hours + " h " + minutes + " min";
     }
 
     /**

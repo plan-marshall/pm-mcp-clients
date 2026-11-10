@@ -108,6 +108,19 @@ class PlanViewLevelTest {
                             .orElse("");
     }
 
+    @Test
+    @DisplayName("two days renders as 2 d in English and 2 T in German")
+    void twoDaysRendersInBothLanguages() throws Exception {
+        var twoDays = new PlanViewLevel(ProcessTree.fromJson(
+                            TREE.replace("\"duration_seconds\": 7800", "\"duration_seconds\": 172800")));
+
+        var enLine = twoDays.rows("en").getFirst().line();
+        var deLine = twoDays.rows("de").getFirst().line();
+
+        assertTrue(enLine.contains("2 d"), enLine);
+        assertTrue(deLine.contains("2 T"), deLine);
+    }
+
     private static List<String> ids(PlanViewLevel view) {
         return view.rows("en").stream().map(TuiRow::id).toList();
     }

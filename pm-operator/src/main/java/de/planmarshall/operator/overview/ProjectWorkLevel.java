@@ -188,7 +188,7 @@ public final class ProjectWorkLevel {
 
         var detailsParts = new ArrayList<String>();
         if (epic.runningSince() != null) {
-            var dur = OverviewFormatting.formatDuration(epic.runningSince(), clock);
+            var dur = OverviewFormatting.clean(Display.duration(locale, epic.runningSince(), clock));
             if (!dur.isEmpty()) {
                 detailsParts.add(MessageCatalogue.format(locale, "overview.time.running", Map.of(KEY_DURATION, dur)));
             }
@@ -247,13 +247,13 @@ public final class ProjectWorkLevel {
 
     private static void appendTimeDetails(List<String> detailParts, ActivePlanSummary plan, String locale, Clock clock) {
         if (plan.runningSince() != null) {
-            var dur = OverviewFormatting.formatDuration(plan.runningSince(), clock);
+            var dur = OverviewFormatting.clean(Display.duration(locale, plan.runningSince(), clock));
             if (!dur.isEmpty()) {
                 detailParts.add(MessageCatalogue.format(locale, "overview.time.running", Map.of(KEY_DURATION, dur)));
             }
         }
         if (plan.phaseEnteredAt() != null) {
-            var phaseDur = OverviewFormatting.formatDuration(plan.phaseEnteredAt(), clock);
+            var phaseDur = OverviewFormatting.clean(Display.duration(locale, plan.phaseEnteredAt(), clock));
             if (!phaseDur.isEmpty()) {
                 detailParts.add(MessageCatalogue.format(locale, "overview.time.in_phase",
                                     Map.of("phase", OverviewFormatting.clean(plan.currentPhase()), KEY_DURATION, phaseDur)));

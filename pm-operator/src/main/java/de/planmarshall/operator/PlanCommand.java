@@ -27,6 +27,7 @@ import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -258,12 +259,13 @@ public final class PlanCommand implements Callable<Integer> {
     }
 
     private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {
+        var locale = context.clientEnvironment().locale();
         var cleanPlan = OutputSafety.stripControlSequences(planId);
         var cleanTask = OutputSafety.stripControlSequences(act.taskId());
         out.printf("%s · %s%n", cleanPlan, cleanTask);
 
-        var duration = formatPlanDuration(act.durationSeconds());
-        var tokensStr = TokenFormat.formatTokens(act.tokensSoFar(), false, "en") + " tokens";
+        var duration = Display.duration(locale, act.durationSeconds());
+        var tokensStr = TokenFormat.formatTokens(act.tokensSoFar(), false, locale) + " tokens";
         out.printf("  %s · %s %s · attempt %d · running %s · %s%n",
                             OutputSafety.stripControlSequences(act.role()),
                             OutputSafety.stripControlSequences(act.harness()),
@@ -329,7 +331,8 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
-        var durationStr = tree.durationSeconds() > 0 ? " · " + formatPlanDuration(tree.durationSeconds()) : "";
+        var locale = context.clientEnvironment().locale();
+        var durationStr = tree.durationSeconds() > 0 ? " · " + Display.duration(locale, tree.durationSeconds()) : "";
         var prStr = tree.pullRequestNumber() != null ? " · pull request #" + tree.pullRequestNumber() + (tree.pullRequestUrl() != null ? " " + OutputSafety.stripControlSequences(tree.pullRequestUrl()) : "") : "";
         out.printf("%s · %s · %s%s%s%n",
                             planStr,
@@ -374,9 +377,10 @@ public final class PlanCommand implements Callable<Integer> {
             return;
         }
 
+        var locale = context.clientEnvironment().locale();
         var runStr = node.runCount() > 1 && stateEnum == NodeState.DONE ? " ×" + node.runCount() : "";
         var currentRunStr = node.currentRun() > 1 && stateEnum == NodeState.RUNNING ? "run " + node.currentRun() : "";
-        var durationStr = node.durationSeconds() > 0 ? formatPlanDuration(node.durationSeconds()) : "";
+        var durationStr = node.durationSeconds() > 0 ? Display.duration(locale, node.durationSeconds()) : "";
 
         var infoParts = new ArrayList<String>();
         if (!currentRunStr.isEmpty()) infoParts.add(currentRunStr);
@@ -413,7 +417,7 @@ public final class PlanCommand implements Callable<Integer> {
                 var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
                 var taskInfoParts = new ArrayList<String>();
                 if (task.durationSeconds() > 0) {
-                    taskInfoParts.add(formatPlanDuration(task.durationSeconds()));
+                    taskInfoParts.add(Display.duration(locale, task.durationSeconds()));
                 }
                 if (task.offTrack() != null) {
                     taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
@@ -435,7 +439,7 @@ public final class PlanCommand implements Callable<Integer> {
             var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
             var jobInfoParts = new ArrayList<String>();
             if (job.durationSeconds() > 0) {
-                jobInfoParts.add(formatPlanDuration(job.durationSeconds()));
+                jobInfoParts.add(Display.duration(locale, job.durationSeconds()));
             }
             if (job.waitsSlot()) {
                 jobInfoParts.add("waits slot");
@@ -467,21 +471,6 @@ public final class PlanCommand implements Callable<Integer> {
             case "failed" -> "✗";
             default -> "○";
         };
-    }
-
-    static String formatPlanDuration(long seconds) {
-        if (seconds <= 0) {
-            return "0 s";
-        }
-        if (seconds < 60) {
-            return seconds + " s";
-        }
-        long hours = seconds / 3600;
-        long mins = (seconds % 3600) / 60;
-        if (hours > 0) {
-            return hours + " h " + mins + " min";
-        }
-        return mins + " min";
     }
 
     static String formatTokens(ProcessTokens tokens) {
@@ -931,7 +920,7 @@ public final class PlanCommand implements Callable<Integer> {
             var reason = report.reason() != null && !report.reason().isBlank() ? report.reason() : "—";
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
-            var ran = formatRan(report, context.clock().getZone());
+            var ran = formatRan(report, context.clientEnvironment().locale(), context.clock().getZone());
             if (ran != null) {
                 out.printf(FMT_14S, "ran", ran);
             }
@@ -949,16 +938,16 @@ public final class PlanCommand implements Callable<Integer> {
             out.flush();
         }
 
-        private static @Nullable String formatRan(PlanCompletionReport report, ZoneId zone) {
+        private static @Nullable String formatRan(PlanCompletionReport report, String locale, ZoneId zone) {
             var ran = report.ran();
             if (ran == null && report.durationSeconds() > 0) {
-                ran = formatDuration(report.durationSeconds());
+                ran = Display.duration(locale, report.durationSeconds());
                 if (report.startedAt() != null && report.endedAt() != null) {
                     var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
                     ran += ", " + timeFmt.format(report.startedAt()) + " to " + timeFmt.format(report.endedAt());
                 }
                 if (report.pausedSeconds() > 0) {
-                    ran += " · paused " + formatDuration(report.pausedSeconds());
+                    ran += " · paused " + Display.duration(locale, report.pausedSeconds());
                     if (report.pausedBy() != null) {
                         ran += " by " + report.pausedBy();
                     }
@@ -1179,15 +1168,6 @@ public final class PlanCommand implements Callable<Integer> {
                                 TokenFormat.formatTokens(c.cacheWrite(), false, "en"),
                                 TokenFormat.formatTokens(c.output(), false, "en"),
                                 TokenFormat.formatTokens(c.reasoning(), false, "en"));
-        }
-
-        private static String formatDuration(long seconds) {
-            long hours = seconds / 3600;
-            long mins = (seconds % 3600) / 60;
-            if (hours > 0) {
-                return hours + " h " + mins + " min";
-            }
-            return mins + " min";
         }
     }
 

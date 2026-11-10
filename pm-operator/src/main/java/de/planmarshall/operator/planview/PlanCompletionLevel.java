@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.ChangeMapRecord;
 import de.planmarshall.api.report.OwnCallRecord;
@@ -78,7 +79,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             rows.add(entry("completion:ran", locale, "report.completion.ran", ran));
         } else if (report.durationSeconds() > 0) {
             rows.add(entry("completion:ran", locale, "report.completion.ran",
-                                PlanViewFormatting.duration(report.durationSeconds())));
+                                Display.duration(locale, report.durationSeconds())));
         }
         appendDeliverables(rows, locale);
         appendDecisions(rows, locale);

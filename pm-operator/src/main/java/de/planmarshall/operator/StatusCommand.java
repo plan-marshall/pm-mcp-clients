@@ -12,7 +12,6 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -359,7 +358,7 @@ final class StatusCommand implements Callable<Integer> {
         var state = stateKey != null
                             ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
                             : "running";
-        var timeInPhase = formatDuration(locale, plan.phaseEnteredAt(), context.clock());
+        var timeInPhase = Display.duration(locale, plan.phaseEnteredAt(), context.clock());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
         out.printf("%s%splan  %-30s   %s \u00b7 %s%s%n", baseIndent, marker, title, phase, state, timePart);
@@ -446,15 +445,6 @@ final class StatusCommand implements Callable<Integer> {
             var state = OutputSafety.stripControlSequences(landing.state());
             out.printf("     %s%-35s   %s%n", marker, desc, state);
         }
-    }
-
-    private static String formatDuration(String locale, @Nullable Object raw, Clock clock) {
-        var instant = instantOf(raw);
-        if (instant == null) {
-            return "";
-        }
-        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
-        return Display.duration(locale, seconds);
     }
 
     static String formatRelativeTime(String locale, @Nullable Object raw, Clock clock) {

@@ -281,4 +281,27 @@ class SystemLevelTest {
         }
         assertNull(SystemLevel.figureOf("sys:workers:0"));
     }
+
+    @Test
+    @DisplayName("two days of uptime renders as 2 d in English and 2 T in German")
+    void twoDaysUptimeRendersInBothLanguages() {
+        var base = sampleSnapshot();
+        var rt = base.runtime();
+        var twoDaysRuntime = new RuntimeMetrics(rt.version(), rt.build(), rt.startedAt(), 2 * 86_400L,
+                            rt.heapUsedBytes(), rt.heapMaxBytes(), rt.residentMemoryBytes(), rt.cpuPercent(),
+                            rt.machineStoreBytes(), rt.diskFreeBytes(), rt.measuredAt(), rt.socketListener(),
+                            rt.loopbackListener(), rt.networkListener(), rt.pairedDevicesCount(),
+                            rt.relaysBehindCount(), rt.relaysBehindVersion(), rt.newerVersion(),
+                            rt.newerVersionDate(), rt.newerVersionCheckedAt(), rt.releaseNotesLink(),
+                            rt.upgradeSupported(), rt.upgradeUnsupportedReason());
+        var snap = new SystemSnapshot(twoDaysRuntime, base.work(), base.workers(), base.jobs(),
+                            base.models(), base.cleanup(), base.window(), base.project());
+        var lvl = SystemLevel.root(snap, SystemWindow.HOUR, "model", null);
+
+        var enLine = lvl.rows("en").getFirst().line();
+        var deLine = lvl.rows("de").getFirst().line();
+
+        assertTrue(enLine.contains("2 d") && !enLine.contains("2 d 0 h"), enLine);
+        assertTrue(deLine.contains("2 T"), deLine);
+    }
 }

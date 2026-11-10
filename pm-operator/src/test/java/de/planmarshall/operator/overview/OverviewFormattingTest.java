@@ -20,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.NeedsOperatorItem;
@@ -142,13 +143,15 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatDuration formats seconds, minutes, hours")
+    @DisplayName("Display.duration formats seconds, minutes, hours, and days from an instant")
     void durationFormatting() {
-        assertEquals("", OverviewFormatting.formatDuration((Instant) null, clock));
-        assertEquals("30 s", OverviewFormatting.formatDuration(baseInstant.minusSeconds(30), clock));
-        assertEquals("5 min", OverviewFormatting.formatDuration(baseInstant.minusSeconds(300), clock));
-        assertEquals("1 h 15 min", OverviewFormatting.formatDuration(baseInstant.minusSeconds(4500), clock));
-        assertEquals("2 h", OverviewFormatting.formatDuration(baseInstant.minusSeconds(7200), clock));
+        assertEquals("", Display.duration("en", (Instant) null, clock));
+        assertEquals("30 s", Display.duration("en", baseInstant.minusSeconds(30), clock));
+        assertEquals("5 min", Display.duration("en", baseInstant.minusSeconds(300), clock));
+        assertEquals("1 h 15 min", Display.duration("en", baseInstant.minusSeconds(4500), clock));
+        assertEquals("2 h", Display.duration("en", baseInstant.minusSeconds(7200), clock));
+        assertEquals("2 d", Display.duration("en", baseInstant.minusSeconds(172800), clock));
+        assertEquals("2 T", Display.duration("de", baseInstant.minusSeconds(172800), clock));
     }
 
     @Test
@@ -242,12 +245,12 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatDuration and formatRelativeActivity with ISO string overloads")
+    @DisplayName("Display.duration and formatRelativeActivity with ISO string overloads")
     void stringOverloads() {
-        assertEquals("", OverviewFormatting.formatDuration((String) null, clock));
-        assertEquals("", OverviewFormatting.formatDuration("   ", clock));
-        assertEquals("invalid-date", OverviewFormatting.formatDuration("invalid-date", clock));
-        assertEquals("5 min", OverviewFormatting.formatDuration("2026-10-20T11:55:00Z", clock));
+        assertEquals("", Display.duration("en", (String) null, clock));
+        assertEquals("", Display.duration("en", "   ", clock));
+        assertEquals("invalid-date", Display.duration("en", "invalid-date", clock));
+        assertEquals("5 min", Display.duration("en", "2026-10-20T11:55:00Z", clock));
 
         assertEquals("", OverviewFormatting.formatRelativeActivity("en", (String) null, clock));
         assertEquals("", OverviewFormatting.formatRelativeActivity("en", "  ", clock));

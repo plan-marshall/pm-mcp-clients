@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessTokens;
@@ -35,13 +36,15 @@ class PlanViewFormattingTest {
     }
 
     @Test
-    @DisplayName("duration covers seconds, minutes, hours and zero")
+    @DisplayName("Display.duration covers seconds, minutes, hours, days and zero")
     void duration() {
         assertAll(
-                            () -> assertEquals("", PlanViewFormatting.duration(0)),
-                            () -> assertEquals("45 s", PlanViewFormatting.duration(45)),
-                            () -> assertEquals("2 min", PlanViewFormatting.duration(120)),
-                            () -> assertEquals("1 h 5 min", PlanViewFormatting.duration(3900))
+                            () -> assertEquals("0 s", Display.duration("en", 0)),
+                            () -> assertEquals("45 s", Display.duration("en", 45)),
+                            () -> assertEquals("2 min", Display.duration("en", 120)),
+                            () -> assertEquals("1 h 5 min", Display.duration("en", 3900)),
+                            () -> assertEquals("2 d", Display.duration("en", 172_800)),
+                            () -> assertEquals("2 T", Display.duration("de", 172_800))
         );
     }
 

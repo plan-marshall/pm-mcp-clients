@@ -206,4 +206,20 @@ class ProjectWorkLevelTest {
         assertTrue(german.get(1).line().contains("lande unbekannt · läuft"), german.get(1).line());
         assertFalse(english.get(2).line().contains("no.such.unit"), english.get(2).line());
     }
+
+    @Test
+    @DisplayName("two days renders as 2 d in English and 2 T in German")
+    void twoDaysRendersInBothLanguages() {
+        var plan = new ActivePlanSummary("plan-2d", "Two day plan", "execute", "running", null,
+                clock.instant().minusSeconds(2 * 86_400L), null, 2, 4, null, null, null,
+                null, null, null, null, null);
+        var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(plan), List.of(), List.of());
+        var level = new ProjectWorkLevel(detail, false, false);
+
+        var enDetails = level.rows("en", clock, false).get(0).details();
+        var deDetails = level.rows("de", clock, false).get(0).details();
+
+        assertTrue(enDetails != null && enDetails.contains("2 d"), enDetails);
+        assertTrue(deDetails != null && deDetails.contains("2 T"), deDetails);
+    }
 }

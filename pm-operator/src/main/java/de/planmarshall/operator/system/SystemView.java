@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.TokenFormat;
@@ -222,7 +223,7 @@ public final class SystemView {
     public static Figure runtime(RuntimeMetrics runtime, String locale) {
         var content = MessageCatalogue.format(locale, "system.runtime.since",
                             Map.of(PARAM_TIME, clean(runtime.startedAt()),
-                                                "uptime", SystemFormatting.uptime(runtime.uptimeSeconds())));
+                                                "uptime", Display.duration(locale, runtime.uptimeSeconds())));
         if (runtime.newerVersion() != null) {
             content += DOT + MessageCatalogue.format(locale, "system.runtime.available",
                                 Map.of(PARAM_VERSION, clean(runtime.newerVersion())));

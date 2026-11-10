@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.ActivityEntry;
 import de.planmarshall.api.process.ActivityEntryKind;
@@ -132,14 +133,16 @@ public final class WorkerActivityLevel {
     }
 
     private String head(String locale) {
-        var duration = PlanViewFormatting.duration(activity.durationSeconds());
+        var duration = activity.durationSeconds() > 0
+                ? Display.duration(locale, activity.durationSeconds())
+                : "-";
         var tokens = TokenFormat.formatTokens(activity.tokensSoFar(), false, locale) + " tokens";
         return MessageCatalogue.format(locale, "operator.plan.activity.subheader", Map.of(
                             "role", PlanViewFormatting.clean(activity.role()),
                             "harness", PlanViewFormatting.clean(activity.harness()),
                             "model", PlanViewFormatting.clean(activity.model()),
                             "attempt", activity.attempt(),
-                            "duration", duration.isEmpty() ? "-" : duration,
+                            "duration", duration,
                             "tokens", tokens));
     }
 

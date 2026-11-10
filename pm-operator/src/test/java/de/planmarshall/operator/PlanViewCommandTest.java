@@ -187,13 +187,15 @@ class PlanViewCommandTest {
     }
 
     @Test
-    @DisplayName("formats durations correctly for sub-minute, minute, and multi-hour intervals")
+    @DisplayName("formats durations correctly for sub-minute, minute, multi-hour, and multi-day intervals")
     void shouldFormatPlanDurationsCorrectly() {
         assertAll(
-                            () -> assertEquals("0 s", PlanCommand.formatPlanDuration(0)),
-                            () -> assertEquals("45 s", PlanCommand.formatPlanDuration(45)),
-                            () -> assertEquals("2 min", PlanCommand.formatPlanDuration(120)),
-                            () -> assertEquals("1 h 1 min", PlanCommand.formatPlanDuration(3660))
+                            () -> assertEquals("0 s", de.planmarshall.api.display.Display.duration("en", 0)),
+                            () -> assertEquals("45 s", de.planmarshall.api.display.Display.duration("en", 45)),
+                            () -> assertEquals("2 min", de.planmarshall.api.display.Display.duration("en", 120)),
+                            () -> assertEquals("1 h 1 min", de.planmarshall.api.display.Display.duration("en", 3660)),
+                            () -> assertEquals("2 d", de.planmarshall.api.display.Display.duration("en", 172_800)),
+                            () -> assertEquals("2 T", de.planmarshall.api.display.Display.duration("de", 172_800))
         );
     }
 

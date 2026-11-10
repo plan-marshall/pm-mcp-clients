@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.LeafJob;
 import de.planmarshall.api.process.LeafTask;
@@ -462,9 +463,8 @@ public final class PlanViewLevel {
         var parts = new ArrayList<String>();
         parts.add(PlanViewFormatting.clean(tree.planId()));
         parts.add(state);
-        var duration = PlanViewFormatting.duration(tree.durationSeconds());
-        if (!duration.isEmpty()) {
-            parts.add(duration);
+        if (tree.durationSeconds() > 0) {
+            parts.add(Display.duration(locale, tree.durationSeconds()));
         }
         if (tree.pullRequestNumber() != null) {
             parts.add(MessageCatalogue.format(locale, "plan.view.pull_request",
@@ -613,9 +613,8 @@ public final class PlanViewLevel {
 
     private String nodeInfo(ProcessNode node, String locale) {
         var parts = new ArrayList<String>();
-        var duration = PlanViewFormatting.duration(node.durationSeconds());
-        if (!duration.isEmpty()) {
-            parts.add(duration);
+        if (node.durationSeconds() > 0) {
+            parts.add(Display.duration(locale, node.durationSeconds()));
         }
         if (!node.leafTasks().isEmpty()) {
             long done = node.leafTasks().stream()
@@ -643,7 +642,7 @@ public final class PlanViewLevel {
         return MessageCatalogue.format(locale, "plan.leaf.job", Map.of(
                             "kind", PlanViewFormatting.clean(job.kind()),
                             "status", PlanViewFormatting.clean(job.status()),
-                            "duration", PlanViewFormatting.duration(job.durationSeconds()),
+                            "duration", Display.duration(locale, job.durationSeconds()),
                             "outcome", PlanViewFormatting.clean(outcome)));
     }
 

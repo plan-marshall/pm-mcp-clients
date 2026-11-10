@@ -226,6 +226,43 @@ public final class Display {
                 : MessageCatalogue.format(locale, "common.time.unit.day", Map.of(COUNT, days));
     }
 
+    /**
+     * Renders the span from a starting moment to {@code clock.instant()} as the design's duration
+     * rows ({@code 30 s}, {@code 25 min}, {@code 2 h 10 min}, {@code 2 d} / {@code 2 T}).
+     *
+     * @param locale the interface locale
+     * @param since  the starting moment, or {@code null}
+     * @param clock  the clock "now" means
+     * @return the rendered duration, or an empty string for {@code null}
+     */
+    public static String duration(String locale, @Nullable Instant since, Clock clock) {
+        if (since == null) {
+            return "";
+        }
+        return duration(locale, Math.max(0L, Duration.between(since, clock.instant()).getSeconds()));
+    }
+
+    /**
+     * Renders the span from an ISO-8601 starting moment to {@code clock.instant()} as the design's
+     * duration rows. A value that is not an instant is returned as it arrived, so no caller writes
+     * a second parse of its own.
+     *
+     * @param locale   the interface locale
+     * @param sinceIso the ISO-8601 starting moment, or {@code null}
+     * @param clock    the clock "now" means
+     * @return the rendered duration, an empty string for {@code null}, or the unchanged non-instant
+     */
+    public static String duration(String locale, @Nullable String sinceIso, Clock clock) {
+        if (sinceIso == null || sinceIso.isBlank()) {
+            return "";
+        }
+        try {
+            return duration(locale, Instant.parse(sinceIso.trim()), clock);
+        } catch (DateTimeParseException _) {
+            return sinceIso;
+        }
+    }
+
     private static String age(String locale, long millis) {
         if (millis < Duration.ofMinutes(1).toMillis()) {
             return MessageCatalogue.format(locale, "common.time.just_now", Map.of());

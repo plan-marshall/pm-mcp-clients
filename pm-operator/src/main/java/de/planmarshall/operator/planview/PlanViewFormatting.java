@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
@@ -41,25 +42,6 @@ final class PlanViewFormatting {
      */
     static String clean(@Nullable String text) {
         return TuiLayout.sanitizeCell(OutputSafety.stripControlSequences(text)).strip();
-    }
-
-    /**
-     * @param seconds duration in seconds
-     * @return a compact duration ({@code 45 s}, {@code 5 min}, {@code 1 h 5 min}), or empty
-     */
-    static String duration(long seconds) {
-        if (seconds <= 0) {
-            return "";
-        }
-        if (seconds < 60) {
-            return seconds + " s";
-        }
-        long hours = seconds / 3600;
-        long minutes = (seconds % 3600) / 60;
-        if (hours > 0) {
-            return hours + " h " + minutes + " min";
-        }
-        return minutes + " min";
     }
 
     /**
@@ -137,8 +119,9 @@ final class PlanViewFormatting {
                             "attempt", task.attempt(),
                             "status", clean(task.status()),
                             "outcome", clean(outcome)));
-        var duration = duration(task.durationSeconds());
-        return duration.isEmpty() ? line : line + DOT_SEPARATOR + duration;
+        return task.durationSeconds() > 0
+                ? line + DOT_SEPARATOR + Display.duration(locale, task.durationSeconds())
+                : line;
     }
 
     /**
