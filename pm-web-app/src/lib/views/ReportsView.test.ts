@@ -4,6 +4,7 @@ import { tick } from 'svelte';
 import ReportsView from './ReportsView.svelte';
 import { formatTime } from '../display/format';
 import { runtimeStore } from '../stores/runtime';
+import { ClientError } from '../api/errors';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import {
@@ -720,6 +721,25 @@ describe('ReportsView component', () => {
       'No loaded report matches the filter.',
     );
     expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
+  });
+
+  it('keeps a failed reload visible while the filter matches nothing', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await typeFilter('nothing-matches-this');
+    expect(await screen.findByTestId('report-filter-empty')).toBeInTheDocument();
+
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new ClientError('timeout'),
+    );
+    eventHandler?.('report.sent', {});
+
+    const error = await screen.findByTestId('reports-error');
+    expect(error).toHaveTextContent('The request took too long');
+    // The list stays where it is: the failure is reported above it, and the filter still says why
+    // the list shows no row.
+    expect(screen.getByTestId('report-filter-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('reports-refreshing')).toBeInTheDocument();
   });
 
   it('keeps the unread count and makes no request while typing', async () => {
