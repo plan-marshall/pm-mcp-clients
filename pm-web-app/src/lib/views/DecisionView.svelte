@@ -6,7 +6,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import ChatPanel from '../components/ChatPanel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import {
@@ -25,7 +25,7 @@
   let isLoading = $state(true);
   let errorMessage = $state('');
   /** The code of a failed list read, which `ErrorState` resolves to its words. */
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
 
   /** The filter query; it runs over the loaded decisions only. */
   let query = $state('');
@@ -402,12 +402,12 @@
 
   async function loadDecisions() {
     isLoading = true;
-    loadError = '';
+    loadError = null;
     try {
       decisions = await apiClient.getDecisions();
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -518,7 +518,7 @@
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.waiver.failed');
+      errorMessage = actFailureText(err, $t('decision.waiver.failed'));
     } finally {
       isSubmitting[id] = false;
     }
@@ -536,7 +536,7 @@
     try {
       interpretations[key] = await apiClient.interpretDecision(dec.id, words);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.interpret.failed');
+      errorMessage = actFailureText(err, $t('decision.interpret.failed'));
     } finally {
       isInterpreting[key] = false;
     }
@@ -568,7 +568,7 @@
       setAnswer(dec, part, index, option);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
+      errorMessage = actFailureText(err, $t('decision.answer.failed'));
     } finally {
       isSubmitting[key] = false;
     }
@@ -601,7 +601,7 @@
       }
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
+      errorMessage = actFailureText(err, $t('decision.answer.failed'));
     } finally {
       isSubmitting[submittingKey] = false;
     }
@@ -613,7 +613,7 @@
       await apiClient.withdrawDecision(dec.id);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.withdraw.failed');
+      errorMessage = actFailureText(err, $t('decision.withdraw.failed'));
     } finally {
       isSubmitting[dec.id] = false;
     }
@@ -1294,7 +1294,7 @@
       </div>
     {/if}
 
-    {#if loadError && decisions.length > 0}
+    {#if loadError !== null && decisions.length > 0}
       <div class="error-banner" data-testid="decisions-error">
         <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
       </div>
@@ -1304,7 +1304,7 @@
       <div class="loading-state" data-testid="decisions-loading">
         <Skeleton shape="card" rows={3} label={$t('decisions.list.loading')} />
       </div>
-    {:else if loadError && decisions.length === 0}
+    {:else if loadError !== null && decisions.length === 0}
       <div class="error-banner" data-testid="decisions-error">
         <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
       </div>

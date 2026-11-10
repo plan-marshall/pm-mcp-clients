@@ -21,7 +21,7 @@
    */
   let devices: PairedDevice[] = [];
   let isLoading = false;
-  let loadError = '';
+  let loadError: string | null = null;
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
@@ -100,7 +100,7 @@
     const controller = new AbortController();
     loadController = controller;
     isLoading = true;
-    loadError = '';
+    loadError = null;
     try {
       const signal = controller.signal;
       const [devList, status] = await Promise.all([
@@ -117,7 +117,7 @@
       // The status read behind this one has nothing left to say: end it here.
       controller.abort();
       if (!isMounted || sequence !== loadSequence) return;
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
       devices = [];
       // Nothing says how the listener stands any more: the earlier answer is not a current one.
       listenerKnown = false;
@@ -377,7 +377,7 @@
       {/if}
       {#if isLoading}
         <Skeleton shape="card" rows={3} label={$t('web.settings.devices.loading')} />
-      {:else if loadError}
+      {:else if loadError !== null}
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}

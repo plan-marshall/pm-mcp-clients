@@ -5,7 +5,7 @@
   import Button from '../components/Button.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type CleanupJob,
@@ -19,7 +19,8 @@
   let job = $state<CleanupJob | null>(null);
   let keptItems = $state<CleanupKeptItem[]>([]);
   let isLoading = $state(true);
-  let loadError = $state('');
+  /** The code of a failed read, `null` while none failed and empty when no code could be read. */
+  let loadError = $state<string | null>(null);
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -84,7 +85,7 @@
 
   async function loadData() {
     isLoading = true;
-    loadError = '';
+    loadError = null;
     try {
       const [cleanupJob, keptRes] = await Promise.all([
         // A job the runtime has none of is an answer, not a failure; every other refusal is the
@@ -110,7 +111,7 @@
         }
       }
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -215,7 +216,7 @@
       }));
       void loadData();
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.cleanup.failed');
+      actionError = actFailureText(err, $t('system.cleanup.failed'));
     } finally {
       isDeleting = false;
     }
@@ -229,7 +230,7 @@
       actionSuccess = $t('system.cleanup.reminded', { date: 'in 3 days' });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.cleanup.postpone_failed');
+      actionError = actFailureText(err, $t('system.cleanup.postpone_failed'));
     }
   }
 
@@ -241,7 +242,7 @@
       actionSuccess = $t('system.cleanup.ignored', { count: allItems.length });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.cleanup.ignore_failed');
+      actionError = actFailureText(err, $t('system.cleanup.ignore_failed'));
     }
   }
 
@@ -256,7 +257,7 @@
       selectedKeptIds = {};
       void loadData();
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.cleanup.release_failed');
+      actionError = actFailureText(err, $t('system.cleanup.release_failed'));
     }
   }
 
@@ -329,7 +330,7 @@
     <div class="cleanup-loading" data-testid="cleanup-loading">
       <Skeleton shape="card" rows={3} label={$t('system.cleanup.loading')} />
     </div>
-  {:else if loadError}
+  {:else if loadError !== null}
     <div class="notice-alert notice-alert--danger" data-testid="cleanup-error">
       <ErrorState
         code={loadError}

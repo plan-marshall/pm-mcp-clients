@@ -875,7 +875,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
     await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
 
     read.mockResolvedValueOnce(undefined);
@@ -1009,12 +1009,27 @@ describe('ReportsView component', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
 
     expect(document.querySelector('.report-card--active')).not.toBeNull();
     expect(screen.queryByTestId('report-read-state')).toBeNull();
     expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+  });
+
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    vi.spyOn(apiClient, 'markReportRead').mockRejectedValue(new ClientError('timeout'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Try again; if it keeps taking this long, check that the runtime is running.',
+    );
+    expect(alert).not.toHaveTextContent(/^timeout$/);
   });
 
   it('keeps the row until a read that outlived its detail fails', async () => {
@@ -1043,7 +1058,7 @@ describe('ReportsView component', () => {
     rejectRead(new Error('read failed'));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
     expect(screen.queryByTestId('report-read-state')).toBeNull();
@@ -1777,7 +1792,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(markAllBtn);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
     expect(screen.getByTestId('report-read-state')).toBeInTheDocument();

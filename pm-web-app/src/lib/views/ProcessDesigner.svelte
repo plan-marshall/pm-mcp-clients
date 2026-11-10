@@ -16,6 +16,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
+  import { actFailureText } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -845,12 +846,13 @@
         // The placement already landed; a failed refresh leaves the placed text on screen.
       }
     } catch (err: unknown) {
-      const message = (err as Error)?.message ?? $t('system.action.failed');
-      if (/conflict/i.test(message)) {
+      // A refusal that names a conflict opens the card; every other failure reads its sentence.
+      const refusal = err instanceof Error ? err.message : '';
+      if (/conflict/i.test(refusal)) {
         await showConflict();
       } else {
         placeStage = 'failed';
-        landingError = message;
+        landingError = actFailureText(err, $t('system.action.failed'));
       }
     } finally {
       isPlacing = false;

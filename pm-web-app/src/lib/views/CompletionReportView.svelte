@@ -23,7 +23,7 @@
   let fetchedData = $state<PlanCompletionReport | null>(null);
   let data = $derived(report ?? fetchedData);
   let isLoading = $state(false);
-  let errorMessage = $state('');
+  let errorMessage = $state<string | null>(null);
   let showRawComponents = $state(false);
 
   /** The rendered subtree, so the title can be found and focused. */
@@ -70,7 +70,7 @@
 
   async function fetchReport() {
     isLoading = true;
-    errorMessage = '';
+    errorMessage = null;
     // The loading heading replaces the previous state's heading; take focus to it, so the fetch
     // does not leave focus on the body while it runs.
     await tick();
@@ -78,14 +78,14 @@
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      errorMessage = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
     // A fetched report (or the error state) replaces the loading placeholder; take focus to the
     // visible heading now, so focus does not fall to the body when the placeholder is removed.
     await tick();
-    if (data || errorMessage) {
+    if (data || errorMessage !== null) {
       focusReportHeading();
     }
   }
@@ -162,7 +162,7 @@
       </svelte:element>
       <span aria-hidden="true"><Skeleton shape="card" rows={2} /></span>
     </div>
-  {:else if errorMessage}
+  {:else if errorMessage !== null}
     <div class="completion-report__error" data-testid="completion-report-error">
       <ErrorState
         code={errorMessage}

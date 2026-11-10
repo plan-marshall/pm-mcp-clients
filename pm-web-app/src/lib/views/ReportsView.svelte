@@ -12,7 +12,7 @@
   import Skeleton from '../components/Skeleton.svelte';
   import TriagePage from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -33,7 +33,7 @@
   let isLoadingOlder = $state(false);
   let isMarkingAll = $state(false);
   /** A failed read of the list; the list area says so and offers the retry. */
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
   /** A failed act on an already loaded list (mark read, mark all, older page). */
   let actionError = $state('');
   /** The act the error line's Retry repeats; `null` means a plain reload of the list. */
@@ -393,7 +393,7 @@
     const hadRows = items.length > 0;
     isLoading = !hadRows;
     refreshing = hadRows;
-    loadError = '';
+    loadError = null;
     actionError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
@@ -424,7 +424,7 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
       refreshing = false;
@@ -453,7 +453,7 @@
       olderCount = page.older_count;
     } catch (err: unknown) {
       retryAction = loadOlder;
-      actionError = (err as Error)?.message || $t('report.list.older_failed');
+      actionError = actFailureText(err, $t('report.list.older_failed'));
     } finally {
       isLoadingOlder = false;
     }
@@ -507,7 +507,7 @@
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = () => markRead(item, retain);
-      actionError = (err as Error)?.message || $t('report.list.mark_read_failed');
+      actionError = actFailureText(err, $t('report.list.mark_read_failed'));
     }
   }
 
@@ -578,7 +578,7 @@
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = markAllShownRead;
-      actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
+      actionError = actFailureText(err, $t('report.list.mark_all_failed'));
     } finally {
       for (const id of shownIds) pendingReadIds.delete(id);
       isMarkingAll = false;
@@ -929,7 +929,7 @@
     <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
       {refreshing ? $t('report.list.loading') : ''}
     </p>
-    {#if loadError && items.length > 0}
+    {#if loadError !== null && items.length > 0}
       <div class="reports-error" data-testid="reports-error">
         <ErrorState
           code={loadError}
@@ -944,7 +944,7 @@
       <div class="loading-state">
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
       </div>
-    {:else if loadError && items.length === 0}
+    {:else if loadError !== null && items.length === 0}
       <ErrorState
         code={loadError}
         actionLabel={$t('common.action.retry')}
@@ -1030,7 +1030,7 @@
     {/if}
 
     <!-- Pagination -->
-    {#if hasOlder && !isLoading && !loadError}
+    {#if hasOlder && !isLoading && loadError === null}
       {#if isFiltered}
         <p class="loaded-only-hint" data-testid="loaded-only-hint">
           {$t('report.filter.loaded_only')}

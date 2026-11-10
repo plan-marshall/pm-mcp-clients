@@ -5,7 +5,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type SystemSnapshot,
@@ -31,7 +31,7 @@
   let snapshot = $state<SystemSnapshot | null>(null);
   let projects = $state<EnrolledProject[]>([]);
   let isLoading = $state(true);
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -139,7 +139,7 @@
 
   async function loadSnapshot(showSpinner = false) {
     if (showSpinner) isLoading = true;
-    loadError = '';
+    loadError = null;
     try {
       const snap = await apiClient.getSystemSnapshot(selectedWindow, selectedProject || undefined);
       if (!isMounted) return;
@@ -148,7 +148,7 @@
       if (!isMounted) return;
       // The failure is a state, not a text: the code is read where it renders, so the words follow
       // a language switch and never show a key.
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
       if (loadError === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
       }
@@ -291,7 +291,7 @@
       closeModal();
       void loadSnapshot(false);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.action.failed');
+      actionError = actFailureText(err, $t('system.action.failed'));
     } finally {
       isExecutingAction = false;
     }
@@ -318,7 +318,7 @@
       upgradeInfo = {
         ...upgradeInfo,
         step: 'fetch',
-        reason: (err as Error)?.message ?? $t('system.action.failed'),
+        reason: actFailureText(err, $t('system.action.failed')),
       };
     } finally {
       isExecutingAction = false;
@@ -333,11 +333,14 @@
       await apiClient.withdrawUpgrade();
       upgradePhase = 'withdrawn';
     } catch (err: unknown) {
-      const message = (err as Error)?.message ?? '';
+      // The refusal's own code picks the sentence; it is never printed.
+      const message = err instanceof Error ? err.message : '';
       if (message.includes('not_withdrawable') || message.includes('409')) {
         actionError = $t('system.upgrade.too_late');
       } else {
-        actionError = $t('system.upgrade.withdraw_failed', { reason: message });
+        actionError = $t('system.upgrade.withdraw_failed', {
+          reason: actFailureText(err, $t('system.action.failed')),
+        });
       }
     } finally {
       isWithdrawingUpgrade = false;
@@ -353,7 +356,7 @@
       upgradeInfo = { ...upgradeInfo, step: 'stop' };
       upgradePhase = 'progress';
     } catch (err: unknown) {
-      actionError = (err as Error)?.message ?? $t('system.action.failed');
+      actionError = actFailureText(err, $t('system.action.failed'));
     } finally {
       isExecutingAction = false;
     }
@@ -447,7 +450,9 @@
       void loadSnapshot(false);
       actionSuccess = $t('system.upgrade.check_done');
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.upgrade.check_failed');
+      actionError = $t('system.upgrade.check_failed', {
+        reason: actFailureText(err, $t('system.action.failed')),
+      });
     }
   }
 
@@ -712,7 +717,7 @@
     <div class="system-loading">
       <Skeleton shape="card" rows={3} label={$t('system.view.loading')} />
     </div>
-  {:else if loadError && !snapshot}
+  {:else if loadError !== null && !snapshot}
     <div class="notice-alert notice-alert--danger" data-testid="system-error">
       <ErrorState
         code={loadError}

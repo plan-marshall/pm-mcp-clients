@@ -48,7 +48,7 @@
   let isLoadingEnded = false;
   let errorCode: string | null = null;
   /** The code of a failed detail read, which `ErrorState` resolves to its words. */
-  let detailError = '';
+  let detailError: string | null = null;
 
   let unsubscribeEvents: (() => void) | null = null;
   /** The plan or epic whose actions the operator opened from its row. */
@@ -273,7 +273,7 @@
         detail = null;
       }
     } catch (err: unknown) {
-      errorCode = errorCodeOf(err) || 'unknown';
+      errorCode = errorCodeOf(err);
     } finally {
       isLoadingProjects = false;
     }
@@ -282,7 +282,7 @@
   async function loadProjectDetail(projectId: string) {
     const requestGeneration = ++detailRequestGeneration;
     isLoadingDetail = true;
-    detailError = '';
+    detailError = null;
     try {
       const res = await apiClient.getProjectDetail(projectId);
       if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
@@ -291,7 +291,7 @@
     } catch (err: unknown) {
       if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
         detail = null;
-        detailError = errorCodeOf(err) || 'unknown';
+        detailError = errorCodeOf(err);
       }
     } finally {
       if (requestGeneration === detailRequestGeneration) {
@@ -583,7 +583,7 @@
       </div>
     </div>
 
-    {#if errorCode}
+    {#if errorCode !== null}
       <div class="sidebar-error" data-testid="overview-error">
         <ErrorState
           code={errorCode}
@@ -876,7 +876,7 @@
           <div class="detail-loading">
             <Skeleton shape="card" rows={3} label={$t('overview.details.loading')} />
           </div>
-        {:else if detailError}
+        {:else if detailError !== null}
           <div data-testid="overview-detail-error">
             <ErrorState
               code={detailError}

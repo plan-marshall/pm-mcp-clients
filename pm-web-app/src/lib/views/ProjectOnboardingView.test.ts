@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ProjectOnboardingView from './ProjectOnboardingView.svelte';
 import { apiClient, type ProjectExplorer, type ProjectOnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
+import { ClientError } from '../api/errors';
 import { loadMessages } from '../../test/catalogue-fixture';
 
 const RUN: ProjectOnboardingState = {
@@ -286,6 +287,28 @@ describe('ProjectOnboardingView component', () => {
     await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
     expect(explorerSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByText('~/git/new-service')).toBeInTheDocument();
+  });
+
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      step: 4,
+      state: 'project.operator',
+      links: { apply: { href: '/api/v1/projects/pm-mcp-clients/onboarding/step' } },
+    });
+    vi.spyOn(apiClient, 'stepProjectOnboarding').mockRejectedValue(new ClientError('timeout'));
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    await waitFor(() => expect(screen.getByTestId('project-step-link-apply')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('project-step-link-apply'));
+
+    expect(
+      await screen.findByText(
+        'Try again; if it keeps taking this long, check that the runtime is running.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('timeout')).not.toBeInTheDocument();
   });
 
   it('reports a run it could not read and offers to load it again', async () => {

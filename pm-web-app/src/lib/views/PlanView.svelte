@@ -50,7 +50,7 @@
   let planId = $derived($runtimeStore.selectedPlanId || '');
   let plan = $state<ProcessTree | null>(null);
   let isLoading = $state(true);
-  let errorCode = $state('');
+  let errorCode = $state<string | null>(null);
   let showTokenBreakdown = $state(false);
   let isLoadingBreakdown = $state(false);
   let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
@@ -171,7 +171,7 @@
   async function loadPlanProcess(initial = false) {
     if (!planId) return;
     if (initial) isLoading = true;
-    errorCode = '';
+    errorCode = null;
     try {
       const res = await apiClient.getPlanProcess(planId);
       plan = res;
@@ -197,7 +197,7 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
-      errorCode = errorCodeOf(err) || 'unknown';
+      errorCode = errorCodeOf(err);
     } finally {
       if (initial) isLoading = false;
     }
@@ -629,7 +629,7 @@
     <div class="plan-view__loading" data-testid="plan-loading">
       <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
     </div>
-  {:else if errorCode && !plan}
+  {:else if errorCode !== null && !plan}
     <div class="plan-view__error" data-testid="plan-error">
       <ErrorState
         code={errorCode}
@@ -639,7 +639,7 @@
       />
     </div>
   {:else if plan}
-    {#if errorCode}
+    {#if errorCode !== null}
       <div class="plan-view__error" data-testid="plan-error">
         <ErrorState
           code={errorCode}

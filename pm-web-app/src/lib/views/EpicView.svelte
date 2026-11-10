@@ -39,7 +39,7 @@
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
   let isLoading = $state(true);
-  let errorCode = $state('');
+  let errorCode = $state<string | null>(null);
 
   let unsubscribeEvents: (() => void) | null = null;
 
@@ -148,7 +148,7 @@
   async function loadEpic(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    errorCode = '';
+    errorCode = null;
     const [process, epicResource] = await Promise.allSettled([
       apiClient.getEpicProcess(epicId),
       apiClient.getEpicResource(epicId),
@@ -162,7 +162,7 @@
       resource = null;
     }
     if (!epic) {
-      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '') || 'unknown';
+      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
     }
     if (initial) isLoading = false;
   }
@@ -516,7 +516,7 @@
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
     </div>
-  {:else if errorCode}
+  {:else if errorCode !== null}
     <div class="epic-view__error" data-testid="epic-error">
       <ErrorState
         code={errorCode}

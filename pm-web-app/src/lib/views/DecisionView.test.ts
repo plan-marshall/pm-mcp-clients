@@ -132,6 +132,23 @@ describe('DecisionView component', () => {
     await waitFor(() => expect(decisions).toHaveBeenCalledTimes(2));
   });
 
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Rebase onto main')).toBeInTheDocument());
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+
+    expect(
+      await screen.findByText(
+        'Try again; if it keeps taking this long, check that the runtime is running.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('timeout')).not.toBeInTheDocument();
+  });
+
   it('renders open decisions and waivers', async () => {
     render(DecisionView);
 
