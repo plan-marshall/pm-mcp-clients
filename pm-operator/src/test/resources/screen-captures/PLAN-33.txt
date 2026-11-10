@@ -42,7 +42,13 @@ onboard-auto-yes-80x24-de | onboarding | - | onboard --auto --yes | - | 80x24 | 
 # CLI-UC-V-08: `config show` either works or exits 1.
 config-show-120x30-en | reports-and-system | system.running | config show | - | 120x30 | en_US.UTF-8 | - | - | - | 1
 
-# CLI-UC-V-09: `plan nope` — the refusal of an unknown plan (printed, so the line is captured).
+# CLI-UC-V-09: `plan nope` — the refusal of an unknown plan, in the interactive path the check names.
+plan-nope-view-120x30-en | running-work | - | plan nope | q | 120x30 | en_US.UTF-8 | -
+plan-nope-view-80x24-en | running-work | - | plan nope | q | 80x24 | en_US.UTF-8 | -
+plan-nope-view-120x30-de | running-work | - | plan nope | q | 120x30 | de_DE.UTF-8 | -
+plan-nope-view-80x24-de | running-work | - | plan nope | q | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-09: `plan nope --print` — the printed form, for the refusal text.
 plan-nope-120x30-en | running-work | - | plan nope --print | - | 120x30 | en_US.UTF-8 | - | - | - | 1
 plan-nope-120x30-de | running-work | - | plan nope --print | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
 plan-nope-80x24-en | running-work | - | plan nope --print | - | 80x24 | en_US.UTF-8 | - | - | - | 1
