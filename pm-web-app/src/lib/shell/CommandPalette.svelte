@@ -499,7 +499,7 @@
               data-testid="command-palette-retry"
               onclick={retry}
             >
-              {$t('web.common.retry')}
+              {$t('common.action.retry')}
             </Button>
           </p>
         {/if}

@@ -6,6 +6,7 @@ import SettingsView from './SettingsView.svelte';
 import { runtimeStore, navigateTo } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient } from '../api/client';
+import { ClientError } from '../api/errors';
 
 /**
  * @param id the device id
@@ -272,21 +273,20 @@ describe('SettingsView component', () => {
   });
 
   it('ends a devices read that times out in the error state instead of waiting for it', async () => {
-    // Arrange: the read is handed a signal, and it answers with the error a real timeout produces.
-    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    // Arrange: the read carries the view's own abort controller, and answers with the failure a
+    // client-level timeout produces.
     const signals: (AbortSignal | undefined)[] = [];
     vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
       signals.push(signal);
-      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+      return Promise.reject(new ClientError('timeout'));
     });
 
     // Act
     render(SettingsView);
 
-    // Assert: the bound is carried into the read, and its timeout ends in the error state.
-    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    // Assert: the supersede signal is carried into the read, and its failure ends in the error state.
+    expect(await screen.findByText('The request took too long')).toBeInTheDocument();
     expect(signals[0]).toBeInstanceOf(AbortSignal);
-    expect(timeout).toHaveBeenCalledWith(15_000);
   });
 
   it('keeps the newer list when an older read answers after it', async () => {
@@ -307,9 +307,7 @@ describe('SettingsView component', () => {
             pending.push(resolve);
           }),
       );
-    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
-      new DOMException('The operation timed out.', 'TimeoutError'),
-    );
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(new ClientError('timeout'));
 
     render(SettingsView);
     await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
@@ -336,17 +334,32 @@ describe('SettingsView component', () => {
     expect(screen.getByText('Chrome on build-box')).toBeInTheDocument();
   });
 
+  it('re-reads the list when a revoke lost its response', async () => {
+    // Arrange: the revoke never hears the runtime, so the runtime may still have applied it.
+    const getDevices = vi.spyOn(apiClient, 'getDevices').mockResolvedValue(mockDevices);
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(new ClientError('network_offline'));
+
+    render(SettingsView);
+    await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
+
+    // Act: the revoke ends in the lost-response outcome.
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    // Assert: the view asks the runtime what the list looks like now.
+    await waitFor(() => expect(getDevices).toHaveBeenCalledTimes(2));
+  });
+
   it('bounds the read after a timed-out revoke and ends it in the error state', async () => {
     // Arrange: the revoke gives up on its deadline, and the recovery read gives up too.
     const signals: (AbortSignal | undefined)[] = [];
-    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
-      new DOMException('The operation timed out.', 'TimeoutError'),
-    );
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(new ClientError('timeout'));
     vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
       signals.push(signal);
       return signals.length === 1
         ? Promise.resolve(mockDevices)
-        : Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+        : Promise.reject(new ClientError('timeout'));
     });
 
     render(SettingsView);
@@ -358,7 +371,7 @@ describe('SettingsView component', () => {
     await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
 
     // Assert: the recovery read is bounded, and its failure is the error state.
-    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    expect(await screen.findByText('The request took too long')).toBeInTheDocument();
     expect(signals).toHaveLength(2);
     expect(signals[1]).toBeInstanceOf(AbortSignal);
     // The listener state the first read carried is not a current one any more.
@@ -370,7 +383,7 @@ describe('SettingsView component', () => {
     const reads: (AbortSignal | undefined)[] = [];
     vi.spyOn(apiClient, 'getStatus').mockImplementation((signal?: AbortSignal) => {
       reads.push(signal);
-      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+      return Promise.reject(new ClientError('timeout'));
     });
 
     // Act

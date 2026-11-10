@@ -346,7 +346,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PULL_REQUEST = "pull_request_number";
     private static final String SEGMENT_ENDED_CHAT = "/ended/";
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
-    private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
+    private static final String ERR_PROJECT_NOT_ENROLLED = "project_not_enrolled";
     private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
@@ -490,7 +490,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
     private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
-    private static final String ERR_PLAN_NOT_FOUND = "plan_not_found";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
@@ -3444,7 +3443,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (!Set.of(CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE).contains(projectId)) {
-            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Unknown project: " + projectId));
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "Unknown project: " + projectId));
             return true;
         }
         switch (action) {
@@ -3541,7 +3540,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             } else {
                 var targetId = instruct.planId() != null ? instruct.planId() : firstOpenPlanId(current);
                 if (targetId == null || current.plan(targetId) == null) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
                             KEY_MESSAGE, "No plan to change: " + instruct.planId()));
                     return;
                 }
@@ -4002,7 +4001,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean gateAllows(String projectId, MockHttpResponse response) throws IOException {
         if (projectId == null || projectId.isBlank()) {
-            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "No project id in the request"));
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "No project id in the request"));
             return false;
         }
         if (CONST_PLAN_MARSHALL.equals(projectId)) {
@@ -4011,7 +4010,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         if (!Set.of(CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE).contains(projectId)) {
-            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Unknown project: " + projectId));
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "Unknown project: " + projectId));
             return false;
         }
         return true;
@@ -4736,7 +4735,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                 return;
             }
             var availability = buildPlanActions(planId).action(action);
@@ -5651,7 +5650,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, report.toMap());
             return;
         }
-        response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, "Completion report not found for plan: " + planId));
+        response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Completion report not found for plan: " + planId));
     }
 
     /**
@@ -8408,7 +8407,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static void sendProjectNotFound(MockHttpResponse response, String projectId) throws IOException {
-        response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Project " + projectId + " not found"));
+        response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "Project " + projectId + " not found"));
     }
 
     private void handleGetSingleProject(MockHttpResponse response, String projectId) throws IOException {
@@ -9957,13 +9956,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. A plan the
         // scenario serves either by its own route or by its plan-list entry exists; any other id is
-        // plan_not_found here too.
+        // scope_not_found here too.
         if (isPlanActivity) {
             var parts = path.split("/");
             if (parts.length >= 7 && "tasks".equals(parts[5])) {
                 var planId = parts[4];
                 if (!knowsPlan(planId)) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
                             KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                     return true;
                 }
@@ -9981,14 +9980,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. A plan the scenario serves
         // by its own route is answered at step 1; a listed plan is answered from its summary entry
-        // when the template route is active; any other id is plan_not_found.
+        // when the template route is active; any other id is scope_not_found.
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!planId.contains("/")) {
                 var summary = planSummary(planId);
                 if (summary == null) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
                             KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                     return true;
                 }
@@ -10065,7 +10064,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Looks a plan id up among the members an epic lists in the state's control fixture.
      *
      * A staged, paused or shipped member can live only inside its epic's workstreams; without this
-     * lookup the plan view of such a member answered {@code plan_not_found} although the scenario
+     * lookup the plan view of such a member answered {@code scope_not_found} although the scenario
      * lists it.
      *
      * @param planId the requested plan id

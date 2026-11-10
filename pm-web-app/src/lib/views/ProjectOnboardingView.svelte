@@ -4,7 +4,9 @@
   import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import { apiClient } from '../api/client';
   import type {
     BeingAddedProject,
@@ -58,7 +60,7 @@
   }
 
   let isLoading = $state(true);
-  let loadFailed = $state(false);
+  let loadError = $state('');
   let run = $state<ProjectOnboardingState | null>(null);
   let beingAdded = $state<BeingAddedProject | null>(null);
   let checkoutDraft = $state('');
@@ -191,7 +193,7 @@
    */
   async function load(startedPath?: string): Promise<void> {
     isLoading = true;
-    loadFailed = false;
+    loadError = '';
     error = '';
     run = null;
     beingAdded = null;
@@ -199,18 +201,19 @@
       if (projectId) {
         try {
           run = await apiClient.getProjectOnboarding(projectId);
-        } catch {
+        } catch (err: unknown) {
           run = null;
+          loadError = errorCodeOf(err) || 'unknown';
         }
         if (!run) {
-          loadFailed = true;
+          loadError = loadError || 'unknown';
           return;
         }
       } else {
         await loadBeingAdded(startedPath);
       }
-    } catch {
-      loadFailed = true;
+    } catch (err: unknown) {
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }
@@ -455,20 +458,16 @@
   <main class="project-onboarding__main">
     {#if isLoading}
       <div class="state-card" role="status">
-        <Spinner size="2rem" label={$t('project.onboarding.loading')} />
+        <Skeleton shape="card" rows={3} label={$t('project.onboarding.loading')} />
       </div>
-    {:else if loadFailed}
-      <div class="state-card" role="alert">
-        <h2 class="state-card__title">{$t('project.onboarding.load_failed')}</h2>
-        <div class="state-card__actions">
-          <Button
-            variant="secondary"
-            on:click={() => load()}
-            data-testid="project-onboarding-retry"
-          >
-            {$t('project.onboarding.retry')}
-          </Button>
-        </div>
+    {:else if loadError}
+      <div class="state-card" data-testid="project-onboarding-error">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => load()}
+          titleLevel={2}
+        />
       </div>
     {:else if isComplete}
       <div class="state-card" data-testid="project-onboarding-complete">

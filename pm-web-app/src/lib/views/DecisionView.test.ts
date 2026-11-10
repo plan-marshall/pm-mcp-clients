@@ -4,6 +4,7 @@ import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ChatReadBack, type DecisionEnvelope } from '../api/client';
+import { ClientError } from '../api/errors';
 
 /** The `scrollIntoView` the document carried before a test replaced it. */
 const originalScrollIntoView = Element.prototype.scrollIntoView;
@@ -115,6 +116,20 @@ describe('DecisionView component', () => {
   // with it.
   afterEach(() => {
     Element.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
+  it('draws the error pattern of a failed list read instead of the empty word', async () => {
+    const decisions = vi
+      .spyOn(apiClient, 'getDecisions')
+      .mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    const error = await screen.findByTestId('decisions-error');
+    expect(error).toHaveTextContent('The request took too long');
+    expect(screen.queryByText(/No open decisions/i)).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(decisions).toHaveBeenCalledTimes(2));
   });
 
   it('renders open decisions and waivers', async () => {

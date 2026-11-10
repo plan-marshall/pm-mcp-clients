@@ -447,9 +447,9 @@ Source and surface: `pm-web-app/src/lib/components/EmptyState.svelte`, tests in 
 
 image::../../resources/diagrams/web-component-error-state.svg[A failed state with the code folded under Details,360,align=center]
 
-The same block as an empty state, in the danger role, with the technical code folded under `Details`. The sentence says what the person can do next; the code is there for a report and never leads, so it stays closed until someone opens it.
+The same block as an empty state, in the danger role. Its words are not the view's: the block reads the error's code through the display layer (`displayError`), which resolves the title, the cause and the fix from the shared catalogue — the daemon's `error.<code>.*` texts or the client's own `common.error.<code>.*` area. The title says what happened, the one sentence is the fix, and the cause and the technical code fold under `Details` (the shared `common.action.details`); the code is there for a report and never leads, so it stays closed until someone opens it. A code the catalogue does not know reads as the shared unknown fallback, and the code itself still stands under `Details`, so a raw wire value never leads.
 
-Source and surface: `pm-web-app/src/lib/components/ErrorState.svelte`, tests in `ErrorState.test.ts`; the props are `title`, `message`, `code`, `detailsLabel`, `actionLabel`, `onAct` and `titleLevel`.
+Source and surface: `pm-web-app/src/lib/components/ErrorState.svelte`, tests in `ErrorState.test.ts`; the props are `code`, `actionLabel`, `onAct` and `titleLevel`.
 
 [#skeleton]
 === Skeleton

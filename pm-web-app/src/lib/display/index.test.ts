@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { displayError, displayState, displayUnit, hasUnitName } from './index';
+import { CLIENT_ERROR_CODES } from '../api/errors';
 
 /**
  * The display layer reads the shared vocabulary of the catalogue (`state.*`, `unit.*`) and the
@@ -131,6 +132,19 @@ describe('displayError', () => {
     expect(displayError('hyperdrive_broken').title).toBe(
       'Die Runtime hat die Anfrage abgelehnt',
     );
+  });
+
+  it('carries title, cause and fix for every client code in both languages', () => {
+    for (const locale of ['en', 'de'] as const) {
+      useCatalogue(locale);
+      for (const code of CLIENT_ERROR_CODES) {
+        const text = displayError(code);
+        const fallback = displayError('not_a_code_at_all');
+        expect(text.title, `${locale} common.error.${code}.title`).not.toBe(fallback.title);
+        expect(text.cause, `${locale} common.error.${code}.cause`).not.toBe(fallback.cause);
+        expect(text.fix, `${locale} common.error.${code}.fix`).not.toBe(fallback.fix);
+      }
+    }
   });
 });
 

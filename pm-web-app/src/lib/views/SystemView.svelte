@@ -3,7 +3,9 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type SystemSnapshot,
@@ -29,7 +31,7 @@
   let snapshot = $state<SystemSnapshot | null>(null);
   let projects = $state<EnrolledProject[]>([]);
   let isLoading = $state(true);
-  let loadError = $state(false);
+  let loadError = $state('');
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -137,20 +139,18 @@
 
   async function loadSnapshot(showSpinner = false) {
     if (showSpinner) isLoading = true;
-    loadError = false;
+    loadError = '';
     try {
       const snap = await apiClient.getSystemSnapshot(selectedWindow, selectedProject || undefined);
       if (!isMounted) return;
       snapshot = snap;
     } catch (err: unknown) {
       if (!isMounted) return;
-      const msg = (err as Error)?.message;
-      if (msg === 'network_offline') {
+      // The failure is a state, not a text: the code is read where it renders, so the words follow
+      // a language switch and never show a key.
+      loadError = errorCodeOf(err) || 'unknown';
+      if (loadError === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
-      } else {
-        // The failure is a state, not a text: the words are read where they render, so they
-        // follow a language switch and never show a key.
-        loadError = true;
       }
     } finally {
       if (isMounted) isLoading = false;
@@ -710,14 +710,16 @@
 
   {#if isLoading && !snapshot}
     <div class="system-loading">
-      <Spinner size="2.5rem" label={$t('system.view.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('system.view.loading')} />
     </div>
   {:else if loadError && !snapshot}
-    <div class="notice-alert notice-alert--danger" role="alert">
-      <p>{$t('system.view.load_failed')}</p>
-      <Button variant="secondary" onclick={() => loadSnapshot(true)}
-        >{$t('web.common.retry')}</Button
-      >
+    <div class="notice-alert notice-alert--danger" data-testid="system-error">
+      <ErrorState
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => loadSnapshot(true)}
+        titleLevel={2}
+      />
     </div>
   {:else if $runtimeStore.isStopped}
     <div class="stopped-panel" role="region" aria-label={$t('system.stopped.region')}>
