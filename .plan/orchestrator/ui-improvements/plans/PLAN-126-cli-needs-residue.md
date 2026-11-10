@@ -106,6 +106,35 @@ PLAN-33 also found that a REFUSED projects read renders as "Nothing runs…" (fi
    - The count test fails when the mock's kind composition changes and the total does not. Evidence order: `mutation-after`.
    - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open
      (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed. Evidence order: `none`.
+5. **What `find` left open (from the landing of PLAN-84, folded 2026-11-10 on the operator's decision)**
+ - What: read `landings/PLAN-84.md` of the epic; lines are as read at `1b938f37`. First check whether PR #405
+   (`fix/84-find-kind-words`: the German kind word, Esc's double line end, the project-open wording, the weak choice test, the
+   catalogue test's key set) has merged; do only what it leaves.
+   - **The shell path opens the view on the terminal it holds.** `FindCommand.choose()` (`:310-322`) opens a lease from
+     `context.openTerminal()` but `open()` (`:371-372`) runs `PmOperator.execute` without `context.useTerminal(lease.terminal())`, so
+     `pm-operator find x` then a number gives the nested `plan`/`epic`/`answer` view a second JLine terminal, which
+     `OperatorContext.java:236-250` says falls back to a dumb one. Lend the lease for the nested verb, and add a PTY test (`FindIT`) of
+     the shell path: `find relay`, then a number, then the view's header.
+   - **Ctrl+C in the console's `/` field** is read as char 3 (`FindCommand.java:88,440`) after `terminal.enterRawMode()` (`:385`),
+     which keeps ISIG: on a real tty the signal may kill the console instead of leaving the field. Leave the field on Ctrl+C on a real
+     tty (a PTY test that types Ctrl+C in the field and finds the prompt again). `SecretReader.java:56-66` has the same pattern:
+     name it in the landing, do not change it here.
+   - **The match title through `Display`** (`FindCommand.java:196`): a blank or control-only title renders as the Display rule says,
+     never as an empty cell or a bare id (as the location titles at `:255-264` already do); a test pins it.
+   - **The typed text in the header and in "nothing matches"** (`:180-187`), not the runtime's echo (`FindPage.java:99` makes a
+     missing echo `""`).
+   - **Backspace removes one code point** (`:456-463`), so a supplementary character leaves no lone surrogate in `q=`.
+   - **Exit codes** as `doc/design/terminal-client/01-commands.adoc` § Exit Codes says: leaving the choice with `q` is 3; an empty
+     text is a refusal, not 0. Where the design and the code differ beyond these two, report it.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing
+ - Done when:
+   - The shell-path PTY test fails when the lease is not lent (evidence order: `mutation-after`).
+   - The Ctrl+C PTY test, the title test, the header test and the backspace test fail before the change (evidence order: `test-first`).
+   - `FindCommandTest` asserts the exit code of `q` and of an empty text (evidence order: `test-first`).
+
+Not split: five deliverables; deliverable 5 is the find residue the operator folded here, because this plan already waits for
+PLAN-84 and touches `PmConsole`/`PmOperator`. Rationale recorded by the orchestrator.
 
 ## Standing Constraints
 
@@ -181,11 +210,16 @@ PLAN-33 also found that a REFUSED projects read renders as "Nothing runs…" (fi
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/shared/needs-and-find.adoc` — present at `1cc0e10e`
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-126.txt` — absent; created by this plan
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/FindCommand.java` — present at `1b938f37` (deliverable 5)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` — present at `1b938f37` (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/FindCommandTest.java` — present at `1b938f37` (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/FindIT.java` — present at `1b938f37` (deliverable 5)
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at `1b938f37` (deliverable 5)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-36` (shipped, #391), `PLAN-123` (running: `ConsoleNotice`, `NeedsCommand`, `OverviewFormatting`,
-  `OverviewFullScreenApp`), `PLAN-84` (running: `PmOperator`, `PmConsole`, the catalogue pairs)
+- Depends on: `PLAN-36` (shipped, #391), `PLAN-123` (running, PR #404 open: `ConsoleNotice`, `NeedsCommand`, `OverviewFormatting`,
+  `OverviewFullScreenApp`), `PLAN-84` (shipped, #397; its follow-up PR #405 open: `FindCommand`, `PmConsole`, the catalogue)
 - Overlaps with: `PLAN-44` (`ConsoleNotice`, `TuiKeyRegistry`, `OverviewFormatting`: starts after this plan), `PLAN-42` and
   `PLAN-48` (`NeedsCommand`, `OverviewFullScreenApp`: start after), `PLAN-50` (`ProjectsOverviewLevel`, the needs rows' columns: starts
   after, and owns the column grid), `PLAN-30` (the refusal renderer feeds deliverable 3's error state: if PLAN-30 has landed, use it),
