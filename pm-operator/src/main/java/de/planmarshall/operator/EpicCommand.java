@@ -59,6 +59,8 @@ import picocli.CommandLine.Spec;
 public final class EpicCommand implements Callable<Integer> {
 
     private static final String KIND = "epic";
+    private static final String STAGED = "staged";
+    private static final String STATE_UNKNOWN = "state.unknown";
     private static final String EPICS_API = "/api/v1/epics/";
 
     private final OperatorContext context;
@@ -188,7 +190,7 @@ public final class EpicCommand implements Callable<Integer> {
                 if (row.pullRequestNumber() != null) {
                     line.append("   #").append(row.pullRequestNumber());
                 }
-                if ("staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+                if (STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
                     line.append("   ").append(EpicViewFormatting.waitText(locale, row, epic.running(), epic.scope()));
                 }
                 out.println(line);
@@ -307,7 +309,7 @@ public final class EpicCommand implements Callable<Integer> {
             }
         }
 
-        var stagedWord = Display.word(locale, "plan", "staged");
+        var stagedWord = Display.word(locale, "plan", STAGED);
         out.println("  " + MessageCatalogue.format(locale, "epic.plans.staged", Map.of()) + ":");
         if (epic.stagedPlans().isEmpty()) {
             out.println("    " + noneText);
@@ -338,34 +340,34 @@ public final class EpicCommand implements Callable<Integer> {
 
     private static String epicStateWord(String locale, @Nullable String state) {
         if (state == null || state.isBlank()) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
         try {
             return Display.word(locale, "epic", state);
         } catch (IllegalArgumentException _) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
     }
 
     private static String phaseWord(String locale, @Nullable String phase) {
         if (phase == null || phase.isBlank()) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
         try {
             return Display.word(locale, "phase", phase);
         } catch (IllegalArgumentException _) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
     }
 
     private static String planStateWord(String locale, @Nullable String state) {
         if (state == null || state.isBlank()) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
         try {
             return Display.word(locale, "plan", state);
         } catch (IllegalArgumentException _) {
-            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+            return MessageCatalogue.format(locale, STATE_UNKNOWN, Map.of());
         }
     }
 

@@ -609,7 +609,7 @@ public final class WebCommand implements Callable<Integer> {
             var s = raw.toString();
             try {
                 var instant = Instant.parse(s);
-                var german = locale != null && locale.toLowerCase(Locale.ROOT).startsWith("de");
+                var german = locale.toLowerCase(Locale.ROOT).startsWith("de");
                 return DateTimeFormatter.ofPattern(german ? "d. MMM" : "d MMM", german ? Locale.GERMAN : Locale.ENGLISH)
                                     .withZone(clock.getZone())
                                     .format(instant);
@@ -734,13 +734,11 @@ public final class WebCommand implements Callable<Integer> {
         if (!Boolean.TRUE.equals(web.get("enabled"))) {
             return MessageCatalogue.format(locale, "operator.web.state.disabled", Map.of());
         }
+        var mode = Boolean.TRUE.equals(web.get("lan")) ? "operator.web.mode.lan" : "operator.web.mode.loopback";
+        var open = Boolean.TRUE.equals(web.get("open")) ? "operator.web.open.yes" : "operator.web.open.no";
         return MessageCatalogue.format(locale, "operator.web.state.enabled", Map.of(
-                            "mode", Boolean.TRUE.equals(web.get("lan"))
-                                                ? MessageCatalogue.format(locale, "operator.web.mode.lan", Map.of())
-                                                : MessageCatalogue.format(locale, "operator.web.mode.loopback", Map.of()),
+                            "mode", MessageCatalogue.format(locale, mode, Map.of()),
                             "port", web.get("port"),
-                            "open", Boolean.TRUE.equals(web.get("open"))
-                                                ? MessageCatalogue.format(locale, "operator.web.open.yes", Map.of())
-                                                : MessageCatalogue.format(locale, "operator.web.open.no", Map.of())));
+                            "open", MessageCatalogue.format(locale, open, Map.of())));
     }
 }

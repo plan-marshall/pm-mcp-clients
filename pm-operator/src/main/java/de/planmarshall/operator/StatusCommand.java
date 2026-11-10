@@ -433,32 +433,41 @@ final class StatusCommand implements Callable<Integer> {
         var markers = new ArrayList<String>();
         var width = 20;
         for (var landing : landings) {
-            var failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
-            var rawState = landing.state() != null ? landing.state() : "running";
-            var state = MessageCatalogue.hasKey(locale, "state.landing." + rawState)
-                                ? Display.word(locale, "landing", rawState)
-                                : OutputSafety.stripControlSequences(rawState);
-            String text;
-            if ("removal".equalsIgnoreCase(landing.kind())) {
-                var count = landing.count() != null ? landing.count() : 1;
-                text = MessageCatalogue.format(locale, "overview.landing.removal",
-                                    Map.of("count", count, "state", state));
-            } else {
-                var unitTitle = OutputSafety.stripControlSequences(Display.title(locale, null, landing.unit()));
-                text = MessageCatalogue.format(locale, "overview.landing.unit",
-                                    Map.of("unit", unitTitle, "state", state));
-            }
-            var marker = failed
-                                ? "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of())
-                                : "";
+            var marker = landingMarker(locale, landing);
             markers.add(marker);
-            texts.add(text);
-            width = Math.max(width, marker.isEmpty() ? 0 : marker.length() + 1);
+            texts.add(landingText(locale, landing));
+            width = Math.max(width, marker.length());
         }
         var format = "     %-" + width + "s%s%n";
         for (var index = 0; index < texts.size(); index++) {
             out.printf(format, markers.get(index), texts.get(index));
         }
+    }
+
+    private static String landingMarker(String locale, AlongsideLanding landing) {
+        if (!"failed".equalsIgnoreCase(landing.state()) && landing.holdKind() == null) {
+            return "";
+        }
+        return "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of()) + " ";
+    }
+
+    private static String landingText(String locale, AlongsideLanding landing) {
+        var state = landingStateWord(locale, landing);
+        if ("removal".equalsIgnoreCase(landing.kind())) {
+            var count = landing.count() != null ? landing.count() : 1;
+            return MessageCatalogue.format(locale, "overview.landing.removal",
+                                Map.of("count", count, "state", state));
+        }
+        var unitTitle = OutputSafety.stripControlSequences(Display.title(locale, null, landing.unit()));
+        return MessageCatalogue.format(locale, "overview.landing.unit",
+                            Map.of("unit", unitTitle, "state", state));
+    }
+
+    private static String landingStateWord(String locale, AlongsideLanding landing) {
+        var rawState = landing.state() != null ? landing.state() : "running";
+        return MessageCatalogue.hasKey(locale, "state.landing." + rawState)
+                            ? Display.word(locale, "landing", rawState)
+                            : OutputSafety.stripControlSequences(rawState);
     }
 
     static String formatRelativeTime(String locale, @Nullable Object raw, Clock clock) {

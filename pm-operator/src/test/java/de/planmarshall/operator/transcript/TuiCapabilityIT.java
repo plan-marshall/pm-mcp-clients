@@ -72,7 +72,9 @@ class TuiCapabilityIT {
     private static final String TERM = "TERM";
     private static final String TERM_PROGRAM = "TERM_PROGRAM";
     private static final String PATH = "PATH";
-    private static final Pattern LONE_DASH_CELL = Pattern.compile("(?:^|·\\s+|:\\s+|\\s{2,})-(?:\\s*$|\\s+·|\\s{2,})", Pattern.MULTILINE);
+    private static final Pattern LONE_DASH_CELL = Pattern.compile(
+                        "(?:^|\u00b7[ \\t]+|:[ \\t]+|[ \\t]{2,})-(?:[ \\t]*$|[ \\t]+\u00b7|[ \\t]{2,})",
+                        Pattern.MULTILINE);
     private static final Pattern ISO_INSTANT = Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}");
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,

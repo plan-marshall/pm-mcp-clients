@@ -185,9 +185,8 @@ public final class OverviewFormatting {
             return "";
         }
         var key = needsKeyForKind(kind);
-        var label = key != null
-                            ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, "state.unknown", Map.of());
+        var labelKey = key != null ? key : "state.unknown";
+        var label = MessageCatalogue.format(locale, labelKey, Map.of());
         if (count > 1) {
             var countPrefix = MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", count));
             return countPrefix + " \u00b7 " + label;
