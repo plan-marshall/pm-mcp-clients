@@ -31,6 +31,12 @@
   export let size: 'sm' | 'md' | 'lg' = 'sm';
   export let disabled = false;
 
+  /**
+   * The advisory the trigger carries: the catalogue's `X.title` only where it says more than the
+   * visible word. An advisory that restates the label is no advisory (Interactions Affordances).
+   */
+  $: triggerAdvisory = advisory && advisory !== (visibleLabel ?? label) ? advisory : undefined;
+
   let open = false;
   /** Whether the open menu hangs above its trigger instead of below it. */
   let above = false;
@@ -193,7 +199,7 @@
     {label}
     {visibleLabel}
     {size}
-    {advisory}
+    advisory={triggerAdvisory}
     {disabled}
     aria-haspopup="menu"
     aria-expanded={open}

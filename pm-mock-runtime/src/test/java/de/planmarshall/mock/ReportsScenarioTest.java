@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -164,6 +165,33 @@ class ReportsScenarioTest {
             var page = ReportsPage.fromJson(listRes.bodyText());
             assertEquals(2, page.unreadCount());
             assertEquals(2, page.items().size());
+        }
+    }
+
+    @Test
+    @DisplayName("refuses a mark-all body that carries no report_ids list")
+    void shouldRefuseMarkAllWithoutReportIds() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.REPORTS)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            for (var body : List.of("{\"all\":true}", "", "{\"report_ids\":\"rep-0142\"}")) {
+                var res = client.send(HttpRequest.json("POST", "/api/v1/reports/read", body)
+                        .withHeader("Authorization", auth));
+                var refusal = JsonTree.asObject(JsonTree.parse(res.bodyText()));
+
+                assertAll(
+                        () -> assertEquals(422, res.status(), "body: " + body),
+                        () -> assertEquals("report_ids_required", JsonTree.string(refusal, "error"), "body: " + body),
+                        () -> assertNotNull(JsonTree.string(refusal, "message"), "body: " + body));
+            }
+
+            // None of the refused bodies marked a report: the page still lists the same five.
+            var listRes = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
+            var page = ReportsPage.fromJson(listRes.bodyText());
+            assertAll(
+                    () -> assertEquals(7, page.unreadCount(), "a refused body marks nothing"),
+                    () -> assertEquals(5, page.items().size()));
         }
     }
 

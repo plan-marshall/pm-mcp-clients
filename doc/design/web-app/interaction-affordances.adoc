@@ -33,7 +33,7 @@ A control's visible or accessible label is identified by a catalogue key stem `X
 
 |`report.action.mark_all_read`
 |`report.action.mark_all_read.title`
-|Mark every loaded report as read; older reports stay unread
+|Mark every shown report read without a filter, only the matching ones with one; older reports stay unread
 
 |`decision.notify.allow`
 |`decision.notify.allow.title`
@@ -56,7 +56,7 @@ The suffix is part of the key's meaning, not decoration: a `.title` key is an ad
 An advisory earns its place only by adding information to the label. It does that in one of four ways:
 
 * *Consequence*: what changes because of the action, especially where it cannot be undone ("Decline the waiver; the gate stays failed").
-* *Scope*: what the action reaches beyond the control's own row ("Mark every loaded report as read; older reports stay unread").
+* *Scope*: what the action reaches beyond the control's own row ("Mark every shown report read without a filter, only the matching ones with one; older reports stay unread").
 * *Shortcut or state*: a fact the operator would otherwise have to discover ("Switch the interface language; this browser remembers the choice").
 * *Where the action goes*: for a label that does not name its destination ("Show this level; the selection stays").
 

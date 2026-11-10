@@ -247,6 +247,32 @@ describe('ApiClient', () => {
     expect(snapshot.cleanup.freed_bytes).toBe(1932735283);
   });
 
+  it('posts the bulk read as report_ids and never a bare or all body', async () => {
+    let readUrl = '';
+    let readMethod = '';
+    let readBody: unknown = null;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      readUrl = url;
+      readMethod = init?.method || '';
+      if (init?.body) {
+        readBody = JSON.parse(init.body as string);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ marked_count: 2 }),
+      });
+    });
+
+    const result = await client.markAllReportsRead(['rep-0142', 'rep-0139']);
+
+    expect(readMethod).toBe('POST');
+    expect(readUrl).toContain('/api/v1/reports/read');
+    expect(readBody).toEqual({ report_ids: ['rep-0142', 'rep-0139'] });
+    expect(readBody).not.toHaveProperty('all');
+    expect(result.marked_count).toBe(2);
+  });
+
   it('handles stopRuntime and withdrawStop lifecycle methods', async () => {
     let stopBody: unknown = null;
     let stopMethod = '';

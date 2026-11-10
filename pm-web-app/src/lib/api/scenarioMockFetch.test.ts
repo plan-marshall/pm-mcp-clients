@@ -22,11 +22,19 @@ describe('scenarioMockFetch', () => {
     const mock = scenarioFetch('reports-and-system');
 
     const response = await mock.fetch('http://localhost/api/v1/reports');
-    const body = (await response.json()) as { unread_count: number; items: unknown[] };
+    const body = (await response.json()) as {
+      unread_count: number;
+      items: unknown[];
+      has_older: boolean;
+      older_count: number;
+    };
 
     expect(response.status).toBe(200);
+    // The served page is the first page of the seven unread reports; two stay older.
     expect(body.unread_count).toBe(7);
-    expect(body.items).toHaveLength(7);
+    expect(body.items).toHaveLength(5);
+    expect(body.has_older).toBe(true);
+    expect(body.older_count).toBe(2);
   });
 
   it('follows a state link to its next state and answers that representation', async () => {

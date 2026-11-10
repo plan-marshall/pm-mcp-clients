@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
@@ -24,21 +24,67 @@
   let errorMessage = $state('');
   let showRawComponents = $state(false);
 
-  onMount(async () => {
+  /** The rendered subtree, so the title can be found and focused. */
+  let rootEl = $state<HTMLElement | null>(null);
+  /** The control that opened the report; focus returns to it when the report closes. */
+  let restoreFocusTo: HTMLElement | null = null;
+
+  /**
+   * Moves focus to the report's current heading, so an opened report is entered at its head and
+   * the loading and error states keep focus on the visible heading instead of the body.
+   */
+  function focusReportHeading(): void {
+    const heading = rootEl?.querySelector<HTMLElement>('.report-title');
+    heading?.focus();
+  }
+
+  /**
+   * Returns focus to the invoking control before the report closes.
+   */
+  function closeReport(): void {
+    restoreFocusTo?.focus();
+    onClose?.();
+  }
+
+  onMount(() => {
+    restoreFocusTo =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    focusReportHeading();
     if (!report && planId) {
-      await fetchReport();
+      void fetchReport();
+    }
+  });
+
+  onDestroy(() => {
+    // Restore only when the report still owns focus, or focus fell to the body: a Back click
+    // already moved it to the invoking control, and focusing again here would move it twice —
+    // or steal it from wherever the operator went next.
+    const active = document.activeElement;
+    const insideReport = active instanceof HTMLElement && (rootEl?.contains(active) ?? false);
+    if (insideReport || active === null || active === document.body) {
+      restoreFocusTo?.focus();
     }
   });
 
   async function fetchReport() {
     isLoading = true;
     errorMessage = '';
+    // The loading heading replaces the previous state's heading; take focus to it, so the fetch
+    // does not leave focus on the body while it runs.
+    await tick();
+    focusReportHeading();
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('report.completion.load_failed');
     } finally {
       isLoading = false;
+    }
+    // A fetched report (or the error state) replaces the loading placeholder; take focus to the
+    // visible heading now, so focus does not fall to the body when the placeholder is removed.
+    await tick();
+    if (data || errorMessage) {
+      focusReportHeading();
     }
   }
 
@@ -94,10 +140,10 @@
   }
 </script>
 
-<div class="completion-report">
+<div class="completion-report" bind:this={rootEl}>
   <div class="completion-report__nav">
     {#if onClose}
-      <Button variant="ghost" size="small" icon="act.back" onclick={onClose}>
+      <Button variant="ghost" size="small" icon="act.back" onclick={closeReport}>
         {$t('web.common.back')}
       </Button>
     {/if}
@@ -105,14 +151,18 @@
 
   {#if isLoading}
     <div class="completion-report__loading">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--loading">
+      <svelte:element
+        this={`h${titleLevel}`}
+        class="report-title report-title--loading"
+        tabindex="-1"
+      >
         {$t('report.completion.loading')}
       </svelte:element>
-      <Spinner size="2.5rem" label={$t('report.completion.loading')} />
+      <span aria-hidden="true"><Spinner size="2.5rem" label="" /></span>
     </div>
   {:else if errorMessage}
     <div class="completion-report__error" role="alert">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error">
+      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error" tabindex="-1">
         {$t('report.completion.load_failed')}
       </svelte:element>
       <p>{errorMessage}</p>
@@ -137,7 +187,9 @@
     <!-- Header bar -->
     <header class="report-header">
       <div class="report-header__headline">
-        <svelte:element this={`h${titleLevel}`} class="report-title">{data.plan_id}</svelte:element>
+        <svelte:element this={`h${titleLevel}`} class="report-title" tabindex="-1"
+          >{data.plan_id}</svelte:element
+        >
         <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a

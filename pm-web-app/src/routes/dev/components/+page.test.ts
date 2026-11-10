@@ -12,10 +12,17 @@ describe('/dev/components page fixture', () => {
     const markReadButtons = screen.getAllByRole('button', { name: /Row menu \(Mark read/i });
     expect(markReadButtons).toHaveLength(2);
 
-    const allStandaloneLabels = [...moreMenuButtons, ...markReadButtons].map(
-      (btn) => btn.getAttribute('aria-label'),
+    const labels = [...moreMenuButtons, ...markReadButtons].map(
+      (button) => button.getAttribute('aria-label') ?? '',
     );
-    const uniqueLabels = new Set(allStandaloneLabels);
-    expect(uniqueLabels.size).toBe(4);
+    // One unique accessible name per fixture per theme: dropping the theme label collapses a pair.
+    expect(new Set(labels).size).toBe(4);
+
+    // Each fixture carries the theme's own label, never the raw theme key.
+    expect(labels.filter((label) => label.endsWith(', Light theme)'))).toHaveLength(2);
+    expect(labels.filter((label) => label.endsWith(', Dark theme)'))).toHaveLength(2);
+    expect(labels.some((label) => label.endsWith(', light)') || label.endsWith(', dark)'))).toBe(
+      false,
+    );
   });
 });

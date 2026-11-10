@@ -85,7 +85,7 @@ pm-operator status [--project <project_id>] [--by epic] [--watch] [--json]
                                                                 the running work as a tree, and the runtime (15-overview)
 pm-operator status --ended [--project <project_id>]             the ended work as a tree, opened read-only as it ended (15-overview)
 pm-operator reports [--project <project_id>|.] [--older]        the unread reports, grouped, newest first (24-reports)
-pm-operator reports read <report_id>...|--all             [op]  mark reports read: those named, or all the last listing showed
+pm-operator reports read <report_id>...|--all             [op]  mark reports read: those named, or the ids of the first page it reads
 pm-operator reports open <report_id>                      [op]  a report's detail; reads it
 pm-operator system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
                                                                 the system view; full screen in the console (25-system)

@@ -224,12 +224,12 @@
       <div class="dev__row dev__row--end">
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('web.common.more')}, {theme})"
+          label="{$t('dev.section.row_menu')} ({$t('web.common.more')}, {$t(`dev.theme.${theme}`)})"
           visibleLabel={$t('web.common.more')}
         />
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {theme})"
+          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {$t(`dev.theme.${theme}`)})"
         />
       </div>
 

@@ -97,7 +97,11 @@
   }
 
   .btn:disabled {
-    opacity: 0.5;
+    /* The disabled appearance is drawn from the tokens, not a literal contrast value, so a
+       disabled control keeps a readable, theme-owned contrast in both themes. */
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
     cursor: not-allowed;
   }
 

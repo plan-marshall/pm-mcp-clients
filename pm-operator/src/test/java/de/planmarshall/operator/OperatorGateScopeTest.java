@@ -207,6 +207,26 @@ class OperatorGateScopeTest {
     }
 
     @Test
+    @DisplayName("reports read --all refuses at the gate before it reads the list")
+    void reportsReadAllRefusesBeforeTheListRead() throws Exception {
+        var requests = new CopyOnWriteArrayList<String>();
+        server.close();
+        server = fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.json(200, "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}");
+        });
+
+        var result = run(true, "reports", "read", "--all");
+
+        assertAll(
+                            () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, result.code(), result.err()),
+                            () -> assertTrue(result.err().contains(refusalText("en")), result.err()),
+                            () -> assertTrue(requests.isEmpty(),
+                                                "the gate must refuse the act before any list read: " + requests)
+        );
+    }
+
+    @Test
     @DisplayName("the act refusal names the marker that was set, not a fixed variable")
     void actRefusalNamesTheMarker() {
         var result = run(true, "runtime", "stop");

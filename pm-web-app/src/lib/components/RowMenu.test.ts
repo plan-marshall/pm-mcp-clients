@@ -285,8 +285,10 @@ describe('RowMenu component', () => {
 
     const lightBrand = hexToRgb(lightBrandMatch![1]);
     const lightSurface = hexToRgb(lightSurfaceMatch![1]);
-    expect(lightBrandMatch![1].toUpperCase()).toBe('#5B4BDB');
-    expect(lightSurfaceMatch![1].toUpperCase()).toBe('#FFFFFF');
+    // The ratio is computed from the palette the tokens declare; no literal hex is pinned, so a
+    // retune that keeps the cue stays green.
+    expect(lightBrandMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(lightSurfaceMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
 
     const lightContrast =
       (Math.max(lum(lightBrand), lum(lightSurface)) + 0.05) /
@@ -302,8 +304,8 @@ describe('RowMenu component', () => {
 
     const darkBrand = hexToRgb(darkBrandMatch![1]);
     const darkSurface = hexToRgb(darkSurfaceMatch![1]);
-    expect(darkBrandMatch![1].toUpperCase()).toBe('#8B7EF9');
-    expect(darkSurfaceMatch![1].toUpperCase()).toBe('#1C2230');
+    expect(darkBrandMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(darkSurfaceMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
 
     const darkContrast =
       (Math.max(lum(darkBrand), lum(darkSurface)) + 0.05) /

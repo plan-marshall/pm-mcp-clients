@@ -1,7 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import Button from './Button.svelte';
 import IconButton from './IconButton.svelte';
+import { styleOf, ruleOf } from '../../test/templateStyle';
 
 /**
  * The control components of VD-P-05: the four `Button` variants, its three sizes, the optional
@@ -122,6 +125,89 @@ describe('Button', () => {
     await fireEvent.click(screen.getByRole('button'));
 
     expect(clicked).toHaveBeenCalledOnce();
+  });
+
+  it('derives the variant contrast from the design tokens and meets 4.5:1 in both themes', () => {
+    const style = styleOf(path.resolve(__dirname, './Button.svelte'));
+
+    // Every variant colour is a token, never a literal colour.
+    expect(style).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(ruleOf(style, '.btn--primary')).toContain('var(--color-brand)');
+    expect(ruleOf(style, '.btn--primary')).toContain('var(--color-on-brand)');
+    expect(ruleOf(style, '.btn--danger')).toContain('var(--color-danger)');
+    expect(ruleOf(style, '.btn--danger')).toContain('var(--color-on-brand)');
+    expect(ruleOf(style, '.btn--secondary')).toContain('var(--color-bg-surface)');
+    expect(ruleOf(style, '.btn--secondary')).toContain('var(--color-text-primary)');
+    // The ghost variant paints no background of its own (`transparent`), so the contrast pair
+    // below assumes the default surface background behind it. The rule must still name its
+    // foreground token, or the table would check a colour the variant does not use.
+    expect(ruleOf(style, '.btn--ghost')).toContain('var(--color-text-secondary)');
+    expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-bg-subtle)');
+
+    const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');
+
+    /** @param hex a #rrggbb token value @returns its rgb channels */
+    const hexToRgb = (hex: string) => {
+      const clean = hex.replace('#', '').trim();
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16),
+      };
+    };
+
+    /** @param colour rgb channels @returns the relative luminance */
+    const luminance = (colour: { r: number; g: number; b: number }) => {
+      const channels = [colour.r / 255, colour.g / 255, colour.b / 255].map((value) =>
+        value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4),
+      );
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+
+    /** @param marker the theme selector @returns that block's declarations */
+    const blockOf = (marker: string) => {
+      const start = tokensCss.indexOf(marker);
+      expect(start, `${marker} must exist in tokens.css`).toBeGreaterThanOrEqual(0);
+      const open = tokensCss.indexOf('{', start);
+      const close = tokensCss.indexOf('}', open);
+      return tokensCss.slice(open + 1, close);
+    };
+
+    /** @returns a token's colour from a theme block */
+    const tokenOf = (block: string, name: string) => {
+      const match = block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+      expect(match, `token --${name} must be a hex value`).not.toBeNull();
+      return hexToRgb(match![1]);
+    };
+
+    /** @returns the contrast ratio of two colours */
+    const contrast = (
+      first: { r: number; g: number; b: number },
+      second: { r: number; g: number; b: number },
+    ) =>
+      (Math.max(luminance(first), luminance(second)) + 0.05) /
+      (Math.min(luminance(first), luminance(second)) + 0.05);
+
+    const light = blockOf("[data-theme='light']");
+    const dark = blockOf("[data-theme='dark']");
+
+    const pairs = [
+      ['primary', 'color-on-brand', 'color-brand'],
+      ['danger', 'color-on-brand', 'color-danger'],
+      ['secondary', 'color-text-primary', 'color-bg-surface'],
+      ['ghost', 'color-text-secondary', 'color-bg-surface'],
+    ] as const;
+
+    for (const [variant, foreground, background] of pairs) {
+      expect(
+        contrast(tokenOf(light, foreground), tokenOf(light, background)),
+        `${variant} contrast in the light theme`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(tokenOf(dark, foreground), tokenOf(dark, background)),
+        `${variant} contrast in the dark theme`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 

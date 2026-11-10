@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.report.ReadReportsRequest;
 import de.planmarshall.api.report.ReadReportsResponse;
 import de.planmarshall.api.report.ReportItem;
 import de.planmarshall.api.report.ReportsPage;
@@ -194,7 +195,7 @@ public final class ReportsCommand implements Callable<Integer> {
         @Parameters(arity = "0..*", description = "Report IDs to mark read")
         List<String> reportIds = new ArrayList<>();
 
-        @Option(names = "--all", description = "Mark all unread reports read")
+        @Option(names = "--all", description = "Read the first page of the report list and mark the ids it read")
         boolean all;
 
         ReadCommand(OperatorContext context) {
@@ -206,23 +207,46 @@ public final class ReportsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (all) {
-                var response = context.runtime(true).send(
-                                    HttpRequest.json("POST", "/api/v1/reports/read", "{\"all\":true}"));
-                if (response.status() == 200 || response.status() == 204) {
-                    var parsed = ReadReportsResponse.fromJson(response.bodyText());
-                    out.printf("✓ %d reports marked read.%n", parsed.markedCount());
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("reports read --all", response);
+                return readAll(out);
             }
-
             if (reportIds.isEmpty()) {
                 out.println("Specify report IDs or --all.");
                 out.flush();
                 return 1;
             }
+            return readByIds(out);
+        }
 
+        private Integer readAll(PrintWriter out) throws IOException {
+            // Read the list first and mark exactly the reports it carried. The wire form is
+            // the ids alone; the removed "all" body is never sent.
+            var listResponse = context.runtime(true).send(HttpRequest.get("/api/v1/reports"));
+            if (listResponse.status() != 200) {
+                throw new OperatorRefusedException("reports read --all", listResponse);
+            }
+            var page = ReportsPage.fromJson(listResponse.bodyText());
+            var ids = new ArrayList<String>(page.items().size());
+            for (var item : page.items()) {
+                ids.add(item.id());
+            }
+            if (ids.isEmpty()) {
+                out.println("0 reports marked read.");
+                out.flush();
+                return 0;
+            }
+            var response = context.runtime(true).send(
+                                HttpRequest.json("POST", "/api/v1/reports/read",
+                                                    ReadReportsRequest.of(ids).toJson()));
+            if (response.status() == 200 || response.status() == 204) {
+                var parsed = ReadReportsResponse.fromJson(response.bodyText());
+                out.printf("✓ %d reports marked read.%n", parsed.markedCount());
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException("reports read --all", response);
+        }
+
+        private Integer readByIds(PrintWriter out) throws IOException {
             int marked = 0;
             for (var id : reportIds) {
                 var safeId = OperatorUrlUtil.encodePathSegment(id);

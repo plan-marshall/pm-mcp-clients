@@ -271,7 +271,7 @@ describe('CompletionReportView component', () => {
     expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
   });
 
-  it('skips no heading level across all sections of a full report at both titleLevel 1 and 2 (D3)', () => {
+  it('compares each heading with the previous level across a full report at both titleLevel 1 and 2 (D3)', () => {
     // Narrow layout (titleLevel 1)
     const { unmount } = render(CompletionReportView, {
       planId: 'fix-relay',
@@ -282,18 +282,14 @@ describe('CompletionReportView component', () => {
     const checkNoSkippedLevels = () => {
       const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
       expect(headings.length).toBeGreaterThan(0);
-      let maxLevelSeen = 0;
-      for (const h of headings) {
-        const level = parseInt(h.tagName[1], 10);
-        if (maxLevelSeen === 0) {
-          maxLevelSeen = level;
-        } else {
-          // A heading level cannot increase by more than 1 compared to previously encountered levels
-          expect(level).toBeLessThanOrEqual(maxLevelSeen + 1);
-          if (level > maxLevelSeen) {
-            maxLevelSeen = level;
-          }
-        }
+      // Each heading is compared with the one before it: a heading may go shallower freely, but it
+      // may not skip a level deeper than its predecessor (an h2 followed by an h4 skips the h3
+      // parent, which a running maximum would let through).
+      let previousLevel = parseInt(headings[0].tagName[1], 10);
+      for (let index = 1; index < headings.length; index++) {
+        const level = parseInt(headings[index].tagName[1], 10);
+        expect(level).toBeLessThanOrEqual(previousLevel + 1);
+        previousLevel = level;
       }
     };
 
@@ -303,5 +299,112 @@ describe('CompletionReportView component', () => {
     // Wide layout (titleLevel 2)
     render(CompletionReportView, { planId: 'fix-relay', report: mockReport, titleLevel: 2 });
     checkNoSkippedLevels();
+  });
+
+  it('moves focus to the report title when the report opens (D3)', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+    const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+  });
+
+  it('moves focus to the loading heading while the report loads (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(() => new Promise(() => {}));
+    render(CompletionReportView, { planId: 'fix-relay' });
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', { level: 1, name: /Loading completion report/i });
+      expect(document.activeElement).toBe(heading);
+    });
+  });
+
+  it('moves focus to the error heading when the fetch fails (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockRejectedValue(new Error('Fetch failed'));
+    render(CompletionReportView, { planId: 'fix-relay' });
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', {
+        level: 1,
+        name: /Failed to load completion report/i,
+      });
+      expect(document.activeElement).toBe(heading);
+    });
+  });
+
+  it('returns focus to the invoking control when the report closes (D3)', async () => {
+    const invoking = document.createElement('button');
+    invoking.textContent = 'Show details';
+    document.body.appendChild(invoking);
+    invoking.focus();
+    const onClose = vi.fn();
+
+    try {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport, onClose });
+
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(document.activeElement).toBe(invoking);
+    } finally {
+      invoking.remove();
+    }
+  });
+
+  it('returns focus to the invoker when the report is destroyed without a Back click (D3)', async () => {
+    const invoking = document.createElement('button');
+    invoking.textContent = 'Show details';
+    document.body.appendChild(invoking);
+    invoking.focus();
+
+    try {
+      const { unmount } = render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: mockReport,
+      });
+
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+
+      unmount();
+
+      expect(document.activeElement).toBe(invoking);
+    } finally {
+      invoking.remove();
+    }
+  });
+
+  it('does not steal focus back when the report is destroyed after a Back click (D3)', async () => {
+    const invoking = document.createElement('button');
+    invoking.textContent = 'Show details';
+    const elsewhere = document.createElement('button');
+    elsewhere.textContent = 'Elsewhere';
+    document.body.append(invoking, elsewhere);
+    invoking.focus();
+    const onClose = vi.fn();
+
+    try {
+      const { unmount } = render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: mockReport,
+        onClose,
+      });
+
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+      expect(document.activeElement).toBe(invoking);
+
+      elsewhere.focus();
+      unmount();
+
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      invoking.remove();
+      elsewhere.remove();
+    }
   });
 });

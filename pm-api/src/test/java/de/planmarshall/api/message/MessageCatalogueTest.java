@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.message;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -90,5 +91,30 @@ class MessageCatalogueTest {
     void shouldReturnEmptyMapForUnsupportedAreaWithoutCaching() {
         var result = MessageCatalogue.getMessages("en", "invalid_area_attack");
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldNameTheShownReportsInTheMarkAllTitle() {
+        var en = MessageCatalogue.getMessages("en", "reports");
+        var de = MessageCatalogue.getMessages("de", "reports");
+
+        assertAll(
+                () -> assertEquals(
+                        "Mark every shown report read without a filter, only the matching ones with one;"
+                                + " older reports stay unread",
+                        en.get("report.action.mark_all_read.title")),
+                () -> assertEquals(
+                        "Markiere ohne Filter jeden gezeigten Bericht als gelesen, mit Filter nur die passenden;"
+                                + " ältere Berichte bleiben ungelesen",
+                        de.get("report.action.mark_all_read.title")));
+    }
+
+    @Test
+    void shouldNameTheThemesInGermanWithoutTheAnglicism() {
+        var de = MessageCatalogue.getMessages("de", "common");
+
+        assertAll(
+                () -> assertEquals("Helles Farbschema", de.get("dev.theme.light")),
+                () -> assertEquals("Dunkles Farbschema", de.get("dev.theme.dark")));
     }
 }

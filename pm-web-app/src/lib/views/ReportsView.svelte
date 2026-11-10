@@ -502,6 +502,17 @@
     }
   }
 
+  /**
+   * Marks every shown report read and takes the resulting list and count from the server.
+   *
+   * The count is subtracted from the shown ids first, so the reload cannot be raced by a request
+   * that lands before its response. The first page of the unread list is then reloaded: the server
+   * is the authority on what is left, and the retained open row stays beside its detail through
+   * the reload.
+   *
+   * A report opened through `?plan=` is shown and retained without ever being read beside its
+   * detail, so it is counted by this request exactly like every other shown report.
+   */
   async function markAllShownRead() {
     if (isMarkingAll || matchingItems.length === 0) return;
     isMarkingAll = true;
@@ -526,7 +537,10 @@
 
     try {
       await apiClient.markAllReportsRead(shownIds);
-      const newlyRead = shownIds.filter((id) => !countedReadIds.has(id) && !retainedReadIds[id]);
+      // Count every shown read the view has not counted yet, the retained open row included. The
+      // `report.read` event and this response report the same read; the marker the event set keeps
+      // whichever arrives first from counting it twice.
+      const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
       for (const id of newlyRead) countedReadIds.add(id);
       unreadCount = Math.max(0, unreadCount - newlyRead.length);
 
@@ -542,8 +556,12 @@
       retainedReadIds = { ...retainedReadIds };
       items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
 
-      void refreshReportsCount();
+      // Take the first unread page and its count from the server after the request. A reload that
+      // was already in flight now cannot make this act subtract the same read twice.
+      await loadReports();
     } catch (err: unknown) {
+      // Roll back only the retention markers this request added; a row another act retained keeps
+      // its place.
       for (const id of newlyRetainedIds) {
         delete retainedReadIds[id];
       }
@@ -877,9 +895,12 @@
               size="small"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
-              disabled={isMarkingAll}
-              loading={isMarkingAll}
+              aria-disabled={isMarkingAll ? 'true' : undefined}
+              aria-busy={isMarkingAll ? 'true' : undefined}
             >
+              {#if isMarkingAll}
+                <span class="mark-all-cue" data-testid="mark-all-busy" aria-hidden="true"></span>
+              {/if}
               {$t('report.action.mark_all_read')}
             </Button>
           {/if}
@@ -1191,6 +1212,32 @@
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
+  }
+
+  /* The mark-all act keeps its place in the tab order (aria-disabled, never native disabled); the
+     spinner is the visible cue that the request is still running. */
+  .mark-all-cue {
+    display: inline-block;
+    inline-size: 0.85em;
+    block-size: 0.85em;
+    margin-inline-end: var(--space-2);
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: mark-all-spin 0.75s linear infinite;
+  }
+
+  @keyframes mark-all-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark-all-cue {
+      animation: none;
+    }
   }
 
   .loaded-only-hint {
