@@ -1,45 +1,44 @@
 <script lang="ts">
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
+  import { t } from '../i18n';
+  import { displayError } from '../display';
 
   /**
-   * The block a view draws when what it wanted to show could not be read (VD-P-05, VD-S-04): an
-   * icon, a title, one sentence and one act, with the technical code folded under `Details`.
+   * The block a view draws when what it wanted to show could not be read (VD-P-05, VD-S-04,
+   * UX-S-06): the title, the one sentence and the one act the error's code stands for, with the
+   * cause and the technical code folded under `Details`.
    *
-   * The sentence says what the person can do next; the code is there for a report and never leads,
-   * so it stays folded away until someone opens it.
+   * The texts are not the view's: `displayError` resolves them from the shared catalogue, so a
+   * missing text is a catalogue gap reported to the set's owner, never a sentence written here.
    */
-  export let title: string;
-  /** The one sentence under the title, from the view's catalogue key. */
-  export let message: string;
-  /** The technical code, shown folded under `Details`. It is drawn only together with
-   * `detailsLabel`: a view that has a code always carries both, and a view with neither draws no
-   * `Details` at all. */
-  export let code: string | null | undefined = undefined;
-  /** The word that opens the folded code, from the view's catalogue key; it is required for a code
-   * to be drawn. */
-  export let detailsLabel: string | undefined = undefined;
+  /** The error code the block speaks about; an unknown code draws the shared fallback. */
+  export let code: string;
   /** The one act, from the view's catalogue key; omitted when there is none. */
   export let actionLabel: string | undefined = undefined;
   /** Reports the act the person took. */
   export let onAct: () => void = () => {};
   /** The heading level of the title, so a view keeps its outline in order. */
   export let titleLevel: 2 | 3 | 4 | 5 | 6 = 3;
+
+  $: error = displayError(code, $t);
+  $: hasCode = (code ?? '').trim().length > 0;
 </script>
 
 <div class="error-state" data-testid="error-state">
   <span class="error-state__mark"><Icon name="state.error" size={24} /></span>
-  <svelte:element this={`h${titleLevel}`} class="error-state__title">{title}</svelte:element>
-  <p class="error-state__message">{message}</p>
+  <svelte:element this={`h${titleLevel}`} class="error-state__title">{error.title}</svelte:element>
+  <p class="error-state__message">{error.fix}</p>
   {#if actionLabel}
     <Button variant="secondary" on:click={onAct}>{actionLabel}</Button>
   {/if}
-  {#if code && detailsLabel}
-    <details class="error-state__details">
-      <summary class="error-state__summary">{detailsLabel}</summary>
+  <details class="error-state__details">
+    <summary class="error-state__summary">{$t('common.action.details')}</summary>
+    <p class="error-state__cause">{error.cause}</p>
+    {#if hasCode}
       <code class="error-state__code">{code}</code>
-    </details>
-  {/if}
+    {/if}
+  </details>
 </div>
 
 <style>
@@ -84,6 +83,12 @@
 
   .error-state__summary {
     cursor: pointer;
+  }
+
+  .error-state__cause {
+    max-inline-size: 52ch;
+    margin-block-start: var(--space-2);
+    margin-block-end: 0;
   }
 
   .error-state__code {

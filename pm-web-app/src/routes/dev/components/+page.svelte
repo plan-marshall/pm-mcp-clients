@@ -366,10 +366,7 @@
           message={$t('dev.empty.icon_message')}
         />
         <ErrorState
-          title={$t('dev.error.title')}
-          message={$t('dev.error.message')}
           code={$t('dev.error.code')}
-          detailsLabel={$t('dev.error.details')}
           actionLabel={$t('dev.error.act')}
           onAct={() => {}}
         />

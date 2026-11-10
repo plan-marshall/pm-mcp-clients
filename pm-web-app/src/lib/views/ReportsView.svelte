@@ -12,6 +12,7 @@
   import Skeleton from '../components/Skeleton.svelte';
   import TriagePage from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
+  import { errorCodeOf } from '../api/errors';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -416,7 +417,7 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      loadError = (err as Error)?.message || $t('report.list.load_failed');
+      loadError = errorCodeOf(err) || $t('report.list.load_failed');
     } finally {
       isLoading = false;
     }
@@ -923,9 +924,8 @@
       </div>
     {:else if loadError}
       <ErrorState
-        title={$t('report.list.load_failed')}
-        message={loadError}
-        actionLabel={$t('web.common.retry')}
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
         onAct={loadReports}
         titleLevel={2}
       />
