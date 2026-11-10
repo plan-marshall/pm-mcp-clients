@@ -83,25 +83,27 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-08)`, `doc/claude_review/ux/proposals.adoc#UX-P-06` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/plan.adoc:58 UX-S-08 -> UX-P-06; ux/proposals.adoc:269-270 UX-P-06 Decisions as Triage
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-08 and `ux/proposals.adoc:269` UX-P-06 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a rule to `doc/design/shared/decisions.adoc` (#announce): a notification fires only for a decision the client has not announced before (none after a reconnect or a reload), decisions arriving within one second make one notification, several open the list of open decisions (`decision.notify.several`) and one opens that decision. this plan builds it as deliverable 5 (moved here from `PLAN-83`); the triage view must not re-announce on its own re-read.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (#301): templates live in pm-web-app/src/lib/templates/ (TriagePage, ObjectPage, WizardPage, DashboardPage) and its D3 guard lists views sitting on a template; DecisionView does not use TriagePage yet and this plan must add itself to that list. Key decision.notify.several is not yet in decisions.en.properties (to be created).
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: the answer endpoint accepts a client-chosen request id that the `decision.answered` event echoes — confirm/refute at `pm-api/src/main/java/de/planmarshall/api` § decision answer resource and `pm-web-app/src/lib/api/client.ts` § `answerDecision` (verify-at-outline)
+- HYPOTHESIS: `PremiseEvidenceView.svelte` already renders the evidence list and can carry the plain labels without a new component — confirm/refute at `pm-web-app/src/lib/components/PremiseEvidenceView.svelte` § `evidence` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/PremiseEvidenceView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/EvidenceView.svelte` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 07104678
-- OBSERVED: `doc/design/shared/decisions-texts.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/DecisionView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/decisions.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/decisions.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/DecisionView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/PremiseEvidenceView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/decisions.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/decisions.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/decisions-texts.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -149,3 +151,40 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/decisions.adoc` (#order, #recommendation, #parts, #own-words, #chat, #announce, #waiver, #outcomes), `doc/design/web-app/navigation.adoc` (#lenses, #url, #keys, #missing), `doc/design/web-app/components.adoc` (#hierarchy, #row-link), `doc/design/web-app/components-fields.adoc` (#submit, #choice, #compose), `doc/design/web-app/chat.adoc` (#placement). HEAD 1cc0e10e. `PLAN-111` has landed (the layout clause is done). **Split proposed** (the spec would hold six deliverables):
+
+- `PLAN-51` keeps D1–D3 (list, answer form, recommendation and evidence).
+- D4 and D5 become one plan `web-decision-announcer` with no D1/D2 dependency (stageable at once, after `PLAN-45` which holds `views/`).
+- D6 (a) and (b) and the chat adoption move to the D4/D5 web chat package.
+
+1. **The list and one decision.** `DecisionView.svelte` becomes the Decisions lens: the list of open decisions (rows are `RowLink` with `aria-current`; the subject a `Chip`; the phase in list and detail; reversibility and "blocks the plan" as detail text; the group head with a `CountBadge`), and the decision as the object column at `/decisions/{id}`; blocking first, then oldest, as the runtime serves; a selection a filter hides is a pinned row. The description is not repeated in the detail.
+   - Done when: `decisions.spec.js` on `running-work` → `decisions.open`: eight decisions, blocking first, one selected beside the list (evidence order: `test-first`); browser check of `/decisions` at 390×844 and 1440×900 in `de`/`en`, both themes, baseline and after (evidence order: `none`); the prettier drift of `DecisionView.svelte` and `DecisionView.test.ts` named by the PLAN-111 amendment is cleared (evidence order: `none`).
+2. **Answering.** Options are `RadioGroup` cards (`CheckGroup` for a part that accepts several), the one primary is _Decide_ (`decision.confirm.action`), `Enter` decides only a decision with a chosen option; the success line is the form's `FormStatus` `decision.outcome.answered` ("Decided: {answer}"), not a toast; after deciding, the next decision is selected by a `replaceState`. Own words use `Compose`, the waiver reason a `TextArea` with its one required text; _Decide_ disabled shows its reason in `FormStatus`. The waiver keeps both answers secondary, no preselection, `Enter` answers nothing, _Later_ ghost. A phone shows the list, then the decision (one column).
+   - Done when: `DecisionView.test.ts` and `decisions.spec.js`: choose, `Enter`, the `FormStatus` line, the next decision selected, the waiver has no preselection (evidence order: `test-first`).
+3. **Recommendation and evidence.** The recommendation stands as `decisions.adoc#recommendation` says (marked and preselected only for a reversible decision with unanimous, clear-majority or no-quorum support; behind a disclosure for a costly or irreversible one); "Recommended by outline: …" is a sentence, never a label suffix; evidence is the description, then the evidence it names as fields with plain labels, `file`/`lines` as a link where the project offers one, an unknown structure as a folded block, shown expanded. If a new component is needed it is added to `doc/design/web-app/components.adoc` first (`#new-component`).
+   - Done when: unit tests of label, fields and the fallback (evidence order: `test-first`); browser check on `running-work` → `decisions.open` (evidence order: `none`).
+
+Removed or replaced: the keys `1`–`9`, `c` and `l` (not in the design; a design line in `navigation.adoc#keys` and the operator's word first, then they may return as a deliverable); the toast "Decided: <option>" (it is the `FormStatus` line); the layout toggle and the blocks/reversible marks of a row; D4 and D5 move to `web-decision-announcer` (below); D6 moves to the web chat package.
+
+**Content of the carved plan `web-decision-announcer` (draft for the orchestrator)**
+- D4 own answer confirmed: the answer request carries a client request id and `decision.answered` with that id confirms; other events produce "answered elsewhere" with channel, device and option label (`decisions.adoc#outcomes`).
+  - Done when: `decisions.spec.js` own answer, and a `POST /mock/broadcast` from `cli` shows the "answered in the terminal" line (evidence order: `test-first`).
+- D5 one notification for a burst, none after a reconnect: an announcer in a store, not in the view (`DecisionView.svelte:289` does `new Notification` inline today), keeps the announced set, primes it silently at start, reload and reconnect, makes one notification for decisions within one second (`decision.notify.several`, `{count} decisions wait for you`, opens the list; one opens that decision), drops a decision answered before the notification shows, and never carries content. Add `decision.notify.several` to `decisions.{en,de}.properties`.
+  - Done when: unit tests with a fake clock and notification; e2e through the mock's decision events; the row `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` by the last of the D2 navigation engine, this deliverable and `PLAN-59` D4 (evidence order: `none`).
+
+Implements: `doc/design/shared/decisions.adoc` § Where the Recommendation Stands, Decisions in Parts, Announcing a Decision, When It Ends Elsewhere; `doc/design/web-app/navigation.adoc` § Lenses and the Rail, Addresses and History, Keys and Focus; `doc/design/web-app/components-fields.adoc` § Submitting.
+
+Dependencies: D1 foundation (RowLink, Chip, CountBadge, RadioGroup/CheckGroup, Compose, TextArea, FormStatus, Button hierarchy), D2 navigation engine (column engine, `/decisions/{id}`, `replaceState` fill, `Enter`/`j`/`k` keys). The chat part waits for the D4 web chat package, which also takes the `chatBusyId` and revision-guard tests (D6 a and b: per-decision busy marker, late proposal answer after a revision, `endTheChat` generation guard) as Done-when of its decision-chat adoption.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.

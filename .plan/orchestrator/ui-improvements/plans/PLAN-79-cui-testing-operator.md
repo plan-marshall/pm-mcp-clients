@@ -57,6 +57,7 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 
 - Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; they are the three deliverables of PLAN-97 (staged 2026-11-04 on the operator's word): sequence this plan after PLAN-97. PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
   - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-97 #358 landed; c7d9dcb8 ancestor of main
+- OBSERVED: AnswerSanitizationTest, AnswerMultipartTest, AnswerRefusalTest, AnswerDialogueIT, CleanupCommandTest, StateDialogueTest and DialogueSourceTest carry no @EnableGeneratorController — read by git grep -c at 1cc0e10e
 
 ## Expected Surface
 
@@ -125,3 +126,15 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Residue Fold 2026-11-10 (Amendment)
+
+Source: the landings of PLAN-36, -121, -124, -23, -120 and -119 (`landings/PLAN-NN.md`), which name test classes that break the
+Generators rule. No new deliverable; the classes are named so that none is skipped as "added after the count".
+
+- Convert, when this plan runs and after PLAN-126, -B and -C have landed (those plans write the touched classes with
+  Generators; this list covers what they leave): `NeedsCommandTest`, `NeedsOneCountTest`, `transcript/NeedsIT`,
+  `AnswerMultipartTest`, `AnswerRefusalTest`, `AnswerSanitizationTest`, `transcript/AnswerDialogueIT`, `ProjectCommandTest`,
+  `EnrolCommandTest`, `CleanupCommandTest`, `ControlDialoguesTest`, `EpicCommandTest`, `dialogue/StateDialogueTest`,
+  `DialogueSourceTest`.
+- A class that PLAN-126, PLAN-127 or PLAN-128 already converted is not touched again.

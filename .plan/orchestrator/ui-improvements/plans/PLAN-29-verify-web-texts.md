@@ -43,13 +43,15 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cross-cutting/verification.adoc exists on origin/main and holds the check table
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/cross-cutting/verification.adoc:10-48` holds CC-V-01..CC-V-05 as the spec lists them.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+- HYPOTHESIS: the text guard declares a view list that can be extended without changing the guard's rules — confirm/refute at `pm-web-e2e/tests/text-guard.spec.js` § `declared views` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `doc/claude_review/verification-results/verify-web-texts.adoc` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-texts.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -81,3 +83,20 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: re-grounding of 2026-11-10 at HEAD 1cc0e10e. The three deliverables stand unchanged. A verification plan runs after the code it checks; its gate is the web wave, no longer only the design sessions (D1–D5 are `AGREED` and merged).
+
+What each check must find is read against the agreed documents; the check ids and their "How" stay:
+
+- `CC-V-01`: in failing mode `pm-web-e2e/tests/text-guard-baseline.json` is empty (it holds entries today, for example `EpicView` `de` `paused`). The declared views include every view this wave adds or moves (the What waits list, the project page, the Intent tab views).
+- `CC-V-02`: the plain words are the agreed catalogue's: the reasons `overview.needs.*` (`doc/design/shared/needs-and-find.adoc#waits`), the kinds `common.kind.*` (`doc/design/web-app/components-tags.adoc#kind-mark`), the states `state.*`.
+- `CC-V-04`: the tab titles come from `ROUTE_TITLES` of `pm-web-app/src/lib/routes.ts`, including the title of What waits that carries the total (`web.inbox.title`, `doc/design/web-app/needs-and-find.adoc#route`). The theme survives a reload (`pm_theme`, `doc/design/web-app/README.adoc#themes`); where the choice is offered is the placement `PLAN-85` builds ("This browser" and the pairing page), **not** the rail foot that `README.adoc#themes` still names (design inconsistency, to be corrected in the design first).
+- `CC-V-05`: times follow `doc/design/shared/texts-and-languages.adoc#time`.
+
+Dependencies (all must have landed before it is emitted): `PLAN-85`; the D1 foundation package (catalogue clean-up moves keys); the D2 navigation engine (routes and titles); the views package (System, Cleanup, CompletionReport, Reports strings); the web plans `PLAN-49`, `51`, `52`, `53`, `55`, `58`, `59`, `60`, `62`.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.

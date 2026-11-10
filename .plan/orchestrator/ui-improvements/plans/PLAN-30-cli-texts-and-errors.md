@@ -79,6 +79,10 @@ Source of this plan (read before scoping):
 
 - PLAN-97 (staged 2026-11-04): the `OnboardCommand` strings move after PLAN-97 deliverable 3 (the top-level `onboard` is folded into `pm-operator` without a verb and `config <aspect>`); the drain and accept-edit texts come from PLAN-97 deliverables 1 and 2.
   - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: OnboardCommand absent; Drain/AcceptEdit use the catalogue
+- OBSERVED: OperatorRefusedException.java:33-36 builds the English literal "refused by the runtime (HTTP n)"; AnswerCommand rethrows it at :317,341,388,704,1333,1353,1368,1469,1498 — read at `pm-operator/src/main/java/de/planmarshall/operator/OperatorRefusedException.java` § `refusalMessage` at 1cc0e10e
+- OBSERVED: decision.refused.* has two keys (invalid_answer, dependency_unanswered) and no pm-operator main code reads it — read at `pm-api/src/main/resources/messages/decisions.en.properties` :38-39
+- HYPOTHESIS: the answer route's refusal body carries the four design codes and, for invalid_answer, a reason — confirm/refute at `pm-api` § `DecisionAnswerRequest`, the mock answer route in `MockRuntimeEngine` and the specification (verify-at-outline)
+- OBSERVED: EpicCommand.NextCommand holds English option descriptions and the success literal — read at `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` :406-410,423
 
 ## Expected Surface
 
@@ -110,6 +114,10 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/DecomposeCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/AnswerRefusalTest.java` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/14-transcripts-decisions.adoc` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -179,3 +187,41 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Residue Fold 2026-11-10 (Amendment)
+
+Source: `landings/PLAN-124.md` (L1-1, L1-2, layer 2 D3), re-read at `1cc0e10e`. This section supersedes the spec text
+where they differ. Deliverable 2 grows by one numbered addition; the deliverable count stays 4.
+
+R1. **Refusals of the answer verb render per the design, not as the English exception text** (added to deliverable 2)
+ - What:
+   - `OperatorRefusedException.java:33-36` builds `"<verb> refused by the runtime (HTTP n): <body>"`. `AnswerCommand` rethrows it
+     at `:317,341,388,704,1333,1353,1368,1469,1498`. Route it through the deliverable 2 renderer like every other refusal.
+   - The four decision refusals `conflict`, `already_answered`, `invalid_answer` and `dependency_unanswered` are not errors of
+     the console (`14-transcripts-decisions.adoc:190`, `04-console.adoc:138`): print the decision as it stands, with the
+     text of `decision.refused.*` (`decisions.en.properties:38-39` has `invalid_answer` and `dependency_unanswered`; add
+     `conflict` and `already_answered`, en and de). `invalid_answer` and `dependency_unanswered` keep an interactive decision
+     at its prompt. The exit code of a non-interactive refusal: see OPEN DECISION below.
+   - `AnswerRefusalTest` today pins the English literal; rewrite it per code and language.
+   - `EpicCommand.NextCommand` (`EpicCommand.java:406-410,423`: option descriptions and `"✓ Next plan for %s started"`) is in
+     deliverable 1's `EpicCommand` literal sweep: name these sites there. The behaviour of `epic next` is not here (PLAN-127).
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - `AnswerRefusalTest` asserts, per refusal code and per language, the printed decision text and the exit code, and fails on
+     a revert of the renderer path (evidence order: `test-first`)
+   - `git grep -n "refused by the runtime" -- pm-operator/src/main` is empty (evidence order: `none`)
+
+OPEN DECISION (operator): exit code of a decision refusal printed "as the decision stands" (operator decision 2026-11-10, epic.md Decisions, item 4).
+
+Sequencing: PLAN-127 (the other answer-verb residue) runs BEFORE this plan, so the deliverable 1 guard inversion also
+scans PLAN-127's new texts.
+
+Scope-bloat guard: 4 deliverables, but D1 (guard inversion, ~60 literals) and D2 (renderer, Picocli handler, local 404 sites, R1)
+are both wide. The earlier suggestion stands: split into "strings and guard" and "refusals, Picocli and exit codes".
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Exit code of a decision refusal (decision 4):** exit 1 (the refusal row of the exit table), with the decision printed as it stands.

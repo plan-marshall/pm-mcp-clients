@@ -59,26 +59,33 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-10)`, `doc/claude_review/ux/proposals.adoc#UX-P-07` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc:68 UX-S-10 Start as a wizard -> UX-P-07; ux/proposals.adoc:284-285 [#UX-P-07] Start as a Wizard
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-10 and `ux/proposals.adoc:284` UX-P-07 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - HYPOTHESIS: the start view hangs on "checking" after a jump to a `start.*` state (UC-F-36) because the gate has no time limit — confirm/refute at `pm-web-app/src/lib/stores/start.ts` (verify-at-outline)
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: stores/start.ts (58 lines) holds no gate; StartView.svelte:120-163 load() awaits apiClient.getEntry/openEntry with no timeout or signal; api/client.ts:3036 request() takes an optional signal that StartView never passes; the cause still sits in StartView/client, not start.ts
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `StartView.svelte:126,136` `load()` awaits `getEntry`/`openEntry`; there is no `AbortController`, signal or timeout in the file; `stores/start.ts` holds no gate. The cause is still in StartView/client.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Line references in the hypothesis moved (StartView.svelte load() at 120-163, client.ts request() at 3036); StartView.svelte grew to 1327 lines and now shows start.state.checking for the documents source (line 343) too; SourceList.svelte, start properties and starting-work-texts.adoc changed since the anchor.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: the entry is created by `openEntry` before any source exists and the gate refusal creates none, so a lazy entry needs a split of that call — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `openEntry` and `doc/design/shared/starting-work.adoc#steps` (verify-at-outline)
+- HYPOTHESIS: no `StartView.test.ts` and no `start.test.ts` exist, so the gate and lazy-entry tests are new files — confirm/refute at `pm-web-app/src/lib/views/` and `pm-web-app/src/lib/stores/` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/SourceList.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/SourceIntakePanel.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/RecipeSelector.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/stores/start.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/start.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/git-sources.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/lesson-source.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/starting-work.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/starting-work-texts.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/SourceList.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/SourceIntakePanel.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/RecipeSelector.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/GitSourceIntakeModal.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/LessonSourceModal.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/start.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/start.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/start.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/git-sources.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/lesson-source.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/starting-work.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/starting-work-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -113,3 +120,33 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/starting-work.adoc` (#steps, #sources, #description, #documents, #chat, #ready, #leaving), `doc/design/web-app/components.adoc` (#hierarchy, #templates), `doc/design/web-app/components-fields.adoc` (#form-shape, #validation, #choice). HEAD 1cc0e10e.
+
+1. **The gate.** `StartView.svelte` sits on `WizardPage` (720 px). The gate shows "Checking the project's setup…" (`start.state.checking`) with a spinner; after 20 s the cause and _Try again_ (a client bound, with a signal passed to `request()`; the `ErrorState` and loading pattern of `PLAN-45`); a refused gate shows what is missing and its one act; `/start` without a project shows the error pattern with _Choose a project_.
+   - Done when: `start.spec.js`: a gate that does not answer shows its cause after 20 s; `/start` without a project (evidence order: `test-first`); the browser check on `projects-and-start` → `start.sources`, `start.refused` (evidence order: `none`).
+2. **Sources and Ready.** ① Sources: for a plan first `start.choose` (from sources / a recipe, a recipe disabled with its reason); then the list of sources with the add buttons of the design; the description is an editor with one _Add_; _Continue_ names what it waits for; ② Ready: title and id editable, _Start the plan_ the one primary. Footer: _Back_ ghost left, _Abandon_ in the overflow, the primary right; one primary per step; no two acts with the same label. Fields use `Field`; the documents mode is a `RadioGroup`.
+   - Done when: `start.spec.js`, `git-sources.spec.js`, `lesson-source.spec.js`: one primary per step; Back works; Abandon asks first (evidence order: `test-first`); the browser check (evidence order: `none`); the open-issue read at the head (evidence order: `none`).
+3. **Lazy entry — conditional.** Created only if the contract allows the gate to be checked without an entry: the entry is created when the first source is added and leaving without a source leaves none. If not, this deliverable is dropped and the plan says so.
+   - Done when: a unit test of `lib/stores/start.ts` (a new file `start.test.ts`) and an e2e on `projects-and-start` → `start.sources` (evidence order: `test-first`).
+4. **Chat about the request** — only if `PLAN-53` and not D4W adopts it (see the ownership note below). The chat is the `Chat` side column of `WizardPage`, opened at ①, disabled with its reason until a source is stored, with `control.chat.*` keys.
+
+Ownership: the start flow's components (`SourceList`, `SourceIntakePanel`, `RecipeSelector`, the source modals) belong to this plan, not to the views package. The chat of the start entry has two owners in the designs (`chat.adoc#rely`); the orchestrator names one.
+
+Removed or replaced: a numbered "What" step (it is `start.choose` inside ①); "Add a source" as one menu; _Discard_ (it is _Abandon_).
+
+Implements: `doc/design/shared/starting-work.adoc` § Steps, The List of Sources, Leaving and Coming Back; `doc/design/web-app/components.adoc` § Hierarchy.
+
+Dependencies: D1 foundation (Button hierarchy, Field, RadioGroup), `PLAN-45` (merge first), D4 web chat package (deliverable 4 only). D2 navigation engine is soft (the wizard is not a column chain; the routes `/start`, `/projects/{id}/start`, `/entries/{id}` already exist).
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.

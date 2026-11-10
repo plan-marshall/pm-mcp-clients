@@ -64,21 +64,28 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-06` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/proposals.adoc:339-340 [#UX-P-10] Epic, Projects, Reports, Designer; use-cases/proposals.adoc:126-127 UC-P-06 Overview and epic agree with themselves
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/proposals.adoc:339` `[#UX-P-10]` and `use-cases/proposals.adoc` UC-P-06 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates in src/lib/templates/, ObjectPage for the epic page); EpicView was changed by PLAN-90/a11y and must be added to the template guard list. PLAN-47 (web-actions-by-state) has not landed: ActionBar.svelte exists (PLAN-25) but lib/actions/byState.ts does not.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: the head "Landungen" count (`resource.landings`) can differ from the landing rows the view lists — confirm/refute at `pm-web-app/src/lib/views/EpicView.svelte:117,746` (verify-at-outline)
+- HYPOTHESIS: `FindingsReviewModal` does not select the first open item when it opens — confirm/refute at `pm-web-app/src/lib/components/FindingsReviewModal.svelte:48` § `selectedId` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/EpicView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/epicEvents.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/epic-view.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/epic-view.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/epic_view.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/epic_view.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/EpicView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/epicEvents.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/epicEvents.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/epic-view.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/epic-view.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/epic_view.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/epic_view.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -115,3 +122,35 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/epic-view.adoc` (#layout, #reactions), `doc/design/web-app/navigation.adoc` (#levels, #column-types, #side-columns), `doc/design/web-app/components-tags.adoc#tag-places`, `doc/design/shared/work-actions.adoc#review`, `doc/design/shared/intent-and-outline.adoc#epic`. HEAD 1cc0e10e.
+
+1. **The epic in the column chain.** `EpicView.svelte` is the epic's column: as the list column its plans grouped by workstream (a workstream is no level) with status and what each waits for (reason and a relative _since_), the id as a `Chip`; selecting a plan opens the plan column to its right. As the object column it keeps the full head (`KindMark`, title, state sentence, one `ActionBar` with the primary from `byState`, no _Back_) and the lines for sources, landings, findings, watches, tokens and events. No path in the head.
+   - Done when: `epic-view.spec.js` on `running-work` → `control.epic`: waits show since, titles first, selecting a plan opens it to the right (evidence order: `test-first`); the browser check on `control.epic`, `control.review` (evidence order: `none`).
+2. **Tabs and the Intent tab.** The tab set is decided first (G1); the epic's Intent (destination, done-when checks with evidence, non-goals, each plan's criterion) is the web intent and outline package's content; this plan places the tab.
+3. **Counts and findings review.** Head counts and _Landungen_ come from the rows the view lists (`EpicView.svelte:117,746`); `FindingsReviewModal` opens with the first open item selected and its counts match the card.
+   - Done when: unit tests: epic counts equal rows; the modal selects the first open item (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+4. **A failed epic-resource read says so and can be retried** (PLAN-100 residue). Unchanged: after a failed initial `getEpicResource` (`EpicView.svelte:157-161`) show `ErrorState` with _Try again_ and let _Next plan_ stop claiming the epic is still being read (`control.epic.next_waiting`).
+   - Done when: a test that fails before: a rejected resource read shows the error and a retry that reloads it (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+5. **The epic's chat** (D4 web chat package): the `Chat` side column of the epic; the `WorkControlPanel` dialogs of the epic belong here with `PLAN-55`.
+
+Removed or replaced: the tree-with-summary-on-the-right layout; the epic's path in the head; _Zurück_.
+
+Ownership: the logic of `FindingsReviewModal` (first open item) is this plan's; its restyle and its chat belong to the views package and the D4 web chat package.
+
+Implements: `doc/design/shared/epic-view.adoc` § Layout, What the Epic Does by Itself; `doc/design/web-app/navigation.adoc` § Levels as Columns; `doc/design/shared/work-actions.adoc` § Reviewing Findings or Watches.
+
+Dependencies: D1 foundation (ObjectPage regions, Chip, StatusLabel, ReasonBadge, RowLink), D2 navigation engine, the design line on tab sets (G1), D4 web chat package (deliverable 5), the intent package (deliverable 2). Sequence after `PLAN-45`, which provides `ErrorState`/`Skeleton`. `PLAN-43`, `PLAN-47`, `PLAN-03` have shipped.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+- **Tab set:** the tabs of this page are decided by the D6 design session (WS-06, staged 2026-11-10); this plan stays parked until that session's documents are `AGREED`, and the Intent tab's content belongs to the web intent & outline package (this plan only reserves the tab).

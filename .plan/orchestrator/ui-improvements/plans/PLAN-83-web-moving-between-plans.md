@@ -42,20 +42,16 @@ The two other parts of that package were moved by the structure review of 2026-1
 ## Claim Labels
 
 - OBSERVED: the web app's plan view has the path to its project and no neighbours — `PlanView.svelte` holds no sibling navigation — stated by the ThinkRail analysis (`doc/articles/thinkrail.adoc`), read 2026-10-30
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `PlanView.svelte` and `EpicView.svelte` hold no sibling or neighbour navigation (no match for sibling, neighbour or work list).; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - OBSERVED: the split breakpoint is defined at `doc/design/web-app/view-density-and-filtering.adoc#breakpoint` — read at HEAD 07104678
+  - verdict: contradicted | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: yes | evidence: `doc/design/web-app/view-density-and-filtering.adoc` has no `#breakpoint` anchor any more. Its anchors are `#templates` (:16) and `#filter-control` (:54). D2 replaced the split breakpoint by the column window (navigation.adoc#window).; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-52`, `PLAN-55` and `PLAN-58` (the running-work, plan and epic pages) edit the same views. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/shell/` — present at HEAD 07104678; the work list component is created by this plan
-- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/epic-view.spec.js` — present at HEAD 07104678
-- OBSERVED: `doc/design/web-app/` — present at HEAD 07104678; the work list design is created by this plan
-- OBSERVED: `doc/plans/README.adoc` — present at HEAD 07104678
+
+- OBSERVED: `doc/plans/README.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -88,3 +84,15 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/web-app/navigation.adoc` (#levels, #column-types, #window, #url), `doc/plans/web-moving-between-plans.adoc` (task 1, "Folded into the navigation engine"). HEAD 1cc0e10e.
+
+**Superseded by the D2 navigation engine package.** The work list beside a plan and an epic is the column to the left of the plan (its siblings, with it selected) in the column window; it is built by the engine, and there is no design left to write. The claim about the split breakpoint (`view-density-and-filtering.adoc#breakpoint`) no longer holds: that anchor is gone; the window rule replaced it.
+
+What moves to the navigation engine's Done-when: from a plan, one step to a neighbour opens its plan view, and the same on an epic; the list keeps the order served (`PLAN-82`) and never sorts again; the open item is marked with `aria-current`; a narrow window shows one column and no strip; the browser check on `running-work` at 1440×900 and 390×844.
+
+Where the other two parts of the package stand: "Add a plan" on a project's row is deliverable 4 of `PLAN-59`; the notification burst is deliverable 5 of `PLAN-51` (carved into `web-decision-announcer`). The row `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` by the last of the three (the engine, the announcer deliverable, `PLAN-59` D4). Ports 20830/20831 are released.
+
+Dependencies: none of its own; it is never emitted.
