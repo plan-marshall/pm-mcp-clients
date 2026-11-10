@@ -403,6 +403,8 @@
   async function loadDecisions() {
     isLoading = true;
     loadError = null;
+    // A reload answers for the act the banner reported too: the act's failure is no longer news.
+    errorMessage = '';
     try {
       decisions = await apiClient.getDecisions();
       void refreshDecisionsCount();
@@ -515,6 +517,7 @@
     isSubmitting[id] = true;
     try {
       await apiClient.answerDecision(id, { action, reason });
+      errorMessage = '';
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
@@ -535,6 +538,7 @@
     isInterpreting[key] = true;
     try {
       interpretations[key] = await apiClient.interpretDecision(dec.id, words);
+      errorMessage = '';
     } catch (err: unknown) {
       errorMessage = actFailureText(err, $t('decision.interpret.failed'));
     } finally {
@@ -565,6 +569,7 @@
         option,
         note: partNotes[key],
       });
+      errorMessage = '';
       setAnswer(dec, part, index, option);
       closeDecision(dec.id);
     } catch (err: unknown) {
@@ -599,6 +604,7 @@
           ...(notes.length > 0 ? { note: notes.join('\n') } : {}),
         });
       }
+      errorMessage = '';
       closeDecision(dec.id);
     } catch (err: unknown) {
       errorMessage = actFailureText(err, $t('decision.answer.failed'));
@@ -611,6 +617,7 @@
     isSubmitting[dec.id] = true;
     try {
       await apiClient.withdrawDecision(dec.id);
+      errorMessage = '';
       closeDecision(dec.id);
     } catch (err: unknown) {
       errorMessage = actFailureText(err, $t('decision.withdraw.failed'));

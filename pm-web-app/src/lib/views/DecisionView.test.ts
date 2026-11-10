@@ -149,6 +149,24 @@ describe('DecisionView component', () => {
     expect(screen.queryByText('timeout')).not.toBeInTheDocument();
   });
 
+  it('clears the act banner on the reload its Retry runs', async () => {
+    vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Rebase onto main')).toBeInTheDocument());
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+
+    const sentence =
+      'Try again; if it keeps taking this long, check that the runtime is running.';
+    expect(await screen.findByText(sentence)).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
+  });
+
   it('renders open decisions and waivers', async () => {
     render(DecisionView);
 

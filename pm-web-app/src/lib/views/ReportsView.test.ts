@@ -723,6 +723,25 @@ describe('ReportsView component', () => {
     expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
   });
 
+  it('keeps the focus off the body when Retry reloads a failed list', async () => {
+    vi.spyOn(apiClient, 'getReports')
+      .mockRejectedValueOnce(new ClientError('timeout'))
+      .mockResolvedValue(mockPage);
+
+    render(ReportsView);
+
+    // The first read failed before the page was shown, so its block is static: no live role.
+    const error = await screen.findByTestId('error-state');
+    expect(error).not.toHaveAttribute('role');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByTestId('error-state')).toBeNull());
+    // The button that carried the focus is gone; the focus belongs to the list, not the body.
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.textContent?.trim()).toBe('Reports');
+  });
+
   it('keeps a failed reload visible while the filter matches nothing', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');

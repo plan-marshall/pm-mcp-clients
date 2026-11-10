@@ -287,6 +287,23 @@ describe('ProjectExplorerView component', () => {
     expect(banner).not.toHaveTextContent(/^timeout$/);
   });
 
+  it('clears the favourite banner after a toggle succeeds', async () => {
+    vi.spyOn(apiClient, 'toggleFavourite').mockRejectedValueOnce(new ClientError('timeout'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => expect(screen.getByTestId('star-btn-pm-mcp-clients')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
+
+    expect(await screen.findByTestId('explorer-action-error')).toHaveTextContent(
+      'Failed to update favourite',
+    );
+
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
+
+    await waitFor(() => expect(screen.queryByTestId('explorer-action-error')).toBeNull());
+  });
+
   it('handles unenrolment safety check refusal on active work', async () => {
     vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('409 scope_active'));
 

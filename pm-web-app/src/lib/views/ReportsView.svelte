@@ -38,6 +38,10 @@
   let actionError = $state('');
   /** The act the error line's Retry repeats; `null` means a plain reload of the list. */
   let retryAction = $state<(() => Promise<void>) | null>(null);
+  /** The heading of the list, so a retry that clears the error has somewhere to put the focus. */
+  let listHeading = $state<HTMLElement | null>(null);
+  /** The block of a failed read, so a retry that fails again leaves the focus on the error. */
+  let loadErrorRegion = $state<HTMLElement | null>(null);
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -429,6 +433,16 @@
       isLoading = false;
       refreshing = false;
     }
+  }
+
+  /**
+   * Retries a failed read and keeps the focus where it was: on the error the retry still shows, or
+   * on the list. The button that carried the focus is gone once the retry runs, and the browser
+   * drops the focus to the body then.
+   */
+  async function retryListLoad(): Promise<void> {
+    await loadReports();
+    (loadError !== null ? loadErrorRegion : listHeading)?.focus();
   }
 
   /**
@@ -888,9 +902,9 @@
     <header class="reports-header">
       <div class="reports-header__title-row">
         {#if !isNarrow || activeDetailPlanId === null}
-          <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
+          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h1>
         {:else}
-          <h2 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h2>
+          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h2>
         {/if}
         {#if unreadCount > 0}
           <span class="unread-count" data-testid="unread-count">
@@ -930,11 +944,11 @@
       {refreshing ? $t('report.list.loading') : ''}
     </p>
     {#if loadError !== null && items.length > 0}
-      <div class="reports-error" data-testid="reports-error">
+      <div class="reports-error" data-testid="reports-error" bind:this={loadErrorRegion} tabindex="-1">
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
-          onAct={loadReports}
+          onAct={retryListLoad}
           titleLevel={2}
         />
       </div>
@@ -945,12 +959,16 @@
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
       </div>
     {:else if loadError !== null && items.length === 0}
-      <ErrorState
-        code={loadError}
-        actionLabel={$t('common.action.retry')}
-        onAct={loadReports}
-        titleLevel={2}
-      />
+      <!-- The page's own first state, not an arrival: it is read where it stands, never announced. -->
+      <div bind:this={loadErrorRegion} tabindex="-1">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={retryListLoad}
+          titleLevel={2}
+          announce={false}
+        />
+      </div>
     {:else if items.length === 0}
       <EmptyState
         title={$t('report.list.empty.title')}

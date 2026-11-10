@@ -65,6 +65,8 @@
   async function loadExplorer() {
     isLoading = true;
     errorMessage = null;
+    // A reload answers for the last act's failure too: the banner it left is no longer news.
+    actionError = '';
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {

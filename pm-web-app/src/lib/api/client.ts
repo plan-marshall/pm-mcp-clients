@@ -3165,7 +3165,12 @@ export class ApiClient {
     try {
       return (await res.json()) as T;
     } catch (error) {
-      if (signal?.aborted && !ApiClient.isCallerDeadline(signal)) {
+      // A caller's own deadline is the same unknown outcome as the client's, whichever part of the
+      // answer it cuts off; a cancellation is handed on unchanged.
+      if (ApiClient.isCallerDeadline(signal)) {
+        throw new ClientError('timeout');
+      }
+      if (signal?.aborted) {
         throw error;
       }
       if (deadline.aborted) {
