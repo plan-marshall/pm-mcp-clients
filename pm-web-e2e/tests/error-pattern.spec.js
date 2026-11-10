@@ -73,7 +73,9 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
 
     const error = page.getByTestId('error-state');
     await expect(error).toBeVisible({ timeout: 15000 });
-    await expect(error.getByRole('heading')).toHaveText('The machine is not reachable');
+    // The dev server proxies `/api` to the mock, so a dead mock is an unreadable HTTP failure, not a
+    // refused connection: the client reads no code and the block draws the shared unknown fallback.
+    await expect(error.getByRole('heading')).toHaveText('The runtime refused the request');
     await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 });
