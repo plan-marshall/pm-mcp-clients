@@ -22,6 +22,8 @@
   let devices: PairedDevice[] = [];
   let isLoading = false;
   let loadError: string | null = null;
+  /** Whether the devices read has been served at least once, so a later failure is an arrival. */
+  let hasShownDevices = false;
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
@@ -109,6 +111,7 @@
       ]);
       if (!isMounted || sequence !== loadSequence) return;
       devices = Array.isArray(devList) ? devList : [];
+      hasShownDevices = true;
       listenerKnown = Boolean(status?.web && typeof status.web.lan === 'boolean');
       if (listenerKnown) {
         lanListenerOn = status?.web?.lan === true;
@@ -383,7 +386,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => loadData()}
           titleLevel={3}
-          announce={false}
+          announce={hasShownDevices}
         />
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>

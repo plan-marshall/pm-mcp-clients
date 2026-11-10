@@ -732,7 +732,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadSnapshot(true)}
         titleLevel={2}
-        announce={false}
+        announce={snapshot !== null}
       />
     </div>
   {:else if $runtimeStore.isStopped}

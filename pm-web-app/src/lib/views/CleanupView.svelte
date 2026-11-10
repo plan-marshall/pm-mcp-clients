@@ -21,6 +21,8 @@
   let isLoading = $state(true);
   /** The code of a failed read, `null` while none failed and empty when no code could be read. */
   let loadError = $state<string | null>(null);
+  /** Whether a cleanup read has been served at least once, so a later failure is an arrival. */
+  let hasShownCleanup = $state(false);
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -100,6 +102,7 @@
       ]);
       job = cleanupJob;
       keptItems = keptRes?.items || [];
+      hasShownCleanup = true;
       const remembered = get(runtimeStore);
       if (job && remembered.cleanupSelectionJobId === job.job_id) {
         uncheckedIds = { ...(remembered.cleanupUncheckedIds ?? {}) };
@@ -337,7 +340,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadData()}
         titleLevel={2}
-        announce={false}
+        announce={hasShownCleanup}
       />
     </div>
   {:else if activeTab === 'job'}

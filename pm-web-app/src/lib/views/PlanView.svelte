@@ -636,7 +636,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadPlanProcess(true)}
         titleLevel={2}
-        announce={false}
+        announce={plan !== null}
       />
     </div>
   {:else if plan}

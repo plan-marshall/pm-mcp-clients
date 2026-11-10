@@ -26,6 +26,8 @@
   let errorMessage = $state('');
   /** The code of a failed list read, which `ErrorState` resolves to its words. */
   let loadError = $state<string | null>(null);
+  /** Whether the list has been served at least once, so a later failure is an arrival. */
+  let hasShownDecisions = $state(false);
 
   /** The filter query; it runs over the loaded decisions only. */
   let query = $state('');
@@ -407,6 +409,7 @@
     errorMessage = '';
     try {
       decisions = await apiClient.getDecisions();
+      hasShownDecisions = true;
       void refreshDecisionsCount();
     } catch (err: unknown) {
       loadError = errorCodeOf(err);
@@ -1317,7 +1320,7 @@
           code={loadError}
           actionLabel={$t('common.action.retry')}
           onAct={loadDecisions}
-          announce={false}
+          announce={hasShownDecisions}
         />
       </div>
     {:else if decisions.length === 0}

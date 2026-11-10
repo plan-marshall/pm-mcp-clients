@@ -93,4 +93,23 @@ describe('ErrorState', () => {
 
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
+
+  it("is not announced when it is the page's own first state", () => {
+    useCatalogue('en');
+    const { container } = render(ErrorState, {
+      props: { code: 'scope_not_found', announce: false },
+    });
+
+    expect(container.querySelector('[data-testid="error-state"]')).not.toHaveAttribute('role');
+  });
+
+  it('draws no code line when the view read no code', () => {
+    useCatalogue('en');
+    const { container } = render(ErrorState, { props: { code: '' } });
+
+    expect(
+      screen.getByRole('heading', { name: 'The runtime refused the request' }),
+    ).toBeInTheDocument();
+    expect(container.querySelector('details')?.querySelector('code')).toBeNull();
+  });
 });

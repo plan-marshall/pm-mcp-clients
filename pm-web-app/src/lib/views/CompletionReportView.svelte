@@ -169,7 +169,6 @@
         actionLabel={$t('common.action.retry')}
         onAct={fetchReport}
         titleLevel={titleLevel}
-        announce={false}
       />
     </div>
   {:else if data}

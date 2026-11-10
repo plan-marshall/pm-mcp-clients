@@ -47,6 +47,8 @@
   let isLoadingDetail = false;
   let isLoadingEnded = false;
   let errorCode: string | null = null;
+  /** Whether the projects read has been served at least once, so a later failure is an arrival. */
+  let hasShownProjects = false;
   /** The code of a failed detail read, which `ErrorState` resolves to its words. */
   let detailError: string | null = null;
 
@@ -263,6 +265,7 @@
     try {
       const res = await apiClient.getProjects();
       projects = res.projects || [];
+      hasShownProjects = true;
       if (projects.length > 0) {
         if (!selectedProjectId || !projects.some((p) => p.project_id === selectedProjectId)) {
           selectedProjectId = projects[0].project_id;
@@ -304,6 +307,7 @@
     try {
       const res = await apiClient.getProjects();
       projects = res.projects || [];
+      hasShownProjects = true;
       if (selectedProjectId) {
         if (projects.some((p) => p.project_id === selectedProjectId)) {
           await loadProjectDetail(selectedProjectId);
@@ -590,7 +594,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => void loadProjects()}
           titleLevel={3}
-          announce={false}
+          announce={hasShownProjects}
         />
       </div>
     {:else if projects.length === 0 && !isLoadingProjects}
