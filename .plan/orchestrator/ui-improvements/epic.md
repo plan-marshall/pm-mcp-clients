@@ -716,8 +716,12 @@ plan spec names the plan, proposal and finding documents it comes from.
   chart on the project setup tab, the client contract GROWS (pm-mcp-core's intent record carries ADR relation, evidence,
   `NG-n`, `role`, `not_run` reason — the spec's hypothesis was refuted); Q5 no interim side slot, `side` on TriagePage and
   WizardPage only; Q6 remembered place without the mode, fill only on unmarked load / rail click; Q7 PLAN-85's decision
-  stands (This browser holds theme, language, dictation). MERGE RULE NOT MET: CodeRabbit refused twice (quota) — the
-  operator's call; then the operator's AGREED commit and merge word. OWED AT THE D6 LANDING (orchestrator, spec
+  stands (This browser holds theme, language, dictation). Operator 2026-11-10: the orchestrator reviewed #403 (one
+  read-only leaf: 3 blockers, 6 majors, minors, all re-read) and, on the operator's word, fixed them on the branch
+  (`e4109c2e`: README plan-tree and fill rules, Changes text per client, area `intent` registered, head counts from the
+  verdict words, German `Deliverable`, chart read-only on the project's setup tab by its resource, the terminal shows no
+  chart; 75 intent/state keys) and set the 12 documents AGREED (`721afd68`), pushed. CodeRabbit reviews later; the merge
+  waits for the operator's word. Not changed (reported): the plan ids PLAN-142..144/135..137 in `navigation.adoc:393`. OWED AT THE D6 LANDING (orchestrator, spec
   amendments): `doc/plans/plan-changes.adoc` address `?tab=changes&file=` (repo doc: a direct change); PLAN-55 (tab set),
   PLAN-58 (tab set), PLAN-62 (`node=` with Process only), PLAN-52 (rail rule holds), PLAN-135..137 (no interim slot; wait
   for 142, 143), PLAN-142 (side props on TriagePage/WizardPage), PLAN-143 (history.state mark, two entry points), PLAN-144
