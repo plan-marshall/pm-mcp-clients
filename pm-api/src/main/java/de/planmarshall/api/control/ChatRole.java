@@ -19,6 +19,11 @@ import org.jspecify.annotations.Nullable;
  * <p>A plan's chat, also about ended work, goes to {@code replan}; an epic's chat, also in its
  * decomposition and its review, to {@code decompose}. The chat about a request while starting is
  * routed by the start contract and only named here.
+ *
+ * <p>Superseded by {@code de.planmarshall.api.chat.RoutedRole} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
  */
 public enum ChatRole {
     REPLAN("replan"),
