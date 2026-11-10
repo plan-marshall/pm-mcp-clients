@@ -48,9 +48,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 [#CLI-VD-S-04], proposals.adoc:76-77 [#CLI-VD-P-03] exist
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design plan.adoc:40-41; proposals.adoc:76-77
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: layout/ is the installation layout; RowLayout belongs in tui/ (Re-grounding 2026-11-10)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first stale
 
 ## Expected Surface
 
@@ -62,6 +64,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/system/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/resources/transcript/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiLayout.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/ProjectsOverviewLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/system/SystemLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/reports/ReportsLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/tui/TuiLayoutTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -72,6 +79,26 @@ Source of this plan (read before scoping):
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. `RowLayout` appears nowhere (`operator/layout/` holds `OperatorLayout` and `package-info` only). The epic and projects rows (`epicview/`, `projects/`) also use the grid beyond the four views the Objective lists; the `*FullScreenTest` classes exist.
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- **Wrong package:** `layout/` is the INSTALLATION layout (`layout/package-info.java`: resolving `<PM_MCP_HOME>`); put
+  `RowLayout` in `tui/` beside `TuiLayout`/`TuiRow`.
+- **D2 narrower:** fixed already — the system jobs line and the double "not measured" (PLAN-26 #299, `SystemView.java:
+  369-370,473,508-515`), "ended ended" (PLAN-23 #381, `CleanupCommand:707-709`). Left: `done · success`
+  (`plan.leaf.task`, `PlanViewFormatting.taskLine`), "2 of 3 tasks done" twice (`PlanViewLevel:575,625`), the report age
+  twice (`ReportsLevel:198` and its details line).
+- **OPEN DESIGN CONFLICT:** `15-overview.adoc:61-90` fixes need 14 (cut to 12) and state 12, but closed state words are
+  longer (`waiting for you` 15+2, `pausing after the task` 22, `running · run 3`, German `Landen fehlgeschlagen` 21), and
+  the design's own wireframes (`:98-127`) put the state in the facts area; 80-column behaviour is undefined. Settle by a
+  `15-overview.adoc` amendment (design deliverable) before implementing.
+- `‖` (paused) belongs in PLAN-44's glyph table; state glyphs come from `NodeState`. Existing grids to unify:
+  `ProjectWorkLevel:331`, `ProjectsOverviewLevel:182` (PLAN-36 needs rows), `ReportsLevel:198`, `SystemView:360,492`.
+- Needs PLAN-44's styled-segment row model. Stale: the PLAN-77 clause, the verify-first clause.
+- Sequencing: after PLAN-123 (multi-file) and PLAN-44.
+- Disposition: AMEND (design amendment of the grid); HOLD for PLAN-44.
 
 ## Hand-Off Command
 

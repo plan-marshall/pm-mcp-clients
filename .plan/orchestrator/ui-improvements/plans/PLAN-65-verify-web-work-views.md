@@ -56,14 +56,16 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/ux/verification.adoc exists; check table rows UX-S-01..UX-S-13 (inbox, running-work, decisions, start) at lines 59-132
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/verification.adoc holds every named check id (UX-V-01..13, UC-V-04/06/07/08/10, CC-V-08); checks remapped to D1-D5 in the 2026-11-10 Amendment
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface
 
-- OBSERVED: `doc/claude_review/verification-results/verify-web-work-views.adoc` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/claude_review/ux/analysis.adoc` — present at HEAD c4dc9bb4 (matrix of the checks of the former `PLAN-61` and `PLAN-67` too)
-- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-work-views.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/ux/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -98,3 +100,8 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-work-views.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/ux/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 1cc0e10e

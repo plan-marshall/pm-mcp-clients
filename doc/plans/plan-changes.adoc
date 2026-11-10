@@ -1,0 +1,31 @@
+= A plan's changes, read in both clients
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `plan-changes`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]; link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 10
+Where:: `pm-api` (the contract and the mock runtime), `pm-operator`, `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== Tasks
+
+. The contract of the list, the file's hunks, and the event `plan.change_captured`, with scenarios of the mock runtime: a plan before its first capture, one with renamed, binary, unplanned, and cut files, and an ended plan whose captured commit is gone.
+  Anchor: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#plan-changes[The Plan's Changes]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Event Catalogue].
+  Proof: contract tests of `pm-api` against the mock runtime for every answer, `not_captured` and `unavailable` included.
+. The changes in the terminal: the level of the full-screen view on `d`, a file's hunks on `Enter`, and `plan <plan_id> --changes [--file <path>]`.
+  Anchor: link:../design/terminal-client/16-plan-view.adoc#changes[Terminal Client, The Changes]; link:../design/shared/plan-view.adoc#changes[Plan View, The Changes].
+  Proof: against the mock runtime the list and a file print as designed, a planted control sequence in a path and a line prints removed, and `not_captured` prints its text, never an empty list.
+. The changes in the web app: the size line opens them in the narrative panel, a file's hunks on the diff tokens, the open file in the address.
+  Anchor: link:../design/web-app/plan-view-interaction.adoc#changes[Web App, Plan View Interaction, The Changes]; link:../design/shared/plan-view.adoc#changes[Plan View, The Changes].
+  Proof: component tests show the list, a file, a cut file, and a binary row; a line holding markup renders as text; a reload with `?changes=open&file=` opens the same file.
+. The entry `model_differs` in a worker's activity in both clients.
+  Anchor: link:../design/shared/plan-view.adoc#worker[Plan View, A Worker at Work]; link:../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#served-model[The Model That Answered].
+  Proof: against a mock scenario whose activity holds the entry, both clients show both models and the head keeps the launch model.
+
+== Trace
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11]; link:../../../plan-marshall-documentation/doc/requirements/13-harness-profiles.adoc#PM-CLIENT-2[PM-CLIENT-2]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#plan-changes[The Plan's Changes]; link:../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/promise-that-killed-atom-zed.adoc[Zed]

@@ -53,17 +53,22 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-05`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-04` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47 [#CLI-UX-S-05], ux/proposals.adoc:81 [#CLI-UX-P-04] and CLI-UX-P-06 at :115 exist
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47; proposals.adoc:81,115
 - Re-grounded note at HEAD 5348e89e (2026-10-30): `cli-gate-scope` (PLAN-14, shipped, PR #277) added a minimal
   `--print` to `plan` on the operator's decision (its terminal check needed `plan fix-relay --print`) and documented
   it in `01-commands`, `16-plan-view` and the `pm-operator` README. Treat `plan <id> --print` as present; the other
   view verbs still lack it. PLAN-14 also changed `PmConsole`, `PlanCommand`, `EpicCommand` and the operator catalogue
   pair that this spec declares: re-read them at HEAD before the first deliverable.
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: the --print flag only on PlanCommand:118; README lacks it (Re-grounding 2026-11-10)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): HelpCommand/HelpCommandTest still absent (created by this plan, correct). --print exists only on PlanCommand; PlanCommand, EpicCommand, SystemCommand, PmConsole, PmOperator changed again via PLAN-26 (SystemView model in operator/system/) and PLAN-91 (interrupt exit 130), so re-read before D1.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: HelpCommand absent; --print only on PlanCommand
 - HOLD (design audit 2026-11-02): the help 'lists every verb' would fix the extra top-level verbs (start, onboard, enrol, unenrol) into tests and docs that decision D26 folds in or removes. Hold until the D26 clients package, or rescope to the design command tree (terminal-client/01-commands).
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 landed; 23 verbs, no start/onboard/enrol/unenrol
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 - Design audit 002 (2026-11-02, `design-audit-002`, archived): the D26 package now exists as `doc/plans/operator-command-tree.adoc` (merged with PR #310, `28634b2a`; open). The hold stands until PLAN-97 deliverable 3 (the package `operator-command-tree`) ships; PLAN-97 was staged on 2026-11-04 on the operator's word. The command tree dropped the `abort` row, spells `runtime stop|restart [--when-done|--now]` and `runtime stop --withdraw`, and has no `--drain`.
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: the --drain flag still exists as alias of --when-done (RuntimeCommand.java:147,261,326)
 
 ## Expected Surface
 
@@ -89,6 +94,15 @@ Source of this plan (read before scoping):
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorVerbs.java` — present at HEAD 2fc2c214 (fold 2026-11-08)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorTest.java` — present at HEAD 2fc2c214 (fold 2026-11-08)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/epicview/EpicViewLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/README.md` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OperatorVerbsTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmConsoleTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/EpicCommandTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -103,6 +117,26 @@ Checked at `aa3a9be3`. The HOLD's condition (PLAN-97 deliverable 3, the command 
 ## Fold 2026-11-08 (PLAN-118 landing)
 
 Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. PLAN-118 derived the completer and `help` from the registered subcommands (`OperatorVerbs`) and compares the design's verb set with the registry (`PmOperatorTest#registersTheDesignsVerbs`). Two console-only sets remain and disagree: `PmOperatorTest.java:268` `{help, exit}` and `OperatorVerbs.java:32` `{exit, quit, help, tui}`; `quit` and `tui` are not named in `01-commands.adoc`. Since this plan rewrites `help` and the verb listing: keep ONE console-only set (in `OperatorVerbs`, read by the test), and name every console-only word in the design. Expected Surface extended in the same act (`OperatorVerbs.java`, `PmOperatorTest.java`).
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- The HOLD (claim 3) is cleared: PLAN-97 (#358) landed; 23 verbs registered, none of start/onboard/enrol/unenrol.
+- Claim 1 narrower: `--print` exists only on `PlanCommand:118`; `pm-operator/README.md` does not document it.
+- Claim 5 corrected: `--drain` still exists as the alias of `--when-done` (`RuntimeCommand.java:147,261,326`,
+  `01-commands.adoc`).
+- **OPEN DESIGN CONFLICT (operator):** `01-commands.adoc:149` says `help` is console-only and `epic <id>` PRINTS the epic;
+  D1/D2 say the opposite (full screen by default, `help` in the shell). The AGREED model for projects/system is "full
+  screen in the console" (`01-commands.adoc:38,91`). Decide before emit, or D3 states the new rule and the docs change.
+- D1 needs an epic factory in `InitialSelection` (only plan, explorerRoot, system exist); "view verbs" must be listed
+  (plans, plan, projects, system, status, epic, reports, needs, questions, find?). `--help` exists only on the root
+  (`mixinStandardHelpOptions`, `PmOperator.java:40`); the console's `help <verb>` is a stub. The designer line is the
+  existing key `operator.help.designer`. The console help body (`operator.console.help.body`) lists neither `needs` nor
+  `!`; `?` at the prompt is not handled. Console-only words: `help, exit, quit, tui` (`OperatorVerbs.java:32`) plus `!`.
+- Sequencing: after PLAN-30 (declared) and PLAN-84 (running: `PmOperator`, `PmConsole`, `01-commands.adoc`; the mode
+  table must include `find`).
+- Disposition: AMEND after the operator's design decision.
 
 ## Hand-Off Command
 
