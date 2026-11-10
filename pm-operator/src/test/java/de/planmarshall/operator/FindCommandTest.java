@@ -95,7 +95,7 @@ class FindCommandTest {
                             .build());
     }
 
-    private static String run(OperatorContext context, String... args) throws IOException {
+    private static String run(OperatorContext context, String... args) {
         var out = new StringWriter();
         var err = new StringWriter();
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
