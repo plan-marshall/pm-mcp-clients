@@ -83,11 +83,15 @@ describe('formatTime', () => {
   });
 
   describe('relative', () => {
+    // Exact elapsed intervals: a calendar date would span a daylight-saving switch in some zone.
+    const daysBeforeNow = (days: number) =>
+      new Date(NOW.getTime() - days * 86_400_000).toISOString();
+
     it.each([
       ['days', at(10, 7, 12, 0), '9 d ago', 'vor 9 T'],
       ['months', at(7, 16, 12, 0), '3 months ago', 'vor 3 Monaten'],
-      ['last month at 30 days', at(9, 16, 12, 0), 'last month', 'letzten Monat'],
-      ['last month at 59 days', at(8, 18, 12, 0), 'last month', 'letzten Monat'],
+      ['last month at 30 days', daysBeforeNow(30), 'last month', 'letzten Monat'],
+      ['last month at 59 days', daysBeforeNow(59), 'last month', 'letzten Monat'],
     ])('renders %s', (_label, iso, english, german) => {
       expectBothLocales((locale) => formatTime(iso, 'relative', locale, NOW), english, german);
     });

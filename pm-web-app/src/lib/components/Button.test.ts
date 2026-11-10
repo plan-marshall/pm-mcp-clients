@@ -167,13 +167,16 @@ describe('Button', () => {
       return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
     };
 
+    // The header comment names both selectors; the theme blocks are read from the rules only.
+    const tokenRules = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
+
     /** @param marker the theme selector @returns that block's declarations */
     const blockOf = (marker: string) => {
-      const start = tokensCss.indexOf(marker);
+      const start = tokenRules.indexOf(marker);
       expect(start, `${marker} must exist in tokens.css`).toBeGreaterThanOrEqual(0);
-      const open = tokensCss.indexOf('{', start);
-      const close = tokensCss.indexOf('}', open);
-      return tokensCss.slice(open + 1, close);
+      const open = tokenRules.indexOf('{', start);
+      const close = tokenRules.indexOf('}', open);
+      return tokenRules.slice(open + 1, close);
     };
 
     /** @returns a token's colour from a theme block */

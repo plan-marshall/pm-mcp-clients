@@ -19,6 +19,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -193,7 +194,46 @@ class ReportsCommandTest {
                             () -> assertTrue(out.toString().contains("✓ 2 reports marked read."),
                                                 out.toString()),
                             () -> assertTrue(out.toString().contains(
-                                                    "2 older unread reports remain: reports --older shows them."),
+                                                    "2 older unread reports remain. Run reports to see the unread list."),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("reports read --all prints the older-reports notice in the client's language")
+    void reportsReadAllWithOlderPageInGerman() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "items": [
+                                        {"id":"rep-0142","subject":"fix-relay"},
+                                        {"id":"rep-0139","subject":"docs-typo"}
+                                      ],
+                                      "unread_count": 4,
+                                      "has_older": true,
+                                      "older_count": 2
+                                    }
+                                    """);
+            } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"count\":2}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                            "reports", "read", "--all");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertEquals(2, server.requests().size(), "one list read and one ids write"),
+                            () -> assertTrue(out.toString().contains(
+                                                    "2 ältere ungelesene Berichte bleiben."
+                                                            + " Führe reports aus, um die ungelesene Liste zu sehen."),
                                                 out.toString())
         );
     }

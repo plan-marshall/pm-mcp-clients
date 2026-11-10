@@ -243,7 +243,8 @@ public final class ReportsCommand implements Callable<Integer> {
                 // The command reads only the first page it lists: say so instead of letting the
                 // operator read "marked read" as "nothing unread is left" (decision 10).
                 if (page.hasOlder() && page.olderCount() > 0) {
-                    out.println(MessageCatalogue.format("operator.reports.read_all.older",
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.reports.read_all.older",
                                         Map.of("count", page.olderCount())));
                 }
                 out.flush();
