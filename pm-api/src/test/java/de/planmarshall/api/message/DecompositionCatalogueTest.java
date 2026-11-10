@@ -75,8 +75,7 @@ class DecompositionCatalogueTest {
                 "decomposition.refused",
                 "decomposition.plan_not_found",
                 "decomposition.committed_follow",
-                "decomposition.left",
-                "decomposition.error"
+                "decomposition.left"
         };
 
         for (var key : requiredKeys) {

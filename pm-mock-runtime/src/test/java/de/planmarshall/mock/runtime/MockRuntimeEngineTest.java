@@ -200,7 +200,8 @@ class MockRuntimeEngineTest {
     @DisplayName("refuses a start whose project segment is empty")
     void shouldRefuseStartWithBlankProject() throws Exception {
         // Arrange: the path names the start route but carries no project id.
-        var body = "{\"request\":\"anything\"}".getBytes(StandardCharsets.UTF_8);
+        var request = JsonTree.write(Map.of("request", Generators.letterStrings(4, 12).next()));
+        var body = request.getBytes(StandardCharsets.UTF_8);
 
         // Act
         var res = send("POST", "/api/v1/projects//plans/start", auth, body, false);
