@@ -748,7 +748,7 @@ class MockRuntimeEngineTest {
         // 6. PATCH non-existent -> 404
         var notFoundRes = send("PATCH", "/api/v1/web/devices/non-existent", auth, renameBody, false);
         assertEquals(404, notFoundRes.status());
-        assertEquals("device_not_found", notFoundRes.json().get("error"));
+        assertEquals("target_not_found", notFoundRes.json().get("error"));
 
         // 7. DELETE /api/v1/web/devices/dev-2 (single)
         var delRes = send("DELETE", "/api/v1/web/devices/dev-2", auth, new byte[0], false);

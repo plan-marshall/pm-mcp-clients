@@ -224,7 +224,7 @@ class LessonSourceScenarioTest {
 
             assertEquals(404, res.status());
             var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals("lesson_not_found", JsonTree.string(body, "error"));
+            assertEquals("target_not_found", JsonTree.string(body, "error"));
         }
     }
 

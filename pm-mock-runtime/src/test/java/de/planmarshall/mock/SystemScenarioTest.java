@@ -261,6 +261,23 @@ class SystemScenarioTest {
     }
 
     @Test
+    @DisplayName("answers scope_not_found for an unknown cleanup job")
+    void shouldAnswerScopeNotFoundForUnknownCleanupJob() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var unknownJob = "cln-" + Generators.integers(5000, 9999).next();
+
+            var response = client.send(HttpRequest.post("/api/v1/system/cleanup/" + unknownJob + "/remind")
+                    .withHeader("Authorization", auth));
+
+            assertEquals(404, response.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "error"));
+        }
+    }
+
+    @Test
     @DisplayName("manages cleanup job: get open job, postpone, ignore, delete, and kept items")
     void shouldManageCleanupJob() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {

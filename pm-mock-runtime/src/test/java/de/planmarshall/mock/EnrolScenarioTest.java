@@ -185,7 +185,7 @@ class EnrolScenarioTest {
     }
 
     @Test
-    @DisplayName("reports store_not_found for a project without a recorded store")
+    @DisplayName("reports project_not_enrolled for a project without a recorded store")
     void shouldReportStoreNotFound() throws Exception {
         try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
@@ -196,7 +196,7 @@ class EnrolScenarioTest {
                     .withHeader("Authorization", auth));
             assertEquals(404, response.status());
             var json = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            assertEquals("store_not_found", json.get("error"));
+            assertEquals("project_not_enrolled", json.get("error"));
         }
     }
 

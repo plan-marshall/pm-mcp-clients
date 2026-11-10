@@ -154,7 +154,7 @@ class EpicViewScenarioTest {
             assertEquals(404, response.status());
             var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
             assertNotNull(body);
-            assertEquals("epic_not_found", JsonTree.string(body, "error"));
+            assertEquals("scope_not_found", JsonTree.string(body, "error"));
         }
     }
 
