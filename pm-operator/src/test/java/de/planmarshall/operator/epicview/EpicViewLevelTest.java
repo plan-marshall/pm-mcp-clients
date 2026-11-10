@@ -14,6 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +29,9 @@ import org.junit.jupiter.api.Test;
 
 @DisplayName("EpicViewLevel")
 class EpicViewLevelTest {
+
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"),
+            ZoneId.of("Pacific/Auckland"));
 
     private static final String EPIC = """
                         {"epic_id":"relay-hardening","project_id":"pm-mcp-clients",
@@ -65,6 +71,18 @@ class EpicViewLevelTest {
                            {"at":"2026-10-16T11:55:00Z","text":"you paused relay-reconnect-docs"}]}
                         """;
 
+    @Test
+    @DisplayName("the events show their time in the clock's zone, not the system zone")
+    void eventsUseTheClockZone() throws Exception {
+        var view = new EpicViewLevel(CLOCK, epic());
+
+        var text = text(view);
+
+        assertTrue(text.contains("01:40"), text);
+        assertTrue(text.contains("01:05"), text);
+        assertFalse(text.contains("12:40"), text);
+    }
+
     private static EpicResource epic() throws Exception {
         return EpicResource.fromJson(EPIC);
     }
@@ -76,7 +94,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("the head names the state, the mode, how many run at once, and what needs you")
     void head() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         var text = text(view);
         assertTrue(text.contains("relay-hardening \u00b7 epic"), text);
         assertTrue(text.contains("running"), text);
@@ -91,7 +109,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("the workstreams open to their plans with status, waits, and counts")
     void workstreams() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         var text = text(view);
         assertTrue(text.contains("WS-1  Reconnect"), text);
         assertTrue(text.contains("2 shipped") || text.contains("1 shipped"), text);
@@ -111,7 +129,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("sources, landings, registers, tokens, and every event are there")
     void sections() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         var text = text(view);
         assertTrue(text.contains("Sources   2 documents, 1 issue"), text);
         assertTrue(text.contains("Landings"), text);
@@ -128,7 +146,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("a section opens and closes, and its children appear")
     void toggles() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         assertFalse(text(view).contains("doc/concepts/relay-hardening/"));
         view.toggle(EpicViewLevel.SOURCES_ID, "en");
         assertTrue(text(view).contains("2 documents"), text(view));
@@ -146,7 +164,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("a staged plan opens to its objective, deliverables, and surface")
     void stagedPlanOpens() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         var rowId = EpicViewLevel.PLAN_PREFIX + "relay-reconnect-metrics";
         assertTrue(view.isStagedPlanRow(rowId));
         view.toggle(rowId, "en");
@@ -159,7 +177,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("Enter names the plan, the register, and the next launchable plan")
     void lookups() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         assertEquals("relay-cursor-order",
                             view.planIdOf(EpicViewLevel.PLAN_PREFIX + "relay-cursor-order"));
         assertEquals("findings", view.registerOf(EpicViewLevel.FINDINGS_ID));
@@ -173,7 +191,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("the level's breadcrumb is the path from the project and the footer names the keys")
     void breadcrumbAndFooter() throws Exception {
-        var view = new EpicViewLevel(epic());
+        var view = new EpicViewLevel(CLOCK, epic());
         TuiLevel level = view.level("en");
         assertEquals(TuiLevel.Kind.EPIC, level.kind());
         assertEquals("relay-hardening", level.id());
@@ -188,7 +206,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("an ended epic whose resource is gone shows how it ended, read-only")
     void endedNote() {
-        var view = EpicViewLevel.ended("relay-docs", "pm-mcp-clients", "relay-docs",
+        var view = EpicViewLevel.ended(CLOCK, "relay-docs", "pm-mcp-clients", "relay-docs",
                             new EpicViewLevel.EndedNote("completed", "all plans shipped", "2 d ago"));
         assertTrue(view.isEnded());
         assertFalse(view.hasResource());
@@ -202,7 +220,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("an absent running count shows ? of 3 at once")
     void unknownRunning() throws Exception {
-        var view = new EpicViewLevel(
+        var view = new EpicViewLevel(CLOCK, 
                             EpicResource.fromJson(EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3")));
 
         assertTrue(text(view).contains("? of 3 at once"), text(view));
@@ -213,7 +231,7 @@ class EpicViewLevelTest {
     void unknownWaitText() throws Exception {
         var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3")
                             .replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
-        var view = new EpicViewLevel(EpicResource.fromJson(unknown));
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(unknown));
 
         assertTrue(text(view).contains("waits for a free place: ? of 3 taken"), text(view));
     }
@@ -222,7 +240,7 @@ class EpicViewLevelTest {
     @DisplayName("a known running count names the taken places in a wait text")
     void knownWaitText() throws Exception {
         var known = EPIC.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
-        var view = new EpicViewLevel(EpicResource.fromJson(known));
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(known));
 
         assertTrue(text(view).contains("waits for a free place: 3 of 3 taken"), text(view));
     }
@@ -230,7 +248,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("a known running count shows 2 of 3 at once")
     void knownRunning() throws Exception {
-        var view = new EpicViewLevel(EpicResource.fromJson(
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(
                             EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3,\"running\":2")));
 
         assertTrue(text(view).contains("2 of 3 at once"), text(view));
@@ -241,7 +259,7 @@ class EpicViewLevelTest {
     void empty() throws Exception {
         var resource = new EpicResource("e-1", "p", "p", null, "running", true, 0, 1, 0,
                             null, List.of(), List.of(), 0, null, null, null, List.of());
-        var view = new EpicViewLevel(resource);
+        var view = new EpicViewLevel(CLOCK, resource);
         assertTrue(text(view).contains("Nothing runs in this epic."), text(view));
     }
 }

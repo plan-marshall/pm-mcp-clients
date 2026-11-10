@@ -118,7 +118,7 @@ public final class OperatorContext {
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener) {
-        this(environment, userHome, interactiveTerminal, clientEnvironment, terminalProvider, browserOpener, Clock.systemUTC());
+        this(environment, userHome, interactiveTerminal, clientEnvironment, terminalProvider, browserOpener, Clock.systemDefaultZone());
     }
 
     /**
@@ -130,7 +130,7 @@ public final class OperatorContext {
      * @param clientEnvironment   the captured client environment
      * @param terminalProvider    provider for JLine terminal, {@code null} for default
      * @param browserOpener       browser opener, {@code null} for default
-     * @param clock               the clock to use, {@code null} for {@link Clock#systemUTC()}
+     * @param clock               the clock to use, {@code null} for {@link Clock#systemDefaultZone()}
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider,
@@ -145,7 +145,7 @@ public final class OperatorContext {
         this.terminalProvider = terminalProvider != null ? terminalProvider
                             : () -> defaultTerminal(interactiveTerminal);
         this.browserOpener = browserOpener != null ? browserOpener : OperatorContext::defaultBrowserOpen;
-        this.clock = clock != null ? clock : Clock.systemUTC();
+        this.clock = clock != null ? clock : Clock.systemDefaultZone();
     }
 
     /** @return the context of the running process */

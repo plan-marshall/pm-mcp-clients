@@ -75,6 +75,11 @@ class PlanCompletionLevelTest {
                             .orElse("");
         assertAll(
                             () -> assertTrue(line.startsWith("  " + String.format("%-16s", "Change")), line),
+                            () -> assertTrue(withChange.rows("de").stream()
+                                                .filter(row -> "completion:change".equals(row.id()))
+                                                .map(TuiRow::line)
+                                                .findFirst().orElse("")
+                                                .startsWith("  " + String.format("%-16s", "Änderung"))),
                             () -> assertTrue(line.contains("12 files"), line),
                             () -> assertTrue(line.contains("+340"), line),
                             () -> assertTrue(line.contains("\u221227"), line),

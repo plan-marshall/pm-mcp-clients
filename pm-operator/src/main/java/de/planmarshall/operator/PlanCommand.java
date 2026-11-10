@@ -11,7 +11,6 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.Clock;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -235,7 +234,7 @@ public final class PlanCommand implements Callable<Integer> {
             var app = new OverviewFullScreenApp(
                                 context, terminal,
                                 OverviewFullScreenApp.InitialSelection.plan(planId),
-                                Clock.systemUTC(),
+                                context.clock(),
                                 new OverviewStateStore(context.stateDirectory()),
                                 context.noticeBuffer());
             if (app.run(out) != TuiScreenDriver.Result.LEFT) {
@@ -932,7 +931,7 @@ public final class PlanCommand implements Callable<Integer> {
             var reason = report.reason() != null && !report.reason().isBlank() ? report.reason() : "—";
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
-            var ran = formatRan(report);
+            var ran = formatRan(report, context.clock().getZone());
             if (ran != null) {
                 out.printf(FMT_14S, "ran", ran);
             }
@@ -950,12 +949,11 @@ public final class PlanCommand implements Callable<Integer> {
             out.flush();
         }
 
-        private static @Nullable String formatRan(PlanCompletionReport report) {
+        private static @Nullable String formatRan(PlanCompletionReport report, ZoneId zone) {
             var ran = report.ran();
             if (ran == null && report.durationSeconds() > 0) {
                 ran = formatDuration(report.durationSeconds());
                 if (report.startedAt() != null && report.endedAt() != null) {
-                    var zone = ZoneId.systemDefault();
                     var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
                     ran += ", " + timeFmt.format(report.startedAt()) + " to " + timeFmt.format(report.endedAt());
                 }

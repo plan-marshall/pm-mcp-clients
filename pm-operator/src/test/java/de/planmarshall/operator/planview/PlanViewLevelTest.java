@@ -95,7 +95,17 @@ class PlanViewLevelTest {
                             () -> assertTrue(line.contains("+340"), line),
                             () -> assertTrue(line.contains("\u221227"), line),
                             () -> assertTrue(line.contains("2 unplanned"), line),
-                            () -> assertFalse(ids(view()).contains(PlanViewLevel.CHANGE_ROW_ID)));
+                            () -> assertFalse(ids(view()).contains(PlanViewLevel.CHANGE_ROW_ID)),
+                            () -> assertTrue(germanChangeLine(withChange).contains("Änderung bisher"),
+                                                germanChangeLine(withChange)));
+    }
+
+    private static String germanChangeLine(PlanViewLevel level) {
+        return level.rows("de").stream()
+                            .filter(row -> PlanViewLevel.CHANGE_ROW_ID.equals(row.id()))
+                            .map(TuiRow::line)
+                            .findFirst()
+                            .orElse("");
     }
 
     private static List<String> ids(PlanViewLevel view) {

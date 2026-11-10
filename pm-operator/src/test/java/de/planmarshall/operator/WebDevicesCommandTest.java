@@ -791,4 +791,15 @@ class WebDevicesCommandTest {
                             () -> assertEquals("4 months ago", WebCommand.DevicesCommand.formatLastUsed("en", hundredFortyDaysAgo.toString(), clock))
         );
     }
+
+    @Test
+    @DisplayName("formatLastUsed of a device never used says never, not just now")
+    void formatLastUsedNeverUsed() {
+        var clock = Clock.fixed(Instant.parse("2026-06-01T12:00:00Z"), ZoneOffset.UTC);
+
+        assertAll(
+                            () -> assertEquals("never", WebCommand.DevicesCommand.formatLastUsed("en", null, clock)),
+                            () -> assertEquals("nie", WebCommand.DevicesCommand.formatLastUsed("de", null, clock))
+        );
+    }
 }

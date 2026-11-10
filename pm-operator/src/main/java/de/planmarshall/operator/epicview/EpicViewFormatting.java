@@ -9,10 +9,6 @@
  */
 package de.planmarshall.operator.epicview;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -243,22 +239,6 @@ public final class EpicViewFormatting {
         }
         return MessageCatalogue.format(locale, "overview.epic.findings_counts",
                             Map.of("new", findings.newCount(), "open", findings.open(), "kept", findings.kept()));
-    }
-
-    /**
-     * @param at the event's time, an ISO instant or an already short time
-     * @return the time as {@code HH:mm}, or the text unchanged when it cannot be read as an instant
-     */
-    public static String eventTime(@Nullable String at) {
-        if (at == null || at.isBlank()) {
-            return "";
-        }
-        try {
-            return DateTimeFormatter.ofPattern("HH:mm")
-                                .format(Instant.parse(at).atZone(ZoneId.systemDefault()));
-        } catch (DateTimeParseException _) {
-            return clean(at);
-        }
     }
 
     /**

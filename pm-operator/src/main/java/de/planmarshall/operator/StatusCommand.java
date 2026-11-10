@@ -224,7 +224,7 @@ final class StatusCommand implements Callable<Integer> {
             var outcome = "epic".equalsIgnoreCase(item.kind())
                                 ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
                                 : MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", Objects.toString(item.outcome(), "ended")));
-            var time = formatRelativeTime(locale, item.endedAt());
+            var time = formatRelativeTime(locale, item.endedAt(), context.clock());
             out.printf("  %-4s  %-30s   %s \u00b7 %s%n", kind, title, outcome, time);
 
             if (item.pullRequestNumber() != null) {
@@ -251,7 +251,10 @@ final class StatusCommand implements Callable<Integer> {
         if (!version.startsWith("pm-mcpd")) {
             version = "pm-mcpd " + version;
         }
-        var runningSince = Objects.toString(status.get("running_since"), "-");
+        var rawSince = status.get("running_since");
+        var runningSince = rawSince != null
+                            ? OutputSafety.stripControlSequences(Display.eventTime(rawSince.toString(), context.clock()))
+                            : "-";
         var workers = status.get("workers_count") != null ? status.get("workers_count") : 0;
         var slots = status.get("build_slots_used") != null ? status.get("build_slots_used") : 0;
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;
@@ -356,7 +359,7 @@ final class StatusCommand implements Callable<Integer> {
         var state = stateKey != null
                             ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
                             : "running";
-        var timeInPhase = formatDuration(locale, plan.phaseEnteredAt());
+        var timeInPhase = formatDuration(locale, plan.phaseEnteredAt(), context.clock());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
         out.printf("%s%splan  %-30s   %s \u00b7 %s%s%n", baseIndent, marker, title, phase, state, timePart);
@@ -433,8 +436,8 @@ final class StatusCommand implements Callable<Integer> {
                                 : "                   ";
             String desc;
             var unit = landing.unit();
-            if (unit != null) {
-                desc = "landing " + unitTitle(locale, unit);
+            if (unit != null || (landing.count() == null && "unit".equalsIgnoreCase(landing.kind()))) {
+                desc = "landing " + OutputSafety.stripControlSequences(Display.title(locale, null, unit));
             } else if (landing.count() != null) {
                 desc = "removing " + landing.count() + " moved documents from git";
             } else {
@@ -445,32 +448,24 @@ final class StatusCommand implements Callable<Integer> {
         }
     }
 
-    private static String unitTitle(String locale, String unit) {
-        var key = "unit." + unit;
-        if (MessageCatalogue.hasKey(locale, key)) {
-            return MessageCatalogue.format(locale, key, Map.of());
-        }
-        return OutputSafety.stripControlSequences(unit);
-    }
-
-    private static String formatDuration(String locale, @Nullable Object raw) {
+    private static String formatDuration(String locale, @Nullable Object raw, Clock clock) {
         var instant = instantOf(raw);
         if (instant == null) {
             return "";
         }
-        long seconds = Math.max(0L, Duration.between(instant, Instant.now()).getSeconds());
+        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
         return Display.duration(locale, seconds);
     }
 
-    static String formatRelativeTime(String locale, @Nullable Object raw) {
+    static String formatRelativeTime(String locale, @Nullable Object raw, Clock clock) {
         if (raw == null) {
-            return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
+            return MessageCatalogue.format(locale, "common.time.unknown", Map.of());
         }
         var instant = instantOf(raw);
         if (instant == null) {
             return raw.toString();
         }
-        return Display.time(locale, instant, Clock.systemUTC());
+        return Display.time(locale, instant, clock);
     }
 
     private static @Nullable Instant instantOf(@Nullable Object raw) {

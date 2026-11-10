@@ -11,31 +11,48 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The ages of {@code projects} and {@code status} in a German session, rendered through the one
- * display rule instead of the English-only inline formatters the client used to carry.
+ * The ages of {@code projects} and {@code status}, rendered through the one display rule at the
+ * context's clock instead of the wall clock.
  */
-@DisplayName("German ages of projects and status")
+@DisplayName("Ages of projects and status")
 class GermanAgeDisplayTest {
+
+    private static final Instant NOW = Instant.parse("2026-10-20T12:00:00Z");
+    private static final Clock CLOCK = Clock.fixed(NOW, ZoneId.of("Europe/Berlin"));
 
     @Test
     @DisplayName("projects and status print a German session's ages from the display rule")
     void germanAges() {
-        var now = Instant.now();
+        assertEquals("gerade eben", ProjectsCommand.formatRelativeTime("de", NOW.minusSeconds(30), CLOCK));
+        assertEquals("vor 5 min", ProjectsCommand.formatRelativeTime("de", NOW.minusSeconds(300), CLOCK));
+        assertEquals("vor 3 h", ProjectsCommand.formatRelativeTime("de", NOW.minusSeconds(3 * 3600), CLOCK));
+        assertEquals("vor 9 T", ProjectsCommand.formatRelativeTime("de", NOW.minusSeconds(9 * 86400), CLOCK));
+        assertEquals("vor 2 Monaten", ProjectsCommand.formatRelativeTime("de", NOW.minusSeconds(60 * 86400), CLOCK));
 
-        assertEquals("gerade eben", ProjectsCommand.formatRelativeTime("de", now.minusSeconds(30)));
-        assertEquals("vor 5 min", ProjectsCommand.formatRelativeTime("de", now.minusSeconds(300)));
-        assertEquals("vor 3 h", ProjectsCommand.formatRelativeTime("de", now.minusSeconds(3 * 3600)));
-        assertEquals("vor 9 T", ProjectsCommand.formatRelativeTime("de", now.minusSeconds(9 * 86400)));
-        assertEquals("vor 2 Monaten", ProjectsCommand.formatRelativeTime("de", now.minusSeconds(60 * 86400)));
+        assertEquals("gerade eben", StatusCommand.formatRelativeTime("de", NOW.minusSeconds(30), CLOCK));
+        assertEquals("vor 5 min", StatusCommand.formatRelativeTime("de", NOW.minusSeconds(300), CLOCK));
+        assertEquals("vor 9 T", StatusCommand.formatRelativeTime("de", NOW.minusSeconds(9 * 86400), CLOCK));
+    }
 
-        assertEquals("gerade eben", StatusCommand.formatRelativeTime("de", now.minusSeconds(30)));
-        assertEquals("vor 5 min", StatusCommand.formatRelativeTime("de", now.minusSeconds(300)));
-        assertEquals("vor 9 T", StatusCommand.formatRelativeTime("de", now.minusSeconds(9 * 86400)));
+    @Test
+    @DisplayName("ages count from the context clock, not the wall clock")
+    void agesFollowTheContextClock() {
+        assertEquals("5 min ago", ProjectsCommand.formatRelativeTime("en", NOW.minusSeconds(300), CLOCK));
+        assertEquals("5 min ago", StatusCommand.formatRelativeTime("en", NOW.minusSeconds(300).toString(), CLOCK));
+    }
+
+    @Test
+    @DisplayName("a missing ended time says unknown, never just now")
+    void missingTimeIsUnknown() {
+        assertEquals("unknown", StatusCommand.formatRelativeTime("en", null, CLOCK));
+        assertEquals("unbekannt", StatusCommand.formatRelativeTime("de", null, CLOCK));
     }
 }

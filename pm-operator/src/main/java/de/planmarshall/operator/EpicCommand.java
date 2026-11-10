@@ -21,6 +21,7 @@ import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -243,7 +244,7 @@ public final class EpicCommand implements Callable<Integer> {
                                     Map.of("count", epic.events().size() - 10)));
                 break;
             }
-            out.println("    " + EpicViewFormatting.eventTime(event.at()) + "  "
+            out.println("    " + OutputSafety.stripControlSequences(Display.eventTime(event.at(), context.clock())) + "  "
                                 + OutputSafety.stripControlSequences(event.text()));
         }
     }

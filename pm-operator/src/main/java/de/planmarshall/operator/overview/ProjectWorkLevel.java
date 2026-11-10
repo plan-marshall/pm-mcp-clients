@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
@@ -296,18 +297,17 @@ public final class ProjectWorkLevel {
 
     private static TuiRow formatLandingRow(String locale, AlongsideLanding landing) {
         boolean failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
-        String state = OverviewFormatting.clean(landing.state() != null ? landing.state() : RUNNING);
+        String rawState = landing.state() != null ? landing.state() : RUNNING;
+        String state = MessageCatalogue.hasKey(locale, "state.landing." + rawState)
+                            ? Display.word(locale, "landing", rawState)
+                            : OverviewFormatting.clean(rawState);
         String text;
         if ("removal".equalsIgnoreCase(landing.kind())) {
             int count = landing.count() != null ? landing.count() : 1;
             text = MessageCatalogue.format(locale, "overview.landing.removal",
                                 Map.of("count", count, "state", state));
         } else {
-            String unit = OverviewFormatting.clean(landing.unit() != null ? landing.unit() : "");
-            var unitKey = "unit." + unit;
-            var unitTitle = MessageCatalogue.hasKey(locale, unitKey)
-                                ? MessageCatalogue.format(locale, unitKey, Map.of())
-                                : unit;
+            var unitTitle = OverviewFormatting.clean(Display.title(locale, null, landing.unit()));
             text = MessageCatalogue.format(locale, "overview.landing.unit",
                                 Map.of("unit", unitTitle, "state", state));
         }
