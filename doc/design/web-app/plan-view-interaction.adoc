@@ -64,7 +64,7 @@ There are three acts in the tree, and none of them stands in for another:
 * The row body is a `<button>` with an accessible name made of the node's own title and the catalogue's inspect action; the toggle is a sibling button with its own `aria-label` (`plan.view.toggle_node`, `plan.view.toggle_sub_node`). Buttons are never nested.
 * `Enter` and `Space` select the focused row body; `Tab` moves between the toggle and the body. The selected row keeps the focus ring of the design system and the selected background.
 * The selected row carries `aria-current` and the `node-row--selected` style; the row of the open task carries `aria-current` and `task-row--selected`.
-* Only the open task's level subscribes to `subscribeTaskActivity`. Selecting a part in the tree of the plan's list column closes the task (a push, the plan the object column again) and unsubscribes, so a hidden stream cannot keep appending to a column nobody sees.
+* Only the open task's level subscribes to `subscribeTaskActivity`. Selecting a part in the tree of the plan's list column closes the task (a push, the plan the object column again, with the part's `node=` and without `follow=on`, which the selection ends: link:navigation.adoc#url[Navigation, Addresses]) and unsubscribes, so a hidden stream cannot keep appending to a column nobody sees.
 * Ordinary selection does not scroll. Only the jump control expands the path to the current position, selects the running node, opens the running task where there is one, and scrolls that item into view.
 
 [#defaults]

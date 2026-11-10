@@ -442,7 +442,7 @@ Every view and every object has one canonical address, in one scheme: path segme
 
 |`/`
 |What waits
-|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]); a launcher, whose items open at their own addresses. A click on What waits always opens it; only a load without the app's mark at `/` is filled from the remembered place, by a replace (link:navigation.adoc#url[Navigation, Addresses]).
+|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]); a launcher, whose items open at their own addresses. A click on What waits always opens it (its links write `/?lens=waits`); only a load without the app's mark at a bare `/` is filled from the remembered place, by a replace (link:navigation.adoc#url[Navigation, Addresses]).
 
 |`/overview`
 |Running work

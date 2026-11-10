@@ -164,7 +164,7 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`intent.outline.title`
 |Outline
-|Gliederung
+|Outline
 
 |`intent.outline.deliverable`
 |{number} · {title}
@@ -264,7 +264,7 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`intent.oversize.empty`
 |No measured tasks of this role yet.
-|Noch keine gemessenen Tasks dieser Rolle.
+|Noch keine gemessenen Tasks dieser Role.
 
 |`intent.oversize.bucket`
 |{from}–{to}x
@@ -287,8 +287,8 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{tasks, plural, one {# Task} other {# Tasks}} · {flagged} markiert · {percent} %
 
 |`intent.oversize.direction`
-|{direction, select, lower {{current}x → {proposed}x lowers the multiple and flags more} other {{current}x → {proposed}x raises the multiple and flags fewer}}
-|{direction, select, lower {{current}x → {proposed}x senkt den Faktor und markiert mehr} other {{current}x → {proposed}x hebt den Faktor und markiert weniger}}
+|{direction, select, lower {{current}x → {proposed}x lowers the multiple and can flag more} other {{current}x → {proposed}x raises the multiple and can flag fewer}}
+|{direction, select, lower {{current}x → {proposed}x senkt den Faktor und kann mehr markieren} other {{current}x → {proposed}x hebt den Faktor und kann weniger markieren}}
 |===
 
 * *The head's counts*: the head joins `intent.head.criteria` and one `intent.head.count` per verdict that has criteria, with ` · `; `{state}` is the verdict's word `state.criterion.<value>` (<<states>>), so a verdict has one word everywhere. Before the review the line is `state.criterion.not_reviewed`.
