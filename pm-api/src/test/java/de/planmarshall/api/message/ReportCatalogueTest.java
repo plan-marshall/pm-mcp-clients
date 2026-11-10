@@ -171,10 +171,10 @@ class ReportCatalogueTest {
         assertEquals("2 older unread reports remain. Run reports to see the unread list.",
                 MessageCatalogue.format("en", "operator.reports.read_all.older", Map.of("count", 2)));
         assertEquals("1 älterer ungelesener Bericht bleibt."
-                        + " Führe reports aus, um die ungelesene Liste zu sehen.",
+                + " Führe reports aus, um die ungelesene Liste zu sehen.",
                 MessageCatalogue.format("de", "operator.reports.read_all.older", Map.of("count", 1)));
         assertEquals("2 ältere ungelesene Berichte bleiben."
-                        + " Führe reports aus, um die ungelesene Liste zu sehen.",
+                + " Führe reports aus, um die ungelesene Liste zu sehen.",
                 MessageCatalogue.format("de", "operator.reports.read_all.older", Map.of("count", 2)));
         assertEquals("conflicts with the transport test",
                 MessageCatalogue.format("en", "report.completion.own_call_conflicts", Map.of("item", "the transport test")));

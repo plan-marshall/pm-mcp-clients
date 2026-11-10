@@ -175,9 +175,9 @@ class ReportsScenarioTest {
                     () -> assertEquals(5, page.unreadCount()),
                     () -> assertEquals(5, page.items().size()),
                     () -> assertTrue(chosenIds.stream().noneMatch(remainingIds::contains),
-                                        "every requested id left the unread list: " + remainingIds),
+                            "every requested id left the unread list: " + remainingIds),
                     () -> assertTrue(remainingIds.containsAll(untouchedIds),
-                                        "every unrequested shown id stays unread: " + remainingIds));
+                            "every unrequested shown id stays unread: " + remainingIds));
         }
     }
 

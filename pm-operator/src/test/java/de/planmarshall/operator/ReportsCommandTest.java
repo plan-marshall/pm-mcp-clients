@@ -194,7 +194,7 @@ class ReportsCommandTest {
                             () -> assertTrue(out.toString().contains("✓ 2 reports marked read."),
                                                 out.toString()),
                             () -> assertTrue(out.toString().contains(
-                                                    "2 older unread reports remain. Run reports to see the unread list."),
+                                                                    "2 older unread reports remain. Run reports to see the unread list."),
                                                 out.toString())
         );
     }
@@ -232,8 +232,8 @@ class ReportsCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertEquals(2, server.requests().size(), "one list read and one ids write"),
                             () -> assertTrue(out.toString().contains(
-                                                    "2 ältere ungelesene Berichte bleiben."
-                                                            + " Führe reports aus, um die ungelesene Liste zu sehen."),
+                                                                    "2 ältere ungelesene Berichte bleiben."
+                                                                                        + " Führe reports aus, um die ungelesene Liste zu sehen."),
                                                 out.toString())
         );
     }
