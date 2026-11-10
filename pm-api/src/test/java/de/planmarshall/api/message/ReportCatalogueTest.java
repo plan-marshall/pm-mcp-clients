@@ -131,6 +131,7 @@ class ReportCatalogueTest {
                 "operator.reports.open_hint",
                 "operator.reports.read_hint",
                 "operator.reports.older",
+                "operator.reports.read_all.older",
                 "operator.reports.key_count",
                 "operator.reports.keys.details",
                 "operator.reports.keys.read",

@@ -163,6 +163,41 @@ class ReportsCommandTest {
     }
 
     @Test
+    @DisplayName("reports read --all says that older unread reports remain when the list has a second page")
+    void reportsReadAllWithOlderPage() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "items": [
+                                        {"id":"rep-0142","subject":"fix-relay"},
+                                        {"id":"rep-0139","subject":"docs-typo"}
+                                      ],
+                                      "unread_count": 4,
+                                      "has_older": true,
+                                      "older_count": 2
+                                    }
+                                    """);
+            } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"count\":2}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("reports", "read", "--all");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ 2 reports marked read."),
+                                                out.toString()),
+                            () -> assertTrue(out.toString().contains(
+                                                    "2 older unread reports remain: reports --older shows them."),
+                                                out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("reports read --all prints nothing read and sends no read on an empty unread list")
     void reportsReadAllWithoutUnreadReports() throws Exception {
         var server = fixture.start((request, response) -> {

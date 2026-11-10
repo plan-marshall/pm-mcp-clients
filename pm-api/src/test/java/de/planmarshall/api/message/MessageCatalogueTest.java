@@ -110,11 +110,11 @@ class MessageCatalogueTest {
     }
 
     @Test
-    void shouldNameTheThemesInGermanWithoutTheAnglicism() {
+    void shouldNameTheThemesInGermanAsTheDesignDoes() {
         var de = MessageCatalogue.getMessages("de", "common");
 
         assertAll(
-                () -> assertEquals("Helles Farbschema", de.get("dev.theme.light")),
-                () -> assertEquals("Dunkles Farbschema", de.get("dev.theme.dark")));
+                () -> assertEquals("Helles Theme", de.get("dev.theme.light")),
+                () -> assertEquals("Dunkles Theme", de.get("dev.theme.dark")));
     }
 }
