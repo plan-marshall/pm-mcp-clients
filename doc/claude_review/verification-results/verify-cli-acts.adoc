@@ -377,6 +377,18 @@ archived message was refused (`not_live`), so the correction is this paragraph.
 main path in `AnswerDialogueIT` — no `q`-first and no unknown-input case — so `q` sending nothing is unproven there.
 Plan concerned: PLAN-21 (the working answer dialogue), whose dialogue the waiver path belongs to.
 
+[NOTE]
+====
+*Corrected after the run (2026-11-10, PR #402).* The verdicts above are those of the run at `0913d6f3`; two of them read
+differently against the check texts as they now stand. `CLI-UC-V-04`: the operator ruled that runtime text in the model
+language is shown as delivered, so the German clause checks the client's own words; on the cited Q-007 capture the frame
+is German, so the check reads `pass` (the German `answer WR-2` arm was not captured). `CLI-UC-V-06`: the design removed
+`onboard --auto` (link:../../design/terminal-client/01-commands.adoc[Commands]), so the old wording failed on a verb meant
+to be unknown, not on a defect of PLAN-22; the check now names the entry's first choice, which was not run, so it reads
+`not verified`. Five verdict moves of the use-case matrix were corrected with it
+(link:../cli/use-cases/analysis.adoc[Analysis]).
+====
+
 [#residue]
 == Residue
 

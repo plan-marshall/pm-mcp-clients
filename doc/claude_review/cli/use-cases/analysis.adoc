@@ -48,9 +48,10 @@ transcripts. The gap is in the implementation, not in the design or the use case
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
 |Onboard Automatically
-|`deviates`
-|The automatic path is the entry's first choice, not `onboard --auto --yes`: that verb is unknown (exit `2`), so
-V-06 fails as written (rb-33-verify-cli-acts-001).
+|`not verified`
+|The automatic path is the entry's first choice: the design removed `onboard --auto`
+(link:../../../design/terminal-client/01-commands.adoc[Commands]), so V-06's old wording failed on a verb that is meant
+to be unknown (exit `2`, `OnboardingDialogueIT`), and the entry's choice 1 was not run (corrected 2026-11-10, PR #402).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
 |Languages, Harnesses, Models, Roles, Credentials, Providers, Plan Defaults
@@ -67,8 +68,9 @@ variations each use case names (for example a later `config harnesses` run for U
 
 |link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 |Enter and Connect
-|`conforms`
-|Runtime, web URL and paired device are printed; the prompt carries the badges, and the pushed notices reach it (V-05).
+|`partial`
+|Runtime, web URL and paired device are printed; the prompt carries the badges, and the pushed notices reach it (V-05);
+that a notice keeps the typed text is not verified (no harness types before a broadcast).
 
 |link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
 |Manage Paired Devices
@@ -132,9 +134,10 @@ run was not walked (V-06).
 
 |link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
 |Control a Plan
-|`conforms`
+|`partial`
 |The pause dialogue offers three options with their consequence, re-asks on an unknown key, takes Enter, and `q` sends
-nothing; the menu of a waiting plan opens with the decision, a paused plan's with Start (V-01, V-03).
+nothing; the menu of a waiting plan opens with the decision, a paused plan's with Start (V-01, V-03). Start, ending a
+plan, its settings and its chat were outside the checks.
 
 |link:{uc}/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2] to link:{uc}/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]
 |Control an Epic, Review Findings, Resolve Holds, Plan Settings
@@ -149,18 +152,20 @@ nothing; the menu of a waiting plan opens with the decision, a paused plan's wit
 
 |link:{uc}/07-system.adoc#UC-SYS-2[UC-SYS-2]
 |See What the Runtime Is Doing
-|`conforms`
+|`partial`
 |One model: the printed and the full-screen view show the same listeners and the same token units, and the first line of
-the draining state says draining (V-08).
+the draining state says draining (V-08); that no line repeats was not checked.
 
 |link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
 |Clean Up
-|`conforms`
-|`cleanup` ends with the `d r i x o q` prompt, `d` asks `y`/`n`, and `q` deletes nothing (V-07). The German run's body
-is still English — residue of the verification, outside the check's clauses.
+|`partial`
+|`cleanup` ends with the `d r i x o q` prompt, `d` asks `y`/`n`, and `q` deletes nothing (V-07); the remind, ignore and
+leave-out acts were shown as keys but not run. The German run's body is still English — residue of the verification,
+outside the check's clauses.
 |===
 
-Totals: 8 `conforms`, 15 `partial`, 1 `deviates`, 0 `missing`, 13 `not verified` (37 use cases). The moves and their
+Totals: 4 `conforms`, 19 `partial`, 0 `deviates`, 0 `missing`, 14 `not verified` (37 use cases; corrected 2026-11-10 by
+PR #402 from 8/15/1/0/13, where five moves claimed more than their check showed). The moves and their
 evidence are in link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts].
 
 [#gaps]

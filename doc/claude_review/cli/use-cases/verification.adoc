@@ -62,8 +62,8 @@ label. The prompt shows `pm [3 questions] ›` in `fully-onboarded`.
 |CLI-UC-V-06
 |CLI-UC-S-06
 |From `onboard.mode`, `h` then Enter shows `[1/7] Language`. Each state shows texts, never a link name. The walk
-reaches `onboard.completed`. `onboard --auto --yes` reaches the result table. `project setup cui-parent` shows the
-identity step with id, name, pilot.
+reaches `onboard.completed`. The entry's first choice (decide everything) reaches the result table; `onboard` is no
+verb and exits `2`. `project setup cui-parent` shows the identity step with id, name, pilot.
 |`onboarding`; `projects-and-start` → `projects.being-added`; `OnboardingDialogueIT`
 
 |CLI-UC-V-07
