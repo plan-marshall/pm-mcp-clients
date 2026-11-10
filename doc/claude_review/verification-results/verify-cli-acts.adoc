@@ -1,0 +1,302 @@
+= Verification Results: The Terminal Acts
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+:docs: https://github.com/plan-marshall/plan-marshall-documentation/blob/main/doc
+
+link:../cli/README.adoc[CLI Review] » Verification Results » The Terminal Acts
+
+This document records the eleven checks of the terminal client's acting, answering, notices, onboarding, cleanup, and
+system model against the merged code. The checks come from
+link:../cli/use-cases/verification.adoc[CLI Review, Use Cases, Verification] (`CLI-UC-V-01` to `CLI-UC-V-10`) and
+link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification] (`CLI-CC-V-06`). Every check ran as
+written; one part of one check (`CLI-UC-V-10`) is `not verified`, and two checks carry a `fail`, each routed as a finding
+to the epic inbox. Nothing that was found was fixed.
+
+[#subject]
+== What Was Verified
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+
+|Commit
+|`0913d6f3b7bc3d385e54a1f9644bda6fe918cae6`, `main` of `pm-mcp-clients` (later than `be8c8403`)
+
+|Date
+|2026-11-10
+
+|Machine
+|macOS, `aarch64`, operator locale `de_DE`, UTF-8
+
+|Harness
+|The terminal client ran only through `ScreenCaptureIT` of `cli-pty-dialogue-harness`, on a real pseudo-terminal:
+`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24. `pm-operator` itself was never started in the agent's shell: the
+operator gate refuses that by design (`PM-SEC-3`), and a check that needs a person at a real terminal asks the operator,
+never the shell.
+
+|Mock
+|`ScreenCaptureIT` starts its own `MockRuntime` per capture on an ephemeral port and jumps with
+`POST /mock/goto/<state>`, exactly as the check's *Where* column names the state. No mock process of this plan ran on the
+port block `20330`/`20331`: the harness needs no fixed port, and no process of another plan was reused or stopped.
+
+|Builds
+|`mvn test -pl pm-operator`: `BUILD SUCCESS`, 118 test classes, 0 failures, 0 errors, 0 skipped (job
+`b233918c3af845b2ad0f9464e6cde068`). `mvn verify -Pintegration-tests -pl pm-operator`: `BUILD SUCCESS`, 119 tests,
+0 failures, 0 errors (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`). Six `ScreenCaptureIT` runs, each green (jobs
+`8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`, `9c773b8664da4804b34dd50085f1f609`,
+`4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`).
+
+|Capture set
+|`pm-operator/src/test/resources/screen-captures/PLAN-33.txt`, created by this plan: the console badge and the two pushed
+notices of `fully-onboarded`, the first guided onboarding state, `onboard --auto --yes`, `config show`, and
+`plan nope`. Where an existing set already shows a check (`10-cli-choice-prompt-pause`, `PLAN-21`, `PLAN-23`,
+`26-cli-system-model`), it was run and its capture is the evidence.
+|===
+
+[#dependencies]
+== Verify-First: The Dependency Plans
+
+Every named dependency has a landing record in the epic ledger of `ui-improvements` before `0913d6f3`:
+`landings/PLAN-21.md`, `PLAN-22.md`, `PLAN-23.md`, `PLAN-26.md`, `PLAN-17.md`, `PLAN-20.md`, `PLAN-13.md`, `PLAN-11.md`,
+`PLAN-02.md`, `PLAN-10.md`, `PLAN-76.md`, and `PLAN-124.md`. `pm-operator/src/test` holds no `@Disabled` test. No check
+is held back by a dependency.
+
+Verdict: `pass`.
+
+[#checks]
+== The Checks
+
+[cols="1,1,4,2",options="header"]
+|===
+|Check |Verdict |Evidence |Mock limit
+
+|CLI-UC-V-01
+|`pass`
+|`PauseDialogueIT` passes (3 tests: `q` sends nothing, unknown input re-asks, Enter pauses) and asserts `Nothing was
+sent.` plus `harness.assertNoAct()`. The capture
+`pm-operator/target/screens/10-cli-choice-prompt-pause/pause-q-120x30-en.txt` shows all three options with their
+consequence: `1) now  running work is withdrawn at once; it runs again on start`, `2) after the current task ←  the
+running task finishes, then the plan holds`, `3) after the current phase  the running phase finishes, then the plan
+holds`. The `.stdout.txt` of the same capture ends with `Left the pause. Nothing was sent.`; `pause-9-120x30-en`
+answers `9 is not offered here: 1-3, q, ?` and redraws the same options; `pause-enter-120x30-en` ends with `Chosen:
+after the current task` and `✓ fix-relay pausing after the task`.
+|None for this check. The plan state is unchanged by `q`, proven against `/mock/acts`, not only by the screen.
+
+|CLI-UC-V-02
+|`pass`
+|`RuntimeStopDialogueIT` passes (8 tests). Its prompt offers `1) Stop when done`, `2) Stop now`, and `k) keep it
+running`; `keepRunningSendsNothing` types `k`, asserts exit `0` and `harness.assertNoAct()`.
+`PmOperatorTest.stopNoInputStopsAtTheChoice` asserts `runtime stop --no-input` returns `StartDialogue.EXIT_MISSING_INPUT`
+(= `3`), prints `runtime stop needs the choice of when; …` and sends no stop request.
+|None.
+
+|CLI-UC-V-03
+|`pass`
+|`ActionMenusTest` passes (15 tests). `waitingPlan` asserts five entries with `Decide Q-009…` first, trigger `!`, action
+`decide`, then Pause, Cancel, Chat, Plan settings; `waitingForYouPlan` repeats it for the runtime's other spelling;
+`pausedPlan` asserts Start (`s`), Abandon (`x`), Chat, Plan settings in that order, and `pausedPlanKeepsItsOrder` proves
+an open decision does not displace Start. The full-screen footer of the `reports-and-system` capture names `! what
+waits`.
+|None.
+
+|CLI-UC-V-04
+|`pass`
+|`AnswerDialogueIT` passes (9 tests). The capture `pm-operator/target/screens/PLAN-21/answer-q007-prompt-120x30-en.txt`
+shows the votes (`1 of 3 votes · 1 model`, `2 of 3 votes · 2 models`, `not voted on`), the dissent (`Against it
+(quorum-b): the branch was pushed; a rebase rewrites what others pulled.`), the evidence hint (`? shows the evidence:
+RelayServer.java:42-58 (both versions of the method)`), and the prompt `Rebase onto main? [Enter]   other: 1-3   w) in my
+own words   m) add a note   x) none fits   l) later   ?`. `answer-q007-enter-120x30-en.stdout.txt` ends with `✓ Q-007
+answered: Rebase onto main. The plan goes on.`; `answer-wr2-120x30-en.txt` asks `y) waive, with a reason   d) decline,
+with a reason   l) later`. The German capture `answer-q007-prompt-120x30-de.txt` shows the client's own text in German
+(`Frage`, `blockiert den Plan`, `zeigt die Belege`, `Stimmen`, `Empfohlen von`, `Dagegen`, `weitere`, `später`); the
+English words it shows are the decision's payload (description, question, option labels, rationale, dissent) and
+identifiers (`plan fix-relay`, `execute`, `implement`, `quorum-b`, `[Enter]`).
+|The check's sample says `other: 1-2` and `RelayServer.java, lines 42-58`. The mock's Q-007 offers three options, so the
+prompt names `1-3`, and the hint is printed as `RelayServer.java:42-58`. The substance — the range of the offered keys
+and the file with its lines — is there; the spelling follows the mock's payload.
+
+|CLI-UC-V-05
+|`pass`
+|`ConsoleNoticeIT` passes (2 tests). The capture `pm-operator/target/screens/PLAN-33/notice-opened-120x30-en.txt` shows
+`◆ Question Q-042 · plan fix-relay · blocks the plan`, its description and `answer Q-042   ·   questions` *above* the
+prompt line; `notice-answered-120x30-en.txt` shows `– Q-007 was answered in the web app (iPad): Rebase onto main.
+Nothing was sent from here.` above the prompt. Both notices are printed through `LineReader.printAbove`
+(`PmConsole.java:652`), the JLine call that draws above the prompt and redraws it with the line buffer it holds; the IT
+asserts the notice is drawn once, not once per redraw. The badge capture `PLAN-33/badge-120x30-en.txt` shows
+`pm [setup cui-parent 2/10 · 3 questions · 1 integrity pause · +1] ›` in `fully-onboarded`.
+|The check's badge sample is `pm [3 questions] ›`. `fully-onboarded` carries an open project setup and an integrity
+pause, so the badge names them too; `3 questions` is one of its segments. The typed-text clause has no PTY test of its
+own — the harness has no way to type before a broadcast — so it rests on the `printAbove` call, not on a run.
+
+|CLI-UC-V-06
+|`fail`
+|`OnboardingDialogueIT` passes (4 tests): `h` then Enter draws `Set up this machine for plan-marshall` and `Begin with
+step 1`; the guided path renders all 17 titles up to `This machine is ready` (= `onboard.completed.title` of
+`messages/onboarding.en.properties:121`) and sends `POST /api/v1/onboarding/step`; `q` sends nothing. The captures
+`PLAN-33/step-one-120x30-en.after.txt` and `-de.after.txt` show `[1/7] Language · Choose your languages` (German
+`[1/7] Sprache · Wähle deine Sprachen`), and every state line is a catalogue text, never a link name
+(`StateDialogueTest` renders only facts the catalogue labels). `ProjectSetupDialogueIT` passes (4 tests): `project setup
+cui-parent` shows `Id`, `cui-parent`, `Name`, and `Pilot: this version of PM-MCP runs plans only in pilot projects: no`,
+then `cui-parent is ready` and `POST /api/v1/projects/cui-parent/setup`. *Fails as written* on its `onboard --auto --yes`
+clause: the verb no longer exists. `onboard-auto-yes-120x30-en.stdout.txt` holds `Unmatched arguments from index 0:
+'onboard', '--auto', '--yes'` and `Did you mean: pm-operator lesson or pm-operator questions or pm-operator enrol-harness?`,
+exit `2`. The automatic path now starts from the entry's first choice `1) Decide everything for me…`.
+|The check names a verb the design replaced. Finding `plan-33-001` names the check and the plan whose dialogue it
+concerns.
+
+|CLI-UC-V-07
+|`pass`
+|`CleanupDialogueIT` passes (6 tests). The capture
+`pm-operator/target/screens/PLAN-23/PLAN-23-cleanup-choose-120x30-en.after.txt` ends with `d) delete…   r) ask me
+again   i) ignore   x) leave items out   o) open` and `q) leave`; the confirm capture shows `d` opening `Delete 12
+plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project? … It cannot be undone. … Delete?
+y) yes   n) no   q) leave`. `consoleBarLeavesTheDeleteUnsaved` types `cleanup`, `d`, `q` and proves with
+`assertNoCleanupAct` that no `/api/v1/system/cleanup` act was sent.
+|The six keys are drawn on two lines at 120 columns (`q) leave` on its own line); all six are offered.
+
+|CLI-UC-V-08
+|`pass`
+|The first line of `pm-operator/target/screens/26-cli-system-model/system-print-draining-120x30-en.txt` is
+`draining · 2 left`; the full-screen draining capture carries `draining · 1 left` on its first content row.
+`SystemViewConsistencyTest` passes (5 tests): `bothViewsShowTheSameListeners` asserts the same listeners line in the
+printed view and in the full-screen rows for `en` and `de`, and `bothViewsShowTheSameTokenUnits` asserts the same token
+units on the row of each model in both views. `config show` exits `1` in
+`PLAN-33/config-show-120x30-en.stdout.txt` (`Unable to load settings: HTTP 404`).
+|The two draining captures are two mock runs, so the drain count and the network listener differ between them (the
+drain advances while a capture settles). The consistency of the two views is proven from one snapshot by the unit test,
+not by comparing two runs.
+
+|CLI-UC-V-09
+|`fail`
+|`plan nope --print` prints `Plan nope not found.` and exits `1`
+(`PLAN-33/plan-nope-120x30-en.stdout.txt`, German `plan-nope-120x30-de.stdout.txt`); the catalogue holds no `No plan
+nope`. The full-screen overview in `reports-and-system` shows `Nothing runs. Start a plan in a project, or enrol one.`
+(`PLAN-33/overview-refused-120x30-en.txt`), and that scenario serves no `/api/v1/projects` route, so the read is refused
+and `OverviewFullScreenApp.fetchProjects` swallows the failure, leaving the list empty (`OverviewFullScreenApp.java:486`),
+which `ProjectsOverviewLevel.rows` renders as the empty state (`ProjectsOverviewLevel.java:86`). An error still looks
+like an empty state.
+|Both clauses fail; one finding (`plan-33-002`) covers them.
+
+|CLI-UC-V-10
+|`not verified`
+|The check asks that the two variations in `plan-marshall-documentation` pass `doc-review` *and* are agreed by the
+operator. The operator's agreement is not a check this plan can run (spec, Amendment 2026-11-10). The variations
+themselves were not re-reviewed here.
+|—
+
+|CLI-CC-V-06
+|`pass`
+|`mvn verify -Pintegration-tests -pl pm-operator` is green: every dialogue that acts has its PTY test with the three
+cases — `PauseDialogueIT` (3), `CancelDialogueIT` (4), `AnswerDialogueIT` (9, waiver included), `OnboardingDialogueIT`
+(4), `ProjectSetupDialogueIT` (4), `CleanupDialogueIT` (6), `RuntimeStopDialogueIT` (8), besides
+`AcceptEditDialogueIT` (2) and `InterruptDialogueIT` (6). Each `qFirstSendsNothing` case asserts `Nothing was sent.`
+and `harness.assertNoAct()`, which reads `GET /mock/acts` (`DialogueHarness.java:130`), so `q` is proven to send
+nothing by the mock's own act log.
+|None.
+
+|===
+
+Totals: 11 checks: 8 `pass`, 2 `fail`, 1 `not verified`. The verify-first step is `pass`.
+
+[#mapping]
+== The Checks and the Use-Case Rows
+
+The verdict matrix is keyed by use-case ids; this is the mapping the checks give it.
+
+[cols="1,3,1",options="header"]
+|===
+|Check |Use cases |Row moved
+
+|CLI-UC-V-01
+|UC-CTL-1 (Control a Plan)
+|`deviates` → `conforms`
+
+|CLI-UC-V-02
+|UC-SYS-1 (Manage the Runtime)
+|`deviates` → `conforms`
+
+|CLI-UC-V-03
+|UC-CTL-1 (Control a Plan)
+|covered by the same row as V-01
+
+|CLI-UC-V-04
+|UC-PLN-2 (Decide What a Plan Asks)
+|`deviates` → `conforms`
+
+|CLI-UC-V-05
+|UC-PLN-2, UC-ENT-1 (Enter and Connect)
+|UC-PLN-2 as V-04; UC-ENT-1 `partial` → `conforms`
+
+|CLI-UC-V-06
+|UC-ONB-1 (Onboard a Machine), UC-ONB-3 to UC-ONB-9, UC-PRJ-1 (Onboard a Project)
+|UC-ONB-1 `deviates` → `conforms`; UC-ONB-3…9 `missing` → `conforms`; UC-PRJ-1 `deviates` → `partial` (the identity step
+is proven, the rest of the project run was not walked). UC-ONB-2 (Onboard Automatically) stays `deviates`: its own
+`onboard --auto --yes` clause fails.
+
+|CLI-UC-V-07
+|UC-SYS-3 (Clean Up)
+|`deviates` → `conforms`
+
+|CLI-UC-V-08
+|UC-SYS-2 (See What the Runtime Is Doing)
+|`partial` → `conforms`
+
+|CLI-UC-V-09
+|UC-PLN-4 (See What Runs, Across Projects)
+|stays `partial`; the refused request is still shown as "Nothing runs"
+
+|CLI-CC-V-06
+|all acting use cases (the regression guard)
+|no row; it proves the guard, not a use case
+|===
+
+Verdicts moved in link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]; its totals become 16
+`conforms`, 7 `partial`, 1 `deviates`, 0 `missing`, and 13 `not verified` (37 use cases), against 2, 8, 7, 7, and 13
+before.
+
+[#results]
+== What the Checks Found
+
+Two checks fail and are routed, each as one `finding` message to the epic inbox of `ui-improvements`:
+
+. *`CLI-UC-V-06`*: `onboard --auto --yes` is not a verb of `pm-operator` (exit `2`, `Unmatched arguments from index 0`);
+the automatic onboarding now starts from the entry's first choice. The check as written cannot hold. Plan concerned:
+PLAN-22 (one state dialogue for both onboardings).
+
+. *`CLI-UC-V-09`*: `plan nope` prints `Plan nope not found.`, not `No plan nope`, and the full-screen overview prints
+`Nothing runs` when the projects read is refused. Plan concerned: PLAN-20 (action menus by state) for the overview
+defect; the refusal text belongs to PLAN-30, which has not landed.
+
+[#residue]
+== Residue
+
+* `config show` shows `Unable to load settings: HTTP 404`. The `CLI-UC-V-08` clause allows the `exit 1` arm, so the
+check passes; the line is still an HTTP status on the operator's screen, which `CLI-CC-V-04` forbids. Already routed:
+the PLAN-124 landing records refusals printed as `refused by the runtime (HTTP n)`.
+
+* The German console screen (`reports-and-system`) prints `▪ 5 ungelesene Berichte … · reports shows them` — an English
+sentence beside the German one. Outside the eleven checks (it belongs to `CLI-CC-V-01`/`-V-02`); recorded, not filed.
+
+* `CLI-UC-V-05`'s typed-text clause has no PTY evidence; the harness cannot type before a broadcast.
+
+[#doc-review]
+== The Review of This File
+
+This file was checked with the AsciiDoc validators of `pm-documents:ref-asciidoc` and read against the captures and the
+test reports it cites:
+
+* `asciidoc validate --path …/verification-results/verify-cli-acts.adoc`: 1 file, 0 errors, 0 warnings.
+* `asciidoc verify-links --file …/verification-results/verify-cli-acts.adoc`: 4 links, 0 broken, 0 format violations.
+* The same two checks over the changed link:../cli/use-cases/analysis.adoc[Use Cases, Analysis]: 36 links, 0 broken. Its
+  `validate` reports 4 errors and 5 warnings — missing `:toclevels:`/`:toc-title:`/`:sectnums:`/`:source-highlighter:`
+  attributes and five list-formatting warnings in its original text. The same findings are reported for the file at
+  `0913d6f3` before this plan's edit, so nothing new was introduced.
+
+The `doc-review` skill's own phases (its parallel corpus reviewers, its fix pass, and its decision conversation with the
+operator) review the concept corpus of `plan-marshall-documentation`; they do not apply to a verification result file
+and were not run. What `doc-review` checks for a new document — format, links, anchors, and agreement with the artefacts
+it cites — ran as above.
