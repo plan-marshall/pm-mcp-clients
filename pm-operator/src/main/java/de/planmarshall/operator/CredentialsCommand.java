@@ -136,8 +136,8 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static String providerHint(@Nullable Map<String, Object> status, String locale) {
         var tokenPath = status != null ? JsonTree.string(status, "token_path") : null;
         return tokenPath != null && !tokenPath.isBlank()
-                ? tokenPath
-                : MessageCatalogue.format(locale, "common.none", Map.of());
+                            ? tokenPath
+                            : MessageCatalogue.format(locale, "common.none", Map.of());
     }
 
     private static String storeHint(@Nullable Map<String, Object> status) {

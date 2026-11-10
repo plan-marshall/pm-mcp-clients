@@ -183,7 +183,7 @@ public final class EpicCommand implements Callable<Integer> {
             for (var row : workstream.rows()) {
                 var status = EpicViewFormatting.statusText(locale, row);
                 var line = new StringBuilder("    ")
-                                    .append(String.format("%-18s", status))
+                                    .append(String.format("%-17s ", status))
                                     .append(OutputSafety.stripControlSequences(row.planId()));
                 if (row.pullRequestNumber() != null) {
                     line.append("   #").append(row.pullRequestNumber());

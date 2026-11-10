@@ -19,6 +19,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -190,12 +191,12 @@ class PlanViewCommandTest {
     @DisplayName("formats durations correctly for sub-minute, minute, multi-hour, and multi-day intervals")
     void shouldFormatPlanDurationsCorrectly() {
         assertAll(
-                            () -> assertEquals("0 s", de.planmarshall.api.display.Display.duration("en", 0)),
-                            () -> assertEquals("45 s", de.planmarshall.api.display.Display.duration("en", 45)),
-                            () -> assertEquals("2 min", de.planmarshall.api.display.Display.duration("en", 120)),
-                            () -> assertEquals("1 h 1 min", de.planmarshall.api.display.Display.duration("en", 3660)),
-                            () -> assertEquals("2 d", de.planmarshall.api.display.Display.duration("en", 172_800)),
-                            () -> assertEquals("2 T", de.planmarshall.api.display.Display.duration("de", 172_800))
+                            () -> assertEquals("0 s", Display.duration("en", 0)),
+                            () -> assertEquals("45 s", Display.duration("en", 45)),
+                            () -> assertEquals("2 min", Display.duration("en", 120)),
+                            () -> assertEquals("1 h 1 min", Display.duration("en", 3660)),
+                            () -> assertEquals("2 d", Display.duration("en", 172_800)),
+                            () -> assertEquals("2 T", Display.duration("de", 172_800))
         );
     }
 

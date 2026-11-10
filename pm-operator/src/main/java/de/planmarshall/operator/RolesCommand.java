@@ -521,8 +521,8 @@ public final class RolesCommand implements Callable<Integer> {
 
     private static String valueOrDash(@Nullable String value) {
         return value == null || value.isBlank()
-                ? MessageCatalogue.get("common.none")
-                : OutputSafety.stripControlSequences(value);
+                            ? MessageCatalogue.get("common.none")
+                            : OutputSafety.stripControlSequences(value);
     }
 
     private static String roleTarget(String role, @Nullable String project) {

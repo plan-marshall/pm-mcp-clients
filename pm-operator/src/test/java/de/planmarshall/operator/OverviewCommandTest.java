@@ -344,7 +344,8 @@ class OverviewCommandTest {
 
         // Alongside landings
         assertTrue(output.contains("alongside"));
-        assertTrue(output.contains("! landing failed   landing CI failure"));
+        assertTrue(output.contains("! landing failed"));
+        assertTrue(output.contains("landing CI failure \u00b7 failed"));
         assertTrue(output.contains("removing 2 moved documents from git"));
         assertTrue(output.contains("landing unknown"), output);
         assertFalse(output.contains("landing unit"), output);
@@ -422,7 +423,7 @@ class OverviewCommandTest {
     }
 
     @Test
-    @DisplayName("status renders '-' placeholder when running_since is missing")
+    @DisplayName("status renders the unknown word when running_since is missing")
     void shouldRenderPlaceholderWhenRunningSinceMissing() throws Exception {
         writeLiveRecord();
         fixture.writeToken("test-token");
@@ -441,7 +442,7 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        assertTrue(output.contains("running since -"));
+        assertTrue(output.contains("running since unknown"));
     }
 
     @Test

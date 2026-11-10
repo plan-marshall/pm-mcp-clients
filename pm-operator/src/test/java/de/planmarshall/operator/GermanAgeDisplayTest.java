@@ -64,6 +64,26 @@ class GermanAgeDisplayTest {
     }
 
     @Test
+    @DisplayName("the alongside landings speak through their catalogue words in both languages")
+    void alongsideLandingsAreLocalized() {
+        var failedUnit = new AlongsideLanding("remediation.ci-failure", "failed", null, "unit", "landing_failed");
+        var removal = new AlongsideLanding(null, "running", 2, "removal", null);
+
+        var en = new StringWriter();
+        StatusCommand.renderAlongsideLandings(new PrintWriter(en, true), List.of(failedUnit, removal), "en");
+        assertTrue(en.toString().contains("! landing failed"), en.toString());
+        assertTrue(en.toString().contains("CI failure \u00b7 failed"), en.toString());
+        assertTrue(en.toString().contains("removing 2 moved documents from git \u00b7 running"), en.toString());
+
+        var de = new StringWriter();
+        StatusCommand.renderAlongsideLandings(new PrintWriter(de, true), List.of(failedUnit, removal), "de");
+        assertTrue(de.toString().contains("! Landen fehlgeschlagen"), de.toString());
+        assertTrue(de.toString().contains("CI-Fehler \u00b7 fehlgeschlagen"), de.toString());
+        assertTrue(de.toString().contains("entferne 2 verschobene Dokumente aus git \u00b7 l\u00e4uft"), de.toString());
+        assertFalse(de.toString().contains("remediation."), de.toString());
+    }
+
+    @Test
     @DisplayName("each of the unit-title sites renders the placeholder for a missing or unknown unit")
     void unitTitleSitesHandleMissingAndUnknownUnit() {
         var missing = new AlongsideLanding(null, "running", null, "unit", null);
@@ -71,12 +91,12 @@ class GermanAgeDisplayTest {
 
         var statusEn = new StringWriter();
         StatusCommand.renderAlongsideLandings(new PrintWriter(statusEn, true), List.of(missing, unknown), "en");
-        assertTrue(statusEn.toString().contains("landing unknown"), statusEn.toString());
+        assertTrue(statusEn.toString().contains("landing unknown \u00b7 running"), statusEn.toString());
         assertFalse(statusEn.toString().contains("no.such.unit"), statusEn.toString());
 
         var statusDe = new StringWriter();
         StatusCommand.renderAlongsideLandings(new PrintWriter(statusDe, true), List.of(missing, unknown), "de");
-        assertTrue(statusDe.toString().contains("landing unbekannt"), statusDe.toString());
+        assertTrue(statusDe.toString().contains("lande unbekannt \u00b7 l\u00e4uft"), statusDe.toString());
         assertFalse(statusDe.toString().contains("no.such.unit"), statusDe.toString());
 
         assertEquals("unknown", EpicCommand.landingTitle("en", null));

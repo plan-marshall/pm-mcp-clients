@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 
 /**

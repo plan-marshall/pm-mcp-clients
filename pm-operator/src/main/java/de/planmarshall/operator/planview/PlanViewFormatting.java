@@ -110,20 +110,63 @@ final class PlanViewFormatting {
      * @return the task's one-line detail
      */
     static String taskLine(String locale, LeafTask task) {
-        var outcome = task.outcome() != null
-                ? task.outcome()
-                : MessageCatalogue.format(locale, "common.none", Map.of());
         var line = clean(task.taskId()) + DOT_SEPARATOR
                             + MessageCatalogue.format(locale, "plan.leaf.task", Map.of(
                             "role", clean(task.role()),
                             "harness", clean(task.harness()),
                             "model", clean(task.model()),
                             "attempt", task.attempt(),
-                            "status", clean(task.status()),
-                            "outcome", clean(outcome)));
+                            "status", taskStatus(locale, task.status()),
+                            "outcome", taskOutcome(locale, task.outcome())));
         return task.durationSeconds() > 0
-                ? line + DOT_SEPARATOR + Display.duration(locale, task.durationSeconds())
-                : line;
+                            ? line + DOT_SEPARATOR + Display.duration(locale, task.durationSeconds())
+                            : line;
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param status the task's status value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String taskStatus(String locale, @Nullable String status) {
+        return closedWord(locale, "plan.task.status.", status);
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param outcome the task's outcome value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String taskOutcome(String locale, @Nullable String outcome) {
+        return closedWord(locale, "plan.task.outcome.", outcome);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param status the job's status value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String jobStatus(String locale, @Nullable String status) {
+        return closedWord(locale, "plan.job.status.", status);
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param outcome the job's outcome value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String jobOutcome(String locale, @Nullable String outcome) {
+        return closedWord(locale, "plan.job.outcome.", outcome);
+    }
+
+    private static String closedWord(String locale, String prefix, @Nullable String value) {
+        if (value == null || value.isBlank()) {
+            return MessageCatalogue.format(locale, "common.none", Map.of());
+        }
+        var key = prefix + value.toLowerCase(Locale.ROOT);
+        return MessageCatalogue.hasKey(key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : clean(value);
     }
 
     /**

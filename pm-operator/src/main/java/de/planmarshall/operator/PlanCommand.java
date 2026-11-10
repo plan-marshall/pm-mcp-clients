@@ -919,8 +919,8 @@ public final class PlanCommand implements Callable<Integer> {
 
             var locale = context.clientEnvironment().locale();
             var reason = report.reason() != null && !report.reason().isBlank()
-                    ? report.reason()
-                    : MessageCatalogue.format(locale, "common.none", Map.of());
+                                ? report.reason()
+                                : MessageCatalogue.format(locale, "common.none", Map.of());
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
             var ran = formatRan(report, locale, context.clock().getZone());
@@ -1046,8 +1046,8 @@ public final class PlanCommand implements Callable<Integer> {
             if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
                 var target = ownCall.conflictTarget();
                 var item = target != null && !target.isBlank()
-                        ? ConsoleNotice.stripControlSequences(target)
-                        : MessageCatalogue.get("common.unknown");
+                                    ? ConsoleNotice.stripControlSequences(target)
+                                    : MessageCatalogue.get("common.unknown");
                 return "conflicts with " + item;
             }
             if ("consistent".equalsIgnoreCase(ownCall.judgment())) {

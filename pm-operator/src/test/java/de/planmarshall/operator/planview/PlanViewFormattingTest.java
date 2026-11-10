@@ -116,7 +116,7 @@ class PlanViewFormattingTest {
                             () -> assertTrue(line.contains("running")),
                             () -> assertTrue(line.contains("6 min"))
         );
-        assertEquals("TASK-1 \u00b7 implement \u00b7 agent default \u00b7 attempt 1 \u00b7 planned \u00b7 -",
+        assertEquals("TASK-1 \u00b7 implement \u00b7 agent default \u00b7 attempt 1 \u00b7 planned \u00b7 none",
                             PlanViewFormatting.taskLine("en",
                                                 new LeafTask("TASK-1", "implement", null, null, 1, "planned", null, 0,
                                                                     0, null, null)));
@@ -146,5 +146,25 @@ class PlanViewFormattingTest {
                             () -> assertEquals("custom", PlanViewFormatting.signal("en", "custom")),
                             () -> assertEquals("", PlanViewFormatting.signal("en", null))
         );
+    }
+
+    @Test
+    @DisplayName("a task's and a job's status and outcome are catalogue words, never wire tokens")
+    void taskAndJobWords() {
+        assertAll(
+                            () -> assertEquals("done", PlanViewFormatting.taskStatus("en", "done")),
+                            () -> assertEquals("fertig", PlanViewFormatting.taskStatus("de", "done")),
+                            () -> assertEquals("l\u00e4uft", PlanViewFormatting.taskStatus("de", "running")),
+                            () -> assertEquals("Erfolg", PlanViewFormatting.taskOutcome("de", "success")),
+                            () -> assertEquals("Fehlschlag", PlanViewFormatting.taskOutcome("de", "failure")),
+                            () -> assertEquals("l\u00e4uft", PlanViewFormatting.jobStatus("de", "running")),
+                            () -> assertEquals("Fehlschlag", PlanViewFormatting.jobOutcome("de", "failure")),
+                            () -> assertEquals("submitted", PlanViewFormatting.taskStatus("de", "submitted")),
+                            () -> assertEquals("keine", PlanViewFormatting.taskOutcome("de", null))
+        );
+        assertEquals("TASK-1 \u00b7 implement \u00b7 agent default \u00b7 Versuch 1 \u00b7 fertig \u00b7 Erfolg",
+                            PlanViewFormatting.taskLine("de",
+                                                new LeafTask("TASK-1", "implement", null, null, 1, "done", "success",
+                                                                    0, 0, null, null)));
     }
 }

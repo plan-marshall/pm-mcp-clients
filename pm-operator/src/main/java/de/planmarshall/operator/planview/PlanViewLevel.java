@@ -638,14 +638,11 @@ public final class PlanViewLevel {
     }
 
     private static String jobLine(String locale, LeafJob job) {
-        var outcome = job.outcome() != null
-                ? job.outcome()
-                : MessageCatalogue.format(locale, "common.none", Map.of());
         return MessageCatalogue.format(locale, "plan.leaf.job", Map.of(
                             "kind", PlanViewFormatting.clean(job.kind()),
-                            "status", PlanViewFormatting.clean(job.status()),
+                            "status", PlanViewFormatting.jobStatus(locale, job.status()),
                             "duration", Display.duration(locale, job.durationSeconds()),
-                            "outcome", PlanViewFormatting.clean(outcome)));
+                            "outcome", PlanViewFormatting.jobOutcome(locale, job.outcome())));
     }
 
     private static String jobGlyph(LeafJob job) {

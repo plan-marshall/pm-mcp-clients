@@ -61,7 +61,7 @@ import org.junit.jupiter.api.condition.OS;
 class ControlDialoguesTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"),
-            ZoneId.of("Pacific/Auckland"));
+                        ZoneId.of("Pacific/Auckland"));
 
     private static final String PLAN_ACTIONS = """
                         {"subject_id":"p","subject_kind":"plan","state":"running","epic_id":"e",

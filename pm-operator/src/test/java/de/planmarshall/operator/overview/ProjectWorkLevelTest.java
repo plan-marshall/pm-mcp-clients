@@ -195,7 +195,7 @@ class ProjectWorkLevelTest {
         var missing = new AlongsideLanding(null, "running", null, "unit", null);
         var unknown = new AlongsideLanding("no.such.unit", "running", null, "unit", null);
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(), List.of(),
-                List.of(missing, unknown));
+                            List.of(missing, unknown));
         var level = new ProjectWorkLevel(detail, false, false);
 
         var english = level.rows("en", clock, false);
@@ -211,8 +211,8 @@ class ProjectWorkLevelTest {
     @DisplayName("two days renders as 2 d in English and 2 T in German")
     void twoDaysRendersInBothLanguages() {
         var plan = new ActivePlanSummary("plan-2d", "Two day plan", "execute", "running", null,
-                clock.instant().minusSeconds(2 * 86_400L), null, 2, 4, null, null, null,
-                null, null, null, null, null);
+                            clock.instant().minusSeconds(2 * 86_400L), null, 2, 4, null, null, null,
+                            null, null, null, null, null);
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(plan), List.of(), List.of());
         var level = new ProjectWorkLevel(detail, false, false);
 

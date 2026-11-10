@@ -430,20 +430,25 @@ final class StatusCommand implements Callable<Integer> {
         }
         out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.alongside", Map.of()));
         for (var landing : landings) {
-            String marker = "failed".equalsIgnoreCase(landing.state())
-                                ? "! landing failed   "
-                                : "                   ";
-            String desc;
-            var unit = landing.unit();
-            if (unit != null || (landing.count() == null && "unit".equalsIgnoreCase(landing.kind()))) {
-                desc = "landing " + OutputSafety.stripControlSequences(Display.title(locale, null, unit));
-            } else if (landing.count() != null) {
-                desc = "removing " + landing.count() + " moved documents from git";
+            var failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
+            var rawState = landing.state() != null ? landing.state() : "running";
+            var state = MessageCatalogue.hasKey(locale, "state.landing." + rawState)
+                                ? Display.word(locale, "landing", rawState)
+                                : OutputSafety.stripControlSequences(rawState);
+            String text;
+            if ("removal".equalsIgnoreCase(landing.kind())) {
+                var count = landing.count() != null ? landing.count() : 1;
+                text = MessageCatalogue.format(locale, "overview.landing.removal",
+                                    Map.of("count", count, "state", state));
             } else {
-                desc = "landing " + OutputSafety.stripControlSequences(landing.kind());
+                var unitTitle = OutputSafety.stripControlSequences(Display.title(locale, null, landing.unit()));
+                text = MessageCatalogue.format(locale, "overview.landing.unit",
+                                    Map.of("unit", unitTitle, "state", state));
             }
-            var state = OutputSafety.stripControlSequences(landing.state());
-            out.printf("     %s%-35s   %s%n", marker, desc, state);
+            var marker = failed
+                                ? "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of()) + " "
+                                : "";
+            out.printf("     %-20s%s%n", marker, text);
         }
     }
 

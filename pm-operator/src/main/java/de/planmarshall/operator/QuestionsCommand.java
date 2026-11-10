@@ -11,10 +11,10 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.time.Clock;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.display.Display;
@@ -124,8 +124,8 @@ public final class QuestionsCommand implements Callable<Integer> {
                     gate = q.get("gate");
                 }
                 var gateStr = gate != null
-                        ? Display.gate(locale, OutputSafety.stripControlSequences(gate.toString()))
-                        : "gate";
+                                    ? Display.gate(locale, OutputSafety.stripControlSequences(gate.toString()))
+                                    : "gate";
                 out.printf("  %-4s  %-15s waiver request: %s%n", id, scope, gateStr);
                 if (!title.isEmpty()) {
                     out.printf("        \"%s\"%s%n", title, waitingStr);

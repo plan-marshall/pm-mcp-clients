@@ -117,8 +117,8 @@ final class PlanSettingsDialogue {
                             Map.of("aspect", groupLabel(group), "plan", planId)));
         for (var value : values) {
             var renderedValue = value.value() != null
-                    ? OutputSafety.stripControlSequences(value.value())
-                    : MessageCatalogue.format(prompt.locale(), "common.none", Map.of());
+                                ? OutputSafety.stripControlSequences(value.value())
+                                : MessageCatalogue.format(prompt.locale(), "common.none", Map.of());
             prompt.raw("  " + OutputSafety.stripControlSequences(value.aspect()) + "  "
                                 + renderedValue
                                 + "   " + MessageCatalogue.format(prompt.locale(), "control.settings.origin",

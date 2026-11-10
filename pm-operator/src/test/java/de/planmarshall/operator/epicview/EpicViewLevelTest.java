@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 class EpicViewLevelTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"),
-            ZoneId.of("Pacific/Auckland"));
+                        ZoneId.of("Pacific/Auckland"));
 
     private static final String EPIC = """
                         {"epic_id":"relay-hardening","project_id":"pm-mcp-clients",
@@ -220,7 +220,7 @@ class EpicViewLevelTest {
     @Test
     @DisplayName("an absent running count shows ? of 3 at once")
     void unknownRunning() throws Exception {
-        var view = new EpicViewLevel(CLOCK, 
+        var view = new EpicViewLevel(CLOCK,
                             EpicResource.fromJson(EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3")));
 
         assertTrue(text(view).contains("? of 3 at once"), text(view));

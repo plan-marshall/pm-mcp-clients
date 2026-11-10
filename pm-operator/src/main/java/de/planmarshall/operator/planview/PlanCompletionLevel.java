@@ -74,8 +74,8 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
                             description(locale, report.terminalReason() != null ? report.terminalReason() : report.outcome())));
         rows.add(entry("completion:reason", locale, "report.completion.reason",
                             report.reason() != null && !report.reason().isBlank()
-                                    ? report.reason()
-                                    : MessageCatalogue.format(locale, "common.none", Map.of())));
+                                                ? report.reason()
+                                                : MessageCatalogue.format(locale, "common.none", Map.of())));
         var ran = report.ran();
         if (ran != null && !ran.isBlank()) {
             rows.add(entry("completion:ran", locale, "report.completion.ran", ran));
@@ -191,8 +191,8 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
             var target = ownCall.conflictTarget();
             var item = target != null && !target.isBlank()
-                    ? PlanViewFormatting.clean(target)
-                    : MessageCatalogue.format(locale, "common.unknown", Map.of());
+                                ? PlanViewFormatting.clean(target)
+                                : MessageCatalogue.format(locale, "common.unknown", Map.of());
             return MessageCatalogue.format(locale, "report.completion.own_call_conflicts", Map.of("item", item));
         }
         if ("consistent".equalsIgnoreCase(ownCall.judgment())) {

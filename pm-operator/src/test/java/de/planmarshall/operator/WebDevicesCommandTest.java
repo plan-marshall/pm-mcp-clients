@@ -395,7 +395,7 @@ class WebDevicesCommandTest {
     @Test
     @DisplayName("tests WebCommand.describe formatting edge cases")
     void webCommandFormattingEdgeCases() {
-        assertEquals("-", WebCommand.describe(null));
+        assertEquals("none", WebCommand.describe(null));
         assertEquals("disabled", WebCommand.describe(Map.of("enabled", false)));
         assertEquals("enabled (loopback), port 7420, open",
                             WebCommand.describe(Map.of("enabled", true, "lan", false, "port", 7420, "open", true)));
