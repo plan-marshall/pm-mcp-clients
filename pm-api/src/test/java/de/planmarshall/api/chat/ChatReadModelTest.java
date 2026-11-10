@@ -298,7 +298,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a context round-trips with none, one, many and a duplicate; absent knows reads as none")
-        void context() throws IOException {
+        void contextRoundTrips() throws IOException {
             var duplicate = message("control.chat.knows.plan");
             var contexts = List.of(context(0), context(1), context(3),
                     new ChatContext(List.of(duplicate, duplicate), id()));
