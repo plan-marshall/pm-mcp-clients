@@ -509,6 +509,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={loadExplorer}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if explorer}

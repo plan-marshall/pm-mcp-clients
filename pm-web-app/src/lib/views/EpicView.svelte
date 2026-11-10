@@ -523,6 +523,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadEpic(true)}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if epic}

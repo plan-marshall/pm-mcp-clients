@@ -1313,7 +1313,12 @@
       </div>
     {:else if loadError !== null && decisions.length === 0}
       <div class="error-banner" data-testid="decisions-error">
-        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadDecisions}
+          announce={false}
+        />
       </div>
     {:else if decisions.length === 0}
       <div class="empty-state">

@@ -590,6 +590,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => void loadProjects()}
           titleLevel={3}
+          announce={false}
         />
       </div>
     {:else if projects.length === 0 && !isLoadingProjects}

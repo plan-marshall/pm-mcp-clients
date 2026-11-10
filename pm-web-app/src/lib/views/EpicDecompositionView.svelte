@@ -264,6 +264,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => load(true)}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if cut}

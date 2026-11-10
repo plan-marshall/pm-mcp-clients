@@ -337,6 +337,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadData()}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if activeTab === 'job'}

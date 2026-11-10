@@ -42,6 +42,8 @@
   let listHeading = $state<HTMLElement | null>(null);
   /** The block of a failed read, so a retry that fails again leaves the focus on the error. */
   let loadErrorRegion = $state<HTMLElement | null>(null);
+  /** Whether the list has been served at least once, so an error beside it is an arrival. */
+  let hasShownList = $state(false);
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -426,6 +428,7 @@
       unreadCount = page.unread_count ?? items.length;
       hasOlder = page.has_older;
       olderCount = page.older_count;
+      hasShownList = true;
       void refreshReportsCount();
     } catch (err: unknown) {
       loadError = errorCodeOf(err);
@@ -436,13 +439,17 @@
   }
 
   /**
-   * Retries a failed read and keeps the focus where it was: on the error the retry still shows, or
-   * on the list. The button that carried the focus is gone once the retry runs, and the browser
-   * drops the focus to the body then.
+   * Retries a failed read and keeps the focus where it was: on the error's own heading while the
+   * retry still shows one, or on the list. The button that carried the focus is gone once the retry
+   * runs, and the browser drops the focus to the body then.
    */
   async function retryListLoad(): Promise<void> {
     await loadReports();
-    (loadError !== null ? loadErrorRegion : listHeading)?.focus();
+    const target =
+      loadError !== null
+        ? (loadErrorRegion?.querySelector<HTMLElement>('.error-state__title') ?? loadErrorRegion)
+        : listHeading;
+    target?.focus();
   }
 
   /**
@@ -959,14 +966,14 @@
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
       </div>
     {:else if loadError !== null && items.length === 0}
-      <!-- The page's own first state, not an arrival: it is read where it stands, never announced. -->
+      <!-- An error that arrived before the list was ever served is the page's own state: static. -->
       <div bind:this={loadErrorRegion} tabindex="-1">
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
           onAct={retryListLoad}
           titleLevel={2}
-          announce={false}
+          announce={hasShownList}
         />
       </div>
     {:else if items.length === 0}

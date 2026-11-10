@@ -1,4 +1,4 @@
-import { displayError, type Translate } from '../display';
+import { displayError } from '../display';
 
 /**
  * The closed set of error codes the web client raises itself.
@@ -85,14 +85,9 @@ export function errorCodeOf(value: unknown): string {
  *
  * @param value the failure the act caught
  * @param fallback the act's own failure text, resolved from the view's catalogue key
- * @param translate the catalogue look-up a template passes (`$t`), so a language switch is followed
  * @returns the sentence to show
  */
-export function actFailureText(
-  value: unknown,
-  fallback: string,
-  translate?: Translate,
-): string {
+export function actFailureText(value: unknown, fallback: string): string {
   const code = errorCodeOf(value);
-  return code.length > 0 ? displayError(code, translate).fix : fallback;
+  return code.length > 0 ? displayError(code).fix : fallback;
 }

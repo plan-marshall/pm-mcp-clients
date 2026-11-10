@@ -517,7 +517,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LESSON_ID = "lesson_id";
     private static final String EVENT_LESSON_CLAIMED = "source.lesson_claimed";
     private static final String EVENT_LESSON_RETIRED = "source.lesson_retired";
-
     private static final String ERR_LESSON_CLAIM_REFUSED = "lesson_claim_refused";
     private static final String REASON_LESSON_CLAIMED_ELSEWHERE = "lesson_claimed_elsewhere";
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
@@ -8067,7 +8066,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (!isEnrolled(projectId)) {
-            sendStoreNotFound(response, projectId);
+            sendProjectNotEnrolled(response, projectId);
             return;
         }
         response.json(200, new StoreDigestComparison(enrolmentFile(projectId), ENROLMENT_RECORDED_SIZE,
@@ -8204,7 +8203,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendStoreNotFound(response, projectId);
+                sendProjectNotEnrolled(response, projectId);
                 return;
             }
             var storePath = requestedPath != null && !requestedPath.isBlank() ? requestedPath : store.storePath();
@@ -8222,7 +8221,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendStoreNotFound(response, projectId);
+                sendProjectNotEnrolled(response, projectId);
                 return;
             }
             if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
@@ -8265,7 +8264,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return null;
     }
 
-    private static void sendStoreNotFound(MockHttpResponse response, String projectId) throws IOException {
+    private static void sendProjectNotEnrolled(MockHttpResponse response, String projectId) throws IOException {
         response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED,
                 KEY_MESSAGE, "No store recorded for project " + projectId));
     }

@@ -263,7 +263,7 @@ describe('CompletionReportView component', () => {
     render(CompletionReportView, { planId: 'fix-relay', titleLevel: 1 });
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByTestId('completion-report-error')).toBeInTheDocument();
     });
 
     const h1Elements = document.querySelectorAll('h1');

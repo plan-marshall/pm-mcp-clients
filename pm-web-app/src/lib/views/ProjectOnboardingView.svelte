@@ -466,6 +466,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => load()}
           titleLevel={2}
+          announce={false}
         />
       </div>
     {:else if isComplete}

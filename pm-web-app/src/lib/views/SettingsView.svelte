@@ -383,6 +383,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => loadData()}
           titleLevel={3}
+          announce={false}
         />
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>

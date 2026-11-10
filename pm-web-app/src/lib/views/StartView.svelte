@@ -689,6 +689,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => void load(++entryGeneration)}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if !entry && !state?.refusal}

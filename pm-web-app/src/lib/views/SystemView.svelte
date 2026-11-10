@@ -253,6 +253,14 @@
     actionSuccess = '';
   }
 
+  /**
+   * @param sentence a failure sentence that ends itself
+   * @returns the sentence without its final period, for a wrapper that ends the sentence itself
+   */
+  function asReason(sentence: string): string {
+    return sentence.replace(/\.$/, '');
+  }
+
   /** Opens the upgrade's consent screen: the checks first, then the choice of when. */
   function openUpgradeConsent() {
     upgradePhase = 'consent';
@@ -318,7 +326,7 @@
       upgradeInfo = {
         ...upgradeInfo,
         step: 'fetch',
-        reason: actFailureText(err, $t('system.action.failed')),
+        reason: asReason(actFailureText(err, $t('system.action.failed'))),
       };
     } finally {
       isExecutingAction = false;
@@ -339,7 +347,7 @@
         actionError = $t('system.upgrade.too_late');
       } else {
         actionError = $t('system.upgrade.withdraw_failed', {
-          reason: actFailureText(err, $t('system.action.failed')),
+          reason: asReason(actFailureText(err, $t('system.action.failed'))),
         });
       }
     } finally {
@@ -451,7 +459,7 @@
       actionSuccess = $t('system.upgrade.check_done');
     } catch (err: unknown) {
       actionError = $t('system.upgrade.check_failed', {
-        reason: actFailureText(err, $t('system.action.failed')),
+        reason: asReason(actFailureText(err, $t('system.action.failed'))),
       });
     }
   }
@@ -724,6 +732,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => loadSnapshot(true)}
         titleLevel={2}
+        announce={false}
       />
     </div>
   {:else if $runtimeStore.isStopped}
