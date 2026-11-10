@@ -126,4 +126,25 @@ class DisplayTest {
         assertEquals("unknown", Display.title("en", null, "no.such.unit"));
         assertEquals("Pull request", Display.title("en", null, "landing.pull-request"));
     }
+
+    @Test
+    @DisplayName("eventTime renders an ISO instant in the clock's zone and keeps other text")
+    void eventTime() {
+        assertEquals("11:00", Display.eventTime("2026-09-12T11:00:00Z", CLOCK));
+        assertEquals("", Display.eventTime(null, CLOCK));
+        assertEquals("", Display.eventTime("  ", CLOCK));
+        assertEquals("14:40", Display.eventTime("14:40", CLOCK));
+    }
+
+    @Test
+    @DisplayName("gate renders its catalogue word and the plain scope in both languages")
+    void gate() {
+        assertEquals("", Display.gate("en", null));
+        assertEquals("", Display.gate("en", "  "));
+        assertEquals("CI check \u00b7 integration tests", Display.gate("en", "ci_check:integration-tests"));
+        assertEquals("CI-Pr\u00fcfung \u00b7 integration tests", Display.gate("de", "ci_check:integration-tests"));
+        assertEquals("coverage", Display.gate("en", "coverage"));
+        assertEquals("custom gate \u00b7 smoke tests", Display.gate("en", "custom_gate:smoke-tests"));
+        assertEquals("custom gate", Display.gate("en", "custom_gate"));
+    }
 }
