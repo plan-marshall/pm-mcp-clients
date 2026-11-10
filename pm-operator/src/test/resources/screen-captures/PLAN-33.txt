@@ -1,11 +1,11 @@
 # Screen captures for PLAN-33: Verify the Terminal Acts (evidence only)
 # name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
 #
-# The set holds only the screens the existing sets (baseline, 10, 17, 20, 21, 22, 23, 26, 36, 124)
-# do not already show: the console prompt badge of `fully-onboarded`, the two pushed notices above
-# that prompt, the first guided onboarding state, `onboard --auto --yes`, `config show`, and
-# `plan nope`. Every line is one check of `doc/claude_review/cli/use-cases/verification.adoc`; the
-# result file names the capture that evidences it.
+# The set holds the console badge and the two pushed notices of `fully-onboarded` (both sizes, both locales), the first
+# guided onboarding state, the project-setup identity state, `onboard --auto --yes`, `config show`, `plan nope`, the
+# full-screen overview of `reports-and-system`, and the pause prompt at 80 x 24 in both locales. Where an existing set
+# (baseline, 10, 17, 20, 21, 23, 26, 36, 124) already shows a check, that set is run instead. Every line is one check of
+# `doc/claude_review/cli/use-cases/verification.adoc`; the result file names the capture that evidences it.
 
 # CLI-UC-V-05: the prompt badge in `fully-onboarded` carries the open question count.
 badge-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | -
