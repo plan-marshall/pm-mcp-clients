@@ -220,13 +220,16 @@ describe('OverviewView component', () => {
   });
 
   it('draws the error pattern in the sidebar when the projects cannot be read', async () => {
-    vi.spyOn(apiClient, 'getProjects').mockRejectedValue(new ClientError('network_offline'));
+    const projects = vi
+      .spyOn(apiClient, 'getProjects')
+      .mockRejectedValue(new ClientError('network_offline'));
 
     render(OverviewView);
 
     const error = await screen.findByTestId('overview-error');
     expect(error).toHaveTextContent('The machine is not reachable');
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(projects).toHaveBeenCalledTimes(2));
   });
 
   it('draws the error pattern when the project detail cannot be read', async () => {

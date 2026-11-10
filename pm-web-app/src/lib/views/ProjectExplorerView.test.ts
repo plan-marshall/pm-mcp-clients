@@ -162,12 +162,16 @@ describe('ProjectExplorerView component', () => {
   });
 
   it('draws the error pattern when the explorer cannot be read', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockRejectedValue(new ClientError('network_offline'));
+    const explorer = vi
+      .spyOn(apiClient, 'getProjectExplorer')
+      .mockRejectedValue(new ClientError('network_offline'));
 
     render(ProjectExplorerView);
 
     const error = await screen.findByTestId('explorer-error');
     expect(error).toHaveTextContent('The machine is not reachable');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(explorer).toHaveBeenCalledTimes(2));
   });
 
   it('renders 4-part explorer view with being added, favourites, recent, and all projects', async () => {
@@ -417,7 +421,9 @@ describe('ProjectExplorerView component', () => {
   });
 
   it('draws the error pattern when the setup values cannot be read', async () => {
-    vi.spyOn(apiClient, 'getProjectSettings').mockRejectedValue(new ClientError('timeout'));
+    const settings = vi
+      .spyOn(apiClient, 'getProjectSettings')
+      .mockRejectedValue(new ClientError('timeout'));
 
     render(ProjectExplorerView);
 
@@ -428,6 +434,8 @@ describe('ProjectExplorerView component', () => {
 
     const error = await screen.findByTestId('setup-error');
     expect(error).toHaveTextContent('The request took too long');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(settings).toHaveBeenCalledTimes(2));
   });
 
   it('shows the other client’s value on a conflict and applies the change again', async () => {

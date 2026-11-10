@@ -83,13 +83,16 @@ describe('EpicView component', () => {
   });
 
   it('draws the error pattern when the epic process cannot be read', async () => {
-    vi.spyOn(apiClient, 'getEpicProcess').mockRejectedValue(new ClientError('network_offline'));
+    const process = vi
+      .spyOn(apiClient, 'getEpicProcess')
+      .mockRejectedValue(new ClientError('network_offline'));
 
     render(EpicView);
 
     const error = await screen.findByTestId('epic-error');
     expect(error).toHaveTextContent('The machine is not reachable');
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(process).toHaveBeenCalledTimes(2));
   });
 
   it('renders epic header, breadcrumb, title, state, tokens, and review badge', async () => {

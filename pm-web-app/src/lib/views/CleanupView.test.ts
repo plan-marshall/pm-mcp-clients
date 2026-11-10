@@ -117,14 +117,15 @@ describe('CleanupView component', () => {
   });
 
   it('draws the error pattern when the cleanup job cannot be read', async () => {
-    vi.spyOn(apiClient, 'getCleanupJob').mockRejectedValue(new ClientError('timeout'));
+    const job = vi.spyOn(apiClient, 'getCleanupJob').mockRejectedValue(new ClientError('timeout'));
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: [] });
 
     render(CleanupView);
 
     const error = await screen.findByTestId('cleanup-error');
     expect(error).toHaveTextContent('The request took too long');
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(job).toHaveBeenCalledTimes(2));
   });
 
   it('renders cleanup job summary and project item checklists', async () => {

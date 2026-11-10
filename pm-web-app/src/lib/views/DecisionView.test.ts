@@ -119,13 +119,17 @@ describe('DecisionView component', () => {
   });
 
   it('draws the error pattern of a failed list read instead of the empty word', async () => {
-    vi.spyOn(apiClient, 'getDecisions').mockRejectedValue(new ClientError('timeout'));
+    const decisions = vi
+      .spyOn(apiClient, 'getDecisions')
+      .mockRejectedValue(new ClientError('timeout'));
 
     render(DecisionView);
 
     const error = await screen.findByTestId('decisions-error');
     expect(error).toHaveTextContent('The request took too long');
     expect(screen.queryByText(/No open decisions/i)).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(decisions).toHaveBeenCalledTimes(2));
   });
 
   it('renders open decisions and waivers', async () => {

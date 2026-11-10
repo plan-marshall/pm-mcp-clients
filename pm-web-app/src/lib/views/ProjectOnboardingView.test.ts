@@ -289,13 +289,16 @@ describe('ProjectOnboardingView component', () => {
   });
 
   it('reports a run it could not read and offers to load it again', async () => {
-    vi.spyOn(apiClient, 'getProjectOnboarding').mockRejectedValue(new Error('HTTP 404'));
+    const read = vi
+      .spyOn(apiClient, 'getProjectOnboarding')
+      .mockRejectedValue(new Error('HTTP 404'));
 
     render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
 
     await waitFor(() =>
       expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument(),
     );
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(read.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
 });
