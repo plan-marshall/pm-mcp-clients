@@ -215,8 +215,8 @@ The texts of the reports are those of link:../shared/reports.adoc#texts[Reports,
 |{count} ältere: reports --older
 
 |`operator.reports.read_all.older`
-|{count} older unread reports remain: reports --older shows them.
-|{count} ältere ungelesene Berichte bleiben: reports --older zeigt sie.
+|{count, plural, one {# older unread report remains: reports --older shows it.} other {# older unread reports remain: reports --older shows them.}}
+|{count, plural, one {# älterer ungelesener Bericht bleibt: reports --older zeigt ihn.} other {# ältere ungelesene Berichte bleiben: reports --older zeigt sie.}}
 
 |`operator.reports.key_count`
 |{count, plural, one {# report} other {# reports}}

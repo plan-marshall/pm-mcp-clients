@@ -2056,7 +2056,8 @@ describe('ReportsView component', () => {
   it('keeps a reload in flight before the mark-all response from counting a read twice (D1)', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
-    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(mockPage));
+    let served: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
     let rejectMarkAll: (error: Error) => void = () => {};
     vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
       () =>
@@ -2079,11 +2080,17 @@ describe('ReportsView component', () => {
       expect(screen.getByText(/1 unread/)).toBeInTheDocument();
     });
 
-    // A reload in flight lands before the response; the server still reports the pre-request count.
+    // A reload in flight lands before the response; the server has counted both reads and serves
+    // the one unread row that is left.
+    served = {
+      items: mockReports.filter((report) => report.id === 'rep-0131'),
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    };
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockClear();
     eventHandler?.('report.read', {});
-    await waitFor(() => {
-      expect(screen.getByText(/3 unread/)).toBeInTheDocument();
-    });
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(1));
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
@@ -2094,10 +2101,11 @@ describe('ReportsView component', () => {
       'data-unread',
       'false',
     );
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
     // The reload kept the read in flight counted, so a repeated event for it moves no count.
     eventHandler?.('report.read', { report_id: 'rep-0139' });
     await tick();
     await tick();
-    expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
   });
 });

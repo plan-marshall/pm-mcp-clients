@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
 
 describe('/dev/components page fixture', () => {
+  afterEach(() => {
+    currentLocale.set('en');
+    messagesStore.set({});
+  });
   it('assigns unique accessible names to RowMenu fixture instances across themes (D2)', () => {
     render(DevComponentsPage);
 
