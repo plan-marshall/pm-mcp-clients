@@ -57,20 +57,24 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-05)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-04` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/use-cases/plan.adoc:50 UC-S-05 -> UC-P-04; use-cases/proposals.adoc:98-99 UC-P-04 The plan shows its phase workflows and its intent
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/use-cases/plan.adoc` UC-S-05 and `use-cases/proposals.adoc` UC-P-04 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - HYPOTHESIS: the instance diagram data of `PM-IMPL-5` is available through the API the plan view already reads — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/process/` (verify-at-outline)
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api/.../process/ProcessNode.java:34,48-49 subNodes/state/pruneReason; NodeState.java:23 NOT_TAKEN; PruneReason.java:17 enum; client.ts:3107 getPlanProcess (GET /api/v1/plans/{id}/process, moved from :2978); PlanView.svelte:172 calls it
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `pm-api/.../process/` has `ProcessNode`, `NodeState`, `PruneReason`; `client.ts:3151` `getPlanProcess` (GET `/api/v1/plans/{id}/process`), called at `PlanView.svelte` `loadPlanProcess`.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): client.ts line cited in older evidence moved (getPlanProcess now client.ts:3107); PLAN-43 shipped ObjectPage template, relevant to the PlanView rework; PlanView, NodeNarrative, processNode.ts and plan-view.spec.js changed (PLAN-90/a11y/token work).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: a leaf node renders no expander today — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte:885-896` § `toggle-btn` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/utils/processNode.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/intent-and-outline.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/utils/processNode.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/utils/processNode.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -107,3 +111,22 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/plan-view.adoc` (#levels, #states, #kinds, #leaf, #position, #tokens), `doc/design/web-app/navigation.adoc` (#levels, #url, #keys), `doc/design/web-app/components.adoc#fixed-places`, `doc/design/web-app/components-tags.adoc#phase-label`, `doc/design/shared/intent-and-outline.adoc#web`. HEAD 1cc0e10e. Deliverable 3 is done or dropped and deliverable 2 loses its Intent part, so two deliverables remain.
+
+1. **The phase tree as the plan's list column.** Rows: icon, name without the kind, state word, time (a node shows "init" with the phase icon, `PhaseLabel`/`StatusLabel`); an expander only for a node with children; a phase expands to its steps taken, not taken (muted, with the reason) and sub-workflows from the instance diagram the server draws; a node is selected by `node={path}` (a replace) and a task opens as its own level; "Jump to now" is an `IconButton` in the tree head (today a text button, `PlanView.svelte:683-687`); plain arrows move within the tree, `Ctrl+←/→` between columns.
+   - Done when: `plan-view.spec.js` on `process.phase.*`: taken and not-taken steps, a leaf has no expander, tree rows without the kind in the name, "Jump to now" scrolls to the running node, the address carries `node=` (evidence order: `test-first`); the browser check on `running-work` → `process.phase.*`, `process.pruned-lane` (evidence order: `none`).
+2. **Phase narrative.** A phase without task activity shows outcome, duration, loop count, and for outline and refine a link to the Intent tab. (The Intent tab content is the web intent and outline package's.)
+   - Done when: a `NodeNarrative` test shows the three facts; the link opens the Intent tab (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+
+Done already, with a positive account: "Not in this plan" with the reason (`PlanView.svelte:96-103,988-995`, key `plan.not_in_plan.group`; `plan-view.adoc#levels`). Dropped: "by phase and role only when reported": the one-step breakdown stays (`plan-view.adoc#tokens`; `PlanView.svelte:482-499`); a test pins that a running plan says the figure is not reported yet rather than hiding the control.
+
+Implements: `doc/design/shared/plan-view.adoc` § Levels, Phase, Sub-Workflow, State, Where It Is; `doc/design/web-app/navigation.adoc` § Levels as Columns.
+
+Dependencies: `PLAN-55` (same view; runs after it), D1 foundation (PhaseLabel, StatusLabel, IconButton, RowLink), D2 navigation engine (the plan's list column, `node=` and task addresses, keys), the web intent and outline package (the link target). `PLAN-03`, `PLAN-76` have shipped. Sequence after `PLAN-45`.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.

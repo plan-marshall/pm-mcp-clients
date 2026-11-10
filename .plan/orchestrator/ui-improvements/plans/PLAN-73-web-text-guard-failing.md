@@ -61,19 +61,22 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-07`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09` — read at `doc/claude_review/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cross-cutting/plan.adoc:52-54 CC-S-07 guard to failing mode, empty baseline (CC-P-09); proposals.adoc:102-103 [#CC-P-09] The Text Guard; pm-web-e2e/tests/text-guard-baseline.json still exists with non-empty entries (e.g. EpicView de paused)
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102 CC-P-09; text-guard-baseline.json 4 views non-empty, 24 entries
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Baseline text-guard-baseline.json and textGuard.js still exist (CC-S-07 says delete the baseline); baseline is non-empty (e.g. EpicView de foreign-word paused, DecisionView de raw-enum ci_check) and was last touched by 9890d74b/5f9e60da; many views listed as touched changed since the anchor, so the amount of residue should be re-counted at outline.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/helpers/textGuard.js` — present at HEAD 1b39f219 (created by PLAN-01)
-- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — present at HEAD 1b39f219 (created by PLAN-01)
-- OBSERVED: `pm-web-e2e/tests/text-guard.spec.js` — present at HEAD 1b39f219 (created by PLAN-01)
-- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-e2e/tests/helpers/textGuard.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/text-guard.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -109,3 +112,13 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `pm-web-e2e/tests/helpers/textGuard.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/text-guard.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e

@@ -552,6 +552,26 @@ plan spec names the plan, proposal and finding documents it comes from.
   8 MB, 60 s, 50 turns, 64 KiB, `whisper.cpp`). Daemon request: ledger only (Open Defects 7). Applied by three direct PRs
   (`skip-bot-review`), merged on the operator's word: plan-marshall-documentation#169 `f475e34d`, pm-mcp-core#334 `96aaea5b`,
   pm-mcp-clients#387 `85edf2a5`; the D4 client documents are AGREED. Terminal stop key `s`; `new`/`neu` reserved first line.
+- 2026-11-10 — THE FOUR OWED DECISIONS TAKEN (operator) AND APPLIED (orchestrator, read-only leaves at `1cc0e10e`; details in
+  `logs/decision.log`). (1)+(2) Residues folded where a plan owns the component, new plans where none does: PLAN-30 R1
+  (PLAN-124 refusals), PLAN-70 D4 (PLAN-107 dark-contrast tests, kept there by the operator), PLAN-79 (Generators list); new
+  PLAN-126 cli-needs-residue (PLAN-36 + PLAN-33 finding 2b; FIRST), PLAN-127 (PLAN-124 + PLAN-33 finding 3 + PLAN-120),
+  PLAN-128 (PLAN-23, 121, 119), PLAN-129 (PLAN-107); all after PLAN-123/84/45, 126-128 in series, 127/128 before PLAN-30.
+  (3) Staged from the AGREED documents: D3 brand PLAN-130/131 (WS-02); new workstream WS-07 chat: PLAN-132-134 contract and
+  mock, PLAN-135-137 web chat (PARKED: D1 building blocks and the side column), PLAN-138-140 terminal chat. (4) All 24 parked
+  plans re-grounded against D1-D5 (amendment, replaced surface, verdicts); all stay parked except PLAN-32 (unparked, contract
+  = AGREED terminal design). Rounds of AskUserQuestion: further packages to stage — D1 foundation, D2 navigation engine
+  (supersedes PLAN-83), views package, web intent & outline (drafts in flight); theme/language = README option A (PLAN-85
+  reduced to the "This browser" tab); PLAN-137 swaps every ChatPanel, parked views drop their chat lines; notice per ADDED
+  item only (PLAN-126); plan/epic tab sets AND the chat side column → a short D6 design session (WS-06); every other
+  recommended default accepted (recorded per spec in `## Operator Decisions 2026-11-10`; principle: where code drifted from
+  an AGREED design without approval, the AGREED text wins).
+  Later the same day the further packages were staged: PLAN-141 D6 design session (tab sets, intent design, chat side
+  column, remembered place vs Up, What-waits ownership, theme text residue; emittable now, direct session); D2 engine
+  PLAN-142..144 (PLAN-83 superseded by 144) and web intent PLAN-145/146, all parked on D6 and the D1 foundation; D1
+  foundation PLAN-147..152 (147 carries the six chat blocks) and views package PLAN-153..157, staged in the chain
+  PLAN-45 → 129 → 130 → 147 → 148 → 149 → 150 → {151, 152} → {153..157}. Operator accepted D-1..D-10 of the D1 drafts.
+  Not staged: the terminal package (catalogue keys with a Java reader wait for it, D-8) and the D4 voice package.
 
 ## Open Defects
 
@@ -643,9 +663,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   doc's check text, at PLAN-33's result or PLAN-74); rest of V-06 passes. (2) `CLI-UC-V-09` — `plan nope` prints
   `Plan nope not found.` (no `No plan {id}` text; exit 1 holds) → PLAN-30; the full-screen overview in
   `reports-and-system` shows "Nothing runs…" for a REFUSED projects read (`OverviewFullScreenApp.fetchProjects:486`
-  swallows, `ProjectsOverviewLevel.rows:86`; CLI-UC-F-15) → PLAN-30 (see its re-grounding). (3) `CLI-CC-V-06` — the
-  waiver path (`WR-2`) has no `q`-first and no unknown-input PTY case (`AnswerDialogueIT:102-118`) → the PLAN-124
-  residue plan. Expected-fail list of the PLAN-33 amendment matched (V-09); V-01/V-04/V-08 not yet reported.
+  swallows, `ProjectsOverviewLevel.rows:86`; CLI-UC-F-15) → CORRECTED 2026-11-10: PLAN-30's re-grounding does NOT carry
+  it ("a separate plan"); it is PLAN-126 deliverable 3. (3) `CLI-CC-V-06` — the
+  waiver path (`WR-2`) has no `q`-first and no unknown-input PTY case (`AnswerDialogueIT:102-118`) → PLAN-127 (the PLAN-124
+  residue plan). Expected-fail list of the PLAN-33 amendment matched (V-09); V-01/V-04/V-08 not yet reported.
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE

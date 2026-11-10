@@ -8,7 +8,8 @@
     "WS-03-web-views",
     "WS-04-cli-acting",
     "WS-05-cli-foundation-presentation",
-    "WS-06-design-review"
+    "WS-06-design-review",
+    "WS-07-chat"
   ],
   "metadata": {
     "parallelization_scope": "4"

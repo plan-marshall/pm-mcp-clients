@@ -47,16 +47,23 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-07`, `doc/claude_review/cli/use-cases/findings-onboarding-entry.adoc` — read at `doc/claude_review/cli/use-cases/proposals.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/use-cases/proposals.adoc:125-126 [#CLI-UC-P-07] The Config Contract; findings-onboarding-entry.adoc present in cli/use-cases/
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/use-cases/proposals.adoc:125 CLI-UC-P-07; ConfigCommand.java POSTs /api/v1/config/{aspect} (:440..978) vs transport table 01-processes-and-transport.adoc:201 (GET/PUT/DELETE only)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-26 (be4995e5) shipped: ConfigCommand/'config show' now exits 1 on a refused read (ReadVerbExitCodesTest covers 19 verbs); the spec's dependency PLAN-26 is done, re-read ConfigCommand before D1.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/terminal-client/23-texts-settings.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigSettingsTest.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/onboarding/MachineSettingsRecord.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/08-transcripts-later.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/23-texts-settings.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -80,3 +87,20 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigSettingsTest.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/onboarding/MachineSettingsRecord.java` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/08-transcripts-later.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/terminal-client/23-texts-settings.adoc` — present at HEAD 1cc0e10e
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Contract (CLI-UC-P-07):** the AGREED terminal design is the decision: the `config <aspect>` verbs walk the onboarding sub-workflow, `POST /api/v1/config/{aspect}` is removed from the client, `config show|set|unset` use `GET /api/v1/config` and `PUT`/`DELETE /api/v1/config/{level}/{key}`. The row is unparked to `staged`; it starts after PLAN-33, PLAN-84 and PLAN-123 have landed (`operator.*.properties`).
