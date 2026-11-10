@@ -154,3 +154,7 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
 - **Tab set:** the tabs of this page are decided by the D6 design session (WS-06, staged 2026-11-10); this plan stays parked until that session's documents are `AGREED`, and the Intent tab's content belongs to the web intent & outline package (this plan only reserves the tab).
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the views package part that restyles FindingsReviewModal is PLAN-156; this plan keeps only its first-open-item logic and runs after it.

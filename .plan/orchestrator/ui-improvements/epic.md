@@ -566,6 +566,12 @@ plan spec names the plan, proposal and finding documents it comes from.
   item only (PLAN-126); plan/epic tab sets AND the chat side column → a short D6 design session (WS-06); every other
   recommended default accepted (recorded per spec in `## Operator Decisions 2026-11-10`; principle: where code drifted from
   an AGREED design without approval, the AGREED text wins).
+  Later the same day the further packages were staged: PLAN-141 D6 design session (tab sets, intent design, chat side
+  column, remembered place vs Up, What-waits ownership, theme text residue; emittable now, direct session); D2 engine
+  PLAN-142..144 (PLAN-83 superseded by 144) and web intent PLAN-145/146, all parked on D6 and the D1 foundation; D1
+  foundation PLAN-147..152 (147 carries the six chat blocks) and views package PLAN-153..157, staged in the chain
+  PLAN-45 → 129 → 130 → 147 → 148 → 149 → 150 → {151, 152} → {153..157}. Operator accepted D-1..D-10 of the D1 drafts.
+  Not staged: the terminal package (catalogue keys with a Java reader wait for it, D-8) and the D4 voice package.
 
 ## Open Defects
 

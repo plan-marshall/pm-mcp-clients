@@ -154,3 +154,7 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Placement (option A):** the AGREED README stands: theme and language stay in the rail foot (desktop) and the More sheet (phone). This plan is reduced to: (1) the "This browser" tab `?tab=browser` of the one settings view (theme and language as `RadioGroup`, applied at once, stored under `pm_theme`/`pm_locale`, the sentence "Kept in this browser. It is not sent to the machine."), and (2) the duplicated language toggle of `BottomBar.svelte` (`:172`, `:215`) goes. Deliverable 1 of the re-grounding amendment (controls off the frame) is dropped; nothing moves to the pairing or revoked pages; `README.adoc`, `entry.adoc` and `theme-readability.adoc` are not changed for placement. The re-grounding's claim 6 (`setTheme` before `page.goto`) is PLAN-70's deliverable 1.
 - Expected Surface reduced to outcome A (see the section above).
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the entry pages are restyled by PLAN-157 (no theme or language control is added there, option A).

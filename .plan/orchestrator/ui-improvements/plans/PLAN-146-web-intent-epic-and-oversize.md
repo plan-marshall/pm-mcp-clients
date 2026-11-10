@@ -118,3 +118,7 @@ Lane: `runbook`.
 ## Write-Boundary
 
 The session implementing this spec touches only its own repository source and tests. It creates and edits NO file under `.plan/orchestrator/` other than its own `inbox/{sender}-{seq}` message. The orchestrator owns every other ledger write. The session reports its outcome through its PR and its inbox message (`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary).
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the D6 session is PLAN-141.

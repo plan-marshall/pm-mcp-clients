@@ -212,3 +212,7 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - **Mermaid (O6):** a fenced Mermaid block is shown as its source in a code block labelled `mermaid`; no renderer is added.
 - **Voice (O7):** carved out; the composer keeps the system-dictation hint `web.voice.os_hint` and an empty microphone slot.
 - **Side column (O2):** decided by the D6 design session (WS-06, staged 2026-11-10) together with the tab sets; this plan stays parked until those documents are `AGREED` and the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus has landed (O1).
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus is PLAN-147; the side column is decided by PLAN-141 (D6).

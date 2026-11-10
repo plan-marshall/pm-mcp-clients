@@ -184,3 +184,7 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - **Chat adoption (O3):** this plan replaces every `ChatPanel` call site and the onboarding drawer, then deletes `ChatPanel`; the parked view plans only place `Chat` in their layouts.
 - **Review and decomposition chats (O10):** own addresses, as PLAN-132 records.
 - **Side column (O2):** per the D6 design session.
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the views package parts this plan waits for are PLAN-155 (decomposition and start sub-steps) and PLAN-156 (modals and pickers).
