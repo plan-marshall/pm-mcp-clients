@@ -471,14 +471,13 @@ Chat · codeberg-issues · with replan · its archived record   an empty line le
   + Add the Codeberg issue provider on top of relay-v2.
   + follows codeberg-issues, cancelled: replaced by relay-v2
 Start a plan with it? [Enter]   r) reject   ?   › ⏎
-The proposal was carried out; the chat has ended and is kept with codeberg-issues.
 A new plan is being started in pm-mcp-clients with this description; go on with its sources.
 [1/2] Sources · What does the plan start from?   project pm-mcp-clients
     ✓  description   "Add the Codeberg issue provider on top of relay-v2. …"
   d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › 
 ----
 
-* The chat changes nothing of the archive; its only proposal is the follow-up plan's description, and `Enter` opens `plan add` at its sources (xref:18-starting.adoc#plan[Starting a Plan]) with that description stored. Nothing starts before _Start the plan_ at the ready step.
+* The chat changes nothing of the archive; its only proposal is the follow-up plan's description, and `Enter` leaves the chat, which goes on and stays with the ended work (`plan chat codeberg-issues` returns to it), and opens `plan add` at its sources (xref:18-starting.adoc#plan[Starting a Plan]) with that description stored. Nothing starts before _Start the plan_ at the ready step.
 * `r) reject` drops the proposal and the chat goes on; an empty line leaves it, and it stays. The transcript is kept beside the archive entry, outside the archived record.
 
 [#actions-texts]
