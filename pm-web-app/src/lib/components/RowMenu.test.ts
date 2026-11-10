@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import RowMenu, { type RowMenuItem } from './RowMenu.svelte';
 import { styleOf, rulesOf } from '../../test/templateStyle';
 
@@ -242,6 +243,30 @@ describe('RowMenu component', () => {
     const menu = screen.getByRole('menu', { name: 'Report actions: Fix relay' });
     expect(menu).toBeInTheDocument();
     expect(menu).toHaveAttribute('aria-label', 'Report actions: Fix relay');
+  });
+
+  it('drops an advisory that only repeats the visible word (L3-5)', () => {
+    const repeated = render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        visibleLabel: 'Actions',
+        advisory: 'Actions',
+        items: sampleItems,
+      },
+    });
+    const suppressed = within(repeated.container).getByRole('button', { name: 'Row actions' });
+    expect(suppressed).not.toHaveAttribute('title');
+
+    const added = render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        visibleLabel: 'Actions',
+        advisory: 'Show the acts that do not fit the row',
+        items: sampleItems,
+      },
+    });
+    const carried = within(added.container).getByRole('button', { name: 'Row actions' });
+    expect(carried).toHaveAttribute('title', 'Show the acts that do not fit the row');
   });
 
   it('has a visible focus style distinct from its hover with >= 3:1 contrast cue (D2a)', () => {
@@ -513,6 +538,35 @@ describe('RowMenu component', () => {
         }
       },
     );
+
+    it('keeps its own scroll and its placement when the capped menu scrolls (D2a)', async () => {
+      let restore = layOut(340, 360);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+        await waitFor(() => {
+          expect(screen.getByRole('menu')).toHaveClass('row-menu__list--above');
+        });
+
+        const menu = screen.getByRole('menu');
+        expect(menu.style.maxBlockSize).toBe('336px');
+        menu.scrollTop = 40;
+        expect(menu.scrollTop).toBe(40);
+
+        // The trigger would now have room below it: a re-place would flip the menu downwards and
+        // recut the cap. A scroll of the capped menu's own entries must not re-place it.
+        restore();
+        restore = layOut(40, 360);
+        menu.dispatchEvent(new Event('scroll', { bubbles: true }));
+        await tick();
+
+        expect(menu.scrollTop).toBe(40);
+        expect(menu.style.maxBlockSize).toBe('336px');
+        expect(menu).toHaveClass('row-menu__list--above');
+      } finally {
+        restore();
+      }
+    });
 
     it('stops following the viewport once the menu is closed', async () => {
       const removed = vi.spyOn(window, 'removeEventListener');

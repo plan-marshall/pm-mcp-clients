@@ -142,7 +142,10 @@ describe('Button', () => {
     // below assumes the default surface background behind it. The rule must still name its
     // foreground token, or the table would check a colour the variant does not use.
     expect(ruleOf(style, '.btn--ghost')).toContain('var(--color-text-secondary)');
+    // The disabled state pairs a muted foreground with the subtle fill; both tokens are named so
+    // the pair below is the one the state actually paints (D2 d-style).
     expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-bg-subtle)');
+    expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-text-muted)');
 
     const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');
 
@@ -196,6 +199,7 @@ describe('Button', () => {
       ['danger', 'color-on-brand', 'color-danger'],
       ['secondary', 'color-text-primary', 'color-bg-surface'],
       ['ghost', 'color-text-secondary', 'color-bg-surface'],
+      ['disabled', 'color-text-muted', 'color-bg-subtle'],
     ] as const;
 
     for (const [variant, foreground, background] of pairs) {

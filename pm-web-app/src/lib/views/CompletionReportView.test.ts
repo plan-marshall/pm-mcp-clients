@@ -331,6 +331,39 @@ describe('CompletionReportView component', () => {
     });
   });
 
+  it('leaves the focus where the operator moved it while the fetch ran (L3-4)', async () => {
+    let resolveFetch: (report: PlanCompletionReport) => void = () => {};
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(
+      () =>
+        new Promise<PlanCompletionReport>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const elsewhere = document.createElement('button');
+    elsewhere.textContent = 'Elsewhere';
+    document.body.appendChild(elsewhere);
+
+    try {
+      render(CompletionReportView, { planId: 'fix-relay' });
+      await waitFor(() => {
+        const loading = screen.getByRole('heading', {
+          level: 1,
+          name: /Loading completion report/i,
+        });
+        expect(document.activeElement).toBe(loading);
+      });
+
+      // The operator moves on while the request is still in flight.
+      elsewhere.focus();
+      resolveFetch(mockReport);
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'fix-relay' })).toBeInTheDocument();
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      elsewhere.remove();
+    }
+  });
+
   it('returns focus to the invoking control when the report closes (D3)', async () => {
     const invoking = document.createElement('button');
     invoking.textContent = 'Show details';

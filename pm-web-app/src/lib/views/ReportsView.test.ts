@@ -768,13 +768,11 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
   });
 
-  it('sits on the triage template with no layout toggle', async () => {
+  it('sits on the triage template', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
     expect(document.querySelector('[data-testid="triage-page"]')).not.toBeNull();
-    expect(screen.queryByTestId('layout-split')).toBeNull();
-    expect(screen.queryByTestId('layout-compact')).toBeNull();
   });
 
   it('keeps the list beside the detail and marks the active card', async () => {

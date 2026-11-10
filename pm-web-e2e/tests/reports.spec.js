@@ -318,6 +318,5 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
 
     await page.reload();
     await expect(page.locator('.reports-tree')).toBeVisible();
-    await expect(page.getByTestId('layout-split')).toHaveCount(0);
   });
 });

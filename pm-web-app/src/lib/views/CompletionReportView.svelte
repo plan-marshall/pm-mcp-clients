@@ -75,6 +75,9 @@
     // does not leave focus on the body while it runs.
     await tick();
     focusReportHeading();
+    // Where the act left the focus, so a report that resolves later knows whether the operator has
+    // moved on meanwhile.
+    const actFocus = document.activeElement;
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
@@ -82,10 +85,14 @@
     } finally {
       isLoading = false;
     }
-    // A fetched report (or the error state) replaces the loading placeholder; take focus to the
-    // visible heading now, so focus does not fall to the body when the placeholder is removed.
+    // A fetched report (or the error state) replaces the loading placeholder. Take the visible
+    // heading only while the focus is still where the act left it, or where the removed placeholder
+    // dropped it; a focus the operator moved meanwhile stays where they put it.
     await tick();
-    if (data || errorMessage) {
+    const active = document.activeElement;
+    const stillWhereTheActLeftIt =
+      active === actFocus || active === null || active === document.body;
+    if ((data || errorMessage) && stillWhereTheActLeftIt) {
       focusReportHeading();
     }
   }

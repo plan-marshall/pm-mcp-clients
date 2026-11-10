@@ -86,6 +86,8 @@ describe('formatTime', () => {
     it.each([
       ['days', at(10, 7, 12, 0), '9 d ago', 'vor 9 T'],
       ['months', at(7, 16, 12, 0), '3 months ago', 'vor 3 Monaten'],
+      ['last month at 30 days', at(9, 16, 12, 0), 'last month', 'letzten Monat'],
+      ['last month at 59 days', at(8, 18, 12, 0), 'last month', 'letzten Monat'],
     ])('renders %s', (_label, iso, english, german) => {
       expectBothLocales((locale) => formatTime(iso, 'relative', locale, NOW), english, german);
     });
