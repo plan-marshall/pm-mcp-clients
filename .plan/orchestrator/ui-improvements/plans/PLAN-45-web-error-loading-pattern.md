@@ -72,10 +72,13 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-06)`, `doc/claude_review/ux/proposals.adoc#UX-P-08` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47 UX-S-06 and ux/proposals.adoc:314-315 UX-P-08 exist
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: ux/plan.adoc:47-49 UX-S-06; proposals.adoc:314-322 UX-P-08
 - Re-grounded note at HEAD 5f9e60da (2026-10-31): `web-display-layer` (PLAN-09, shipped, PR #287) landed `displayError(code)` (tested, both languages, the unknown fallback) and the enum guard, and `shared-error-texts` (PLAN-86, shipped) the `error.<code>.*` texts; `displayError` has no production caller yet, so `ErrorState` is its first one. The loading texts (`<area>.loading`) are this plan's, not PLAN-09's. The enum guard fails on a field of `enumFields.ts` printed without `displayState`: an error view must not print a code any other way.
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: display/index.ts:115 displayError, no production caller; error.en.properties:7-185
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): ErrorState.svelte and Skeleton.svelte now exist (PLAN-35, #302); ErrorState does not yet call displayError (grep: only lib/display/index.ts and its test), so D1 adapts an existing component and is its first caller. PLAN-90/#291 touched every view and client.ts (time format, e2e baseline): re-read.
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: ErrorState/Skeleton exist, ErrorState has one message prop and no displayError; used only by ReportsView:922,925 and the showroom
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: verify-first procedure holds; refutations (no timeout/network codes in the closed error catalogue, plan_not_found mock-only, one-sentence ErrorState, Retry key, five 15 s constants) need operator decisions before emit
 
 ## Expected Surface
 
@@ -91,6 +94,21 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD aa3a9be3
 - OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD aa3a9be3
 - OBSERVED: `pm-web-app/src/lib/display/index.ts` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/resource/ApiErrorCode.java` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/components/ErrorState.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/components/Skeleton.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/display/index.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/i18n/catalogue.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/views/ListenerOffView.svelte` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/views/ReportsView.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/routes/layout.test.ts` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-web-e2e/tests/error-pattern.spec.js` — absent at `0913d6f3`; created by this plan (the not-found and stopped-mock paths)
 
 ## Dependencies and Sequencing
 
@@ -108,6 +126,59 @@ component consume; keep the code set closed and documented where those later pla
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. Deliverable 5's list of six time-limit constants needs correcting: `STATE_REFRESH_TIMEOUT_MS` in `+layout.svelte:80` is 5 s, not 15 s, and is not one of them; the 15 s limits are `client.ts:2810,2975`, `SettingsView:41`, `+layout.svelte:121,148`. `ErrorState.svelte` has no `displayError` call; `lib/api/client.ts` has no `timeout` code; `ReportsView.svelte:900-901` still swaps the whole list for a `Skeleton` while `isLoading` (the spec's ~67-70 is outdated, `loadReports` is at :386); `revokeTimedOut` (`SettingsView:171`) still omits `network_offline`. PLAN-111 and PLAN-106 touched `+layout.svelte` and the withdraw paths: re-read before outline.
+
+## Amendment 2026-11-10 (re-grounding at `0913d6f3`; operator decisions of 2026-11-10)
+
+This section supersedes the spec text, the 2026-11-06 amendment and the 2026-11-07 note where they differ. All
+dependencies (PLAN-35, -39, -76, -86, -09) and PLAN-107 have landed.
+
+**Operator decisions (2026-11-10, asked one by one):**
+
+1. **Client codes get a client key area.** The client's own failures form a closed client code set — `timeout`,
+   `network_offline`, `unauthorized` — exported from one module the views import, with texts
+   `common.error.<code>.title`, `.cause`, `.fix` in en and de. The daemon's `error.*` catalogue and `ApiErrorCode` stay
+   closed (`ErrorTextsTest` unchanged). `displayError` resolves a client code from the client area and a daemon code
+   from `error.*`; an unknown code falls back as today. `client.ts` throws these codes as typed errors, never
+   `Error('network_offline')` (`:3120`) / `Error('unauthorized')` (`:3130`) with the message printed raw.
+2. **The mock answers the real not-found codes.** `MockRuntimeEngine.java:349,493` answer `scope_not_found` and
+   `project_not_enrolled` (which have texts) instead of `plan_not_found` / `project_not_found`; `PlanView.svelte:198-201`
+   drops its own `plan.view.not_found` mapping and shows the `ErrorState` of `scope_not_found`; the mock tests that pin
+   the old codes (`PlanDetailTest` and the like) follow. No new `ApiErrorCode` member.
+3. **ErrorState keeps the AGREED one-sentence form** (`components.adoc` VD-P-05): title = `title`, the one sentence =
+   `fix`, the one act; the `cause` and the code fold under _Details_ with a new shared key `common.action.details`
+   (en "Details", de "Details"), drawn for every error. `ErrorState` calls `displayError` itself (or takes its result);
+   `components.adoc` § ErrorState states the mapping in the same PR.
+4. **"Try again", per the design** (`texts-and-languages.adoc:94,136`): add `common.action.retry` (en "Try again",
+   de "Erneut versuchen"), move all eight views from `web.common.retry` to it, retire `web.common.retry`, update
+   `catalogue.test.ts:384`. The e2e clause asserts "Try again".
+
+**Corrections from the re-grounding:**
+
+- **Loading texts (D3):** most `<area>.loading` keys already exist (`report.list.loading`, `plan.view.loading`,
+  `epic.view.loading`, `system.view.loading`, `decisions.list.loading`, …); wire them to `Skeleton` and add only the
+  missing ones. Today only `ReportsView` uses `ErrorState`/`Skeleton`; `PlanView.svelte:633-635`, `StartView.svelte:153`,
+  `CleanupView`, `EpicView`, `ProjectExplorerView`, `DecisionView` print their own error lines.
+- **D4 (reload without a Skeleton flash):** `ReportsView.svelte:386-387` and `:920-923` (the "~67-70" and ":900-901"
+  references are stale). Since PLAN-107 (#394) every mark-all reloads the first page (`ReportsView.test.ts:370`), so the
+  flash is hit on every mark-all; the refresh keeps the list and shows a quiet in-place cue. Overlap note: PLAN-105 and
+  PLAN-107 have landed; re-read `ReportsView` before editing.
+- **"30 s for a check" (D2):** the checks are `checkDecomposition` (`client.ts:2454`), `checkLessonPremise` (`:2477`),
+  `checkUpgrade` (`:3029`), `getEpicArchiveCheck` (`:3179`); every other request 15 s. Streams and long-lived calls
+  (the SSE connect, `CONNECT_TIMEOUT_MS` `:3927`) are out of scope.
+- **D5 constants:** five, not six — `client.ts:2810` `REVOKE_TIMEOUT_MS`, `client.ts:2975` `WITHDRAW_TIMEOUT_MS`,
+  `SettingsView.svelte:41` `LOAD_TIMEOUT_MS`, `+layout.svelte:121` `WITHDRAW_TIMEOUT_MS`, `+layout.svelte:148`
+  `STOP_NOW_TIMEOUT_MS`; `+layout.svelte:80` `STATE_REFRESH_TIMEOUT_MS` (5 s) stays as is. The Done-when grep becomes
+  `git grep -n "15_000" -- pm-web-app/src ':!*.test.ts'` naming only the client's limit and `ListenerOffView.svelte:15`
+  (a retry interval, not a request limit). The tests asserting `AbortSignal.timeout(15_000)` (`client.test.ts:599`,
+  `SettingsView.test.ts:289`, `layout.test.ts:404`) and the two `withdrawStop()` calls without a signal
+  (`client.test.ts:296,596`) are rewritten with the fallback's removal.
+- **Truncated body (D5):** the unguarded `res.json()` sites are `client.ts:3139`, `:2192` (`pair`) and `:3579`; all three
+  end in a typed client error.
+- **Skills:** D1 is a Svelte/TS component — `pm-dev-frontend:javascript`, `pm-dev-frontend:jest-testing`,
+  `pm-dev-frontend:css` (not the Java list).
+- **Not split:** five deliverables stay; the decisions above remove the open questions that made D1/D3 heavy.
+  Rationale recorded by the orchestrator.
+- **Sequencing:** PLAN-123 (terminal) and PLAN-45 both add `common.*` keys; rebase whichever lands second.
 
 ## Hand-Off Command
 
