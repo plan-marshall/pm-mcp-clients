@@ -23,13 +23,14 @@ import de.planmarshall.api.json.JsonTree;
  *
  * @param id      identifier of the answered decision
  * @param answer  summary or chosen option of the recorded answer
- * @param channel channel where answered ({@code "cli"} or {@code "web"})
+ * @param channel channel where answered ({@code cli} or {@code web}), or {@code null} when none is known; an
+ *                absent channel stays absent and is never read as a default
  * @param device  optional device identifier or label
  */
 public record DecisionAnsweredEvent(
         String id,
         String answer,
-        String channel,
+        @Nullable String channel,
         @Nullable String device
 ) {
     public static final String EVENT_NAME = "decision.answered";
@@ -37,7 +38,6 @@ public record DecisionAnsweredEvent(
     public DecisionAnsweredEvent {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(answer, "answer");
-        Objects.requireNonNull(channel, "channel");
     }
 
     /**
@@ -49,7 +49,9 @@ public record DecisionAnsweredEvent(
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
         map.put("answer", answer);
-        map.put("channel", channel);
+        if (channel != null) {
+            map.put("channel", channel);
+        }
         if (device != null) {
             map.put("device", device);
         }
@@ -79,7 +81,6 @@ public record DecisionAnsweredEvent(
         var answer = JsonTree.string(map, "answer");
         if (answer == null) answer = "";
         var channel = JsonTree.string(map, "channel");
-        if (channel == null) channel = "cli";
         var device = JsonTree.string(map, "device");
         return new DecisionAnsweredEvent(id, answer, channel, device);
     }

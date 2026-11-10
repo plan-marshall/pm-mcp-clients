@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -304,6 +307,53 @@ class DecisionRecordsTest {
 
         var parsed = DecisionAnswerRequest.fromJson("{\"option\":\"opt1\"}");
         assertEquals("opt1", parsed.partAnswers().get("1"));
+    }
+
+    @Test
+    @DisplayName("an answer without a channel reads back without one, never as cli")
+    void answerRequestWithoutChannelStaysAbsent() throws Exception {
+        var option = Generators.nonBlankStrings().next();
+        var request = new DecisionAnswerRequest(Map.of("1", option), option, null, null, "answer", null, null, null);
+
+        var parsed = DecisionAnswerRequest.fromMap(Map.of("option", option));
+
+        assertAll(
+                () -> assertNull(parsed.channel()),
+                () -> assertFalse(request.toMap().containsKey("channel")),
+                () -> assertNull(DecisionAnswerRequest.fromJson(request.toJson()).channel()));
+    }
+
+    @Test
+    @DisplayName("a decision.answered event without a channel reads back without one, never as cli")
+    void answeredEventWithoutChannelStaysAbsent() throws Exception {
+        var id = Generators.nonBlankStrings().next();
+        var answer = Generators.nonBlankStrings().next();
+        var event = new DecisionAnsweredEvent(id, answer, null, null);
+
+        var parsed = DecisionAnsweredEvent.fromMap(Map.of("id", id, "answer", answer));
+
+        assertAll(
+                () -> assertNull(parsed.channel()),
+                () -> assertFalse(event.toMap().containsKey("channel")),
+                () -> assertEquals(event, DecisionAnsweredEvent.fromJson(event.toJson())));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"web", "cli"})
+    @DisplayName("a sent channel round-trips unchanged in the request and the event")
+    void sentChannelRoundTrips(String channel) throws Exception {
+        var id = Generators.nonBlankStrings().next();
+        var answer = Generators.nonBlankStrings().next();
+        var device = Generators.nonBlankStrings().next();
+        var request = new DecisionAnswerRequest(Map.of("1", answer), answer, null, null, "answer", null, channel,
+                device);
+        var event = new DecisionAnsweredEvent(id, answer, channel, device);
+
+        assertAll(
+                () -> assertEquals(channel, DecisionAnswerRequest.fromJson(request.toJson()).channel()),
+                () -> assertEquals(channel, DecisionAnswerRequest.fromMap(request.toMap()).channel()),
+                () -> assertEquals(event, DecisionAnsweredEvent.fromJson(event.toJson())),
+                () -> assertEquals(channel, DecisionAnsweredEvent.fromMap(event.toMap()).channel()));
     }
 
     @Test

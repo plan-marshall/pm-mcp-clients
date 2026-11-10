@@ -20,6 +20,9 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * Payload sent by an operator client to answer, waive, decline, or withdraw a decision (UC-PLN-2).
+ * <p>
+ * The channel is the listener's: the runtime knows on which listener an answer arrived. An absent channel
+ * stays absent and is never read as a default; the terminal still sends its own {@code cli}.
  *
  * @param partAnswers map of part ID to chosen option key or entered value
  * @param option      single choice option if answering single-part decision directly
@@ -27,7 +30,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param note        optional accompanying note
  * @param action      explicit action ({@code "answer"}, {@code "waive"}, {@code "decline"}, {@code "withdraw"})
  * @param reason      mandatory operator reason when action is {@code "waive"} or {@code "decline"}
- * @param channel     operator channel ({@code "cli"} or {@code "web"})
+ * @param channel     operator channel ({@code cli} or {@code web}), or {@code null} when the client sent none
  * @param device      optional device identifier or label
  */
 public record DecisionAnswerRequest(
@@ -37,11 +40,10 @@ public record DecisionAnswerRequest(
         @Nullable String note,
         @Nullable String action,
         @Nullable String reason,
-        String channel,
+        @Nullable String channel,
         @Nullable String device
 ) {
     public DecisionAnswerRequest {
-        Objects.requireNonNull(channel, "channel");
         partAnswers = partAnswers != null ? Map.copyOf(partAnswers) : Map.of();
     }
 
@@ -70,7 +72,9 @@ public record DecisionAnswerRequest(
         if (reason != null) {
             map.put("reason", reason);
         }
-        map.put("channel", channel);
+        if (channel != null) {
+            map.put("channel", channel);
+        }
         if (device != null) {
             map.put("device", device);
         }
@@ -109,7 +113,6 @@ public record DecisionAnswerRequest(
     public static DecisionAnswerRequest fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var channel = JsonTree.string(map, "channel");
-        if (channel == null) channel = "cli";
         var device = JsonTree.string(map, "device");
         var option = JsonTree.string(map, "option");
         var ownWords = JsonTree.string(map, "words");

@@ -9827,12 +9827,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.remove(decisionId);
         }
-        broadcastEvent(DECISION_ANSWERED, Map.of(
-                "id", decisionId,
-                "answer", outcome + " (" + reason + ")",
-                "channel", answerReq.channel(),
-                "device", answerReq.device() != null ? answerReq.device() : ""
-        ));
+        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
+                answerReq.channel(), answerReq.device() != null ? answerReq.device() : ""));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
@@ -9861,20 +9857,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
             openDecisions.remove(decisionId);
         }
 
-        var channel = answerReq.channel();
         var device = answerReq.device() != null ? answerReq.device() : "";
-        broadcastEvent(DECISION_ANSWERED, Map.of(
-                "id", decisionId,
-                "answer", chosen,
-                "channel", channel,
-                "device", device
-        ));
+        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(), device));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
                 "answer", chosen
         ));
         response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, "answer", chosen));
+    }
+
+    /**
+     * The payload of {@code decision.answered}: the channel is the one the answer carried, and an absent
+     * channel stays absent, never read as {@code cli}.
+     */
+    private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
+            String device) {
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("id", decisionId);
+        payload.put("answer", answer);
+        if (channel != null) {
+            payload.put("channel", channel);
+        }
+        payload.put("device", device);
+        return payload;
     }
 
     private void handleInterpretDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
