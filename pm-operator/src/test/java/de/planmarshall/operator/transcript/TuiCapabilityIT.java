@@ -72,9 +72,7 @@ class TuiCapabilityIT {
     private static final String TERM = "TERM";
     private static final String TERM_PROGRAM = "TERM_PROGRAM";
     private static final String PATH = "PATH";
-    private static final Pattern LONE_DASH_CELL = Pattern.compile(
-                        "(?:^|\u00b7[ \\t]+|:[ \\t]+|[ \\t]{2,})-(?:[ \\t]*$|[ \\t]+\u00b7|[ \\t]{2,})",
-                        Pattern.MULTILINE);
+    private static final Pattern LONE_DASH_CELL = Pattern.compile("(?<![^ \\t\\u00b7:])-(?![^ \\t\\u00b7])");
     private static final Pattern ISO_INSTANT = Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}");
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -515,6 +513,18 @@ class TuiCapabilityIT {
                             () -> assertFalse(text.contains("(step current)"), surface + " contains (step current):\n" + text),
                             () -> assertFalse(LONE_DASH_CELL.matcher(text).find(), surface + " contains a lone '-' cell:\n" + text),
                             () -> assertFalse(ISO_INSTANT.matcher(text).find(), surface + " contains an ISO instant:\n" + text)
+        );
+    }
+
+    @Test
+    @DisplayName("the lone-dash pattern finds a dash cell and no hyphen inside a word")
+    void loneDashPattern() {
+        assertAll(
+                            () -> assertTrue(LONE_DASH_CELL.matcher("pid       -").find()),
+                            () -> assertTrue(LONE_DASH_CELL.matcher("- \u00b7 running").find()),
+                            () -> assertTrue(LONE_DASH_CELL.matcher("value: -").find()),
+                            () -> assertFalse(LONE_DASH_CELL.matcher("TASK-001").find()),
+                            () -> assertFalse(LONE_DASH_CELL.matcher("refine \u00b7 waiting \u00b7 24 d").find())
         );
     }
 

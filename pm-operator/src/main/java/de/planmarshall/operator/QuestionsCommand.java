@@ -100,7 +100,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         if (isWaiver(q, id)) {
             printWaiver(out, q, locale, id, scope, title, waitingStr);
         } else {
-            printDecision(out, q, locale, id, scope, title, waitingStr);
+            printDecision(out, q, id, scope, title, waitingStr);
         }
     }
 
@@ -119,7 +119,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         }
     }
 
-    private static void printDecision(PrintWriter out, Map<?, ?> q, String locale, String id, String scope,
+    private static void printDecision(PrintWriter out, Map<?, ?> q, String id, String scope,
                         String title, String waitingStr) {
         var phase = q.get("asking_phase");
         if (phase == null) {

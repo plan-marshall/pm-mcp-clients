@@ -286,7 +286,7 @@ public final class EpicCommand implements Callable<Integer> {
         var runningCount = epic.runningPlans().size();
         var stagedCount = epic.stagedPlans().size();
         var counts = MessageCatalogue.format(locale, "overview.epic.plans",
-                            Map.of("running", runningCount, "staged", stagedCount));
+                            Map.of("running", runningCount, STAGED, stagedCount));
         var epicKind = MessageCatalogue.format(locale, "overview.kind.epic", Map.of());
         out.printf("%s · %s · %s · %s%n", cleanEpicId, epicKind, state, counts);
 
