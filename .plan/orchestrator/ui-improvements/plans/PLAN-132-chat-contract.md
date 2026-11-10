@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-07
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Drafted 2026-11-10 from the AGREED
+> Staged plan spec, one shippable unit of work, ready for hand-off through `/plan-marshall`. Drafted 2026-11-10 from the AGREED
 > D4 and D5 documents. SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -166,10 +166,10 @@ Re-read every named file at the then-current HEAD; settle each HYPOTHESIS; re-ru
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (a normal plan: a new contract, five deliverables; operator 2026-11-10: normal and large plans through `/plan-marshall`).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-132-chat-contract.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-132-chat-contract.md"
 ```
 
 ## Write-Boundary
