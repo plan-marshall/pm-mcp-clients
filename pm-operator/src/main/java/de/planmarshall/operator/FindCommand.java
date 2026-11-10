@@ -30,6 +30,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.FindKind;
 import de.planmarshall.api.overview.FindMatch;
 import de.planmarshall.api.overview.FindPage;
 import de.planmarshall.api.overview.WorkLocation;
@@ -51,7 +52,8 @@ import picocli.CommandLine.Spec;
  *
  * <p>The verb is a read: it opens no act, so it runs without the operator checks. In a terminal the
  * matches are a choice, and selecting one opens it where it belongs — the plan view, the epic view,
- * the decision, the project, or the report; {@code --print} prints and exits.
+ * the decision, or the report; a project match lists its project in the explorer, filtered to it,
+ * because no verb opens one project. {@code --print} prints and exits.
  */
 @Command(name = "find", description = "Goes to work by name: part of an id or a title, or a pull request number.")
 @OperatorVerb
@@ -102,9 +104,7 @@ public final class FindCommand implements Callable<Integer> {
 
     private static final String PATH_SEPARATOR = " \u203a ";
 
-    private static final String TITLE_LINE = "  %-3s %-9s %s%n";
-
-    private static final String DETAIL_LINE = "  %-3s %-9s %s%n";
+    private static final String TITLE_LINE = "  %-3s %-12s %s%n";
 
     private final OperatorContext context;
 
@@ -193,8 +193,24 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     private void printMatch(PrintWriter out, FindMatch match, String locale, String number) {
-        out.printf(TITLE_LINE, number, match.kind().value(), TerminalSanitizer.sanitizeLine(match.title()));
-        out.printf(DETAIL_LINE, "", "", details(match, locale));
+        out.printf(TITLE_LINE, number, kindOf(match.kind(), locale),
+                            TerminalSanitizer.sanitizeLine(match.title()));
+        out.printf(TITLE_LINE, "", "", details(match, locale));
+    }
+
+    /**
+     * Renders the word of a match's kind from the catalogue the two clients share
+     * ({@code overview.find.kind.*}), so a German row says {@code Entscheidung} as the web app does.
+     *
+     * @param kind   the kind of the match
+     * @param locale the interface locale
+     * @return the word, or the wire value where the catalogue carries none
+     */
+    static String kindOf(FindKind kind, String locale) {
+        var key = "overview.find.kind." + kind.value();
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : kind.value();
     }
 
     /**
@@ -372,9 +388,9 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     /**
-     * Reads one line for the console's {@code /} field and answers {@code Esc} by leaving the field
-     * with nothing sent, and {@code Ctrl+C} like {@code Esc}: the operator typed a name, not a
-     * command line, so the field is read key by key and leaves on the first one that is not text.
+     * Reads one line for the console's {@code /} field. {@code Esc} and {@code Ctrl+C} leave it with
+     * nothing sent, and {@code Enter} takes the text: the operator typed a name, not a command line,
+     * so the field is read key by key rather than by the line editor.
      *
      * @param reader the console's line reader, whose terminal draws the field
      * @param prompt the drawn prompt
