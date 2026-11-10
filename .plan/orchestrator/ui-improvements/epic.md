@@ -648,6 +648,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   `executor_version` unknown.
   Recurrence 2026-11-09: `rb-120-cli-unknown-running-count-001.md` (PLAN-120, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-10: `rb-45-web-error-loading-pattern-001.md` (PLAN-45, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-10: `rb-84-cli-find-001.md` (PLAN-84) and `rb-123-cli-display-layer-residue-001.md` (PLAN-123), both
+  opencode, `total_tokens` and `plugin_version` missing.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
@@ -694,6 +696,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   2 major (raw `timeout` on act lines; DecisionView act banner never cleared) + minors → operator: new residue plan PLAN-158
   (staged). PLAN-129 is unblocked by this landing; PLAN-158 and PLAN-129 share `ReportsView`. PLAN-123 rebases onto the
   `common.*` keys PLAN-45 added.
+- PLAN-123 STOPPED BEFORE THE MERGE (2026-11-10, `rb-123-cli-display-layer-residue-001.md`, `merge_state=open`, drained as
+  observed; row stays `running`): PR #404 at `c8be43d1` (61 files), all four deliverables met by the lane's account, Sonar 0
+  (PR search empty), `review-gate` 0 threads / 0 bodies — but CodeRabbit has reviewed NO head (3 × "Review rate limited",
+  15:15/16:05/16:35; next allowed trigger per the lane 18:05:28), so the merge rule is not met. Owed: one CodeRabbit review
+  of some head (re-trigger once; quota refusal = ask the operator), then the operator's merge word; then the full landing
+  analysis (three-layer leaf) on the merge commit. Residue named by the lane: printed `plan report` hard-coded English;
+  `RolesCommand` English-only; mailbox unreadable (Open Defect). PLAN-126 and PLAN-32 still wait for this merge.
+- PLAN-84 landed (PR #397, `1b938f37`, analysed 2026-11-10); see `landings/PLAN-84.md`. `find` verb and console `/`; Sonar 0
+  (gate OK, 92.4 %); merge rule met (CodeRabbit reviewed a head). The lane's self-review ran AFTER the merge; its fixes are in
+  FOLLOW-UP PR #405 (`fix/84-find-kind-words`, open, no CodeRabbit review: 3 rate-limit refusals) — owed: one CodeRabbit
+  review, then the operator's merge word. Three-layer: likely-major shell-path terminal (view opened without the lease;
+  needs a PTY run) + minors → operator: folded into PLAN-126 as deliverable 5 (surface +5). Retire this watch when #405 is
+  merged.
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE
