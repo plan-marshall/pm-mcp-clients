@@ -720,8 +720,11 @@ plan spec names the plan, proposal and finding documents it comes from.
   read-only leaf: 3 blockers, 6 majors, minors, all re-read) and, on the operator's word, fixed them on the branch
   (`e4109c2e`: README plan-tree and fill rules, Changes text per client, area `intent` registered, head counts from the
   verdict words, German `Deliverable`, chart read-only on the project's setup tab by its resource, the terminal shows no
-  chart; 75 intent/state keys) and set the 12 documents AGREED (`721afd68`), pushed. CodeRabbit reviews later; the merge
-  waits for the operator's word. Not changed (reported): the plan ids PLAN-142..144/135..137 in `navigation.adoc:393`. OWED AT THE D6 LANDING (orchestrator, spec
+  chart; 75 intent/state keys) and set the 12 documents AGREED (`721afd68`), pushed. CodeRabbit then REVIEWED `721afd68`
+  (merge rule met): 5 minor inline findings fixed in `87288908` (glossary Outline/Role, "can flag", What waits as
+  `/?lens=waits` on the operator's choice, a task address's `chat=open` is the plan's chat, selecting a part ends follow
+  mode), threads replied and resolved; the additional comment (absent proposal in `OverSizeDistributionResource`) fixed in
+  `cc00f135` and answered on the PR. Merge waits for the operator's word (branch behind main; the queue updates it). Not changed (reported): the plan ids PLAN-142..144/135..137 in `navigation.adoc:393`. OWED AT THE D6 LANDING (orchestrator, spec
   amendments): `doc/plans/plan-changes.adoc` address `?tab=changes&file=` (repo doc: a direct change); PLAN-55 (tab set),
   PLAN-58 (tab set), PLAN-62 (`node=` with Process only), PLAN-52 (rail rule holds), PLAN-135..137 (no interim slot; wait
   for 142, 143), PLAN-142 (side props on TriagePage/WizardPage), PLAN-143 (history.state mark, two entry points), PLAN-144
