@@ -44,9 +44,11 @@ the prediction does not hold and the check passes.
 |Harness
 |The screens came from `ScreenCaptureIT` of `cli-pty-dialogue-harness`, on a real pseudo-terminal, in `en_US.UTF-8` and
 `de_DE.UTF-8`, 120 × 30 and 80 × 24; the check names that are tests (`*DialogueIT`, `ActionMenusTest`,
-`SystemViewConsistencyTest`, …) are the green `mvn` runs. `pm-operator` itself was never started in the agent's shell:
-the operator gate refuses that by design (`PM-SEC-3`), and a check that needs a person at a real terminal asks the
-operator, never the shell.
+`SystemViewConsistencyTest`, …) are the green `mvn` runs. `ScreenCaptureIT` is `@EnabledOnOs({MAC, LINUX})` and needs an
+executable `/usr/bin/script`, so a run elsewhere skips it and produces no screens — check that the run reports
+`tests_run: 1`, not just `BUILD SUCCESS`. `pm-operator` itself was never started in the agent's shell: the operator gate
+refuses that by design (`PM-SEC-3`), and a check that needs a person at a real terminal asks the operator, never the
+shell.
 
 |Mock
 |`ScreenCaptureIT` starts its own `MockRuntime` per capture on an ephemeral port and jumps with
@@ -61,16 +63,21 @@ is part of these checks.
 `BUILD SUCCESS`; `pm-operator/target/failsafe-reports/failsafe-summary.xml` reads `completed 126, errors 0, failures 0,
 skipped 7` — 119 executed, the seven skipped being the six native and the one `ScreenCaptureIT` of a run without
 `-Dpm.screens` — and its 22 `TEST-*.xml` suites are green (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`, repeated at the head
-as job `cf6499330dca4e778c4d4418b75ea773`). The whole-tree gate `mvn verify -Ppre-commit`: `BUILD SUCCESS` (job
-`d62a78bf4a684caf98a1b5e71ce44fff`). Nine `ScreenCaptureIT` runs, each green (jobs
-`8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`, `9c773b8664da4804b34dd50085f1f609`,
-`4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`, `b1c4585e060e48349497665885fe7bbf`,
-`b800a8708f9c46a48f7f997c0497cf1f`, `e67fb937aec64c50a019d2cd5c6a76fd`, `0a73032db4894e6e9bf32510e71d269e`), each
+as job `cf6499330dca4e778c4d4418b75ea773`). The same suite with the checkout's own `pm-api` and `pm-mock-runtime` in the
+reactor (`-am`) is green too: 656 tests across the three modules, the operator's failsafe summary unchanged
+(job `9172fec3cc104121b2f5da82c40d89a9`). The whole-tree gate `mvn verify -Ppre-commit`: `BUILD SUCCESS` (jobs
+`d62a78bf4a684caf98a1b5e71ce44fff`, `16c5e7cbb4a24241bd2b6b3b41dc7618`, `6474202bc896407f82388a0e678b020c`). Eleven
+`ScreenCaptureIT` runs, each green (jobs `8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`,
+`9c773b8664da4804b34dd50085f1f609`, `4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`,
+`b1c4585e060e48349497665885fe7bbf`, `b800a8708f9c46a48f7f997c0497cf1f`, `e67fb937aec64c50a019d2cd5c6a76fd`,
+`0a73032db4894e6e9bf32510e71d269e`, `36d8491fd9b54f75bad00246edce1b8c`, `588f831ea62841588acaaefd00630022`), each
 leaving its screens under `pm-operator/target/screens/<set>/` — the artefacts this document cites. Those screens are
-derived output: the committed capture set reproduces them with
-`mvn verify -Pintegration-tests -pl pm-operator -Dit.test=ScreenCaptureIT -Dpm.screens=PLAN-33` (or the set named in
-the row), and `target/` is not committed, so a fresh checkout regenerates rather than reads them. A capture run
-overwrites `failsafe-reports/`, so the suite was re-run last; the numbers above are that run's.
+derived output: `mvn verify -Pintegration-tests -am -pl pm-operator -Dit.test=ScreenCaptureIT -Dpm.screens=PLAN-33
+-Dfailsafe.failIfNoSpecifiedTests=false` builds `pm-api` and `pm-mock-runtime` from the checkout in the same reactor and
+reproduces them (the `-am` is required: `-pl pm-operator` alone would resolve a SNAPSHOT `pm-api`/`pm-mock-runtime` from
+another revision, or fail when none is installed). `target/` is not committed, so a fresh checkout regenerates rather
+than reads them. A capture run overwrites `failsafe-reports/`, so the suite was re-run last; the numbers above are that
+run's.
 
 |Capture set
 |`pm-operator/src/test/resources/screen-captures/PLAN-33.txt`, created by this plan: the console badge and the two pushed
@@ -108,8 +115,10 @@ running task finishes, then the plan holds`, `3) after the current phase  the ru
 holds`. The `.stdout.txt` of the same capture ends with `Left the pause. Nothing was sent.`; `pause-9-120x30-en`
 answers `9 is not offered here: 1-3, q, ?` and redraws the same options; `pause-enter-120x30-en` ends with `Chosen:
 after the current task` and `✓ fix-relay pausing after the task`. The 80 × 24 German captures
-(`PLAN-33/pause-q-80x24-de.txt`, `pause-9-80x24-de.txt`; their `.stdout.txt` files end with `Verlassen: Das
-Anhalten. Es wurde nichts gesendet.`); the German leave key is `v` (`ChoicePrompt.java:740`).
+(`PLAN-33/pause-q-80x24-de.txt`, `pause-9-80x24-de.txt`, and the 120 × 30 German captures `pause-q-120x30-de.txt` and
+`pause-9-120x30-de.txt`; their `.stdout.txt` files end with `Verlassen: Das Anhalten. Es wurde nichts gesendet.`, and the
+120 × 30 ones re-ask with `9 wird hier nicht angeboten: 1-3, v, ?`); the German leave key is `v`
+(`ChoicePrompt.java:740`).
 |None for this check. The plan state is unchanged by `q`, proven against `/mock/acts`, not only by the screen.
 
 |CLI-UC-V-02
@@ -223,7 +232,9 @@ on its first content row. `SystemViewConsistencyTest` passes (5 tests): `bothVie
 listeners line in the printed view and in the full-screen rows for `en` and `de`, and `bothViewsShowTheSameTokenUnits`
 asserts the same token units on the row of each model in both views. `config show` exits `1` in
 `PLAN-33/config-show-120x30-en.stdout.txt` (`Unable to load settings: HTTP 404`); the exit code is the `expected-exit`
-column of `PLAN-33.txt:43`, checked by the green `ScreenCaptureIT` run. The German arms are
+column of `PLAN-33.txt:43`, checked by the green `ScreenCaptureIT` run. The other three arms are
+`config-show-80x24-en.txt`, `config-show-120x30-de.txt` and `config-show-80x24-de.txt` (German `Einstellungen konnten
+nicht geladen werden: HTTP 404`, so the message is translated and only the status is raw). The German system arms are
 `26-cli-system-model/system-print-draining-120x30-de.txt` and `system-screen-draining-120x30-de.after.txt`; the 80 × 24
 arms are the `-80x24-en` and `-80x24-de` files of the same set.
 |The two draining captures are two mock runs, so the drain count and the network listener differ between them (the
@@ -310,9 +321,9 @@ the language clause — but the German clause fails on the English decision payl
 
 |CLI-UC-V-06
 |UC-ONB-1 (Onboard a Machine), UC-ONB-3 to UC-ONB-9, UC-PRJ-1 (Onboard a Project)
-|UC-ONB-1 `deviates` → `conforms`; UC-ONB-3…9 `missing` → `conforms`; UC-PRJ-1 `deviates` → `partial` (the identity step
-is proven, the rest of the project run was not walked). UC-ONB-2 (Onboard Automatically) stays `deviates`: its own
-`onboard --auto --yes` clause fails.
+|UC-ONB-1 `deviates` → `conforms`; UC-ONB-3…9 `missing` → `partial` (each step's dialogue is proven, each use case's own
+variations are not run); UC-PRJ-1 `deviates` → `partial` (the identity step is proven, the rest of the project run was
+not walked). UC-ONB-2 (Onboard Automatically) stays `deviates`: its own `onboard --auto --yes` clause fails.
 
 |CLI-UC-V-07
 |UC-SYS-3 (Clean Up)
@@ -336,8 +347,8 @@ is proven, the rest of the project run was not walked). UC-ONB-2 (Onboard Automa
 this plan does not hold. `not verified` (the operator's agreement).
 |===
 
-Verdicts moved in link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]; its totals become 15
-`conforms`, 8 `partial`, 1 `deviates`, 0 `missing`, and 13 `not verified` (37 use cases), against 2, 8, 7, 7, and 13
+Verdicts moved in link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]; its totals become 8
+`conforms`, 15 `partial`, 1 `deviates`, 0 `missing`, and 13 `not verified` (37 use cases), against 2, 8, 7, 7, and 13
 before.
 
 [#results]
@@ -369,10 +380,10 @@ Plan concerned: PLAN-21 (the working answer dialogue), whose dialogue the waiver
 [#residue]
 == Residue
 
-* `config show` shows `Unable to load settings: HTTP 404`. The `CLI-UC-V-08` clause allows the `exit 1` arm, so the
-check passes; the line is still an HTTP status on the operator's screen. The PLAN-124 landing records the same shape as
-its own residue ("the refusal text is … the English literal 'refused by the runtime (HTTP n)'",
-`landings/PLAN-124.md`).
+* `config show` shows an HTTP status: `Unable to load settings: HTTP 404`, German `Einstellungen konnten nicht geladen
+werden: HTTP 404` (only the status is raw). The `CLI-UC-V-08` clause allows the `exit 1` arm, so the check passes; the
+status on the operator's screen is the shape PLAN-124's landing records as its own residue ("the refusal text is … the
+English literal 'refused by the runtime (HTTP n)'", `landings/PLAN-124.md`).
 
 * The German cleanup screen prints the cleanup's own body in English.
 `pm-operator/target/screens/PLAN-23/PLAN-23-cleanup-choose-120x30-de.after.txt` carries the heading `Cleanup cln-0012 ·
