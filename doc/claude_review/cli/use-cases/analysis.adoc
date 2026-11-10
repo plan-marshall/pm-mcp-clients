@@ -26,8 +26,9 @@ The client reads well and acts badly:
 ====
 This analysis is the state the review found. The checks of
 link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] re-ran the acting use cases
-against the merged code on 2026-11-10 (commit `0913d6f3`): the six items above are now dialogues that act, ask and can
-be left, and the pushed notices reach the console. The verdicts moved accordingly; four checks fail and are routed.
+against the merged code on 2026-11-10 (commit `0913d6f3`): the onboarding, answer, pause, runtime-stop and cleanup
+dialogues now act, ask and can be left; the project setup renders its identity state (the rest of that run was not
+walked); and the pushed notices reach the console. The verdicts moved accordingly; four checks fail and are routed.
 ====
 
 The design of the terminal client (`doc/design/terminal-client/`) describes all of these dialogues in detail, with
@@ -49,7 +50,7 @@ transcripts. The gap is in the implementation, not in the design or the use case
 |Onboard Automatically
 |`deviates`
 |The automatic path is the entry's first choice, not `onboard --auto --yes`: that verb is unknown (exit `2`), so
-V-06 fails as written (plan-33-001).
+V-06 fails as written (rb-33-verify-cli-acts-001).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
 |Languages, Harnesses, Models, Roles, Credentials, Providers, Plan Defaults
@@ -89,7 +90,7 @@ clause fails (rb-33-verify-cli-acts-004).
 |See What Runs, Across Projects
 |`partial`
 |Projects, by plan, by epic, ended work, `status` present; `!` opens what waits, and the prompt badges the count. A
-refused projects read still shows as "Nothing runs" (V-09, plan-33-002).
+refused projects read still shows as "Nothing runs" (V-09, rb-33-verify-cli-acts-002).
 
 |link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5]
 |Follow an Epic
@@ -199,7 +200,7 @@ link:../../verification-results/verify-cli-acts.adoc[Verification Results, The T
 ====
 
 `TuiCapabilityIT` proves that each view opens and that the fallbacks work. `TranscriptDialogueIT` proves `status`,
-`web pair`, the console, the console settings, and the plan start. No PTY test runs a dialogue that acts on a plan, a
-decision, the onboarding, the cleanup, or the runtime. The unit tests of those dialogues feed scripted input to fakes.
-So the defects of the real terminal path (a swallowed exception, a closed terminal, an ignored answer) stay hidden
-(link:../cross-cutting/findings.adoc#CLI-CC-F-09[CLI-CC-F-09]).
+`web pair`, the console, the console settings, and the plan start. At the review, no PTY test ran a dialogue that acts
+on a plan, a decision, the onboarding, the cleanup, or the runtime; the unit tests of those dialogues fed scripted input
+to fakes. So the defects of the real terminal path (a swallowed exception, a closed terminal, an ignored answer) stayed
+hidden then (link:../cross-cutting/findings.adoc#CLI-CC-F-09[CLI-CC-F-09]).

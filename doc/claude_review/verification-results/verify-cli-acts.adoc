@@ -18,6 +18,13 @@ typed-text clause no harness can evaluate (it sends a broadcast before it types)
 agreement is not a check a plan can run. Four checks carry a `fail`, each routed as one finding to the epic inbox.
 Nothing that was found was fixed.
 
+Where a check's sample wording and the screen differ, this document applies one rule, stated here once: a sample's exact
+spelling is illustrative (the key range `1-2` against the three-option `1-3`, the badge `pm [3 questions] ›` against the
+segmented badge), while a named verb, a named string or a required clause that does not hold is behavioural and fails
+(`onboard --auto --yes`, `No plan nope`, the German language clause, the waiver's missing cases). The Amendment
+predicted `CLI-UC-V-01`'s "each option shows its consequence" as a `fail`; the capture shows all three consequences, so
+the prediction does not hold and the check passes.
+
 [#subject]
 == What Was Verified
 
@@ -86,7 +93,7 @@ Verdict: `pass`.
 
 [cols="1,1,4,2",options="header"]
 |===
-|Check |Verdict |Evidence |Mock limit
+|Check |Verdict |Evidence |Note
 
 |CLI-UC-V-01
 |`pass`
@@ -108,8 +115,7 @@ Anhalten. Es wurde nichts gesendet.`); the German leave key is `v` (`ChoicePromp
 running`; `keepRunningSendsNothing` types `k`, asserts exit `0` and `harness.assertNoAct()`.
 `PmOperatorTest.stopNoInputStopsAtTheChoice` asserts `runtime stop --no-input` returns `StartDialogue.EXIT_MISSING_INPUT`
 (= `3`), prints `runtime stop needs the choice of when; …` and sends no stop request. The screens of all four arms are in
-`pm-operator/target/screens/17-cli-runtime-act-confirm/`: `stop-screen-120x30-en.txt` and `-80x24-en.txt` name the three
-choices with their consequence, `stop-screen-120x30-de.txt` and `stop-screen-80x24-de.txt` show them in German
+`pm-operator/target/screens/17-cli-runtime-act-confirm/`: `stop-screen-120x30-en.txt` and `-80x24-en.txt` name the three choices, the first two with their consequence, `stop-screen-120x30-de.txt` and `stop-screen-80x24-de.txt` show them in German
 (`1) Stoppe, wenn fertig`, `2) Stoppe jetzt`, `l) lass sie laufen`).
 |None.
 
@@ -287,8 +293,8 @@ The verdict matrix is keyed by use-case ids; this is the mapping the checks give
 
 |CLI-UC-V-04
 |UC-PLN-2 (Decide What a Plan Asks)
-|`deviates` → `partial`: the dialogue asks, shows the votes, the dissent and the evidence, and sends the answer (U4's
-substantive clauses), but the German clause fails on the English decision payload.
+|`deviates` → `partial`: the dialogue asks, shows the votes, the dissent and the evidence, and sends the answer — all but
+the language clause — but the German clause fails on the English decision payload.
 
 |CLI-UC-V-05
 |UC-PLN-2, UC-ENT-1 (Enter and Connect)
@@ -342,11 +348,11 @@ the automatic onboarding now starts from the entry's first choice. The check as 
 PLAN-22 (one state dialogue for both onboardings).
 
 . *`CLI-UC-V-09`*: `plan nope` prints `Plan nope not found.`, not `No plan nope`, and the full-screen overview prints
-`Nothing runs` when the projects read is refused. The overview defect sits in code that PR #130 delivered
-(`OverviewFullScreenApp`, `ProjectsOverviewLevel`; the `cli-overview` work package, before the epic), which no plan of the
-epic owns; the refusal text belongs to PLAN-30, which has not landed. The filed message names PLAN-20 for the overview,
-which is wrong (PLAN-20 delivered the action menus); an `inbox amend` of the archived message was refused
-(`not_live`), so the correction is this paragraph.
+`Nothing runs` when the projects read is refused. The overview code entered with PR #130 (`OverviewFullScreenApp`,
+`ProjectsOverviewLevel`); PLAN-05 declares `OverviewFullScreenApp.java` in its Expected Surface and PLAN-20 touched it
+for the decision path, but neither authored `fetchProjects`, so which plan owns the defect is triage's call. The refusal
+text belongs to PLAN-30, which has not landed. The filed message names PLAN-20 for the overview, which is wrong; an
+`inbox amend` of the archived message was refused (`not_live`), so the correction is this paragraph.
 
 . *`CLI-CC-V-06`*: the regression guard names the waiver beside the answer dialogue, and the waiver path has only its
 main path in `AnswerDialogueIT` — no `q`-first and no unknown-input case — so `q` sending nothing is unproven there.
