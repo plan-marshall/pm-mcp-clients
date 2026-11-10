@@ -429,6 +429,9 @@ final class StatusCommand implements Callable<Integer> {
             return;
         }
         out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.alongside", Map.of()));
+        var texts = new ArrayList<String>();
+        var markers = new ArrayList<String>();
+        var width = 20;
         for (var landing : landings) {
             var failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
             var rawState = landing.state() != null ? landing.state() : "running";
@@ -446,9 +449,15 @@ final class StatusCommand implements Callable<Integer> {
                                     Map.of("unit", unitTitle, "state", state));
             }
             var marker = failed
-                                ? "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of()) + " "
+                                ? "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of())
                                 : "";
-            out.printf("     %-20s%s%n", marker, text);
+            markers.add(marker);
+            texts.add(text);
+            width = Math.max(width, marker.isEmpty() ? 0 : marker.length() + 1);
+        }
+        var format = "     %-" + width + "s%s%n";
+        for (var index = 0; index < texts.size(); index++) {
+            out.printf(format, markers.get(index), texts.get(index));
         }
     }
 
@@ -524,7 +533,7 @@ final class StatusCommand implements Callable<Integer> {
         line(text, locale, "listener", status.get("listener"));
         line(text, locale, "socket", status.get("socket_path"));
         line(text, locale, "started", formatStartedAt(locale, status.get("started_at"), clock));
-        line(text, locale, "web", WebCommand.describe(JsonTree.object(status, "web")));
+        line(text, locale, "web", WebCommand.describe(locale, JsonTree.object(status, "web")));
         return text.toString();
     }
 

@@ -516,6 +516,20 @@ class TuiCapabilityIT {
         );
     }
 
+    @Test
+    @DisplayName("the recorded transcripts carry none of the raw wire tokens or placeholders")
+    void transcriptsHaveNoRawResidue() throws IOException {
+        var directory = Path.of("src", "test", "resources", "transcript");
+        assertTrue(Files.isDirectory(directory), "the transcript resources are read from " + directory);
+        try (var files = Files.list(directory)) {
+            var transcripts = files.filter(path -> path.getFileName().toString().endsWith(".transcript")).toList();
+            assertFalse(transcripts.isEmpty(), "no transcript was found in " + directory);
+            for (var transcript : transcripts) {
+                assertNoRawResidue(transcript.getFileName().toString(), Files.readString(transcript));
+            }
+        }
+    }
+
     private PtySession start(List<String> arguments, Map<String, String> extraEnvironment,
                         int columns, int rows) throws IOException {
         var environment = new HashMap<>(runtime.environment());

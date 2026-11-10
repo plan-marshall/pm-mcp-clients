@@ -94,7 +94,6 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     private String summary(String locale) {
         var parts = new ArrayList<String>();
-        parts.add(PlanViewFormatting.clean(report.planId()));
         parts.add(MessageCatalogue.format(locale, "report.completion.title",
                             Map.of("plan", PlanViewFormatting.clean(report.planId()))));
         parts.add(PlanViewFormatting.clean(report.outcome()));
