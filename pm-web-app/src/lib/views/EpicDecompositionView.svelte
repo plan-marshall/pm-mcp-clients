@@ -256,7 +256,7 @@
   {:else if errorMessage}
     <div class="decomposition__error" role="alert" data-testid="decomposition-error">
       <p>{$t('decomposition.error', { cause: errorMessage })}</p>
-      <Button variant="secondary" onclick={() => load(true)}>{$t('web.common.retry')}</Button>
+      <Button variant="secondary" onclick={() => load(true)}>{$t('common.action.retry')}</Button>
     </div>
   {:else if cut}
     <header class="decomposition__header">

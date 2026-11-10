@@ -716,7 +716,7 @@
     <div class="notice-alert notice-alert--danger" role="alert">
       <p>{$t('system.view.load_failed')}</p>
       <Button variant="secondary" onclick={() => loadSnapshot(true)}
-        >{$t('web.common.retry')}</Button
+        >{$t('common.action.retry')}</Button
       >
     </div>
   {:else if $runtimeStore.isStopped}

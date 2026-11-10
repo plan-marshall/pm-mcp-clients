@@ -576,7 +576,7 @@ class MockRuntimeEngineTest {
 
         var unknown = send("POST", "/api/v1/plans/no-such-plan/pause", auth, new byte[0], false);
         assertEquals(404, unknown.status());
-        assertEquals("plan_not_found", unknown.json().get("error"));
+        assertEquals("scope_not_found", unknown.json().get("error"));
 
         var notAnAction = send("POST", "/api/v1/plans/fix-relay/archive", auth, new byte[0], false);
         assertEquals(404, notAnAction.status());

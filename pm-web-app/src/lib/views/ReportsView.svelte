@@ -913,7 +913,7 @@
       <div class="error-line" role="alert">
         <p>{actionError}</p>
         <Button variant="ghost" size="small" onclick={retryFailedAction}>
-          {$t('web.common.retry')}
+          {$t('common.action.retry')}
         </Button>
       </div>
     {/if}

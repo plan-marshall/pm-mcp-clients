@@ -5,7 +5,9 @@
   import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type ProjectExplorer,
@@ -62,7 +64,7 @@
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('project.explorer.load_failed');
+      errorMessage = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -490,12 +492,16 @@
 
   {#if isLoading && !explorer}
     <div class="explorer-loading" role="status">
-      <Spinner size="2.5rem" label={$t('project.explorer.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('project.explorer.loading')} />
     </div>
   {:else if errorMessage}
-    <div class="alert alert--danger" role="alert">
-      <span>{errorMessage}</span>
-      <Button variant="secondary" onclick={loadExplorer}>{$t('web.common.retry')}</Button>
+    <div class="alert alert--danger" data-testid="explorer-error">
+      <ErrorState
+        code={errorMessage}
+        actionLabel={$t('common.action.retry')}
+        onAct={loadExplorer}
+        titleLevel={2}
+      />
     </div>
   {:else if explorer}
     {#if reorderError}
@@ -1335,7 +1341,7 @@
             variant="secondary"
             onclick={() => loadProjectSettings(settingsTarget?.project_id ?? '')}
           >
-            {$t('web.common.retry')}
+            {$t('common.action.retry')}
           </Button>
         </div>
       {:else if settings}

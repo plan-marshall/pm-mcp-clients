@@ -834,7 +834,7 @@ describe('ReportsView component', () => {
     });
 
     read.mockResolvedValueOnce(undefined);
-    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Ended: merged (#214)')).toBeNull();

@@ -52,7 +52,7 @@
       disabled: true,
       disabledReason: $t('dev.disabled_reason'),
     },
-    { id: 'retry', label: $t('web.common.retry') },
+    { id: 'retry', label: $t('common.action.retry') },
   ];
 
   /** The sample actions for the row menu fixture. */

@@ -3,7 +3,9 @@
   import { get } from 'svelte/store';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type CleanupJob,
@@ -100,8 +102,8 @@
           runtimeStore.update((s) => ({ ...s, cleanupSelectionJobId: cleanupJob?.job_id ?? null }));
         }
       }
-    } catch {
-      loadError = $t('system.cleanup.load_failed');
+    } catch (err: unknown) {
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -317,13 +319,17 @@
   {/if}
 
   {#if isLoading}
-    <div class="cleanup-loading">
-      <Spinner size="2.5rem" label={$t('system.cleanup.loading')} />
+    <div class="cleanup-loading" data-testid="cleanup-loading">
+      <Skeleton shape="card" rows={3} label={$t('system.cleanup.loading')} />
     </div>
   {:else if loadError}
-    <div class="notice-alert notice-alert--danger" role="alert">
-      <p>{loadError}</p>
-      <Button variant="secondary" onclick={() => loadData()}>{$t('web.common.retry')}</Button>
+    <div class="notice-alert notice-alert--danger" data-testid="cleanup-error">
+      <ErrorState
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => loadData()}
+        titleLevel={2}
+      />
     </div>
   {:else if activeTab === 'job'}
     {#if !job || allItems.length === 0}

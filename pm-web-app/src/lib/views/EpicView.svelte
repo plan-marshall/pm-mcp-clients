@@ -2,7 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
@@ -37,7 +39,7 @@
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
   let isLoading = $state(true);
-  let errorMessage = $state('');
+  let errorCode = $state('');
 
   let unsubscribeEvents: (() => void) | null = null;
 
@@ -146,7 +148,7 @@
   async function loadEpic(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    errorMessage = '';
+    errorCode = '';
     const [process, epicResource] = await Promise.allSettled([
       apiClient.getEpicProcess(epicId),
       apiClient.getEpicResource(epicId),
@@ -160,7 +162,7 @@
       resource = null;
     }
     if (!epic) {
-      errorMessage = $t('epic.view.load_failed');
+      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
     }
     if (initial) isLoading = false;
   }
@@ -512,12 +514,16 @@
 <div class="epic-view" data-testid="epic-view">
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
-      <Spinner size="2.5rem" label={$t('epic.view.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
     </div>
-  {:else if errorMessage}
-    <div class="epic-view__error" role="alert" data-testid="epic-error">
-      <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={() => loadEpic(true)}>{$t('web.common.retry')}</Button>
+  {:else if errorCode}
+    <div class="epic-view__error" data-testid="epic-error">
+      <ErrorState
+        code={errorCode}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => loadEpic(true)}
+        titleLevel={2}
+      />
     </div>
   {:else if epic}
     <!-- Path Navigation Header -->

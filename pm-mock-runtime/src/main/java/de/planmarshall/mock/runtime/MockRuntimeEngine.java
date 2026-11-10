@@ -346,7 +346,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PULL_REQUEST = "pull_request_number";
     private static final String SEGMENT_ENDED_CHAT = "/ended/";
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
-    private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
+    private static final String ERR_PROJECT_NOT_FOUND = "project_not_enrolled";
     private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
@@ -490,7 +490,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
     private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
-    private static final String ERR_PLAN_NOT_FOUND = "plan_not_found";
+    private static final String ERR_PLAN_NOT_FOUND = "scope_not_found";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";

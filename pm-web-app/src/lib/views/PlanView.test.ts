@@ -902,14 +902,18 @@ describe('PlanView component', () => {
     expect(screen.queryByTestId('plan-error')).not.toBeInTheDocument();
   });
 
-  it('names an unknown plan as not found instead of showing the error code', async () => {
-    vi.spyOn(apiClient, 'getPlanProcess').mockRejectedValue(new Error('plan_not_found'));
+  it('shows the error pattern of the scope code instead of a raw code', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockRejectedValue(new Error('scope_not_found'));
 
     render(PlanView);
 
     const error = await screen.findByTestId('plan-error');
-    expect(error).toHaveTextContent('Plan not found');
-    expect(error).not.toHaveTextContent('plan_not_found');
+    expect(error).toHaveTextContent('This entry does not exist');
+    expect(error).toHaveTextContent('Check the id or pick the entry from the list again.');
+    expect(error.querySelector('details')?.querySelector('code')).toHaveTextContent(
+      'scope_not_found',
+    );
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   it('keeps a nested not_in_plan node out of the tree and the narrative', async () => {

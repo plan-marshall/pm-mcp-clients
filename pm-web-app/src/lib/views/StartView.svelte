@@ -22,6 +22,9 @@
   import RecipeReadyView from './RecipeReadyView.svelte';
   import EpicAdoptView from './EpicAdoptView.svelte';
   import DecompositionReviewView from './DecompositionReviewView.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import { remoteInfo, readForgeReference, type RemoteInfo } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
@@ -31,6 +34,7 @@
   let state: StartState | null = null;
   let loading = true;
   let busy = false;
+  /** The code of the failed load, which `ErrorState` resolves to its words. */
   let loadError = '';
   let actionError = '';
 
@@ -150,7 +154,7 @@
       await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
       if (generation === entryGeneration) {
-        loadError = messageOf(e);
+        loadError = errorCodeOf(e);
       }
     } finally {
       if (generation === entryGeneration) {
@@ -671,9 +675,18 @@
 
 <div class="start-view" data-testid="start-view">
   {#if loading}
-    <p class="start-view__status" data-testid="start-loading">{$t('start.state.checking')}</p>
+    <div class="start-view__loading" data-testid="start-loading">
+      <Skeleton shape="card" rows={3} label={$t('start.state.loading')} />
+    </div>
   {:else if loadError}
-    <p class="start-view__error" data-testid="start-error">{loadError}</p>
+    <div class="start-view__error" data-testid="start-error">
+      <ErrorState
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => void load(++entryGeneration)}
+        titleLevel={2}
+      />
+    </div>
   {:else if !entry && !state?.refusal}
     <section class="start-view__projects" data-testid="start-project-choice">
       <h1 class="start-view__title">{$t('project.explorer.title')}</h1>

@@ -166,7 +166,7 @@
         {$t('report.completion.load_failed')}
       </svelte:element>
       <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={fetchReport}>{$t('web.common.retry')}</Button>
+      <Button variant="secondary" onclick={fetchReport}>{$t('common.action.retry')}</Button>
     </div>
   {:else if data}
     <!-- Path breadcrumb -->
