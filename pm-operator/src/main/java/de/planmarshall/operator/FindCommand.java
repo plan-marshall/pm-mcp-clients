@@ -392,36 +392,61 @@ public final class FindCommand implements Callable<Integer> {
         var chars = terminal.reader();
         var text = new StringBuilder();
         while (true) {
-            int typed;
-            try {
-                typed = chars.read();
-            } catch (IOException _) {
+            var typed = readKey(chars, terminal);
+            if (leavesField(typed)) {
                 endField(terminal);
                 return null;
             }
-            if (typed == ESCAPE) {
-                // An arrow key or an Alt combination sends more after the ESC; leaving them unread
-                // would hand them to the next prompt as typed text.
-                discardPending(chars);
-            }
-            if (typed < 0 || typed == ESCAPE || typed == INTERRUPT) {
-                endField(terminal);
-                return null;
-            }
-            if (typed == CARRIAGE_RETURN || typed == LINE_FEED) {
+            if (acceptsText(typed)) {
                 endField(terminal);
                 return text.toString().strip();
             }
-            if (typed == BACKSPACE || typed == DELETE) {
+            if (erases(typed)) {
                 eraseLast(terminal, text);
-                continue;
-            }
-            if (!Character.isISOControl(typed)) {
+            } else if (!Character.isISOControl(typed)) {
                 text.append((char) typed);
-                terminal.writer().print((char) typed);
-                terminal.writer().flush();
+                echo(terminal, (char) typed);
             }
         }
+    }
+
+    /**
+     * Reads one key. An {@code Esc} also drains what a longer sequence left behind: an arrow key or
+     * an Alt combination sends more characters, and they would be read as typed text at the next
+     * prompt.
+     *
+     * @param chars    the terminal's characters
+     * @param terminal the terminal the field is drawn on
+     * @return the key, or {@code -1} when the stream ended or failed
+     */
+    private static int readKey(NonBlockingReader chars, Terminal terminal) {
+        int typed;
+        try {
+            typed = chars.read();
+        } catch (IOException _) {
+            return -1;
+        }
+        if (typed == ESCAPE) {
+            discardPending(chars);
+        }
+        return typed;
+    }
+
+    private static boolean leavesField(int typed) {
+        return typed < 0 || typed == ESCAPE || typed == INTERRUPT;
+    }
+
+    private static boolean acceptsText(int typed) {
+        return typed == CARRIAGE_RETURN || typed == LINE_FEED;
+    }
+
+    private static boolean erases(int typed) {
+        return typed == BACKSPACE || typed == DELETE;
+    }
+
+    private static void echo(Terminal terminal, char typed) {
+        terminal.writer().print(typed);
+        terminal.writer().flush();
     }
 
     private static void eraseLast(Terminal terminal, StringBuilder text) {
@@ -446,12 +471,18 @@ public final class FindCommand implements Callable<Integer> {
      */
     private static void discardPending(NonBlockingReader chars) {
         try {
-            while (chars.peek(PEEK_MILLIS) >= 0) {
-                chars.read();
+            var pending = chars.peek(PEEK_MILLIS);
+            while (pending >= 0) {
+                pending = discardOne(chars);
             }
         } catch (IOException _) {
             // Nothing more to discard: the field leaves as it is.
         }
+    }
+
+    private static int discardOne(NonBlockingReader chars) throws IOException {
+        var discarded = chars.read();
+        return discarded < 0 ? -1 : chars.peek(PEEK_MILLIS);
     }
 
     /** The runtime the request goes to, so a case can hand one in. */

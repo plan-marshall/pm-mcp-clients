@@ -90,10 +90,6 @@ class FindCommandTest {
         );
     }
 
-    private OperatorContext context(Map<String, String> environment, boolean interactive) {
-        return context(environment, interactive, "");
-    }
-
     private OperatorContext context(Map<String, String> environment) {
         return context(environment, false, "");
     }
@@ -573,9 +569,8 @@ class FindCommandTest {
          * @param environment the environment of the mock runtime
          * @param keys        the keys the operator types at the console
          * @return what the console drew
-         * @throws IOException when the console fails
          */
-        private String console(Map<String, String> environment, String keys) throws IOException {
+        private String console(Map<String, String> environment, String keys) {
             var context = context(environment, true, keys);
             PmOperator.execute(context, new PrintWriter(new StringWriter()), new PrintWriter(new StringWriter()));
             return consoleOutput();
