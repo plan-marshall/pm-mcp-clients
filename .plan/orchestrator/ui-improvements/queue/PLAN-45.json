@@ -2,10 +2,10 @@
   "id": "PLAN-45",
   "slug": "web-error-loading-pattern",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-45-web-error-loading-pattern",
+  "pr": "399",
+  "landing": "landings/PLAN-45.md",
   "seq": 45
 }

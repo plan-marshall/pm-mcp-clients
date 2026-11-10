@@ -192,6 +192,29 @@ ui-improvements`; read, never write.
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): state `sonar_open_new_issues=N` in the landing message.
 
+## Amendment 2026-11-10 (session 3): PR #400 lands first
+
+The operator decided (2026-11-10) that PLAN-141 starts only after PR #400 (`docs/zed-acp-ingestion`, "a plan's changes in
+both clients; a different model in the activity") has merged, and from the `main` that contains it. #400 adds to two of this
+plan's documents:
+
+- `shared/plan-view.adoc`: a new section `[#changes]` _The Changes_ (the file list and hunks of the plan's last capture, read
+  only, untrusted), opened from the _Change So Far_ size line; the activity entry `model_differs`; the keys `plan.changes.*`
+  and `plan.activity.model_differs`.
+- `web-app/plan-view-interaction.adoc`: a section `[#changes]` that opens the changes "in the narrative panel" from "the size
+  line of the header", with the address `/plans/{plan_id}?changes=open&file=<path>`.
+- Also `terminal-client/16-plan-view.adoc` (key `d`, `plan <plan_id> --changes`) and the work package `doc/plans/plan-changes.adoc`.
+
+What this changes for the session:
+
+- **Q1** gains a question: is _Changes_ a tab of the plan (beside Process and Intent), or stays it the one-step disclosure of
+  the size line like the tokens? Put it as part of Q1 with options and a recommendation.
+- **Q3** rewrites `plan-view-interaction.adoc#changes` for the column model with the rest (no "narrative panel", no header),
+  and states how `changes=open&file=` relates to `tab=` and `node=` in `navigation.adoc#url`.
+- Re-read both documents at the HEAD the worktree starts from; the line numbers cited above were read at `1cc0e10e` and may
+  have moved. The work package `plan-changes` is client work that follows D6's answer; name the amendment it owes in the
+  report.
+
 ## Claim Labels
 
 - OBSERVED: `plan-view-interaction.adoc` and `intent-and-outline.adoc` are `Status: DRAFT` — read at `doc/design/web-app/plan-view-interaction.adoc:12`, `doc/design/shared/intent-and-outline.adoc:12`
@@ -227,7 +250,7 @@ ui-improvements`; read, never write.
 
 ## Dependencies and Sequencing
 
-- Depends on: none (D1 to D5 merged and AGREED).
+- Depends on: PR #400 merged (operator, 2026-11-10; see the Amendment); D1 to D5 merged and AGREED.
 - Blocks: `PLAN-145`, `PLAN-146`; the tab placement of PLAN-55, 58 and 62; PLAN-135..137 (the Q5 ruling); the rules `PLAN-143` and `PLAN-144` implement (Q6); the text amendments of PLAN-85, 66, 60, 29, 41 (Q7).
 - Overlaps with: none running; no running plan edits these documents.
 - Adjacent to: `PLAN-142..144` (they implement what Q5 and Q6 decide; the specs carry a verify-first clause on the D6 documents).

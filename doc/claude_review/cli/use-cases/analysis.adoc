@@ -22,6 +22,15 @@ The client reads well and acts badly:
 . *Events do not reach the console.* The console expects a field the runtime does not send, so no decision, hold, or
   answer elsewhere is ever pushed to the prompt.
 
+[NOTE]
+====
+This analysis is the state the review found. The checks of
+link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] re-ran the acting use cases
+against the merged code on 2026-11-10 (commit `0913d6f3`): the onboarding, answer, pause, runtime-stop and cleanup
+dialogues now act, ask and can be left; the project setup renders its identity state (the rest of that run was not
+walked); and the pushed notices reach the console. The verdicts moved accordingly; four checks fail and are routed.
+====
+
 The design of the terminal client (`doc/design/terminal-client/`) describes all of these dialogues in detail, with
 transcripts. The gap is in the implementation, not in the design or the use cases.
 
@@ -34,19 +43,21 @@ transcripts. The gap is in the implementation, not in the design or the use case
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
 |Onboard a Machine
-|`deviates`
-|The introduction is right; "Begin with step 1?" ignores every answer (CLI-UC-F-01).
+|`conforms`
+|The entry's `h` opens the state dialogue; the guided path renders every state and reaches `onboard.completed` (V-06).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
 |Onboard Automatically
 |`deviates`
-|`onboard --auto --yes` stops at the consent and prints the raw links `no` and `yes` (CLI-UC-F-02).
+|The automatic path is the entry's first choice, not `onboard --auto --yes`: that verb is unknown (exit `2`), so
+V-06 fails as written (rb-33-verify-cli-acts-001).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
 |Languages, Harnesses, Models, Roles, Credentials, Providers, Plan Defaults
-|`missing`
-|No dialogue for any step. `onboard --step <link>` prints the state title and its raw links (CLI-UC-F-01,
-CLI-UC-F-02).
+|`partial`
+|One state dialogue renders each step with catalogue texts, never a link name, and the walk reaches the end (V-06). The
+variations each use case names (for example a later `config harnesses` run for UC-ONB-4) were not run, so the row is not
+`conforms`.
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
 |Change the Machine's Settings
@@ -56,9 +67,8 @@ CLI-UC-F-02).
 
 |link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 |Enter and Connect
-|`partial`
-|Runtime, web URL and paired device are printed. No badge for open questions; no pushed notices (CLI-UC-F-06,
-CLI-UC-F-07).
+|`conforms`
+|Runtime, web URL and paired device are printed; the prompt carries the badges, and the pushed notices reach it (V-05).
 
 |link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
 |Manage Paired Devices
@@ -73,14 +83,16 @@ link:../ux/findings.adoc#CLI-UX-F-02[CLI-UX-F-02]).
 
 |link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
 |Decide What a Plan Asks
-|`deviates`
-|`answer` prints the header and returns; no option, no prompt. Notices never arrive (CLI-UC-F-10, CLI-UC-F-07).
+|`partial`
+|`answer` shows the options with their votes, the dissent, the evidence and the prompt, and sends the answer; the
+notices arrive at the prompt (V-04, V-05). The German run still carries the English decision payload, so V-04's language
+clause fails (rb-33-verify-cli-acts-004).
 
 |link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
 |See What Runs, Across Projects
 |`partial`
-|Projects, by plan, by epic, ended work, `status` present. `!` opens the actions, not what waits; a refused request
-shows as "Nothing runs" (CLI-UC-F-14, CLI-UC-F-15).
+|Projects, by plan, by epic, ended work, `status` present; `!` opens what waits, and the prompt badges the count. A
+refused projects read still shows as "Nothing runs" (V-09, rb-33-verify-cli-acts-002).
 
 |link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5]
 |Follow an Epic
@@ -94,8 +106,9 @@ shows as "Nothing runs" (CLI-UC-F-14, CLI-UC-F-15).
 
 |link:{uc}/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]
 |Onboard a Project
-|`deviates`
-|"Continue" prints "Project onboarding started"; `project setup` prints "(step current)". No dialogue (CLI-UC-F-21).
+|`partial`
+|`project setup` renders the identity state with id, name and pilot and sends the setup act; the rest of the project
+run was not walked (V-06).
 
 |link:{uc}/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]
 |Explore Projects
@@ -119,9 +132,9 @@ shows as "Nothing runs" (CLI-UC-F-14, CLI-UC-F-15).
 
 |link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
 |Control a Plan
-|`deviates`
-|The pause dialogue maps any input to "after the current task"; no way out. The menu of a waiting plan lacks the
-decision (CLI-UC-F-18, CLI-UC-F-19).
+|`conforms`
+|The pause dialogue offers three options with their consequence, re-asks on an unknown key, takes Enter, and `q` sends
+nothing; the menu of a waiting plan opens with the decision, a paused plan's with Start (V-01, V-03).
 
 |link:{uc}/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2] to link:{uc}/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]
 |Control an Epic, Review Findings, Resolve Holds, Plan Settings
@@ -131,24 +144,37 @@ decision (CLI-UC-F-18, CLI-UC-F-19).
 
 |link:{uc}/07-system.adoc#UC-SYS-1[UC-SYS-1]
 |Manage the Runtime
-|`deviates`
-|`runtime stop` stops without the stop dialogue. The draining state is not shown (CLI-UC-F-31, CLI-UC-F-32).
+|`conforms`
+|`runtime stop` asks with three choices, `k` keeps the runtime and sends nothing, and `--no-input` exits `3` (V-02).
 
 |link:{uc}/07-system.adoc#UC-SYS-2[UC-SYS-2]
 |See What the Runtime Is Doing
-|`partial`
-|All figures present. Lines repeat, and the printed and the full-screen views contradict each other (CLI-UC-F-33).
+|`conforms`
+|One model: the printed and the full-screen view show the same listeners and the same token units, and the first line of
+the draining state says draining (V-08).
 
 |link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
 |Clean Up
-|`deviates`
-|`cleanup` prints the candidates and returns. No delete, remind, ignore, or leave out (CLI-UC-F-34).
+|`conforms`
+|`cleanup` ends with the `d r i x o q` prompt, `d` asks `y`/`n`, and `q` deletes nothing (V-07). The German run's body
+is still English — residue of the verification, outside the check's clauses.
 |===
 
-Totals: 2 `conforms`, 8 `partial`, 7 `deviates`, 7 `missing`, 13 `not verified` (37 use cases).
+Totals: 8 `conforms`, 15 `partial`, 1 `deviates`, 0 `missing`, 13 `not verified` (37 use cases). The moves and their
+evidence are in link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts].
 
 [#gaps]
 == Main Gaps
+
+[NOTE]
+====
+These are the gaps the review found. The checks of
+link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] (commit `0913d6f3`,
+2026-11-10) close them where the checks reach: the state dialogue (V-06), the strict choice prompt in the pause, runtime
+stop and cleanup dialogues (V-01, V-02, V-07), their confirmations (V-02, V-07), and the event contract (V-05). The
+answer dialogue asks and sends (V-04), but its German run still carries the English decision payload, so its gap stays
+open. The cancel, accept-edit and interrupt dialogues are outside those checks. The list stays as the review's record.
+====
 
 . *No state dialogue.* The design says the client "renders whatever state the runtime reports". For the onboarding,
   the client has no renderer of a state: `EntryFlow` asks one question and ignores the answer, and `OnboardCommand`
@@ -165,8 +191,18 @@ Totals: 2 `conforms`, 8 `partial`, 7 `deviates`, 7 `missing`, 13 `not verified` 
 [#tests]
 == Why the Tests Did Not Catch It
 
+[NOTE]
+====
+This is the state the review found. Since then seven of the eight dialogues the regression guard names (pause, cancel,
+answer, onboarding, project setup, cleanup, runtime stop) have their PTY tests with the three cases — `q` sends nothing,
+an unknown input re-asks, the main path sends the act — each proving the `q` case against `GET /mock/acts`. The eighth,
+the waiver, has only its main path: both its `q`-first and its unknown-input case are still open. See `CLI-CC-V-06` of
+link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] and finding
+`rb-33-verify-cli-acts-003`.
+====
+
 `TuiCapabilityIT` proves that each view opens and that the fallbacks work. `TranscriptDialogueIT` proves `status`,
-`web pair`, the console, the console settings, and the plan start. No PTY test runs a dialogue that acts on a plan, a
-decision, the onboarding, the cleanup, or the runtime. The unit tests of those dialogues feed scripted input to fakes.
-So the defects of the real terminal path (a swallowed exception, a closed terminal, an ignored answer) stay hidden
-(link:../cross-cutting/findings.adoc#CLI-CC-F-09[CLI-CC-F-09]).
+`web pair`, the console, the console settings, and the plan start. At the review, no PTY test ran a dialogue that acts
+on a plan, a decision, the onboarding, the cleanup, or the runtime; the unit tests of those dialogues fed scripted input
+to fakes. So the defects of the real terminal path (a swallowed exception, a closed terminal, an ignored answer) stayed
+hidden then (link:../cross-cutting/findings.adoc#CLI-CC-F-09[CLI-CC-F-09]).

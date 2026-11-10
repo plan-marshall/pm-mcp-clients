@@ -140,7 +140,7 @@ marks one page without saying so, and the review body of #394 (4 nitpicks, fixed
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `runbook` (a residue plan; operator 2026-11-10: small and residue plans on the runbook lane).
 
 /plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-129-web-reports-fifth-residue.md
 
