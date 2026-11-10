@@ -47,7 +47,9 @@ offered keys. Enter takes "after the current task" and the line shows it. Each o
 |CLI-UC-S-04
 |`answer Q-007` shows two options with votes, the dissent, the evidence hint "RelayServer.java, lines 42-58", and the
 prompt "Rebase onto main? [Enter]   other: 1-2 …". Enter answers and prints "✓ Q-007 answered: Rebase onto main".
-`answer WR-2` asks y/d/l. The German run has no English word outside the glossary.
+`answer WR-2` asks y/d/l. In the German run the client's own words (the frame: labels, the prompt, the acts, the
+answered line) have no English word outside the glossary; the decision's question, options and reasons are runtime
+text in the model language and are shown as delivered (link:../../../design/shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
 |`running-work` → `decisions.open`; `AnswerDialogueIT`
 
 |CLI-UC-V-05
