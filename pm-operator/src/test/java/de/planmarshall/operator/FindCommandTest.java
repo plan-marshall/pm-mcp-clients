@@ -277,7 +277,7 @@ class FindCommandTest {
                                 new WorkLocation("relay-hardening", "Relay Hardening"),
                                 new WorkLocation("fix-relay", RUNNING_TITLE), false, null);
 
-            assertEquals("pm-mcp-clients \u203a Relay Hardening", FindCommand.locationOf(match));
+            assertEquals("pm-mcp-clients \u203a Relay Hardening", FindCommand.locationOf(match, "en"));
         }
 
         @Test
@@ -286,7 +286,16 @@ class FindCommandTest {
             var match = new FindMatch(FindKind.PROJECT, "pm-mcp-clients", "pm-mcp-clients",
                                 new WorkLocation("pm-mcp-clients", "pm-mcp-clients"), null, null, false, null);
 
-            assertEquals("", FindCommand.locationOf(match));
+            assertEquals("", FindCommand.locationOf(match, "en"));
+        }
+
+        @Test
+        @DisplayName("shows nothing for a location without a title the catalogue cannot name")
+        void untitledLocationShowsNothing() {
+            var match = new FindMatch(FindKind.PLAN, "p-1", "Title",
+                                new WorkLocation("pm-mcp-clients", null), null, null, false, null);
+
+            assertEquals("", FindCommand.locationOf(match, "en"));
         }
 
         @ParameterizedTest(name = "{0}")

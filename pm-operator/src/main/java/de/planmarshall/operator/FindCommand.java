@@ -26,6 +26,7 @@ import org.jline.utils.NonBlockingReader;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -204,7 +205,7 @@ public final class FindCommand implements Callable<Integer> {
      * @return the rendered details
      */
     static String details(FindMatch match, String locale) {
-        var details = new StringBuilder(locationOf(match));
+        var details = new StringBuilder(locationOf(match, locale));
         appendWithSeparator(details, endedOf(match, locale));
         appendWithSeparator(details, MessageCatalogue.format(locale, "operator.find.open",
                             Map.of("command", TerminalSanitizer.sanitizeLine(openCommand(match)))));
@@ -226,10 +227,11 @@ public final class FindCommand implements Callable<Integer> {
      * project and epic, an epic under its project, a decision or a report under all three, a
      * project under nothing.
      *
-     * @param match the match
+     * @param match  the match
+     * @param locale the interface locale
      * @return the rendered path, empty for a project
      */
-    static String locationOf(FindMatch match) {
+    static String locationOf(FindMatch match, String locale) {
         var parts = switch (match.kind()) {
             case PLAN -> new WorkLocation[]{match.project(), match.epic()};
             case EPIC -> new WorkLocation[]{match.project()};
@@ -241,7 +243,7 @@ public final class FindCommand implements Callable<Integer> {
             if (part == null) {
                 continue;
             }
-            var title = titleOf(part);
+            var title = titleOf(part, locale);
             if (!title.isBlank()) {
                 rendered.add(title);
             }
@@ -249,13 +251,15 @@ public final class FindCommand implements Callable<Integer> {
         return String.join(PATH_SEPARATOR, rendered);
     }
 
-    private static String titleOf(WorkLocation location) {
+    private static String titleOf(WorkLocation location, String locale) {
         var title = location.title();
-        if (title == null || title.isBlank()) {
-            // A location without a title is a defect of the data: the id alone never reaches the screen.
-            return "";
+        if (title != null && !title.isBlank()) {
+            return TerminalSanitizer.sanitizeLine(title);
         }
-        return TerminalSanitizer.sanitizeLine(title);
+        // A location without a title renders through Display where the catalogue knows the unit, and
+        // as nothing otherwise: the id alone never reaches the screen.
+        var unitKey = "unit." + location.id();
+        return MessageCatalogue.hasKey(locale, unitKey) ? Display.title(locale, null, location.id()) : "";
     }
 
     /**
