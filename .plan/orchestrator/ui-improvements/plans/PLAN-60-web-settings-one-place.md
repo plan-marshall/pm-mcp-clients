@@ -77,26 +77,36 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-12)`, `doc/claude_review/ux/proposals.adoc#UX-P-02` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc UX-S-12 row (line 80) One settings place with tabs -> UX-P-02; ux/proposals.adoc:73-74 [#UX-P-02] App Shell, Navigation, Command Palette, One Settings Place
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-12 and `ux/proposals.adoc` UX-P-02 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note (2026-10-30, operator request): the tabs of the one settings view are Setup, Access, Credentials, Consents, Retention and **This browser**. The last one is `BrowserSettingsView` of `PLAN-85` (`web-theme-in-browser-settings`): the theme and the language choice, applied at once, no Save, nothing sent to the machine, route `/settings/browser`; later browser-only settings belong in this tab and not in another plan's view. It is a browser setting and not a machine setting, so the one-save, "changed" mark and "reset to inherited" rules of deliverable 2 do not apply to it. If `PLAN-85` has landed, this plan makes `/settings/browser` redirect to `/settings?tab=browser` like `/settings/machine`; if it has not, this plan leaves the tab to `PLAN-85`.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): BrowserSettingsView.svelte and pm-web-app/src/routes/settings/browser do not exist (PLAN-85 not landed), so the spec's 'leaves the tab to PLAN-85' branch applies; routes.ts still has only 'settings' and 'machine-settings'; routes/settings has +page.svelte and machine/.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: `applyConflictAgain` still falls back to `{}` when the conflict's `current_value` is not a record — confirm/refute at `pm-web-app/src/lib/views/MachineSettingsView.svelte` § `applyConflictAgain` (verify-at-outline)
+- HYPOTHESIS: no test pins a German `common.tokens.total` — confirm/refute at `pm-web-app/src/lib/i18n/catalogue.test.ts` § `common.tokens` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/SettingsView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/MachineSettingsView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/MachineSettingsView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/routes/settings/` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/devices.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/machine-settings.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/devices.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/devices.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/MachineSettingsView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/MachineSettingsView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/routes/settings/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/nav.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/devices.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/machine-settings.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/texts-and-languages.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/cli/resources/screens/system-printed.txt` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/cli/resources/screens/system-view.txt` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/devices.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/devices.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -135,3 +145,26 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/web-app/README.adoc#routes` (the `/settings` row), `doc/design/web-app/machine-settings.adoc` (#layout, #conflict, #cleanup, #credentials, #devices), `doc/design/web-app/components-fields.adoc` (#form-shape, #validation, #submit), `doc/design/web-app/navigation.adoc` (#url, #scope). HEAD 1cc0e10e. The conflict dialogue of deliverable 3 already exists for the machine settings (`MachineSettingsView.svelte` `applyConflictAgain`, `common.conflict.*`, `PLAN-101`) and is carried through the merge by deliverable 1 and 2.
+
+1. **One settings view.** `SettingsView` and `MachineSettingsView` merge into one `/settings` with the tabs `setup`, `access`, `credentials`, `consents`, `retention` (`tab=` in the address, a replace), and `browser` once `PLAN-85` has landed; `/settings/machine` (and `/settings/browser`) are replaced by their tab address when opened. The page is not a column chain. A design line maps the aspects of `machine-settings.adoc#layout` (language, harnesses, models, roles, credentials, providers, plans; documents; cleanup; consents; devices) to the tabs. The rail entry leads to `/settings` and `activeNavRoute` maps `machine-settings` onto it.
+   - Done when: `onboarding.spec.js`, `devices.spec.js`: the redirect and every tab (evidence order: `test-first`); the browser check on `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (evidence order: `none`).
+2. **Forms and conflicts.** Every settings form has one _Save_ disabled until a change (its reason in `FormStatus`), a _changed_ mark beside each changed field, _Use the inherited value_ for an own value, `FormStatus` _Saved_, and a guard when the operator leaves a changed form. A conflict shows the other client's value and _Keep the current value_ / _Apply yours again_ (`common.conflict.*`). Fields are the field system (`Field`, `NumberField`, `SecretField`, `RadioGroup`); device rename is an inline edit.
+   - Done when: unit tests: _Save_ disabled until change; _Use the inherited value_; the conflict dialogue survives the merge (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+3. **The cleanup record's conflict, save and texts** (PLAN-101 residue). Unchanged in substance: (a) `applyConflictAgain` falls back to `{}` when `current_value` is not a record (`MachineSettingsView.svelte` ~245): merge over the stored record or refuse with a stated reason; (b) the "Yours" line shows what will be sent, in the catalogue's words one category each (`machine-settings.adoc#conflict`); (c) a server `invalid_value` names the minimum (7 days, `-1` never; the reminder 1 day), or the design says only the pre-check names it; (d) `saveCleanup` builds the record from the stored one; (e) the changed set is computed against the record the page last read; (f) stale captures: `doc/claude_review/cli/resources/screens/system-view.{txt,svg}` and `system-printed.txt` show `2.02 M tokens (…)`, `doc/design/shared/texts-and-languages.adoc:300` shows `≥ 1.24 M tokens · …`, and a German literal test for `common.tokens.total` is missing. The design already states the wire form (`machine-settings.adoc#cleanup`); the daemon check stays an open item with its owner.
+   - Done when: the tests of the earlier spec (a non-record conflict keeps the stored categories; the "Yours" line shows what is sent; a server refusal shows the minimum; an event that refreshes the store does not turn a stale reminder into the operator's change; an added key survives `saveCleanup`) (evidence order: `test-first`); the stale captures and the example carry the new wording (evidence order: `none`); the landing message states `unresolved_review_threads=N` and `sonar_open_new_issues=N` (evidence order: `none`).
+4. **The device list loads without losing an edit or an event.** Unchanged: a revoke bumps `loadSequence`; `device.revoked` / `device.renamed` arriving during a load survive it; the destroy guard, the abort of the status read in the catch, the `onDestroy` abort and a never-settling status read are pinned.
+   - Done when: one test per leftover that fails when its code is reverted (evidence order: `mutation-after`); the open-issue read at the head (evidence order: `none`).
+
+Removed or replaced: "Reset to inherited" (it is _Use the inherited value_); "Apply mine again" (it is _Apply yours again_); a separate conflict deliverable (done, carried); the `transcribe` setting and the speech-consent withdrawal (the D4 voice package's).
+
+Implements: `doc/design/web-app/machine-settings.adoc` § Layout, The Cleanup's Durations, Changed Meanwhile; `doc/design/web-app/components-fields.adoc` § Submitting.
+
+Dependencies: D1 foundation (field system, FormStatus, Button hierarchy), D2 navigation engine (`tab=`, old addresses replaced), `PLAN-109` (shipped), `PLAN-85` (the `browser` tab; if it has not landed, this plan leaves the tab to it), `PLAN-45` (merge first: it holds `SettingsView.svelte` and its test), `PLAN-100`, `PLAN-101` (shipped).
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.

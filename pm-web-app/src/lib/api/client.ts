@@ -1,3 +1,5 @@
+import { ClientError } from './errors';
+
 export interface PairingResponse {
   device_secret: string;
   device_id: string;
@@ -2064,6 +2066,22 @@ function httpError(message: string, status: number): Error {
 }
 
 export class ApiClient {
+  /**
+   * How long one request may wait for the runtime before the client gives up.
+   *
+   * The one limit of every request (UX-S-06, D2/D5): a call that takes longer ends in the client's
+   * own `timeout` code, so no view waits forever on a runtime that stopped answering.
+   */
+  private static readonly REQUEST_TIMEOUT_MS = 15_000;
+
+  /**
+   * How long a check may wait for the runtime.
+   *
+   * A check reads more than a plain request — a decomposition, a premise, an upgrade or an archive
+   * check — so it gets twice the plain limit and still ends in `timeout`.
+   */
+  private static readonly CHECK_TIMEOUT_MS = 30_000;
+
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
@@ -2169,6 +2187,7 @@ export class ApiClient {
   public async pair(code: string): Promise<PairingResponse> {
     const cleanCode = code.trim();
     const url = `${this.baseUrl}/api/v1/pair`;
+    const deadline = AbortSignal.timeout(ApiClient.REQUEST_TIMEOUT_MS);
 
     let res: Response;
     try {
@@ -2178,10 +2197,10 @@ export class ApiClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code: cleanCode }),
+        signal: deadline,
       });
-    } catch {
-      this.onOfflineCallback?.();
-      throw new Error('network_offline');
+    } catch (error) {
+      this.failFetch(error, undefined, deadline);
     }
 
     if (!res.ok) {
@@ -2189,7 +2208,7 @@ export class ApiClient {
       throw new Error(err.error || 'invalid_code');
     }
 
-    const data: PairingResponse = await res.json();
+    const data = await this.readBody<PairingResponse>(res, undefined, deadline);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
       localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
@@ -2456,6 +2475,8 @@ export class ApiClient {
       'POST',
       `${this.decompositionPath(projectId, epicId)}/check`,
       {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -2482,6 +2503,8 @@ export class ApiClient {
       'POST',
       `${this.lessonBase(projectId, lessonId)}/premise-check`,
       {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -2806,25 +2829,12 @@ export class ApiClient {
     );
   }
 
-  /** How long a revoke may wait for the runtime before the request gives up. */
-  private static readonly REVOKE_TIMEOUT_MS = 15_000;
-
   public async revokeDevice(deviceId: string): Promise<void> {
-    await this.request(
-      'DELETE',
-      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
-      undefined,
-      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
-    );
+    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
   }
 
   public async revokeOtherDevices(): Promise<void> {
-    await this.request(
-      'DELETE',
-      '/api/v1/web/devices?others',
-      undefined,
-      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
-    );
+    await this.request('DELETE', '/api/v1/web/devices?others');
   }
 
   public async turnOffLanListener(): Promise<void> {
@@ -2971,24 +2981,15 @@ export class ApiClient {
     return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
-  /** How long a withdraw of the stop may wait for the runtime before the request gives up. */
-  private static readonly WITHDRAW_TIMEOUT_MS = 15_000;
-
   /**
    * Withdraws the stop.
    *
-   * The caller's signal bounds the request where it has one; without one the client's own deadline
-   * does, so a runtime that never answers cannot hold the drain acts disabled forever.
+   * The client's own request limit bounds it; a caller that brings a signal adds that bound.
    *
    * @param signal the caller's bound, where it brings one
    */
   public async withdrawStop(signal?: AbortSignal): Promise<void> {
-    await this.request(
-      'DELETE',
-      '/api/v1/runtime/stop',
-      undefined,
-      signal ?? AbortSignal.timeout(ApiClient.WITHDRAW_TIMEOUT_MS),
-    );
+    await this.request('DELETE', '/api/v1/runtime/stop', undefined, signal);
   }
 
   public async upgradeRuntime(
@@ -3031,7 +3032,13 @@ export class ApiClient {
     latest_version?: string;
     release_notes_url?: string;
   }> {
-    return this.request('POST', '/api/v1/operator/runtime/upgrade/check', {});
+    return this.request(
+      'POST',
+      '/api/v1/operator/runtime/upgrade/check',
+      {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
+    );
   }
 
   public async getCleanupJob(): Promise<CleanupJob> {
@@ -3077,12 +3084,11 @@ export class ApiClient {
     return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
-  public async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-    signal?: AbortSignal,
-  ): Promise<T> {
+  /**
+   * @param path the request path
+   * @throws Error when the path is not one this client may call
+   */
+  private assertRequestPath(path: string): void {
     if (
       !path.startsWith('/') ||
       path.startsWith('//') ||
@@ -3091,6 +3097,92 @@ export class ApiClient {
     ) {
       throw new Error(`Invalid request path: ${path}`);
     }
+  }
+
+  /**
+   * @param signal the caller's bound, where it brought one
+   * @returns whether that bound is a deadline rather than a cancellation
+   */
+  private static isCallerDeadline(signal: AbortSignal | undefined): boolean {
+    return (signal?.reason as Error | undefined)?.name === 'TimeoutError';
+  }
+
+  /**
+   * @param secret the pairing secret the request carried, if any
+   * @throws ClientError always, with the code the auth loss stands for
+   */
+  private failUnauthorized(secret: string | null): never {
+    // Only an authenticated request can lose a pairing: an unauthenticated 401 means the route
+    // needs pairing, not that the device was revoked.
+    if (secret) {
+      this.clearAuth();
+      this.onRevokedCallback?.('unauthorized');
+    }
+    throw new ClientError('unauthorized');
+  }
+
+  /**
+   * Ends a failed request in the code the failure stands for.
+   *
+   * @param error the failure `fetch` reported
+   * @param signal the caller's bound, where it brought one
+   * @param deadline the client's own bound
+   * @throws ClientError, or the caller's own cancellation
+   */
+  private failFetch(error: unknown, signal: AbortSignal | undefined, deadline: AbortSignal): never {
+    // A read a newer one superseded is aborted on purpose: it is not the machine going away. A
+    // caller's own deadline is the same unknown outcome as the client's; a cancellation is not.
+    if (signal?.aborted) {
+      if (ApiClient.isCallerDeadline(signal)) {
+        throw new ClientError('timeout');
+      }
+      throw error;
+    }
+    if (deadline.aborted) {
+      throw new ClientError('timeout');
+    }
+    this.onOfflineCallback?.();
+    throw new ClientError('network_offline');
+  }
+
+  /**
+   * Reads a response body as the answer it promises.
+   *
+   * A body that never completes is not an answer: the client cannot tell whether the runtime acted,
+   * so it reports the one outcome that says so (D5). That covers a body cut short (`SyntaxError`) as
+   * much as one lost mid-transfer (`TypeError`). A caller's cancellation is handed on unchanged.
+   *
+   * @param res the response
+   * @param signal the caller's bound, where it brought one
+   * @param deadline the client's own bound
+   * @returns the parsed body
+   */
+  private async readBody<T>(
+    res: Response,
+    signal: AbortSignal | undefined,
+    deadline: AbortSignal,
+  ): Promise<T> {
+    try {
+      return (await res.json()) as T;
+    } catch (error) {
+      if (signal?.aborted && !ApiClient.isCallerDeadline(signal)) {
+        throw error;
+      }
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
+      throw new ClientError('network_offline');
+    }
+  }
+
+  public async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
+    this.assertRequestPath(path);
 
     const secret = this.getSecret();
     const headers: Record<string, string> = {};
@@ -3103,31 +3195,26 @@ export class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
+    // Every request carries the client's own deadline. The caller may bring a signal of its own
+    // (a superseded read, or a shorter act); both bounds apply, and the one that fired decides the
+    // failure below.
+    const deadline = AbortSignal.timeout(timeoutMs);
+    const bounded = signal ? AbortSignal.any([signal, deadline]) : deadline;
+
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal,
+        signal: bounded,
       });
     } catch (error) {
-      // A read a newer one superseded is aborted on purpose: it is not the machine going away.
-      if (signal?.aborted || (error as Error)?.name === 'AbortError') {
-        throw error;
-      }
-      this.onOfflineCallback?.();
-      throw new Error('network_offline');
+      this.failFetch(error, signal, deadline);
     }
 
     if (res.status === 401) {
-      // Only an authenticated request can lose a pairing: an unauthenticated 401 means the route
-      // needs pairing, not that the device was revoked.
-      if (secret) {
-        this.clearAuth();
-        this.onRevokedCallback?.('unauthorized');
-      }
-      throw new Error('unauthorized');
+      this.failUnauthorized(secret);
     }
 
     if (!res.ok) {
@@ -3136,7 +3223,7 @@ export class ApiClient {
     }
 
     this.onOnlineCallback?.();
-    return res.json() as Promise<T>;
+    return this.readBody<T>(res, signal, deadline);
   }
 
   public async followLink(
@@ -3180,6 +3267,9 @@ export class ApiClient {
     return this.request<ArchiveCheck>(
       'GET',
       `/api/v1/epics/${encodeURIComponent(epicId)}/archive-check`,
+      undefined,
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -3555,28 +3645,25 @@ export class ApiClient {
     if (secret) {
       headers['Authorization'] = `Bearer ${secret}`;
     }
+    const deadline = AbortSignal.timeout(ApiClient.REQUEST_TIMEOUT_MS);
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
         body: JSON.stringify(body),
+        signal: deadline,
       });
-    } catch {
-      this.onOfflineCallback?.();
-      throw new Error('network_offline');
+    } catch (error) {
+      this.failFetch(error, undefined, deadline);
     }
     if (res.status === 401) {
       // As in `request`: only a 401 to a request that carried a secret is auth loss.
-      if (secret) {
-        this.clearAuth();
-        this.onRevokedCallback?.('unauthorized');
-      }
-      throw new Error('unauthorized');
+      this.failUnauthorized(secret);
     }
     if (res.status === 409 || res.ok) {
       this.onOnlineCallback?.();
-      return (await res.json()) as T;
+      return this.readBody<T>(res, undefined, deadline);
     }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);

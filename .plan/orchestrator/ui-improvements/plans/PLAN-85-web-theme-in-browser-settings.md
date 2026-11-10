@@ -54,38 +54,34 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 ## Claim Labels
 
 - OBSERVED: the theme is stored in `localStorage` under `pm_theme` with `light`, `dark`, `system`, and `app.html` reads it in an inline script before the first paint — read at `pm-web-app/src/lib/theme.ts` and `pm-web-app/src/app.html` at HEAD 07104678
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 pm_theme; app.html:20 inline read
 - OBSERVED: the choice stands in the rail foot (`NavRail.svelte`, fieldset `theme-choice`) and, on a phone, in the More sheet (`BottomBar.svelte`); `+layout.svelte` holds `themeChoice` and calls `writeThemeChoice` — read at HEAD 07104678; `doc/design/web-app/README.adoc` § Light and Dark Themes (line 374) and the rail description (line 171) say so
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:144-165 language button and theme fieldset; BottomBar.svelte:172-196; +layout.svelte:194,254-256; AGREED README.adoc:147,153,431 still wants this
 - OBSERVED: `PairingView.svelte`, `RevokedView.svelte`, `SettingsView.svelte` (devices, `/settings`) and `MachineSettingsView.svelte` (`/settings/machine`) exist; `nav.ts` has a Settings destination — read at HEAD 07104678
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView, RevokedView, SettingsView, MachineSettingsView exist; routes/settings/machine and lib/shell/nav.ts exist
 - OBSERVED: the language choice is stored in local storage under `pm_locale` and is offered in the rail foot and the More sheet beside the theme — stays stored as it is; its control moves with the theme control
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:7 pm_locale; language control in NavRail.svelte:144 and BottomBar.svelte:172
 - HYPOTHESIS: `PairingView` and `RevokedView` render without the frame, so the control has to be mounted by the views themselves (`PLAN-39` kept the frame controls on such pages) — confirm/refute at the two views and `AppShell.svelte` (verify-at-outline)
+  - verdict: contradicted | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:289-347 renders RevokedView, PairingView, OnboardingView inside AppShell (rail and BottomBar stay); BottomBar.svelte:205-240 has a fallback bar with both controls; wording corrected in the 2026-11-10 Amendment
 - HYPOTHESIS: `helpers/contrast.js` `setTheme` sets the theme through the page's control or storage, and other e2e specs click the rail's theme control — search `pm-web-e2e/tests` for the control's test ids and `pm_theme` (verify-at-outline)
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-21 sets only the data-theme attribute; chrome/mobile/workspace specs use theme- ids
 - OBSERVED (reported by the run of PLAN-80, not verified here): the contrast matrix of `theme-readability.spec.js` calls `setTheme` (`helpers/contrast.js`) before `page.goto`, and `app.html` re-derives `data-theme` from `localStorage.pm_theme`, which nothing writes — so the "dark" audit may run under the light theme. This plan changes where the choice is made and the helpers that set it: it makes `setTheme` set `pm_theme` in the page's origin before the app loads (or choose through the control on the pairing page) and asserts `document.documentElement.dataset.theme` equals the requested theme in every audited test, so no audit passes under the wrong theme.
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js:630-634 setTheme before page.goto; no dataset.theme assertion anywhere
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-60` (the one settings view), `PLAN-70` (light theme pass), `PLAN-16` (locale switch) and `PLAN-37` (accessibility baseline) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/shell/NavRail.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/shell/BottomBar.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/shell/AppShell.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/shell/ThemeChoice.svelte` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-web-app/src/lib/shell/LocaleSwitch.svelte` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-web-app/src/lib/components/LanguageChoice.svelte` — present at HEAD 07104678 (the onboarding's interface-language choice; untouched, owned by `PLAN-66`)
-- OBSERVED: `pm-web-app/src/lib/i18n/index.ts` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/views/PairingView.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/views/RevokedView.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.svelte` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.test.ts` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-web-app/src/routes/settings/browser/+page.svelte` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/pairing.spec.js` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/helpers/contrast.js` — present at HEAD 07104678
-- OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD 07104678
-- OBSERVED: `doc/design/web-app/browser-settings.adoc` — absent at HEAD 07104678; created by this plan
-- OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 07104678
-- OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD 07104678
+
+
+- OBSERVED: `pm-web-app/src/lib/shell/BottomBar.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD 1cc0e10e (tab host; owned by PLAN-60 / PLAN-45)
+- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD 1cc0e10e (routes row of the tab only)
 
 ## Dependencies and Sequencing
 
@@ -125,3 +121,40 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/NavRail.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/BottomBar.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/AppShell.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/ThemeChoice.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/shell/LocaleSwitch.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/theme.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/i18n/index.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/PairingView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/RevokedView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD 1cc0e10e (tab host; owned by PLAN-60 / PLAN-45)
+- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/pairing.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/workspace.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/helpers/contrast.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/entry.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD 1cc0e10e
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Placement (option A):** the AGREED README stands: theme and language stay in the rail foot (desktop) and the More sheet (phone). This plan is reduced to: (1) the "This browser" tab `?tab=browser` of the one settings view (theme and language as `RadioGroup`, applied at once, stored under `pm_theme`/`pm_locale`, the sentence "Kept in this browser. It is not sent to the machine."), and (2) the duplicated language toggle of `BottomBar.svelte` (`:172`, `:215`) goes. Deliverable 1 of the re-grounding amendment (controls off the frame) is dropped; nothing moves to the pairing or revoked pages; `README.adoc`, `entry.adoc` and `theme-readability.adoc` are not changed for placement. The re-grounding's claim 6 (`setTheme` before `page.goto`) is PLAN-70's deliverable 1.
+- Expected Surface reduced to outcome A (see the section above).
+
+## Staging Note 2026-11-10
+
+The packages this spec names by placeholder were staged on 2026-11-10: the entry pages are restyled by PLAN-157 (no theme or language control is added there, option A).

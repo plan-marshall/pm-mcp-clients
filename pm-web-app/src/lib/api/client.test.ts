@@ -601,6 +601,154 @@ describe('ApiClient', () => {
     expect(capturedSignal?.aborted).toBe(false);
   });
 
+  it('ends a request that never answers in the timeout code after the client limit', async () => {
+    // Arrange: the client's own deadline has passed and the fetch reports the abort.
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert: the failure is the typed timeout, not a bare AbortError.
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'timeout' });
+    expect(timeout).toHaveBeenCalledWith(15_000);
+  });
+
+  it('gives a check the longer client limit', async () => {
+    // Arrange
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert
+    await expect(client.checkUpgrade()).rejects.toMatchObject({ code: 'timeout' });
+    expect(timeout).toHaveBeenCalledWith(30_000);
+  });
+
+  it('keeps a caller abort distinct from the client deadline', async () => {
+    // Arrange: the caller's own controller is the one that aborted.
+    const controller = new AbortController();
+    controller.abort();
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert: a superseded read is not reported as a timeout.
+    await expect(client.getStatus(controller.signal)).rejects.not.toMatchObject({
+      code: 'timeout',
+    });
+  });
+
+  it('reports a caller deadline that fired as the timeout code', async () => {
+    // Arrange: the caller's bound is a deadline, not a cancellation.
+    const controller = new AbortController();
+    controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert
+    await expect(client.getStatus(controller.signal)).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('turns a body lost mid-transfer into the unknown outcome', async () => {
+    // Arrange: the status line arrives, the body is cut by the connection.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    // Act & Assert
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
+  it('turns a truncated response body into the unknown outcome', async () => {
+    // Arrange: the status line and headers arrive, the body never completes.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert: the client cannot tell whether the runtime acted, so the outcome is unknown.
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
+  it('turns a truncated pairing body into the unknown outcome', async () => {
+    // Arrange
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert
+    await expect(client.pair('KXQB-MRTN')).rejects.toMatchObject({ code: 'network_offline' });
+    expect(client.isPaired()).toBe(false);
+  });
+
+  it('turns a truncated conflict-capable body into the unknown outcome', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
+  it('refuses a path that is not one this client may call', async () => {
+    await expect(client.request('GET', '//evil')).rejects.toThrow('Invalid request path');
+  });
+
+  it('ends a pairing that never answers in the timeout code', async () => {
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    await expect(client.pair('KXQB-MRTN')).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('ends a conflict-capable call that never answers in the timeout code', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('reports a body the client deadline cut as the timeout', async () => {
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new TypeError('terminated');
+      },
+    });
+
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'timeout' });
+  });
+
   it('reports online again after a failed request and the next success', async () => {
     // Arrange
     const onOffline = vi.fn();
@@ -771,8 +919,11 @@ describe('ApiClient', () => {
 
     // Act & Assert
     await expect(client.findWork('relay', controller.signal)).rejects.toThrow('aborted');
-    // The signal reaches the request, so aborting the search stops the read itself.
-    expect(inits[0]?.signal).toBe(controller.signal);
+    // The caller's abort reaches the request (beside the client's own deadline), so aborting the
+    // search stops the read itself.
+    const bounded = inits[0]?.signal as AbortSignal | undefined;
+    expect(bounded).toBeInstanceOf(AbortSignal);
+    expect(bounded?.aborted).toBe(true);
     expect(onOffline).not.toHaveBeenCalled();
   });
 });

@@ -46,19 +46,22 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 ## Claim Labels
 
 - OBSERVED: the package states "one terminal command" for find and the web app's search behind the top bar's search button — read at `doc/plans/needs-and-find.adoc` at HEAD 07104678
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: in substance: doc/plans/needs-and-find.adoc task 3 'Going to work by name, in both clients'; the terminal find <text> is defined in shared/needs-and-find.adoc:89, the web search button in web-app/needs-and-find.adoc:44 (the phrase 'one terminal command' is not literal)
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: doc/plans/needs-and-find.adoc task 3; shared/needs-and-find.adoc#terminal; README.adoc:360-364 row open
 - OBSERVED: no `find` command exists in `pm-operator` — searched at HEAD 07104678 (`FindCommand` absent)
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no FindCommand file; PmOperator registers 22 verbs, none is find
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: no FindCommand.java; PmOperator.java:43-65 registers 23 verbs (needs added by PLAN-36), none is find
 - HYPOTHESIS: the console key and the verb mode of `find` are fixed by the design of `PLAN-82` (deliverable 1), and `PLAN-42` (verb modes and help) lists every verb in one table — confirm/refute at the accepted design and `01-commands.adoc` (verify-at-outline)
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: shared/needs-and-find.adoc:89-90 fixes find <text>, --print and / at the empty prompt; 01-commands.adoc has no find or needs row and no verb-mode table (partly)
+  - verdict: contradicted | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: yes | evidence: key and verb fixed by shared/needs-and-find.adoc; no verb-mode table, PLAN-42 not landed; PmOperatorTest compares verbs with 01-commands tree, so the find row is mandatory (Amendment 2026-11-10)
 - Re-grounded at HEAD 1651554b (2026-10-31), after `PLAN-82` landed: the texts the shared design names for find
   (`doc/design/shared/needs-and-find.adoc` § Texts: every `overview.find.*` row) are NOT in the catalogues at this head
   (grep of `pm-api/src/main/resources/messages/*.properties`), and no staged spec owned them. `PLAN-46` (web command palette)
   adds them in `overview.{en,de}.properties`; this plan reads them at its head and adds only the ones still missing if it runs
   first. Both plans declare `overview.{en,de}.properties` and do not run at the same time. The `FindCommand` texts of the
   terminal stay in `operator.*` as declared here.
+  - verdict: contradicted | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: yes | evidence: overview.find.* present at overview.{en,de}.properties:40-49 (PLAN-46 #296); reuse them (Amendment 2026-11-10)
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2); also add the needs/find rows to the spec command tree (terminal-client/01-commands).
+  - verdict: contradicted | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: yes | evidence: needs row exists at 01-commands.adoc:124 (PLAN-36); only the find row left; package row not set by this plan (PLAN-49 parked)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-82` must have landed (the contract and the mock), `PLAN-36` and `PLAN-42` edit `PmOperator`, `PmConsole`, the command listing and the catalogue pair. A refuted claim re-scopes the deliverable and is reported.
+  - verdict: corroborated | checked_at: 0913d6f3 | by: ui-improvements/analyze | rescoped: n/a | evidence: PLAN-82 landed (MachineApiPaths.java:29 FIND, FindMatch/FindPage, NeedsAndFindScenarioTest); PLAN-36 landed 36fb27d9; PLAN-42 not landed
 
 ## Expected Surface
 
@@ -75,7 +78,11 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at HEAD 07104678
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD 07104678
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/` — present at HEAD 07104678
-- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActs.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorTest.java` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OperatorVerbsTest.java` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmConsoleTest.java` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/FindIT.java` — absent at `0913d6f3`; created by this plan (added by the re-grounding of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/17-projects.adoc` — present at `0913d6f3` (added by the re-grounding of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -90,6 +97,35 @@ Source: `landings/PLAN-116.md` (layer 2). PLAN-116 changed the console's argv fo
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. The `overview.find.*` rows exist in `overview.{en,de}.properties` (PLAN-46, #296): the "NOT in the catalogues" note is satisfied. `GET /api/v1/find` (`MachineApiPaths.FIND`) and `FindMatch` exist in `pm-api` (PLAN-82). This plan adds `find` to `PmOperator` and to `01-commands.adoc` after PLAN-97's tree (22 verbs, none is `find`); the `needs` row belongs to PLAN-36, not here.
+
+## Amendment 2026-11-10 (re-grounding at `0913d6f3`, after PLAN-36, PLAN-46 and PLAN-82 landed)
+
+This section supersedes the spec text, the 2026-11-07 re-grounding and the 2026-11-08 fold where they differ.
+
+- **Dependencies:** PLAN-82 (`GET /api/v1/find`, `FindMatch`, `FindPage`, mock), PLAN-46 (the `overview.find.*` texts,
+  `overview.{en,de}.properties:40-49`) and PLAN-36 (`needs` verb, `PmOperator:65`, `PmConsole:383-388`) have landed.
+  The 1651554b note ("texts not in the catalogues") and the `needs` row of the command tree are obsolete; PLAN-36 is no
+  longer an overlap. `PmOperator` registers 23 verbs, none is `find`.
+- **`/` at the empty prompt is IN scope** (AGREED `shared/needs-and-find.adoc` § Terminal): `/` opens the find field,
+  Enter lists, Esc returns to the prompt; `PmConsole.dispatchCommand` (`:372-393`) has no `/` handling today. Done
+  when: the PTY test `FindIT` types `/relay`, Enter, selects the first match and lands on it; Esc leaves without a request
+  (evidence order: `test-first`). `/` inside the overview stays the list filter (`15-overview.adoc:181`).
+- **Texts (D2):** reuse the shared `overview.find.*` keys (title, hint, empty, ended, no_text, `kind.*`); add
+  `operator.find.*` only for terminal-only text (the choice prompt, the open command, the `--print` header). Add
+  `FindCommand.java` to `LiteralTextGuardTest.GUARDED`. The outcome of ended work and a blank title render through
+  `de.planmarshall.api.display.Display` (no raw outcome string, no raw id).
+- **Open command per kind:** plan `plan <id>`, epic `epic <id>`, decision `answer <id>`, report `reports open <id>`,
+  project `projects --filter <id>` (no verb opens one project; state it in `01-commands.adoc`).
+- **Command tree:** add the `find` row to `01-commands.adoc` in the same PR — `PmOperatorTest` (~`:192-257`) compares the
+  registered verbs with the tree; help and completer derive from `PmOperator` (`OperatorVerbsTest`, `PmConsoleTest`).
+  `find` is a read (unmarked; `OperatorActs.java` needs no edit, dropped from the surface).
+- **Package row:** do NOT set the `needs-and-find` row of `doc/plans/README.adoc` to done — PLAN-49 is parked and the row
+  depends on `overview-order-and-size` (open); the orchestrator closes the row when its last consumer lands.
+- **Fold (2026-11-08) corrected:** the stale `project setup --entry <entry_id>` form is at `04-console.adoc:26` and
+  `:122` and `01-commands.adoc:42`; `PmConsole.java:287` already passes `--entry -- <entry_id>`. Correct those three
+  lines (`17-projects.adoc:26,291` carry it too; correct them as well — the file is added to the surface).
+- **Sequencing:** PLAN-123 (display layer) may run at the same time; both add catalogue keys and `PLAN-123` touches
+  `Display`; rebase whichever lands second.
 
 ## Hand-Off Command
 

@@ -41,17 +41,23 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 ## Claim Labels
 
 - OBSERVED: no `pm-operator` test class uses `Generators` or `@EnableGeneratorController` (0 of 116 `*Test.java` and `*IT.java`) although `pm-operator/pom.xml` declares `cui-test-generator` and `cui-test-juli-logger` — read at HEAD 7e2b4b61
-  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: 23 of 132 test classes (111 *Test + 21 *IT) now carry @EnableGeneratorController (PLAN-26/91/92/94, #357, #358): the 0 of 116 count is stale; the HOLD on PLAN-97 is cleared
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: 25 of 140 test classes annotated, 22 use Generators; ~115 remain (Re-grounding 2026-11-10)
 - OBSERVED: `pm-operator` main code has no logger (`CuiLogger`, `java.util.logging`, SLF4J: none) — read by a repository-wide search at HEAD 7e2b4b61
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no CuiLogger, JUL or SLF4J in pm-operator/src/main
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: no logger in pm-operator main; pom declares cui-test-generator and juli-logger
 - HYPOTHESIS: most `pm-operator` tests assert catalogue texts and screen text, so the share of classes that can use generated input is small — confirm/refute by the before count (verify-at-outline); a finding that fewer than a third of the classes take incidental input is reported to the operator, not forced
-  - verdict: unverifiable | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: an outline-time count; for reference 23/132 converted and pom.xml:92,97 declares cui-test-generator and cui-test-juli-logger
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: outline-time count
 - Re-grounded note at HEAD e83a9ee2 (2026-10-31): `cui-standards-foundation` (PLAN-77, shipped, PR #282) landed the rule in `CLAUDE.md` and converted the two small modules as the pilot; `pm-operator` already declared the CUI test artifacts. Follow the pilot's pattern: draw `Generators` values inside the test or a `@BeforeEach`, not in field initialisers (flagged as not seed-controlled); a class whose values are the contract is listed input-free, not converted; expected values that derive from a generated input are re-derived from it, and contract values (catalogue texts, screen text, scripted answers) stay literal. All 11 `package-info.java` of this module carry `@NullMarked` since PLAN-77.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: 11 package-info.java all @NullMarked
 - Pull request size (PLAN-78's run, 2026-10-31): the required reviewer CodeRabbit refuses a pull request of more than 100 files (it refused PLAN-78's 197-file first PR, and the optional Sourcery refuses above 150,000 diff characters), and a pull request it never reviewed cannot be merged. This plan converts about 116 test classes: its set will exceed 100 files. The `pre-commit` gate also rewrites the import grouping of main sources that drifted on `main` (171 `pm-api` files in PLAN-78's run): such a rewrite is not part of this plan and is restored from `origin/main` before the pull request (the operator authorised exactly that in PLAN-78). If the converted set still passes 100 files, stop and ask the operator to split the plan in two (unit tests; integration and transcript tests, which are this spec's two deliverables) before opening the pull request.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: consistent: ~115 conversions exceed 100 files; split 79a/79b
 - HOLD (design audit 2026-11-02): it rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol, which the D25 (drain: signal the pid of state/runtime.json, withdraw as 'runtime stop --withdraw'), D26 and R7-7 (accept-edit enrolment <project_id>) package changes. Sequence it after that package; also sequence it with PLAN-92 (shared handler tests).
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 landed; orphan Enrol/Start/Onboard tests remain
 - Verify-first clause: before each deliverable, re-read the test tree at the current HEAD; `PLAN-77` must have landed. The terminal plans in flight edit these files; re-read which of them landed. A refuted claim re-scopes the deliverable and is reported.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 - Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; they are the three deliverables of PLAN-97 (staged 2026-11-04 on the operator's word): sequence this plan after PLAN-97. PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-97 #358 landed; c7d9dcb8 ancestor of main
+- OBSERVED: AnswerSanitizationTest, AnswerMultipartTest, AnswerRefusalTest, AnswerDialogueIT, CleanupCommandTest, StateDialogueTest and DialogueSourceTest carry no @EnableGeneratorController — read by git grep -c at 1cc0e10e
 
 ## Expected Surface
 
@@ -86,6 +92,24 @@ Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. Two test gaps in f
 1. `DrainCommandTest.java:619-650` builds the expected drain bound from the production constants (`DEFAULT_DRAIN_TIMEOUT_SECONDS`, `GRACE_PERIOD`, `MARGIN`), so a changed constant passes. Assert the contract literally (15 s without config, the configured value + 5 s + 10 s), and cover the String-valued `drain_timeout_seconds` branch (`DrainCommand.java:205-208`) and a non-object `machine-config.json`.
 2. Nothing pins that `PmConsole` builds its completer from `OperatorVerbs.completer()` (`PmConsole.java:137`): a completer reverted to a hand list passes `OperatorVerbsTest`. Add an assertion on the console's own completer.
 
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- Claim 0 contradicted (counts): at `cc0d62af` 25 of 140 test classes carry `@EnableGeneratorController`, 22 use
+  `Generators`; 118 `*Test` + 22 `*IT` (110 unit outside `transcript/`, 30 IT/transcript) — about 115 remain. Recent
+  landings (NeedsCommandTest, NeedsIT, AnswerRefusalTest, AnswerMultipartTest, AnswerSanitizationTest, ProjectCommandTest
+  additions) added more literal-input tests.
+- Claim 5 (HOLD on the Drain/AcceptEdit/Start/Onboard/Enrol tests) cleared: PLAN-97 (#358) landed; `EnrolCommandTest`,
+  `StartCommandTest`, `OnboardCommandTest` exist without a matching production class — delete or re-home them.
+- Folds: PLAN-116 item 1 DROPPED (fixed by PLAN-34 `40dc879e`, `ConsoleSettingsTranscriptTest:72-83`); item 2 lines
+  `PmConsole.java:340,702`; item 3 `EntryFlow.java:292`, `PmConsole.java:309`. PLAN-118 items 1-2 still open. PLAN-109
+  German assertion still open (`ActionMenusTest` en only).
+- **Split (pull-request size, CodeRabbit refuses > 100 files):** emit as two halves — 79a unit tests (~86 files),
+  79b integration and transcript tests (~29).
+- Sequencing: only when no terminal plan runs (PLAN-123, PLAN-84 running; PLAN-30/42 next), last in the terminal queue.
+- Disposition: AMEND (counts, split) and HOLD until the terminal queue is empty.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
@@ -102,3 +126,15 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Residue Fold 2026-11-10 (Amendment)
+
+Source: the landings of PLAN-36, -121, -124, -23, -120 and -119 (`landings/PLAN-NN.md`), which name test classes that break the
+Generators rule. No new deliverable; the classes are named so that none is skipped as "added after the count".
+
+- Convert, when this plan runs and after PLAN-126, -B and -C have landed (those plans write the touched classes with
+  Generators; this list covers what they leave): `NeedsCommandTest`, `NeedsOneCountTest`, `transcript/NeedsIT`,
+  `AnswerMultipartTest`, `AnswerRefusalTest`, `AnswerSanitizationTest`, `transcript/AnswerDialogueIT`, `ProjectCommandTest`,
+  `EnrolCommandTest`, `CleanupCommandTest`, `ControlDialoguesTest`, `EpicCommandTest`, `dialogue/StateDialogueTest`,
+  `DialogueSourceTest`.
+- A class that PLAN-126, PLAN-127 or PLAN-128 already converted is not touched again.

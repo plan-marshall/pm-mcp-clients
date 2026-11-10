@@ -1,0 +1,27 @@
+# Screen captures for PLAN-84: going to work by name (the find command).
+# On running-work: find by part of an id, by pull request number, no match, the console's find, and its / field.
+
+find-relay-120x30-en | running-work | - | find relay | - | 120x30 | en_US.UTF-8 | -
+find-relay-120x30-de | running-work | - | find relay | - | 120x30 | de_DE.UTF-8 | -
+find-relay-80x24-en | running-work | - | find relay | - | 80x24 | en_US.UTF-8 | -
+find-relay-80x24-de | running-work | - | find relay | - | 80x24 | de_DE.UTF-8 | -
+
+find-pr-120x30-en | running-work | - | find 214 | - | 120x30 | en_US.UTF-8 | -
+find-pr-120x30-de | running-work | - | find 214 | - | 120x30 | de_DE.UTF-8 | -
+find-pr-80x24-en | running-work | - | find 214 | - | 80x24 | en_US.UTF-8 | -
+find-pr-80x24-de | running-work | - | find 214 | - | 80x24 | de_DE.UTF-8 | -
+
+find-nothing-120x30-en | running-work | - | find nothing-here | - | 120x30 | en_US.UTF-8 | -
+find-nothing-120x30-de | running-work | - | find nothing-here | - | 120x30 | de_DE.UTF-8 | -
+find-nothing-80x24-en | running-work | - | find nothing-here | - | 80x24 | en_US.UTF-8 | -
+find-nothing-80x24-de | running-work | - | find nothing-here | - | 80x24 | de_DE.UTF-8 | -
+
+console-find-120x30-en | running-work | - | | q\nexit\n | 120x30 | en_US.UTF-8 | - | find relay\n
+console-find-120x30-de | running-work | - | | q\nexit\n | 120x30 | de_DE.UTF-8 | - | find relay\n
+console-find-80x24-en | running-work | - | | q\nexit\n | 80x24 | en_US.UTF-8 | - | find relay\n
+console-find-80x24-de | running-work | - | | q\nexit\n | 80x24 | de_DE.UTF-8 | - | find relay\n
+
+console-slash-120x30-en | running-work | - | | q\nexit\n | 120x30 | en_US.UTF-8 | - | /relay\n
+console-slash-120x30-de | running-work | - | | q\nexit\n | 120x30 | de_DE.UTF-8 | - | /relay\n
+console-slash-80x24-en | running-work | - | | q\nexit\n | 80x24 | en_US.UTF-8 | - | /relay\n
+console-slash-80x24-de | running-work | - | | q\nexit\n | 80x24 | de_DE.UTF-8 | - | /relay\n

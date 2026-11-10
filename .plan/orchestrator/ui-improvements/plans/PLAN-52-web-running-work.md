@@ -59,21 +59,26 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-09)`, `doc/claude_review/ux/proposals.adoc#UX-P-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/plan.adoc:63 UX-S-09 -> UX-P-09; ux/proposals.adoc:325-326 UX-P-09 Running Work
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-09 and `ux/proposals.adoc:325` UX-P-09 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed the order rule in `doc/design/shared/plan-overview.adoc`: running work is shown in the order the runtime serves (needs the operator first, then the newest started; projects by the start of their oldest active work); activity moves no row and a client does not sort again; the time beside a row only says how recently it was active. The rows of this page keep that order (`PLAN-82` serves it in the contract and the mock; the former `PLAN-81` is superseded); a sort by activity in this plan's rows is a defect. `PLAN-83` adds a work list beside a plan and an epic that reuses these rows and markers.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 and PLAN-35 shipped, so the page-template and data-component dependencies are met; OverviewView, ChatPanel, mobile.spec.js and overview.spec.js were touched by PLAN-90 (e2e baseline, time residue) and the a11y baseline: re-read.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: the ended-work list can be paged by the runtime through an existing endpoint the client already calls — confirm/refute at `pm-web-app/src/lib/api/client.ts` § ended work and `pm-api/src/main/java/de/planmarshall/api/overview` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/OverviewView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/overview.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/plan-overview.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/OverviewView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/overview.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/plan-overview.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -110,3 +115,33 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/plan-overview.adoc` (#levels, #project-row, #item-rows, #ended, #persistence), `doc/design/web-app/navigation.adoc` (#levels, #url, #kinds), `doc/design/web-app/components.adoc` (#row-link, #row-menu), `doc/design/web-app/components-tags.adoc#tag-places`, `doc/design/web-app/chat.adoc#everywhere`. HEAD 1cc0e10e.
+
+1. **Running work as the lens.** `OverviewView.svelte` becomes the Running work lens on the column engine: the projects with running work as the list column, then the project's work; by plan / by epic, running / ended and follow are modes of the address (`group=epic`, `mode=ended`, `follow=on`, `?project={id}`); a bare `/overview` is filled from the remembered place by the engine. Each row is a `RowLink` in the slots of every row (`KindMark`, title, `StatusLabel`, `PhaseLabel`, `ReasonBadge`, since, progress) with its acts in a `RowMenu`.
+   - Done when: `overview.spec.js` on `running-work` → `overview.running`: the columns align at 1440 px, the row menu is an icon button, by plan and by epic hold the same plans (evidence order: `test-first`); the browser check on `fully-onboarded` and `running-work` (evidence order: `none`).
+2. **One list, one count.** Unchanged: by plan and by epic render from one list; head counts are `$derived` from the rendered rows or say "showing n of m".
+   - Done when: a unit test asserts both groupings hold the same plans and the epic head count equals its rows (evidence order: `test-first`).
+3. **Ended work and alongside.** `mode=ended` lists every project with ended work, newest first, a page at a time (_Newer_, _Older_; the runtime pages); a row carries the outcome, the plan's pull request, the reason and the end time; the group `alongside` shows a running or failed short landing and a running onboarding or setup run on the project's row. A selection the list does not hold is a pinned row (`web.nav.pinned.*`).
+   - Done when: `overview.spec.js`: aligned ended-work columns, paging, an ended plan opens read-only as it ended (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+4. **Chat about ended work.** The row's _Chat_ and the ended plan's chat open the D4 `Chat` side column, read-only, with a working composer; its one proposal is a follow-up plan.
+   - Done when: `overview.spec.js` opens it from a row (evidence order: `test-first`).
+
+Removed or replaced: the filter chip row (the project list column replaces the sidebar); the sortable `DataTable` tab of ended work; the background-jobs block in the page head; "the rail item always opens running work" (conflicts with `plan-overview.adoc#persistence`; the operator decides, default: dropped); the start-page toggle (never reintroduced, `PLAN-110`).
+
+Implements: `doc/design/shared/plan-overview.adoc` § Two Levels, A Project, Ended Work, Where the Operator Left It; `doc/design/web-app/navigation.adoc` § Levels as Columns, Addresses and History.
+
+Dependencies: D1 foundation (RowLink, RowMenu, KindMark, StatusLabel, PhaseLabel, ReasonBadge), D2 navigation engine (column engine, modes in the address, remembered-place fill), and for deliverable 4 the D4 web chat package. It shares the running-work store with `PLAN-49`. Sequence after `PLAN-45`. `PLAN-82` and `PLAN-76` have shipped.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Rail item (G7):** the design wins: a bare `/overview` is filled from the remembered place (`navigation.adoc#url`, `plan-overview.adoc#persistence`); the clause "the rail item opens running work after ended work was open" is dropped.
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.

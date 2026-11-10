@@ -46,20 +46,23 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-08`, `doc/claude_review/visual-design/proposals.adoc#VD-P-02` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/visual-design/plan.adoc:63 VD-S-08 -> VD-P-02; visual-design/proposals.adoc:28-29 [#VD-P-02] Colour Tokens; tokens.css:100 aliases still present
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28 VD-P-02; tokens.css:102-126 aliases present; no stylelint in package.json
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Many listed components/views now exist or were changed by PLAN-25/35/43 and PLAN-90 (ErrorState, Skeleton, DataTable, Dialog, Tabs, Toast, Chip, etc.); tokens.css still carries the old aliases (line 100), no stylelint dependency yet (package.json), a styles/tokens.test.ts exists. Scope unchanged but the alias sweep now covers more files.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/package.json` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/package-lock.json` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/pom.xml` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD c4dc9bb4; created by this plan
+
+- OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/styles/tokens.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/eslint.config.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/package.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/package-lock.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/pom.xml` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD 1cc0e10e; created by this plan
 
 ## Dependencies and Sequencing
 
@@ -98,3 +101,14 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/styles/tokens.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/eslint.config.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/package.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/package-lock.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/pom.xml` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD 1cc0e10e; created by this plan

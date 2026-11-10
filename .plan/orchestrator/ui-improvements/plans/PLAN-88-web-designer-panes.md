@@ -43,16 +43,20 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/ux/findings.adoc#UX-F-15` — read at `doc/claude_review/ux/proposals.adoc` (the designer part; the claim was corroborated at `cc5794c9` for the former `PLAN-54`)
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; ux/findings.adoc:146 UX-F-15; deliverable replaced by the D1 component sweep (process-designer.adoc Layout :52-80 contradicts the pane layout)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; a refuted claim re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-app/src/lib/components/WorkflowValidationResults.svelte` — present at HEAD 07104678
-- OBSERVED: `pm-web-e2e/tests/designer.spec.js` — present at HEAD 07104678
-- OBSERVED: `doc/design/web-app/process-designer.adoc` — present at HEAD 07104678
-- OBSERVED: `pm-api/src/main/resources/messages/designer.en.properties` — present at HEAD 07104678
-- OBSERVED: `pm-api/src/main/resources/messages/designer.de.properties` — present at HEAD 07104678
+
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/WorkflowValidationResults.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/designer.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/process-designer.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/process-designer-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/designer.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/designer.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -86,3 +90,18 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/WorkflowValidationResults.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/designer.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/process-designer.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/process-designer-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/designer.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/designer.de.properties` — present at HEAD 1cc0e10e
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Pane layout:** dropped (not designed; the AGREED `process-designer.adoc` § Layout stands). The plan is the D1 component sweep of the designer only.

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import OverviewView from './OverviewView.svelte';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore } from '../stores/runtime';
+import { ClientError } from '../api/errors';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import {
@@ -216,6 +217,28 @@ describe('OverviewView component', () => {
     // Check attention markers
     expect(screen.getByText('! 2')).toBeInTheDocument();
     expect(screen.getByText('setup needs you')).toBeInTheDocument();
+  });
+
+  it('draws the error pattern in the sidebar when the projects cannot be read', async () => {
+    const projects = vi
+      .spyOn(apiClient, 'getProjects')
+      .mockRejectedValue(new ClientError('network_offline'));
+
+    render(OverviewView);
+
+    const error = await screen.findByTestId('overview-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(projects).toHaveBeenCalledTimes(2));
+  });
+
+  it('draws the error pattern when the project detail cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockRejectedValue(new ClientError('timeout'));
+
+    render(OverviewView);
+
+    const error = await screen.findByTestId('overview-detail-error');
+    expect(error).toHaveTextContent('The request took too long');
   });
 
   it('renders plans by default with progress, attention badges, and off-track warning', async () => {

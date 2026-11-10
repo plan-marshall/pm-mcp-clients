@@ -332,8 +332,8 @@ class PlanViewScenarioTest {
             var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
             var unknown = get(runtime, "/api/v1/plans/" + unknownPlan + "/process");
             assertEquals(404, unknown.status());
-            assertTrue(unknown.bodyText().contains("plan_not_found"),
-                    "an unknown plan id answers plan_not_found");
+            assertTrue(unknown.bodyText().contains("scope_not_found"),
+                    "an unknown plan id answers scope_not_found");
 
             var activity = TaskActivity.fromJson(
                     get(runtime, "/api/v1/plans/drop-legacy-api/tasks/TASK-042/activity").bodyText());
@@ -352,7 +352,7 @@ class PlanViewScenarioTest {
             var unknownActivity = get(runtime,
                     "/api/v1/plans/" + unknownPlan + "/tasks/TASK-042/activity");
             assertEquals(404, unknownActivity.status());
-            assertTrue(unknownActivity.bodyText().contains("plan_not_found"),
+            assertTrue(unknownActivity.bodyText().contains("scope_not_found"),
                     "an unknown plan id has no task activity");
 
             var unknownEpic = Generators.letterStrings(4, 10).next().toLowerCase();

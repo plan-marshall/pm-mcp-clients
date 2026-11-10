@@ -53,9 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 [#CLI-UX-S-06], proposals.adoc:125-126 [#CLI-UX-P-07] exist; PlansCommand:44 declares --json
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57; proposals.adoc:125-126
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (PLAN-36 #391); json/ test dir absent; SystemCommand prints the body raw
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first stale
 
 ## Expected Surface
 
@@ -72,6 +74,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java` — present at HEAD aa3a9be3
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActs.java` — present at HEAD aa3a9be3
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorRefusedException.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorProcessIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -82,6 +89,29 @@ Source of this plan (read before scoping):
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. `NeedsCommand` is PLAN-36's alone (created there); `needs --json` belongs here only after PLAN-36 has landed: this plan depends on PLAN-36 for it, or drops it. `--json` exists on `StatusCommand` and `SystemCommand` only; `PlansCommand:44` declares it ("Prints the status as JSON"); there is no `operator/json/` test directory; the 22-verb tree has no `needs` verb.
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- Claim 1 partly contradicted: `NeedsCommand` exists with `--json` (PLAN-36 #391; raw pass-through of page 1, `has_older`
+  ignored; `NeedsOperatorKind.fromMap` throws on an unknown kind). Rescope `needs` to "harden the existing `--json`".
+- D1 live bug corroborated: `plans --json` prints the STATUS (`PlansCommand.delegateToStatus`, `StatusCommand:101-116`)
+  against `15-overview.adoc:20`; `TuiCapabilityIT:341-350` (`plansJsonStaysInline`) pins it.
+- D2: `--json` present on status, system, needs; missing on questions, reports, `projects --list`, `epic <id>`,
+  `plan <id>`; `find --json` (PLAN-84) neither included nor excluded — decide. `system --json` prints human text to stdout
+  when the runtime is not running (`SystemCommand:79-85`) — define the not-running JSON for every verb. Errors as JSON on
+  stderr need the error code from PLAN-30's renderer.
+- **OPEN DECISION:** the `--json` schema is today the daemon's wire body passed through — document the API's schema, or
+  re-emit a client envelope (no schema library; a hand-written schema test). `--watch` with `--json` unspecified.
+- Docs: amend `03-dialogues.adoc:276` ("There is no machine-readable output") and the `01-commands.adoc` option lines.
+- Terminal check: a PTY merges stdout and stderr (`PtySession` via `script(1)`): move the Done-when to process-level ITs
+  (`PmOperatorProcessIT:398-410` pattern).
+- Tests pinning current shapes: `TuiCapabilityIT:341-350`, `NeedsOneCountTest:97,144`, `OverviewCommandTest:461-478`,
+  `NeedsCommandTest:107-130`, `SystemCommandTest:198-212`, `PmOperatorProcessIT:398-410`, `PmOperatorTest:335,362`,
+  `ReadVerbExitCodesTest`.
+- Dependencies: add PLAN-30 and PLAN-36 (landed); chain 30 → 42 → 48. Stale: the PLAN-77 clause, the verify-first clause.
+- Disposition: AMEND (schema decision); HOLD until PLAN-42 lands.
 
 ## Hand-Off Command
 
