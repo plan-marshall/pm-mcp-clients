@@ -416,6 +416,20 @@ describe('ProjectExplorerView component', () => {
     });
   });
 
+  it('draws the error pattern when the setup values cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectSettings').mockRejectedValue(new ClientError('timeout'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+
+    const error = await screen.findByTestId('setup-error');
+    expect(error).toHaveTextContent('The request took too long');
+  });
+
   it('shows the other client’s value on a conflict and applies the change again', async () => {
     const saveSpy = vi
       .spyOn(apiClient, 'saveProjectSettings')

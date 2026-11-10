@@ -229,6 +229,15 @@ describe('OverviewView component', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
+  it('draws the error pattern when the project detail cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockRejectedValue(new ClientError('timeout'));
+
+    render(OverviewView);
+
+    const error = await screen.findByTestId('overview-detail-error');
+    expect(error).toHaveTextContent('The request took too long');
+  });
+
   it('renders plans by default with progress, attention badges, and off-track warning', async () => {
     render(OverviewView);
 

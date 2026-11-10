@@ -711,6 +711,44 @@ describe('ApiClient', () => {
     ).rejects.toMatchObject({ code: 'network_offline' });
   });
 
+  it('refuses a path that is not one this client may call', async () => {
+    await expect(client.request('GET', '//evil')).rejects.toThrow('Invalid request path');
+  });
+
+  it('ends a pairing that never answers in the timeout code', async () => {
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    await expect(client.pair('KXQB-MRTN')).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('ends a conflict-capable call that never answers in the timeout code', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('reports a body the client deadline cut as the timeout', async () => {
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new TypeError('terminated');
+      },
+    });
+
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'timeout' });
+  });
+
   it('reports online again after a failed request and the next success', async () => {
     // Arrange
     const onOffline = vi.fn();
