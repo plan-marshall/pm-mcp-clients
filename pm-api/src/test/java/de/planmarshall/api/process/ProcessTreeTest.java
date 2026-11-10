@@ -13,8 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +24,11 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.MessageText;
+import de.planmarshall.api.chat.QueuedRevision;
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.overview.ChangeSize;
 
 @DisplayName("ProcessTreeTest")
@@ -121,6 +128,7 @@ class ProcessTreeTest {
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 7800L,
+                null,
                 null
         );
 
@@ -162,6 +170,8 @@ class ProcessTreeTest {
         assertEquals("lane_choice", parsedPruned.pruneReason());
         assertFalse(json.contains("\"change\""), json);
         assertNull(parsed.change());
+        assertNull(parsed.queuedRevision());
+        assertFalse(json.contains("\"queued_revision\""));
     }
 
     @Test
@@ -171,13 +181,33 @@ class ProcessTreeTest {
         var change = new ChangeSize(12, 340, 27, 2);
         var tree = new ProcessTree("plan", "Plan", project, null, "execute", "running", null,
                 false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
-                List.of(), List.of(), null, null, 0L, change);
+                List.of(), List.of(), null, null, 0L, change, null);
 
         var json = tree.toJson();
         var parsed = ProcessTree.fromJson(json);
 
         assertTrue(json.contains("\"change\""));
         assertEquals(change, parsed.change());
+    }
+
+    @Test
+    @DisplayName("should carry the plan's queued_revision through a round-trip and refuse a malformed one")
+    void shouldRoundTripQueuedRevision() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var project = new ProcessProjectRef(planId, planId, null);
+        var revision = new QueuedRevision(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                new ChatSubject(ChatSubjectKind.DECISION, Generators.nonBlankStrings().next()),
+                Generators.booleans().next(), MessageText.of("control.chat.applies.on_start"));
+        var tree = new ProcessTree(planId, planId, project, null, "execute", "running", null,
+                false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
+                List.of(), List.of(), null, null, 0L, null, revision);
+
+        var parsed = ProcessTree.fromJson(tree.toJson());
+        var malformed = new LinkedHashMap<>(tree.toMap());
+        malformed.put("queued_revision", Map.of("turn_id", planId));
+
+        assertEquals(revision, parsed.queuedRevision());
+        assertThrows(JsonFormatException.class, () -> ProcessTree.fromMap(malformed));
     }
 
     @Test

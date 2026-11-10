@@ -3576,7 +3576,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var last = workstreams.get(lastIndex);
         var planId = uniqueAddedPlanId(current, instruct.instruction());
         var newPlan = new StagedPlanRecord(planId, planId, instruct.instruction(),
-                surfaceHint(instruct.instruction(), planId), List.of(), StagedPlanRecord.STATUS_NEW);
+                surfaceHint(instruct.instruction(), planId), List.of(), StagedPlanRecord.STATUS_NEW, null);
         var plans = new ArrayList<>(last.stagedPlans());
         plans.add(newPlan);
         workstreams.set(lastIndex, new WorkstreamRecord(last.id(), last.name(), last.description(),
@@ -3589,7 +3589,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var surface = surfaceHint(instruction, plan.planId());
         var resulting = surface.isEmpty() ? plan.expectedSurface() : surface;
         return new StagedPlanRecord(plan.planId(), plan.title(), instruction, resulting, plan.dependencies(),
-                StagedPlanRecord.STATUS_CHANGED);
+                StagedPlanRecord.STATUS_CHANGED, null);
     }
 
     private static List<String> surfaceHint(@Nullable String instruction, String planId) {
@@ -5269,11 +5269,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new DeliverableSummary("fsync of the cursor file", "done")
         );
         var fixRelayReplanning = List.of(
-                new ReplanningRecord("the base moved", "09:55", "TASK-5 added")
+                new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad"),
-                new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
+                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad", null),
+                new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
         var fixRelayOwnCalls = List.of(
                 new OwnCallRecord("shortcut", "reuse the existing SSE adapter for the websocket path",

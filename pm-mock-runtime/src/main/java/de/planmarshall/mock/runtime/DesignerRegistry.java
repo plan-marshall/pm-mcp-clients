@@ -573,7 +573,7 @@ final class DesignerRegistry {
         return new ProcessTree("plan", "If a plan started now",
                 new ProcessProjectRef(projectId, projectId, null), null, "execute", "planned", null,
                 false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false), nodes, List.of(),
-                null, null, 0L, null);
+                null, null, 0L, null, null);
     }
 
     private static List<String> strippedLines(String text) {

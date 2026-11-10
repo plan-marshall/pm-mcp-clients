@@ -15,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("Decomposition record contracts")
@@ -83,26 +86,45 @@ class DecompositionRecordsTest {
         var objective = Generators.nonBlankStrings().next();
         var dependency = Generators.nonBlankStrings().next();
         var full = new StagedPlanRecord(planId, planId, objective,
-                List.of("pm-api"), List.of(dependency), StagedPlanRecord.STATUS_CHANGED);
+                List.of("pm-api"), List.of(dependency), StagedPlanRecord.STATUS_CHANGED, null);
         assertEquals(full, StagedPlanRecord.fromJson(full.toJson()));
 
         var minimalId = Generators.nonBlankStrings().next();
-        var minimal = new StagedPlanRecord(minimalId, minimalId, null, null, null, null);
+        var minimal = new StagedPlanRecord(minimalId, minimalId, null, null, null, null, null);
         assertTrue(minimal.expectedSurface().isEmpty());
         assertTrue(minimal.dependencies().isEmpty());
         assertEquals(StagedPlanRecord.STATUS_STAGED, minimal.status());
         assertFalse(minimal.toMap().containsKey("objective"));
+        assertFalse(minimal.toMap().containsKey("origin"));
         assertNull(StagedPlanRecord.fromJson(minimal.toJson()).objective());
+        assertNull(StagedPlanRecord.fromJson(minimal.toJson()).origin());
         assertEquals(minimal, StagedPlanRecord.fromJson(minimal.toJson()));
+    }
+
+    @Test
+    @DisplayName("StagedPlanRecord carries the chat that changed it as its origin, and refuses a malformed one")
+    void stagedPlanWithOrigin() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var origin = new ChatOrigin(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var changed = new StagedPlanRecord(planId, planId, Generators.nonBlankStrings().next(), List.of("pm-api"),
+                List.of(), StagedPlanRecord.STATUS_CHANGED, origin);
+
+        var parsed = StagedPlanRecord.fromJson(changed.toJson());
+        var otherKind = new LinkedHashMap<>(changed.toMap());
+        otherKind.put("origin", Map.of("kind", "plan", "chat_id", "c-1", "turn_id", "t-1"));
+
+        assertEquals(changed, parsed);
+        assertEquals(origin, parsed.origin());
+        assertThrows(JsonFormatException.class, () -> StagedPlanRecord.fromMap(otherKind));
     }
 
     @Test
     @DisplayName("StagedPlanRecord reports dropped and locked plans")
     void stagedPlanMarkers() {
         assertTrue(new StagedPlanRecord("a", "a", null, List.of(), List.of(),
-                StagedPlanRecord.STATUS_DROPPED).isDropped());
+                StagedPlanRecord.STATUS_DROPPED, null).isDropped());
         assertTrue(new StagedPlanRecord("b", "b", null, List.of(), List.of(),
-                StagedPlanRecord.STATUS_LOCKED).isLocked());
+                StagedPlanRecord.STATUS_LOCKED, null).isLocked());
     }
 
     @Test
@@ -115,7 +137,7 @@ class DecompositionRecordsTest {
         var planId = Generators.nonBlankStrings().next();
         var workstream = new WorkstreamRecord(workstreamId, title, objective, order,
                 List.of(new StagedPlanRecord(planId, planId, null,
-                        List.of("pm-relay", "pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED)));
+                        List.of("pm-relay", "pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED, null)));
         assertEquals(workstream, WorkstreamRecord.fromJson(workstream.toJson()));
     }
 
@@ -137,9 +159,9 @@ class DecompositionRecordsTest {
         var secondId = firstId + "-second";
         var secondObjective = Generators.nonBlankStrings().next();
         var first = new StagedPlanRecord(firstId, firstId, null,
-                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
+                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED, null);
         var second = new StagedPlanRecord(secondId, secondId, secondObjective,
-                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
+                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED, null);
         var epicId = Generators.nonBlankStrings().next();
         var revision = Generators.integers(0, 100).next();
         var firstWorkstreamId = Generators.nonBlankStrings().next();
@@ -234,7 +256,7 @@ class DecompositionRecordsTest {
         @Test
         @DisplayName("refuses required constructor arguments that are null")
         void refusesNullArguments() {
-            assertThrows(NullPointerException.class, () -> new StagedPlanRecord(null, "t", null, null, null, null));
+            assertThrows(NullPointerException.class, () -> new StagedPlanRecord(null, "t", null, null, null, null, null));
             assertThrows(NullPointerException.class, () -> new WorkstreamRecord("WS-1", null, null, 1, null));
             assertThrows(NullPointerException.class, () -> new EpicDecomposition(null, DecompositionState.DRAFT, 0,
                     null, null));

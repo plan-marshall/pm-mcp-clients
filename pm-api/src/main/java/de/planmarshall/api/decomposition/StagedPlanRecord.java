@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -33,6 +34,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param expectedSurface the files or directories the plan is expected to change
  * @param dependencies    the ids of staged plans that must land before this one starts
  * @param status          the plan's change or lifecycle marker
+ * @param origin          the chat that changed the staged plan ({@code origin}), or {@code null} when no chat
+ *                        changed it
  */
 public record StagedPlanRecord(
         String planId,
@@ -40,7 +43,8 @@ public record StagedPlanRecord(
         @Nullable String objective,
         List<String> expectedSurface,
         List<String> dependencies,
-        String status
+        String status,
+        @Nullable ChatOrigin origin
 ) {
 
     /** A plan of a first decomposition, not part of a later run's marking. */
@@ -70,6 +74,7 @@ public record StagedPlanRecord(
     private static final String FIELD_EXPECTED_SURFACE = "expected_surface";
     private static final String FIELD_DEPENDENCIES = "dependencies";
     private static final String FIELD_STATUS = "status";
+    private static final String FIELD_ORIGIN = "origin";
 
     public StagedPlanRecord {
         Objects.requireNonNull(planId, "planId");
@@ -106,6 +111,9 @@ public record StagedPlanRecord(
         map.put(FIELD_EXPECTED_SURFACE, expectedSurface);
         map.put(FIELD_DEPENDENCIES, dependencies);
         map.put(FIELD_STATUS, status);
+        if (origin != null) {
+            map.put(FIELD_ORIGIN, origin.toMap());
+        }
         return map;
     }
 
@@ -128,9 +136,11 @@ public record StagedPlanRecord(
         if (planId == null || title == null) {
             throw new JsonFormatException("Missing required fields for StagedPlanRecord: plan_id or title");
         }
+        var originMap = JsonTree.objectOrNull(map, FIELD_ORIGIN, "StagedPlanRecord");
+        var origin = originMap != null ? ChatOrigin.fromMap(originMap) : null;
         return new StagedPlanRecord(planId, title, JsonTree.string(map, FIELD_OBJECTIVE),
                 readStrings(map.get(FIELD_EXPECTED_SURFACE)), readStrings(map.get(FIELD_DEPENDENCIES)),
-                JsonTree.string(map, FIELD_STATUS));
+                JsonTree.string(map, FIELD_STATUS), origin);
     }
 
     /**
