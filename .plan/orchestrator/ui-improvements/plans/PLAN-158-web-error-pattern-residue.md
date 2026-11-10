@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-03
 
-> Staged plan spec, one shippable unit of work, ready for hand-off through `/plan-marshall`. Staged on the operator's decision of 2026-11-10 from
+> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Staged on the operator's decision of 2026-11-10 from
 > `landings/PLAN-45.md` (three-layer analysis of PR #399, squash `9fb2e7fa`). This spec is SELF-SUFFICIENT: the emitted command is a one-line
 > pointer and carries no brief.
 
@@ -186,10 +186,10 @@ Not split: five deliverables, each a residue of one landed plan on one pattern; 
 
 ## Hand-Off Command
 
-Lane: `plan-marshall` (operator, 2026-11-10: plan-marshall commands again).
+Lane: `runbook` (a residue plan; operator 2026-11-10: small and residue plans on the runbook lane).
 
 ```text
-/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-158-web-error-pattern-residue.md"
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-158-web-error-pattern-residue.md
 ```
 
 ## Write-Boundary
