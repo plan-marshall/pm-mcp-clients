@@ -149,15 +149,23 @@ Close these, and answer the open review items on the threads where they stand.
 
 - OBSERVED: `Display.java:247` formats `d MMM` for every language. At `40dc879e^`, `OverviewFormatting.java:49,373`
   used `SHORT_DATE_DE = "d. MMM"`. Read by the orchestrator at `40dc879e` on 2026-11-08.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: Display.java:247 still d MMM at be8c8403; CleanupCommand:342,361 too (amendment)
 - OBSERVED: `StatusCommand.java:461` uses `Instant.now()` and `:473` uses `Clock.systemUTC()`. Read at `40dc879e`.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: StatusCommand:461 Instant.now(), :473 Clock.systemUTC() at be8c8403; context clock is UTC by default (OperatorContext:121,148), zone rule in amendment
 - OBSERVED: at `ProjectWorkLevel.java:306-312`, a null unit gives `unit=""` and an empty title. Read at `40dc879e`.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectWorkLevel.java:306-311 unchanged at be8c8403
 - OBSERVED: `git grep 'Display.(word|title)('` over `src/main` matches nothing at `40dc879e`.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep Display.(word|title)( over src/main: no match at be8c8403; Display.title throws on no title/unit (amendment)
 - OBSERVED: `QuestionsCommand.java:125` prints `waiver request: {gate}` raw. Read at `40dc879e`.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: QuestionsCommand:126 raw gate at be8c8403; AnswerCommand now one seam waiverGate() :1559-1563; ConsoleNotice waiver_request also raw (amendment)
 - OBSERVED: the duration formatters, `-` placeholders and raw-id sites listed in the deliverables. From the read-only
   landing leaf of `landings/PLAN-34.md`, at `40dc879e`. Re-read each before editing.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: all named duration/placeholder/raw-id sites present at be8c8403, some lines moved (amendment lists them)
 - HYPOTHESIS: the real daemon sends `running_since` / `started_at` as ISO instants that reach the screen through
   `StatusCommand:254,532`. Not shown. Confirm or refute against the API specification (verify-at-outline).
+  - verdict: unverifiable | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: StatusCommand:254,532 print running_since/started_at raw; wire format not shown by reading; verify-at-outline
 - Verify-first clause: re-read the named lines at the current HEAD before editing.
+  - verdict: contradicted | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: yes | evidence: PLAN-120, PLAN-21/124, PLAN-119 have all landed (be8c8403); dependency clause satisfied, Amendment 2026-11-10
   - PLAN-120 changes `EpicViewFormatting`, `EpicViewLevel` and `EpicCommand`.
   - PLAN-21 changes `AnswerCommand`.
   - PLAN-119 changes `StateDialogue`.
@@ -196,6 +204,23 @@ Close these, and answer the open review items on the threads where they stand.
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/planview/PlanCompletionLevelTest.java` — present at `40dc879e`
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `40dc879e`
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-123.txt` — absent; created by this plan
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/decision/GateKind.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-api/src/main/resources/messages/epic_view.en.properties` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-api/src/main/resources/messages/epic_view.de.properties` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorContext.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CleanupCommand.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConsoleNotice.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/HoldDialogue.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/system/SystemView.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConsoleNoticeTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/EpicCommandTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/GermanAgeDisplayTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/dialogue/StateDialogueTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/planview/PlanViewFormattingTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/planview/PlanViewLevelTest.java` — present at `be8c8403` (added by the re-grounding of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -209,6 +234,52 @@ Close these, and answer the open review items on the threads where they stand.
   - `PLAN-79` (rewrites every `pm-operator` test).
   - `PLAN-23` (running; `operator.*.properties`).
 - Adjacent to: `PLAN-36` (needs verb; `StatusCommand`)
+
+## Amendment 2026-11-10 (re-grounding at `be8c8403`, after PLAN-120, -121, -124, -36 and -23 landed)
+
+Every defect of this spec is still present at `be8c8403`; none was fixed by a landed plan. This section supersedes the
+spec text where they differ.
+
+- **Dependencies:** PLAN-34, PLAN-21, PLAN-119, PLAN-120, PLAN-124, PLAN-23, PLAN-36 and PLAN-121 have all landed; the
+  "starts after all three have landed" clause is satisfied. Line numbers moved: `EpicViewFormatting.eventTime` is now
+  `:252-262`; `OverviewFormatting.formatSeconds` `:263-277` with the `formatDuration` wrappers `:231-255`;
+  `OverviewFullScreenApp` clock at `:227`; `StateDialogue`'s unit lookup at `:456-459`; `QuestionsCommand` waiver line `:126`.
+- **One zone rule (deliverable 1 (b)/(e), new Done-when):** times of day are rendered in the operator's local zone. The
+  production clock of `OperatorContext` (`:121`, `:148`, today `Clock.systemUTC()`) becomes `Clock.systemDefaultZone()`;
+  every screen takes `context.clock()` (also `ProjectsCommand:126`, `PlanCommand:238`, `SystemCommand:154`,
+  `OverviewFullScreenApp:227`, and the `ZoneId.systemDefault()` sites `EpicViewFormatting:258`, `PlanCommand:958`,
+  `HoldDialogue:281`; `WebCommand:606-619` drops its fixed UTC and English `d MMM`). Done when: a test with a fixed
+  clock in a non-UTC zone (for example `Europe/Berlin`) shows the local `HH:mm` on the status header and the epic events
+  and fails if a site goes back to UTC or the system zone (evidence order: `test-first`).
+- **`Display.title` throws** (`Display.java:104-113`, `IllegalArgumentException` when there is no title and no
+  `unit.<id>` key). Before the four lookups move onto it (deliverable 3), state the rule for a null or unknown unit:
+  the null unit of a unit-kind landing renders the catalogue placeholder of (c), an unknown unit id renders a catalogue
+  word for an unnamed unit — never the raw id and never an uncaught exception. `StateDialogue:456-459` already returns
+  `null` for an unknown token; keep that narrower behaviour. Done when: a test feeds a landing with no unit and one with
+  an unknown unit id through each of the four sites and asserts no raw id and no exception.
+- **Waiver gate (deliverable 3):** `AnswerCommand` was rewritten by PLAN-124; its gate now flows through one seam,
+  `waiverGate()` (`AnswerCommand.java:1559-1563`, used at `:198,485,579,697`). Fix that seam instead of the old line
+  numbers, and also the console notice `operator.console.notice.waiver_request` (`operator.en.properties:88`,
+  `ConsoleNotice`) with `ConsoleNoticeTest:96`, which pins `gate ci_check:integration-tests`. The kind renders through
+  `state.gate.*`; the scope after the colon renders as the plain scope name, split through `GateKind` (pm-api).
+- **German dates (deliverable 1 (a)):** also `CleanupCommand:342,361` (its own `d MMM` formatter).
+- **Raw text from PLAN-36:** `NeedsCommand` / `OverviewFormatting.formatNeedsItem*` added English fallbacks (`waits
+  since`, `blocks no work`, `blocks: …`, `cleanup`, `credential`, `machine`) and `"! " + clean(kind)`; bring them under
+  deliverable 3 (catalogue words in en and de).
+- **The printed epic (deliverable 3):** reuse `epic.plans.running`, `epic.review.ready`/`not_ready`
+  (`epic_view.*.properties:4,8,9`); add `state.phase.*` words to `common.*` for the phase tokens.
+- **Placeholders (deliverable 3):** include the catalogue's own lone dash `operator.roles.guard.none=-`
+  (`operator.en.properties:23`) and the `"-"` sentinel compare at `RolesCommand:410`; `PlanCommand:932` is an em dash.
+- **Duration grep (deliverable 2 Done-when):** the pattern becomes
+  `git grep -E "formatSeconds|formatPlanDuration|formatDuration|uptime\(|static String duration\("` over
+  `pm-operator/src/main` — it must name none (`StatusCommand:456`, `OverviewFormatting:231,246`, `PlanCommand:1186`
+  are copies too). `PlanViewFormatting.duration` returns `""` for ≤ 0 where `Display.duration` returns `0 s`: the
+  design's `0 s` wins unless a screen's design says the slot stays empty.
+- **Null times (deliverable 1 (d)):** `common.time.*` has no "unknown"/"never" word; add them (en, de) instead of
+  `just now`.
+- **Not a split:** four deliverables stay; the additions are sites of the same rules. Rationale recorded by the orchestrator.
+- **Sequencing with PLAN-33:** PLAN-33 verifies screens this plan changes; it records the commit it verified, so the two
+  may run at the same time, but neither waits for the other.
 
 ## Hand-Off Command
 
