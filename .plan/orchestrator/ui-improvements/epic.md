@@ -555,6 +555,11 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
+- A lane merges with NO bot review (2026-11-10, PLAN-36 #391): CodeRabbit refused every trigger on quota and the
+  runbook lane merged under its "standing review authorization", reporting "all review surfaces clear" — true only
+  because nothing was reviewed. The epic's merge rule needs one CodeRabbit review of some head. Owner: plan-marshall
+  (runbook lane: standing authorization must require at least one completed review, else stop for the operator).
+  Recurrence check at every landing.
 - 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`). (7) 2026-11-09 (PLAN-115 landing): the D4 daemon surface, not filed — the chat routes with `202` and `client_turn_id`, `POST …/chat/turns/{turn_id}/stop`, `GET …/chat?before=`, the `chat.*` events, `POST /api/v1/transcriptions`, `Permissions-Policy: microphone=(self)` (owner `plan-marshall/plan-marshall-mcp`; the D4 contract and mock package does not depend on it). Extended 2026-11-09 by D5 (`inbox/plan-125-001.md`; operator: ledger only, not filed): the chat resource's `context`; runtime-written notice turns with `lines[]` announced as `chat.turn.completed` (kind `notice`); refs kinds `act` and `hold`; `chat.proposal` states `accepted`/`applied`/`lapsed`; the plan resource's `queued_revision`; `origin` in the audit of chat-led changes; the MCP resources and chat skill served to a chat worker's job connection. The daemon has no chat today and its ten MCP tools are stubs (per the report, not re-read). Final D5 additions (`plan-125-002.md`): `queued_revision` on the overview's plan row and on `activity.changed`; `context` on every `chat.turn.started` of the role; a chat worker's Landlock write set without the project root.
 - 2026-11-06 — DECIDED by the operator (option A): the unfiltered "Mark all shown read" of the reports page marks the reports the list shows by their ids, never everything, as `doc/design/shared/reports.adoc` 182/184 and the label say; PLAN-102 D1c (`{ all: true }`, merged in PR #340) is amended by PLAN-105 deliverable 1 (`landings/PLAN-102.md` defect 1). PLAN-105 is emittable.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
@@ -632,6 +637,23 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
+  "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
+  any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE
+  (4 major, no reviewer saw them): `needs_operator.changed` now raises a console notice for any kind (`ConsoleNotice.java
+  :388-392`) — `Q-???` notices, duplicates of `hold.opened`, a bell on every count change — against `EventKind.java:30`
+  ("badge source, not a notice"): a REGRESSION on every console; `plan hold <id>` printed and run for `landing_failed`
+  (no such verb; design `epic <id>`); raw ids, wire tokens and English literals in the rows; selection keyed by row
+  index. D3's one-count test compares totals only (composition differs: 1 decision on the page, 6 in the badge) and
+  the mock was given a second derivation to make the totals meet. Residue route: operator — recommended first.
+- PLAN-107 landed (PR #394, `0913d6f3`, analysed 2026-11-10); see `landings/PLAN-107.md`. Mark-all marks the shown ids
+  and reloads; CLI posts ids; mock refuses `all` (422); #348/#340/#325 threads all answered. MERGE RULE NOT MET on the
+  letter: the one CodeRabbit review body (4 nitpicks) is fixed in code but not answered on the PR. RESIDUE: the lane's
+  "9/9 met" does not hold against the amended spec — D1d rollback unchanged (byte-identical to the base), D3a, D3b,
+  amendments (a) RowMenu scroll guard, (b), (c), (e) not done, Skeleton flash, evidence orders unmet;
+  `Button.test.ts` `blockOf` finds the selectors in the `tokens.css` header comment, so the "both themes" contrast test
+  reads `:root` twice and never checks dark (major, test validity). Lessons 001-003 ours, 004-007 plan-marshall-side
+  (archived). Residue route: operator. PLAN-123 and PLAN-45 unblocked.
 - PLAN-124 landed (PR #385, `be8c8403`, analysed 2026-11-10); see `landings/PLAN-124.md`. One sanitizing writer for the
   answer verb; every part asked, one `part_answers` POST; costly `?r`, split no preselect; #372's 20 threads answered.
   Merge rule met (18 threads, 0 open — 2 resolved by CodeRabbit as addressed without a reply; bodies with non-inline

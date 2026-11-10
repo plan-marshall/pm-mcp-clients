@@ -2,10 +2,10 @@
   "id": "PLAN-107",
   "slug": "web-reports-fourth-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "web-reports-fourth-residue",
+  "pr": "394",
+  "landing": "landings/PLAN-107.md",
   "seq": 107
 }

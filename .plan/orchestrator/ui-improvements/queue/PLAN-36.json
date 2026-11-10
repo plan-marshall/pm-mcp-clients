@@ -2,10 +2,10 @@
   "id": "PLAN-36",
   "slug": "cli-needs-verb",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-36-cli-needs-verb",
+  "pr": "391",
+  "landing": "landings/PLAN-36.md",
   "seq": 36
 }
