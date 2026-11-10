@@ -66,16 +66,19 @@ as job `cf6499330dca4e778c4d4418b75ea773`). The whole-tree gate `mvn verify -Ppr
 `8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`, `9c773b8664da4804b34dd50085f1f609`,
 `4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`, `b1c4585e060e48349497665885fe7bbf`,
 `b800a8708f9c46a48f7f997c0497cf1f`, `e67fb937aec64c50a019d2cd5c6a76fd`, `0a73032db4894e6e9bf32510e71d269e`), each
-leaving its screens under `pm-operator/target/screens/<set>/` — the artefacts this document cites. A capture run
+leaving its screens under `pm-operator/target/screens/<set>/` — the artefacts this document cites. Those screens are
+derived output: the committed capture set reproduces them with
+`mvn verify -Pintegration-tests -pl pm-operator -Dit.test=ScreenCaptureIT -Dpm.screens=PLAN-33` (or the set named in
+the row), and `target/` is not committed, so a fresh checkout regenerates rather than reads them. A capture run
 overwrites `failsafe-reports/`, so the suite was re-run last; the numbers above are that run's.
 
 |Capture set
 |`pm-operator/src/test/resources/screen-captures/PLAN-33.txt`, created by this plan: the console badge and the two pushed
 notices of `fully-onboarded` (both sizes, both locales), the first guided onboarding state and the project-setup identity
-state, `onboard --auto --yes`, `config show`, `plan nope`, the full-screen overview of `reports-and-system`, and the
-pause prompt at 80 × 24. Where an existing set already shows a check, it was run and its capture is the evidence:
-`10-cli-choice-prompt-pause` (V-01), `17-cli-runtime-act-confirm` (V-02), `20-cli-actions-by-state` (V-03), `PLAN-21`
-(V-04), `PLAN-23` (V-07), `26-cli-system-model` (V-08).
+state, `onboard --auto --yes`, `config show`, the interactive `plan nope` view and its printed form, the full-screen
+overview of `reports-and-system`, and the pause prompt at 80 × 24. Where an existing set already shows a check, it was
+run and its capture is the evidence: `10-cli-choice-prompt-pause` (V-01), `17-cli-runtime-act-confirm` (V-02),
+`20-cli-actions-by-state` (V-03), `PLAN-21` (V-04), `PLAN-23` (V-07), `26-cli-system-model` (V-08).
 |===
 
 [#dependencies]
@@ -229,15 +232,18 @@ not by comparing two runs.
 
 |CLI-UC-V-09
 |`fail`
-|`plan nope --print` prints `Plan nope not found.` and exits `1` (`PLAN-33/plan-nope-120x30-en.stdout.txt`,
-`-de.stdout.txt`, `-80x24-en.stdout.txt`, `-80x24-de.stdout.txt`; the exit code is the `expected-exit` column of
-`PLAN-33.txt:46-49`, checked by the green `ScreenCaptureIT` run); the catalogue holds no `No plan nope`. The full-screen
-overview in `reports-and-system` shows `Nothing runs. Start a plan in a project, or enrol one.` in all four arms
-(`PLAN-33/overview-refused-120x30-en.txt`, and the German `Es läuft nichts. Starte einen Plan in einem Projekt, oder
-registriere eines.` in `overview-refused-120x30-de.txt` / `-80x24-de.txt`), and that scenario serves no
-`/api/v1/projects` route, so the read is refused and `OverviewFullScreenApp.fetchProjects` swallows the failure, leaving
-the list empty (`OverviewFullScreenApp.java:486`), which `ProjectsOverviewLevel.rows` renders as the empty state
-(`ProjectsOverviewLevel.java:86`). An error still looks like an empty state.
+|`plan nope` in the interactive path opens a full-screen view with an empty body and no refusal line at all:
+`PLAN-33/plan-nope-view-120x30-en.txt` shows only the header, the rule and the footer (`↑↓ move   Enter open   ? help
+q leave …`), and its `.stdout.txt` carries no `Plan nope` and no `No plan` text. The printed form `plan nope --print`
+writes `Plan nope not found.` and exits `1` (`PLAN-33/plan-nope-120x30-en.stdout.txt`, `-de`, `-80x24-en`, `-80x24-de`;
+the exit code is the `expected-exit` column of `PLAN-33.txt:52-55`, checked by the green `ScreenCaptureIT` run); the
+catalogue holds no `No plan nope`. The full-screen overview in `reports-and-system` shows `Nothing runs. Start a plan in
+a project, or enrol one.` in all four arms (`PLAN-33/overview-refused-120x30-en.txt`, and the German `Es läuft nichts.
+Starte einen Plan in einem Projekt, oder registriere eines.` in `overview-refused-120x30-de.txt` / `-80x24-de.txt`), and
+that scenario serves no `/api/v1/projects` route, so the read is refused and `OverviewFullScreenApp.fetchProjects`
+swallows the failure, leaving the list empty (`OverviewFullScreenApp.java:486`), which `ProjectsOverviewLevel.rows`
+renders as the empty state (`ProjectsOverviewLevel.java:86`). An error still looks like an empty state — and so does an
+unknown plan.
 |Both clauses fail; one finding (`rb-33-verify-cli-acts-002`) covers them. The German arm prints the refusal in English
 too.
 
@@ -254,15 +260,16 @@ themselves were not re-reviewed here.
 `doc/claude_review/cli/use-cases/verification.adoc` names have their PTY test with the three cases: `PauseDialogueIT`
 (3), `CancelDialogueIT` (4), `AnswerDialogueIT` (9), `OnboardingDialogueIT` (4), `ProjectSetupDialogueIT` (4),
 `CleanupDialogueIT` (6), `RuntimeStopDialogueIT` (8). Each `qFirstSendsNothing` case asserts `Nothing was sent.` and
-`harness.assertNoAct()`, which reads `GET /mock/acts` (`DialogueHarness.java:130`). `AcceptEditDialogueIT` (2) and
-`InterruptDialogueIT` (6) have their own ITs, outside the guard's list. *Fails as written* on the eighth: the guard names
-**waiver** beside `answer`, and the waiver path has only its main path — `AnswerDialogueIT.waiverAnswers` posts the
-waiver with its reason — and neither a `q`-first nor an unknown-input case, so nothing proves that `q` sends nothing on
-a waiver request. The ITs run `en_US.UTF-8` at 120 × 30 (`DialogueHarness`), which is the run the check's *Where* column
-names.
-|The enumeration is the *Regression Guard* of `doc/claude_review/cli/use-cases/verification.adoc` (line 92), which
-names the waiver beside the answer dialogue; the check's own text says "every dialogue that acts". Finding
-`rb-33-verify-cli-acts-003` names it.
+`harness.assertNoAct()`, which reads `GET /mock/acts` (`DialogueHarness.java:130`). *Fails as written*, on two
+dialogues. The guard names **waiver** beside `answer`, and the waiver path has only its main path —
+`AnswerDialogueIT.waiverAnswers` posts the waiver with its reason — and neither a `q`-first nor an unknown-input case, so
+nothing proves that `q` sends nothing on a waiver request. The check's own words, "every dialogue that acts", also reach
+`accept-edit`: `AcceptEditDialogueIT` (2 tests) covers the acceptance and the refusal and has neither a `q`-first nor an
+unknown-input case, and `InterruptDialogueIT` (6) covers interruptions only. The ITs run `en_US.UTF-8` at 120 × 30
+(`DialogueHarness`), which is the run the check's *Where* column names.
+|The two gaps are the guard's waiver entry and the check's broader "every dialogue that acts". Finding
+`rb-33-verify-cli-acts-003` names the waiver; the accept-edit gap is recorded here and in the landing, because the
+filed message cannot be amended (it is archived, `not_live`).
 
 |===
 
@@ -347,12 +354,13 @@ Plans concerned: PLAN-21 (the answer dialogue) and PLAN-11 (the mock's decision 
 the automatic onboarding now starts from the entry's first choice. The check as written cannot hold. Plan concerned:
 PLAN-22 (one state dialogue for both onboardings).
 
-. *`CLI-UC-V-09`*: `plan nope` prints `Plan nope not found.`, not `No plan nope`, and the full-screen overview prints
-`Nothing runs` when the projects read is refused. The overview code entered with PR #130 (`OverviewFullScreenApp`,
-`ProjectsOverviewLevel`); PLAN-05 declares `OverviewFullScreenApp.java` in its Expected Surface and PLAN-20 touched it
-for the decision path, but neither authored `fetchProjects`, so which plan owns the defect is triage's call. The refusal
-text belongs to PLAN-30, which has not landed. The filed message names PLAN-20 for the overview, which is wrong; an
-`inbox amend` of the archived message was refused (`not_live`), so the correction is this paragraph.
+. *`CLI-UC-V-09`*: the interactive `plan nope` opens an empty full-screen view with no refusal line at all, the printed
+form writes `Plan nope not found.` (not `No plan nope`), and the full-screen overview prints `Nothing runs` when the
+projects read is refused. The overview code entered with PR #130 (`OverviewFullScreenApp`, `ProjectsOverviewLevel`);
+PLAN-05 declares `OverviewFullScreenApp.java` in its Expected Surface and PLAN-20 touched it for the decision path, but
+neither authored `fetchProjects`, so which plan owns the defect is triage's call. The refusal text belongs to PLAN-30,
+which has not landed. The filed message names PLAN-20 for the overview, which is wrong; an `inbox amend` of the
+archived message was refused (`not_live`), so the correction is this paragraph.
 
 . *`CLI-CC-V-06`*: the regression guard names the waiver beside the answer dialogue, and the waiver path has only its
 main path in `AnswerDialogueIT` — no `q`-first and no unknown-input case — so `q` sending nothing is unproven there.
