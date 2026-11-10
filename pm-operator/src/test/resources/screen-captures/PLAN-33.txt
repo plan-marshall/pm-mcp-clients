@@ -41,6 +41,13 @@ onboard-auto-yes-80x24-de | onboarding | - | onboard --auto --yes | - | 80x24 | 
 
 # CLI-UC-V-08: `config show` either works or exits 1.
 config-show-120x30-en | reports-and-system | system.running | config show | - | 120x30 | en_US.UTF-8 | - | - | - | 1
+config-show-80x24-en | reports-and-system | system.running | config show | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+config-show-120x30-de | reports-and-system | system.running | config show | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
+config-show-80x24-de | reports-and-system | system.running | config show | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+# CLI-UC-V-01: the pause prompt at 120x30 in German (`v` leaves, `9` re-asks).
+pause-q-120x30-de | running-work | - | plan pause fix-relay | v\n | 120x30 | de_DE.UTF-8 | -
+pause-9-120x30-de | running-work | - | plan pause fix-relay | 9\nv\n | 120x30 | de_DE.UTF-8 | -
 
 # CLI-UC-V-09: `plan nope` — the refusal of an unknown plan, in the interactive path the check names.
 plan-nope-view-120x30-en | running-work | - | plan nope | q | 120x30 | en_US.UTF-8 | -
