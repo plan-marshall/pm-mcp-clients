@@ -3,6 +3,7 @@
   import '../styles/base.css';
   import { onMount, onDestroy } from 'svelte';
   import { t, initI18n, messagesStore } from '../lib/i18n';
+  import { isClientError } from '../lib/api/errors';
   import {
     runtimeStore,
     initRuntime,
@@ -71,6 +72,9 @@
    *   because it gave up on its deadline or never reached the runtime
    */
   function outcomeUnknown(err: unknown): boolean {
+    if (isClientError(err)) {
+      return err.code === 'timeout' || err.code === 'network_offline';
+    }
     const name = (err as Error)?.name;
     const message = (err as Error)?.message;
     return name === 'TimeoutError' || name === 'AbortError' || message === 'network_offline';
@@ -117,9 +121,6 @@
     }
   }
 
-  /** How long a withdraw of the stop may wait for the runtime before its outcome is unknown. */
-  const WITHDRAW_TIMEOUT_MS = 15_000;
-
   /** Withdraws the stop, and says so in the banner when the runtime refuses. */
   async function withdrawDrain(): Promise<void> {
     if (drainingBusy) {
@@ -128,8 +129,9 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      // The bound belongs to the act: a DELETE the runtime never answers must let go of the bar.
-      await apiClient.withdrawStop(AbortSignal.timeout(WITHDRAW_TIMEOUT_MS));
+      // The client's own request limit bounds the act: a DELETE the runtime never answers must let
+      // go of the bar.
+      await apiClient.withdrawStop();
       advanceLifecycleEpoch();
       runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
@@ -144,9 +146,6 @@
     }
   }
 
-  /** How long the stop-now request may wait for the runtime before the outcome is unknown. */
-  const STOP_NOW_TIMEOUT_MS = 15_000;
-
   /** Turns the drain into the stop now the confirmation asked for. */
   async function confirmStopNow(): Promise<void> {
     if (drainingBusy) {
@@ -155,7 +154,7 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      await apiClient.stopRuntime('now', undefined, AbortSignal.timeout(STOP_NOW_TIMEOUT_MS));
+      await apiClient.stopRuntime('now');
       stopNowConfirm = false;
       advanceLifecycleEpoch();
       // The stop ends the drain; the lifecycle event may be missed on a dropped stream.

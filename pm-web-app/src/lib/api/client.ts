@@ -2841,25 +2841,12 @@ export class ApiClient {
     );
   }
 
-  /** How long a revoke may wait for the runtime before the request gives up. */
-  private static readonly REVOKE_TIMEOUT_MS = 15_000;
-
   public async revokeDevice(deviceId: string): Promise<void> {
-    await this.request(
-      'DELETE',
-      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
-      undefined,
-      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
-    );
+    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
   }
 
   public async revokeOtherDevices(): Promise<void> {
-    await this.request(
-      'DELETE',
-      '/api/v1/web/devices?others',
-      undefined,
-      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
-    );
+    await this.request('DELETE', '/api/v1/web/devices?others');
   }
 
   public async turnOffLanListener(): Promise<void> {
@@ -3006,24 +2993,15 @@ export class ApiClient {
     return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
-  /** How long a withdraw of the stop may wait for the runtime before the request gives up. */
-  private static readonly WITHDRAW_TIMEOUT_MS = 15_000;
-
   /**
    * Withdraws the stop.
    *
-   * The caller's signal bounds the request where it has one; without one the client's own deadline
-   * does, so a runtime that never answers cannot hold the drain acts disabled forever.
+   * The client's own request limit bounds it; a caller that brings a signal adds that bound.
    *
    * @param signal the caller's bound, where it brings one
    */
   public async withdrawStop(signal?: AbortSignal): Promise<void> {
-    await this.request(
-      'DELETE',
-      '/api/v1/runtime/stop',
-      undefined,
-      signal ?? AbortSignal.timeout(ApiClient.WITHDRAW_TIMEOUT_MS),
-    );
+    await this.request('DELETE', '/api/v1/runtime/stop', undefined, signal);
   }
 
   public async upgradeRuntime(

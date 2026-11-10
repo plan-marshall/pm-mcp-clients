@@ -639,6 +639,52 @@ describe('ApiClient', () => {
     });
   });
 
+  it('turns a truncated response body into the unknown outcome', async () => {
+    // Arrange: the status line and headers arrive, the body never completes.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert: the client cannot tell whether the runtime acted, so the outcome is unknown.
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
+  it('turns a truncated pairing body into the unknown outcome', async () => {
+    // Arrange
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert
+    await expect(client.pair('KXQB-MRTN')).rejects.toMatchObject({ code: 'network_offline' });
+    expect(client.isPaired()).toBe(false);
+  });
+
+  it('turns a truncated conflict-capable body into the unknown outcome', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
+
+    // Act & Assert
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
   it('reports online again after a failed request and the next success', async () => {
     // Arrange
     const onOffline = vi.fn();

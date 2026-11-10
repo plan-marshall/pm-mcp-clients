@@ -8,6 +8,9 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { DEVICE_ACTS, type ActSpec } from '../actions/byState';
   import { apiClient, type PairedDevice } from '../api/client';
+  import { isClientError, errorCodeOf } from '../api/errors';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
   import { currentLocale } from '../i18n';
   import { formatDay, formatTime } from '../display/format';
   import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
@@ -18,7 +21,7 @@
    */
   let devices: PairedDevice[] = [];
   let isLoading = false;
-  let loadError = false;
+  let loadError = '';
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
@@ -37,8 +40,6 @@
   let clock = Date.now();
   let clockTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** How long the devices and the status may take before the view says the read failed. */
-  const LOAD_TIMEOUT_MS = 15_000;
   /** The read in flight, aborted when a newer one starts. */
   let loadController: AbortController | null = null;
   /** The number of the newest read; an older answer never reaches the view. */
@@ -99,9 +100,9 @@
     const controller = new AbortController();
     loadController = controller;
     isLoading = true;
-    loadError = false;
+    loadError = '';
     try {
-      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(LOAD_TIMEOUT_MS)]);
+      const signal = controller.signal;
       const [devList, status] = await Promise.all([
         apiClient.getDevices(signal),
         apiClient.getStatus(signal).catch(() => null),
@@ -112,11 +113,11 @@
       if (listenerKnown) {
         lanListenerOn = status?.web?.lan === true;
       }
-    } catch {
+    } catch (err: unknown) {
       // The status read behind this one has nothing left to say: end it here.
       controller.abort();
       if (!isMounted || sequence !== loadSequence) return;
-      loadError = true;
+      loadError = errorCodeOf(err);
       devices = [];
       // Nothing says how the listener stands any more: the earlier answer is not a current one.
       listenerKnown = false;
@@ -166,9 +167,13 @@
 
   /**
    * @param err the failure a revoke reported
-   * @returns `true` when the request gave up on its deadline, so the runtime may still have acted
+   * @returns `true` when the request gave up on its deadline or never reached the runtime, so the
+   *   runtime may still have acted
    */
   function revokeTimedOut(err: unknown): boolean {
+    if (isClientError(err)) {
+      return err.code === 'timeout' || err.code === 'network_offline';
+    }
     const name = (err as Error)?.name;
     return name === 'TimeoutError' || name === 'AbortError';
   }
@@ -371,9 +376,14 @@
         <p class="error-text" role="alert">{actionError}</p>
       {/if}
       {#if isLoading}
-        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
+        <Skeleton shape="card" rows={3} label={$t('web.settings.devices.loading')} />
       {:else if loadError}
-        <p class="empty-text error-text">{$t('web.settings.devices.load_failed')}</p>
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => loadData()}
+          titleLevel={3}
+        />
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>
       {:else}
@@ -665,12 +675,6 @@
   }
 
   .empty-text {
-    padding: var(--space-6) var(--space-4);
-    text-align: center;
-    color: var(--color-text-secondary);
-  }
-
-  .loading-text {
     padding: var(--space-6) var(--space-4);
     text-align: center;
     color: var(--color-text-secondary);
