@@ -489,7 +489,16 @@ export async function initRuntime(): Promise<void> {
     runtimeStore.update((s) => ({
       ...s,
       isInitialized: true,
+      // The browser still holds its pairing; a status read that failed is no reason to send the
+      // person back to the pairing page, or away from the address they opened. The view that
+      // address names then draws the error pattern of the load it could not finish.
+      isPaired: true,
       isOffline: true,
+      currentRoute: requested ? requested.route : s.currentRoute,
+      selectedPlanId: requested?.planId ?? s.selectedPlanId,
+      selectedEpicId: requested?.epicId ?? s.selectedEpicId,
+      startProjectId: requested?.projectId ?? s.startProjectId,
+      startEntryId: requested?.entryId ?? s.startEntryId,
       // No stream opens on this path, so the indicator must offer the one way back — unless the
       // retry already connected one, whose state then stands.
       streamState: s.streamState === 'connected' ? 'connected' : 'offline',

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
+import { ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
   checkUrlHashForCode,
@@ -93,6 +94,24 @@ describe('the runtime store', () => {
     expect(pair).not.toHaveBeenCalled();
     expect(window.location.hash).toBe('#code=KXQB-MRTN');
     expect(get(runtimeStore).isOffline).toBe(true);
+  });
+
+  it('keeps the addressed route and the stored pairing when the status read fails', async () => {
+    // Arrange: the browser is paired and an address names a plan, but the machine is unreachable.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState(null, '', '/plans/fix-relay');
+    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(new ClientError('network_offline'));
+
+    // Act
+    await initRuntime();
+
+    // Assert: the view the address names is the one that draws the failed load, not the pair page.
+    const state = get(runtimeStore);
+    expect(state.isInitialized).toBe(true);
+    expect(state.isPaired).toBe(true);
+    expect(state.isOffline).toBe(true);
+    expect(state.currentRoute).toBe('plan');
+    expect(state.selectedPlanId).toBe('fix-relay');
   });
 
   it('clears the offline state when the connection returns', async () => {
