@@ -108,6 +108,11 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 * *Off track*: the head and the entry name the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`); it needs no act and is never a badge of what needs the operator. A `yield` or a `restart` is also the report `task.off_track` (xref:24-reports.adoc[Reports]).
 * The stream is opened only while the level is shown and closed when it is left.
 
+[#changes]
+=== The Changes
+
+`d` opens the plan's changes as a level of the view, in the form of link:../shared/plan-view.adoc#changes[Plan View, The Changes]; `Enter` on a file opens its hunks below it, `Esc` closes them. `plan <plan_id> --changes` prints the list into the scrollback and `--changes --file <path>` one file's hunks, so that the operator can pipe them; both print after the control sequences are removed (xref:04-console.adoc#output-safety[Output Safety]). Removed and added lines take the terminal's colours only where it has them, and keep their `−` and `+` everywhere, so that the diff reads without colour.
+
 [#full-screen-keys]
 === Keys
 
@@ -140,6 +145,9 @@ The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[K
 
 |`t`
 |show or hide the plan's tokens by phase and by role, with their raw components
+
+|`d`
+|the plan's changes, as a level of the view; `Enter` on a file opens its hunks (<<changes>>)
 
 |`*`
 |open every level below the selected node
