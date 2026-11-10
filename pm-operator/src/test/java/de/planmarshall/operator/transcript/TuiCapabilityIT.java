@@ -518,7 +518,7 @@ class TuiCapabilityIT {
 
     @Test
     @DisplayName("the recorded transcripts carry none of the raw wire tokens or placeholders")
-    void transcriptsHaveNoRawResidue() throws IOException {
+    void transcriptsHaveNoRawResidue() throws Exception {
         var directory = Path.of("src", "test", "resources", "transcript");
         assertTrue(Files.isDirectory(directory), "the transcript resources are read from " + directory);
         try (var files = Files.list(directory)) {
