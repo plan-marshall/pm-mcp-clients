@@ -11,11 +11,12 @@ link:../cli/README.adoc[CLI Review] » Verification Results » The Terminal Acts
 This document records the eleven checks of the terminal client's acting, answering, notices, onboarding, cleanup, and
 system model against the merged code. The checks come from
 link:../cli/use-cases/verification.adoc[CLI Review, Use Cases, Verification] (`CLI-UC-V-01` to `CLI-UC-V-10`) and
-link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification] (`CLI-CC-V-06`). Every check ran as
-written, and each row names what ran: the screens cover `en`/`de` at 120 × 30 and 80 × 24, and the test runs are the
-green `mvn` runs of the check's own test names. Two parts are `not verified` with their reason: the typed-text part of
-`CLI-UC-V-05` (no harness can type before a broadcast) and `CLI-UC-V-10` (the operator's agreement is not a check a plan
-can run). Three checks carry a `fail`, each routed as one finding to the epic inbox. Nothing that was found was fixed.
+link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification] (`CLI-CC-V-06`). Each check was
+executed and each row names what ran: the screens cover `en`/`de` at 120 × 30 and 80 × 24, and the test runs are the
+green `mvn` runs of the check's own test names. Two checks are `not verified` with their reason: `CLI-UC-V-05`, whose
+typed-text clause no harness can evaluate (it sends a broadcast before it types), and `CLI-UC-V-10`, whose operator
+agreement is not a check a plan can run. Four checks carry a `fail`, each routed as one finding to the epic inbox.
+Nothing that was found was fixed.
 
 [#subject]
 == What Was Verified
@@ -50,13 +51,16 @@ is part of these checks.
 |Builds
 |`mvn test -pl pm-operator`: `BUILD SUCCESS`; `pm-operator/target/surefire-reports/` holds 118 `TEST-*.xml`, 0 failures,
 0 errors, 0 skipped (job `b233918c3af845b2ad0f9464e6cde068`). `mvn verify -Pintegration-tests -pl pm-operator`:
-`BUILD SUCCESS`, 119 tests executed, 0 failures, 0 errors (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`;
-`pm-operator/target/failsafe-reports/`). The whole-tree gate `mvn verify -Ppre-commit`: `BUILD SUCCESS` (job
+`BUILD SUCCESS`; `pm-operator/target/failsafe-reports/failsafe-summary.xml` reads `completed 126, errors 0, failures 0,
+skipped 7` — 119 executed, the seven skipped being the six native and the one `ScreenCaptureIT` of a run without
+`-Dpm.screens` — and its 22 `TEST-*.xml` suites are green (job `4b0222e8d3a745bb9c4a4cdd475e9c2d`, repeated at the head
+as job `cf6499330dca4e778c4d4418b75ea773`). The whole-tree gate `mvn verify -Ppre-commit`: `BUILD SUCCESS` (job
 `d62a78bf4a684caf98a1b5e71ce44fff`). Nine `ScreenCaptureIT` runs, each green (jobs
 `8d34becf7bfb423b867cb5fba20ee727`, `ec3aceefd8484871b4a2f959d625b481`, `9c773b8664da4804b34dd50085f1f609`,
 `4cf77861b6614c35a2caed625ddced3c`, `8537d6ef31e74d6f87cbfd04c44afb92`, `b1c4585e060e48349497665885fe7bbf`,
 `b800a8708f9c46a48f7f997c0497cf1f`, `e67fb937aec64c50a019d2cd5c6a76fd`, `0a73032db4894e6e9bf32510e71d269e`), each
-leaving its screens under `pm-operator/target/screens/<set>/`.
+leaving its screens under `pm-operator/target/screens/<set>/` — the artefacts this document cites. A capture run
+overwrites `failsafe-reports/`, so the suite was re-run last; the numbers above are that run's.
 
 |Capture set
 |`pm-operator/src/test/resources/screen-captures/PLAN-33.txt`, created by this plan: the console badge and the two pushed
@@ -94,8 +98,8 @@ running task finishes, then the plan holds`, `3) after the current phase  the ru
 holds`. The `.stdout.txt` of the same capture ends with `Left the pause. Nothing was sent.`; `pause-9-120x30-en`
 answers `9 is not offered here: 1-3, q, ?` and redraws the same options; `pause-enter-120x30-en` ends with `Chosen:
 after the current task` and `✓ fix-relay pausing after the task`. The 80 × 24 German captures
-(`PLAN-33/pause-q-80x24-de.txt`, `pause-9-80x24-de.txt`) show the same three consequences and end with `Verlassen: Das
-Anhalten. Es wurde nichts gesendet.`; the German leave key is `v` (`ChoicePrompt.java:740`).
+(`PLAN-33/pause-q-80x24-de.txt`, `pause-9-80x24-de.txt`; their `.stdout.txt` files end with `Verlassen: Das
+Anhalten. Es wurde nichts gesendet.`); the German leave key is `v` (`ChoicePrompt.java:740`).
 |None for this check. The plan state is unchanged by `q`, proven against `/mock/acts`, not only by the screen.
 
 |CLI-UC-V-02
@@ -123,22 +127,24 @@ overview's footer names `! what waits` (`overview-refused-120x30-en.txt`).
 |None.
 
 |CLI-UC-V-04
-|`pass`
+|`fail`
 |`AnswerDialogueIT` passes (9 tests). The capture `pm-operator/target/screens/PLAN-21/answer-q007-prompt-120x30-en.txt`
 shows the votes (`1 of 3 votes · 1 model`, `2 of 3 votes · 2 models`, `not voted on`), the dissent (`Against it
 (quorum-b): the branch was pushed; a rebase rewrites what others pulled.`), the evidence hint (`? shows the evidence:
 RelayServer.java:42-58 (both versions of the method)`), and the prompt `Rebase onto main? [Enter]   other: 1-3   w) in my
 own words   m) add a note   x) none fits   l) later   ?`. `answer-q007-enter-120x30-en.stdout.txt` ends with `✓ Q-007
 answered: Rebase onto main. The plan goes on.`; `answer-wr2-120x30-en.txt` asks `y) waive, with a reason   d) decline,
-with a reason   l) later`. The German capture `answer-q007-prompt-120x30-de.txt` shows the client's own text in German
-(`Frage`, `blockiert den Plan`, `zeigt die Belege`, `Stimmen`, `Empfohlen von`, `Dagegen`, `weitere`, `später`); the
-English words it shows are the decision's payload (description, question, option labels, rationale, dissent) and
-identifiers (`plan fix-relay`, `execute`, `implement`, `quorum-b`, `[Enter]`).
-|The check's sample says `other: 1-2` and `RelayServer.java, lines 42-58`. The mock's Q-007 offers three options, so the
-prompt names `1-3`, and the hint is printed as `RelayServer.java:42-58`. The substance — the range of the offered keys
-and the file with its lines — is there; the spelling follows the mock's payload. The `[Enter]` in the German prompt is a
-key cap, kept as the keyboard names the key (as `[Esc]` is), and the German catalogue carries it
-(`operator.decision.confirm_parts_prompt` in `decisions.de.properties`); it is not a prose word.
+with a reason   l) later`. The 80 × 24 arms are in the same set. *Fails as written* on its German clause: the German
+capture `answer-q007-prompt-120x30-de.txt` has the client's own text in German (`Frage`, `blockiert den Plan`, `zeigt die
+Belege`, `Stimmen`, `Empfohlen von`, `Dagegen`, `weitere`, `später`), but the screen also carries the English decision
+payload — `The change conflicts with main in RelayServer.java.`, `How should the conflict be resolved?`, the option
+labels, `Keeps the history linear.`, `the branch was pushed; a rebase rewrites what others pulled.`, `(both versions of
+the method)`.
+|The clause "no English word outside the glossary" is violated by the decision's payload. Whether that payload is
+expected to follow the screen's language, or the check exempts runtime-supplied text, is a decision this plan cannot
+take; the Amendment listed the clause as an expected `fail` and said "verify against the text". The check's sample text
+also says `other: 1-2` and `RelayServer.java, lines 42-58`, while the mock's three-option Q-007 prints `1-3` and
+`RelayServer.java:42-58`. Finding `rb-33-verify-cli-acts-004` names both plans.
 
 |CLI-UC-V-05, notices and badge part
 |`pass`
@@ -177,11 +183,11 @@ then `cui-parent is ready` and `POST /api/v1/projects/cui-parent/setup`; the fou
 (in Befehlen verwendet, ändert sich nie): cui-parent`). *Fails as written* on its `onboard --auto --yes`
 clause: the verb no longer exists. `onboard-auto-yes-120x30-en.stdout.txt` holds `Unmatched arguments from index 0:
 'onboard', '--auto', '--yes'` and `Did you mean: pm-operator lesson or pm-operator questions or pm-operator enrol-harness?`,
-exit `2` (the `expected-exit` column of `PLAN-33.txt:31`, checked by the green `ScreenCaptureIT` run); the 80 × 24 arms
+exit `2` (the `expected-exit` column of `PLAN-33.txt:37-40`, checked by the green `ScreenCaptureIT` run); the 80 × 24 arms
 are `onboard-auto-yes-80x24-en.txt` and `-de.txt`. The automatic path now starts from the entry's first choice
 `1) Decide everything for me…`.
-|The check names a verb the design replaced. Finding `plan-33-001` names the check and the plan whose dialogue it
-concerns.
+|The check names a verb the design replaced. Finding `rb-33-verify-cli-acts-001` names the check and the plan whose
+dialogue it concerns.
 
 |CLI-UC-V-07
 |`pass`
@@ -189,7 +195,8 @@ concerns.
 `pm-operator/target/screens/PLAN-23/PLAN-23-cleanup-choose-120x30-en.after.txt` ends with `d) delete…   r) ask me
 again   i) ignore   x) leave items out   o) open` and `q) leave`;
 `PLAN-23-cleanup-confirm-120x30-en.after.txt` shows `d` opening `Delete 12 plans, 2 epics, 40 logs, 5 read reports, and
-1 unenrolled project? … It cannot be undone. … Delete? y) yes   n) no   q) leave`.
+1 unenrolled project? … It cannot be undone. … Delete? y) yes   n) no   q) leave`; the 80 × 24 arms are the `-80x24-en`
+and `-80x24-de` files of the same set.
 `consoleBarLeavesTheDeleteUnsaved` types `cleanup`, `d`, `q` and proves with `assertNoCleanupAct` that no
 `/api/v1/system/cleanup` act was sent. The German run
 (`PLAN-23-cleanup-choose-120x30-de.after.txt`, `-confirm-120x30-de.after.txt`) offers `d) lösche…   r) frag mich später
@@ -207,8 +214,9 @@ on its first content row. `SystemViewConsistencyTest` passes (5 tests): `bothVie
 listeners line in the printed view and in the full-screen rows for `en` and `de`, and `bothViewsShowTheSameTokenUnits`
 asserts the same token units on the row of each model in both views. `config show` exits `1` in
 `PLAN-33/config-show-120x30-en.stdout.txt` (`Unable to load settings: HTTP 404`); the exit code is the `expected-exit`
-column of `PLAN-33.txt:35`, checked by the green `ScreenCaptureIT` run. The German arms are
-`26-cli-system-model/system-print-draining-120x30-de.txt` and `system-screen-draining-120x30-de.after.txt`.
+column of `PLAN-33.txt:43`, checked by the green `ScreenCaptureIT` run. The German arms are
+`26-cli-system-model/system-print-draining-120x30-de.txt` and `system-screen-draining-120x30-de.after.txt`; the 80 × 24
+arms are the `-80x24-en` and `-80x24-de` files of the same set.
 |The two draining captures are two mock runs, so the drain count and the network listener differ between them (the
 drain advances while a capture settles). The consistency of the two views is proven from one snapshot by the unit test,
 not by comparing two runs.
@@ -217,14 +225,15 @@ not by comparing two runs.
 |`fail`
 |`plan nope --print` prints `Plan nope not found.` and exits `1` (`PLAN-33/plan-nope-120x30-en.stdout.txt`,
 `-de.stdout.txt`, `-80x24-en.stdout.txt`, `-80x24-de.stdout.txt`; the exit code is the `expected-exit` column of
-`PLAN-33.txt:38-41`, checked by the green `ScreenCaptureIT` run); the catalogue holds no `No plan nope`. The full-screen
+`PLAN-33.txt:46-49`, checked by the green `ScreenCaptureIT` run); the catalogue holds no `No plan nope`. The full-screen
 overview in `reports-and-system` shows `Nothing runs. Start a plan in a project, or enrol one.` in all four arms
 (`PLAN-33/overview-refused-120x30-en.txt`, and the German `Es läuft nichts. Starte einen Plan in einem Projekt, oder
 registriere eines.` in `overview-refused-120x30-de.txt` / `-80x24-de.txt`), and that scenario serves no
 `/api/v1/projects` route, so the read is refused and `OverviewFullScreenApp.fetchProjects` swallows the failure, leaving
 the list empty (`OverviewFullScreenApp.java:486`), which `ProjectsOverviewLevel.rows` renders as the empty state
 (`ProjectsOverviewLevel.java:86`). An error still looks like an empty state.
-|Both clauses fail; one finding (`plan-33-002`) covers them. The German arm prints the refusal in English too.
+|Both clauses fail; one finding (`rb-33-verify-cli-acts-002`) covers them. The German arm prints the refusal in English
+too.
 
 |CLI-UC-V-10
 |`not verified`
@@ -235,21 +244,25 @@ themselves were not re-reviewed here.
 
 |CLI-CC-V-06
 |`fail`
-|`mvn verify -Pintegration-tests -pl pm-operator` is green, and seven of the eight dialogues the regression guard names
-have their PTY test with the three cases: `PauseDialogueIT` (3), `CancelDialogueIT` (4), `AnswerDialogueIT` (9),
-`OnboardingDialogueIT` (4), `ProjectSetupDialogueIT` (4), `CleanupDialogueIT` (6), `RuntimeStopDialogueIT` (8). Each
-`qFirstSendsNothing` case asserts `Nothing was sent.` and `harness.assertNoAct()`, which reads `GET /mock/acts`
-(`DialogueHarness.java:130`). `AcceptEditDialogueIT` (2) and `InterruptDialogueIT` (6) have their own ITs, outside the
-guard's list. *Fails as written* on the eighth: the guard names **waiver** beside `answer`, and the waiver path has only
-its main path — `AnswerDialogueIT.waiverAnswers` posts the waiver with its reason — and neither a `q`-first nor an
-unknown-input case, so nothing proves that `q` sends nothing on a waiver request.
-|The check's enumeration is wider than "every dialogue": it names the waiver beside the answer dialogue. Finding
-`plan-33-003` names it.
+|`mvn verify -Pintegration-tests -pl pm-operator` is green, and seven of the eight dialogues the *Regression Guard* of
+`doc/claude_review/cli/use-cases/verification.adoc` names have their PTY test with the three cases: `PauseDialogueIT`
+(3), `CancelDialogueIT` (4), `AnswerDialogueIT` (9), `OnboardingDialogueIT` (4), `ProjectSetupDialogueIT` (4),
+`CleanupDialogueIT` (6), `RuntimeStopDialogueIT` (8). Each `qFirstSendsNothing` case asserts `Nothing was sent.` and
+`harness.assertNoAct()`, which reads `GET /mock/acts` (`DialogueHarness.java:130`). `AcceptEditDialogueIT` (2) and
+`InterruptDialogueIT` (6) have their own ITs, outside the guard's list. *Fails as written* on the eighth: the guard names
+**waiver** beside `answer`, and the waiver path has only its main path — `AnswerDialogueIT.waiverAnswers` posts the
+waiver with its reason — and neither a `q`-first nor an unknown-input case, so nothing proves that `q` sends nothing on
+a waiver request. The ITs run `en_US.UTF-8` at 120 × 30 (`DialogueHarness`), which is the run the check's *Where* column
+names.
+|The enumeration is the *Regression Guard* of `doc/claude_review/cli/use-cases/verification.adoc` (line 92), which
+names the waiver beside the answer dialogue; the check's own text says "every dialogue that acts". Finding
+`rb-33-verify-cli-acts-003` names it.
 
 |===
 
-Totals: 11 checks in 12 rows: 7 `pass`, 3 `fail`, 2 `not verified` (one row each for the two parts of
-`CLI-UC-V-05`). The verify-first step is `pass`.
+Totals: 11 checks in 12 rows: 6 `pass`, 4 `fail`, 2 `not verified`. `CLI-UC-V-05` has two rows (its notices-and-badge
+part `pass`, its typed-text part `not verified`); the check as a whole is `not verified` because one of its clauses has
+no run. The verify-first step is `pass`.
 
 [#mapping]
 == The Checks and the Use-Case Rows
@@ -274,7 +287,8 @@ The verdict matrix is keyed by use-case ids; this is the mapping the checks give
 
 |CLI-UC-V-04
 |UC-PLN-2 (Decide What a Plan Asks)
-|`deviates` → `conforms`
+|`deviates` → `partial`: the dialogue asks, shows the votes, the dissent and the evidence, and sends the answer (U4's
+substantive clauses), but the German clause fails on the English decision payload.
 
 |CLI-UC-V-05
 |UC-PLN-2, UC-ENT-1 (Enter and Connect)
@@ -302,24 +316,37 @@ is proven, the rest of the project run was not walked). UC-ONB-2 (Onboard Automa
 |CLI-CC-V-06
 |the eight dialogues the regression guard names
 |no row; it proves the guard, not a use case. Its `fail` is the waiver's missing `q`-first and unknown-input cases.
+
+|CLI-UC-V-10
+|the two variations in `plan-marshall-documentation`
+|no row: the use cases of this matrix are the client's, and the variations live in the sibling repository, whose verdicts
+this plan does not hold. `not verified` (the operator's agreement).
 |===
 
-Verdicts moved in link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]; its totals become 16
-`conforms`, 7 `partial`, 1 `deviates`, 0 `missing`, and 13 `not verified` (37 use cases), against 2, 8, 7, 7, and 13
+Verdicts moved in link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]; its totals become 15
+`conforms`, 8 `partial`, 1 `deviates`, 0 `missing`, and 13 `not verified` (37 use cases), against 2, 8, 7, 7, and 13
 before.
 
 [#results]
 == What the Checks Found
 
-Three checks fail and are routed, each as one `finding` message to the epic inbox of `ui-improvements`:
+Four checks fail and are routed, each as one `finding` message to the epic inbox of `ui-improvements`
+(`rb-33-verify-cli-acts-001` to `-004`):
+
+. *`CLI-UC-V-04`*: the German run carries the English decision payload on a screen whose chrome is German, so "no English
+word outside the glossary" fails. The check cannot say whether the payload or the check's wording is the subject.
+Plans concerned: PLAN-21 (the answer dialogue) and PLAN-11 (the mock's decision fixture).
 
 . *`CLI-UC-V-06`*: `onboard --auto --yes` is not a verb of `pm-operator` (exit `2`, `Unmatched arguments from index 0`);
 the automatic onboarding now starts from the entry's first choice. The check as written cannot hold. Plan concerned:
 PLAN-22 (one state dialogue for both onboardings).
 
 . *`CLI-UC-V-09`*: `plan nope` prints `Plan nope not found.`, not `No plan nope`, and the full-screen overview prints
-`Nothing runs` when the projects read is refused. Plan concerned: PLAN-20 (action menus by state) for the overview
-defect; the refusal text belongs to PLAN-30, which has not landed.
+`Nothing runs` when the projects read is refused. The overview defect sits in code that PR #130 delivered
+(`OverviewFullScreenApp`, `ProjectsOverviewLevel`; the `cli-overview` work package, before the epic), which no plan of the
+epic owns; the refusal text belongs to PLAN-30, which has not landed. The filed message names PLAN-20 for the overview,
+which is wrong (PLAN-20 delivered the action menus); an `inbox amend` of the archived message was refused
+(`not_live`), so the correction is this paragraph.
 
 . *`CLI-CC-V-06`*: the regression guard names the waiver beside the answer dialogue, and the waiver path has only its
 main path in `AnswerDialogueIT` — no `q`-first and no unknown-input case — so `q` sending nothing is unproven there.
@@ -333,14 +360,15 @@ check passes; the line is still an HTTP status on the operator's screen. The PLA
 its own residue ("the refusal text is … the English literal 'refused by the runtime (HTTP n)'",
 `landings/PLAN-124.md`).
 
-* The German cleanup screen prints the cleanup's own body in English. On
-`pm-operator/target/screens/PLAN-23/PLAN-23-cleanup-choose-120x30-de.after.txt` the heading is `Cleanup cln-0012 · due
-since 2 Sep`, the summary `Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project` / `frees 779
-MB`, the kept line `Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep today 03:00`, and
-the confirmation `Delete 12 plans, … This frees 779 MB. It cannot be undone.` — while the option and confirmation keys
-are German. These are hard-coded literals in `CleanupCommand.printJob` (`CleanupCommand.java:633-637` and the
-confirmation's text), not the mock's payload, and the German catalogue holds the keys. `CLI-UC-V-07`'s clauses are
-language-neutral, so the check passes; the untranslated body is outside every check of this plan.
+* The German cleanup screen prints the cleanup's own body in English.
+`pm-operator/target/screens/PLAN-23/PLAN-23-cleanup-choose-120x30-de.after.txt` carries the heading `Cleanup cln-0012 ·
+due since 2 Sep`, the summary `Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project` / `frees
+779 MB`, and the kept line `Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep today
+03:00`; `PLAN-23-cleanup-confirm-120x30-de.after.txt` carries the confirmation `Delete 12 plans, … This frees 779 MB. It
+cannot be undone.` — while the option and confirmation keys are German. These are hard-coded literals in
+`CleanupCommand.printJob` (`CleanupCommand.java:633-637` and the confirmation's text), not the mock's payload, and the
+German catalogue holds the keys. `CLI-UC-V-07`'s clauses are language-neutral, so the check passes; the untranslated body
+is outside every check of this plan.
 
 * The German console screen prints English sentences beside the German ones:
 `▪ 7 ungelesene Berichte seit … · reports shows them` (`PLAN-23-cleanup-choose-120x30-de.after.txt:3`, also in
@@ -361,8 +389,8 @@ This file was checked with the AsciiDoc validators of `pm-documents:ref-asciidoc
 test reports it cites:
 
 * `asciidoc validate --path …/verification-results/verify-cli-acts.adoc`: 1 file, 0 errors, 0 warnings.
-* `asciidoc verify-links --file …/verification-results/verify-cli-acts.adoc`: 4 links, 0 broken, 0 format violations.
-* The same two checks over the changed link:../cli/use-cases/analysis.adoc[Use Cases, Analysis]: 36 links, 0 broken. Its
+* `asciidoc verify-links --file …/verification-results/verify-cli-acts.adoc`: 6 links, 0 broken, 0 format violations.
+* The same two checks over the changed link:../cli/use-cases/analysis.adoc[Use Cases, Analysis]: 37 links, 0 broken. Its
   `validate` reports 4 errors and 5 warnings — the missing attributes `:toclevels: 3`, `:toc-title: Table of Contents`,
   `:sectnums:` and `:source-highlighter: highlight.js`, and five list-formatting warnings in its original text. The same
   findings are reported for the file at `0913d6f3` before this plan's edit, so nothing new was introduced.

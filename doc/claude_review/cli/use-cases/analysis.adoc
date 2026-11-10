@@ -27,7 +27,7 @@ The client reads well and acts badly:
 This analysis is the state the review found. The checks of
 link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] re-ran the acting use cases
 against the merged code on 2026-11-10 (commit `0913d6f3`): the six items above are now dialogues that act, ask and can
-be left, and the pushed notices reach the console. The verdicts moved accordingly; three checks fail and are routed.
+be left, and the pushed notices reach the console. The verdicts moved accordingly; four checks fail and are routed.
 ====
 
 The design of the terminal client (`doc/design/terminal-client/`) describes all of these dialogues in detail, with
@@ -80,9 +80,10 @@ link:../ux/findings.adoc#CLI-UX-F-02[CLI-UX-F-02]).
 
 |link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
 |Decide What a Plan Asks
-|`conforms`
+|`partial`
 |`answer` shows the options with their votes, the dissent, the evidence and the prompt, and sends the answer; the
-notices arrive at the prompt (V-04, V-05).
+notices arrive at the prompt (V-04, V-05). The German run still carries the English decision payload, so V-04's language
+clause fails (rb-33-verify-cli-acts-004).
 
 |link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
 |See What Runs, Across Projects
@@ -156,7 +157,7 @@ the draining state says draining (V-08).
 is still English — residue of the verification, outside the check's clauses.
 |===
 
-Totals: 16 `conforms`, 7 `partial`, 1 `deviates`, 0 `missing`, 13 `not verified` (37 use cases). The moves and their
+Totals: 15 `conforms`, 8 `partial`, 1 `deviates`, 0 `missing`, 13 `not verified` (37 use cases). The moves and their
 evidence are in link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts].
 
 [#gaps]
@@ -166,9 +167,10 @@ evidence are in link:../../verification-results/verify-cli-acts.adoc[Verificatio
 ====
 These are the gaps the review found. The checks of
 link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] (commit `0913d6f3`,
-2026-11-10) show each of them closed: the state dialogue (V-06), the strict choice prompt (V-01, V-02, V-07), the
-confirmations (V-02, V-07), the answer dialogue (V-04), and the event contract (V-05). The list stays as the review's
-record.
+2026-11-10) close them where the checks reach: the state dialogue (V-06), the strict choice prompt in the pause, runtime
+stop and cleanup dialogues (V-01, V-02, V-07), their confirmations (V-02, V-07), and the event contract (V-05). The
+answer dialogue asks and sends (V-04), but its German run still carries the English decision payload, so its gap stays
+open. The cancel, accept-edit and interrupt dialogues are outside those checks. The list stays as the review's record.
 ====
 
 . *No state dialogue.* The design says the client "renders whatever state the runtime reports". For the onboarding,
@@ -188,11 +190,12 @@ record.
 
 [NOTE]
 ====
-This is the state the review found. Since then the eight dialogues the regression guard names (pause, cancel, answer,
-waiver, onboarding, project setup, cleanup, runtime stop) have their PTY tests with the three cases — `q` sends nothing,
-an unknown input re-asks, the main path sends the act — each proving the `q` case against `GET /mock/acts`; see
-`CLI-CC-V-06` of link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts], which
-also names the one gap left (the waiver's `q` case).
+This is the state the review found. Since then seven of the eight dialogues the regression guard names (pause, cancel,
+answer, onboarding, project setup, cleanup, runtime stop) have their PTY tests with the three cases — `q` sends nothing,
+an unknown input re-asks, the main path sends the act — each proving the `q` case against `GET /mock/acts`. The eighth,
+the waiver, has only its main path: both its `q`-first and its unknown-input case are still open. See `CLI-CC-V-06` of
+link:../../verification-results/verify-cli-acts.adoc[Verification Results, The Terminal Acts] and finding
+`rb-33-verify-cli-acts-003`.
 ====
 
 `TuiCapabilityIT` proves that each view opens and that the fallbacks work. `TranscriptDialogueIT` proves `status`,
