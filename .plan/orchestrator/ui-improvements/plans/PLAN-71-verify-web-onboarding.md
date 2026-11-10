@@ -41,13 +41,14 @@ Run the checks of the onboarding screen registry and variations against the merg
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/use-cases/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/use-cases/verification.adoc exists; rows for UC-S-02 (lines 37-45) and UC-S-04 (line 54) cover onboarding
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/verification.adoc has UC-V-02, UC-V-03, UC-V-05; UC-V-03 replaced (entry.* fallback) in the 2026-11-10 Amendment
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface
 
-- OBSERVED: `doc/claude_review/verification-results/verify-web-onboarding.adoc` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-onboarding.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -78,3 +79,6 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-onboarding.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD 1cc0e10e

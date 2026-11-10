@@ -46,16 +46,17 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cross-cutting/verification.adoc exists; check table CC-V-01..CC-V-06+ from line 7 (text guard de/en, CC-S-01..07)
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc CC-V-01; visual-design/verification.adoc VD-V-06..10; ux/verification.adoc UX-V-13
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): mobile.spec.js changed (PLAN-90 green e2e baseline); verify-web-final.adoc and visual.spec.js still absent (created by this plan, correct). Dependencies PLAN-72/73/74 not landed.
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface
 
-- OBSERVED: `doc/claude_review/verification-results/verify-web-final.adoc` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/claude_review/README.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/visual.spec.js` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD c4dc9bb4
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-final.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/README.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/visual.spec.js` — absent at HEAD 1cc0e10e; created by this plan if the outline keeps it
+- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -85,3 +86,8 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-final.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/README.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/visual.spec.js` — absent at HEAD 1cc0e10e; created by this plan if the outline keeps it
+- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 1cc0e10e

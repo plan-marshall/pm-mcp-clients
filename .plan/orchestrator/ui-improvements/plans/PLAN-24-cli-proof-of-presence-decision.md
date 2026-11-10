@@ -46,9 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 [#CLI-CC-S-06], proposals.adoc:97 [#CLI-CC-P-05] exist at aa3a9be3
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 CLI-CC-S-06; proposals.adoc:97 CLI-CC-P-05
 - HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: HOLD stands: L-1 deferred, no milestone (docs later-improvements.adoc:17-25, 08-security.adoc:56,59)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause, no hypothesis
 
 ## Expected Surface
 
@@ -64,6 +66,16 @@ Source of this plan (read before scoping):
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. Still HELD (design audit 2026-11-02, milestone unplanned): the sibling repository `plan-marshall-documentation` has no ADR or option text for L-1 (it appears only in `doc/later-improvements.adoc` and `doc/requirements/08-security.adoc`); `doc/plans/proof-of-presence.adoc` is absent. The deliverables put the ADR and the requirement change in that sibling repository (`doc/Requirements.adoc`, `doc/requirements/08-security.adoc`, `doc/later-improvements.adoc`, the ADR file): they are not in this repository's Expected Surface by design. Emit only on an operator decision recorded on L-1.
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- Claims 0 and 1 corroborated: the HOLD stands — L-1 stays deferred with no milestone (plan-marshall-documentation
+  `doc/later-improvements.adoc:17-25`, `requirements/08-security.adoc:56,59`). PLAN-14 landed (#277).
+- Gap if ever emitted: the ADR has no home (the documentation repository has no ADR directory for the product's own
+  decisions); name the path or record the decision in the L-1 entry.
+- Disposition: stays HELD (the operator's), re-ground again when the L-1 milestone is planned.
 
 ## Hand-Off Command
 

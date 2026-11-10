@@ -61,23 +61,31 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-07)`, `doc/claude_review/ux/proposals.adoc#UX-P-05` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc UX-S-07 row (line 53) Plan page on the object template -> UX-P-05; ux/proposals.adoc:247-248 [#UX-P-05] The Plan Page
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-07 and `ux/proposals.adoc:247` UX-P-05 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a line to the plan view's head in `doc/design/shared/plan-view.adoc` (`change so far   12 files · +340 −27 · 2 unplanned`, below the tokens line, `plan.change.size`, absent before the first capture) and a work list beside the plan in a wide window (`PLAN-83`). `PLAN-82` serves the size in the contract and the mock and this plan builds the line into the head (the former `PLAN-81`, superseded, had it): it renders only when the plan carries a size. Also `PLAN-39` (PR #274) wrapped `PlanView.svelte` at 390 px, and its `mobile.spec.js` asserts no horizontal scroll on the ten routes: the 390 px watch on `/plans/{id}` is to be confirmed here and retired.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): No stale surface: PlanView.svelte, NodeNarrative.svelte, PlanSettingsModal.svelte, plan-view.adoc and plan_view properties exist; plan.change.size already exists in plan_view.en.properties (line 48), so the head's size line catalogue key is present and not to be created again; PlanView.test.ts and plan-view.spec.js changed since the anchor.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: `PlanView.svelte` does not render `plan.change.size` though the key exists — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-api/src/main/resources/messages/plan_view.en.properties:48` (verify-at-outline)
+- HYPOTHESIS: a `LINK` activity entry with no target renders as an empty row — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § `activity-entry` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/PlanSettingsModal.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/PlanSettingsModal.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/NodeNarrative.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/PlanSettingsModal.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/PlanSettingsModal.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/AttentionStrip.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -118,3 +126,32 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/web-app/navigation.adoc` (#column-types, #up, #lenses, #side-columns), `doc/design/web-app/components.adoc` (#object-page, #fixed-places, #labels, #attention-strip), `doc/design/web-app/components-tags.adoc` (#status-label, #phase-label, #pr-chip, #kind-mark), `doc/design/shared/plan-view.adoc` (#levels, #change-size, #tokens, #chat-revision, #ended). HEAD 1cc0e10e.
+
+1. **The plan as the object column.** `PlanView.svelte` is the object column of the plan: the `ObjectPage` regions, the head with `KindMark`, title, id `Chip`, `PrChip`, `PhaseLabel` and `StatusLabel`, the state sentence ("Running · execute · for 2 h 10 min · task 3 of 5"), the lines `tokens so far` and `change so far` (`plan.change.size`, absent before the first capture), one `ActionBar` with the primary from `byState`, the head links _Process designer_ and _Completion report_ (ended plan only), and the plan's `decision` act as a head link that opens the decision in place. No path and no _Back_ in the head. The attention strip (`AttentionStrip`) says "Waits for your decision …" and carries the off-track banner. Queued revision line: `control.chat.revision_queued`.
+   - Done when: `plan-view.spec.js` on `running-work` → `control.ready` and `decisions.open` (evidence order: `test-first`); the browser check of head, strip and tabs (evidence order: `none`).
+2. **Tabs.** The tab set is decided first (a design line in `doc/design/shared/plan-view.adoc` or `doc/design/web-app/plan-view-interaction.adoc`); the candidates are Process (default), Intent, Activity, Tokens. The Intent tab content belongs to the web intent and outline package; this plan only places it. The tab is `tab={id}` in the address (a replace). **Plan settings stay a dialogue** (_Plan settings…_, `control.plan.settings`): `PlanSettingsModal` stays, rebuilt on the field system and the settings-form rule (one _Save_ disabled until a change, a _changed_ mark, _Use the inherited value_).
+   - Done when: unit tests: a tab switch keeps its state; the dialogue opens from the ActionBar overflow (evidence order: `test-first`).
+3. **Activity rows.** Local time, kind icon, tool and target; a `LINK` row without a target does not render. (The tree rows and "Jump to now" belong to `PLAN-62`.)
+   - Done when: `NodeNarrative.test.ts` and a `PlanView` test: no `TOOL_CALL`/`PHASE` text, no empty row (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+4. **The plan's chat as a side column** (D4 web chat package): `chat=open`, the `Chat` beside the object column; `WorkControlPanel` dialogs of the plan belong to this plan.
+
+Removed or replaced: the head path, "the waiting plan's primary act opens its decision" (a head link now), `PlanSettingsModal` becoming a tab ("the modal is gone"), the phase-tree rows (PLAN-62).
+
+Implements: `doc/design/web-app/navigation.adoc` § Levels as Columns; `doc/design/shared/plan-view.adoc` § Levels, Change So Far, Tokens So Far, A Revision from the Chat; `doc/design/web-app/components.adoc` § Fixed Places, Labels.
+
+Dependencies: D1 foundation (ObjectPage regions, PhaseLabel, PrChip, KindMark, Field system), D2 navigation engine (column chain, `open=` in place, `tab=`), the design line on the tab set, D4 web chat package (deliverable 4), the web intent and outline package (the Intent tab content). Sequence after `PLAN-45` (`PlanView.svelte`). `PLAN-47`, `PLAN-82`, `PLAN-106` have shipped. `PLAN-62` runs after this plan.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+- **Tab set:** the tabs of this page are decided by the D6 design session (WS-06, staged 2026-11-10); this plan stays parked until that session's documents are `AGREED`, and the Intent tab's content belongs to the web intent & outline package (this plan only reserves the tab).

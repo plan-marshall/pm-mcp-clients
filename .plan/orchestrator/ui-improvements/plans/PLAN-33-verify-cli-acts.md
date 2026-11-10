@@ -48,13 +48,15 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/use-cases/verification.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cli/use-cases/verification.adoc has CLI-UC-V-04 (:46) to V-09 (:78) and V-10 (:84)
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: verification.adoc V-01 :30 .. V-10 :84 and cross-cutting CLI-CC-V-06 :45 present and unchanged at be8c8403
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: corroborated | checked_at: be8c8403 | by: ui-improvements/analyze | rescoped: n/a | evidence: all named dependencies landed at be8c8403 (PLAN-21/124, -23, -26, -17, -20, -10, -13, -22, -11, -02); no @Disabled in pm-operator/src/test
 
 ## Expected Surface
 
 - OBSERVED: `doc/claude_review/verification-results/verify-cli-acts.adoc` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `doc/claude_review/cli/use-cases/analysis.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-33.txt` — absent at `be8c8403`; created by this plan (evidence only)
 
 ## Dependencies and Sequencing
 
@@ -66,12 +68,47 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 
 Checked at `aa3a9be3`. Do not emit before PLAN-21 and PLAN-23 land (their dialogue ITs are `@Disabled`, so the answer and cleanup checks would be `not verified`). The Objective says "six checks" but `verification.adoc` now holds CLI-UC-V-04 to V-10 (seven): pin the check ids at outline. `doc/claude_review/verification-results/` holds only `verify-shared-foundation.adoc`; `verify-cli-acts.adoc` is created by this plan.
 
+## Amendment 2026-11-10 (re-grounding at `be8c8403`)
+
+This section supersedes the spec text and the 2026-11-07 note where they differ.
+
+- **The hold is lifted:** PLAN-21 (#372) and PLAN-124 (#385), PLAN-23 (#381), PLAN-17, PLAN-20, PLAN-26 have landed;
+  no `@Disabled` remains in `pm-operator/src/test`. Every check verifies landed code. Record the verified commit
+  (`be8c8403` or later) in the result file and verify that one commit throughout.
+- **The checks:** the ten named in deliverable 1 plus `CLI-UC-V-10` (`use-cases/verification.adoc:84`, "variations pass
+  doc-review and are agreed by the operator"), recorded as `not verified` with the reason (the operator's agreement is
+  not a check this plan can run). "Six checks" in the Objective reads "eleven checks".
+- **Capture sets:** `ScreenCaptureIT` reads a set only from the classpath (`ScreenCaptureIT.java:363-365`,
+  `screen-captures/{set}.txt`). This plan may add ONE evidence file
+  `pm-operator/src/test/resources/screen-captures/PLAN-33.txt` (a capture set, not a test change) and the capture output
+  it produces; no other test or production file changes. Prefer the existing sets (baseline, PLAN-10, -20, -21, -23,
+  -36, -124) where they already show a check. The `/mock/acts` clauses ("q sends nothing", the posted bodies) are
+  evidenced by the `*DialogueIT` runs (`PauseDialogueIT`, `RuntimeStopDialogueIT`, `AnswerDialogueIT`,
+  `CleanupDialogueIT`, `ProjectSetupDialogueIT`, the onboarding and waiver ITs), named per check in the result file.
+- **Also landed since the spec, verified by the same checks:** PLAN-36 (#391, badge kinds `credential`, `cleanup_due`,
+  `ConsoleBadge`/`PmConsole`; V-05 re-verifies `pm [3 questions] ›` in `fully-onboarded`), PLAN-116 (#368), PLAN-119
+  (#377), PLAN-121 (#390, `project add` onboards; V-06), PLAN-124 (#385; V-04).
+- **Expected `fail` or `not verified` (route them, do not fix):** V-01 "each option shows its consequence" (PLAN-10's
+  landing says the actions resource carries no per-point data); V-04 German "no English word outside the glossary"
+  (verify against the text) and the raw gate `ci_check:integration-tests` (PLAN-123 fixes it); V-08 `config show`
+  (PLAN-32 not landed: only the "exits 1" arm can hold — record which arm was observed); V-09 "No plan nope" (no such
+  text in the catalogue; the refusal by error code is PLAN-30's, not landed).
+- **Known residue already routed (do not re-file as new):** the PLAN-121 and PLAN-124 landing residues
+  (`landings/PLAN-121.md`, `landings/PLAN-124.md`): `project add --no-input` exit 1 at later states, the bare release
+  confirmation, refusals printed as "refused by the runtime (HTTP n)". A check that fails on one of them names the
+  landing finding in its finding message.
+- **Expected Surface:** `doc/claude_review/verification-results/verify-cli-acts.adoc` (created),
+  `doc/claude_review/cli/use-cases/analysis.adoc` (verdicts; its matrix is keyed by UC ids — build the check-to-row
+  mapping in the result file), `pm-operator/src/test/resources/screen-captures/PLAN-33.txt` (created, evidence only).
+- **Hand-off:** the runbook lane (operator's rule of 2026-11-09: every plan goes out as a runbook-lane command); the
+  section below is superseded.
+
 ## Hand-Off Command
 
-Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).
+Lane: `runbook` (since 2026-11-10; was `plan-marshall`).
 
 ```text
-/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-33-verify-cli-acts.md"
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-33-verify-cli-acts.md
 ```
 
 ## Write-Boundary
