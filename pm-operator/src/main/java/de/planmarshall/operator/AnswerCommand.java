@@ -34,6 +34,7 @@ import de.planmarshall.api.decision.QuorumBand;
 import de.planmarshall.api.decision.QuorumSupport;
 import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
@@ -1558,7 +1559,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static @Nullable String waiverGate(DecisionEnvelope envelope, String locale) {
         if (envelope.waiverGate() != null && !envelope.waiverGate().isBlank()) {
-            return envelope.waiverGate();
+            return Display.gate(locale, envelope.waiverGate());
         }
         return getMessage(locale, "decision.waiver.gate_fallback");
     }

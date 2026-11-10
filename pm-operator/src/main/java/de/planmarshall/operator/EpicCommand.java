@@ -274,48 +274,60 @@ public final class EpicCommand implements Callable<Integer> {
     }
 
     private void printEpicProcess(PrintWriter out, EpicProcess epic) {
+        var locale = context.clientEnvironment().locale();
         var project = OutputSafety.stripControlSequences(epic.project());
         var cleanEpicId = OutputSafety.stripControlSequences(epic.epicId());
-        out.printf("%s › %s%n", project, cleanEpicId);
+        var epicTitle = OutputSafety.stripControlSequences(Display.title(locale, epic.title(), epic.epicId()));
+        out.printf("%s › %s%n", project, epicTitle);
 
-        var state = OutputSafety.stripControlSequences(epic.state());
+        var state = OutputSafety.stripControlSequences(epicStateWord(locale, epic.state()));
         var runningCount = epic.runningPlans().size();
         var stagedCount = epic.stagedPlans().size();
-        out.printf("%s · epic · %s · %d running · %d staged%n",
-                            cleanEpicId, state, runningCount, stagedCount);
+        var counts = MessageCatalogue.format(locale, "overview.epic.plans",
+                            Map.of("running", runningCount, "staged", stagedCount));
+        var epicKind = MessageCatalogue.format(locale, "overview.kind.epic", Map.of());
+        out.printf("%s · %s · %s · %s%n", cleanEpicId, epicKind, state, counts);
 
-        out.printf("  in %-45s status --project %s%n", project, project);
+        out.printf("  %-48s status --project %s%n",
+                            MessageCatalogue.format(locale, "operator.plan.tree.context", Map.of("project", project)),
+                            project);
 
-        out.println("  running plans:");
+        var noneText = MessageCatalogue.format(locale, "epic.plans.none", Map.of());
+        var runningWord = Display.word(locale, "plan", "running");
+        out.println("  " + MessageCatalogue.format(locale, "epic.plans.running", Map.of()) + ":");
         if (epic.runningPlans().isEmpty()) {
-            out.println("    none");
+            out.println("    " + noneText);
         } else {
             for (var plan : epic.runningPlans()) {
-                var planId = OutputSafety.stripControlSequences(plan.planId());
-                var phase = OutputSafety.stripControlSequences(plan.currentPhase());
-                var pState = OutputSafety.stripControlSequences(plan.phaseState());
-                out.printf("    ▶ running   %-25s %s · %s%n", planId, phase, pState);
+                var planTitle = OutputSafety.stripControlSequences(
+                                    Display.title(locale, plan.title(), plan.planId()));
+                var phase = OutputSafety.stripControlSequences(phaseWord(locale, plan.currentPhase()));
+                var pState = OutputSafety.stripControlSequences(planStateWord(locale, plan.phaseState()));
+                out.printf("    ▶ %-9s %-25s %s · %s%n", runningWord, planTitle, phase, pState);
             }
         }
 
-        out.println("  staged plans:");
+        var stagedWord = Display.word(locale, "plan", "staged");
+        out.println("  " + MessageCatalogue.format(locale, "epic.plans.staged", Map.of()) + ":");
         if (epic.stagedPlans().isEmpty()) {
-            out.println("    none");
+            out.println("    " + noneText);
         } else {
             for (var plan : epic.stagedPlans()) {
-                var planId = OutputSafety.stripControlSequences(plan.planId());
-                var phase = OutputSafety.stripControlSequences(plan.currentPhase());
-                var pState = OutputSafety.stripControlSequences(plan.phaseState());
-                out.printf("    ○ staged    %-25s %s · %s%n", planId, phase, pState);
+                var planTitle = OutputSafety.stripControlSequences(
+                                    Display.title(locale, plan.title(), plan.planId()));
+                var phase = OutputSafety.stripControlSequences(phaseWord(locale, plan.currentPhase()));
+                var pState = OutputSafety.stripControlSequences(planStateWord(locale, plan.phaseState()));
+                out.printf("    ○ %-9s %-25s %s · %s%n", stagedWord, planTitle, phase, pState);
             }
         }
 
-        var reviewStatus = epic.reviewReady() ? "ready" : "not ready";
-        out.printf("  completion review: %s%n", reviewStatus);
+        var reviewTitle = MessageCatalogue.format(locale, "epic.review.title", Map.of());
+        var reviewStatus = MessageCatalogue.format(locale,
+                            epic.reviewReady() ? "epic.review.ready" : "epic.review.not_ready", Map.of());
+        out.printf("  %s: %s%n", reviewTitle, reviewStatus);
 
         if (!epic.alongsideLandings().isEmpty()) {
-            out.println("  alongside landings:");
-            var locale = context.clientEnvironment().locale();
+            out.println("  " + MessageCatalogue.format(locale, "overview.group.alongside", Map.of()) + ":");
             for (var landing : epic.alongsideLandings()) {
                 out.printf("    ✓ %s%n", OutputSafety.stripControlSequences(landingTitle(locale, landing)));
             }
@@ -324,13 +336,60 @@ public final class EpicCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private static String landingTitle(String locale, String landing) {
+    private static String epicStateWord(String locale, @Nullable String state) {
+        if (state == null || state.isBlank()) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+        try {
+            return Display.word(locale, "epic", state);
+        } catch (IllegalArgumentException _) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+    }
+
+    private static String phaseWord(String locale, @Nullable String phase) {
+        if (phase == null || phase.isBlank()) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+        try {
+            return Display.word(locale, "phase", phase);
+        } catch (IllegalArgumentException _) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+    }
+
+    private static String planStateWord(String locale, @Nullable String state) {
+        if (state == null || state.isBlank()) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+        try {
+            return Display.word(locale, "plan", state);
+        } catch (IllegalArgumentException _) {
+            return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        }
+    }
+
+    static String landingTitle(String locale, @Nullable String landing) {
+        if (landing == null || landing.isBlank()) {
+            return Display.title(locale, null, null);
+        }
         var parts = landing.split(" \u00b7 ", 2);
-        var key = "unit." + parts[0];
-        var title = MessageCatalogue.hasKey(locale, key)
-                            ? MessageCatalogue.format(locale, key, Map.of())
-                            : parts[0];
-        return parts.length > 1 ? title + " \u00b7 " + parts[1] : title;
+        var title = Display.title(locale, null, parts[0]);
+        if (parts.length > 1) {
+            var state = landingStateWord(locale, parts[1]);
+            return title + " \u00b7 " + state;
+        }
+        return title;
+    }
+
+    private static String landingStateWord(String locale, String state) {
+        if (MessageCatalogue.hasKey(locale, "state.landing." + state)) {
+            return Display.word(locale, "landing", state);
+        }
+        if (MessageCatalogue.hasKey(locale, "state.task." + state)) {
+            return Display.word(locale, "task", state);
+        }
+        return state;
     }
 
     @Command(name = "add", description = "Starts an epic from its sources or adopts one.")

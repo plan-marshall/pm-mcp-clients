@@ -16,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 
 /**
@@ -140,7 +141,7 @@ public final class ConsoleNotice {
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
-                                Map.of(ID, id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
+                                Map.of(ID, id, SCOPE, scope, "gate", Display.gate(locale, TerminalSanitizer.sanitize(gate)))));
         } else {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
                                 Map.of(ID, id, SCOPE, scope)));

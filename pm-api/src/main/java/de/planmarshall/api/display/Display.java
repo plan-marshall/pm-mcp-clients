@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.decision.GateKind;
 import de.planmarshall.api.message.MessageCatalogue;
 
 /**
@@ -111,6 +112,37 @@ public final class Display {
             }
         }
         return MessageCatalogue.format(locale, "unit.unknown", Map.of());
+    }
+
+    /**
+     * Renders a waiver gate's wire token ({@code ci_check:smoke-tests}, {@code coverage:pm-core})
+     * as its catalogue word ({@code state.gate.*}) and the plain scope name after the colon
+     * ({@code CI check · smoke tests}, {@code CI-Prüfung · smoke tests}).
+     *
+     * @param locale the interface locale
+     * @param gate   the wire gate token, or {@code null}
+     * @return the rendered gate text, or an empty string for {@code null} or blank
+     */
+    public static String gate(String locale, @Nullable String gate) {
+        if (gate == null || gate.isBlank()) {
+            return "";
+        }
+        var kind = GateKind.fromValue(gate);
+        var colon = gate.indexOf(':');
+        if (kind == null) {
+            return colon < 0
+                    ? gate.replace('_', ' ')
+                    : gate.substring(0, colon).replace('_', ' ') + " \u00b7 " + gateScope(gate.substring(colon + 1));
+        }
+        var kindWord = word(locale, "gate", kind.value());
+        if (colon < 0 || colon == gate.length() - 1) {
+            return kindWord;
+        }
+        return kindWord + " \u00b7 " + gateScope(gate.substring(colon + 1));
+    }
+
+    private static String gateScope(String scope) {
+        return scope.replace('_', ' ').replace('-', ' ').trim();
     }
 
     /**

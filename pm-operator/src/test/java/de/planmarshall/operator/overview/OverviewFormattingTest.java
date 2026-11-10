@@ -223,7 +223,7 @@ class OverviewFormattingTest {
         }
 
         var unknownKind = OverviewFormatting.formatAttentionMarker("en", "custom_attention", 1);
-        assertEquals("! custom_attention", unknownKind);
+        assertEquals("! unknown", unknownKind);
         var unknownPlural = OverviewFormatting.formatAttentionMarker("en", "custom_attention", 2);
         assertTrue(unknownPlural.contains("! 2"), unknownPlural);
     }

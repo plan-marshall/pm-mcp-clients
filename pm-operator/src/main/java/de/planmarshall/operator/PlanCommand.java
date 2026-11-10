@@ -917,10 +917,13 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf(FMT_14S, "", ConsoleNotice.stripControlSequences(report.pullRequestUrl()));
             }
 
-            var reason = report.reason() != null && !report.reason().isBlank() ? report.reason() : "—";
+            var locale = context.clientEnvironment().locale();
+            var reason = report.reason() != null && !report.reason().isBlank()
+                    ? report.reason()
+                    : MessageCatalogue.format(locale, "common.none", Map.of());
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
-            var ran = formatRan(report, context.clientEnvironment().locale(), context.clock().getZone());
+            var ran = formatRan(report, locale, context.clock().getZone());
             if (ran != null) {
                 out.printf(FMT_14S, "ran", ran);
             }
@@ -1042,7 +1045,9 @@ public final class PlanCommand implements Callable<Integer> {
         private static String ownCallJudgment(OwnCallRecord ownCall) {
             if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
                 var target = ownCall.conflictTarget();
-                var item = target != null && !target.isBlank() ? ConsoleNotice.stripControlSequences(target) : "-";
+                var item = target != null && !target.isBlank()
+                        ? ConsoleNotice.stripControlSequences(target)
+                        : MessageCatalogue.get("common.unknown");
                 return "conflicts with " + item;
             }
             if ("consistent".equalsIgnoreCase(ownCall.judgment())) {

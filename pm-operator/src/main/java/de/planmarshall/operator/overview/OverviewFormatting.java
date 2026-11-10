@@ -187,13 +187,14 @@ public final class OverviewFormatting {
         var key = needsKeyForKind(kind);
         var label = key != null
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : "! " + clean(kind);
+                            : MessageCatalogue.format(locale, "state.unknown", Map.of());
         if (count > 1) {
-            var bareLabel = label.startsWith("! ") ? label.substring(2) : label;
             var countPrefix = MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", count));
-            return countPrefix + " \u00b7 " + bareLabel;
+            return countPrefix + " \u00b7 " + label;
         }
-        return label;
+        return key != null
+                            ? label
+                            : MessageCatalogue.format(locale, "overview.needs.badge", Map.of("count", 1, "reason", label));
     }
 
     /**
@@ -328,19 +329,30 @@ public final class OverviewFormatting {
         }
         var value = kind.value();
         var key = needsKeyForKind(value);
-        if (key != null && MessageCatalogue.hasKey(locale, key)) {
+        if (key != null) {
             return MessageCatalogue.format(locale, key, Map.of());
         }
-        return value.replace('_', ' ');
+        return MessageCatalogue.format(locale, "state.unknown", Map.of());
     }
 
     /**
-     * Formats the subject of a {@link NeedsOperatorItem}.
+     * Formats the subject of a {@link NeedsOperatorItem} in English.
      *
      * @param item the needs-operator item
      * @return clean subject string
      */
     public static String formatNeedsItemSubject(NeedsOperatorItem item) {
+        return formatNeedsItemSubject(item, "en");
+    }
+
+    /**
+     * Formats the subject of a {@link NeedsOperatorItem}.
+     *
+     * @param item   the needs-operator item
+     * @param locale the target locale
+     * @return clean subject string
+     */
+    public static String formatNeedsItemSubject(NeedsOperatorItem item, String locale) {
         if (item.plan() != null && !item.plan().id().isBlank()) {
             return clean(item.plan().id());
         }
@@ -351,12 +363,12 @@ public final class OverviewFormatting {
             return clean(item.project().id());
         }
         if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
-            return "cleanup";
+            return MessageCatalogue.format(locale, "overview.needs.subject.cleanup", Map.of());
         }
         if (item.kind() == NeedsOperatorKind.CREDENTIAL) {
-            return "credential";
+            return MessageCatalogue.format(locale, "overview.needs.credential", Map.of());
         }
-        return "machine";
+        return MessageCatalogue.format(locale, "common.kind.machine", Map.of());
     }
 
     /**
@@ -368,15 +380,9 @@ public final class OverviewFormatting {
      */
     public static String formatNeedsItemBlocks(@Nullable String blocks, String locale) {
         if (blocks == null || blocks.isBlank()) {
-            if (MessageCatalogue.hasKey(locale, "overview.needs.blocks_nothing")) {
-                return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
-            }
-            return "blocks no work";
+            return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
-        if (MessageCatalogue.hasKey(locale, "overview.needs.blocks")) {
-            return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
-        }
-        return "blocks: " + blocks;
+        return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
     }
 
     /**
@@ -395,10 +401,7 @@ public final class OverviewFormatting {
         if (formatted.isBlank()) {
             formatted = Display.time(locale, since, clock);
         }
-        if (MessageCatalogue.hasKey(locale, "overview.needs.since")) {
-            return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
-        }
-        return "waits since " + formatted;
+        return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
     }
 
     /**

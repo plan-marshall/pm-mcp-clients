@@ -109,7 +109,7 @@ class AnswerDialogueIT {
             DialogueHarness.type(session, "y\ncovered by CI\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("Waived ci_check:integration-tests for fix-relay"), session.screenText());
+            assertTrue(session.screenText().contains("Waived CI check · integration tests for fix-relay"), session.screenText());
             var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/WR-2/answer")));
             assertNotNull(sent);
             assertEquals("waive", sent.get("action"), String.valueOf(sent));

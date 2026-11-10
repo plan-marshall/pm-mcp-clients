@@ -10,10 +10,17 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
+
+import de.planmarshall.api.overview.AlongsideLanding;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,5 +61,29 @@ class GermanAgeDisplayTest {
     void missingTimeIsUnknown() {
         assertEquals("unknown", StatusCommand.formatRelativeTime("en", null, CLOCK));
         assertEquals("unbekannt", StatusCommand.formatRelativeTime("de", null, CLOCK));
+    }
+
+    @Test
+    @DisplayName("each of the unit-title sites renders the placeholder for a missing or unknown unit")
+    void unitTitleSitesHandleMissingAndUnknownUnit() {
+        var missing = new AlongsideLanding(null, "running", null, "unit", null);
+        var unknown = new AlongsideLanding("no.such.unit", "running", null, "unit", null);
+
+        var statusEn = new StringWriter();
+        StatusCommand.renderAlongsideLandings(new PrintWriter(statusEn, true), List.of(missing, unknown), "en");
+        assertTrue(statusEn.toString().contains("landing unknown"), statusEn.toString());
+        assertFalse(statusEn.toString().contains("no.such.unit"), statusEn.toString());
+
+        var statusDe = new StringWriter();
+        StatusCommand.renderAlongsideLandings(new PrintWriter(statusDe, true), List.of(missing, unknown), "de");
+        assertTrue(statusDe.toString().contains("landing unbekannt"), statusDe.toString());
+        assertFalse(statusDe.toString().contains("no.such.unit"), statusDe.toString());
+
+        assertEquals("unknown", EpicCommand.landingTitle("en", null));
+        assertEquals("unbekannt", EpicCommand.landingTitle("de", ""));
+        assertEquals("unknown · done", EpicCommand.landingTitle("en", "no.such.unit · done"));
+        assertEquals("unbekannt · fertig", EpicCommand.landingTitle("de", "no.such.unit · done"));
+        assertEquals("CI failure · done", EpicCommand.landingTitle("en", "remediation.ci-failure · done"));
+        assertEquals("CI-Fehler · fertig", EpicCommand.landingTitle("de", "remediation.ci-failure · done"));
     }
 }

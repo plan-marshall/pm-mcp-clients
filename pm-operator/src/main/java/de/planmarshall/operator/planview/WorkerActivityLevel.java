@@ -133,9 +133,7 @@ public final class WorkerActivityLevel {
     }
 
     private String head(String locale) {
-        var duration = activity.durationSeconds() > 0
-                ? Display.duration(locale, activity.durationSeconds())
-                : "-";
+        var duration = Display.duration(locale, Math.max(0L, activity.durationSeconds()));
         var tokens = TokenFormat.formatTokens(activity.tokensSoFar(), false, locale) + " tokens";
         return MessageCatalogue.format(locale, "operator.plan.activity.subheader", Map.of(
                             "role", PlanViewFormatting.clean(activity.role()),

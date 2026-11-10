@@ -164,6 +164,10 @@ class StateDialogueTest {
         var dialogue = dialogue(new FakeSource(frame), "", writer);
 
         assertEquals(List.of("Landing: Main branch"), dialogue.content(frame));
+        assertEquals("Main branch", StateDialogue.rendered("en", "landing.main"));
+        assertEquals("Main-Branch", StateDialogue.rendered("de", "landing.main"));
+        assertEquals(null, StateDialogue.rendered("en", "no.such.unit"));
+        assertEquals(null, StateDialogue.rendered("de", "no.such.unit"));
     }
 
     @Test

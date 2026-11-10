@@ -121,7 +121,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                             Map.of("mode", mode, "key", key)));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry_value",
-                            Map.of("key", key, "providers", providerHint(status))));
+                            Map.of("key", key, "providers", providerHint(status, locale))));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
                             ? "onboard.settings.credential.rotate" : "onboard.settings.credential.replace", Map.of()));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
@@ -133,9 +133,11 @@ public final class CredentialsCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private static String providerHint(@Nullable Map<String, Object> status) {
+    private static String providerHint(@Nullable Map<String, Object> status, String locale) {
         var tokenPath = status != null ? JsonTree.string(status, "token_path") : null;
-        return tokenPath != null && !tokenPath.isBlank() ? tokenPath : "-";
+        return tokenPath != null && !tokenPath.isBlank()
+                ? tokenPath
+                : MessageCatalogue.format(locale, "common.none", Map.of());
     }
 
     private static String storeHint(@Nullable Map<String, Object> status) {
@@ -349,7 +351,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
             out.println(MessageCatalogue.format(command.locale(), "operator.credentials.entry",
-                                Map.of()) + "  " + providerHint(status));
+                                Map.of()) + "  " + providerHint(status, command.locale()));
             out.flush();
             return 0;
         }

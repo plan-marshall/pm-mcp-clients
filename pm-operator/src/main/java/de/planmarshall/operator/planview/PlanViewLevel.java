@@ -638,7 +638,9 @@ public final class PlanViewLevel {
     }
 
     private static String jobLine(String locale, LeafJob job) {
-        var outcome = job.outcome() != null ? job.outcome() : "-";
+        var outcome = job.outcome() != null
+                ? job.outcome()
+                : MessageCatalogue.format(locale, "common.none", Map.of());
         return MessageCatalogue.format(locale, "plan.leaf.job", Map.of(
                             "kind", PlanViewFormatting.clean(job.kind()),
                             "status", PlanViewFormatting.clean(job.status()),

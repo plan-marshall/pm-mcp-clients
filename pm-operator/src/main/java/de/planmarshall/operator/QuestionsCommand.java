@@ -14,8 +14,10 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.time.Clock;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -59,13 +61,13 @@ public final class QuestionsCommand implements Callable<Integer> {
                                 HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
         }
         if (response.status() == 200) {
-            printQuestions(out, response.body());
+            printQuestions(out, response.body(), context.clientEnvironment().locale(), context.clock());
             return 0;
         }
         throw new OperatorRefusedException("questions", response);
     }
 
-    private static void printQuestions(PrintWriter out, byte[] body) throws IOException {
+    private static void printQuestions(PrintWriter out, byte[] body, String locale, Clock clock) throws IOException {
         var parsed = JsonTree.parse(body);
         if (parsed instanceof List<?> list && !list.isEmpty()) {
             boolean allWaivers = list.stream().allMatch(item -> item instanceof Map<?, ?> m
@@ -78,7 +80,7 @@ public final class QuestionsCommand implements Callable<Integer> {
             }
 
             for (var item : list) {
-                printQuestionItem(out, item);
+                printQuestionItem(out, item, locale, clock);
             }
         } else {
             out.println("No open questions.");
@@ -86,7 +88,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private static void printQuestionItem(PrintWriter out, Object item) {
+    private static void printQuestionItem(PrintWriter out, Object item, String locale, Clock clock) {
         if (item instanceof Map<?, ?> q) {
             var rawId = q.get("id");
             var id = rawId != null ? OutputSafety.stripControlSequences(rawId.toString()) : "";
@@ -110,11 +112,10 @@ public final class QuestionsCommand implements Callable<Integer> {
             var waitingSince = q.get("delivered_at");
             var waitingStr = "";
             if (waitingSince != null) {
-                var ws = waitingSince.toString();
-                if (ws.contains("T")) {
-                    ws = ws.substring(ws.indexOf('T') + 1, Math.min(ws.indexOf('T') + 6, ws.length()));
+                var ws = Display.eventTime(OutputSafety.stripControlSequences(waitingSince.toString()), clock);
+                if (!ws.isEmpty()) {
+                    waitingStr = "   waiting since " + ws;
                 }
-                waitingStr = "   waiting since " + ws;
             }
 
             if (isWaiver) {
@@ -122,7 +123,9 @@ public final class QuestionsCommand implements Callable<Integer> {
                 if (gate == null) {
                     gate = q.get("gate");
                 }
-                var gateStr = gate != null ? OutputSafety.stripControlSequences(gate.toString()) : "gate";
+                var gateStr = gate != null
+                        ? Display.gate(locale, OutputSafety.stripControlSequences(gate.toString()))
+                        : "gate";
                 out.printf("  %-4s  %-15s waiver request: %s%n", id, scope, gateStr);
                 if (!title.isEmpty()) {
                     out.printf("        \"%s\"%s%n", title, waitingStr);

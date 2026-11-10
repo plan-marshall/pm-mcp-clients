@@ -415,13 +415,13 @@ class PlanViewCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("pm-mcp-clients › relay-hardening")),
+                            () -> assertTrue(output.contains("pm-mcp-clients › Relay Hardening")),
                             () -> assertTrue(output.contains("relay-hardening · epic · running · 1 running · 1 staged")),
                             () -> assertTrue(output.contains("running plans:")),
-                            () -> assertTrue(output.contains("▶ running   fix-relay")),
+                            () -> assertTrue(output.contains("▶ running   Fix Relay Transport")),
                             () -> assertTrue(output.contains("staged plans:")),
-                            () -> assertTrue(output.contains("○ staged    relay-auth-v2")),
-                            () -> assertTrue(output.contains("completion review: not ready")),
+                            () -> assertTrue(output.contains("○ staged    Relay Auth v2")),
+                            () -> assertTrue(output.contains("completion review: completion review in progress")),
                             () -> assertTrue(output.contains("CI failure · done"))
         );
     }

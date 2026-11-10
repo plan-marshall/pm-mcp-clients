@@ -110,7 +110,9 @@ final class PlanViewFormatting {
      * @return the task's one-line detail
      */
     static String taskLine(String locale, LeafTask task) {
-        var outcome = task.outcome() != null ? task.outcome() : "-";
+        var outcome = task.outcome() != null
+                ? task.outcome()
+                : MessageCatalogue.format(locale, "common.none", Map.of());
         var line = clean(task.taskId()) + DOT_SEPARATOR
                             + MessageCatalogue.format(locale, "plan.leaf.task", Map.of(
                             "role", clean(task.role()),

@@ -170,7 +170,7 @@ public final class RolesCommand implements Callable<Integer> {
         }
 
         private static String pad(@Nullable String value, int width) {
-            var safe = OutputSafety.stripControlSequences(value == null ? "-" : value);
+            var safe = OutputSafety.stripControlSequences(value == null ? MessageCatalogue.get("common.none") : value);
             if (safe.length() > width) {
                 safe = width <= 1 ? safe.substring(0, width) : safe.substring(0, width - 1) + "…";
             }
@@ -247,7 +247,8 @@ public final class RolesCommand implements Callable<Integer> {
                                 "form", valueOrDash(stringParameter(detail, "form")))));
             out.println(MessageCatalogue.format("operator.roles.show.effective", configuration(detail)));
             out.println(MessageCatalogue.format("operator.roles.show.tools",
-                                Map.of("tools", detail.advisoryToolSet().isEmpty() ? "-"
+                                Map.of("tools", detail.advisoryToolSet().isEmpty()
+                                                    ? MessageCatalogue.get("common.none")
                                                     : OutputSafety.stripControlSequences(
                                                     String.join(", ", detail.advisoryToolSet())))));
             out.println(MessageCatalogue.format("operator.roles.show.narrowed",
@@ -275,7 +276,7 @@ public final class RolesCommand implements Callable<Integer> {
 
         private static String narrowedText(@Nullable NarrowedEffort narrowed) {
             if (narrowed == null) {
-                return "-";
+                return MessageCatalogue.get("common.none");
             }
             var text = OutputSafety.stripControlSequences(narrowed.category());
             if (narrowed.description() == null) {
@@ -405,9 +406,10 @@ public final class RolesCommand implements Callable<Integer> {
             out.println(MessageCatalogue.format("operator.roles.qualify.configuration", configuration(detail)));
             printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics");
             printParameter(out, "operator.roles.qualify.items", detail, "item_counts");
+            var none = MessageCatalogue.get("common.none");
             var tokens = displayValue(detail.configurationParameters().get("expected_tokens"));
             var time = displayValue(detail.configurationParameters().get("expected_time"));
-            if (!"-".equals(tokens) || !"-".equals(time)) {
+            if (!none.equals(tokens) || !none.equals(time)) {
                 out.println(MessageCatalogue.format("operator.roles.qualify.expected",
                                     Map.of("tokens", tokens, "time", time)));
             }
@@ -416,7 +418,7 @@ public final class RolesCommand implements Callable<Integer> {
 
         private static void printParameter(PrintWriter out, String key, RoleDetailResource detail, String parameter) {
             var value = displayValue(detail.configurationParameters().get(parameter));
-            if (!"-".equals(value)) {
+            if (!MessageCatalogue.get("common.none").equals(value)) {
                 out.println(MessageCatalogue.format(key, Map.of("value", value)));
             }
         }
@@ -507,9 +509,9 @@ public final class RolesCommand implements Callable<Integer> {
 
     private static String displayValue(@Nullable Object value) {
         return switch (value) {
-            case null -> "-";
+            case null -> MessageCatalogue.get("common.none");
             case JsonNumber(String text) -> text;
-            case List<?> list -> list.isEmpty() ? "-"
+            case List<?> list -> list.isEmpty() ? MessageCatalogue.get("common.none")
                                 : OutputSafety.stripControlSequences(
                                 String.join(", ", list.stream().map(String::valueOf).toList()));
             case Map<?, ?> map -> OutputSafety.stripControlSequences(JsonTree.write(map));
@@ -518,7 +520,9 @@ public final class RolesCommand implements Callable<Integer> {
     }
 
     private static String valueOrDash(@Nullable String value) {
-        return value == null || value.isBlank() ? "-" : OutputSafety.stripControlSequences(value);
+        return value == null || value.isBlank()
+                ? MessageCatalogue.get("common.none")
+                : OutputSafety.stripControlSequences(value);
     }
 
     private static String roleTarget(String role, @Nullable String project) {
