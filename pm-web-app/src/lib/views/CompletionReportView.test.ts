@@ -323,9 +323,11 @@ describe('CompletionReportView component', () => {
     render(CompletionReportView, { planId: 'fix-relay' });
 
     await waitFor(() => {
-      const anchor = document.querySelector('.report-title--error');
-      expect(anchor).not.toBeNull();
-      expect(document.activeElement).toBe(anchor);
+      const heading = screen.getByRole('heading', {
+        level: 1,
+        name: /The runtime refused the request/i,
+      });
+      expect(document.activeElement).toBe(heading);
     });
   });
 

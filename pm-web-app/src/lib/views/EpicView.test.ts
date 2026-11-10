@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess, type EpicResource, type ReviewResource } from '../api/client';
+import { ClientError } from '../api/errors';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -79,6 +80,16 @@ describe('EpicView component', () => {
     vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
     vi.spyOn(apiClient, 'getEpicResource').mockRejectedValue(new Error('no resource'));
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  });
+
+  it('draws the error pattern when the epic process cannot be read', async () => {
+    vi.spyOn(apiClient, 'getEpicProcess').mockRejectedValue(new ClientError('network_offline'));
+
+    render(EpicView);
+
+    const error = await screen.findByTestId('epic-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   it('renders epic header, breadcrumb, title, state, tokens, and review badge', async () => {

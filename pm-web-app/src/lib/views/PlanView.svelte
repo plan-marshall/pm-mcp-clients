@@ -197,7 +197,7 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
-      errorCode = errorCodeOf(err);
+      errorCode = errorCodeOf(err) || 'unknown';
     } finally {
       if (initial) isLoading = false;
     }

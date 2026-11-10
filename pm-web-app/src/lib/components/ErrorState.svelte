@@ -19,7 +19,7 @@
   /** Reports the act the person took. */
   export let onAct: () => void = () => {};
   /** The heading level of the title, so a view keeps its outline in order. */
-  export let titleLevel: 2 | 3 | 4 | 5 | 6 = 3;
+  export let titleLevel: 1 | 2 | 3 | 4 | 5 | 6 = 3;
 
   $: error = displayError(code, $t);
   $: hasCode = (code ?? '').trim().length > 0;
@@ -27,7 +27,7 @@
 
 <div class="error-state" data-testid="error-state" role="alert">
   <span class="error-state__mark"><Icon name="state.error" size={24} /></span>
-  <svelte:element this={`h${titleLevel}`} class="error-state__title">{error.title}</svelte:element>
+  <svelte:element this={`h${titleLevel}`} class="error-state__title" tabindex="-1">{error.title}</svelte:element>
   <p class="error-state__message">{error.fix}</p>
   {#if actionLabel}
     <Button variant="secondary" on:click={onAct}>{actionLabel}</Button>

@@ -66,7 +66,7 @@
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err);
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }

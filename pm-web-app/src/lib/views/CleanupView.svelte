@@ -87,7 +87,12 @@
     loadError = '';
     try {
       const [cleanupJob, keptRes] = await Promise.all([
-        apiClient.getCleanupJob().catch(() => null),
+        // A job the runtime has none of is an answer, not a failure; every other refusal is the
+        // load's own and reaches the error pattern below.
+        apiClient.getCleanupJob().catch((err: unknown) => {
+          if ((err as Error & { status?: number })?.status === 404) return null;
+          throw err;
+        }),
         apiClient.getKeptCleanup().catch(() => ({ items: [] })),
       ]);
       job = cleanupJob;
@@ -103,7 +108,7 @@
         }
       }
     } catch (err: unknown) {
-      loadError = errorCodeOf(err);
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }

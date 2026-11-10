@@ -154,7 +154,7 @@
       await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
       if (generation === entryGeneration) {
-        loadError = errorCodeOf(e);
+        loadError = errorCodeOf(e) || 'unknown';
       }
     } finally {
       if (generation === entryGeneration) {

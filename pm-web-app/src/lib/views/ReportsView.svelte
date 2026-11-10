@@ -926,6 +926,20 @@
       </div>
     {/if}
 
+    <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
+      {refreshing ? $t('report.list.loading') : ''}
+    </p>
+    {#if loadError && items.length > 0}
+      <div class="reports-error" data-testid="reports-error">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadReports}
+          titleLevel={2}
+        />
+      </div>
+    {/if}
+
     {#if isLoading && items.length === 0}
       <div class="loading-state">
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
@@ -948,19 +962,6 @@
         <p class="empty-title">{$t('report.filter.no_matches')}</p>
       </div>
     {:else}
-      <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
-        {refreshing ? $t('report.list.loading') : ''}
-      </p>
-      {#if loadError}
-        <div class="reports-error" data-testid="reports-error">
-          <ErrorState
-            code={loadError}
-            actionLabel={$t('common.action.retry')}
-            onAct={loadReports}
-            titleLevel={2}
-          />
-        </div>
-      {/if}
       <!-- Grouped List -->
       <div class="reports-tree">
         {#each groupedReports as pGroup (pGroup.key)}
@@ -1333,6 +1334,10 @@
     margin: 0 0 var(--space-2);
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+  }
+
+  .reports-refreshing:empty {
+    margin: 0;
   }
 
   .reports-error {

@@ -148,7 +148,7 @@
       if (!isMounted) return;
       // The failure is a state, not a text: the code is read where it renders, so the words follow
       // a language switch and never show a key.
-      loadError = errorCodeOf(err);
+      loadError = errorCodeOf(err) || 'unknown';
       if (loadError === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
       }

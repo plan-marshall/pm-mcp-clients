@@ -117,7 +117,7 @@
       // The status read behind this one has nothing left to say: end it here.
       controller.abort();
       if (!isMounted || sequence !== loadSequence) return;
-      loadError = errorCodeOf(err);
+      loadError = errorCodeOf(err) || 'unknown';
       devices = [];
       // Nothing says how the listener stands any more: the earlier answer is not a current one.
       listenerKnown = false;

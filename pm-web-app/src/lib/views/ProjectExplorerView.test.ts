@@ -5,6 +5,7 @@ import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ProjectExplorer } from '../api/client';
+import { ClientError } from '../api/errors';
 
 describe('ProjectExplorerView component', () => {
   const mockExplorer: ProjectExplorer = {
@@ -158,6 +159,15 @@ describe('ProjectExplorerView component', () => {
       conflict: false,
       revision: 8,
     });
+  });
+
+  it('draws the error pattern when the explorer cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+
+    const error = await screen.findByTestId('explorer-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
   });
 
   it('renders 4-part explorer view with being added, favourites, recent, and all projects', async () => {

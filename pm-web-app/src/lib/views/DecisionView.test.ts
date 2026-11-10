@@ -4,6 +4,7 @@ import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ChatReadBack, type DecisionEnvelope } from '../api/client';
+import { ClientError } from '../api/errors';
 
 /** The `scrollIntoView` the document carried before a test replaced it. */
 const originalScrollIntoView = Element.prototype.scrollIntoView;
@@ -109,6 +110,16 @@ describe('DecisionView component', () => {
     vi.spyOn(apiClient, 'endDecisionChat').mockRejectedValue(new Error('no chat'));
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     localStorage.clear();
+  });
+
+  it('draws the error pattern of a failed list read instead of the empty word', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    const error = await screen.findByTestId('decisions-error');
+    expect(error).toHaveTextContent('The request took too long');
+    expect(screen.queryByText(/No open decisions/i)).not.toBeInTheDocument();
   });
 
   // A stub a test installed for the scroll is removed again, so no later test of this file runs

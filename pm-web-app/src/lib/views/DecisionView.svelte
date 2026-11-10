@@ -407,7 +407,7 @@
       decisions = await apiClient.getDecisions();
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err);
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }

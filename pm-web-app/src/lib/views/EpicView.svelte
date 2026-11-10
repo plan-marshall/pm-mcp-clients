@@ -162,7 +162,7 @@
       resource = null;
     }
     if (!epic) {
-      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
+      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '') || 'unknown';
     }
     if (initial) isLoading = false;
   }

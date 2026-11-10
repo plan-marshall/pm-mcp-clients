@@ -273,7 +273,7 @@
         detail = null;
       }
     } catch (err: unknown) {
-      errorCode = errorCodeOf(err) || null;
+      errorCode = errorCodeOf(err) || 'unknown';
     } finally {
       isLoadingProjects = false;
     }
@@ -291,7 +291,7 @@
     } catch (err: unknown) {
       if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
         detail = null;
-        detailError = errorCodeOf(err);
+        detailError = errorCodeOf(err) || 'unknown';
       }
     } finally {
       if (requestGeneration === detailRequestGeneration) {

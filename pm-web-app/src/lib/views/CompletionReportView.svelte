@@ -36,7 +36,7 @@
    * the loading and error states keep focus on the visible heading instead of the body.
    */
   function focusReportHeading(): void {
-    const heading = rootEl?.querySelector<HTMLElement>('.report-title');
+    const heading = rootEl?.querySelector<HTMLElement>('.report-title, .error-state__title');
     heading?.focus();
   }
 
@@ -164,9 +164,6 @@
     </div>
   {:else if errorMessage}
     <div class="completion-report__error" data-testid="completion-report-error">
-      <div class="report-title report-title--error sr-only" tabindex="-1">
-        {$t('report.completion.load_failed')}
-      </div>
       <ErrorState
         code={errorMessage}
         actionLabel={$t('common.action.retry')}

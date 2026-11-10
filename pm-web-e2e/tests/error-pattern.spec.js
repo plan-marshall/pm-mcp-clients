@@ -58,5 +58,18 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await expect(error).toBeVisible({ timeout: 20000 });
     await expect(error.getByRole('heading')).toHaveText('The request took too long');
     await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
+  test('shows the offline pattern at once when the mock is already gone', async ({
+    page,
+    request,
+  }) => {
+    await switchScenario(request, 'plan-view');
+    await pair(page, request);
+
+    await stopMockRuntime();
+    await page.goto('/plans/does-not-exist');
+
+    const error = page.getByTestId('error-state');
+    await expect(error).toBeVisible({ timeout: 15000 });
+    await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 });
