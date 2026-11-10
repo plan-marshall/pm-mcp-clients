@@ -121,6 +121,11 @@ child tasks already contain:
 The three states are distinct on purpose: “nothing selected” is not a property of a part, and a
 part that completed without tasks is not a task with an empty feed.
 
+[#changes]
+== The Changes
+
+The size line of the header opens the plan's changes in the narrative panel (link:../shared/plan-view.adoc#changes[Plan View, The Changes]): the list of files on top, and a selected file's hunks below it on `--color-diff-removed` and `--color-diff-added`, in `--font-mono`, the same diff tokens as a proposal of the chat (link:components-chat.adoc#proposal-card[Chat Pieces, Proposal Card]). The tree keeps its selection; selecting a node of the tree replaces the changes in the panel, and the size line brings them back. The address carries the open file (`/plans/{plan_id}?changes=open&file=<path>`), so that a reload or a shared link opens the same file.
+
 [#safety]
 == Untrusted Text
 
