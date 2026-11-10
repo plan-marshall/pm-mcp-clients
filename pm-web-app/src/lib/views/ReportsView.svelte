@@ -424,7 +424,7 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || $t('report.list.load_failed');
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
       refreshing = false;
@@ -948,11 +948,9 @@
         <p class="empty-title">{$t('report.filter.no_matches')}</p>
       </div>
     {:else}
-      {#if refreshing}
-        <p class="reports-refreshing" role="status" data-testid="reports-refreshing">
-          {$t('report.list.loading')}
-        </p>
-      {/if}
+      <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
+        {refreshing ? $t('report.list.loading') : ''}
+      </p>
       {#if loadError}
         <div class="reports-error" data-testid="reports-error">
           <ErrorState

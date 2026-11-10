@@ -3,7 +3,9 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import StatusLabel from '../components/StatusLabel.svelte';
   import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
@@ -76,7 +78,7 @@
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('report.completion.load_failed');
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }
@@ -158,15 +160,19 @@
       >
         {$t('report.completion.loading')}
       </svelte:element>
-      <span aria-hidden="true"><Spinner size="2.5rem" label="" /></span>
+      <span aria-hidden="true"><Skeleton shape="card" rows={2} /></span>
     </div>
   {:else if errorMessage}
-    <div class="completion-report__error" role="alert">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error" tabindex="-1">
+    <div class="completion-report__error" data-testid="completion-report-error">
+      <div class="report-title report-title--error sr-only" tabindex="-1">
         {$t('report.completion.load_failed')}
-      </svelte:element>
-      <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={fetchReport}>{$t('common.action.retry')}</Button>
+      </div>
+      <ErrorState
+        code={errorMessage}
+        actionLabel={$t('common.action.retry')}
+        onAct={fetchReport}
+        titleLevel={titleLevel}
+      />
     </div>
   {:else if data}
     <!-- Path breadcrumb -->

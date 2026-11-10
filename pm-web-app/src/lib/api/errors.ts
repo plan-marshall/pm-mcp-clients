@@ -41,12 +41,19 @@ export function isClientError(value: unknown): value is ClientError {
 }
 
 /**
+ * The shape of a wire error code: a lower-case identifier with underscores (`scope_not_found`,
+ * `timeout`). Anything else — a JavaScript message, an HTTP status, prose from a DOMException — is
+ * not a code and is reported as unknown, so no view renders prose as a code.
+ */
+const ERROR_CODE_PATTERN = /^[a-z][a-z0-9_]*$/;
+
+/**
  * Reads the code a failure stands for.
  *
- * A failure the client raised carries its own code; anything else carries the runtime's code in its
- * message (`httpError` keeps the wire code there), which is what `displayError` resolves. An
- * unreadable failure answers the empty string, so the display layer's unknown fallback is drawn
- * instead of a JavaScript error's text.
+ * A failure the client raised carries its own code; a daemon refusal carries the runtime's wire code
+ * in its message (`httpError` keeps it there), which is what `displayError` resolves. An unreadable
+ * failure answers the empty string, so the display layer's unknown fallback is drawn instead of a
+ * JavaScript error's text.
  *
  * @param value the failure a caller caught
  * @returns the error code, or the empty string when none can be read
@@ -55,8 +62,8 @@ export function errorCodeOf(value: unknown): string {
   if (isClientError(value)) {
     return value.code;
   }
-  if (value instanceof Error) {
-    return value.message.trim();
-  }
-  return typeof value === 'string' ? value.trim() : '';
+  const message =
+    value instanceof Error ? value.message : typeof value === 'string' ? value : '';
+  const trimmed = message.trim();
+  return ERROR_CODE_PATTERN.test(trimmed) ? trimmed : '';
 }

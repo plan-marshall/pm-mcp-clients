@@ -1630,7 +1630,7 @@ describe('ReportsView component', () => {
 
     const h1Elements = document.querySelectorAll('h1');
     expect(h1Elements).toHaveLength(1);
-    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
+    expect(h1Elements[0]).toHaveTextContent(/The runtime refused the request/i);
   });
 
   it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {

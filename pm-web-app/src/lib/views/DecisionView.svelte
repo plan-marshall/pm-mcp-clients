@@ -1294,15 +1294,13 @@
       </div>
     {/if}
 
-    {#if loadError}
-      <div class="error-banner" data-testid="decisions-error">
-        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
-      </div>
-    {/if}
-
     {#if isLoading}
       <div class="loading-state" data-testid="decisions-loading">
         <Skeleton shape="card" rows={3} label={$t('decisions.list.loading')} />
+      </div>
+    {:else if loadError}
+      <div class="error-banner" data-testid="decisions-error">
+        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
       </div>
     {:else if decisions.length === 0}
       <div class="empty-state">

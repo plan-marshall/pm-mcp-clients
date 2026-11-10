@@ -2,7 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type DecompositionCommitResult,
@@ -63,7 +65,7 @@
     try {
       cut = await apiClient.getDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       if (initial) isLoading = false;
     }
@@ -115,7 +117,7 @@
       readBack = { before: cut, after };
       instructOpen = false;
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -132,7 +134,7 @@
     try {
       cut = await apiClient.checkDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -163,7 +165,7 @@
         committed = await apiClient.commitDecomposition(projectId, epicId);
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -251,12 +253,16 @@
 <div class="decomposition" data-testid="epic-decomposition">
   {#if isLoading}
     <div class="decomposition__loading">
-      <Spinner size="2.5rem" label={$t('decomposition.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('decomposition.loading')} />
     </div>
   {:else if errorMessage}
-    <div class="decomposition__error" role="alert" data-testid="decomposition-error">
-      <p>{$t('decomposition.error', { cause: errorMessage })}</p>
-      <Button variant="secondary" onclick={() => load(true)}>{$t('common.action.retry')}</Button>
+    <div class="decomposition__error" data-testid="decomposition-error">
+      <ErrorState
+        code={errorMessage}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => load(true)}
+        titleLevel={2}
+      />
     </div>
   {:else if cut}
     <header class="decomposition__header">

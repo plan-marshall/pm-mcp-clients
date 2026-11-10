@@ -48,12 +48,15 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await switchScenario(request, 'plan-view');
     await pair(page, request);
 
-    // The view is opened after the machine went away, so its load never answers.
+    // Hold the plan read open, so the view really waits on it rather than failing at once; the
+    // machine goes away underneath, and the client's own 15-second limit must end the wait.
+    await page.route('**/api/v1/plans/does-not-exist/**', () => {});
     await stopMockRuntime();
     await page.goto('/plans/does-not-exist');
 
     const error = page.getByTestId('error-state');
-    await expect(error).toBeVisible({ timeout: 15000 });
+    await expect(error).toBeVisible({ timeout: 20000 });
+    await expect(error.getByRole('heading')).toHaveText('The request took too long');
     await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 });

@@ -3,7 +3,9 @@
   import { get } from 'svelte/store';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
@@ -44,7 +46,9 @@
   let isLoadingProjects = false;
   let isLoadingDetail = false;
   let isLoadingEnded = false;
-  let errorMessage: string | null = null;
+  let errorCode: string | null = null;
+  /** The code of a failed detail read, which `ErrorState` resolves to its words. */
+  let detailError = '';
 
   let unsubscribeEvents: (() => void) | null = null;
   /** The plan or epic whose actions the operator opened from its row. */
@@ -255,7 +259,7 @@
 
   async function loadProjects() {
     isLoadingProjects = true;
-    errorMessage = null;
+    errorCode = null;
     try {
       const res = await apiClient.getProjects();
       projects = res.projects || [];
@@ -269,7 +273,7 @@
         detail = null;
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('overview.projects.load_failed');
+      errorCode = errorCodeOf(err) || null;
     } finally {
       isLoadingProjects = false;
     }
@@ -278,6 +282,7 @@
   async function loadProjectDetail(projectId: string) {
     const requestGeneration = ++detailRequestGeneration;
     isLoadingDetail = true;
+    detailError = '';
     try {
       const res = await apiClient.getProjectDetail(projectId);
       if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
@@ -286,6 +291,7 @@
     } catch (err: unknown) {
       if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
         detail = null;
+        detailError = errorCodeOf(err);
       }
     } finally {
       if (requestGeneration === detailRequestGeneration) {
@@ -572,12 +578,21 @@
       <h2 class="sidebar-title">{$t('overview.running.title')}</h2>
       <div class="sidebar-header__actions">
         {#if isLoadingProjects}
-          <Spinner size="1rem" label={$t('overview.projects.loading')} />
+          <Skeleton shape="row" label={$t('overview.projects.loading')} />
         {/if}
       </div>
     </div>
 
-    {#if projects.length === 0 && !isLoadingProjects}
+    {#if errorCode}
+      <div class="sidebar-error" data-testid="overview-error">
+        <ErrorState
+          code={errorCode}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => void loadProjects()}
+          titleLevel={3}
+        />
+      </div>
+    {:else if projects.length === 0 && !isLoadingProjects}
       <div class="sidebar-empty">
         <p>{$t('overview.projects.empty')}</p>
       </div>
@@ -650,7 +665,7 @@
 
         {#if isLoadingEnded}
           <div class="ended-loading">
-            <Spinner size="2rem" label={$t('overview.ended.loading')} />
+            <Skeleton shape="card" rows={3} label={$t('overview.ended.loading')} />
           </div>
         {:else if !endedPage || endedPage.items.length === 0}
           <p class="empty-text">
@@ -859,7 +874,16 @@
 
         {#if isLoadingDetail}
           <div class="detail-loading">
-            <Spinner size="2rem" label={$t('overview.details.loading')} />
+            <Skeleton shape="card" rows={3} label={$t('overview.details.loading')} />
+          </div>
+        {:else if detailError}
+          <div data-testid="overview-detail-error">
+            <ErrorState
+              code={detailError}
+              actionLabel={$t('common.action.retry')}
+              onAct={() => void loadProjectDetail(selectedProjectId ?? '')}
+              titleLevel={3}
+            />
           </div>
         {:else if !detail}
           <p class="empty-text">{$t('overview.projects.none_active')}</p>

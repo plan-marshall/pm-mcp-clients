@@ -639,6 +639,32 @@ describe('ApiClient', () => {
     });
   });
 
+  it('reports a caller deadline that fired as the timeout code', async () => {
+    // Arrange: the caller's bound is a deadline, not a cancellation.
+    const controller = new AbortController();
+    controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert
+    await expect(client.getStatus(controller.signal)).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('turns a body lost mid-transfer into the unknown outcome', async () => {
+    // Arrange: the status line arrives, the body is cut by the connection.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    // Act & Assert
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'network_offline' });
+  });
+
   it('turns a truncated response body into the unknown outcome', async () => {
     // Arrange: the status line and headers arrive, the body never completes.
     globalThis.fetch = vi.fn().mockResolvedValue({

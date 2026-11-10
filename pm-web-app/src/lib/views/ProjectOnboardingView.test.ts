@@ -293,7 +293,9 @@ describe('ProjectOnboardingView component', () => {
 
     render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
 
-    await waitFor(() => expect(screen.getByTestId('project-onboarding-retry')).toBeInTheDocument());
-    expect(screen.getByText('The project setup could not be loaded')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });

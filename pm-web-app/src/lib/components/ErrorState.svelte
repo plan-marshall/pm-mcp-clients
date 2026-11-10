@@ -25,7 +25,7 @@
   $: hasCode = (code ?? '').trim().length > 0;
 </script>
 
-<div class="error-state" data-testid="error-state">
+<div class="error-state" data-testid="error-state" role="alert">
   <span class="error-state__mark"><Icon name="state.error" size={24} /></span>
   <svelte:element this={`h${titleLevel}`} class="error-state__title">{error.title}</svelte:element>
   <p class="error-state__message">{error.fix}</p>

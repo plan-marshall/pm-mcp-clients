@@ -2215,11 +2215,11 @@ export class ApiClient {
     let data: PairingResponse;
     try {
       data = (await res.json()) as PairingResponse;
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new ClientError('network_offline');
+    } catch {
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
       }
-      throw error;
+      throw new ClientError('network_offline');
     }
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
@@ -3140,6 +3140,11 @@ export class ApiClient {
     } catch (error) {
       // A read a newer one superseded is aborted on purpose: it is not the machine going away.
       if (signal?.aborted) {
+        // A caller's own deadline is the same unknown outcome as the client's; a cancellation is
+        // not, and is handed on as it came.
+        if ((signal.reason as Error | undefined)?.name === 'TimeoutError') {
+          throw new ClientError('timeout');
+        }
         throw error;
       }
       if (deadline.aborted) {
@@ -3169,11 +3174,16 @@ export class ApiClient {
       return (await res.json()) as T;
     } catch (error) {
       // A body that never completes is not an answer: the client cannot tell whether the runtime
-      // acted, so it reports the one outcome that says so (D5).
-      if (error instanceof SyntaxError) {
-        throw new ClientError('network_offline');
+      // acted, so it reports the one outcome that says so (D5). That covers a body cut short
+      // (`SyntaxError`) as much as one lost mid-transfer (`TypeError`). A caller's cancellation is
+      // handed on unchanged.
+      if (signal?.aborted && (signal.reason as Error | undefined)?.name !== 'TimeoutError') {
+        throw error;
       }
-      throw error;
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
+      throw new ClientError('network_offline');
     }
   }
 
@@ -3624,12 +3634,12 @@ export class ApiClient {
       this.onOnlineCallback?.();
       try {
         return (await res.json()) as T;
-      } catch (error) {
+      } catch {
         // A body that never completes is not an answer (D5): the outcome is unknown.
-        if (error instanceof SyntaxError) {
-          throw new ClientError('network_offline');
+        if (deadline.aborted) {
+          throw new ClientError('timeout');
         }
-        throw error;
+        throw new ClientError('network_offline');
       }
     }
     const err = await res.json().catch(() => ({}));
