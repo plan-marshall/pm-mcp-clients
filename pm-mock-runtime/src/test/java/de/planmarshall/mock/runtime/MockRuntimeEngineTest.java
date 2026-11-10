@@ -197,6 +197,20 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("refuses a start whose project segment is empty")
+    void shouldRefuseStartWithBlankProject() throws Exception {
+        // Arrange: the path names the start route but carries no project id.
+        var body = "{\"request\":\"anything\"}".getBytes(StandardCharsets.UTF_8);
+
+        // Act
+        var res = send("POST", "/api/v1/projects//plans/start", auth, body, false);
+
+        // Assert
+        assertEquals(404, res.status());
+        assertEquals("project_not_enrolled", res.json().get("error"));
+    }
+
+    @Test
     @DisplayName("goToState transitions to valid state and rejects invalid state")
     void stateTransitions() {
         assertThrows(IllegalArgumentException.class, () -> engine.goToState("non-existent"));

@@ -136,6 +136,19 @@ class DecompositionScenarioTest {
     }
 
     @Test
+    @DisplayName("refuses an edit instruction for a plan the cut does not carry")
+    void shouldRefuseInstructForUnknownPlan() throws Exception {
+        try (var runtime = MockRuntime.start(STATE)) {
+            var instruct = new DecompositionInstructRequest("no-such-plan",
+                    "Rewrite it.", InstructAction.EDIT);
+            var res = post(runtime, BASE + "relay-hardening/decomposition/instruct", instruct.toJson());
+            assertEquals(404, res.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(res.bodyText())), "error"));
+        }
+    }
+
+    @Test
     @DisplayName("refuses a commit while a check fails")
     void shouldRefuseCommitWhileCheckFails() throws Exception {
         try (var runtime = MockRuntime.start(STATE)) {
