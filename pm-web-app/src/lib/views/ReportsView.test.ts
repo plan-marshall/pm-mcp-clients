@@ -267,6 +267,31 @@ describe('ReportsView component', () => {
     });
   });
 
+  it('keeps the rows, the scroll position and an open row menu while the list reloads', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    const menu = await within(card).findByRole('menuitem', { name: /Mark read/i });
+    expect(menu).toBeInTheDocument();
+
+    const tree = document.querySelector('.reports-tree') as HTMLElement;
+    tree.scrollTop = 480;
+
+    // A report without a payload announces that the list should be read again.
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockClear();
+    eventHandler?.('report.sent', {});
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(1));
+    await tick();
+
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(document.querySelector('.reports-tree')).toBe(tree);
+    expect(tree.scrollTop).toBe(480);
+    expect(within(card).getByRole('menuitem', { name: /Mark read/i })).toBeInTheDocument();
+    expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
+  });
+
   it('marks unread rows with a dot and the bold subject', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
