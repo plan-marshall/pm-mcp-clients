@@ -601,6 +601,44 @@ describe('ApiClient', () => {
     expect(capturedSignal?.aborted).toBe(false);
   });
 
+  it('ends a request that never answers in the timeout code after the client limit', async () => {
+    // Arrange: the client's own deadline has passed and the fetch reports the abort.
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert: the failure is the typed timeout, not a bare AbortError.
+    await expect(client.getReports()).rejects.toMatchObject({ code: 'timeout' });
+    expect(timeout).toHaveBeenCalledWith(15_000);
+  });
+
+  it('gives a check the longer client limit', async () => {
+    // Arrange
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert
+    await expect(client.checkUpgrade()).rejects.toMatchObject({ code: 'timeout' });
+    expect(timeout).toHaveBeenCalledWith(30_000);
+  });
+
+  it('keeps a caller abort distinct from the client deadline', async () => {
+    // Arrange: the caller's own controller is the one that aborted.
+    const controller = new AbortController();
+    controller.abort();
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    // Act & Assert: a superseded read is not reported as a timeout.
+    await expect(client.getStatus(controller.signal)).rejects.not.toMatchObject({
+      code: 'timeout',
+    });
+  });
+
   it('reports online again after a failed request and the next success', async () => {
     // Arrange
     const onOffline = vi.fn();
@@ -771,8 +809,11 @@ describe('ApiClient', () => {
 
     // Act & Assert
     await expect(client.findWork('relay', controller.signal)).rejects.toThrow('aborted');
-    // The signal reaches the request, so aborting the search stops the read itself.
-    expect(inits[0]?.signal).toBe(controller.signal);
+    // The caller's abort reaches the request (beside the client's own deadline), so aborting the
+    // search stops the read itself.
+    const bounded = inits[0]?.signal as AbortSignal | undefined;
+    expect(bounded).toBeInstanceOf(AbortSignal);
+    expect(bounded?.aborted).toBe(true);
     expect(onOffline).not.toHaveBeenCalled();
   });
 });

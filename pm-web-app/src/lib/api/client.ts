@@ -1,3 +1,5 @@
+import { ClientError } from './errors';
+
 export interface PairingResponse {
   device_secret: string;
   device_id: string;
@@ -2064,6 +2066,22 @@ function httpError(message: string, status: number): Error {
 }
 
 export class ApiClient {
+  /**
+   * How long one request may wait for the runtime before the client gives up.
+   *
+   * The one limit of every request (UX-S-06, D2/D5): a call that takes longer ends in the client's
+   * own `timeout` code, so no view waits forever on a runtime that stopped answering.
+   */
+  private static readonly REQUEST_TIMEOUT_MS = 15_000;
+
+  /**
+   * How long a check may wait for the runtime.
+   *
+   * A check reads more than a plain request — a decomposition, a premise, an upgrade or an archive
+   * check — so it gets twice the plain limit and still ends in `timeout`.
+   */
+  private static readonly CHECK_TIMEOUT_MS = 30_000;
+
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
@@ -2169,6 +2187,7 @@ export class ApiClient {
   public async pair(code: string): Promise<PairingResponse> {
     const cleanCode = code.trim();
     const url = `${this.baseUrl}/api/v1/pair`;
+    const deadline = AbortSignal.timeout(ApiClient.REQUEST_TIMEOUT_MS);
 
     let res: Response;
     try {
@@ -2178,10 +2197,14 @@ export class ApiClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code: cleanCode }),
+        signal: deadline,
       });
     } catch {
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
       this.onOfflineCallback?.();
-      throw new Error('network_offline');
+      throw new ClientError('network_offline');
     }
 
     if (!res.ok) {
@@ -2189,7 +2212,15 @@ export class ApiClient {
       throw new Error(err.error || 'invalid_code');
     }
 
-    const data: PairingResponse = await res.json();
+    let data: PairingResponse;
+    try {
+      data = (await res.json()) as PairingResponse;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new ClientError('network_offline');
+      }
+      throw error;
+    }
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
       localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
@@ -2456,6 +2487,8 @@ export class ApiClient {
       'POST',
       `${this.decompositionPath(projectId, epicId)}/check`,
       {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -2482,6 +2515,8 @@ export class ApiClient {
       'POST',
       `${this.lessonBase(projectId, lessonId)}/premise-check`,
       {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -3031,7 +3066,13 @@ export class ApiClient {
     latest_version?: string;
     release_notes_url?: string;
   }> {
-    return this.request('POST', '/api/v1/operator/runtime/upgrade/check', {});
+    return this.request(
+      'POST',
+      '/api/v1/operator/runtime/upgrade/check',
+      {},
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
+    );
   }
 
   public async getCleanupJob(): Promise<CleanupJob> {
@@ -3082,6 +3123,7 @@ export class ApiClient {
     path: string,
     body?: unknown,
     signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
   ): Promise<T> {
     if (
       !path.startsWith('/') ||
@@ -3103,21 +3145,30 @@ export class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
+    // Every request carries the client's own deadline. The caller may bring a signal of its own
+    // (a superseded read, or a longer act); both bounds apply, and the one that fired decides the
+    // failure below.
+    const deadline = AbortSignal.timeout(timeoutMs);
+    const bounded = signal ? AbortSignal.any([signal, deadline]) : deadline;
+
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal,
+        signal: bounded,
       });
     } catch (error) {
       // A read a newer one superseded is aborted on purpose: it is not the machine going away.
-      if (signal?.aborted || (error as Error)?.name === 'AbortError') {
+      if (signal?.aborted) {
         throw error;
       }
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
       this.onOfflineCallback?.();
-      throw new Error('network_offline');
+      throw new ClientError('network_offline');
     }
 
     if (res.status === 401) {
@@ -3127,7 +3178,7 @@ export class ApiClient {
         this.clearAuth();
         this.onRevokedCallback?.('unauthorized');
       }
-      throw new Error('unauthorized');
+      throw new ClientError('unauthorized');
     }
 
     if (!res.ok) {
@@ -3136,7 +3187,16 @@ export class ApiClient {
     }
 
     this.onOnlineCallback?.();
-    return res.json() as Promise<T>;
+    try {
+      return (await res.json()) as T;
+    } catch (error) {
+      // A body that never completes is not an answer: the client cannot tell whether the runtime
+      // acted, so it reports the one outcome that says so (D5).
+      if (error instanceof SyntaxError) {
+        throw new ClientError('network_offline');
+      }
+      throw error;
+    }
   }
 
   public async followLink(
@@ -3180,6 +3240,9 @@ export class ApiClient {
     return this.request<ArchiveCheck>(
       'GET',
       `/api/v1/epics/${encodeURIComponent(epicId)}/archive-check`,
+      undefined,
+      undefined,
+      ApiClient.CHECK_TIMEOUT_MS,
     );
   }
 
@@ -3556,15 +3619,20 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${secret}`;
     }
     let res: Response;
+    const deadline = AbortSignal.timeout(ApiClient.REQUEST_TIMEOUT_MS);
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
         body: JSON.stringify(body),
+        signal: deadline,
       });
     } catch {
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
       this.onOfflineCallback?.();
-      throw new Error('network_offline');
+      throw new ClientError('network_offline');
     }
     if (res.status === 401) {
       // As in `request`: only a 401 to a request that carried a secret is auth loss.
@@ -3572,11 +3640,19 @@ export class ApiClient {
         this.clearAuth();
         this.onRevokedCallback?.('unauthorized');
       }
-      throw new Error('unauthorized');
+      throw new ClientError('unauthorized');
     }
     if (res.status === 409 || res.ok) {
       this.onOnlineCallback?.();
-      return (await res.json()) as T;
+      try {
+        return (await res.json()) as T;
+      } catch (error) {
+        // A body that never completes is not an answer (D5): the outcome is unknown.
+        if (error instanceof SyntaxError) {
+          throw new ClientError('network_offline');
+        }
+        throw error;
+      }
     }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
