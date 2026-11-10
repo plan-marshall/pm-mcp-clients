@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-03
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Staged on the operator's decision of 2026-11-10 from
+> Staged plan spec, one shippable unit of work, ready for hand-off through `/plan-marshall`. Staged on the operator's decision of 2026-11-10 from
 > `landings/PLAN-107.md`. This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -140,9 +140,9 @@ marks one page without saying so, and the review body of #394 (4 nitpicks, fixed
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (operator, 2026-11-10: plan-marshall commands again).
 
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-129-web-reports-fifth-residue.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-129-web-reports-fifth-residue.md"
 
 ## Write-Boundary
 

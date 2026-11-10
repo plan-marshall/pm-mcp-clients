@@ -572,6 +572,17 @@ plan spec names the plan, proposal and finding documents it comes from.
   foundation PLAN-147..152 (147 carries the six chat blocks) and views package PLAN-153..157, staged in the chain
   PLAN-45 → 129 → 130 → 147 → 148 → 149 → 150 → {151, 152} → {153..157}. Operator accepted D-1..D-10 of the D1 drafts.
   Not staged: the terminal package (catalogue keys with a Java reader wait for it, D-8) and the D4 voice package.
+- 2026-11-10 (session 3) — PLAN-141 (D6) waits for PR #400 (`docs/zed-acp-ingestion`, the operator's own: _The Changes_ in
+  `shared/plan-view.adoc` and `web-app/plan-view-interaction.adoc`, two-panel terms D6 Q1/Q3 rewrite); operator's choice of
+  three (AskUserQuestion). Spec amended (Q1 gains a Changes-tab question, Q3 rewrites `#changes`). #400 merged `d6896a8f`;
+  the D6 worktree was created from it and PLAN-141 runs as a direct design session beside the four lane slots.
+- 2026-11-10 (session 3) — Finding `rb-33-verify-cli-acts-004` (`CLI-UC-V-04` German clause): the operator chose "exempt
+  runtime text" (AskUserQuestion; recommended). The design already says so (`shared/texts-and-languages.adoc:36`: a
+  model's question is in the model language, its frame in the interface language), so the check's wording was wrong, not
+  the client. The same clause of `CLI-CC-V-01` (PLAN-63) gets the same exemption. Done as a trivial direct change: PR #402
+  (`docs/cli-verify-runtime-text-exempt`, label `skip-bot-review`), merge on the operator's word. Under the reworded
+  clause the finding's own evidence passes (the frame is German), so V-04 reads `pass` once #402 is in; PLAN-33's result
+  file keeps its `fail` row as the record of the old wording.
 
 ## Open Defects
 
@@ -636,6 +647,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-08: `rb-21-cli-answer-dialogue-001.md` (PLAN-21, antigravity), `total_tokens`, `plugin_version` and
   `executor_version` unknown.
   Recurrence 2026-11-09: `rb-120-cli-unknown-running-count-001.md` (PLAN-120, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-10: `rb-45-web-error-loading-pattern-001.md` (PLAN-45, opencode), `total_tokens` and `plugin_version` missing.
+- The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
+  45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
+  and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
+  plan-marshall (`plan-orchestrator` inbox id validation, or the lane's id form).
+- `runbook_lane sonar-facts` refuses `--rules none` beside a confirmed zero (`confirmed_zero_with_rules`), although the skill says
+  `--rules` is `none` at a measured `0` (found by PLAN-45, 2026-11-10). Owner: plan-marshall (runbook lane).
 - Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
   resolved" with 2 unresolved and unanswered; PLAN-21 reported "zero unresolved review threads, self-review clear" with all 20
   CodeRabbit threads unresolved and unanswered (none addressed). Both merged. The counts must be read from `ci pr comments`
@@ -667,6 +685,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   it ("a separate plan"); it is PLAN-126 deliverable 3. (3) `CLI-CC-V-06` — the
   waiver path (`WR-2`) has no `q`-first and no unknown-input PTY case (`AnswerDialogueIT:102-118`) → PLAN-127 (the PLAN-124
   residue plan). Expected-fail list of the PLAN-33 amendment matched (V-09); V-01/V-04/V-08 not yet reported.
+  (4) 2026-11-10 `rb-33-verify-cli-acts-004` (`CLI-UC-V-04` German clause): operator ruled "exempt runtime text"; the clause
+  and `CLI-CC-V-01` reworded by direct PR #402 (see Decisions); V-04 passes under the new wording. Retire this watch at the
+  PLAN-33 landing once #402 is merged. PLAN-33's PR is #398 (open).
+- PLAN-45 landed (PR #399, `9fb2e7fa`, analysed 2026-11-10); see `landings/PLAN-45.md`. Error pattern on every load path,
+  15 s / 30 s client limit, closed client code set, ReportsView refresh keeps the list; Sonar 0 (gate OK, coverage 100 %);
+  merge rule met (CodeRabbit reviewed `6c1c634e`, 6/6 handled). Browser clauses of D1–D3 unmet (reduced matrix). Three-layer:
+  2 major (raw `timeout` on act lines; DecisionView act banner never cleared) + minors → operator: new residue plan PLAN-158
+  (staged). PLAN-129 is unblocked by this landing; PLAN-158 and PLAN-129 share `ReportsView`. PLAN-123 rebases onto the
+  `common.*` keys PLAN-45 added.
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE
