@@ -68,24 +68,34 @@ class FindCommandTest {
     @TempDir
     Path tempDir;
 
+    /** What the console's own terminal drew; the console writes there, not to the verb's writer. */
+    private ByteArrayOutputStream screen;
+
     /**
      * @param environment the environment of the mock runtime
      * @param interactive whether the context stands for a terminal that can choose a match
+     * @param input       the keys the terminal reads, in order
      * @return a context over the mock, whose terminal prints and opens no full-screen view
      */
-    private OperatorContext context(Map<String, String> environment, boolean interactive) {
+    private OperatorContext context(Map<String, String> environment, boolean interactive, String input) {
+        screen = new ByteArrayOutputStream();
+        var terminal = dumbTerminal(input, screen);
         return new OperatorContext(
                             environment,
                             tempDir,
                             interactive,
                             ClientEnvironment.capture(environment),
-                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            () -> terminal,
                             null
         );
     }
 
+    private OperatorContext context(Map<String, String> environment, boolean interactive) {
+        return context(environment, interactive, "");
+    }
+
     private OperatorContext context(Map<String, String> environment) {
-        return context(environment, false);
+        return context(environment, false, "");
     }
 
     private static MockRuntime runningWork() throws IOException {
@@ -101,6 +111,29 @@ class FindCommandTest {
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
         assertEquals(0, code, "find should exit 0, err: " + err);
         return out.toString();
+    }
+
+    private static String runSoftly(OperatorContext context, String... args) {
+        var out = new StringWriter();
+        var err = new StringWriter();
+        PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        return out.toString() + err;
+    }
+
+    private static DumbTerminal dumbTerminal(String input) {
+        return dumbTerminal(input, new ByteArrayOutputStream());
+    }
+
+    private static DumbTerminal dumbTerminal(String input, ByteArrayOutputStream output) {
+        try {
+            return new DumbTerminal(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), output);
+        } catch (IOException e) {
+            throw new IllegalStateException("a dumb terminal always opens", e);
+        }
+    }
+
+    private String consoleOutput() {
+        return screen.toString(StandardCharsets.UTF_8);
     }
 
     @Nested
@@ -151,6 +184,17 @@ class FindCommandTest {
             try (var runtime = runningWork()) {
                 var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())),
                                     "find", "Relay Hardening", "--print");
+
+                assertTrue(output.contains("Relay Hardening"), output);
+            }
+        }
+
+        @Test
+        @DisplayName("takes a title typed without quotes")
+        void takesAnUnquotedTitle() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())),
+                                    "find", "Relay", "Hardening", "--print");
 
                 assertTrue(output.contains("Relay Hardening"), output);
             }
@@ -382,17 +426,37 @@ class FindCommandTest {
         @Test
         @DisplayName("answers Esc by returning nothing")
         void escLeavesTheField() {
-            var reader = readerOf("\u001b");
+            assertNull(FindCommand.readField(readerOf("\u001b"), ""));
+        }
 
-            assertNull(FindCommand.readField(reader, ""));
+        @Test
+        @DisplayName("answers Ctrl+C as Esc does")
+        void interruptLeavesTheField() {
+            assertNull(FindCommand.readField(readerOf("\u0003"), ""));
+        }
+
+        @Test
+        @DisplayName("answers an ended stream by returning nothing")
+        void endLeavesTheField() {
+            assertNull(FindCommand.readField(readerOf(""), ""));
         }
 
         @Test
         @DisplayName("reads the typed text")
         void readsTheTypedText() {
-            var reader = readerOf("  relay \n");
+            assertEquals("relay", FindCommand.readField(readerOf("  relay \n"), ""));
+        }
 
-            assertEquals("relay", FindCommand.readField(reader, ""));
+        @Test
+        @DisplayName("erases the last character on backspace")
+        void erasesOnBackspace() {
+            assertEquals("rela", FindCommand.readField(readerOf("relay\u007f\r"), ""));
+        }
+
+        @Test
+        @DisplayName("ignores a backspace that would erase nothing")
+        void ignoresBackspaceOnEmptyText() {
+            assertEquals("r", FindCommand.readField(readerOf("\u007fr\r"), ""));
         }
 
         @Test
@@ -405,17 +469,116 @@ class FindCommandTest {
         }
 
         private static LineReader readerOf(String input) {
-            var terminal = dumbTerminal(input);
-            return LineReaderBuilder.builder().terminal(terminal).build();
+            return LineReaderBuilder.builder().terminal(dumbTerminal(input)).build();
+        }
+    }
+
+    @Nested
+    @DisplayName("the choice in a terminal")
+    class Choice {
+
+        @Test
+        @DisplayName("offers the matches and leaves on q without opening one")
+        void leavesOnLeaveKey() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true, "q\n"),
+                                    "find", "relay");
+
+                assertAll(
+                                    () -> assertTrue(output.contains("Open a match"), output),
+                                    () -> assertFalse(output.contains("is not offered here"), output)
+                );
+            }
         }
 
-        private static DumbTerminal dumbTerminal(String input) {
-            try {
-                return new DumbTerminal(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)),
-                                    new ByteArrayOutputStream());
-            } catch (IOException e) {
-                throw new IllegalStateException("a dumb terminal always opens", e);
+        @Test
+        @DisplayName("re-asks for a number that is not offered and opens the one selected")
+        void opensTheSelectedMatch() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = runSoftly(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true,
+                                    "99\n2\n"), "find", "relay");
+
+                assertAll(
+                                    () -> assertTrue(output.contains("99 is not offered here"), output),
+                                    () -> assertTrue(output.contains("Fix Relay Transport"), output)
+                );
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("the console's / field")
+    class Console {
+
+        @Test
+        @DisplayName("/relay lists the matches and q returns to the prompt")
+        void slashWithTextListsTheMatches() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = console(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()),
+                                    "/relay\nq\nexit\n");
+
+                assertAll(
+                                    () -> assertTrue(output.contains("Go to work by name"), output),
+                                    () -> assertTrue(output.contains("Fix Relay Transport"), output)
+                );
+            }
+        }
+
+        @Test
+        @DisplayName("a bare / opens the field and Enter lists the matches")
+        void bareSlashOpensTheField() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = console(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()),
+                                    "/\nrelay\nq\nexit\n");
+
+                assertTrue(output.contains("Fix Relay Transport"), output);
+            }
+        }
+
+        @Test
+        @DisplayName("an empty field is refused with the catalogue text")
+        void emptyFieldIsRefused() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = console(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()),
+                                    "/\n\n\nexit\n");
+
+                assertTrue(output.contains("Type a name to look for."), output);
+            }
+        }
+
+        @Test
+        @DisplayName("Esc leaves the field with nothing sent")
+        void escLeavesTheField() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = console(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), "/\n\u001b");
+
+                assertFalse(output.contains("Fix Relay Transport"), output);
+            }
+        }
+
+        @Test
+        @DisplayName("a typed name is passed after -- so it is never read as an option")
+        void typedNameTravelsAfterTheOptionTerminator() throws Exception {
+            try (var runtime = runningWork()) {
+                var output = console(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), "/--print\nexit\n");
+
+                assertAll(
+                                    () -> assertTrue(output.contains("Nothing matches \u201c--print\u201d."), output),
+                                    () -> assertFalse(output.contains("Usage:"), output)
+                );
+            }
+        }
+
+        /**
+         * @param environment the environment of the mock runtime
+         * @param keys        the keys the operator types at the console
+         * @return what the console drew
+         * @throws IOException when the console fails
+         */
+        private String console(Map<String, String> environment, String keys) throws IOException {
+            var context = context(environment, true, keys);
+            PmOperator.execute(context, new PrintWriter(new StringWriter()), new PrintWriter(new StringWriter()));
+            return consoleOutput();
         }
     }
 }

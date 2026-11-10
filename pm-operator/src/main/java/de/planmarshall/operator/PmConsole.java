@@ -439,7 +439,9 @@ public final class PmConsole {
             out.flush();
             return;
         }
-        runOperatorVerb(List.of("find", query), out, reader, terminal);
+        // `--` ends the options: the typed text is a name, so one that starts with `-` is never read
+        // as an option or as the project selector.
+        runOperatorVerb(List.of("find", "--", query), out, reader, terminal);
     }
 
     /**

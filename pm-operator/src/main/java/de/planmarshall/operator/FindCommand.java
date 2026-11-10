@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +22,7 @@ import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
+import org.jline.utils.NonBlockingReader;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
@@ -92,6 +94,9 @@ public final class FindCommand implements Callable<Integer> {
 
     private static final int DELETE = 127;
 
+    /** How long a character after an {@code ESC} is still taken as part of its sequence. */
+    private static final long PEEK_MILLIS = 20;
+
     private static final String SEPARATOR = " \u00b7 ";
 
     private static final String PATH_SEPARATOR = " \u203a ";
@@ -105,10 +110,9 @@ public final class FindCommand implements Callable<Integer> {
     @Spec
     CommandSpec spec = CommandSpec.create();
 
-    @Parameters(index = "0", arity = "0..1",
+    @Parameters(arity = "0..*",
                         paramLabel = "<text>", description = "Part of an id or a title, or a pull request number.")
-    @Nullable
-    String text;
+    List<String> text = new ArrayList<>();
 
     @Option(names = "--print", description = "Prints the matches into the scrollback instead of choosing one.")
     boolean print;
@@ -121,7 +125,7 @@ public final class FindCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
-        var query = text == null ? "" : text.strip();
+        var query = String.join(" ", text).strip();
         if (query.isEmpty()) {
             out.println(MessageCatalogue.format(locale, "overview.find.no_text", Map.of()));
             out.flush();
@@ -203,7 +207,7 @@ public final class FindCommand implements Callable<Integer> {
         var details = new StringBuilder(locationOf(match));
         appendWithSeparator(details, endedOf(match, locale));
         appendWithSeparator(details, MessageCatalogue.format(locale, "operator.find.open",
-                            Map.of("command", openCommand(match))));
+                            Map.of("command", TerminalSanitizer.sanitizeLine(openCommand(match)))));
         return details.toString();
     }
 
@@ -395,6 +399,11 @@ public final class FindCommand implements Callable<Integer> {
                 endField(terminal);
                 return null;
             }
+            if (typed == ESCAPE) {
+                // An arrow key or an Alt combination sends more after the ESC; leaving them unread
+                // would hand them to the next prompt as typed text.
+                discardPending(chars);
+            }
             if (typed < 0 || typed == ESCAPE || typed == INTERRUPT) {
                 endField(terminal);
                 return null;
@@ -427,6 +436,22 @@ public final class FindCommand implements Callable<Integer> {
     private static void endField(Terminal terminal) {
         terminal.writer().println();
         terminal.writer().flush();
+    }
+
+    /**
+     * Drops what a terminal sequence left behind after its {@code ESC}: an arrow key or an Alt
+     * combination sends more characters, and they would be read as typed text at the next prompt.
+     *
+     * @param chars the terminal's characters
+     */
+    private static void discardPending(NonBlockingReader chars) {
+        try {
+            while (chars.peek(PEEK_MILLIS) >= 0) {
+                chars.read();
+            }
+        } catch (IOException _) {
+            // Nothing more to discard: the field leaves as it is.
+        }
     }
 
     /** The runtime the request goes to, so a case can hand one in. */

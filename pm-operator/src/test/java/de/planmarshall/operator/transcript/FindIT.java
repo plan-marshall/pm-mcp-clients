@@ -74,6 +74,8 @@ class FindIT {
             assertEquals(0, session.exitCode(), session.rawOutput());
             assertFalse(session.rawOutput().contains("Fix Relay Transport"),
                                 "no match was listed, so nothing was searched:\n" + session.rawOutput());
+            assertFalse(session.rawOutput().contains("Nothing matches"),
+                                "no search ran at all, not even one without a match:\n" + session.rawOutput());
         }
     }
 
