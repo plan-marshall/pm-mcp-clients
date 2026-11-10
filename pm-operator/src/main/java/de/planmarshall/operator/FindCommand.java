@@ -392,7 +392,7 @@ public final class FindCommand implements Callable<Integer> {
         var chars = terminal.reader();
         var text = new StringBuilder();
         while (true) {
-            var typed = readKey(chars, terminal);
+            var typed = readKey(chars);
             if (leavesField(typed)) {
                 endField(terminal);
                 return null;
@@ -415,11 +415,10 @@ public final class FindCommand implements Callable<Integer> {
      * an Alt combination sends more characters, and they would be read as typed text at the next
      * prompt.
      *
-     * @param chars    the terminal's characters
-     * @param terminal the terminal the field is drawn on
+     * @param chars the terminal's characters
      * @return the key, or {@code -1} when the stream ended or failed
      */
-    private static int readKey(NonBlockingReader chars, Terminal terminal) {
+    private static int readKey(NonBlockingReader chars) {
         int typed;
         try {
             typed = chars.read();
