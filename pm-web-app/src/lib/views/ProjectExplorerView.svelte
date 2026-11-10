@@ -21,6 +21,8 @@
   let explorer = $state<ProjectExplorer | null>(null);
   let isLoading = $state(true);
   let errorMessage = $state<string | null>(null);
+  /** A failed act on the list, shown beside it instead of replacing a loaded list. */
+  let actionError = $state('');
 
   let filter = $state('');
   let sortBy = $state<'name' | 'most_used'>('name');
@@ -142,8 +144,8 @@
     try {
       await apiClient.toggleFavourite(project.project_id, !project.is_favourite);
       await loadExplorer();
-    } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('project.explorer.favourite_failed');
+    } catch {
+      actionError = $t('project.explorer.favourite_failed');
     }
   }
 
@@ -507,6 +509,11 @@
       />
     </div>
   {:else if explorer}
+    {#if actionError}
+      <div class="alert alert--danger" role="alert" data-testid="explorer-action-error">
+        {actionError}
+      </div>
+    {/if}
     {#if reorderError}
       <div class="alert alert--danger" role="alert" data-testid="reorder-error">
         {reorderError}

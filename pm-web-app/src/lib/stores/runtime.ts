@@ -491,10 +491,14 @@ export async function initRuntime(): Promise<void> {
       isInitialized: true,
       // The browser still holds its pairing; a status read that failed is no reason to send the
       // person back to the pairing page, or away from the address they opened. The view that
-      // address names then draws the error pattern of the load it could not finish.
+      // address names then draws the error pattern of the load it could not finish. The pairing and
+      // entry pages are not views to land on, so they keep the previous route instead.
       isPaired: true,
       isOffline: true,
-      currentRoute: requested ? requested.route : s.currentRoute,
+      currentRoute:
+        requested && requested.route !== 'pair' && requested.route !== 'entry'
+          ? requested.route
+          : s.currentRoute,
       selectedPlanId: requested?.planId ?? s.selectedPlanId,
       selectedEpicId: requested?.epicId ?? s.selectedEpicId,
       startProjectId: requested?.projectId ?? s.startProjectId,

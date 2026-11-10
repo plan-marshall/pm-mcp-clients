@@ -45,6 +45,9 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     page,
     request,
   }) => {
+    // The client's 15-second deadline is the assertion's own subject, so the test carries a bound
+    // above the default 30 s and asserts inside it with a margin.
+    test.setTimeout(45000);
     await switchScenario(request, 'plan-view');
     await pair(page, request);
 
@@ -55,7 +58,7 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await page.goto('/plans/does-not-exist');
 
     const error = page.getByTestId('error-state');
-    await expect(error).toBeVisible({ timeout: 20000 });
+    await expect(error).toBeVisible({ timeout: 25000 });
     await expect(error.getByRole('heading')).toHaveText('The request took too long');
     await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
   });

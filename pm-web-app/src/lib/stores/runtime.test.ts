@@ -114,6 +114,21 @@ describe('the runtime store', () => {
     expect(state.selectedPlanId).toBe('fix-relay');
   });
 
+  it('keeps the previous route when a failed status read addresses the pairing page', async () => {
+    // Arrange: the address names the pairing page, which is not a view to land on.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState(null, '', '/pair');
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'overview' }));
+    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(new ClientError('network_offline'));
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).isPaired).toBe(true);
+  });
+
   it('clears the offline state when the connection returns', async () => {
     // Arrange
     localStorage.setItem('pm_device_secret', 'pmw_valid');

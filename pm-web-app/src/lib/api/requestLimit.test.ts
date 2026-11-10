@@ -27,13 +27,15 @@ function walk(directory: string): string[] {
   return found;
 }
 
+const FIFTEEN_SECONDS = /\b15_?000\b|\b15\s*\*\s*1_?000\b|\b15e3\b/;
+
 describe('the one client-level request limit', () => {
   it('keeps 15_000 only in the client limit and the listener retry interval', () => {
     const offenders: string[] = [];
     for (const file of walk(SOURCE_DIR)) {
       if (!/\.(ts|js|svelte)$/.test(file) || /\.(test|spec)\.(ts|js)$/.test(file)) continue;
       const text = fs.readFileSync(file, 'utf-8');
-      if (!text.includes('15_000')) continue;
+      if (!FIFTEEN_SECONDS.test(text)) continue;
       const relative = path.relative(SOURCE_DIR, file).split(path.sep).join('/');
       if (relative === 'lib/api/client.ts' || relative === 'lib/views/ListenerOffView.svelte') {
         continue;

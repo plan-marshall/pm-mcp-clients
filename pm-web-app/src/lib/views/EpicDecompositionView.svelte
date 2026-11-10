@@ -20,6 +20,8 @@
   let cut = $state<EpicDecomposition | null>(null);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  /** The code of a failed cut read, which replaces the cut with the error pattern. */
+  let loadError = $state('');
   let busy = $state(false);
   let committed = $state<DecompositionCommitResult | null>(null);
   let droppedPlans = $state<string[]>([]);
@@ -61,11 +63,11 @@
   async function load(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    errorMessage = '';
+    loadError = '';
     try {
       cut = await apiClient.getDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       if (initial) isLoading = false;
     }
@@ -255,16 +257,21 @@
     <div class="decomposition__loading">
       <Skeleton shape="card" rows={3} label={$t('decomposition.loading')} />
     </div>
-  {:else if errorMessage}
+  {:else if loadError}
     <div class="decomposition__error" data-testid="decomposition-error">
       <ErrorState
-        code={errorMessage}
+        code={loadError}
         actionLabel={$t('common.action.retry')}
         onAct={() => load(true)}
         titleLevel={2}
       />
     </div>
   {:else if cut}
+    {#if errorMessage}
+      <div class="decomposition__error" data-testid="decomposition-action-error">
+        <ErrorState code={errorMessage} titleLevel={2} />
+      </div>
+    {/if}
     <header class="decomposition__header">
       <h1 class="decomposition__title" data-testid="decomposition-title">
         {$t('decomposition.title', { epic: cut.epic_id })}

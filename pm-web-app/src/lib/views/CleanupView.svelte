@@ -93,6 +93,8 @@
           if ((err as Error & { status?: number })?.status === 404) return null;
           throw err;
         }),
+        // The kept list is a soft read on purpose: a failure here must not hide the delete list
+        // that the person came for, so the kept tab shows none rather than an error.
         apiClient.getKeptCleanup().catch(() => ({ items: [] })),
       ]);
       job = cleanupJob;

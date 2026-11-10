@@ -629,7 +629,7 @@
     <div class="plan-view__loading" data-testid="plan-loading">
       <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
     </div>
-  {:else if errorCode}
+  {:else if errorCode && !plan}
     <div class="plan-view__error" data-testid="plan-error">
       <ErrorState
         code={errorCode}
@@ -639,6 +639,16 @@
       />
     </div>
   {:else if plan}
+    {#if errorCode}
+      <div class="plan-view__error" data-testid="plan-error">
+        <ErrorState
+          code={errorCode}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => loadPlanProcess(false)}
+          titleLevel={2}
+        />
+      </div>
+    {/if}
     <!-- Path Navigation Header -->
     <header class="plan-header" data-testid="plan-header">
       <div class="plan-header__top">
