@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-auto[An Epic Runs by Itself]; link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
 An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan View]): the whole epic at a glance, from which the operator reaches any of its plans and acts on the epic. It opens from the epic's row in Running Work (link:plan-overview.adoc[Plan Overview]).
 
@@ -50,7 +50,22 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
 * *Tokens*: the tokens of the epic so far, with the split: the sum of its plans' and of its own tasks (decompose, landing, review), as the runtime sums them (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]), in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. Where some tasks were measured and others not, the figure is a floor with `≥` and the coverage (`common.tokens.coverage`); where model calls happened but no task's usage was measured, it is `not measured` with the coverage, never `0` and never a `≥`. One step away: the figure per plan and the epic's own, each plan leading to its plan view. The epic has no budget, limit, or money figure of its own; an ended epic shows its final figure.
 * *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts (the automatic mode switched among them), decompositions, landings, and what the epic did by itself after a plan ended (<<reactions>>).
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
+* *Intent*: where the epic ends, its done-when checks, its non-goals, what is not yet specified, and each plan's done-when (link:intent-and-outline.adoc#epic[Intent and Outline, The Epic's Intent]).
 * *An ended epic* shows read-only as it ended, with its end (`completed`, `cancelled`, or `released`; link:work-actions.adoc#outcomes[How a Plan Ends]), reason, and end time in the head, its plans with how each ended (a plan aborted from an integrity hold by its outcome `aborted`), without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
+
+[#tabs]
+=== The Tabs of the Web App
+
+In the web app the epic is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]); the parts above take two forms there.
+
+* *As the object column*: the head of link:../web-app/components-tags.adoc#tag-places[Web App, Tags and Kinds, One Fixed Place] with the epic's acts, and under it the line of its tokens (`overview.epic.tokens`, with its one-step disclosure per plan, as the plan's tokens line); then five tabs, `tab={id}` in the address (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]):
+** *Plans* (`plans`, the default): the workstreams with their plans, as above.
+** *Intent* (`intent`): the sources at its top, as stored, then the epic's intent (link:intent-and-outline.adoc#epic[Intent and Outline, The Epic's Intent]): where the epic ends, and what it was cut from.
+** *Landings* (`landings`): the landings with their pull requests and the epic's analysis.
+** *Reviews* (`reviews`): the findings and the watches with their counts, each opening its review (link:work-actions.adoc#review[Reviewing Findings or Watches]); the tab carries a `CountBadge` `! n` while findings are new.
+** *Events* (`events`): the epic's history, newest first.
+* *As a list column*, while one of its plans is open to its right: the compact head and its plans grouped by workstream, a workstream a group head and no level; nothing of the other tabs.
+* An ended epic has the same tabs, read-only. The terminal keeps the one view of the sketch above (link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, An Epic's View]).
 
 [#reactions]
 == What the Epic Does by Itself
@@ -224,4 +239,14 @@ Keys of the area `overview`, shared by both clients.
 |`overview.epic.tokens_own`
 |the epic's own tasks
 |die eigenen Tasks des Epics
+
+|`overview.epic.tab.plans`
+|Plans
+|Pläne
+
+|`overview.epic.tab.reviews`
+|Reviews
+|Prüfungen
 |===
+
+The tabs _Landings_ and _Events_ take `overview.epic.landings` and `overview.epic.events`, the tab _Intent_ `intent.tab.title` (link:intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]).

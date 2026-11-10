@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:README.adoc#colour[Web App, Semantic Colour Tokens], link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs], link:../shared/needs-and-find.adoc#waits[What Waits] (the closed list of what needs the operator), link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]_
 
-Status: `AGREED`. A part of link:components.adoc[Components]: every tag-like element of the web app — state, reason, count, id, pull request, kind, phase, marker — as one closed set, where each stands, what colour it may take, and where its word comes from; and the kind of an object with its mark and its three tints. Its rules speak of _the object shown_ and _the selected row_; the columns that show them are the navigation design's.
+Status: `DRAFT`. A part of link:components.adoc[Components]: every tag-like element of the web app — state, reason, count, id, pull request, kind, phase, marker — as one closed set, where each stands, what colour it may take, and where its word comes from; and the kind of an object with its mark and its three tints. Its rules speak of _the object shown_ and _the selected row_; the columns that show them are the navigation design's.
 
 [#tag-set]
 == One Closed Set of Tags
@@ -86,16 +86,18 @@ An 8 px dot in the tone of the state, followed by the state word in `--color-tex
 
 |`danger`
 |`--color-danger`
-|failed, landing failed
+|failed, landing failed; a criterion or a done-when check not met
 
 |`success`
 |`--color-success`
-|done, merged, ready, completed
+|done, merged, ready, completed; a criterion or a done-when check met
 
 |`neutral`
 |`--color-neutral`
-|staged, paused, ended, cancelled, released, not taken
+|staged, paused, ended, cancelled, released, not taken; a criterion not verified or not reviewed yet, a done-when check pending
 |===
+
+*Verdicts* are states too: a criterion of a plan's intent (`state.criterion.*`) and a done-when check of an epic (`state.check.*`) take a `StatusLabel` (link:../shared/intent-and-outline.adoc#web[Intent and Outline, The Web App]). `not verified` is neutral, never attention: it is evidence for the operator, not something that waits for them (the operator, 2026-11-10, D6).
 
 The word is the shared display word of the state (`state.<kind>.<value>`, through the display layer's `displayState`), never a wire value and never an area's own word for the same state (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, One Word per Value]). In a list the state takes a slot of fixed width, so the dots of the rows stand one under the other.
 

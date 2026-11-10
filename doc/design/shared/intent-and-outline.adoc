@@ -23,7 +23,7 @@ Every text of a record may come from a model or a source. Both clients show it a
 [#intent]
 == The Plan's Intent
 
-The plan view opens the intent record one step from its head, beside the process and the completion report (link:plan-view.adoc[Plan View]). The record is shown in one order, top to bottom.
+The plan view opens the intent record one step from its head, beside the process and the completion report (link:plan-view.adoc[Plan View]): in the web app its tab _Intent_ (link:plan-view.adoc#tabs[Plan View, The Tabs of the Web App]), in the terminal a section of the view (<<terminal>>). The record is shown in one order, top to bottom; before refine has submitted one, the place says so (`intent.plan.none`).
 
 [#intent-head]
 === The Head
@@ -101,7 +101,7 @@ The verdict and its reason belong together. The server refuses a `not_met` or `n
 [#non-goals]
 === Non-Goals
 
-The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. They are not a footnote: every one of them is a claim the plan does not make, and the outline's deliverables are read against them. At least one is required.
+The non-goals are shown as a list, each with its id (`NG-n`, the record's own, never a position) and its sentence. They are not a footnote: every one of them is a claim the plan does not make, and the outline's deliverables are read against them. At least one is required.
 
 [#choices]
 === Choices and Who Made Them
@@ -116,7 +116,7 @@ The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. T
 
 |`quorum`
 |`a quorum decided`
-|with the answered question and the vote's support where the choice carries it
+|with the answered question (`Q-n`) one step away; the record carries no vote support, and none is shown
 
 |`role`
 |`the model's call`
@@ -127,7 +127,7 @@ The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. T
 |with the evidence the record names (a path or a `pm://` URI)
 |===
 
-The separation is the point of the list. An operator reads first what they or a quorum decided, then what the model chose on its own; the model's calls are not recommendations and carry no vote. A choice with an ADR relation (`follows` or `contradicts`) names the ADR, and a `contradicts` choice is always the operator's.
+The separation is the point of the list. An operator reads first what they or a quorum decided, then what the model chose on its own; the model's calls are not recommendations and carry no vote. The decider is the record's word, `role` for the model's own call. A choice with an ADR relation (`adr`: its id and `follows` or `contradicts`) names the ADR, and a `contradicts` choice is always the operator's.
 
 * *Options weighed*: shown with the choice where the record carries them, in the record's order, never sorted to recommend one.
 * *No question for a model call*: a role or fact choice names none; the server refuses one that does.
@@ -220,7 +220,7 @@ A dependency the plan adds is never shown as an unqualified coordinate. Each row
 [#epic]
 == The Epic's Intent
 
-An epic states where it ends before it is cut into plans. The epic view and the decomposition's review show the same record (link:epic-view.adoc[Epic View]; link:starting-work.adoc[Starting Work]).
+An epic states where it ends before it is cut into plans. The epic view and the decomposition's review show the same record: in the web app the epic's tab _Intent_, with the epic's sources at its top (link:epic-view.adoc#tabs[Epic View, The Tabs of the Web App]), and above the workstreams of the decomposition (link:starting-work.adoc#decomposition[Starting Work, The Decomposition]).
 
 [#epic-destination]
 === Destination and Done-When
@@ -241,7 +241,7 @@ An epic states where it ends before it is cut into plans. The epic view and the 
 [#oversize]
 == The `over_size` Distribution
 
-A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. The compiled multiple is `3 ×`; a role artifact may lower it, never raise it, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the settings view shows the measured distribution.
+A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. The compiled multiple is `3 ×`; a role artifact may lower it, never raise it, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the place where a project changes it shows the measured distribution: the runtime measures it per project and role (`GET /api/v1/projects/{id}/metrics/oversize`), and the web app shows it in the project's setup (<<web>>).
 
 [#buckets]
 === The Buckets
@@ -273,12 +273,25 @@ The terminal shows each record as a section of the plan or epic view, not as a s
 [#web]
 === The Web App
 
-The web app shows the same order in the plan or epic detail: the intent as a card with the goal and the criterion list, a verdict chip per criterion (`met`, `not met`, `not verified`, `not reviewed yet`) with the reason one expansion away, the choices grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria. The `over_size` distribution is a small bar chart in the role's settings, with the counts and the flagged share in text, so it is readable without colour and at phone width.
+The web app shows the same order in the tab _Intent_ of the plan and of the epic (link:plan-view.adoc#tabs[Plan View, The Tabs of the Web App]; link:epic-view.adoc#tabs[Epic View, The Tabs of the Web App]): the intent with the goal and the criterion list, each criterion's verdict, the choices grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria.
+
+* *A verdict* is a `StatusLabel` (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]): a criterion's `state.criterion.met` (success), `.not_met` (danger), `.not_verified` and `.not_reviewed` (neutral: never a warning), a done-when check's `state.check.pending` (neutral), `.met` and `.not_met`; the reason stands one expansion away.
+* *The `over_size` distribution* is a small bar chart on the project page's setup tab (`/projects/{id}?tab=setup`, link:project-explorer.adoc#project-page[Project Explorer, The Project Page]), one per role whose multiple the project sets, with the counts and the flagged share in text, so it is readable without colour and at phone width.
 
 [#live]
 === Live and One Step Away
 
 Both clients update the records with the plan's state: a new revision of the intent or outline is shown as the accepted record, with `the record changed` once, and an open decision or builder question keeps its place. Every referenced element (a deliverable, a criterion, a plan's done-when, the decision that answered a question) is one step away; a client never flattens the records into prose that loses the way back.
+
+[#contract]
+=== What the Contract Carries
+
+The records above are the engine's (link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record]). The client contract `pm-api` (`PlanIntentResource`, `BuilderCheckResource`) does not yet carry all of them: a choice's `adr` and `evidence`, the non-goals as items `{id, text}`, the decider `role` (the contract says `model`), and the reason of a `not_run` builder check. The contract and the mock gain them before the web app's intent panels are built; until then a client shows what the contract carries and leaves the rest out, never guessing it. Vote support is in neither record and is not shown.
+
+[#texts]
+=== Texts
+
+The words of this design, both clients', are link:intent-and-outline-texts.adoc[Intent and Outline, Texts] (area `intent`; the verdicts are `state.criterion.*` and `state.check.*`).
 
 [#not]
 == What the Clients Do Not Do
@@ -287,3 +300,8 @@ Both clients update the records with the plan's state: a new revision of the int
 * They do not derive a criterion's verdict from a deliverable's state, a done-when's verdict from a plan's row, or a flagged share from raw tokens.
 * They do not fill a missing field with a guess, hide a `not_verified` criterion, or show a model's call as a recommendation or a decision of the operator.
 * They do not compute the builder check's routing or the verification sweep's missing key link; the runtime states both.
+
+[#decisions]
+== Decisions of the Operator
+
+Settled by the operator on 2026-11-10 (D6): the records stand in the tab _Intent_ of the plan and of the epic, the epic's sources at the top of its tab; a verdict is a `StatusLabel` state; the words are a texts document of their own, area `intent`; the `over_size` chart stands on the project page's setup tab; the design shows what the engine's record carries (the ADR relation, the evidence, `NG-n` by id, the reason of `not_run`, the decider `role`) and the contract grows to carry it; vote support is not shown.

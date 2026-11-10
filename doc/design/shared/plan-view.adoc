@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
 A plan's process is not a fixed list of phases: it is the plan's composed workflow, whose phases are sub-workflows, which call sub-workflows of their own. The plan view shows that process level by level, each node with its state, from the plan down to the leaves. Everything it shows comes from the runtime's process of the plan; the client derives no state.
 
@@ -45,6 +45,17 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
 * *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
 * A level shows its nodes one line each; what the line cannot hold (times, counts) is the next line, or one step away.
+
+[#tabs]
+=== The Tabs of the Web App
+
+In the web app the plan is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]). As the object column it shows the head above and three tabs below it; as a list column, while one of its tasks is open as the next level, it shows its compact head and the tree (link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]).
+
+* *Process* (the default): the levels of this document, the tree beside the narrative of the selected node.
+* *Intent*: the plan's intent record, its builder check and its outline (link:intent-and-outline.adoc#intent[Intent and Outline]); the narrative of `refine` and `outline` links to it. This is the one step from the head the intent design names.
+* *Changes*: the plan's changes (<<changes>>), absent before the first capture; the size line of the head is a link to it.
+* *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_), and the activity of a worker is the task's own level (<<worker>>).
+* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view (link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View]).
 
 [#states]
 == The State of a Node
@@ -156,7 +167,7 @@ Selecting a task of a leaf shows what its worker does, as it does it (link:../..
 [#change-size]
 == Change So Far
 
-The line below the tokens says how large the plan's change was at its last capture: `change so far   12 files · +340 −27 · 2 unplanned` (`plan.change.size`; link:../../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]). Git measured it, the runtime serves it, and the client adds nothing up. Before the first capture the line is absent, never `0 files`; `2 unplanned` is shown only where there are any. The line opens the plan's changes (<<changes>>).
+The line below the tokens says how large the plan's change was at its last capture: `change so far   12 files · +340 −27 · 2 unplanned` (`plan.change.size`; link:../../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]). Git measured it, the runtime serves it, and the client adds nothing up. Before the first capture the line is absent, never `0 files`; `2 unplanned` is shown only where there are any. The line opens the plan's changes (<<changes>>): in the web app it is a link to the _Changes_ tab, in the terminal the key `d`.
 
 [#changes]
 == The Changes
@@ -221,7 +232,7 @@ While a revision the operator accepted in the plan's chat waits for its task bou
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended, in the web app with the same tabs (<<tabs>>): every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
 
 [#texts]
 == Texts

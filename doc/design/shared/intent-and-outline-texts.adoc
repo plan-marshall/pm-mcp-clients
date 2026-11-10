@@ -1,0 +1,317 @@
+= Design: Intent and Outline, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:intent-and-outline.adoc[Intent and Outline] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]_
+
+Status: `DRAFT`. The texts of link:intent-and-outline.adoc[Intent and Outline], for both clients; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+
+[#texts]
+== Texts
+
+Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). A record's own text (a goal, a criterion, a reason, a path) is never a key: it is shown as it stands, as text.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`intent.tab.title`
+|Intent
+|Absicht
+
+|`intent.plan.none`
+|Refine has not written the intent yet.
+|Refine hat die Absicht noch nicht geschrieben.
+
+|`intent.head.title`
+|Intent · {plan} · revision {revision}
+|Absicht · {plan} · Revision {revision}
+
+|`intent.head.goal`
+|Goal
+|Ziel
+
+|`intent.head.counts`
+|{criteria, plural, one {# criterion} other {# criteria}} · {met} met · {not_met} not met · {not_verified} not verified
+|{criteria, plural, one {# Kriterium} other {# Kriterien}} · {met} erfüllt · {not_met} nicht erfüllt · {not_verified} nicht verifiziert
+
+|`intent.criteria.title`
+|Criteria
+|Kriterien
+
+|`intent.criteria.satisfied_by`
+|satisfied by {deliverables}
+|erfüllt durch {deliverables}
+
+|`intent.criteria.no_deliverable`
+|no deliverable yet
+|noch kein Ergebnis
+
+|`intent.criteria.reason`
+|Reason: {reason}
+|Grund: {reason}
+
+|`intent.non_goals.title`
+|Non-goals
+|Nicht-Ziele
+
+|`intent.choices.title`
+|Choices
+|Festlegungen
+
+|`intent.decider.operator`
+|you decided
+|du hast entschieden
+
+|`intent.decider.quorum`
+|a quorum decided
+|ein Quorum hat entschieden
+
+|`intent.decider.role`
+|the model's call
+|die Wahl des Modells
+
+|`intent.decider.fact`
+|settled by a fact
+|durch einen Fakt geklärt
+
+|`intent.choice.options`
+|options weighed: {options}
+|abgewogene Optionen: {options}
+
+|`intent.choice.question`
+|answers {question}
+|beantwortet {question}
+
+|`intent.choice.adr`
+|{relation, select, follows {follows {adr}} other {contradicts {adr}}}
+|{relation, select, follows {folgt {adr}} other {widerspricht {adr}}}
+
+|`intent.record.evidence`
+|evidence: {evidence}
+|Beleg: {evidence}
+
+|`intent.record.changed`
+|the record changed
+|der Datensatz hat sich geändert
+
+|`intent.open_questions.title`
+|Open questions
+|Offene Fragen
+
+|`intent.deferred.title`
+|Deferred
+|Zurückgestellt
+
+|`intent.deferred.reason`
+|because: {reason}
+|weil: {reason}
+
+|`intent.builder.title`
+|Builder check
+|Builder-Prüfung
+
+|`intent.builder.sort.answered`
+|answered by the record
+|vom Datensatz beantwortet
+
+|`intent.builder.sort.minor`
+|the builder's call
+|die Wahl des Builders
+
+|`intent.builder.sort.operator`
+|needs you
+|braucht dich
+
+|`intent.builder.recommended`
+|recommended: {answer}
+|empfohlen: {answer}
+
+|`intent.builder.resolution.open`
+|open
+|offen
+
+|`intent.builder.resolution.answered`
+|answered: {answer}
+|beantwortet: {answer}
+
+|`intent.builder.resolution.deferred`
+|deferred: the plan continues without it
+|zurückgestellt: der Plan läuft ohne sie weiter
+
+|`intent.builder.state.pending`
+|questions wait
+|Fragen warten
+
+|`intent.builder.state.answered`
+|resolved
+|geklärt
+
+|`intent.builder.state.not_run`
+|not run: {reason}
+|nicht ausgeführt: {reason}
+
+|`intent.outline.title`
+|Outline
+|Gliederung
+
+|`intent.outline.deliverable`
+|{number} · {title}
+|{number} · {title}
+
+|`intent.outline.files`
+|Affected files
+|Betroffene Dateien
+
+|`intent.outline.file.read`
+|read
+|gelesen
+
+|`intent.outline.file.write_new`
+|new
+|neu
+
+|`intent.outline.file.write_replace`
+|replaced
+|ersetzt
+
+|`intent.outline.file.write_conditional`
+|changed on a condition
+|unter einer Bedingung geändert
+
+|`intent.outline.file.delete`
+|deleted
+|gelöscht
+
+|`intent.outline.depends_on`
+|depends on {deliverables}
+|hängt ab von {deliverables}
+
+|`intent.outline.missing_deliverable`
+|missing deliverable {number}
+|fehlendes Ergebnis {number}
+
+|`intent.outline.satisfies`
+|satisfies {criteria}
+|erfüllt {criteria}
+
+|`intent.outline.satisfies_none`
+|satisfies no criterion
+|erfüllt kein Kriterium
+
+|`intent.outline.verification`
+|Verification
+|Nachweis
+
+|`intent.outline.dependencies`
+|Added dependencies
+|Hinzugefügte Abhängigkeiten
+
+|`intent.outline.dependency`
+|{coordinates} {version} · added by {deliverable}: {justification}
+|{coordinates} {version} · hinzugefügt von {deliverable}: {justification}
+
+|`intent.outline.interfaces`
+|Interfaces
+|Schnittstellen
+
+|`intent.outline.key_links`
+|Key links
+|Schlüsselverbindungen
+
+|`intent.outline.missing_link`
+|missing: {link}
+|fehlt: {link}
+
+|`intent.epic.destination`
+|Destination
+|Endziel
+
+|`intent.epic.done_when`
+|Done when
+|Fertig, wenn
+
+|`intent.epic.not_specified`
+|Not yet specified
+|Noch nicht festgelegt
+
+|`intent.epic.plans`
+|Each plan's done-when
+|Fertig-wenn jedes Plans
+
+|`intent.epic.review`
+|Completion review
+|Abschlussprüfung
+
+|`intent.oversize.title`
+|{role} · over_size {current}x → {proposed}x
+|{role} · over_size {current}x → {proposed}x
+
+|`intent.oversize.bucket`
+|{from}–{to}x
+|{from}–{to}x
+
+|`intent.oversize.bucket_open`
+|{from}x and more
+|{from}x und mehr
+
+|`intent.oversize.tasks`
+|{count, plural, one {# task} other {# tasks}}
+|{count, plural, one {# Task} other {# Tasks}}
+
+|`intent.oversize.flagged`
+|{count} flagged
+|{count} markiert
+
+|`intent.oversize.share`
+|{tasks, plural, one {# task} other {# tasks}} · {flagged} flagged · {percent} %
+|{tasks, plural, one {# Task} other {# Tasks}} · {flagged} markiert · {percent} %
+
+|`intent.oversize.direction`
+|{direction, select, lower {{current}x → {proposed}x lowers the multiple and flags more} other {{current}x → {proposed}x raises the multiple and flags fewer}}
+|{direction, select, lower {{current}x → {proposed}x senkt den Faktor und markiert mehr} other {{current}x → {proposed}x hebt den Faktor und markiert weniger}}
+|===
+
+* *File intents*: the wire values `read`, `write-new`, `write-replace`, `write-conditional` and `delete` take the keys `intent.outline.file.<value>` with `-` written as `_`.
+* *Sources* at the top of the epic's tab take `overview.epic.sources` (link:epic-view.adoc#texts[Epic View, Texts]).
+
+[#states]
+== Verdicts
+
+The verdicts are display words of a server value, the family `state.<kind>.<value>` of the area `common` (link:texts-and-languages.adoc#keys[Keys and Packs]); a `StatusLabel` shows them (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]), and the head line's `not reviewed yet` is the same key.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`state.criterion.met`
+|met
+|erfüllt
+
+|`state.criterion.not_met`
+|not met
+|nicht erfüllt
+
+|`state.criterion.not_verified`
+|not verified
+|nicht verifiziert
+
+|`state.criterion.not_reviewed`
+|not reviewed yet
+|noch nicht bewertet
+
+|`state.check.pending`
+|pending
+|ausstehend
+
+|`state.check.met`
+|met
+|erfüllt
+
+|`state.check.not_met`
+|not met
+|nicht erfüllt
+|===
