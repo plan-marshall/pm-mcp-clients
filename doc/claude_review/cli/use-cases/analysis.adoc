@@ -152,7 +152,8 @@ the draining state says draining (V-08).
 |link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
 |Clean Up
 |`conforms`
-|`cleanup` ends with the `d r i x o q` prompt, `d` asks `y`/`n`, and `q` deletes nothing (V-07).
+|`cleanup` ends with the `d r i x o q` prompt, `d` asks `y`/`n`, and `q` deletes nothing (V-07). The German run's body
+is still English — residue of the verification, outside the check's clauses.
 |===
 
 Totals: 16 `conforms`, 7 `partial`, 1 `deviates`, 0 `missing`, 13 `not verified` (37 use cases). The moves and their
@@ -187,10 +188,10 @@ record.
 
 [NOTE]
 ====
-This is the state the review found. Since then every dialogue that acts has its PTY test with the three cases (`q`
-sends nothing, an unknown input re-asks, the main path sends the act), and each one proves the `q` case against
-`GET /mock/acts` — see `CLI-CC-V-06` of link:../verification-results/verify-cli-acts.adoc[Verification Results, The
-Terminal Acts].
+This is the state the review found. Since then the dialogues that act have their PTY tests with the three cases (`q`
+sends nothing, an unknown input re-asks, the main path sends the act), each proving the `q` case against
+`GET /mock/acts` — see `CLI-CC-V-06` of link:../../verification-results/verify-cli-acts.adoc[Verification Results,
+The Terminal Acts], which also names the one gap left (the waiver's `q` case).
 ====
 
 `TuiCapabilityIT` proves that each view opens and that the fallbacks work. `TranscriptDialogueIT` proves `status`,
