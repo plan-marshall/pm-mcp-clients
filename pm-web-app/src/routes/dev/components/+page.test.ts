@@ -7,7 +7,7 @@ import { loadMessages } from '../../../test/catalogue-fixture';
 describe('/dev/components page fixture', () => {
   afterEach(() => {
     currentLocale.set('en');
-    messagesStore.set({});
+    messagesStore.set(loadMessages('en'));
   });
   it('assigns unique accessible names to RowMenu fixture instances across themes (D2)', () => {
     render(DevComponentsPage);

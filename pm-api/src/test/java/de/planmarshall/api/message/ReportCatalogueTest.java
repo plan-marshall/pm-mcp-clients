@@ -166,6 +166,12 @@ class ReportCatalogueTest {
                 MessageCatalogue.format("en", "report.completion.own_call_kind", Map.of("kind", "design")));
         assertEquals("ersetzte Abhängigkeit",
                 MessageCatalogue.format("de", "report.completion.own_call_kind", Map.of("kind", "dependency")));
+        assertEquals("1 older unread report remains: reports --older shows it.",
+                MessageCatalogue.format("en", "operator.reports.read_all.older", Map.of("count", 1)));
+        assertEquals("2 older unread reports remain: reports --older shows them.",
+                MessageCatalogue.format("en", "operator.reports.read_all.older", Map.of("count", 2)));
+        assertEquals("1 älterer ungelesener Bericht bleibt: reports --older zeigt ihn.",
+                MessageCatalogue.format("de", "operator.reports.read_all.older", Map.of("count", 1)));
         assertEquals("conflicts with the transport test",
                 MessageCatalogue.format("en", "report.completion.own_call_conflicts", Map.of("item", "the transport test")));
         assertEquals("stimmig",
