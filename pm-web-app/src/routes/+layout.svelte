@@ -337,7 +337,7 @@
         <PairingView />
       {:else if $runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'}
         <ListenerOffView />
-      {:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding'}
+      {:else if !$runtimeStore.isOnboarded && !$runtimeStore.isOffline && $runtimeStore.currentRoute !== 'onboarding'}
         <OnboardingView />
       {:else}
         {@render children?.()}
