@@ -23,7 +23,7 @@ A remembered place still wins at a bare start of the app (link:../shared/plan-ov
 [#route]
 == The Route and the Rail
 
-* *One route of its own*: `/` for the list, in the frame of the app, with the tab title carrying the total while there is one (`What waits · 4`), as the reports' and the system's routes do with their own counts.
+* *One route of its own*: `/` for the list (the app's own links write `/?lens=waits`, which the remembered place never fills: link:navigation.adoc#url[Navigation, Addresses]), in the frame of the app, with the tab title carrying the total while there is one (`What waits · 4`), as the reports' and the system's routes do with their own counts.
 * *A destination of the rail*: the first entry, named by `web.rail.needs`, with the list's total as its count while there is one (`! 4`), so the count is visible from every other view. The rail entry stays visible when nothing waits, without a count.
 * *The running work* keeps its rail entry and its routes (link:../shared/plan-overview.adoc[Plan Overview]); the list is not a second way into it, and the running work is not a second way into the list, apart from the empty state's one line.
 * *The phone* shows the same list as the first item of its bottom bar — What waits · Running work · Decisions · More — with the total (link:navigation.adoc#phone[Navigation, The Phone]); its rows are the same rows as on a desktop, one column, with no layout of their own.

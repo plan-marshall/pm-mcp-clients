@@ -161,14 +161,14 @@ The overview follows the runtime's events and changes in place: a plan that star
 [#persistence]
 == Where the Operator Left It
 
-The overview remembers the project, the view (by plan, by epic), and the selected plan or epic, and opens there the next time:
+The overview remembers the project, the view (by plan, by epic), and the selected plan or epic, and opens there the next time; it never remembers the mode, so it always opens on running work, never on ended work:
 
 * the web app per browser, in its local storage beside its device secret;
 * the terminal client per user, in its state directory (link:../terminal-client/15-overview.adoc[The Overview]).
 
 A remembered plan that has ended falls back to its project; a project that no longer has running work falls back to the list of projects.
 
-In the web app the address wins over the remembered place: an address that names a project, a mode or an object opens what it names, and an explicit click on a lens opens that lens (What waits at `/`); only a bare start of the app and the bare lens (`/overview`) are filled from the remembered place, by replacing the address rather than pushing it. The project, the mode (running or ended, by plan or by epic) and the follow mode are part of the address (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]).
+In the web app the address wins over the remembered place: an address that names a project, a mode or an object opens what it names, and an explicit click on a lens opens that lens (What waits at `/?lens=waits`). The remembered place fills an address at two entry points only: the app opened from outside it (no mark of the app in `history.state`) at `/` or at the bare `/overview`, by a replace, and a click on Running work (the rail's, or the bottom bar's on a phone). Up and the breadcrumb's lens segment open the lens's own list with nothing selected, and a reload of that list stays so (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]; the operator, 2026-11-10, D6). The project, the mode (running or ended, by plan or by epic) and the follow mode are part of the address.
 
 [#texts]
 == Texts

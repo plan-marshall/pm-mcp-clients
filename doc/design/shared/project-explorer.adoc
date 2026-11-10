@@ -105,7 +105,7 @@ In the web app a project has one page: the object column of the lens _Projects_ 
 
 * *The head*: the project's `KindMark`, its display name and id, its readiness, its marker, and the actions above as its `ActionBar` — _Add a plan_ the primary while it is ready, _Continue the setup_ while it is not, _Enrol again_ while it is released; _Favourite_ a `Toggle` in the head.
 * *Its work* (the first tab): its running plans and epics as rows, and its ended work below them, newest first (link:plan-overview.adoc#ended[Plan Overview, Ended Work]). A row opens the plan or the epic at its own address in _Running work_, and the rail moves with it.
-* *Its setup* (`?tab=setup`): a later run of its onboarding at the aspect the operator chooses (link:project-onboarding.adoc#later-run[A Later Run]), and at its end the release and the unenrolment (<<release>>).
+* *Its setup* (`?tab=setup`): a later run of its onboarding at the aspect the operator chooses (link:project-onboarding.adoc#later-run[A Later Run]), the read-only `over_size` distribution per role (link:intent-and-outline.adoc#oversize[Intent and Outline, The `over_size` Distribution]), and at its end the release and the unenrolment (<<release>>).
 
 The terminal keeps the actions of a project as a choice (link:../terminal-client/17-projects.adoc[Terminal Client, Projects]).
 

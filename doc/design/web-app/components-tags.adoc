@@ -26,7 +26,7 @@ Every element that looks like a tag is one of seven components, one per type. A 
 |State
 |<<status-label,`StatusLabel`>>
 |dot + word, no box
-|the lifecycle state of the object: running, waiting for you, held, failed, done, staged, ended, …
+|the state of the object or of a record in it (a criterion's verdict, a done-when check): running, waiting for you, held, failed, done, staged, ended, …
 
 |Reason
 |<<reason-badge,`ReasonBadge`>>
@@ -86,16 +86,18 @@ An 8 px dot in the tone of the state, followed by the state word in `--color-tex
 
 |`danger`
 |`--color-danger`
-|failed, landing failed
+|failed, landing failed; a criterion or a done-when check not met
 
 |`success`
 |`--color-success`
-|done, merged, ready, completed
+|done, merged, ready, completed; a criterion or a done-when check met
 
 |`neutral`
 |`--color-neutral`
-|staged, paused, ended, cancelled, released, not taken
+|staged, paused, ended, cancelled, released, not taken; a criterion not verified or not reviewed yet, a done-when check pending
 |===
+
+*Verdicts* are states too: a criterion of a plan's intent (`state.criterion.*`) and a done-when check of an epic (`state.check.*`) take a `StatusLabel` (link:../shared/intent-and-outline.adoc#web[Intent and Outline, The Web App]). `not verified` is neutral, never attention: it is evidence for the operator, not something that waits for them (the operator, 2026-11-10, D6).
 
 The word is the shared display word of the state (`state.<kind>.<value>`, through the display layer's `displayState`), never a wire value and never an area's own word for the same state (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, One Word per Value]). In a list the state takes a slot of fixed width, so the dots of the rows stand one under the other.
 
