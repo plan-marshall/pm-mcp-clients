@@ -2199,12 +2199,8 @@ export class ApiClient {
         body: JSON.stringify({ code: cleanCode }),
         signal: deadline,
       });
-    } catch {
-      if (deadline.aborted) {
-        throw new ClientError('timeout');
-      }
-      this.onOfflineCallback?.();
-      throw new ClientError('network_offline');
+    } catch (error) {
+      this.failFetch(error, undefined, deadline);
     }
 
     if (!res.ok) {
@@ -2212,15 +2208,7 @@ export class ApiClient {
       throw new Error(err.error || 'invalid_code');
     }
 
-    let data: PairingResponse;
-    try {
-      data = (await res.json()) as PairingResponse;
-    } catch {
-      if (deadline.aborted) {
-        throw new ClientError('timeout');
-      }
-      throw new ClientError('network_offline');
-    }
+    const data = await this.readBody<PairingResponse>(res, undefined, deadline);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
       localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
@@ -3096,13 +3084,11 @@ export class ApiClient {
     return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
-  public async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-    signal?: AbortSignal,
-    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
-  ): Promise<T> {
+  /**
+   * @param path the request path
+   * @throws Error when the path is not one this client may call
+   */
+  private assertRequestPath(path: string): void {
     if (
       !path.startsWith('/') ||
       path.startsWith('//') ||
@@ -3111,6 +3097,92 @@ export class ApiClient {
     ) {
       throw new Error(`Invalid request path: ${path}`);
     }
+  }
+
+  /**
+   * @param signal the caller's bound, where it brought one
+   * @returns whether that bound is a deadline rather than a cancellation
+   */
+  private static isCallerDeadline(signal: AbortSignal | undefined): boolean {
+    return (signal?.reason as Error | undefined)?.name === 'TimeoutError';
+  }
+
+  /**
+   * @param secret the pairing secret the request carried, if any
+   * @throws ClientError always, with the code the auth loss stands for
+   */
+  private failUnauthorized(secret: string | null): never {
+    // Only an authenticated request can lose a pairing: an unauthenticated 401 means the route
+    // needs pairing, not that the device was revoked.
+    if (secret) {
+      this.clearAuth();
+      this.onRevokedCallback?.('unauthorized');
+    }
+    throw new ClientError('unauthorized');
+  }
+
+  /**
+   * Ends a failed request in the code the failure stands for.
+   *
+   * @param error the failure `fetch` reported
+   * @param signal the caller's bound, where it brought one
+   * @param deadline the client's own bound
+   * @throws ClientError, or the caller's own cancellation
+   */
+  private failFetch(error: unknown, signal: AbortSignal | undefined, deadline: AbortSignal): never {
+    // A read a newer one superseded is aborted on purpose: it is not the machine going away. A
+    // caller's own deadline is the same unknown outcome as the client's; a cancellation is not.
+    if (signal?.aborted) {
+      if (ApiClient.isCallerDeadline(signal)) {
+        throw new ClientError('timeout');
+      }
+      throw error;
+    }
+    if (deadline.aborted) {
+      throw new ClientError('timeout');
+    }
+    this.onOfflineCallback?.();
+    throw new ClientError('network_offline');
+  }
+
+  /**
+   * Reads a response body as the answer it promises.
+   *
+   * A body that never completes is not an answer: the client cannot tell whether the runtime acted,
+   * so it reports the one outcome that says so (D5). That covers a body cut short (`SyntaxError`) as
+   * much as one lost mid-transfer (`TypeError`). A caller's cancellation is handed on unchanged.
+   *
+   * @param res the response
+   * @param signal the caller's bound, where it brought one
+   * @param deadline the client's own bound
+   * @returns the parsed body
+   */
+  private async readBody<T>(
+    res: Response,
+    signal: AbortSignal | undefined,
+    deadline: AbortSignal,
+  ): Promise<T> {
+    try {
+      return (await res.json()) as T;
+    } catch (error) {
+      if (signal?.aborted && !ApiClient.isCallerDeadline(signal)) {
+        throw error;
+      }
+      if (deadline.aborted) {
+        throw new ClientError('timeout');
+      }
+      throw new ClientError('network_offline');
+    }
+  }
+
+  public async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
+    this.assertRequestPath(path);
 
     const secret = this.getSecret();
     const headers: Record<string, string> = {};
@@ -3124,7 +3196,7 @@ export class ApiClient {
     }
 
     // Every request carries the client's own deadline. The caller may bring a signal of its own
-    // (a superseded read, or a longer act); both bounds apply, and the one that fired decides the
+    // (a superseded read, or a shorter act); both bounds apply, and the one that fired decides the
     // failure below.
     const deadline = AbortSignal.timeout(timeoutMs);
     const bounded = signal ? AbortSignal.any([signal, deadline]) : deadline;
@@ -3138,30 +3210,11 @@ export class ApiClient {
         signal: bounded,
       });
     } catch (error) {
-      // A read a newer one superseded is aborted on purpose: it is not the machine going away.
-      if (signal?.aborted) {
-        // A caller's own deadline is the same unknown outcome as the client's; a cancellation is
-        // not, and is handed on as it came.
-        if ((signal.reason as Error | undefined)?.name === 'TimeoutError') {
-          throw new ClientError('timeout');
-        }
-        throw error;
-      }
-      if (deadline.aborted) {
-        throw new ClientError('timeout');
-      }
-      this.onOfflineCallback?.();
-      throw new ClientError('network_offline');
+      this.failFetch(error, signal, deadline);
     }
 
     if (res.status === 401) {
-      // Only an authenticated request can lose a pairing: an unauthenticated 401 means the route
-      // needs pairing, not that the device was revoked.
-      if (secret) {
-        this.clearAuth();
-        this.onRevokedCallback?.('unauthorized');
-      }
-      throw new ClientError('unauthorized');
+      this.failUnauthorized(secret);
     }
 
     if (!res.ok) {
@@ -3170,21 +3223,7 @@ export class ApiClient {
     }
 
     this.onOnlineCallback?.();
-    try {
-      return (await res.json()) as T;
-    } catch (error) {
-      // A body that never completes is not an answer: the client cannot tell whether the runtime
-      // acted, so it reports the one outcome that says so (D5). That covers a body cut short
-      // (`SyntaxError`) as much as one lost mid-transfer (`TypeError`). A caller's cancellation is
-      // handed on unchanged.
-      if (signal?.aborted && (signal.reason as Error | undefined)?.name !== 'TimeoutError') {
-        throw error;
-      }
-      if (deadline.aborted) {
-        throw new ClientError('timeout');
-      }
-      throw new ClientError('network_offline');
-    }
+    return this.readBody<T>(res, signal, deadline);
   }
 
   public async followLink(
@@ -3606,8 +3645,8 @@ export class ApiClient {
     if (secret) {
       headers['Authorization'] = `Bearer ${secret}`;
     }
-    let res: Response;
     const deadline = AbortSignal.timeout(ApiClient.REQUEST_TIMEOUT_MS);
+    let res: Response;
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         method,
@@ -3615,32 +3654,16 @@ export class ApiClient {
         body: JSON.stringify(body),
         signal: deadline,
       });
-    } catch {
-      if (deadline.aborted) {
-        throw new ClientError('timeout');
-      }
-      this.onOfflineCallback?.();
-      throw new ClientError('network_offline');
+    } catch (error) {
+      this.failFetch(error, undefined, deadline);
     }
     if (res.status === 401) {
       // As in `request`: only a 401 to a request that carried a secret is auth loss.
-      if (secret) {
-        this.clearAuth();
-        this.onRevokedCallback?.('unauthorized');
-      }
-      throw new ClientError('unauthorized');
+      this.failUnauthorized(secret);
     }
     if (res.status === 409 || res.ok) {
       this.onOnlineCallback?.();
-      try {
-        return (await res.json()) as T;
-      } catch {
-        // A body that never completes is not an answer (D5): the outcome is unknown.
-        if (deadline.aborted) {
-          throw new ClientError('timeout');
-        }
-        throw new ClientError('network_offline');
-      }
+      return this.readBody<T>(res, undefined, deadline);
     }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);

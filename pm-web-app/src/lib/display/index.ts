@@ -128,10 +128,12 @@ export function displayError(
   const lookup = translator(translate);
   const normalized = (code ?? '').trim().toLowerCase();
   const clientBase = `${CLIENT_ERROR_AREA}.${normalized}`;
-  const knownClient =
-    normalized.length > 0 && hasMessage(`${clientBase}.title`);
-  const knownDaemon = normalized.length > 0 && hasMessage(`error.${normalized}.title`);
-  const base = knownClient ? clientBase : knownDaemon ? `error.${normalized}` : 'error.unknown';
+  let base = 'error.unknown';
+  if (normalized.length > 0 && hasMessage(`${clientBase}.title`)) {
+    base = clientBase;
+  } else if (normalized.length > 0 && hasMessage(`error.${normalized}.title`)) {
+    base = `error.${normalized}`;
+  }
   return {
     title: lookup(`${base}.title`),
     cause: lookup(`${base}.cause`),

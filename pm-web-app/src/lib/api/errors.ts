@@ -62,8 +62,12 @@ export function errorCodeOf(value: unknown): string {
   if (isClientError(value)) {
     return value.code;
   }
-  const message =
-    value instanceof Error ? value.message : typeof value === 'string' ? value : '';
+  let message = '';
+  if (value instanceof Error) {
+    message = value.message;
+  } else if (typeof value === 'string') {
+    message = value;
+  }
   const trimmed = message.trim();
   return ERROR_CODE_PATTERN.test(trimmed) ? trimmed : '';
 }

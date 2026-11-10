@@ -112,6 +112,12 @@ describe('DecisionView component', () => {
     localStorage.clear();
   });
 
+  // A stub a test installed for the scroll is removed again, so no later test of this file runs
+  // with it.
+  afterEach(() => {
+    Element.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
   it('draws the error pattern of a failed list read instead of the empty word', async () => {
     vi.spyOn(apiClient, 'getDecisions').mockRejectedValue(new ClientError('timeout'));
 
@@ -120,12 +126,6 @@ describe('DecisionView component', () => {
     const error = await screen.findByTestId('decisions-error');
     expect(error).toHaveTextContent('The request took too long');
     expect(screen.queryByText(/No open decisions/i)).not.toBeInTheDocument();
-  });
-
-  // A stub a test installed for the scroll is removed again, so no later test of this file runs
-  // with it.
-  afterEach(() => {
-    Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 
   it('renders open decisions and waivers', async () => {
