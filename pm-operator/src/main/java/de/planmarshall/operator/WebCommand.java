@@ -604,7 +604,7 @@ public final class WebCommand implements Callable<Integer> {
 
         private static String formatPairedDate(@Nullable Object raw, String locale, Clock clock) {
             if (raw == null) {
-                return "recently";
+                return MessageCatalogue.format(locale, "common.time.unknown", Map.of());
             }
             var s = raw.toString();
             try {
@@ -735,8 +735,12 @@ public final class WebCommand implements Callable<Integer> {
             return MessageCatalogue.format(locale, "operator.web.state.disabled", Map.of());
         }
         return MessageCatalogue.format(locale, "operator.web.state.enabled", Map.of(
-                            "mode", Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK,
+                            "mode", Boolean.TRUE.equals(web.get("lan"))
+                                                ? MessageCatalogue.format(locale, "operator.web.mode.lan", Map.of())
+                                                : MessageCatalogue.format(locale, "operator.web.mode.loopback", Map.of()),
                             "port", web.get("port"),
-                            "open", Boolean.TRUE.equals(web.get("open")) ? "open" : "not open"));
+                            "open", Boolean.TRUE.equals(web.get("open"))
+                                                ? MessageCatalogue.format(locale, "operator.web.open.yes", Map.of())
+                                                : MessageCatalogue.format(locale, "operator.web.open.no", Map.of())));
     }
 }

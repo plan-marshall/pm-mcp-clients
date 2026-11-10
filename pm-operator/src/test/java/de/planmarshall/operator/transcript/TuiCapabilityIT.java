@@ -525,7 +525,9 @@ class TuiCapabilityIT {
             var transcripts = files.filter(path -> path.getFileName().toString().endsWith(".transcript")).toList();
             assertFalse(transcripts.isEmpty(), "no transcript was found in " + directory);
             for (var transcript : transcripts) {
-                assertNoRawResidue(transcript.getFileName().toString(), Files.readString(transcript));
+                var text = Files.readString(transcript);
+                assertFalse(text.isBlank(), transcript.getFileName() + " is empty");
+                assertNoRawResidue(transcript.getFileName().toString(), text);
             }
         }
     }
