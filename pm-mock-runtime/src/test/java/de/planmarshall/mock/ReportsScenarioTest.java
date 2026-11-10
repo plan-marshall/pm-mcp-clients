@@ -32,6 +32,7 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReadReportsRequest;
 import de.planmarshall.api.report.ReadReportsResponse;
+import de.planmarshall.api.report.ReportItem;
 import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 
@@ -149,7 +150,7 @@ class ReportsScenarioTest {
 
             var listBefore = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             var pageBefore = ReportsPage.fromJson(listBefore.bodyText());
-            var shownIds = pageBefore.items().stream().map(report -> report.id()).toList();
+            var shownIds = pageBefore.items().stream().map(ReportItem::id).toList();
             assertEquals(5, shownIds.size());
 
             // A non-prefix selection: the second and the fourth shown report. A selection of the
@@ -169,7 +170,7 @@ class ReportsScenarioTest {
             // older ones.
             var listRes = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             var page = ReportsPage.fromJson(listRes.bodyText());
-            var remainingIds = page.items().stream().map(report -> report.id()).toList();
+            var remainingIds = page.items().stream().map(ReportItem::id).toList();
             assertAll(
                     () -> assertEquals(5, page.unreadCount()),
                     () -> assertEquals(5, page.items().size()),

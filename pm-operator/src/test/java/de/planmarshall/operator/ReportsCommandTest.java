@@ -189,6 +189,7 @@ class ReportsCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code),
+                            () -> assertEquals(2, server.requests().size(), "one list read and one ids write"),
                             () -> assertTrue(out.toString().contains("✓ 2 reports marked read."),
                                                 out.toString()),
                             () -> assertTrue(out.toString().contains(
