@@ -63,17 +63,22 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-03`, `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-03` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:31 [#CLI-CC-S-03], ux/plan.adoc:28 [#CLI-UX-S-03], proposals CC-P-01:9, CC-P-04:87, UX-P-05:93 exist
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:31; ux/plan.adoc:28
 - OBSERVED: `LiteralTextGuardTest` exists in `pm-operator` — read at `pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: LiteralTextGuardTest.java exists at origin/main aa3a9be3
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: LiteralTextGuardTest.java exists
 - HYPOTHESIS: `LiteralTextGuardTest` does not cover dialogues and `askRaw` — confirm/refute at its source (verify-at-outline)
-  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: RENDER_CALL (~68) includes prompt.askRaw; GUARDED lists StartDialogue, ChatDialogue, WorkActionDialogue, HoldDialogue but not AnswerCommand, CleanupCommand, RuntimeCommand (17-23 English literals each): the rescope to extending the list stands; OnboardCommand is gone (PLAN-97)
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: AnswerCommand clean (PLAN-21/124), OnboardCommand gone (PLAN-97); D1 narrows to Cleanup/Runtime + guard inversion (Re-grounding 2026-11-10)
 - Exit codes (structure review, 2026-10-30): this plan owns the check of the one table in `01-commands.adoc#exit-codes` for every verb (`ExitCodesTest`); `PLAN-17` (exit `3` for `--no-input`) and `PLAN-26` (exit `1` on a failed read) implement their verbs from the same table before this plan runs, and this plan fails on a verb that breaks it.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: ExitCodesTest absent; exit constants scattered; ReadVerbExitCodesTest exists
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Stale: ExitCodes table in doc/design/terminal-client/01-commands.adoc#exit-codes now has 0,1,2,3,4 and 130 (spec names 1/2/3 only); RefusalRenderer, RefusalRendererTest and ExitCodesTest are still absent (only ReadVerbExitCodesTest exists from PLAN-26); ErrorTexts of PLAN-86 exists at pm-api/.../api/resource/ErrorTexts.java; 03-dialogues.adoc passage on common.error.<code> is now at line 269 (spec says 266) and 09-texts-common.adoc still lists common.error.* (lines 169-208), so the planned rewrite is still due. WebCommand/WorkChatDialogue exist and are guarded.
+  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: 09-texts-common has no common.error tables (R4-14); only :29 and 03-dialogues:269 left
 - RESCOPE at outline (design audit 2026-11-02): drop the table edits in 09/13 (R4-14: the terminal text tables 09-13 are replaced by links to the implemented .properties packs); move the OnboardCommand strings after D26 (top-level onboard is folded in or removed).
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: 09/13 table edits dropped; D26/PLAN-97 landed #358
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 - PLAN-97 (staged 2026-11-04): the `OnboardCommand` strings move after PLAN-97 deliverable 3 (the top-level `onboard` is folded into `pm-operator` without a verb and `config <aspect>`); the drain and accept-edit texts come from PLAN-97 deliverables 1 and 2.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: OnboardCommand absent; Drain/AcceptEdit use the catalogue
 
 ## Expected Surface
 
@@ -99,6 +104,12 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD aa3a9be3
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/resource/ErrorTexts.java` — present (read) at HEAD aa3a9be3
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-30.txt` — absent; created by this plan at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RuntimeActDialogue.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/DecomposeCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -113,6 +124,44 @@ Checked at `aa3a9be3`. `OnboardCommand.java` is gone (PLAN-97 folded it; only `O
 ## Fold 2026-11-08 (PLAN-118 landing)
 
 Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. The exit-code table of `01-commands.adoc:190-191` defines `1` as "refused by the runtime: an error code of `pm-api`", but `drain` now exits `1` for its local refusals `operator.drain.not_identifiable` and `operator.drain.signal_failed` (`DrainCommand.java:119-121`, `25-system.adoc:39`), which are no runtime refusal. Since this plan settles the exit codes (`ExitCodesTest`): extend row `1` to local refusals, or give them a code of their own, and pin it. Surface unchanged (`01-commands.adoc`, `DrainCommand.java`, `ExitCodesTest.java` are listed).
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- Dependencies PLAN-21 (#372), -22, -23 (#381), -17, -86 and PLAN-124 (#385), PLAN-97 (#358) have landed; the
+  2026-11-07 "not landed" note is obsolete. The PLAN-77 CUI-dependency clause is obsolete (all modules declare
+  `cui-test-generator`).
+- **D1 narrower:** `AnswerCommand` has no render literals left (PLAN-21/124) and `OnboardCommand` is gone (PLAN-97). The
+  remaining literals: `CleanupCommand` (~22: `:190,204,230-231,239,274,383,433,448,467,515-522,633-637,651,778,783`),
+  `RuntimeCommand` (8: `:134,298,364,373,375,384,386,413`), and outside the five named classes `PlanCommand` ~13,
+  `EpicCommand` ~13, `DecomposeCommand` ~6, `ClientCommand` ~5, `ReportsCommand`/`QuestionsCommand`/`ProjectsCommand` ~3,
+  `NeedsCommand:91`, `ActionSupport` 1. The guard is an allow-list scanned with `Files.list` (top directory only) and its
+  receiver regex misses `session.out()`/`terminal.writer()`: INVERT it (scan all of `src/main`, minus a named exception
+  list). `CleanupCommand:515-522,651` print INVENTED figures when nothing is due ("214 · 340 MB", "612 old rows",
+  "tomorrow 03:00", "30 days … 3 days"): moving them to the catalogue would freeze fake data — OPEN DECISION (drop them or
+  read them from the runtime).
+- **D2 wider:** `OperatorRefusedException` has a second constructor `(String)` for local refusals (`OperatorGate.verifyAct`,
+  exit 4) — needs its own branch; no error-body reader exists (mock body `{"error":{"code","message"}}`,
+  `MockRuntimeEngine.java:6466`) — say where the parse lives; the server message passes the sanitizer. Add PLAN-33's
+  finding (a): the ten local 404 sites (`PlanCommand.java:152,184,881,1290`, `EpicCommand.java:115`,
+  `DecomposeCommand.java:77,86,131,224,231`) print English "… not found." — route them through the renderer with
+  `scope_not_found` (`error.en.properties:44`) and the id, exit 1. The consumers that print `getMessage()` —
+  `PmConsole.java:315`, `EntryFlow.java:298`, `OverviewFullScreenApp` status line (`:861,945,2509,2873,2892,3321`) — are
+  in scope of the renderer.
+- **D3:** the fix text "→ help lists them" is wrong in the shell (`help` is console-only, `01-commands.adoc:149`); use
+  `pm-operator --help`.
+- **D4:** `ExitCodesTest` covers all 23 verbs and 0/1/2/3/4/130. Fold (PLAN-118) still open: `DrainCommand.java:119-121`
+  exits 1 for local refusals.
+- **Docs:** the 09/13 table edits are void (R4-14 replaced the tables); left: `03-dialogues.adoc:269` and
+  `09-texts-common.adoc:29`.
+- **PLAN-33 finding (b)** (a refused projects read renders as "Nothing runs", `OverviewFullScreenApp.fetchProjects:486`,
+  also `fetchNeedsOperator:475`, `fetchExplorer`) is NOT added here: it needs an error state per full-screen level — a
+  separate plan (owner: the orchestrator, staged on the operator's word).
+- **Sequencing:** after PLAN-123 and PLAN-84 merge (shared `PlanCommand`, `EpicCommand`, `PmOperator`, `PmConsole`,
+  `LiteralTextGuardTest`, `01-commands.adoc`, the catalogue pair). Consider a split "strings and guard" / "refusals,
+  Picocli and exit codes" when amending.
+- Disposition: AMEND before emit (one open decision: the invented cleanup figures).
 
 ## Hand-Off Command
 

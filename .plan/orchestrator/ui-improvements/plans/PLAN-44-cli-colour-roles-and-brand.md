@@ -76,9 +76,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:29-30 [#CLI-VD-S-03] and :50-51 [#CLI-VD-S-05] exist
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:29-30,50-51; proposals.adoc:120-121
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
+  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: Style/Glyphs/tests absent; named tui/transcript classes present
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first names a HYPOTHESIS that does not exist
 
 ## Expected Surface
 
@@ -111,6 +113,18 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/ProjectWorkLevel.java` — present at HEAD aa3a9be3
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiLayout.java` — present at HEAD aa3a9be3
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreenDriver.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConsoleNotice.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConsoleBadge.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ClientEnvironment.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiRow.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiKeyRegistry.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/process/NodeState.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-api/src/main/resources/messages/system.en.properties` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/05-transcripts-entry.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 
 ## Dependencies and Sequencing
 
@@ -121,6 +135,35 @@ Source of this plan (read before scoping):
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. `tui/Style.java`, `Glyphs.java` and `RawEscapeGuardTest` are absent; the only raw `ESC[` literals are the PAGE_UP/PAGE_DOWN constants in `TuiKeyRegistry:124-125`; glyph literals (✓ ✗ ▸ ◇ ● ○) sit in the command classes added to the surface. No brand line or `plan-marshall 0.9.1` greeting exists. The Objective's "dialogues" are those command classes, not only the view packages.
+
+## Re-grounding 2026-11-10 (cleanup, at `cc0d62af`)
+
+This section supersedes the spec text and earlier notes where they differ.
+
+- **D4 "Attributes in AnsiScreen" is DONE** (PLAN-02 #232 `1864d8a3`: `AnsiScreen` `CellStyle`, `AnsiScreenTest:78-84`,
+  `ScreenCaptureIT:157,167` `.attrs.txt`): drop it; keep its terminal check inside the roles deliverable.
+- **Split recommended (6 deliverables, ~35 files):** 44a Style, Glyphs, guard and migration (check: `LANG=C`,
+  `NO_COLOR`, `TERM=dumb` captures); 44b roles applied with a styled-segment row model, brand line and greeting, docs.
+- **OPEN DESIGN DECISIONS (operator):** (1) ASCII of ✓: `ok` (`03-dialogues.adoc:349`) vs `+` (`shared/plan-view.adoc:56-61`,
+  `NodeState.asciiGlyph`); (2) "line drawing keeps the terminal's line set" (`03-dialogues.adoc:322`) vs "ASCII only /
+  no byte above 0x7F under LANG=C"; and the German catalogue under `LANG=C`; (3) kind tints plan = cyan, epic = magenta
+  (`shared/plan-overview.adoc:114-124`) vs five roles with cyan = running (`03-dialogues.adoc:282-315`); (4) the greeting:
+  `plan-marshall <version> · runtime running` (`15-overview.adoc:54`) vs `✓ Runtime running (pm-mcpd 0.9.0)`
+  (`05-transcripts-entry.adoc`, `operator.en.properties:127,152`, `EntryFlow:143`); (5) `console.colour` has no definition
+  (only `03-dialogues.adoc:320`).
+- Glyph table gaps: `‖` (paused), `◆`, `▪`, `–`, `—`, `•`, `!`, the box-drawing set; no spinner exists. A second glyph
+  table exists in pm-api `NodeState` (used by `PlanCommand:369`, `PlanViewLevel:600,609,656-663`): absorb it.
+- Rows are one plain string (`TuiRow`; `TuiLayout:384,435` inverts whole lines): colouring cells needs a styled-segment
+  row model — state the decision (PLAN-50 depends on it).
+- Guard (D3): detect `\uXXXX` escapes of glyph code points; scope to `src/main`; exempt input-key constants
+  (`TuiKeyRegistry:119,124-125`, `TuiScreenDriver:555`) and say what OSC literals do (`PmConsole:523,851`,
+  `TerminalTitle:23`, `OverviewFormatting:360`).
+- Surface: ~35 more files (commands, dialogues, epicview/planview/overview/projects levels, `ActionMenus`) — the
+  paths added below are the shared seams; the per-command sites are re-listed when amending after PLAN-123.
+- Stale: the PLAN-77 CUI clause and the verify-first "HYPOTHESIS above" (none exists).
+- Sequencing: strictly after PLAN-123 (multi-file overlap) and after the PLAN-36 residue plan (NeedsCommand,
+  OverviewFormatting, ConsoleNotice, TuiKeyRegistry footer).
+- Disposition: AMEND and SPLIT after the operator's five design decisions; HOLD for PLAN-123.
 
 ## Hand-Off Command
 
