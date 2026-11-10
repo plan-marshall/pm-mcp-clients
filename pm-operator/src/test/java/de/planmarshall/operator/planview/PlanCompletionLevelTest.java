@@ -95,7 +95,8 @@ class PlanCompletionLevelTest {
         var text = text();
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
         assertEquals("fix-relay", level.planId());
-        assertTrue(text.contains("completion report"), text);
+        assertTrue(text.contains("fix-relay \u00b7 completion report"), text);
+        assertFalse(text.contains("fix-relay \u00b7 fix-relay"), text);
         assertTrue(text.contains("merged"), text);
         assertTrue(text.contains("#214"), text);
         assertTrue(text.contains("the relay transport is hardened"), text);

@@ -80,6 +80,10 @@ class GermanAgeDisplayTest {
         assertTrue(de.toString().contains("! Landen fehlgeschlagen"), de.toString());
         assertTrue(de.toString().contains("CI-Fehler \u00b7 fehlgeschlagen"), de.toString());
         assertTrue(de.toString().contains("entferne 2 verschobene Dokumente aus git \u00b7 l\u00e4uft"), de.toString());
+        assertTrue(de.toString().contains("     ! Landen fehlgeschlagen lande CI-Fehler \u00b7 fehlgeschlagen"),
+                            "the marker and its text are separated by one space: " + de);
+        assertTrue(de.toString().contains(" ".repeat(29) + "entferne 2 verschobene Dokumente aus git \u00b7 l\u00e4uft"),
+                            "the removal row starts under the marker text: " + de);
         assertFalse(de.toString().contains("remediation."), de.toString());
     }
 
