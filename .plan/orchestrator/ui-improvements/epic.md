@@ -709,6 +709,20 @@ plan spec names the plan, proposal and finding documents it comes from.
   review, then the operator's merge word. Three-layer: likely-major shell-path terminal (view opened without the lease;
   needs a PTY run) + minors → operator: folded into PLAN-126 as deliverable 5 (surface +5). Retire this watch when #405 is
   merged.
+- PLAN-141 (D6) DECISIONS TAKEN, PR #403 OPEN AT DRAFT (`plan-141-001.md`, 2026-11-10, drained as observed; row stays
+  `running`): head `207b62f0`, 13 design documents, CI green, links clean. Q1 plan tabs Process/Intent/Changes; Q2 epic tabs
+  Plans/Intent/Landings/Reviews/Events; Q3 `plan-view-interaction.adoc` rewritten (`file=` with Changes replaces #400's
+  `changes=open`); Q4 verdicts as `StatusLabel` `state.criterion.*`/`state.check.*`, new `intent-and-outline-texts.adoc`,
+  chart on the project setup tab, the client contract GROWS (pm-mcp-core's intent record carries ADR relation, evidence,
+  `NG-n`, `role`, `not_run` reason — the spec's hypothesis was refuted); Q5 no interim side slot, `side` on TriagePage and
+  WizardPage only; Q6 remembered place without the mode, fill only on unmarked load / rail click; Q7 PLAN-85's decision
+  stands (This browser holds theme, language, dictation). MERGE RULE NOT MET: CodeRabbit refused twice (quota) — the
+  operator's call; then the operator's AGREED commit and merge word. OWED AT THE D6 LANDING (orchestrator, spec
+  amendments): `doc/plans/plan-changes.adoc` address `?tab=changes&file=` (repo doc: a direct change); PLAN-55 (tab set),
+  PLAN-58 (tab set), PLAN-62 (`node=` with Process only), PLAN-52 (rail rule holds), PLAN-135..137 (no interim slot; wait
+  for 142, 143), PLAN-142 (side props on TriagePage/WizardPage), PLAN-143 (history.state mark, two entry points), PLAN-144
+  (lens segment and Up push the unfilled list), PLAN-145 (verdict tag, texts, `NG-n`, `role`; a contract + mock step
+  before it — stage or fold), PLAN-146 (chart on PLAN-59's setup tab).
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE
