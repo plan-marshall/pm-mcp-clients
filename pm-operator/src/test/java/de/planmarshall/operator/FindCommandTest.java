@@ -270,6 +270,36 @@ class FindCommandTest {
         }
 
         @Test
+        @DisplayName("removes the control sequences of the query the runtime repeats")
+        void removesControlSequencesFromTheQuery() throws Exception {
+            var output = new StringWriter();
+            var page = "{\"page\":1,\"total_pages\":1,\"has_newer\":false,\"has_older\":false,"
+                                + "\"query\":\"\\u001b[31mzzz\\u001b[0m\",\"matches\":[]}";
+
+            new FindCommand(context(Map.of())).executeFind(sender(page), new PrintWriter(output), "en", "zzz");
+
+            var rendered = output.toString();
+            assertAll(
+                                () -> assertFalse(rendered.contains("\u001b"), rendered),
+                                () -> assertTrue(rendered.contains("zzz"), rendered)
+            );
+        }
+
+        @Test
+        @DisplayName("removes the control sequences of an outcome")
+        void removesControlSequencesFromAnOutcome() {
+            var match = new FindMatch(FindKind.PLAN, "id-1", "Title", null, null, null, true,
+                                "\u001b[31mmerged\u001b[0m");
+
+            var rendered = FindCommand.endedOf(match, "en");
+
+            assertAll(
+                                () -> assertFalse(rendered.contains("\u001b"), rendered),
+                                () -> assertTrue(rendered.startsWith("ended"), rendered)
+            );
+        }
+
+        @Test
         @DisplayName("shows the path of the titles a match belongs to")
         void showsThePath() {
             var match = new FindMatch(FindKind.PLAN, "fix-relay", RUNNING_TITLE,

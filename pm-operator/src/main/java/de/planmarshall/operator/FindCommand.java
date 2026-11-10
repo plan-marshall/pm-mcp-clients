@@ -177,13 +177,14 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     private void printMatches(PrintWriter out, FindPage page, String locale, boolean numbered) {
+        var query = TerminalSanitizer.sanitizeLine(page.query());
         if (page.matches().isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "overview.find.empty", Map.of("text", page.query())));
+            out.println(MessageCatalogue.format(locale, "overview.find.empty", Map.of("text", query)));
             return;
         }
         out.println(MessageCatalogue.format(locale, "overview.find.title", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.find.header",
-                            Map.of("text", page.query(), "count", page.matches().size())));
+                            Map.of("text", query, "count", page.matches().size())));
         var index = 0;
         for (var match : page.matches()) {
             index++;
@@ -277,7 +278,7 @@ public final class FindCommand implements Callable<Integer> {
             return ended;
         }
         return ended + SEPARATOR + MessageCatalogue.format(locale, "overview.ended.outcome",
-                            Map.of("outcome", outcome));
+                            Map.of("outcome", TerminalSanitizer.sanitizeLine(outcome)));
     }
 
     /**
