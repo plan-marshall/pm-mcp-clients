@@ -38,7 +38,7 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 /**
  * The plan detail contract of CLI-UC-F-13: {@code GET /api/v1/plans/{id}/process} answers the plan
- * the id names, and an id the scenario does not know is a {@code 404 plan_not_found}. A plan the
+ * the id names, and an id the scenario does not know is a {@code 404 scope_not_found}. A plan the
  * scenario lists without a route of its own is answered from its own summary entry, not with
  * another plan's epic, pull request or tree.
  */
@@ -56,7 +56,7 @@ class PlanDetailTest {
     }
 
     @Test
-    @DisplayName("two plan ids serve two different plans and an unknown id answers plan_not_found")
+    @DisplayName("two plan ids serve two different plans and an unknown id answers scope_not_found")
     void servesThePlanPerId() throws Exception {
         try (var engine = engine()) {
             var fixRelay = get(engine, "/api/v1/plans/fix-relay/process");
@@ -87,11 +87,11 @@ class PlanDetailTest {
             var unknown = answer(engine, "/api/v1/plans/" + unknownPlan + "/process");
             assertEquals(404, unknown.status(), "an unknown plan id answers 404");
             assertNotNull(unknown.json());
-            assertEquals("plan_not_found", unknown.json().get("error"));
+            assertEquals("scope_not_found", unknown.json().get("error"));
 
             var unknownActivity = answer(engine, "/api/v1/plans/" + unknownPlan + "/tasks/TASK-001/activity");
             assertEquals(404, unknownActivity.status(), "an unknown plan id has no task activity");
-            assertEquals("plan_not_found", unknownActivity.json().get("error"));
+            assertEquals("scope_not_found", unknownActivity.json().get("error"));
         }
     }
 

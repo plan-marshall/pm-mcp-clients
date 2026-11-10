@@ -5,6 +5,7 @@ import { runtimeStore } from '../stores/runtime';
 import { get } from 'svelte/store';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type CleanupJob, type CleanupKeptItem } from '../api/client';
+import { ClientError } from '../api/errors';
 
 describe('CleanupView component', () => {
   const mockJob: CleanupJob = {
@@ -113,6 +114,18 @@ describe('CleanupView component', () => {
       }),
     );
     vi.restoreAllMocks();
+  });
+
+  it('draws the error pattern when the cleanup job cannot be read', async () => {
+    const job = vi.spyOn(apiClient, 'getCleanupJob').mockRejectedValue(new ClientError('timeout'));
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: [] });
+
+    render(CleanupView);
+
+    const error = await screen.findByTestId('cleanup-error');
+    expect(error).toHaveTextContent('The request took too long');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(job).toHaveBeenCalledTimes(2));
   });
 
   it('renders cleanup job summary and project item checklists', async () => {

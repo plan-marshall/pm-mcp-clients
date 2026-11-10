@@ -40,6 +40,9 @@
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState } from '../display';
   import Icon from '../components/Icon.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
 
   /** What the inspector shows: a leaf task's live feed, or a node's own narrative. */
   type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
@@ -47,7 +50,7 @@
   let planId = $derived($runtimeStore.selectedPlanId || '');
   let plan = $state<ProcessTree | null>(null);
   let isLoading = $state(true);
-  let errorMessage = $state('');
+  let errorCode = $state('');
   let showTokenBreakdown = $state(false);
   let isLoadingBreakdown = $state(false);
   let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
@@ -168,7 +171,7 @@
   async function loadPlanProcess(initial = false) {
     if (!planId) return;
     if (initial) isLoading = true;
-    errorMessage = '';
+    errorCode = '';
     try {
       const res = await apiClient.getPlanProcess(planId);
       plan = res;
@@ -194,11 +197,7 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
-      const message = (err as Error)?.message;
-      errorMessage =
-        message === 'plan_not_found'
-          ? $t('plan.view.not_found')
-          : message || $t('plan.view.load_failed');
+      errorCode = errorCodeOf(err) || 'unknown';
     } finally {
       if (initial) isLoading = false;
     }
@@ -628,16 +627,28 @@
 <div class="plan-view" data-testid="plan-view">
   {#if isLoading}
     <div class="plan-view__loading" data-testid="plan-loading">
-      <Spinner size="2.5rem" label={$t('plan.view.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
     </div>
-  {:else if errorMessage}
-    <div class="plan-view__error" role="alert" data-testid="plan-error">
-      <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={() => loadPlanProcess(true)}
-        >{$t('web.common.retry')}</Button
-      >
+  {:else if errorCode && !plan}
+    <div class="plan-view__error" data-testid="plan-error">
+      <ErrorState
+        code={errorCode}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => loadPlanProcess(true)}
+        titleLevel={2}
+      />
     </div>
   {:else if plan}
+    {#if errorCode}
+      <div class="plan-view__error" data-testid="plan-error">
+        <ErrorState
+          code={errorCode}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => loadPlanProcess(false)}
+          titleLevel={2}
+        />
+      </div>
+    {/if}
     <!-- Path Navigation Header -->
     <header class="plan-header" data-testid="plan-header">
       <div class="plan-header__top">

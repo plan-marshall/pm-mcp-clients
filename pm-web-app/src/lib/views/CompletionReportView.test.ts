@@ -268,7 +268,7 @@ describe('CompletionReportView component', () => {
 
     const h1Elements = document.querySelectorAll('h1');
     expect(h1Elements).toHaveLength(1);
-    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
+    expect(h1Elements[0]).toHaveTextContent(/The runtime refused the request/i);
   });
 
   it('compares each heading with the previous level across a full report at both titleLevel 1 and 2 (D3)', () => {
@@ -325,7 +325,7 @@ describe('CompletionReportView component', () => {
     await waitFor(() => {
       const heading = screen.getByRole('heading', {
         level: 1,
-        name: /Failed to load completion report/i,
+        name: /The runtime refused the request/i,
       });
       expect(document.activeElement).toBe(heading);
     });

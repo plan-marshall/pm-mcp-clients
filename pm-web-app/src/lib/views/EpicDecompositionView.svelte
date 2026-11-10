@@ -2,7 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type DecompositionCommitResult,
@@ -18,6 +20,8 @@
   let cut = $state<EpicDecomposition | null>(null);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  /** The code of a failed cut read, which replaces the cut with the error pattern. */
+  let loadError = $state('');
   let busy = $state(false);
   let committed = $state<DecompositionCommitResult | null>(null);
   let droppedPlans = $state<string[]>([]);
@@ -59,11 +63,11 @@
   async function load(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    errorMessage = '';
+    loadError = '';
     try {
       cut = await apiClient.getDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       if (initial) isLoading = false;
     }
@@ -115,7 +119,7 @@
       readBack = { before: cut, after };
       instructOpen = false;
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -132,7 +136,7 @@
     try {
       cut = await apiClient.checkDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -163,7 +167,7 @@
         committed = await apiClient.commitDecomposition(projectId, epicId);
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'error';
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       busy = false;
     }
@@ -251,14 +255,23 @@
 <div class="decomposition" data-testid="epic-decomposition">
   {#if isLoading}
     <div class="decomposition__loading">
-      <Spinner size="2.5rem" label={$t('decomposition.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('decomposition.loading')} />
     </div>
-  {:else if errorMessage}
-    <div class="decomposition__error" role="alert" data-testid="decomposition-error">
-      <p>{$t('decomposition.error', { cause: errorMessage })}</p>
-      <Button variant="secondary" onclick={() => load(true)}>{$t('web.common.retry')}</Button>
+  {:else if loadError}
+    <div class="decomposition__error" data-testid="decomposition-error">
+      <ErrorState
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
+        onAct={() => load(true)}
+        titleLevel={2}
+      />
     </div>
   {:else if cut}
+    {#if errorMessage}
+      <div class="decomposition__error" data-testid="decomposition-action-error">
+        <ErrorState code={errorMessage} titleLevel={2} />
+      </div>
+    {/if}
     <header class="decomposition__header">
       <h1 class="decomposition__title" data-testid="decomposition-title">
         {$t('decomposition.title', { epic: cut.epic_id })}

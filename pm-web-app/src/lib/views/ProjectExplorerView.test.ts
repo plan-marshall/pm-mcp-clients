@@ -5,6 +5,7 @@ import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ProjectExplorer } from '../api/client';
+import { ClientError } from '../api/errors';
 
 describe('ProjectExplorerView component', () => {
   const mockExplorer: ProjectExplorer = {
@@ -158,6 +159,19 @@ describe('ProjectExplorerView component', () => {
       conflict: false,
       revision: 8,
     });
+  });
+
+  it('draws the error pattern when the explorer cannot be read', async () => {
+    const explorer = vi
+      .spyOn(apiClient, 'getProjectExplorer')
+      .mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+
+    const error = await screen.findByTestId('explorer-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(explorer).toHaveBeenCalledTimes(2));
   });
 
   it('renders 4-part explorer view with being added, favourites, recent, and all projects', async () => {
@@ -404,6 +418,24 @@ describe('ProjectExplorerView component', () => {
     await waitFor(() => {
       expect(saveSpy).toHaveBeenCalledWith('pm-mcp-clients', 'landing', 'landing.files', 7);
     });
+  });
+
+  it('draws the error pattern when the setup values cannot be read', async () => {
+    const settings = vi
+      .spyOn(apiClient, 'getProjectSettings')
+      .mockRejectedValue(new ClientError('timeout'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+
+    const error = await screen.findByTestId('setup-error');
+    expect(error).toHaveTextContent('The request took too long');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(settings).toHaveBeenCalledTimes(2));
   });
 
   it('shows the other client’s value on a conflict and applies the change again', async () => {

@@ -5,7 +5,9 @@
   import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type ProjectExplorer,
@@ -19,6 +21,8 @@
   let explorer = $state<ProjectExplorer | null>(null);
   let isLoading = $state(true);
   let errorMessage = $state<string | null>(null);
+  /** A failed act on the list, shown beside it instead of replacing a loaded list. */
+  let actionError = $state('');
 
   let filter = $state('');
   let sortBy = $state<'name' | 'most_used'>('name');
@@ -32,6 +36,8 @@
   let settingsTarget = $state<EnrolledProject | null>(null);
   let settings = $state<ProjectSettingsRecord | null>(null);
   let settingsLoading = $state(false);
+  /** The code of a failed settings read, which `ErrorState` resolves to its words. */
+  let settingsLoadError = $state('');
   let settingsError = $state('');
   let settingsNotice = $state('');
   let settingsDrafts = $state<Record<string, string>>({});
@@ -62,7 +68,7 @@
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('project.explorer.load_failed');
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }
@@ -138,8 +144,8 @@
     try {
       await apiClient.toggleFavourite(project.project_id, !project.is_favourite);
       await loadExplorer();
-    } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('project.explorer.favourite_failed');
+    } catch {
+      actionError = $t('project.explorer.favourite_failed');
     }
   }
 
@@ -312,6 +318,7 @@
    */
   async function loadProjectSettings(projectId: string): Promise<void> {
     settingsLoading = true;
+    settingsLoadError = '';
     settingsError = '';
     try {
       const loaded = await apiClient.getProjectSettings(projectId);
@@ -322,8 +329,8 @@
         drafts[value.aspect] = value.value ?? '';
       }
       settingsDrafts = drafts;
-    } catch {
-      settingsError = $t('project.settings.load_failed');
+    } catch (err: unknown) {
+      settingsLoadError = errorCodeOf(err) || 'unknown';
     } finally {
       settingsLoading = false;
     }
@@ -490,14 +497,23 @@
 
   {#if isLoading && !explorer}
     <div class="explorer-loading" role="status">
-      <Spinner size="2.5rem" label={$t('project.explorer.loading')} />
+      <Skeleton shape="card" rows={3} label={$t('project.explorer.loading')} />
     </div>
   {:else if errorMessage}
-    <div class="alert alert--danger" role="alert">
-      <span>{errorMessage}</span>
-      <Button variant="secondary" onclick={loadExplorer}>{$t('web.common.retry')}</Button>
+    <div class="alert alert--danger" data-testid="explorer-error">
+      <ErrorState
+        code={errorMessage}
+        actionLabel={$t('common.action.retry')}
+        onAct={loadExplorer}
+        titleLevel={2}
+      />
     </div>
   {:else if explorer}
+    {#if actionError}
+      <div class="alert alert--danger" role="alert" data-testid="explorer-action-error">
+        {actionError}
+      </div>
+    {/if}
     {#if reorderError}
       <div class="alert alert--danger" role="alert" data-testid="reorder-error">
         {reorderError}
@@ -1327,18 +1343,20 @@
       </header>
 
       {#if settingsLoading}
-        <p class="text-muted" role="status">{$t('project.settings.loading')}</p>
-      {:else if settingsError}
-        <div class="alert alert--danger" role="alert" data-testid="setup-error">
-          <span>{settingsError}</span>
-          <Button
-            variant="secondary"
-            onclick={() => loadProjectSettings(settingsTarget?.project_id ?? '')}
-          >
-            {$t('web.common.retry')}
-          </Button>
+        <Skeleton shape="card" rows={3} label={$t('project.settings.loading')} />
+      {:else if settingsLoadError}
+        <div class="alert alert--danger" data-testid="setup-error">
+          <ErrorState
+            code={settingsLoadError}
+            actionLabel={$t('common.action.retry')}
+            onAct={() => loadProjectSettings(settingsTarget?.project_id ?? '')}
+            titleLevel={3}
+          />
         </div>
       {:else if settings}
+        {#if settingsError}
+          <p class="error-text" role="alert" data-testid="setup-update-error">{settingsError}</p>
+        {/if}
         {#if settingsNotice}
           <p class="notice-text" data-testid="setup-notice">{settingsNotice}</p>
         {/if}

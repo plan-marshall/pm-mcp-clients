@@ -381,7 +381,7 @@ describe('the catalogue carries every text of the package', () => {
       'plan.view.title',
       'epic.view.title',
       'common.breadcrumb',
-      'web.common.retry',
+      'common.action.retry',
     ];
     for (const key of required) {
       expect(en[key], `Key '${key}' must exist in the catalogue`).toBeTruthy();
