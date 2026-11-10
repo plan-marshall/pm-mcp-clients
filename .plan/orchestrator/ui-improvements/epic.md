@@ -650,6 +650,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-10: `rb-45-web-error-loading-pattern-001.md` (PLAN-45, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-10: `rb-84-cli-find-001.md` (PLAN-84) and `rb-123-cli-display-layer-residue-001.md` (PLAN-123), both
   opencode, `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-10: `rb-33-verify-cli-acts-005.md` (PLAN-33, opencode), `total_tokens` and `plugin_version` missing.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
@@ -690,6 +691,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   (4) 2026-11-10 `rb-33-verify-cli-acts-004` (`CLI-UC-V-04` German clause): operator ruled "exempt runtime text"; the clause
   and `CLI-CC-V-01` reworded by direct PR #402 (see Decisions); V-04 passes under the new wording. Retire this watch at the
   PLAN-33 landing once #402 is merged. PLAN-33's PR is #398 (open).
+  → PLAN-33 LANDED 2026-11-10 (#398, `344515f9`): see `landings/PLAN-33.md`. The verdict corrections (V-06 stale check,
+  UC-ONB-2 not verified, four `conforms` → `partial`, Totals 4/19/0/0/14) ride PR #402 (operator); the accept-edit gap is
+  folded into PLAN-127. Retire this watch when #402 is merged.
 - PLAN-45 landed (PR #399, `9fb2e7fa`, analysed 2026-11-10); see `landings/PLAN-45.md`. Error pattern on every load path,
   15 s / 30 s client limit, closed client code set, ReportsView refresh keeps the list; Sonar 0 (gate OK, coverage 100 %);
   merge rule met (CodeRabbit reviewed `6c1c634e`, 6/6 handled). Browser clauses of D1–D3 unmet (reduced matrix). Three-layer:
