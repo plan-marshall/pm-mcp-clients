@@ -247,7 +247,7 @@ not by comparing two runs.
 `PLAN-33/plan-nope-view-120x30-en.txt` shows only the header, the rule and the footer (`↑↓ move   Enter open   ? help
 q leave …`), and its `.stdout.txt` carries no `Plan nope` and no `No plan` text. The printed form `plan nope --print`
 writes `Plan nope not found.` and exits `1` (`PLAN-33/plan-nope-120x30-en.stdout.txt`, `-de`, `-80x24-en`, `-80x24-de`;
-the exit code is the `expected-exit` column of `PLAN-33.txt:52-55`, checked by the green `ScreenCaptureIT` run); the
+the exit code is the `expected-exit` column of `PLAN-33.txt:59-62`, checked by the green `ScreenCaptureIT` run); the
 catalogue holds no `No plan nope`. The full-screen overview in `reports-and-system` shows `Nothing runs. Start a plan in
 a project, or enrol one.` in all four arms (`PLAN-33/overview-refused-120x30-en.txt`, and the German `Es läuft nichts.
 Starte einen Plan in einem Projekt, oder registriere eines.` in `overview-refused-120x30-de.txt` / `-80x24-de.txt`), and
