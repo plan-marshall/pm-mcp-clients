@@ -34,7 +34,7 @@ The plan view opens the intent record one step from its head, beside the process
   4 criteria · 2 met · 1 not met · 1 not verified
 ----
 
-* *The plan*: its id and title, one step from the plan view, and the record's revision. The revision is shown because an operator may hold an older reading; the runtime serves the accepted record and its history, and the client shows the accepted one.
+* *The plan*: its id (its title is the plan view's head, one step away), and the record's revision. The revision is shown because an operator may hold an older reading; the runtime serves the accepted record and its history, and the client shows the accepted one.
 * *The goal*: one sentence.
 * *The counts*: the criteria by verdict, so the state of the self-review is visible before the list is read. Before the review, the counts are absent and the line says `not reviewed yet`.
 
@@ -241,7 +241,7 @@ An epic states where it ends before it is cut into plans. The epic view and the 
 [#oversize]
 == The `over_size` Distribution
 
-A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. The compiled multiple is `3 ×`; a role artifact may lower it, never raise it, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the place where a project changes it shows the measured distribution: the runtime measures it per project and role (`GET /api/v1/projects/{id}/metrics/oversize`), and the web app shows it in the project's setup (<<web>>).
+A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. The compiled multiple is `3 ×`; a role artifact may lower it, never raise it, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the measured distribution is shown where a project's setup is: the runtime measures it per project and role and serves it as its distribution resource (`OverSizeDistributionResource` of `pm-api`, with the multiple in force and the proposed one), and the web app shows it in the project's setup (<<web>>). The chart is read-only: no client designs the act that proposes or changes a multiple yet, so the chart shows the proposal the runtime serves and offers no act. Without a proposal it shows the distribution under the multiple in force and no flagged comparison; a role without measured tasks shows `intent.oversize.empty` instead of a chart.
 
 [#buckets]
 === The Buckets
@@ -250,9 +250,9 @@ Each bucket holds the tasks whose spent tokens fall between two multiples of the
 
 ----
   implement · over_size 3x → 2x
-  0-1x   8 tasks
-  1-2x   5 tasks
-  2-3x   3 tasks  · 3 flagged
+  0–1x   8 tasks
+  1–2x   5 tasks
+  2–3x   3 tasks  · 3 flagged
   3x+    4 tasks  · 4 flagged
   20 tasks · 7 flagged · 35 %
 ----
@@ -268,7 +268,7 @@ Each bucket holds the tasks whose spent tokens fall between two multiples of the
 [#terminal]
 === The Terminal
 
-The terminal shows each record as a section of the plan or epic view, not as a separate dialogue: the head, then the criteria with their verdicts, the non-goals, the choices grouped by decider, the open questions and deferred items, the builder check, and the outline's deliverables. A deliverable opens its files and criteria in the same frame; a criterion opens its deliverables. The width is the terminal's, so the affected files and the evidence go on their own lines under the row that owns them, and a long sentence wraps without a horizontal scroll.
+The terminal's sections are designed here, not in its own view documents (link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View] names only the plan's changes): it shows each record as a section of the plan or epic view, not as a separate dialogue: the head, then the criteria with their verdicts, the non-goals, the choices grouped by decider, the open questions and deferred items, the builder check, and the outline's deliverables. A deliverable opens its files and criteria in the same frame; a criterion opens its deliverables. The width is the terminal's, so the affected files and the evidence go on their own lines under the row that owns them, and a long sentence wraps without a horizontal scroll.
 
 [#web]
 === The Web App
@@ -276,7 +276,7 @@ The terminal shows each record as a section of the plan or epic view, not as a s
 The web app shows the same order in the tab _Intent_ of the plan and of the epic (link:plan-view.adoc#tabs[Plan View, The Tabs of the Web App]; link:epic-view.adoc#tabs[Epic View, The Tabs of the Web App]): the intent with the goal and the criterion list, each criterion's verdict, the choices grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria.
 
 * *A verdict* is a `StatusLabel` (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]): a criterion's `state.criterion.met` (success), `.not_met` (danger), `.not_verified` and `.not_reviewed` (neutral: never a warning), a done-when check's `state.check.pending` (neutral), `.met` and `.not_met`; the reason stands one expansion away.
-* *The `over_size` distribution* is a small bar chart on the project page's setup tab (`/projects/{id}?tab=setup`, link:project-explorer.adoc#project-page[Project Explorer, The Project Page]), one per role whose multiple the project sets, with the counts and the flagged share in text, so it is readable without colour and at phone width.
+* *The `over_size` distribution* is a small bar chart on the project page's setup tab (`/projects/{id}?tab=setup`, link:project-explorer.adoc#project-page[Project Explorer, The Project Page]), one per role whose multiple the project sets, with the counts and the flagged share in text, so it is readable without colour and at phone width. The terminal shows no `over_size` chart.
 
 [#live]
 === Live and One Step Away
@@ -286,7 +286,7 @@ Both clients update the records with the plan's state: a new revision of the int
 [#contract]
 === What the Contract Carries
 
-The records above are the engine's (link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record]). The client contract `pm-api` (`PlanIntentResource`, `BuilderCheckResource`) does not yet carry all of them: a choice's `adr` and `evidence`, the non-goals as items `{id, text}`, the decider `role` (the contract says `model`), and the reason of a `not_run` builder check. The contract and the mock gain them before the web app's intent panels are built; until then a client shows what the contract carries and leaves the rest out, never guessing it. Vote support is in neither record and is not shown.
+The records above are the engine's (link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record]). The client contract `pm-api` (`PlanIntentResource`, `BuilderCheckResource`) carries them all: a choice's `adr` and `evidence`, the non-goals as items `{id, text}`, the decider `role` (where the contract today says `model`), and the reason of a `not_run` builder check; growing the contract and the mock to that is a step of its own before the web app's intent panels. A client shows what the contract carries and leaves a missing field out, never guessing it. Vote support is in neither record and is not shown.
 
 [#texts]
 === Texts

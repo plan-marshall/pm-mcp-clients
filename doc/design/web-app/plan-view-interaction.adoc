@@ -34,7 +34,7 @@ The plan is a level of the chain of levels — the lens, the project, the epic, 
   └──────────────────────────────────┴─────────────────────────────────────────┘
 ----
 
-* *The Process tab* holds the tree and the narrative of the node the tree points at. While the object column is at least `720 px` wide they stand side by side, the tree `280` to `360 px` wide and the narrative taking the rest; in a narrower column the narrative stands below the tree. Each keeps its own scroll.
+* *The Process tab* holds the tree and the narrative of the node the tree points at. While the object column is at least `720 px` wide they stand side by side, the tree `280` to `360 px` wide and the narrative taking the rest; in a narrower column the narrative stands below the tree. The deepest chain leaves the object column below `720 px` on most windows (link:navigation.adoc#window[Navigation, The Column Window]), so side by side is the case of a shorter chain or a wide window, and stacking the usual one. Each keeps its own scroll.
 * *The Intent tab* shows the plan's intent record, its builder check and its outline in the order of link:../shared/intent-and-outline.adoc#intent[Intent and Outline] (<<intent>>).
 * *The Changes tab* shows the plan's changes (<<changes>>); it is absent before the first capture, as the size line is.
 * *An ended plan* has the same tabs, read-only (link:../shared/plan-view.adoc#ended[Plan View, An Ended Plan]).
@@ -209,4 +209,4 @@ drift into one wording in the tree and another in the narrative.
 [#decisions]
 == Decisions of the Operator
 
-Settled by the operator on 2026-11-10 (D6): the plan is the object column with the tabs Process, Intent and Changes, and a list column whose list is the tree while a task is open; the tokens stay the one-step disclosure of the head line, and there is no Activity, Tokens or Settings tab (_Plan settings…_ stays a dialogue, link:components.adoc#labels[Components, Labels]); the changes are a tab rather than a disclosure; tree and narrative stand side by side from an object column of `720 px`; `node=` and `file=` are written only with their tab.
+Settled by the operator on 2026-11-10 (D6): the plan is the object column with the tabs Process, Intent and Changes, and a list column whose list is the tree while a task is open; the tokens stay the one-step disclosure of the head line, and there is no Activity, Tokens or Settings tab (_Plan settings…_ stays a dialogue, link:../shared/work-actions.adoc#plan-actions[Work Actions, Plan Actions]); the changes are a tab rather than a disclosure; tree and narrative stand side by side from an object column of `720 px`; `node=` and `file=` are written only with their tab.

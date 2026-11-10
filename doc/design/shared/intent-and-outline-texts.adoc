@@ -26,6 +26,10 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Refine has not written the intent yet.
 |Refine hat die Absicht noch nicht geschrieben.
 
+|`intent.epic.none`
+|This epic has no intent record.
+|Dieses Epic hat keinen Absichtsdatensatz.
+
 |`intent.head.title`
 |Intent · {plan} · revision {revision}
 |Absicht · {plan} · Revision {revision}
@@ -34,9 +38,13 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Goal
 |Ziel
 
-|`intent.head.counts`
-|{criteria, plural, one {# criterion} other {# criteria}} · {met} met · {not_met} not met · {not_verified} not verified
-|{criteria, plural, one {# Kriterium} other {# Kriterien}} · {met} erfüllt · {not_met} nicht erfüllt · {not_verified} nicht verifiziert
+|`intent.head.criteria`
+|{criteria, plural, one {# criterion} other {# criteria}}
+|{criteria, plural, one {# Kriterium} other {# Kriterien}}
+
+|`intent.head.count`
+|{count} {state}
+|{count} {state}
 
 |`intent.criteria.title`
 |Criteria
@@ -48,7 +56,7 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`intent.criteria.no_deliverable`
 |no deliverable yet
-|noch kein Ergebnis
+|noch kein Deliverable
 
 |`intent.criteria.reason`
 |Reason: {reason}
@@ -192,7 +200,7 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`intent.outline.missing_deliverable`
 |missing deliverable {number}
-|fehlendes Ergebnis {number}
+|fehlendes Deliverable {number}
 
 |`intent.outline.satisfies`
 |satisfies {criteria}
@@ -250,6 +258,14 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{role} · over_size {current}x → {proposed}x
 |{role} · over_size {current}x → {proposed}x
 
+|`intent.oversize.title_current`
+|{role} · over_size {current}x
+|{role} · over_size {current}x
+
+|`intent.oversize.empty`
+|No measured tasks of this role yet.
+|Noch keine gemessenen Tasks dieser Rolle.
+
 |`intent.oversize.bucket`
 |{from}–{to}x
 |{from}–{to}x
@@ -275,13 +291,16 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{direction, select, lower {{current}x → {proposed}x senkt den Faktor und markiert mehr} other {{current}x → {proposed}x hebt den Faktor und markiert weniger}}
 |===
 
+* *The head's counts*: the head joins `intent.head.criteria` and one `intent.head.count` per verdict that has criteria, with ` · `; `{state}` is the verdict's word `state.criterion.<value>` (<<states>>), so a verdict has one word everywhere. Before the review the line is `state.criterion.not_reviewed`.
+* *The head's title*: `{plan}` in `intent.head.title` is the plan's id, as in the sketch; its title is the plan view's head, one step away.
+* *The chart's title*: `intent.oversize.title` while the runtime serves a proposed multiple, `intent.oversize.title_current` without one.
 * *File intents*: the wire values `read`, `write-new`, `write-replace`, `write-conditional` and `delete` take the keys `intent.outline.file.<value>` with `-` written as `_`.
 * *Sources* at the top of the epic's tab take `overview.epic.sources` (link:epic-view.adoc#texts[Epic View, Texts]).
 
 [#states]
 == Verdicts
 
-The verdicts are display words of a server value, the family `state.<kind>.<value>` of the area `common` (link:texts-and-languages.adoc#keys[Keys and Packs]); a `StatusLabel` shows them (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]), and the head line's `not reviewed yet` is the same key.
+The verdicts are display words of a server value, and of the absence of one for `not_reviewed`, the family `state.<kind>.<value>` of the area `common` (link:texts-and-languages.adoc#keys[Keys and Packs]); a `StatusLabel` shows them (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]), and the head line's `not reviewed yet` is the same key.
 
 [cols="3,3,3",options="header"]
 |===

@@ -252,7 +252,7 @@ Every field and every button draws its frame from the same tokens, so a field an
 
 The content is bounded by the page template a view sits on (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]): a lens on the triage template, the column engine, at the full width of its container, which it shows as the column window of link:navigation.adoc#window[Navigation] — list columns of `220` to `320px`, an object column of at least `480px`, the window by the width table there; an object on a page of its own and the dashboard template at `1440px`, centred; the wizard template at `720px`. Every template pads the page by `--space-6` and by `--space-3` on the phone (below `480px`). A view that has not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`, the explorer at `1200px` — and never sets an arbitrary width.
 
-The other two-column views (the process tree beside the inspector, the sources beside the start's chat) split at `2fr 1fr` on the desktop; the plan's tree and its narrative follow their own rule (link:plan-view-interaction.adoc#layout[Plan View Interaction]). A column that carries a live stream (chat, activity) keeps its own scroll and never pushes the page.
+The other two-column views (the sources beside the start's chat) split at `2fr 1fr` on the desktop; the plan's tree and its narrative follow their own rule (link:plan-view-interaction.adoc#layout[Plan View Interaction]). A column that carries a live stream (chat, activity) keeps its own scroll and never pushes the page.
 
 [#breakpoints]
 === Responsive Breakpoints
@@ -267,7 +267,7 @@ The other two-column views (the process tree beside the inspector, the sources b
 
 |Tablet
 |`768px` to `1279px`
-|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`, and a lens shows the columns its width table names; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
+|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`, and a lens shows the columns its width table names; a wide table may drop its least important column, never its identifying one; the plan's tree and its narrative follow the `720px` rule of link:plan-view-interaction.adoc#layout[Plan View Interaction].
 
 |Phone
 |< `768px`
@@ -442,11 +442,11 @@ Every view and every object has one canonical address, in one scheme: path segme
 
 |`/`
 |What waits
-|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]); a launcher, whose items open at their own addresses. A click on What waits always opens it; only a bare start of the app at `/` is filled from the remembered place, by a replace.
+|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]); a launcher, whose items open at their own addresses. A click on What waits always opens it; only a load without the app's mark at `/` is filled from the remembered place, by a replace (link:navigation.adoc#url[Navigation, Addresses]).
 
 |`/overview`
 |Running work
-|`?project={id}` scopes the lens to a project; `mode=ended`, `group=epic` and `follow=on` are its modes. A bare `/overview` is filled from the remembered place by a replace.
+|`?project={id}` scopes the lens to a project; `mode=ended`, `group=epic` and `follow=on` are its modes. A load without the app's mark at the bare `/overview` is filled from the remembered place by a replace, a click on Running work (the rail's or the bottom bar's) by a push; Up and the breadcrumb's lens segment never fill it (link:navigation.adoc#url[Navigation, Addresses]).
 
 |`/epics/{id}`, `/plans/{id}`, `/plans/{id}/tasks/{task}`
 |An epic, a plan, a task of a plan
@@ -458,7 +458,7 @@ Every view and every object has one canonical address, in one scheme: path segme
 
 |`/projects`, `/projects/{id}`
 |Projects and the one project page
-|`?tab=setup` opens the project's setup; without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
+|`?tab=setup` opens the project's setup (with the `over_size` chart of link:../shared/intent-and-outline.adoc#oversize[Intent and Outline]); without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
 
 |`/project-onboarding/{entry}`
 |Project onboarding

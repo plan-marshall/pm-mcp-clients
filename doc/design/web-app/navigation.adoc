@@ -117,7 +117,7 @@ The window for the deepest chain (lens › project › epic › plan › task), 
 
 [cols="1,1,3,1,3",options="header"]
 |===
-|Viewport |Content, rail expanded |Window, rail expanded |Content, rail collapsed |Window, rail collapsed
+|Viewport (the container widths it gives) |Content, rail expanded |Window, rail expanded |Content, rail collapsed |Window, rail collapsed
 
 |`360 px`
 2+|`336 px`, no rail: one column, Up, the breadcrumb shortened in the middle, no strip (<<phone>>)
@@ -215,7 +215,7 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 * *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task; selecting one ends it.
 * *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names, and an explicit click on a lens opens that lens, so the rail's What waits always opens the list at `/`. The remembered place fills an address at two entry points only:
 ** *A load without the app's mark*: every entry the app writes carries its mark in `history.state`, so a load whose state has none is the app opened from outside it (a typed address, a bookmark, a new tab). At `/` or at the bare `/overview` it opens where the operator left it, by a replace; without a remembered place `/` stays on What waits.
-** *A click on the rail's Running work*: it opens `/overview` filled from the remembered place, by a push of the filled address.
+** *A click on Running work* (the rail's, or the bottom bar's on a phone): it opens `/overview` filled from the remembered place, by a push of the filled address.
 ** *Never filled*: Up and the breadcrumb's lens segment push the lens's own list with nothing selected, with the app's mark, and a reload of that entry keeps the mark and so stays unfilled; a reload of `/` after a click on What waits stays on What waits. The remembered place never holds the mode, so the rail opens running work (the operator, 2026-11-10, D6).
 * *A pairing code in the fragment* is redeemed before the first write and is never written into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
 * *Objects and workflows never collide*: an object is `/{kind}s/{id}`, and the segment after `/{kind}s/` is always an id. A workflow has a path of its own (`/project-onboarding/{entry}`, `/decomposition`, `/start`) or a fixed segment below its object's id (`/projects/{id}/start`, `/epics/{id}/decomposition`), never a name beside the ids, so no id — a project called `onboard`, an epic called `decompose` — can collide with it.
@@ -281,11 +281,11 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 * *Where the window cannot show the object column (or the wizard's content) and the chat side by side*, the chat takes the space and the object becomes a hidden level; with one column there is no strip, and _Hide the chat_ returns to the object or the wizard. The object column's own levels shift left as usual.
 * *Its address* is the query `chat=open`; opening and hiding it replace the address and never push.
 * *Hiding the chat* (`Escape`, _Hide the chat_) keeps it running; _New chat_ is the chat's own act. What the chat shows is the chat design's.
-* *From the chat to an object*: a reference chip or a status card's _Open it_ (link:chat.adoc#status-cards[Chat and Voice, Status Cards]) opens the target. A target of the chat's own subject (its task, its decision, its hold, its queued revision; in a decision's chat the plan, and with it its queued revision, is another subject) replaces the object column's address and keeps `chat=open`, so it stands beside the chat (`/plans/fix-relay/tasks/TASK-4?chat=open`, a decision in place `/plans/fix-relay?open=decision:Q-007&chat=open`); closing a decision opened so replaces the address again with the one it replaced (its `open` removed, `chat=open` kept), never a history back, which would leave the plan. `chat=open` always names the chat of the object column's object (the plan), never one of an object opened in place: a decision's own chat opens at the decision's own address (`/decisions/Q-007?chat=open`). A target of another subject (another plan, the epic) is a change of object: its address is pushed without `chat`, the chat stays with its subject, and the history's back returns to it. Where the window shows one column only, every target is pushed without `chat`, so a reload shows the target, and the history's back returns to the chat (D5, the operator, 2026-11-09).
+* *From the chat to an object*: a reference chip or a status card's _Open it_ (link:chat.adoc#status-cards[Chat and Voice, Status Cards]) opens the target. A target of the chat's own subject (its task, its decision, its hold, its queued revision; in a decision's chat the plan, and with it its queued revision, is another subject) replaces the object column's address and keeps `chat=open`, so it stands beside the chat (`/plans/fix-relay/tasks/TASK-4?chat=open`, a decision in place `/plans/fix-relay?open=decision:Q-007&chat=open`, an `open=` form that waits for the address model of `PLAN-143`, until which the decision's own address is pushed); closing a decision opened so replaces the address again with the one it replaced (its `open` removed, `chat=open` kept), never a history back, which would leave the plan. `chat=open` always names the chat of the object column's object (the plan), never one of an object opened in place: a decision's own chat opens at the decision's own address (`/decisions/Q-007?chat=open`). A target of another subject (another plan, the epic) is a change of object: its address is pushed without `chat`, the chat stays with its subject, and the history's back returns to it. Where the window shows one column only, every target is pushed without `chat`, so a reload shows the target, and the history's back returns to the chat (D5, the operator, 2026-11-09).
 
 [cols="1,3,3",options="header"]
 |===
-|Viewport |Rail expanded, chat open |Rail collapsed, chat open
+|Viewport (the container widths it gives) |Rail expanded, chat open |Rail collapsed, chat open
 
 |below `768 px`
 2+|the chat takes the screen, the bottom bar included

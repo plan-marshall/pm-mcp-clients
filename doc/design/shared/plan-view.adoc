@@ -55,7 +55,7 @@ In the web app the plan is a level of the column chain (link:../web-app/navigati
 * *Intent*: the plan's intent record, its builder check and its outline (link:intent-and-outline.adoc#intent[Intent and Outline]); the narrative of `refine` and `outline` links to it. This is the one step from the head the intent design names.
 * *Changes*: the plan's changes (<<changes>>), absent before the first capture; the size line of the head is a link to it.
 * *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_), and the activity of a worker is the task's own level (<<worker>>).
-* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view (link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View]).
+* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view: the tree and the changes in link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], the intent's sections in link:intent-and-outline.adoc#terminal[Intent and Outline, The Terminal].
 
 [#states]
 == The State of a Node
@@ -187,7 +187,7 @@ The code the plan changed, read where the operator is, also where no pull reques
 * *A file*: selecting a row opens its hunks: each hunk's header with its old and new lines, the lines with `−`, `+`, or a space, on the diff tokens of the client. A file the runtime cut shows `plan.changes.truncated` with the count of lines left out. A binary file shows only its row.
 * *Untrusted*: every path and line is shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
 * *Read only*: no hunk is accepted or rejected here, and the view offers no act on the code; a change the operator wants goes into the plan's chat (link:work-actions.adoc#chat[Chatting with the Planning Role]).
-* *Absent*: before the first capture the view says `plan.changes.not_captured`, never an empty list; where the captured commit is gone it says `plan.changes.unavailable`. An ended plan shows its last capture.
+* *Absent*: before the first capture the terminal's `d` says `plan.changes.not_captured`, never an empty list, and the web app shows no _Changes_ tab and no size line (<<tabs>>); where the captured commit is gone both say `plan.changes.unavailable` (in the web app inside the tab, which is present then). An ended plan shows its last capture.
 * *Live*: on `plan.change_captured` an open list is read again and keeps the selected file by its path; an open file is read again only when its row changed.
 
 
@@ -232,7 +232,7 @@ While a revision the operator accepted in the plan's chat waits for its task bou
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended, in the web app with the same tabs (<<tabs>>): every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]), shows read-only as it ended, in the web app with the same tabs (<<tabs>>): every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
 
 [#texts]
 == Texts
