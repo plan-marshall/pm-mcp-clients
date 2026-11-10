@@ -152,3 +152,34 @@ pr: pm-mcp-core #340 merged as `fa1c11ef` (head `48152b61`); plan-marshall-docum
   write set, chat resources and skill on the job connection.
 - Stage the client packages (D4 re-scoped by D5): contract + mock, web chat, terminal chat; with the `plan-125-001.md`
   code defects. Engine packages `chat-context`, `chat-narrative` are pm-mcp-core's (`doc/plans/` there).
+
+---
+
+# Addendum 2: the follow-up round F1-F9 (2026-11-10, `plan-125-005.md`)
+
+pr: pm-mcp-core #349 merged as `db02e443` (head `e71a661d`); plan-marshall-documentation #174 squashed as `10f98b73`
+(head `f57491a`); pm-mcp-clients #395 merged as `cc0d62af` (head `60e617f4`) — in that order, on the operator's word
+("merge all"). Every status stays `AGREED`.
+
+- **Operator's F9 answer:** the chat stays — ended work's _Start a plan with it_ is applied by `chat.apply`, never
+  carried; the chat goes on; `control.chat.follow_up.opened`.
+- **Fidelity (leaf on `main`):** F1-F9 all fixed and consistent across core, docs and clients; the already-queued rule
+  reads the same everywhere; no "carried; the chat has ended" wording left for a follow-up start; the info items
+  (409 `conflict` description, mock scenarios, `row_failed` outcome incl. `handed_back`) in place; changed client files
+  `AGREED`, all under 500 lines.
+- **Review (re-read from `ci pr comments`):** core #349 — CodeRabbit 1 body (1 actionable), 1 thread, 0 unresolved,
+  replied, body answered. Clients #395 — CodeRabbit reviewed `60e617f4` ("No actionable comments were generated"),
+  0 threads, answered by PR comment. Docs #174 — no bot; `trace.py` 0 broken. **Merge rule met.** Sonar core 0 issues.
+- **Cleanup:** no `docs/125*` branch on any remote, no 125 worktree (checked).
+- **Residue (minor, re-read N2 and N3 by the orchestrator):**
+  - N1 core `doc/plans/chat-narrative.adoc:37` (and `:8`) — tests list lacks the already-queued cases and the chat-end
+    `plan.revision_queued` (core's own package).
+  - N2 clients `web-app/components-chat.adoc:53` — ProposalCard knows only "Refused for an older version"; the
+    already-queued variant (Accept re-enabled, lapse) is only in `chat.adoc:107` → fold into the web chat package.
+  - N3 core `state-catalogue.adoc:132`, docs `01:359` — `plan.revision_queued` "when it is queued and when it leaves
+    the queue", without the chat-end send that three other places state.
+  - Info: N4 UC-CTL-1:124; N5 "a carried proposal (a decision's …)" reads exhaustive (`chat.adoc:71`,
+    `work-actions.adoc:385`); N6 the web notice list has no rendering of `control.chat.follow_up.opened`; N7 the
+    "taken again" rule stated absolutely (`state-catalogue:138`, `28-chat:79`).
+- **D5 is closed.** Next: stage the client packages (contract + mock, web chat, terminal chat) from the AGREED
+  documents with the `plan-125-001.md` code defects and N2/N3/N5/N6 folded in; the daemon surface stays listed, not filed.

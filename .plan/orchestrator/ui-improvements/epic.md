@@ -681,6 +681,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   (written by PLAN-120) says it asks. Minor gaps: `EpicCommand:191` wait text untested; `control.epic.next_invalid` not
   pinned in `de`; D1 evidence order `mutation-after`. Fix plan only on the operator's word.
 
+- D5 CLOSED 2026-11-10 (`plan-125-005.md`; addendum 2 in `landings/PLAN-125.md`): follow-up F1-F9 merged — core #349
+  `db02e443`, docs #174 `10f98b73`, clients #395 `cc0d62af`; merge rule met, Sonar 0, cleanup verified; all F1-F9
+  fixed and consistent (leaf). Operator's F9: the chat stays (follow-up start applied by `chat.apply`, never carried).
+  Residue minor: N1 core `chat-narrative.adoc:37` tests list (core's package); N2 `components-chat.adoc:53` ProposalCard
+  lacks the already-queued variant; N3 `plan.revision_queued` chat-end send missing in core `state-catalogue:132` and
+  docs `01:359`; info N5/N6 (carried wording reads exhaustive; web has no `follow_up.opened` rendering). NEXT: stage the
+  client packages (contract + mock, web chat, terminal chat) from the AGREED docs with the `plan-125-001.md` defects and
+  N2/N3/N5/N6 folded in — on the operator's word. The entries below are history.
 - D5 AGREED and MERGED 2026-11-09 (`plan-125-004.md`; addendum in `landings/PLAN-125.md`): core #340 `fa1c11ef`, docs
   #171 `49f785d8`, clients #392 `0cc6a66d`, in that order; merge rule met (core 6 threads / 2 bodies, clients 4 / 1, all
   answered), Sonar core 0; N2-N8 fixed, N1 partly; cleanup done (verified). RESIDUE on `main` (leaf; F1/F2 re-read):
