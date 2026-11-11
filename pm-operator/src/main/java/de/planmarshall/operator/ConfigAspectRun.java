@@ -101,7 +101,8 @@ final class ConfigAspectRun {
     private int execute(String aspect) throws IOException {
         var source = new AspectRunSource(context.runtime(true), context.gate(),
                             AspectRunSource.reconfigureLink(aspect), answers.facts(), answers.consents(),
-                            answers.noIcons(), answers.noAdvice(), answers.yes(), answers.noInput());
+                            new AspectRunSource.Flags(answers.noIcons(), answers.noAdvice(), answers.yes(),
+                                                answers.noInput()));
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var dialogue = new StateDialogue(source, out, locale,

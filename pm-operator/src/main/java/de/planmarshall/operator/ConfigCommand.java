@@ -64,12 +64,19 @@ public final class ConfigCommand implements Callable<Integer> {
 
     static final String CONFIG_PATH = "/api/v1/config";
     static final String MACHINE_SETTINGS_PATH = "/api/v1/machine/settings";
+    private static final String LANGUAGE = "language";
+    private static final String HARNESSES = "harnesses";
+    private static final String MODELS = "models";
     private static final String ROLES = "roles";
+    private static final String PROVIDERS = "providers";
+    private static final String PLAN_DEFAULTS = "plan-defaults";
     private static final String CONFIG_VERB = "config";
     private static final String DOCUMENTS = "documents";
     private static final String CREDENTIALS = "credentials";
     private static final String CONSENTS = "consents";
     private static final String CLEANUP = "cleanup";
+    private static final String SHOW = "show";
+    private static final String ROTATE = "rotate";
     private static final String STATUS = "status";
     private static final String VALUE = "value";
     private static final String INDEX = "index";
@@ -79,28 +86,28 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String ONBOARD_SETTINGS = "onboard.settings.";
     private static final Map<OnboardingAspect, String> ASPECT_VERBS = Map.of(
-                        OnboardingAspect.LANGUAGE, "language",
-                        OnboardingAspect.HARNESSES, "harnesses",
-                        OnboardingAspect.MODELS, "models",
+                        OnboardingAspect.LANGUAGE, LANGUAGE,
+                        OnboardingAspect.HARNESSES, HARNESSES,
+                        OnboardingAspect.MODELS, MODELS,
                         OnboardingAspect.ROLES, ROLES,
                         OnboardingAspect.CREDENTIALS, CREDENTIALS,
-                        OnboardingAspect.PROVIDERS, "providers",
-                        OnboardingAspect.PLANS, "plan-defaults");
+                        OnboardingAspect.PROVIDERS, PROVIDERS,
+                        OnboardingAspect.PLANS, PLAN_DEFAULTS);
 
-    static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        "language.", "harness.", "models.", "credentials.store", "providers.",
-                        "plan_defaults.", "sources.documents_mode", "roles.", ROLES
-    );
+    /** The key prefixes an aspect owns: only its verb changes such a key. */
+    private static final List<String> ASPECT_OWNED_KEYS = List.of(
+                        LANGUAGE + ".", "harness.", MODELS + ".", "credentials.store", PROVIDERS + ".",
+                        "plan_defaults.", "sources.documents_mode", ROLES + ".", ROLES);
 
     /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
     private static final Map<String, String> ASPECT_PREFIXES = Map.of(
-                        "language", "language.",
-                        "harnesses", "harness.",
-                        "models", "models.",
+                        LANGUAGE, LANGUAGE + ".",
+                        HARNESSES, "harness.",
+                        MODELS, MODELS + ".",
                         ROLES, ROLES + ".",
                         CREDENTIALS, CREDENTIALS + ".",
-                        "providers", "providers.",
-                        "plan-defaults", "plan_defaults.");
+                        PROVIDERS, PROVIDERS + ".",
+                        PLAN_DEFAULTS, "plan_defaults.");
 
     /** The catalogue prefixes a configuration value's text is looked up in, in this order. */
     private static final List<String> VALUE_TEXT_KEYS = List.of(
@@ -205,7 +212,7 @@ public final class ConfigCommand implements Callable<Integer> {
         for (var credential : settings.credentials()) {
             items.add(new Item("operator.settings.tokens.title", credential.key(),
                                 providerLine(locale, credential),
-                                List.of(CREDENTIALS, "rotate", credential.key())));
+                                List.of(CREDENTIALS, ROTATE, credential.key())));
         }
         for (var consent : settings.consents()) {
             items.add(new Item("operator.settings.consents.title",
@@ -238,7 +245,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var items = new ArrayList<Item>();
         for (var value : values) {
             items.add(new Item(null, value.key(), renderedValue(locale, value),
-                                List.of(CONFIG_VERB, "show", value.key())));
+                                List.of(CONFIG_VERB, SHOW, value.key())));
         }
         return List.copyOf(items);
     }
@@ -274,7 +281,8 @@ public final class ConfigCommand implements Callable<Integer> {
         int indexWidth = String.valueOf(Math.max(items.size(), 1)).length();
         int labelWidth = 0;
         for (var item : items) {
-            labelWidth = Math.max(labelWidth, Math.min(item.label().length(), LABEL_COLUMN));
+            var length = item.label().length();
+            labelWidth = Math.max(labelWidth, length > LABEL_COLUMN ? LABEL_COLUMN : length);
         }
         int number = 1;
         @Nullable String group = null;
@@ -406,11 +414,29 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
+     * @param project the project level's id, or {@code null}
+     * @param plan    the plan level's id, or {@code null}
+     * @return the level a write addresses
+     */
+    private static ConfigOrigin writeLevel(@Nullable String project, @Nullable String plan) {
+        if (plan != null) {
+            return ConfigOrigin.PLAN;
+        }
+        if (project != null) {
+            return ConfigOrigin.PROJECT;
+        }
+        return ConfigOrigin.MACHINE;
+    }
+
+    /**
      * @param locale the interface locale
-     * @param origin a level
+     * @param origin a level, or {@code null}
      * @return the level's own word in the interface language
      */
-    private static String levelText(String locale, ConfigOrigin origin) {
+    private static String levelText(String locale, @Nullable ConfigOrigin origin) {
+        if (origin == null) {
+            return "";
+        }
         var key = "operator.config.origin." + origin.wire();
         if (MessageCatalogue.hasKey(locale, key)) {
             return MessageCatalogue.format(locale, key, Map.of());
@@ -499,12 +525,12 @@ public final class ConfigCommand implements Callable<Integer> {
 
     static String getOwningAspect(@Nullable String key) {
         if (key == null) return CONFIG_VERB;
-        if (key.startsWith("language.")) return "language";
-        if (key.startsWith("harness.")) return "harnesses";
-        if (key.startsWith("models.")) return "models";
-        if (key.startsWith("credentials.")) return CREDENTIALS;
-        if (key.startsWith("providers.")) return "providers";
-        if (key.startsWith("plan_defaults.")) return "plan-defaults";
+        if (key.startsWith(LANGUAGE + ".")) return LANGUAGE;
+        if (key.startsWith("harness.")) return HARNESSES;
+        if (key.startsWith(MODELS + ".")) return MODELS;
+        if (key.startsWith(CREDENTIALS + ".")) return CREDENTIALS;
+        if (key.startsWith(PROVIDERS + ".")) return PROVIDERS;
+        if (key.startsWith("plan_defaults.")) return PLAN_DEFAULTS;
         if (key.startsWith("sources.documents_mode")) return DOCUMENTS;
         if (key.startsWith(ROLES)) return ROLES;
         return CONFIG_VERB;
@@ -628,7 +654,7 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private String levelPath(String configurationKey) {
-            var level = plan != null ? ConfigOrigin.PLAN : project != null ? ConfigOrigin.PROJECT : ConfigOrigin.MACHINE;
+            var level = writeLevel(project, plan);
             return CONFIG_PATH + "/" + level.wire() + "/" + OperatorUrlUtil.encodePathSegment(configurationKey);
         }
     }
@@ -689,7 +715,7 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private String levelPath(String configurationKey) {
-            var level = plan != null ? ConfigOrigin.PLAN : project != null ? ConfigOrigin.PROJECT : ConfigOrigin.MACHINE;
+            var level = writeLevel(project, plan);
             return CONFIG_PATH + "/" + level.wire() + "/" + OperatorUrlUtil.encodePathSegment(configurationKey);
         }
     }
@@ -720,7 +746,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var facts = new LinkedHashMap<String, String>();
             if (interfaceLocale != null) facts.put("interface", interfaceLocale);
             if (modelLocale != null) facts.put("model", modelLocale);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "language",
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), LANGUAGE,
                                 ConfigAspectRun.Answers.of(facts));
         }
     }
@@ -780,7 +806,8 @@ public final class ConfigCommand implements Callable<Integer> {
             if (defaultHarness != null) facts.put("default", defaultHarness);
             var answers = new ConfigAspectRun.Answers(facts,
                                 consent != null ? consent : List.of(), noIcons, false, false, noInput);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "harnesses", answers);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), HARNESSES,
+                                answers);
         }
     }
 
@@ -810,7 +837,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 facts.put("allow", String.join(",", allow));
             }
             var answers = new ConfigAspectRun.Answers(facts, List.of(), false, noAdvice, false, false);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "models",
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), MODELS,
                                 answers);
         }
     }
@@ -929,13 +956,13 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (use != null || without != null || verify) {
                     return exclusive(context, out);
                 }
-                return PlanSettingsDialogue.run(context, out, plan, "providers", false);
+                return PlanSettingsDialogue.run(context, out, plan, PROVIDERS, false);
             }
             var facts = new LinkedHashMap<String, String>();
             if (use != null && !use.isEmpty()) facts.put("use", String.join(",", use));
             if (without != null && !without.isEmpty()) facts.put("without", String.join(",", without));
             if (verify) facts.put("verify", "true");
-            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "providers",
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), PROVIDERS,
                                 ConfigAspectRun.Answers.of(facts));
         }
     }
@@ -985,7 +1012,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (landing != null || method != null || asking != null || posture != null || yes) {
                     return exclusive(context, out);
                 }
-                return PlanSettingsDialogue.run(context, out, plan, "plan-defaults", false);
+                return PlanSettingsDialogue.run(context, out, plan, PLAN_DEFAULTS, false);
             }
             var facts = new LinkedHashMap<String, String>();
             if (landing != null) facts.put("landing", landing);
@@ -993,7 +1020,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (asking != null) facts.put("asking", asking);
             if (posture != null) facts.put("posture", posture);
             var answers = new ConfigAspectRun.Answers(facts, List.of(), false, false, yes, false);
-            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "plan-defaults", answers);
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), PLAN_DEFAULTS, answers);
         }
     }
 

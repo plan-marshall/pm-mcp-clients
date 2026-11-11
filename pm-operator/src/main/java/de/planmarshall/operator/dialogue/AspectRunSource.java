@@ -79,36 +79,38 @@ public final class AspectRunSource implements StateDialogue.Source {
     private final String linkId;
     private final Map<String, String> facts;
     private final Set<String> consents;
-    private final boolean noIcons;
-    private final boolean noAdvice;
-    private final boolean yes;
-    private final boolean noInput;
+    private final Flags flags;
     private final Set<String> usedAnswers = new LinkedHashSet<>();
     private boolean started;
     private boolean returned;
 
     /**
-     * @param runtime the runtime client
-     * @param gate    the operator gate every answer is sent through
-     * @param linkId  the id of the machine settings' link that calls the aspect again
-     * @param facts   the facts the verb answers a state with, by field name
-     * @param consents the consent kinds the verb carries
-     * @param noIcons whether the icons consent is answered with no
+     * The boolean answers a verb carries.
+     *
+     * @param noIcons  whether the icons consent is answered with no
      * @param noAdvice whether the model advice consent is answered with no
-     * @param yes     whether a displayed change is confirmed
-     * @param noInput whether the run stops at a state it may not be asked about
+     * @param confirm  whether a displayed change is confirmed
+     * @param noInput  whether the run stops at a state it may not be asked about
+     */
+    public record Flags(boolean noIcons, boolean noAdvice, boolean confirm, boolean noInput) {
+    }
+
+    /**
+     * @param runtime  the runtime client
+     * @param gate     the operator gate every answer is sent through
+     * @param linkId   the id of the machine settings' link that calls the aspect again
+     * @param facts    the facts the verb answers a state with, by field name
+     * @param consents the consent kinds the verb carries
+     * @param flags    the boolean answers the verb carries
      */
     public AspectRunSource(RuntimeClient runtime, OperatorGate gate, String linkId, Map<String, String> facts,
-                        List<String> consents, boolean noIcons, boolean noAdvice, boolean yes, boolean noInput) {
+                        List<String> consents, Flags flags) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.gate = Objects.requireNonNull(gate, "gate");
         this.linkId = Objects.requireNonNull(linkId, "linkId");
         this.facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
         this.consents = Set.copyOf(Objects.requireNonNull(consents, "consents"));
-        this.noIcons = noIcons;
-        this.noAdvice = noAdvice;
-        this.yes = yes;
-        this.noInput = noInput;
+        this.flags = Objects.requireNonNull(flags, "flags");
     }
 
     /**
@@ -134,13 +136,13 @@ public final class AspectRunSource implements StateDialogue.Source {
                 unused.add("consent:" + kind);
             }
         }
-        if (yes && !usedAnswers.contains(YES_FLAG)) {
+        if (flags.confirm() && !usedAnswers.contains(YES_FLAG)) {
             unused.add(YES_FLAG);
         }
-        if (noIcons && !usedAnswers.contains(FETCH_ICONS)) {
+        if (flags.noIcons() && !usedAnswers.contains(FETCH_ICONS)) {
             unused.add("no-icons");
         }
-        if (noAdvice && !usedAnswers.contains(MODEL_ADVICE)) {
+        if (flags.noAdvice() && !usedAnswers.contains(MODEL_ADVICE)) {
             unused.add("no-advice");
         }
         return List.copyOf(unused);
@@ -181,7 +183,7 @@ public final class AspectRunSource implements StateDialogue.Source {
             }
             var answer = answerFor(current);
             if (answer == null) {
-                if (noInput) {
+                if (flags.noInput()) {
                     throw new StartPrompt.MissingInputException(current.stateId(), "a choice", null);
                 }
                 return current;
@@ -237,7 +239,7 @@ public final class AspectRunSource implements StateDialogue.Source {
         if (primary == null) {
             return null;
         }
-        if (yes && frame.stateId().contains(CONFIRM_MARKER)) {
+        if (flags.confirm() && frame.stateId().contains(CONFIRM_MARKER)) {
             usedAnswers.add("yes");
             return primary.id();
         }
@@ -252,11 +254,11 @@ public final class AspectRunSource implements StateDialogue.Source {
     }
 
     private @Nullable String answerForConsent(String consentKind) {
-        if (noIcons && FETCH_ICONS.equals(consentKind)) {
+        if (flags.noIcons() && FETCH_ICONS.equals(consentKind)) {
             usedAnswers.add(FETCH_ICONS);
             return NO;
         }
-        if (noAdvice && MODEL_ADVICE.equals(consentKind)) {
+        if (flags.noAdvice() && MODEL_ADVICE.equals(consentKind)) {
             usedAnswers.add(MODEL_ADVICE);
             return NO;
         }

@@ -124,7 +124,7 @@ class ConfigRoutesTest {
 
     @Test
     @DisplayName("the machine settings offer the later run of every aspect")
-    void settingsOfferTheLaterRuns() throws Exception {
+    void settingsOfferTheLaterRuns() {
         var scenario = ScenarioLoader.load(StandardScenarios.ONBOARDING);
         var settings = scenario.state("settings.choose");
 
@@ -138,7 +138,7 @@ class ConfigRoutesTest {
 
     @Test
     @DisplayName("a later run of one aspect starts at its own state and returns to the settings")
-    void laterRunReturnsToTheSettings() throws Exception {
+    void laterRunReturnsToTheSettings() {
         var scenario = ScenarioLoader.load(StandardScenarios.ONBOARDING);
         var settings = scenario.state("settings.choose");
         assertNotNull(settings, "settings.choose");

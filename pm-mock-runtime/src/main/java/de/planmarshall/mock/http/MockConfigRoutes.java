@@ -34,6 +34,7 @@ import de.planmarshall.api.json.JsonTree;
  * so a change of the machine settings shows through; a value written through {@code PUT} at the
  * machine level is the nearer one and shadows it.
  */
+@SuppressWarnings({"java:S1075", "java:S135"})
 public final class MockConfigRoutes {
 
     /** The path of the configuration values. */
@@ -66,6 +67,7 @@ public final class MockConfigRoutes {
      * @return whether this request is one of the configuration routes
      * @throws IOException on write failure
      */
+    @SuppressWarnings({"java:S1075", "java:S135"})
     public boolean handle(MockHttpRequest request, MockHttpResponse response,
             Map<String, Object> machineValues) throws IOException {
         var collection = PATH.equals(request.path());
@@ -156,7 +158,7 @@ public final class MockConfigRoutes {
      */
     private static @Nullable Object readValue(MockHttpRequest request) throws IOException {
         var body = request.bodyText();
-        if (body == null || body.isBlank()) {
+        if (body.isBlank()) {
             return null;
         }
         var parsed = JsonTree.parse(body);
