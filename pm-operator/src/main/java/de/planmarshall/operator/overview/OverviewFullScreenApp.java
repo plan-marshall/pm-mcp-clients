@@ -63,6 +63,7 @@ import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
+import de.planmarshall.operator.NeedsOperatorNotices;
 import de.planmarshall.operator.OperatorActions;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -176,6 +177,7 @@ public final class OverviewFullScreenApp {
     private final AtomicBoolean interrupted = new AtomicBoolean(false);
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicInteger unreadReports = new AtomicInteger(0);
+    private final NeedsOperatorNotices needsNotices = new NeedsOperatorNotices();
 
     private final InitialSelection initialSelection;
 
@@ -1509,12 +1511,18 @@ public final class OverviewFullScreenApp {
      * @param eventMap  the parsed event frame
      */
     private void holdNotice(@Nullable String eventName, @Nullable EventKind kind, Map<String, Object> eventMap) {
-        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
-        if (notice == null || context.isConsoleActive()) {
+        if (context.isConsoleActive()) {
             return;
         }
-        var category = categoryOf(kind != null ? kind.notice() : null);
-        noticeBuffer.hold(category, countOf(eventMap, category));
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
+        if (notice != null) {
+            var category = categoryOf(kind != null ? kind.notice() : null);
+            noticeBuffer.hold(category, countOf(eventMap, category));
+            return;
+        }
+        for (var added : needsNotices.noticesOf(locale, eventName, eventMap)) {
+            noticeBuffer.hold(categoryOf(added.kind()), 1);
+        }
     }
 
     static boolean isReportEvent(String name, String type) {

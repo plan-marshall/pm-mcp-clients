@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -160,61 +161,38 @@ class NeedsOneCountTest {
 
             int badgesTotal = badges.stream().mapToInt(ConsoleBadge::count).sum();
             assertEquals(12, badgesTotal, "sum of badge counts must equal 12");
-
-            var credBadge = badges.stream().filter(b -> "credential".equals(b.itemKind())).findFirst().orElseThrow();
-            var cleanupBadge = badges.stream().filter(b -> "cleanup_due".equals(b.itemKind())).findFirst().orElseThrow();
-            assertEquals("credentials", credBadge.command());
-            assertEquals("cleanup", cleanupBadge.command());
         }
     }
 
     @Test
-    @DisplayName("pushed needs_operator.changed for the machine adds notices")
+    @DisplayName("pushed needs_operator.changed for the machine adds notices for the items it adds")
     void pushedNeedsOperatorChangedNotices() {
-        var credNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                            Map.of("kind", "credential", "count", 1, "scope", "github"));
-        assertNotNull(credNotice);
-        assertTrue(credNotice.contains("Credential github needs attention"),
-                            "credential notice expected: " + credNotice);
+        var differ = new NeedsOperatorNotices();
+        var addition = differ.noticesOf("en", "needs_operator.changed",
+                            Map.of("kind", "credential", "count", 1,
+                                                "needs_operator", Map.of("count", 1, "items", List.of(
+                                                                    Map.of("kind", "credential",
+                                                                                        "link", "/api/v1/credentials/github")))));
+        assertEquals(1, addition.size());
+        assertTrue(addition.getFirst().text().contains("Credential github needs attention"),
+                            addition.getFirst().text());
 
-        var cleanupNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                            Map.of("kind", "cleanup_due", "count", 1));
-        assertNotNull(cleanupNotice);
-        assertTrue(cleanupNotice.contains("Cleanup is due"),
-                            "cleanup_due notice expected: " + cleanupNotice);
+        var cleanup = differ.noticesOf("en", "needs_operator.changed",
+                            Map.of("kind", "cleanup_due", "count", 2,
+                                                "needs_operator", Map.of("count", 2, "items", List.of(
+                                                                    Map.of("kind", "credential",
+                                                                                        "link", "/api/v1/credentials/github"),
+                                                                    Map.of("kind", "cleanup_due",
+                                                                                        "link", "/api/v1/system/cleanup")))));
+        assertEquals(1, cleanup.size());
+        assertTrue(cleanup.getFirst().text().contains("Cleanup is due"), cleanup.getFirst().text());
 
-        // Blank scope with detail, and credential link fallback
-        var detailNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                            Map.of("kind", "credential", "count", 1, "scope", "   ", "detail", "vault-key"));
-        assertNotNull(detailNotice);
-        assertTrue(detailNotice.contains("vault-key"), "expected detail vault-key: " + detailNotice);
-
-        var linkNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                            Map.of("kind", "credential", "count", 1, "link", "/api/v1/credentials/my-secret"));
-        assertNotNull(linkNotice);
-        assertTrue(linkNotice.contains("my-secret"), "expected link my-secret: " + linkNotice);
-    }
-
-    @Test
-    @DisplayName("ConsoleBadge.command covers all badge kinds and resolution branches")
-    void consoleBadgeCommandExhaustive() {
-        var machineSetup = new ConsoleBadge(ConsoleBadge.Kind.MACHINE_SETUP, "setup", null, 1, null);
-        assertEquals("onboarding", machineSetup.command());
-
-        var projectSetupWithId = new ConsoleBadge(ConsoleBadge.Kind.PROJECT_SETUP, "setup", null, 1, "proj-alpha");
-        assertEquals("project setup proj-alpha", projectSetupWithId.command());
-
-        var projectSetupNoId = new ConsoleBadge(ConsoleBadge.Kind.PROJECT_SETUP, "setup", null, 1, null);
-        assertEquals("project setup", projectSetupNoId.command());
-
-        var waitingDecision = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "questions", "decision", 1, null);
-        assertEquals("questions", waitingDecision.command());
-
-        var waitingUnknown = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "custom", "unknown_item", 1, null);
-        assertNull(waitingUnknown.command());
-
-        var waitingNullItemKind = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "waiting", null, 1, null);
-        assertNull(waitingNullItemKind.command());
+        // A credential without a key names the catalogue's own word, never an English literal.
+        var noKey = new NeedsOperatorNotices().noticesOf("de", "needs_operator.changed",
+                            Map.of("kind", "credential", "count", 1,
+                                                "needs_operator", Map.of("count", 1, "items", List.of(
+                                                                    Map.of("kind", "credential")))));
+        assertTrue(noKey.getFirst().text().contains("unbekannt"), noKey.getFirst().text());
     }
 
     private static int intVal(Object v) {

@@ -192,12 +192,10 @@ public final class ConsoleNotice {
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
                                 Map.of(KEY_PROJECT, scope, "what", safeDetail));
             case "credential" -> {
-                String credKey = "unknown";
-                if (!scope.isBlank()) {
-                    credKey = scope;
-                } else if (!safeDetail.isBlank()) {
-                    credKey = safeDetail;
-                }
+                var safeScope = TerminalSanitizer.sanitize(scope).strip();
+                var credKey = !safeScope.isBlank()
+                                    ? safeScope
+                                    : !safeDetail.isBlank() ? safeDetail : MessageCatalogue.format(locale, "common.unknown", Map.of());
                 yield MessageCatalogue.format(locale, "operator.console.notice.credential",
                                     Map.of("key", credKey));
             }
@@ -385,12 +383,6 @@ public final class ConsoleNotice {
         }
         if (byName != null) {
             return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
-        }
-        if ("needs_operator.changed".equals(eventName) || "needs_operator.changed".equals(JsonTree.string(event, "event"))) {
-            var k = stringOf(payload, "kind");
-            if (k != null && !"none".equals(k)) {
-                return EventKind.fromType(k);
-            }
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
         if (byType == EventKind.QUESTION && isWaiver(payload)) {
@@ -580,7 +572,7 @@ public final class ConsoleNotice {
     }
 
     private static @Nullable String firstScopeString(Map<String, Object> map) {
-        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id", "credential_key", "key")) {
+        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id", "credential_key")) {
             var value = stringOf(map, key);
             if (value != null && !value.isBlank()) {
                 return value;
