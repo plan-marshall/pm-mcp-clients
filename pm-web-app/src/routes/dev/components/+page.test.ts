@@ -48,4 +48,27 @@ describe('/dev/components page fixture', () => {
     expect(labels.filter((label) => label.endsWith(', Helles Theme)'))).toHaveLength(2);
     expect(labels.filter((label) => label.endsWith(', Dunkles Theme)'))).toHaveLength(2);
   });
+
+  it.each([
+    ['en', 'Brand', 'replan is reading the whole plan…'],
+    ['de', 'Marke', 'replan liest den ganzen Plan…'],
+  ] as const)('draws a WaitingMark with the catalogue text in each theme, in %s', (locale, section, waiting) => {
+    currentLocale.set(locale);
+    messagesStore.set(loadMessages(locale));
+
+    render(DevComponentsPage);
+
+    for (const theme of ['light', 'dark']) {
+      const block = document.querySelector(`[data-theme="${theme}"]`);
+      expect(block, `${theme} block`).not.toBeNull();
+
+      const marks = block?.querySelectorAll('[data-testid="waiting-mark"]') ?? [];
+      expect(marks).toHaveLength(1);
+      expect(marks[0]).toHaveAttribute('role', 'status');
+      expect(marks[0]).toHaveTextContent(waiting);
+
+      const titles = Array.from(block?.querySelectorAll('h3') ?? []).map((title) => title.textContent);
+      expect(titles).toContain(section);
+    }
+  });
 });
