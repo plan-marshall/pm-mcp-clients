@@ -329,12 +329,14 @@ public final class TuiKeyRegistry {
 
     /**
      * Fills a footer of already rendered cells into the width the terminal offers. All cells fit
-     * when their line does; otherwise the cells are kept in their order until the next one would
-     * not fit whole beside the {@code ? more} cell, the help cell is replaced by that cell, and the
-     * line ends with it. A key is never cut in the middle.
+     * when their line does. Otherwise the cells are kept in their order until the next one would
+     * not fit whole beside the overflow cell and the help cell, the line ends with the cells that
+     * were left out ({@code ? more}) and the help cell is always kept: the key that opens the help
+     * is never the key the width takes away. A key is never cut in the middle.
      *
-     * <p>A line too narrow even for one cell beside {@code ? more} carries that cell alone when it
-     * fits, and is empty when even it does not: the line never ends in a cut key.
+     * <p>A line too narrow even for one cell beside the two trailing cells carries them alone when
+     * they fit, the help cell alone when only it fits, and is empty when even it does not: the line
+     * never ends in a cut key.
      *
      * @param cells  the cells, in the order they are kept
      * @param width  the columns the footer may use
@@ -346,36 +348,37 @@ public final class TuiKeyRegistry {
         if (displayWidth(joined) <= width) {
             return joined;
         }
+        var help = helpCell(locale);
         var more = moreCell(locale);
-        var kept = keepCells(cells, width, helpCell(locale), more);
-        if (kept.isEmpty()) {
-            // Only the overflow cell is left, and only when it fits: a narrower line shows nothing
-            // rather than a cut key.
-            return displayWidth(more) <= width ? more : "";
+        var tail = more + FOOTER_SEPARATOR + help;
+        var kept = keepCells(cells, width, help, tail);
+        var line = kept.isEmpty() ? tail : String.join(FOOTER_SEPARATOR, kept) + FOOTER_SEPARATOR + tail;
+        if (displayWidth(line) <= width) {
+            return line;
         }
-        kept.add(more);
-        return String.join(FOOTER_SEPARATOR, kept);
+        return displayWidth(help) <= width ? help : "";
     }
 
     /**
      * @param cells the cells, in the order they are kept
      * @param width the columns the footer may use
-     * @param help  the help cell, which the {@code more} cell replaces
-     * @param more  the cell that names what was left out
-     * @return the cells that fit beside {@code more}, in their order
+     * @param help  the help cell, which is always kept and never counted as a kept cell here
+     * @param tail  the cells the line ends with ({@code ? more} and the help cell)
+     * @return the cells that fit before {@code tail}, in their order
      */
-    private static List<String> keepCells(List<String> cells, int width, String help, String more) {
+    private static List<String> keepCells(List<String> cells, int width, String help, String tail) {
         var kept = new ArrayList<String>();
+        var reserved = displayWidth(FOOTER_SEPARATOR + tail);
         for (var cell : cells) {
-            if (!help.equals(cell)) {
-                var candidate = new ArrayList<>(kept);
-                candidate.add(cell);
-                candidate.add(more);
-                if (displayWidth(String.join(FOOTER_SEPARATOR, candidate)) > width) {
-                    return kept;
-                }
-                kept.add(cell);
+            if (help.equals(cell)) {
+                continue;
             }
+            var candidate = new ArrayList<>(kept);
+            candidate.add(cell);
+            if (displayWidth(String.join(FOOTER_SEPARATOR, candidate)) + reserved > width) {
+                return kept;
+            }
+            kept.add(cell);
         }
         return kept;
     }

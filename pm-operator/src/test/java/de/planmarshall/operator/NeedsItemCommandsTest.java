@@ -13,8 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -25,6 +27,8 @@ import de.planmarshall.operator.overview.OverviewFormatting;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Every command the list of what waits prints is a registered verb
@@ -40,17 +44,16 @@ class NeedsItemCommandsTest {
     private static final WorkLocation PLAN = new WorkLocation("fix-relay", "Fix Relay Transport");
     private static final Instant SINCE = Instant.parse("2026-10-16T15:05:00Z");
 
-    @Test
+    @ParameterizedTest(name = "{0} prints a registered verb")
+    @EnumSource(NeedsOperatorKind.class)
     @DisplayName("resolves to a registered verb for every kind")
-    void everyKindPrintsARegisteredVerb() {
-        for (var kind : NeedsOperatorKind.values()) {
-            var command = OverviewFormatting.formatNeedsItemCommand(item(kind, "/api/v1/decisions/Q-007",
-                                EPIC, PLAN, "plan"));
-            var verb = command.split(" ", 2)[0];
-            assertTrue(OperatorVerbs.registered().contains(verb),
-                                kind + " prints " + command + ", and " + verb + " is no registered verb");
-            assertFalse(command.contains("hold"), kind + " prints a hold verb: " + command);
-        }
+    void everyKindPrintsARegisteredVerb(NeedsOperatorKind kind) {
+        var command = OverviewFormatting.formatNeedsItemCommand(item(kind, "/api/v1/decisions/Q-007",
+                            EPIC, PLAN, "plan"));
+        var verb = command.split(" ", 2)[0];
+        assertTrue(OperatorVerbs.registered().contains(verb),
+                            kind + " prints " + command + ", and " + verb + " is no registered verb");
+        assertFalse(command.contains("hold"), kind + " prints a hold verb: " + command);
     }
 
     @Test
@@ -88,6 +91,36 @@ class NeedsItemCommandsTest {
         assertEquals(Map.of("en", "blocks: plan", "de", "blockiert: Plan"),
                             Map.of("en", OverviewFormatting.formatNeedsItemBlocks("plan", "en"),
                                                 "de", OverviewFormatting.formatNeedsItemBlocks("plan", "de")));
+    }
+
+    @ParameterizedTest(name = "{0} names its kind in both languages")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("every kind has its catalogue word in both languages")
+    void everyKindHasItsWord(NeedsOperatorKind kind) {
+        for (var locale : List.of("en", "de")) {
+            var word = OverviewFormatting.formatNeedsItemKind(kind, locale);
+            assertFalse(word.isBlank(), locale + " has no word for " + kind);
+            assertFalse(word.contains("."), "a catalogue key leaked: " + word);
+        }
+    }
+
+    @ParameterizedTest(name = "{0} names its place by the place's own title")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("every kind names its subject, in both languages")
+    void everyKindNamesItsSubject(NeedsOperatorKind kind) {
+        var title = Generators.nonEmptyStrings().next();
+        var item = new NeedsOperatorItem(kind, "/api/v1/items/x", PROJECT,
+                            new WorkLocation("relay-hardening", title), PLAN, SINCE, "plan");
+        assertEquals("Fix Relay Transport", OverviewFormatting.formatNeedsItemSubject(item, "en"),
+                            "the plan's own title is the subject");
+
+        var epicOnly = new NeedsOperatorItem(kind, "/api/v1/items/x", PROJECT,
+                            new WorkLocation("relay-hardening", title), null, SINCE, "epic");
+        for (var locale : List.of("en", "de")) {
+            var subject = OverviewFormatting.formatNeedsItemSubject(epicOnly, locale);
+            assertEquals(OverviewFormatting.clean(title), subject,
+                                locale + " names the epic's own title for " + kind);
+        }
     }
 
     private static NeedsOperatorItem item(NeedsOperatorKind kind, String link, @Nullable WorkLocation epic,

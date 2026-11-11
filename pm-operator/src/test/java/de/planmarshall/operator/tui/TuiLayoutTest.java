@@ -255,16 +255,19 @@ class TuiLayoutTest {
                             80, 24).getLast().toString().strip();
 
         assertAll(
-                            () -> assertTrue(overview.contains("? help") || overview.endsWith("? more"), overview),
+                            () -> assertTrue(overview.contains("? help"), overview),
                             () -> assertTrue(overview.contains("q leave"), overview),
                             () -> assertTrue(activity.contains("Enter open"), activity),
                             () -> assertTrue(activity.contains("a actions"), activity),
+                            () -> assertTrue(activity.contains("q leave"), activity),
                             () -> assertTrue(activity.contains("? help"), activity),
                             () -> assertTrue(plan.contains("Enter open"), plan),
                             () -> assertTrue(plan.contains("Esc back"), plan),
                             () -> assertTrue(plan.contains("a actions"), plan),
-                            () -> assertTrue(plan.contains("q leave"), plan),
-                            () -> assertTrue(plan.endsWith("? more"), plan),
+                            () -> assertTrue(plan.contains("? more"),
+                                                "a footer that left cells out names them: " + plan),
+                            () -> assertTrue(plan.contains("? help"),
+                                                "the help key is never the one the width takes away: " + plan),
                             () -> assertFalse(plan.contains("\u2026"), plan),
                             () -> assertFalse(overview.contains("\u2026"), overview),
                             () -> assertFalse(activity.contains("\u2026"), activity)

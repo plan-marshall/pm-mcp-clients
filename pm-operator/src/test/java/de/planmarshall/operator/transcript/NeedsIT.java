@@ -33,11 +33,11 @@ class NeedsIT {
     private static final Duration POLL = Duration.ofMillis(25);
 
     @Test
-    @DisplayName("! on the waiting row of a plan opens its decision dialogue in running-work")
+    @DisplayName("! on the waiting row of the overview opens its decision dialogue in running-work")
     void exclamationOnWaitingRowOpensDecision() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
-             var session = harness.open("plans", "--project", "pm-mcp-clients")) {
-            awaitText(session, "by plan");
+             var session = harness.open("plans")) {
+            awaitText(session, "Needs you");
             select(session, "Drop the legacy endpoints");
 
             // Type ! on the waiting row: it must open the decision dialogue directly
@@ -52,16 +52,17 @@ class NeedsIT {
     }
 
     @Test
-    @DisplayName("! on a non-waiting row jumps to the next waiting row in running-work")
+    @DisplayName("! on a non-waiting row jumps to the first waiting row of the overview")
     void exclamationOnNonWaitingRowJumpsToWaitingRow() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
-             var session = harness.open("plans", "--project", "pm-mcp-clients")) {
-            awaitText(session, "by plan");
-            select(session, "Fix Relay Transport");
+             var session = harness.open("plans")) {
+            awaitText(session, "Needs you");
+            // pm-mcp-core runs work and waits for nobody: ! must jump to the next waiting row.
+            select(session, "pm-mcp-core");
 
-            // Fix Relay Transport has no wait; pressing ! must jump to the next waiting row
             DialogueHarness.type(session, "!");
-            await(() -> selected(session).contains("landing CI failure") || selected(session).contains("Drop the legacy"));
+            await(() -> selected(session).contains("Relay Hardening"));
+            assertTrue(selected(session).startsWith("\u25b6"), session.screenText());
 
             DialogueHarness.type(session, "q");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());

@@ -29,6 +29,7 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpResponse;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -72,7 +73,7 @@ class NeedsCommandTest {
 
             assertAll(
                                 () -> assertEquals(0, exitCode, "needs should exit 0, err: " + error),
-                                () -> assertTrue(output.contains("Needs you · 12"), "expected header with 12 items: " + output),
+                                () -> assertTrue(output.contains("Needs you · 18"), "expected header with 18 items: " + output),
                                 () -> assertTrue(output.contains("findings"), "should contain findings item"),
                                 () -> assertTrue(output.contains("landing failed"), "should contain landing failed item"),
                                 () -> assertTrue(output.contains("held"), "should contain held item"),
@@ -127,7 +128,7 @@ class NeedsCommandTest {
 
             var output = out.toString();
             assertEquals(0, exitCode, "needs --json should exit 0");
-            assertTrue(output.contains("\"total\":12") || output.contains("\"total\": 12"), "expected JSON with total 12");
+            assertTrue(output.contains("\"total\":18") || output.contains("\"total\": 18"), "expected JSON with total 18");
             assertTrue(output.contains("\"items\":"), "expected items array in JSON");
         }
     }
@@ -157,7 +158,7 @@ class NeedsCommandTest {
 
             var consoleOutput = outStream.toString(StandardCharsets.UTF_8);
             assertEquals(0, exitCode, "console should exit 0");
-            assertTrue(consoleOutput.contains("Needs you · 12"), "console ! should execute needs: " + consoleOutput);
+            assertTrue(consoleOutput.contains("Needs you · 18"), "console ! should execute needs: " + consoleOutput);
         }
     }
 
@@ -183,8 +184,9 @@ class NeedsCommandTest {
             int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "needs");
 
             assertEquals(0, exitCode);
-            var output = out.toString();
-            assertTrue(output.contains("Nothing waits") || output.contains("Nichts wartet") || !output.isBlank(), output);
+            var output = out.toString().strip();
+            assertEquals(MessageCatalogue.format("en", "operator.needs.empty", Map.of()), output,
+                                "an empty list says so, and nothing else: " + output);
         }
     }
 
@@ -235,8 +237,8 @@ class NeedsCommandTest {
     }
 
     @Test
-    @DisplayName("executeNeeds falls back to English title when locale lacks key")
-    void executeNeedsTitleFallback() throws Exception {
+    @DisplayName("needs renders the title of the operator's language, never another one")
+    void needsTitleInTheOperatorLanguage() throws Exception {
         var context = new OperatorContext(
                             Map.of(),
                             tempDir,
@@ -245,17 +247,20 @@ class NeedsCommandTest {
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
                             null
         );
-        var cmd = new NeedsCommand(context);
-        var sw = new StringWriter();
-        var writer = new PrintWriter(sw);
-        var json = "{\"page\":1,\"total_pages\":1,\"has_prev\":false,\"has_next\":false,\"total\":1,\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\",\"blocks\":\"plan\"}]}".getBytes(StandardCharsets.UTF_8);
-        NeedsCommand.RuntimeSender sender = req -> {
-            if (MachineApiPaths.NEEDS_OPERATOR.equals(req.target())) {
-                return new HttpResponse(200, "application/json", json);
-            }
-            return new HttpResponse(404, null, new byte[0]);
-        };
-        cmd.executeNeeds(sender, writer, "fr");
-        assertTrue(sw.toString().contains("Needs you · 1"));
+        var json = ("{\"page\":1,\"total_pages\":1,\"has_older\":false,\"total\":1,"
+                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\","
+                            + "\"blocks\":\"plan\"}]}").getBytes(StandardCharsets.UTF_8);
+        NeedsCommand.RuntimeSender sender = req -> new HttpResponse(200, "application/json", json);
+
+        var english = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(english), "en"));
+        assertTrue(english.toString().contains(MessageCatalogue.format("en", "operator.needs.title",
+                            Map.of("total", 1))), english.toString());
+
+        var german = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(german), "de"));
+        assertTrue(german.toString().contains(MessageCatalogue.format("de", "operator.needs.title",
+                            Map.of("total", 1))), german.toString());
+        assertFalse(german.toString().contains("Needs you"), german.toString());
     }
 }

@@ -108,6 +108,85 @@
             "blocks": "plan"
           },
           {
+            "kind": "decision",
+            "link": "/api/v1/decisions/Q-009",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "drop-legacy-api",
+              "title": "Drop the legacy endpoints"
+            },
+            "since": "2026-10-16T15:15:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "decision",
+            "link": "/api/v1/decisions/Q-012",
+            "project": {
+              "id": "plan-marshall",
+              "title": "plan-marshall"
+            },
+            "epic": {
+              "id": "storage-v2",
+              "title": "Storage v2"
+            },
+            "plan": {
+              "id": "storage-v2",
+              "title": "Storage v2"
+            },
+            "since": "2026-10-16T15:20:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "decision",
+            "link": "/api/v1/decisions/Q-031",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "since": "2026-10-16T15:45:00Z",
+            "blocks": "project"
+          },
+          {
+            "kind": "decision",
+            "link": "/api/v1/decisions/Q-015",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "since": "2026-10-16T15:50:00Z",
+            "blocks": "epic"
+          },
+          {
+            "kind": "decision",
+            "link": "/api/v1/decisions/Q-016",
+            "since": "2026-10-16T16:02:00Z"
+          },
+          {
+            "kind": "waiver",
+            "link": "/api/v1/decisions/WR-3",
+            "project": {
+              "id": "pm-mcp-core",
+              "title": "pm-mcp-core"
+            },
+            "plan": {
+              "id": "session-log",
+              "title": "Session log and generations"
+            },
+            "since": "2026-10-16T16:02:00Z",
+            "blocks": "plan"
+          },
+          {
             "kind": "credential",
             "link": "/api/v1/credentials/github",
             "since": "2026-10-16T09:00:00Z"
