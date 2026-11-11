@@ -13,8 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -22,16 +24,26 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.MessageText;
+import de.planmarshall.api.chat.QueuedRevision;
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.overview.ChangeSize;
 
 @DisplayName("ProcessTreeTest")
 @EnableGeneratorController
 class ProcessTreeTest {
 
-    @Test
-    @DisplayName("should serialize and deserialize complete ProcessTree round-trip")
-    void shouldRoundTripProcessTree() throws Exception {
-        // Arrange
+    /**
+     * A complete process tree with the generated values it was built from: a running execute phase with one
+     * envelope and one off-track task, and a pruned refine phase.
+     */
+    private record FullTree(String planId, String planTitle, String projectId, String epicId, String taskId,
+                            long totalTokens, ProcessTree tree) {
+    }
+
+    private static FullTree fullTree() {
         var planId = Generators.nonBlankStrings().next();
         var planTitle = Generators.nonBlankStrings().next();
         var projectId = Generators.nonBlankStrings().next();
@@ -121,25 +133,45 @@ class ProcessTreeTest {
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 7800L,
+                null,
                 null
         );
+        return new FullTree(planId, planTitle, projectId, epicId, taskId, totalTokens, tree);
+    }
+
+    @Test
+    @DisplayName("should round-trip the plan's own members of a complete ProcessTree")
+    void shouldRoundTripProcessTree() throws Exception {
+        // Arrange
+        var full = fullTree();
 
         // Act
-        var json = tree.toJson();
+        var json = full.tree().toJson();
         assertNotNull(json);
         var parsed = ProcessTree.fromJson(json);
 
         // Assert
-        assertEquals(planId, parsed.planId());
-        assertEquals(planTitle, parsed.title());
-        assertEquals(projectId, parsed.project().projectId());
-        assertEquals(epicId, parsed.epic() != null ? parsed.epic().epicId() : "");
+        assertEquals(full.planId(), parsed.planId());
+        assertEquals(full.planTitle(), parsed.title());
+        assertEquals(full.projectId(), parsed.project().projectId());
+        assertEquals(full.epicId(), parsed.epic() != null ? parsed.epic().epicId() : "");
         assertEquals("execute", parsed.currentPhase());
         assertEquals("running", parsed.phaseState());
-        assertEquals(totalTokens, parsed.tokensSoFar().total());
+        assertEquals(full.totalTokens(), parsed.tokensSoFar().total());
         assertTrue(parsed.tokensSoFar().floor());
         assertEquals(2, parsed.nodes().size());
+    }
 
+    @Test
+    @DisplayName("should round-trip the running phase of a complete ProcessTree with its envelope and its task")
+    void shouldRoundTripProcessTreeRunningPhase() throws Exception {
+        // Arrange
+        var full = fullTree();
+
+        // Act
+        var parsed = ProcessTree.fromJson(full.tree().toJson());
+
+        // Assert
         var parsedExec = parsed.nodes().get(0);
         assertEquals("execute", parsedExec.nodeId());
         assertEquals("running", parsedExec.state());
@@ -150,18 +182,32 @@ class ProcessTreeTest {
         assertEquals(1, parsedLeaf.leafTasks().size());
 
         var parsedTask = parsedLeaf.leafTasks().get(0);
-        assertEquals(taskId, parsedTask.taskId());
+        assertEquals(full.taskId(), parsedTask.taskId());
         assertEquals("implement", parsedTask.role());
         assertNotNull(parsedTask.offTrack());
         assertEquals("repeating", parsedTask.offTrack().signal());
         assertEquals("show", parsedTask.offTrack().action());
+    }
 
+    @Test
+    @DisplayName("should round-trip the pruned phase of a complete ProcessTree and write no absent member")
+    void shouldRoundTripProcessTreePrunedPhaseAndAbsentMembers() throws Exception {
+        // Arrange
+        var full = fullTree();
+
+        // Act
+        var json = full.tree().toJson();
+        var parsed = ProcessTree.fromJson(json);
+
+        // Assert
         var parsedPruned = parsed.nodes().get(1);
         assertEquals("refine", parsedPruned.nodeId());
         assertEquals("not_in_plan", parsedPruned.state());
         assertEquals("lane_choice", parsedPruned.pruneReason());
         assertFalse(json.contains("\"change\""), json);
         assertNull(parsed.change());
+        assertNull(parsed.queuedRevision());
+        assertFalse(json.contains("\"queued_revision\""));
     }
 
     @Test
@@ -171,13 +217,33 @@ class ProcessTreeTest {
         var change = new ChangeSize(12, 340, 27, 2);
         var tree = new ProcessTree("plan", "Plan", project, null, "execute", "running", null,
                 false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
-                List.of(), List.of(), null, null, 0L, change);
+                List.of(), List.of(), null, null, 0L, change, null);
 
         var json = tree.toJson();
         var parsed = ProcessTree.fromJson(json);
 
         assertTrue(json.contains("\"change\""));
         assertEquals(change, parsed.change());
+    }
+
+    @Test
+    @DisplayName("should carry the plan's queued_revision through a round-trip and refuse a malformed one")
+    void shouldRoundTripQueuedRevision() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var project = new ProcessProjectRef(planId, planId, null);
+        var revision = new QueuedRevision(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                new ChatSubject(ChatSubjectKind.DECISION, Generators.nonBlankStrings().next()),
+                Generators.booleans().next(), MessageText.of("control.chat.applies.on_start"));
+        var tree = new ProcessTree(planId, planId, project, null, "execute", "running", null,
+                false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
+                List.of(), List.of(), null, null, 0L, null, revision);
+
+        var parsed = ProcessTree.fromJson(tree.toJson());
+        var malformed = new LinkedHashMap<>(tree.toMap());
+        malformed.put("queued_revision", Map.of("turn_id", planId));
+
+        assertEquals(revision, parsed.queuedRevision());
+        assertThrows(JsonFormatException.class, () -> ProcessTree.fromMap(malformed));
     }
 
     @Test

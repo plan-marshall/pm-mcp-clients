@@ -343,7 +343,7 @@ public record PlanCompletionReport(
         return list;
     }
 
-    private static List<ReplanningRecord> parseReplanning(Map<String, Object> map) {
+    private static List<ReplanningRecord> parseReplanning(Map<String, Object> map) throws IOException {
         var list = new ArrayList<ReplanningRecord>();
         var replanObj = map.get(FIELD_REPLANNING);
         if (replanObj == null) replanObj = map.get("replanning");
@@ -356,7 +356,7 @@ public record PlanCompletionReport(
         return list;
     }
 
-    private static List<DecisionRecord> parseDecisions(Map<String, Object> map) {
+    private static List<DecisionRecord> parseDecisions(Map<String, Object> map) throws IOException {
         var list = new ArrayList<DecisionRecord>();
         var decObj = map.get(FIELD_DECISIONS);
         if (decObj == null) decObj = map.get("decisions");

@@ -17,12 +17,14 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ChangeSize;
 
 /**
- * Full process tree representation of a plan (UC-PLN-1).
+ * Full process tree representation of a plan (UC-PLN-1). It is the plan's head both clients read, so it
+ * carries the plan's {@code queued_revision} as well.
  *
  * @param planId              unique plan identifier
  * @param title               plan title
@@ -40,6 +42,8 @@ import de.planmarshall.api.overview.ChangeSize;
  * @param pullRequestUrl      associated pull request URL, or {@code null}
  * @param durationSeconds     total running duration in seconds
  * @param change              the size of the plan's change at its last capture, or {@code null}
+ * @param queuedRevision      the revision accepted in a chat that waits for the plan's next task boundary
+ *                            ({@code queued_revision}), or {@code null} when none is queued
  */
 public record ProcessTree(
         String planId,
@@ -57,8 +61,11 @@ public record ProcessTree(
         @Nullable Integer pullRequestNumber,
         @Nullable String pullRequestUrl,
         long durationSeconds,
-        @Nullable ChangeSize change
+        @Nullable ChangeSize change,
+        @Nullable QueuedRevision queuedRevision
 ) {
+    private static final String QUEUED_REVISION = "queued_revision";
+
     public ProcessTree {
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
@@ -105,6 +112,9 @@ public record ProcessTree(
         map.put("duration_seconds", durationSeconds);
         if (change != null) {
             map.put("change", change.toMap());
+        }
+        if (queuedRevision != null) {
+            map.put(QUEUED_REVISION, queuedRevision.toMap());
         }
         return map;
     }
@@ -190,6 +200,8 @@ public record ProcessTree(
         long durationSeconds = durNum != null ? durNum.longValue() : 0L;
 
         var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+        var queuedRevisionMap = JsonTree.objectOrNull(map, QUEUED_REVISION, "ProcessTree");
+        var queuedRevision = queuedRevisionMap != null ? QueuedRevision.fromMap(queuedRevisionMap) : null;
 
         return new ProcessTree(
                 planId,
@@ -207,7 +219,8 @@ public record ProcessTree(
                 pullRequestNumber,
                 prUrl,
                 durationSeconds,
-                change
+                change,
+                queuedRevision
         );
     }
 

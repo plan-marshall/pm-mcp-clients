@@ -524,7 +524,7 @@ describe('DecisionView component', () => {
     expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent('What does option B mean?');
     expect(screen.getByTestId('decision-chat-dec-101')).toHaveTextContent(
-      'dec-101 stays open; answer it once the chat has ended.',
+      'dec-101 stays open; answer it whenever you are ready.',
     );
   });
 

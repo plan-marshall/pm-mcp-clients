@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 class DecompositionValidatorTest {
 
     private static StagedPlanRecord plan(String id, List<String> surface, List<String> dependencies) {
-        return new StagedPlanRecord(id, id, null, surface, dependencies, StagedPlanRecord.STATUS_STAGED);
+        return new StagedPlanRecord(id, id, null, surface, dependencies, StagedPlanRecord.STATUS_STAGED, null);
     }
 
     private static WorkstreamRecord workstream(String id, int order, StagedPlanRecord... plans) {
@@ -64,9 +64,9 @@ class DecompositionValidatorTest {
         var workstreams = List.of(
                 workstream("WS-1", 1,
                         new StagedPlanRecord("relay-reconnect-docs", "relay-reconnect-docs", null,
-                                List.of("pm-api"), List.of("relay-auth-v2"), StagedPlanRecord.STATUS_DROPPED),
+                                List.of("pm-api"), List.of("relay-auth-v2"), StagedPlanRecord.STATUS_DROPPED, null),
                         new StagedPlanRecord("relay-token-store", "relay-token-store", null,
-                                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_LOCKED)),
+                                List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_LOCKED, null)),
                 workstream("WS-2", 2, plan("relay-auth-v2", List.of("pm-api"), List.of())));
 
         assertTrue(DecompositionValidator.validate(workstreams).isEmpty());

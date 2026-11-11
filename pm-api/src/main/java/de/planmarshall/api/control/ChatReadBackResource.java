@@ -28,6 +28,11 @@ import de.planmarshall.api.json.JsonTree;
  * the phase it is called in, and the chat about ended work is read-only and never changes the
  * archive. The transcript is kept with the subject, among its events.
  *
+ * <p>Superseded by {@code de.planmarshall.api.chat.ChatResource} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
+ *
  * @param chatId      the chat's identifier
  * @param subjectId   the plan, epic, decomposition, or register the chat is about
  * @param subjectKind {@code plan}, {@code epic}, {@code decomposition}, or {@code review}
