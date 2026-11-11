@@ -12,6 +12,7 @@ package de.planmarshall.api.intent;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +31,7 @@ import de.planmarshall.api.json.JsonTree;
  * and the deferred items, and the builder check.
  * <p>
  * The separation of the decisions is load-bearing: an operator's or a quorum's decision is shown
- * apart from the model's own calls and the facts the repository settled. The criteria are shown
+ * apart from a role's own call and the facts the repository settled. The criteria are shown
  * before the self-review without a verdict and afterwards with {@link CriterionStatus}, so a client
  * never presents an unevaluated criterion as met.
  *
@@ -80,13 +81,19 @@ public record PlanIntentResource(
      * @param optionsWeighed the options weighed, in the record's order
      * @param questionId     the answered question for an operator or quorum decision, otherwise
      *                       {@code null}
+     * @param evidence       the evidence a {@code fact} decision settles it with, a path or a
+     *                       {@code pm://} URI; {@code null} for every other decider
+     * @param adr            the architecture decision record the decision follows or contradicts, or
+     *                       {@code null} where it names none
      */
     public record Decision(
             String id,
             String text,
             IntentDecider decider,
             List<String> optionsWeighed,
-            @Nullable String questionId
+            @Nullable String questionId,
+            @Nullable String evidence,
+            @Nullable AdrReference adr
     ) {
 
         private static final String FIELD_ID = "id";
@@ -94,9 +101,12 @@ public record PlanIntentResource(
         private static final String FIELD_DECIDER = "decider";
         private static final String FIELD_OPTIONS_WEIGHED = "options_weighed";
         private static final String FIELD_QUESTION_ID = "question_id";
+        private static final String FIELD_EVIDENCE = "evidence";
+        private static final String FIELD_ADR = "adr";
         private static final String TYPE = "Decision";
         private static final Set<String> KNOWN_FIELDS = Set.of(
-                FIELD_ID, FIELD_TEXT, FIELD_DECIDER, FIELD_OPTIONS_WEIGHED, FIELD_QUESTION_ID);
+                FIELD_ID, FIELD_TEXT, FIELD_DECIDER, FIELD_OPTIONS_WEIGHED, FIELD_QUESTION_ID, FIELD_EVIDENCE,
+                FIELD_ADR);
 
         public Decision {
             Objects.requireNonNull(id, FIELD_ID);
@@ -116,6 +126,17 @@ public record PlanIntentResource(
             if (!decider.operatorFacing() && questionId != null) {
                 throw new IllegalArgumentException("only an operator or quorum decision names a question");
             }
+            if (decider == IntentDecider.FACT && (evidence == null || evidence.isBlank())) {
+                throw new IllegalArgumentException("a fact decision requires its " + FIELD_EVIDENCE);
+            }
+            if (decider != IntentDecider.FACT && evidence != null) {
+                throw new IllegalArgumentException("only a fact decision names its " + FIELD_EVIDENCE);
+            }
+            if (adr != null && adr.relation() == AdrRelation.CONTRADICTS
+                    && decider != IntentDecider.OPERATOR) {
+                throw new IllegalArgumentException("a contradicts decision is only the operator's, never the "
+                        + decider.wireValue() + " decision's");
+            }
         }
 
         /**
@@ -130,6 +151,12 @@ public record PlanIntentResource(
             if (questionId != null) {
                 map.put(FIELD_QUESTION_ID, questionId);
             }
+            if (evidence != null) {
+                map.put(FIELD_EVIDENCE, evidence);
+            }
+            if (adr != null) {
+                map.put(FIELD_ADR, adr.toMap());
+            }
             return map;
         }
 
@@ -140,21 +167,140 @@ public record PlanIntentResource(
             generator.writeStringField(FIELD_DECIDER, decider.wireValue());
             IntentJson.writeStrings(generator, FIELD_OPTIONS_WEIGHED, optionsWeighed);
             IntentJson.writeOptionalString(generator, FIELD_QUESTION_ID, questionId);
+            IntentJson.writeOptionalString(generator, FIELD_EVIDENCE, evidence);
+            if (adr != null) {
+                generator.writeFieldName(FIELD_ADR);
+                adr.writeTo(generator);
+            }
             generator.writeEndObject();
         }
 
         private static Decision fromMap(Map<String, Object> map) throws IOException {
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
+            var adrMap = JsonTree.objectOrNull(map, FIELD_ADR, TYPE);
             try {
                 return new Decision(
                         IntentJson.requireText(map, FIELD_ID, TYPE),
                         IntentJson.requireText(map, FIELD_TEXT, TYPE),
                         IntentDecider.fromWire(IntentJson.requireText(map, FIELD_DECIDER, TYPE)),
                         IntentJson.readStrings(map, FIELD_OPTIONS_WEIGHED),
-                        IntentJson.optionalText(map, FIELD_QUESTION_ID, TYPE));
+                        IntentJson.optionalText(map, FIELD_QUESTION_ID, TYPE),
+                        IntentJson.optionalText(map, FIELD_EVIDENCE, TYPE),
+                        adrMap != null ? AdrReference.fromMap(adrMap) : null);
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
             }
+        }
+    }
+
+    /**
+     * The architecture decision record a decision follows or contradicts (design <em>Intent and
+     * Outline</em>, Choices and Who Made Them).
+     *
+     * @param adrId    the record's identifier, not blank
+     * @param relation whether the decision follows or contradicts it
+     */
+    public record AdrReference(String adrId, AdrRelation relation) {
+
+        public static final String FIELD_ADR_ID = "adr_id";
+        public static final String FIELD_RELATION = "relation";
+
+        private static final String TYPE = "AdrReference";
+        private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_ADR_ID, FIELD_RELATION);
+
+        public AdrReference {
+            Objects.requireNonNull(adrId, FIELD_ADR_ID);
+            Objects.requireNonNull(relation, FIELD_RELATION);
+            if (adrId.isBlank()) {
+                throw new IllegalArgumentException(FIELD_ADR_ID + " must not be blank");
+            }
+        }
+
+        /**
+         * @return the map representation
+         */
+        Map<String, Object> toMap() {
+            var map = new LinkedHashMap<String, Object>();
+            map.put(FIELD_ADR_ID, adrId);
+            map.put(FIELD_RELATION, relation.wireValue());
+            return map;
+        }
+
+        private void writeTo(JsonGenerator generator) throws IOException {
+            generator.writeStartObject();
+            generator.writeStringField(FIELD_ADR_ID, adrId);
+            generator.writeStringField(FIELD_RELATION, relation.wireValue());
+            generator.writeEndObject();
+        }
+
+        private static AdrReference fromMap(Map<String, Object> map) throws IOException {
+            IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
+            try {
+                return new AdrReference(
+                        IntentJson.requireText(map, FIELD_ADR_ID, TYPE),
+                        AdrRelation.fromWire(IntentJson.requireText(map, FIELD_RELATION, TYPE)));
+            } catch (IllegalArgumentException e) {
+                throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /** The closed list of how a decision relates to an architecture decision record. */
+    public enum AdrRelation {
+
+        /** The decision follows the record. */
+        FOLLOWS("follows"),
+
+        /** The decision departs from the record. */
+        CONTRADICTS("contradicts");
+
+        private final String wireValue;
+
+        AdrRelation(String wireValue) {
+            this.wireValue = wireValue;
+        }
+
+        /**
+         * @return the wire value used in representations
+         */
+        public String wireValue() {
+            return wireValue;
+        }
+
+        /**
+         * @param value the wire value
+         * @return the matching relation, or {@code null}
+         */
+        public static AdrRelation fromWireOrNull(String value) {
+            if (value == null) {
+                return null;
+            }
+            for (var relation : values()) {
+                if (relation.wireValue.equalsIgnoreCase(value.trim())) {
+                    return relation;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * @param value the wire value
+         * @return the matching relation
+         * @throws IllegalArgumentException if no relation carries that value (fail-closed)
+         */
+        public static AdrRelation fromWire(String value) {
+            var relation = fromWireOrNull(value);
+            if (relation == null) {
+                throw new IllegalArgumentException("Unknown ADR relation: " + value);
+            }
+            return relation;
+        }
+
+        /**
+         * @return the wire values of every relation, in catalogue order
+         */
+        public static List<String> wireValues() {
+            return Arrays.stream(values()).map(AdrRelation::wireValue).toList();
         }
     }
 
@@ -309,10 +455,10 @@ public record PlanIntentResource(
     }
 
     /**
-     * @return the model's own calls, which are shown apart from the operator's decisions
+     * @return the role's own calls, which are shown apart from the operator's decisions
      */
-    public List<Decision> modelCalls() {
-        return decisions.stream().filter(decision -> decision.decider() == IntentDecider.MODEL).toList();
+    public List<Decision> roleCalls() {
+        return decisions.stream().filter(decision -> decision.decider() == IntentDecider.ROLE).toList();
     }
 
     /**
