@@ -653,7 +653,7 @@
   }
 
   function reasonOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureText(err, $t('error.unknown.fix'));
   }
 
   async function openChat(dec: DecisionEnvelope): Promise<void> {

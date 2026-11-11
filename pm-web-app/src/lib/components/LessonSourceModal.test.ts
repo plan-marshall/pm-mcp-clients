@@ -150,6 +150,8 @@ describe('LessonSourceModal component', () => {
     vi.spyOn(apiClient, 'getUnclaimedLessons').mockRejectedValue(new Error('target_not_found'));
     render(LessonSourceModal, { props: { open: true, projectId: 'pm-mcp-clients' } });
 
-    expect(await screen.findByTestId('lesson-error')).toHaveTextContent('target_not_found');
+    expect(await screen.findByTestId('lesson-error')).toHaveTextContent(
+      'The lesson could not be used: Check the entry and pick it from the list again.',
+    );
   });
 });

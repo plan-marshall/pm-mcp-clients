@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ClientError, actFailureText, errorCodeOf, isClientError } from './errors';
+import { ClientError, actFailureReason, actFailureText, errorCodeOf, isClientError } from './errors';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 
@@ -60,5 +60,17 @@ describe('actFailureText', () => {
       'Failed to do it',
     );
     expect(actFailureText(undefined, 'Failed to do it')).toBe('Failed to do it');
+  });
+});
+
+describe('actFailureReason', () => {
+  it('drops the sentence final period for a wrapper that ends the sentence', () => {
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
+
+    expect(actFailureReason(new ClientError('timeout'), 'Failed to do it')).toBe(
+      'Try again; if it keeps taking this long, check that the runtime is running',
+    );
+    expect(actFailureReason(undefined, 'Failed to do it')).toBe('Failed to do it');
   });
 });

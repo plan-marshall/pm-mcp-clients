@@ -91,3 +91,17 @@ export function actFailureText(value: unknown, fallback: string): string {
   const code = errorCodeOf(value);
   return code.length > 0 ? displayError(code).fix : fallback;
 }
+
+/**
+ * The same sentence, for a catalogue text that ends the sentence itself.
+ *
+ * `system.upgrade.check_failed` and its neighbours append their own full stop to `{reason}`, so a
+ * sentence that carries one would double it; this keeps the text readable inside that wrapper.
+ *
+ * @param value the failure the act caught
+ * @param fallback the act's own failure text, resolved from the view's catalogue key
+ * @returns the sentence without its final period
+ */
+export function actFailureReason(value: unknown, fallback: string): string {
+  return actFailureText(value, fallback).replace(/\.$/, '');
+}

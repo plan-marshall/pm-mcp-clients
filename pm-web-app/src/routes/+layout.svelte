@@ -3,7 +3,7 @@
   import '../styles/base.css';
   import { onMount, onDestroy } from 'svelte';
   import { t, initI18n, messagesStore } from '../lib/i18n';
-  import { isClientError } from '../lib/api/errors';
+  import { actFailureReason, isClientError } from '../lib/api/errors';
   import {
     runtimeStore,
     initRuntime,
@@ -61,9 +61,9 @@
     }
   });
 
-  /** @param err the refusal a drain act reported @returns its message */
+  /** @param err the refusal a drain act reported @returns the sentence the operator reads */
   function refusalOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureReason(err, $t('system.action.failed'));
   }
 
   /**

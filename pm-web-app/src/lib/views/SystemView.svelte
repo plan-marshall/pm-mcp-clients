@@ -5,7 +5,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { actFailureText, errorCodeOf } from '../api/errors';
+  import { actFailureReason, actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type SystemSnapshot,
@@ -253,14 +253,6 @@
     actionSuccess = '';
   }
 
-  /**
-   * @param sentence a failure sentence that ends itself
-   * @returns the sentence without its final period, for a wrapper that ends the sentence itself
-   */
-  function asReason(sentence: string): string {
-    return sentence.replace(/\.$/, '');
-  }
-
   /** Opens the upgrade's consent screen: the checks first, then the choice of when. */
   function openUpgradeConsent() {
     upgradePhase = 'consent';
@@ -326,7 +318,7 @@
       upgradeInfo = {
         ...upgradeInfo,
         step: 'fetch',
-        reason: asReason(actFailureText(err, $t('system.action.failed'))),
+        reason: actFailureReason(err, $t('system.action.failed')),
       };
     } finally {
       isExecutingAction = false;
@@ -347,7 +339,7 @@
         actionError = $t('system.upgrade.too_late');
       } else {
         actionError = $t('system.upgrade.withdraw_failed', {
-          reason: asReason(actFailureText(err, $t('system.action.failed'))),
+          reason: actFailureReason(err, $t('system.action.failed')),
         });
       }
     } finally {
@@ -459,7 +451,7 @@
       actionSuccess = $t('system.upgrade.check_done');
     } catch (err: unknown) {
       actionError = $t('system.upgrade.check_failed', {
-        reason: asReason(actFailureText(err, $t('system.action.failed'))),
+        reason: actFailureReason(err, $t('system.action.failed')),
       });
     }
   }

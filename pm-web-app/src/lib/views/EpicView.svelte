@@ -4,7 +4,7 @@
   import Button from '../components/Button.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { errorCodeOf, actFailureText } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
@@ -351,7 +351,7 @@
   }
 
   function reasonOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureText(err, $t('error.unknown.fix'));
   }
 
   async function keepItem(itemId: string, as: 'finding' | 'watch') {
