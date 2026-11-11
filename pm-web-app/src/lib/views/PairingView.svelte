@@ -196,7 +196,6 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-8) var(--space-6) 0;
-    color: var(--color-brand);
   }
 
   .pair-card__wordmark {
