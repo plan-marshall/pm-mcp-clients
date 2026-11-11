@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-02
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Drafted 2026-11-10 from the AGREED D1 documents
+> Staged plan spec, one shippable unit of work, ready for hand-off on the `plan-marshall` lane. Drafted 2026-11-10 from the AGREED D1 documents
 > (PLAN-112 `aa3a9be3`, set `AGREED` by PLAN-122). This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -187,10 +187,10 @@ Re-check that the D1 documents are still `AGREED`, that `components-tags.adoc` Â
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-11 by the operator's size rule: 31 files, five deliverables of new components â€” a normal plan, not residue).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-147-web-foundation-kind-links-and-chat-blocks.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-147-web-foundation-kind-links-and-chat-blocks.md"
 ```
 
 ## Write-Boundary
