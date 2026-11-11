@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.time.Duration;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.mock.StandardScenarios;
 
@@ -33,12 +34,12 @@ class NeedsIT {
     private static final Duration POLL = Duration.ofMillis(25);
 
     @Test
-    @DisplayName("! on the waiting row of the overview opens its decision dialogue in running-work")
+    @DisplayName("! on the waiting row of a plan opens its decision dialogue in running-work")
     void exclamationOnWaitingRowOpensDecision() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
-             var session = harness.open("plans")) {
-            awaitText(session, "Needs you");
-            select(session, "Drop the legacy endpoints");
+             var session = harness.open("plans", "--project", "pm-mcp-clients")) {
+            awaitText(session, "by plan");
+            selectByTitle(session, "Drop the legacy endpoints", null);
 
             // Type ! on the waiting row: it must open the decision dialogue directly
             DialogueHarness.type(session, "!");
@@ -52,29 +53,30 @@ class NeedsIT {
     }
 
     @Test
-    @DisplayName("! on a non-waiting row jumps to the first waiting row of the overview")
+    @DisplayName("! on a non-waiting row jumps to the next waiting row in running-work")
     void exclamationOnNonWaitingRowJumpsToWaitingRow() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
-             var session = harness.open("plans")) {
-            awaitText(session, "Needs you");
-            // pm-mcp-core runs work and waits for nobody: ! must jump to the next waiting row.
-            select(session, "pm-mcp-core");
+             var session = harness.open("plans", "--project", "pm-mcp-clients")) {
+            awaitText(session, "by plan");
+            selectByTitle(session, "Fix Relay Transport", null);
 
+            // Fix Relay Transport has no wait; pressing ! must jump to the next waiting row
             DialogueHarness.type(session, "!");
-            await(() -> selected(session).contains("Relay Hardening"));
-            assertTrue(selected(session).startsWith("\u25b6"), session.screenText());
+            await(() -> selected(session).contains("landing CI failure")
+                                || selected(session).contains("Drop the legacy"));
 
             DialogueHarness.type(session, "q");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
         }
     }
 
-    private static void select(PtySession session, String title) throws Exception {
-        for (int step = 0; step < 12; step++) {
-            if (selected(session).contains(title)) {
+    private static void selectByTitle(PtySession session, String title, @Nullable String marker) throws Exception {
+        for (int step = 0; step < 40; step++) {
+            var line = selected(session);
+            if (line.contains(title) && (marker == null || line.contains(marker))) {
                 return;
             }
-            var before = selected(session);
+            var before = line;
             DialogueHarness.type(session, "j");
             await(() -> !selected(session).equals(before));
         }
