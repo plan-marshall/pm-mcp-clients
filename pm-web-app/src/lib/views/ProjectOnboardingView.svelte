@@ -61,6 +61,8 @@
 
   let isLoading = $state(true);
   let loadError = $state<string | null>(null);
+  /** Whether this page has shown a run, so a later failure is an arrival. */
+  let hasShownRun = $state(false);
   let run = $state<ProjectOnboardingState | null>(null);
   let beingAdded = $state<BeingAddedProject | null>(null);
   let checkoutDraft = $state('');
@@ -211,6 +213,7 @@
       } else {
         await loadBeingAdded(startedPath);
       }
+      hasShownRun = run !== null || beingAdded !== null;
     } catch (err: unknown) {
       loadError = errorCodeOf(err);
     } finally {
@@ -466,7 +469,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => load()}
           titleLevel={2}
-          announce={run !== null || beingAdded !== null}
+          announce={hasShownRun}
         />
       </div>
     {:else if isComplete}

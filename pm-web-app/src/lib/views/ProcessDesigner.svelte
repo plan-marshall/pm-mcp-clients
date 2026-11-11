@@ -16,7 +16,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
-  import { actFailureReason } from '../api/errors';
+  import { actFailureReason, isClientError } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -107,6 +107,8 @@
   let conflictDiff = $state<LineDiff | null>(null);
   let landingSteps = $state<string[]>([]);
   let landingError = $state('');
+  /** Whether the failure left the placement's outcome unknown, so no claim about the unit is made. */
+  let placeOutcomeUnknown = $state(false);
 
   let projectLabel = $derived(projectId ?? '');
   let checkedAgainst = $derived(
@@ -816,6 +818,7 @@
     if (!result?.valid) return;
     isPlacing = true;
     landingError = '';
+    placeOutcomeUnknown = false;
     landingSteps = [];
     placeStage = 'progress';
     try {
@@ -852,6 +855,8 @@
         await showConflict();
       } else {
         placeStage = 'failed';
+        placeOutcomeUnknown = isClientError(err) &&
+          (err.code === 'timeout' || err.code === 'network_offline');
         landingError = actFailureReason(err, $t('system.action.failed'));
       }
     } finally {
@@ -1542,7 +1547,11 @@
       {:else if placeStage === 'failed'}
         <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
         <p class="designer__notice" role="alert" data-testid="designer-place-failed">
-          {$t('designer.place.failed', { reason: landingError })}
+          {#if placeOutcomeUnknown}
+            {$t('designer.place.unknown', { reason: landingError })}
+          {:else}
+            {$t('designer.place.failed', { reason: landingError })}
+          {/if}
         </p>
         <div class="designer__modal-actions">
           <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>

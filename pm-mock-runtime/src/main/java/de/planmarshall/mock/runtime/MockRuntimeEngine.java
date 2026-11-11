@@ -3483,7 +3483,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var decomposition = decompositions.get(epicId);
             if (decomposition == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3500,7 +3500,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3530,7 +3530,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3635,7 +3635,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -5011,7 +5011,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var check = controlArchiveChecks.get(epicId);
             if (check == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, epicKnownUnderControlLock(epicId)
+                                ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND,
                         KEY_MESSAGE, "No archive check for epic: " + epicId));
                 return;
             }
@@ -5026,7 +5027,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var review = controlReviews.get(reviewKey(epicId, wanted));
             if (review == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, epicKnownUnderControlLock(epicId)
+                                ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND,
                         KEY_MESSAGE, "No " + wanted + " review for epic: " + epicId));
                 return;
             }
@@ -5034,11 +5036,31 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * @param epicId an epic id
+     * @return whether the scenario carries that epic, so a missing sub-resource is its target rather
+     *     than the scope the address names; the caller holds {@code controlLock}
+     */
+    private boolean epicKnownUnderControlLock(String epicId) {
+        return controlEpics.containsKey(epicId);
+    }
+
+    /**
+     * @param epicId an epic id
+     * @return the code a missing decomposition stands for: the target when the epic exists, the scope
+     *     when the address names an epic the scenario does not carry
+     */
+    private String decompositionMissingCode(String epicId) {
+        synchronized (controlLock) {
+            return controlEpics.containsKey(epicId) ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND;
+        }
+    }
+
     private void handleGetControlDecomposition(MockHttpResponse response, String epicId) throws IOException {
         synchronized (decompositionLock) {
             var cut = decompositions.get(epicId);
             if (cut == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId));
                 return;
             }
@@ -8068,7 +8090,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (!isEnrolled(projectId)) {
-            sendProjectNotEnrolled(response, projectId);
+            sendStoreMissing(response, projectId, false);
             return;
         }
         response.json(200, new StoreDigestComparison(enrolmentFile(projectId), ENROLMENT_RECORDED_SIZE,
@@ -8202,10 +8224,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleStoreDigest(MockHttpRequest request, MockHttpResponse response, String projectId)
             throws IOException {
         var requestedPath = readQueryParam(request.query(), KEY_STORE_PATH_QUERY);
+        // The enrolment question is asked before the store lock, whose holder may also want the
+        // projects lock; the two are never nested.
+        var enrolled = isEnrolled(projectId);
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendProjectNotEnrolled(response, projectId);
+                sendStoreMissing(response, projectId, enrolled);
                 return;
             }
             var storePath = requestedPath != null && !requestedPath.isBlank() ? requestedPath : store.storePath();
@@ -8220,10 +8245,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleAcceptEdit(MockHttpRequest request, MockHttpResponse response, String projectId)
             throws IOException {
         var accept = parseAcceptEdit(request.body());
+        var enrolled = isEnrolled(projectId);
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendProjectNotEnrolled(response, projectId);
+                sendStoreMissing(response, projectId, enrolled);
                 return;
             }
             if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
@@ -8266,8 +8292,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return null;
     }
 
-    private static void sendProjectNotEnrolled(MockHttpResponse response, String projectId) throws IOException {
-        response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED,
+    private static void sendStoreMissing(MockHttpResponse response, String projectId, boolean enrolled)
+            throws IOException {
+        // An enrolled project the scenario records no store for is missing its store; only a project
+        // the machine does not know at all is missing its enrolment.
+        response.json(404, Map.of(KEY_ERROR, enrolled ? ERR_TARGET_NOT_FOUND : ERR_PROJECT_NOT_ENROLLED,
                 KEY_MESSAGE, "No store recorded for project " + projectId));
     }
 

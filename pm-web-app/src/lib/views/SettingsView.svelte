@@ -24,6 +24,8 @@
   let loadError: string | null = null;
   /** Whether the devices read has been served at least once, so a later failure is an arrival. */
   let hasShownDevices = false;
+  /** How many reads this page ran, so a failed retry is announced even before the first success. */
+  let loadAttempts = 0;
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
@@ -102,6 +104,7 @@
     const controller = new AbortController();
     loadController = controller;
     isLoading = true;
+    loadAttempts += 1;
     loadError = null;
     try {
       const signal = controller.signal;
@@ -386,7 +389,7 @@
           actionLabel={$t('common.action.retry')}
           onAct={() => loadData()}
           titleLevel={3}
-          announce={hasShownDevices}
+          announce={hasShownDevices || loadAttempts > 1}
         />
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>

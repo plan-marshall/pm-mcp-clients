@@ -36,6 +36,8 @@
   let busy = false;
   /** The code of the failed load, which `ErrorState` resolves to its words. */
   let loadError: string | null = null;
+  /** How many reads this page ran, so a failed retry is announced even before the first success. */
+  let loadAttempts = 0;
   let actionError = '';
 
   let projects: ProjectSummary[] = [];
@@ -124,6 +126,7 @@
   async function load(generation: number): Promise<void> {
     const requestedEntryId = entryId;
     loading = true;
+    loadAttempts += 1;
     loadError = null;
     try {
       if (requestedEntryId) {
@@ -689,7 +692,7 @@
         actionLabel={$t('common.action.retry')}
         onAct={() => void load(++entryGeneration)}
         titleLevel={2}
-        announce={state !== null}
+        announce={state !== null || loadAttempts > 1}
       />
     </div>
   {:else if !entry && !state?.refusal}
@@ -784,6 +787,17 @@
         {#if decompositionError}
           <p class="start-view__error" data-testid="decomposition-error">{decompositionError}</p>
         {/if}
+      {:else if decompositionError}
+        <div class="start-view__error" data-testid="decomposition-error">
+          <p>{decompositionError}</p>
+          <button
+            type="button"
+            data-testid="decomposition-retry"
+            on:click={() => void loadDecomposition()}
+          >
+            {$t('common.action.retry')}
+          </button>
+        </div>
       {:else}
         <p class="start-view__status" data-testid="decomposition-loading">
           {$t('start.decomposition.drafting', { workstream: '' })}

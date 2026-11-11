@@ -1095,6 +1095,42 @@ describe('ReportsView component', () => {
     expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
   });
 
+  it('does not apply a list answer that an event overtook (review)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let releaseStale: ((page: ReportsPage) => void) | undefined;
+    vi.spyOn(apiClient, 'getReports')
+      .mockResolvedValueOnce(mockPage)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            releaseStale = resolve;
+          }),
+      )
+      .mockResolvedValue({
+        items: mockReports.filter((report) => report.id !== 'rep-0142'),
+        unread_count: 2,
+        has_older: false,
+        older_count: 0,
+      });
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    // A reload starts, then the runtime reports the read of a row the reload will still serve.
+    eventHandler?.('report.read', {});
+    await waitFor(() => expect(releaseStale).toBeDefined());
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+
+    // The answer taken before the event must not put the read row back.
+    if (!releaseStale) throw new Error('the stale reload was never created');
+    releaseStale(mockPage);
+    await tick();
+    await tick();
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+  });
+
   it('keeps the newer page when an older list read answers last (PLAN-129 residue 3)', async () => {
     const pending: Array<(page: ReportsPage) => void> = [];
     vi.spyOn(apiClient, 'getReports').mockImplementation(
@@ -2353,10 +2389,17 @@ describe('ReportsView component', () => {
     eventHandler?.('report.read', { report_id: 'rep-0139' });
     await waitFor(() => expect(screen.getByText(/1 unread/)).toBeInTheDocument());
 
-    // A reload lands first and serves a page whose count still includes the row the response will
-    // mark read; only that row may be subtracted from it.
+    // A reload lands first and serves two unread rows, one of them only this response marks read.
+    const secondUnread = {
+      id: 'rep-0125',
+      from: { project: 'pm-mcp-core' },
+      kind: 'project.onboarded',
+      subject: 'Still unread',
+      created_at: '2026-10-15T10:00:00Z',
+      created: 'yesterday 10:00',
+    } as ReportItem;
     served = {
-      items: mockReports.filter((report) => report.id === 'rep-0131'),
+      items: [mockReports[2]!, secondUnread],
       unread_count: 2,
       has_older: false,
       older_count: 0,
@@ -2365,12 +2408,13 @@ describe('ReportsView component', () => {
     await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(2));
 
     resolveMarkAll({ marked_count: 3 });
-    // The response subtracts only the row the reload did not already count: 2 - 1 = 1, never below.
+    // The reload's count (2) already includes the two rows the events reported read; only the row
+    // no event counted, rep-0131, is subtracted from it: 2 - 1 = 1, never below.
     await waitFor(() => expect(releaseReload).toBeDefined());
     expect(screen.getByText(/1 unread/)).toBeInTheDocument();
 
     releaseReload!({
-      items: mockReports.filter((report) => report.id === 'rep-0131'),
+      items: [secondUnread],
       unread_count: 1,
       has_older: false,
       older_count: 0,

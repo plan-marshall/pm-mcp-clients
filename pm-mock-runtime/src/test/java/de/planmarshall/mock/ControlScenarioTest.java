@@ -440,9 +440,9 @@ class ControlScenarioTest {
             var codes = Map.of(
                     "/api/v1/epics/" + unknownEpic, "scope_not_found",
                     "/api/v1/epics/" + unknownEpic + "/tokens", "scope_not_found",
-                    "/api/v1/epics/" + unknownEpic + "/archive-check", "target_not_found",
-                    "/api/v1/epics/" + unknownEpic + "/decomposition", "target_not_found",
-                    "/api/v1/epics/" + unknownEpic + "/review", "target_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/archive-check", "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/decomposition", "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/review", "scope_not_found",
                     "/api/v1/plans/" + unknownPlan + "/tokens", "scope_not_found",
                     "/api/v1/plans/" + unknownPlan + "/chat", "target_not_found");
             for (var entry : codes.entrySet()) {

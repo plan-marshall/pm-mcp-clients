@@ -566,7 +566,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(screen.getByTestId('designer-conflict-diff')).toBeInTheDocument();
   });
 
-  it('shows the failure sentence of a placement once and offers the retry', async () => {
+  it('says the placement outcome is unknown when its request timed out', async () => {
     vi.spyOn(apiClient, 'placeWorkflowUnit').mockRejectedValue(new ClientError('timeout'));
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
@@ -580,11 +580,34 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     await fireEvent.click(screen.getByTestId('place-compare'));
     await fireEvent.click(screen.getByTestId('place-confirm'));
 
-    // The code's sentence carries its own full stop; the wrapper ends the sentence, so exactly one
-    // stands after "running" and the reason is named once.
+    // A timeout leaves the outcome unknown: the view must not claim the unit is not in force.
     const failed = await screen.findByTestId('designer-place-failed');
     expect(failed.textContent?.trim()).toBe(
-      'The landing failed: Try again; if it keeps taking this long, check that the runtime is running. The unit is not in force.',
+      'The placement did not confirm: Try again; if it keeps taking this long, check that the runtime is running. Check the installed units before you place it again.',
+    );
+    expect(failed.textContent).not.toContain('is not in force');
+    expect(screen.getByTestId('place-retry')).toBeInTheDocument();
+  });
+
+  it('shows the failure sentence of a confirmed placement refusal once', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockRejectedValue(new Error('internal_fault'));
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(screen.getByTestId('place-confirm'));
+
+    // The code's sentence carries its own full stop; the wrapper ends the sentence, so exactly one
+    // stands after it and the reason is named once.
+    const failed = await screen.findByTestId('designer-place-failed');
+    expect(failed.textContent?.trim()).toBe(
+      'The landing failed: Start the act again; if it fails again, look the audit id up in the log. The unit is not in force.',
     );
     expect(screen.getByTestId('place-retry')).toBeInTheDocument();
   });

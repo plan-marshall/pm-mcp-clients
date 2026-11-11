@@ -167,6 +167,28 @@ describe('DecisionView component', () => {
     await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
   });
 
+  it("keeps another act's failure when a second act of the same decision succeeds (review)", async () => {
+    vi.spyOn(apiClient, 'interpretDecision').mockRejectedValue(new ClientError('timeout'));
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Select merge strategy')).toBeInTheDocument());
+    await fireEvent.click(screen.getByText('in my own words'));
+    await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+      target: { value: 'Use rebase please' },
+    });
+    await fireEvent.click(screen.getByText('Read back'));
+
+    const sentence =
+      'Try again; if it keeps taking this long, check that the runtime is running.';
+    expect(await screen.findByText(sentence)).toBeInTheDocument();
+
+    // A successful Decide owns its own act only; the failed read-back keeps its banner.
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+    await waitFor(() => expect(apiClient.answerDecision).toHaveBeenCalled());
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
   it('renders open decisions and waivers', async () => {
     render(DecisionView);
 

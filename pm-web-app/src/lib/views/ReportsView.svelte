@@ -46,6 +46,8 @@
   let hasShownList = $state(false);
   /** The generation of the newest list read; an answer older than it is dropped. */
   let loadGeneration = 0;
+  /** How many list mutations an event made, so a snapshot taken before one is not applied. */
+  let listEpoch = 0;
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -385,6 +387,7 @@
         if (!items.some((i) => i.id === newReport.id)) {
           items = [newReport, ...items];
           unreadCount++;
+          listEpoch++;
           showArrivalNotice(newReport);
         }
       } else {
@@ -401,6 +404,7 @@
         for (const id of newlyRead) countedReadIds.add(id);
         items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
         unreadCount = Math.max(0, unreadCount - newlyRead.length);
+        listEpoch++;
       } else {
         void loadReports();
       }
@@ -438,6 +442,7 @@
 
   async function loadReports() {
     const generation = ++loadGeneration;
+    const epochAtStart = listEpoch;
     // The refresh form of the loading pattern: a list that was ever on screen is not replaced by
     // skeletons — that would take the scroll position, the focus and an open row menu with it.
     // Only a read before the page was shown draws the skeletons.
@@ -450,6 +455,12 @@
       const page: ReportsPage = await apiClient.getReports();
       // A newer read owns the list now: this answer is older than it, even though it arrived last.
       if (generation !== loadGeneration) return;
+      // An event changed the list while the read was in flight; its mutation is newer than this
+      // snapshot, so read again instead of putting the older list back.
+      if (epochAtStart !== listEpoch) {
+        void loadReports();
+        return;
+      }
       const served = page.items || [];
       const servedIds = new Set(served.map((fresh) => fresh.id));
       // A row read beside its open detail stays in the list even when a reload no longer serves it:
@@ -573,9 +584,10 @@
       void refreshReportsCount();
     } catch (err: unknown) {
       releasePendingRead(item.id);
-      // A read the runtime has already reported stays read: its event counted it, and taking the
-      // marker back would put a row the runtime read back as unread (the rule mark-all follows too).
-      if (retain && !countedReadIds.has(item.id)) {
+      // A read the runtime has already reported stays read, and a row another request still holds
+      // keeps its marker: only a read nobody else holds and nobody reported returns to unread.
+      const stillHeld = (pendingReadIds.get(item.id) ?? 0) > 0;
+      if (retain && !countedReadIds.has(item.id) && !stillHeld) {
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }

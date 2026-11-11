@@ -24,6 +24,8 @@
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  /** The act that owns the banner, so another act's success cannot clear its failure. */
+  let errorOwner: string | null = $state(null);
   /** The code of a failed list read, which `ErrorState` resolves to its words. */
   let loadError = $state<string | null>(null);
   /** Whether the list has been served at least once, so a later failure is an arrival. */
@@ -402,11 +404,37 @@
     }
   }
 
+  /**
+   * Shows one act's failure, owning the banner.
+   *
+   * Two acts of two decisions can be in flight together; the banner belongs to the one that failed,
+   * so a later success of the other one does not clear a failure the operator has not seen.
+   *
+   * @param owner the act that failed
+   * @param message the sentence to show
+   */
+  function showActFailure(owner: string, message: string): void {
+    errorOwner = owner;
+    errorMessage = message;
+  }
+
+  /**
+   * Clears the banner when this act owns it.
+   *
+   * @param owner the act that succeeded
+   */
+  function clearActFailure(owner: string): void {
+    if (errorOwner !== owner) return;
+    errorOwner = null;
+    errorMessage = '';
+  }
+
   async function loadDecisions() {
     isLoading = true;
     loadError = null;
     // A reload answers for the act the banner reported too: the act's failure is no longer news.
     errorMessage = '';
+    errorOwner = null;
     try {
       decisions = await apiClient.getDecisions();
       hasShownDecisions = true;
@@ -520,11 +548,11 @@
     isSubmitting[id] = true;
     try {
       await apiClient.answerDecision(id, { action, reason });
-      errorMessage = '';
+      clearActFailure(`waiver:${id}`);
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = actFailureText(err, $t('decision.waiver.failed'));
+      showActFailure(`waiver:${id}`, actFailureText(err, $t('decision.waiver.failed')));
     } finally {
       isSubmitting[id] = false;
     }
@@ -541,9 +569,9 @@
     isInterpreting[key] = true;
     try {
       interpretations[key] = await apiClient.interpretDecision(dec.id, words);
-      errorMessage = '';
+      clearActFailure(`interpret:${key}`);
     } catch (err: unknown) {
-      errorMessage = actFailureText(err, $t('decision.interpret.failed'));
+      showActFailure(`interpret:${key}`, actFailureText(err, $t('decision.interpret.failed')));
     } finally {
       isInterpreting[key] = false;
     }
@@ -572,11 +600,11 @@
         option,
         note: partNotes[key],
       });
-      errorMessage = '';
+      clearActFailure(`answer:${key}`);
       setAnswer(dec, part, index, option);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = actFailureText(err, $t('decision.answer.failed'));
+      showActFailure(`answer:${key}`, actFailureText(err, $t('decision.answer.failed')));
     } finally {
       isSubmitting[key] = false;
     }
@@ -607,10 +635,10 @@
           ...(notes.length > 0 ? { note: notes.join('\n') } : {}),
         });
       }
-      errorMessage = '';
+      clearActFailure(`answer:${submittingKey}`);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = actFailureText(err, $t('decision.answer.failed'));
+      showActFailure(`answer:${submittingKey}`, actFailureText(err, $t('decision.answer.failed')));
     } finally {
       isSubmitting[submittingKey] = false;
     }
@@ -620,10 +648,10 @@
     isSubmitting[dec.id] = true;
     try {
       await apiClient.withdrawDecision(dec.id);
-      errorMessage = '';
+      clearActFailure(`withdraw:${dec.id}`);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = actFailureText(err, $t('decision.withdraw.failed'));
+      showActFailure(`withdraw:${dec.id}`, actFailureText(err, $t('decision.withdraw.failed')));
     } finally {
       isSubmitting[dec.id] = false;
     }
