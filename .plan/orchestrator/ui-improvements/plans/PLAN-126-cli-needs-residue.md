@@ -57,6 +57,10 @@ PLAN-33 also found that a REFUSED projects read renders as "Nothing runs…" (fi
      words (`common.kind.*`; `:425-436`); and the English fallbacks that PLAN-123 did not remove (`machine`, `cleanup`,
      `credential`, `Needs you · `, `! `, the dead `hasKey` fallbacks at `:427-435,454-457`,
      `ProjectsOverviewLevel.java:168-170`). Re-read after PLAN-123 and do only the remainder.
+     PLAN-123 (`1bdfede6`) left one: `ProjectsOverviewLevel.java:177` still calls the English-only overload
+     `OverviewFormatting.formatNeedsItemSubject(item)` (`OverviewFormatting.java:343-345`), so a German overview shows
+     `cleanup`/`credential`/`machine`; delete the overload (no compatibility shim) and pass the locale (folded 2026-11-11,
+     operator; `landings/PLAN-123.md`).
    - `NeedsOperatorKind.fromMap` (`NeedsOperatorKind.java:74-82`) throws on a kind it does not know, so one new runtime
      kind fails the whole list. An unknown kind renders with a catalogue word for "another reason" and the list continues.
  - Persona: plan-marshall:persona-implementer
