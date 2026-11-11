@@ -247,6 +247,8 @@ class TuiCapabilityIT {
                                 () -> assertTrue(footer.contains("move"), session.screenText()),
                                 () -> assertTrue(footer.contains("? help"), footer),
                                 () -> assertTrue(!cut || footer.contains("? more"), footer),
+                                () -> assertFalse(!cut && footer.contains("? more"),
+                                                    "a footer that left nothing out never advertises ? more: " + footer),
                                 () -> assertFalse(footer.contains("Esc close"), footer),
                                 () -> assertFalse(footer.contains("views"), footer),
                                 () -> assertFalse(footer.contains("\u2502"), footer),

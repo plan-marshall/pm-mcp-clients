@@ -169,6 +169,7 @@ public final class OverviewFormatting {
             case "setup" -> "overview.needs.setup";
             case "credential" -> "overview.needs.credential";
             case "cleanup_due" -> "overview.needs.cleanup_due";
+            case "other" -> "overview.needs.other";
             default -> null;
         };
     }

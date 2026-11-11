@@ -111,6 +111,7 @@ public final class OverviewFullScreenApp {
     private static final String VERB_ANSWER = "answer";
     private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
+    private static final String PLANS_VERB = "plans";
 
     /**
      * Initial CLI selection state.
@@ -490,11 +491,11 @@ public final class OverviewFullScreenApp {
                 needsRefusal = null;
                 return;
             }
-            needsRefusal = LoadRefusal.of(locale, response);
+            needsRefusal = LoadRefusal.of(locale, response, "needs");
         } catch (IOException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure);
+            needsRefusal = LoadRefusal.of(locale, failure, "needs");
         } catch (IllegalArgumentException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure.getMessage());
+            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), "needs");
         }
     }
 
@@ -506,11 +507,11 @@ public final class OverviewFullScreenApp {
                 projectsRefusal = null;
                 return;
             }
-            projectsRefusal = LoadRefusal.of(locale, response);
+            projectsRefusal = LoadRefusal.of(locale, response, "projects");
         } catch (IOException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure);
+            projectsRefusal = LoadRefusal.of(locale, failure, "projects");
         } catch (IllegalArgumentException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure.getMessage());
+            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), "projects");
         }
     }
 
@@ -518,7 +519,7 @@ public final class OverviewFullScreenApp {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                explorerRefusal = LoadRefusal.of(locale, response);
+                explorerRefusal = LoadRefusal.of(locale, response, "explorer");
                 return;
             }
             var explorer = ProjectExplorer.fromJson(response.bodyText());
@@ -527,9 +528,9 @@ public final class OverviewFullScreenApp {
             explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
             explorerRefusal = null;
         } catch (IOException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure);
+            explorerRefusal = LoadRefusal.of(locale, failure, "explorer");
         } catch (IllegalArgumentException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure.getMessage());
+            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), "explorer");
         }
     }
 
@@ -1383,6 +1384,7 @@ public final class OverviewFullScreenApp {
             case CLEANUP_DUE -> runVerb("cleanup");
             case FINDINGS -> openFindingsAct(item);
             case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
+            case OTHER -> runVerb(PLANS_VERB);
         }
     }
 

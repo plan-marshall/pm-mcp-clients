@@ -135,7 +135,7 @@ class NeedsOneCountTest {
     }
 
     @Test
-    @DisplayName("badges read needs_operator and gain credential and cleanup_due commands")
+    @DisplayName("the badges read needs_operator, one per kind of the list")
     void badgesAndCommandsReadNeedsOperator() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)

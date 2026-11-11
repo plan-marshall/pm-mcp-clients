@@ -32,8 +32,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Every command the list of what waits prints is a registered verb
- * ({@code doc/design/shared/needs-and-find.adoc#terminal}): the one derivation serves {@code needs},
- * the overview's rows and {@code !}, so one wrong word reaches all three.
+ * ({@code doc/design/shared/needs-and-find.adoc#terminal}): the one derivation renders the command
+ * column of {@code needs} and of the overview's rows, and a wrong word reaches both.
  */
 @EnableGeneratorController
 @DisplayName("The command the list of what waits prints")

@@ -83,7 +83,7 @@ class NeedsAndFindScenarioTest {
                                 Collectors.counting()));
                 assertEquals(6L, kinds.get("decision"), "the six open decisions of the store: " + kinds);
                 assertEquals(2L, kinds.get("waiver"), "the two open waiver requests of the store: " + kinds);
-                assertEquals(12, kinds.size(), "every kind of the closed list is served: " + kinds);
+                assertEquals(12, kinds.size(), "every kind of the scenario is served: " + kinds);
 
                 var firstFree = -1;
                 for (int i = 0; i < parsed.items().size(); i++) {

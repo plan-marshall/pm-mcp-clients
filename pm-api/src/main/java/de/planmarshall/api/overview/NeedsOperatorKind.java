@@ -14,7 +14,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Closed enumeration of reasons why an item needs operator attention, in the order of the
  * specification: the decision, the waiver, any other operator wait, the holds, new findings, the
- * setup, then the machine's own items.
+ * setup, then the machine's own items — and, after them, the client's fallback for a reason this
+ * version does not know ({@link #OTHER}), which no runtime serves.
  */
 public enum NeedsOperatorKind {
     DECISION("decision"),

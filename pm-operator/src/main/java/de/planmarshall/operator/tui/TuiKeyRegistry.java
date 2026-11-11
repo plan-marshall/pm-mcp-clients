@@ -350,25 +350,30 @@ public final class TuiKeyRegistry {
         }
         var help = helpCell(locale);
         var more = moreCell(locale);
-        var tail = more + FOOTER_SEPARATOR + help;
-        var kept = keepCells(cells, width, help, tail);
+        var kept = keepCells(cells, width, help, more);
+        var dropped = kept.size() < cells.stream().filter(cell -> !help.equals(cell)).count();
+        var tailParts = new ArrayList<String>();
+        if (dropped) {
+            tailParts.add(more);
+        }
+        tailParts.add(help);
+        var tail = String.join(FOOTER_SEPARATOR, tailParts);
         var line = kept.isEmpty() ? tail : String.join(FOOTER_SEPARATOR, kept) + FOOTER_SEPARATOR + tail;
         if (displayWidth(line) <= width) {
             return line;
         }
-        return displayWidth(help) <= width ? help : "";
+        return displayWidth(tail) <= width ? tail : displayWidth(help) <= width ? help : "";
     }
 
     /**
      * @param cells the cells, in the order they are kept
      * @param width the columns the footer may use
      * @param help  the help cell, which is always kept and never counted as a kept cell here
-     * @param tail  the cells the line ends with ({@code ? more} and the help cell)
-     * @return the cells that fit before {@code tail}, in their order
+     * @return the cells that fit before the help cell, in their order
      */
-    private static List<String> keepCells(List<String> cells, int width, String help, String tail) {
+    private static List<String> keepCells(List<String> cells, int width, String help, String more) {
         var kept = new ArrayList<String>();
-        var reserved = displayWidth(FOOTER_SEPARATOR + tail);
+        var reserved = displayWidth(FOOTER_SEPARATOR + more + FOOTER_SEPARATOR + help);
         for (var cell : cells) {
             if (help.equals(cell)) {
                 continue;

@@ -92,7 +92,11 @@ public record NeedsOperatorItem(
      */
     public static NeedsOperatorItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var kind = NeedsOperatorKind.fromWireOrOther(JsonTree.string(map, "kind"));
+        var wire = JsonTree.string(map, "kind");
+        if (wire == null || wire.isBlank()) {
+            throw new JsonFormatException("Missing kind in NeedsOperatorItem");
+        }
+        var kind = NeedsOperatorKind.fromWireOrOther(wire);
         return new NeedsOperatorItem(
                 kind,
                 JsonTree.string(map, "link"),

@@ -25,8 +25,9 @@ import de.planmarshall.operator.tui.TuiRow;
  * @param title what happened
  * @param cause why the runtime refused
  * @param fix     what to do next
+ * @param level   the level the refusal belongs to, so two refusals in one level never share a row id
  */
-public record LoadRefusal(String title, String cause, String fix) {
+public record LoadRefusal(String title, String cause, String fix, String level) {
 
     /** Row id of a level's refusal. */
     public static final String ROW_ID = "__refusal__";
@@ -36,14 +37,16 @@ public record LoadRefusal(String title, String cause, String fix) {
      *
      * @param locale   the interface locale
      * @param response the refused response
+     * @param level    the level the refusal belongs to
      * @return the refusal's three lines
      */
-    public static LoadRefusal of(String locale, HttpResponse response) {
+    public static LoadRefusal of(String locale, HttpResponse response, String level) {
         var code = codeOf(response);
         return new LoadRefusal(
                             clean(ErrorTexts.title(locale, code)),
                             clean(ErrorTexts.cause(locale, code)),
-                            clean(ErrorTexts.fix(locale, code)));
+                            clean(ErrorTexts.fix(locale, code)),
+                            level);
     }
 
     /**
@@ -51,14 +54,16 @@ public record LoadRefusal(String title, String cause, String fix) {
      *
      * @param locale  the interface locale
      * @param reason  the reason the read failed, or {@code null}
+     * @param level   the level the refusal belongs to
      * @return the refusal's three lines
      */
-    public static LoadRefusal of(String locale, @Nullable String reason) {
+    public static LoadRefusal of(String locale, @Nullable String reason, String level) {
         return new LoadRefusal(
                             clean(ErrorTexts.title(locale, (String) null)),
                             clean(reason != null && !reason.isBlank() ? reason
                                                 : ErrorTexts.cause(locale, (String) null)),
-                            clean(ErrorTexts.fix(locale, (String) null)));
+                            clean(ErrorTexts.fix(locale, (String) null)),
+                            level);
     }
 
     /**
@@ -66,20 +71,22 @@ public record LoadRefusal(String title, String cause, String fix) {
      *
      * @param locale  the interface locale
      * @param failure the failure
+     * @param level   the level the refusal belongs to
      * @return the refusal's three lines
      */
-    public static LoadRefusal of(String locale, IOException failure) {
-        return of(locale, failure.getMessage());
+    public static LoadRefusal of(String locale, IOException failure, String level) {
+        return of(locale, failure.getMessage(), level);
     }
 
     /**
      * @return the rows the level shows for the refusal
      */
     public List<TuiRow> rows() {
+        var id = ROW_ID + "." + level;
         return List.of(
-                            TuiRow.leaf(ROW_ID, "  " + title),
-                            TuiRow.leaf(ROW_ID + ".cause", "  " + cause),
-                            TuiRow.leaf(ROW_ID + ".fix", "  " + fix));
+                            TuiRow.leaf(id, "  " + title),
+                            TuiRow.leaf(id + ".cause", "  " + cause),
+                            TuiRow.leaf(id + ".fix", "  " + fix));
     }
 
     /**

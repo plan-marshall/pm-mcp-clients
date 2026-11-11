@@ -89,6 +89,7 @@ int count,
     public boolean isQuestion() {
         return kind == Kind.WAITING && ("question".equals(itemKind)
                             || "decision".equals(itemKind)
+                            || "waiver".equals(itemKind)
                             || "waiver_request".equals(itemKind));
     }
 }

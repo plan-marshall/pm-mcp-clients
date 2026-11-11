@@ -173,28 +173,29 @@ public final class ConsoleNotice {
      * @return formatted single-line notice
      */
     public static String formatHoldNotice(String locale, String kind, String scope, @Nullable String detail) {
+        var safeScope = TerminalSanitizer.sanitizeLine(scope);
         var safeDetail = TerminalSanitizer.sanitize(detail);
         var text = switch (kind) {
             case "operator_wait" -> MessageCatalogue.format(locale, "operator.console.notice.operator_wait",
-                                Map.of("name", scope, "what", safeDetail));
+                                Map.of("name", safeScope, "what", safeDetail));
             case "integrity_pause" -> MessageCatalogue.format(locale, "operator.console.notice.integrity_pause",
-                                Map.of("plan", scope, REASON, safeDetail));
+                                Map.of("plan", safeScope, REASON, safeDetail));
             case "stalled" -> MessageCatalogue.format(locale, "operator.console.notice.stalled",
-                                Map.of("plan", scope, REASON, safeDetail));
+                                Map.of("plan", safeScope, REASON, safeDetail));
             case CONDITION -> MessageCatalogue.format(locale, "operator.console.notice.condition",
-                                Map.of("plan", scope, CONDITION, safeDetail));
+                                Map.of("plan", safeScope, CONDITION, safeDetail));
             case "held" -> MessageCatalogue.format(locale, "operator.console.notice.held",
-                                Map.of("epic", scope, DETAIL, safeDetail));
+                                Map.of("epic", safeScope, DETAIL, safeDetail));
             case "landing_failed" -> MessageCatalogue.format(locale, "operator.console.notice.landing_failed",
-                                Map.of("epic", scope, REASON, safeDetail));
+                                Map.of("epic", safeScope, REASON, safeDetail));
             case "findings" -> MessageCatalogue.format(locale, "operator.console.notice.findings",
-                                Map.of("epic", scope, DETAIL, safeDetail));
+                                Map.of("epic", safeScope, DETAIL, safeDetail));
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
-                                Map.of(KEY_PROJECT, scope, "what", safeDetail));
+                                Map.of(KEY_PROJECT, safeScope, "what", safeDetail));
             case "credential" -> {
-                var safeScope = TerminalSanitizer.sanitize(scope).strip();
                 var credKey = safeScope.isBlank()
-                                    ? safeDetail.isBlank() ? MessageCatalogue.format(locale, "common.unknown", Map.of()) : safeDetail
+                                    ? safeDetail.isBlank() ? MessageCatalogue.format(locale, "common.unknown", Map.of())
+                                    : safeDetail
                                     : safeScope;
                 yield MessageCatalogue.format(locale, "operator.console.notice.credential",
                                     Map.of("key", credKey));
@@ -202,7 +203,7 @@ public final class ConsoleNotice {
             case "cleanup_due" -> MessageCatalogue.format(locale, "operator.console.notice.cleanup_due",
                                 Map.of());
             default -> MessageCatalogue.format(locale, "operator.console.notice.generic",
-                                Map.of("kind", kind, SCOPE, scope, DETAIL, safeDetail));
+                                Map.of("kind", TerminalSanitizer.sanitizeLine(kind), SCOPE, safeScope, DETAIL, safeDetail));
         };
         return BULLET + text;
     }
