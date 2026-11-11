@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+
+
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.ConfigOrigin;
@@ -61,7 +63,7 @@ public final class MockConfigRoutes {
      * @throws IOException on write failure
      */
     public boolean handle(MockHttpRequest request, MockHttpResponse response,
-                        Map<String, Object> machineValues) throws IOException {
+            Map<String, Object> machineValues) throws IOException {
         if (!PATH.equals(request.path()) && !request.path().startsWith(PATH + SLASH)) {
             return false;
         }
@@ -92,7 +94,7 @@ public final class MockConfigRoutes {
     }
 
     private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value)
-                        throws IOException {
+            throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, "aspect_owned"));
             return;
@@ -172,7 +174,7 @@ public final class MockConfigRoutes {
     }
 
     private Map<String, Object> resource(String key, ConfigOrigin origin, @Nullable Object value,
-                        @Nullable ConfigOrigin overridden) {
+            @Nullable ConfigOrigin overridden) {
         var overrides = overridden != null && origin.overrides(overridden) ? overridden : null;
         return new ConfigValueResource(key, value, origin, overrides, revision).toMap();
     }

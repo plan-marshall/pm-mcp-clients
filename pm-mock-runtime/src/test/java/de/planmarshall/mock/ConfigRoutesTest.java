@@ -14,10 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,12 +51,12 @@ class ConfigRoutesTest {
             var values = values(runtime);
 
             assertAll(
-                                () -> assertTrue(values.containsKey("language.interface"), values.toString()),
-                                () -> assertEquals("machine", values.get("language.interface").get(ORIGIN),
-                                                    values.toString()),
-                                () -> assertEquals("en", values.get("language.interface").get(VALUE),
-                                                    values.toString()),
-                                () -> assertTrue(values.containsKey("sources.documents_mode"), values.toString()));
+                    () -> assertTrue(values.containsKey("language.interface"), values.toString()),
+                    () -> assertEquals("machine", values.get("language.interface").get(ORIGIN),
+                            values.toString()),
+                    () -> assertEquals("en", values.get("language.interface").get(VALUE),
+                            values.toString()),
+                    () -> assertTrue(values.containsKey("sources.documents_mode"), values.toString()));
         }
     }
 
@@ -63,14 +65,14 @@ class ConfigRoutesTest {
     void putRecordsAValue() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                                "/api/v1/config/machine/custom.timeout", "{\"value\":\"60\"}"), runtime));
+                    "/api/v1/config/machine/custom.timeout", "{\"value\":\"60\"}"), runtime));
             var values = values(runtime);
 
             assertAll(
-                                () -> assertEquals(200, written.status(), written.bodyText()),
-                                () -> assertEquals("60", values.get("custom.timeout").get(VALUE), values.toString()),
-                                () -> assertEquals("machine", values.get("custom.timeout").get(ORIGIN),
-                                                    values.toString()));
+                    () -> assertEquals(200, written.status(), written.bodyText()),
+                    () -> assertEquals("60", values.get("custom.timeout").get(VALUE), values.toString()),
+                    () -> assertEquals("machine", values.get("custom.timeout").get(ORIGIN),
+                            values.toString()));
         }
     }
 
@@ -79,16 +81,16 @@ class ConfigRoutesTest {
     void nearerLevelOverridesTheMachine() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                                "/api/v1/config/project/custom.label", "{\"value\":\"local\"}"), runtime));
+                    "/api/v1/config/project/custom.label", "{\"value\":\"local\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                                "/api/v1/config/machine/custom.label", "{\"value\":\"machine\"}"), runtime));
+                    "/api/v1/config/machine/custom.label", "{\"value\":\"machine\"}"), runtime));
 
             var value = values(runtime).get("custom.label");
             assertAll(
-                                () -> assertEquals(200, written.status(), written.bodyText()),
-                                () -> assertEquals("local", value.get(VALUE), value.toString()),
-                                () -> assertEquals("project", value.get(ORIGIN), value.toString()),
-                                () -> assertEquals("machine", value.get("overrides"), value.toString()));
+                    () -> assertEquals(200, written.status(), written.bodyText()),
+                    () -> assertEquals("local", value.get(VALUE), value.toString()),
+                    () -> assertEquals("project", value.get(ORIGIN), value.toString()),
+                    () -> assertEquals("machine", value.get("overrides"), value.toString()));
         }
     }
 
@@ -97,11 +99,11 @@ class ConfigRoutesTest {
     void putRefusesAnAspectOwnedKey() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var refused = client(runtime).send(authorized(HttpRequest.json("PUT",
-                                "/api/v1/config/machine/language.interface", "{\"value\":\"de\"}"), runtime));
+                    "/api/v1/config/machine/language.interface", "{\"value\":\"de\"}"), runtime));
 
             assertEquals(409, refused.status(), refused.bodyText());
             assertEquals("aspect_owned", JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.bodyText())),
-                                "error"));
+                    "error"));
         }
     }
 
@@ -110,15 +112,15 @@ class ConfigRoutesTest {
     void deleteRemovesOneLevel() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                                "/api/v1/config/machine/custom.flag", "{\"value\":\"on\"}"), runtime));
+                    "/api/v1/config/machine/custom.flag", "{\"value\":\"on\"}"), runtime));
             var deleted = client(runtime).send(authorized(new HttpRequest("DELETE",
-                                "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
+                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
             var unknown = client(runtime).send(authorized(new HttpRequest("DELETE",
-                                "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
+                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
 
             assertAll(
-                                () -> assertEquals(204, deleted.status(), deleted.bodyText()),
-                                () -> assertEquals(404, unknown.status(), unknown.bodyText()));
+                    () -> assertEquals(204, deleted.status(), deleted.bodyText()),
+                    () -> assertEquals(404, unknown.status(), unknown.bodyText()));
         }
     }
 
@@ -130,10 +132,10 @@ class ConfigRoutesTest {
 
         assertNotNull(settings, "settings.choose");
         assertAll(
-                            () -> assertTrue(settings.links().containsKey("reconfigure:language"),
-                                                settings.links().keySet().toString()),
-                            () -> assertTrue(settings.links().containsKey("reconfigure:plan-defaults"),
-                                                settings.links().keySet().toString()));
+                () -> assertTrue(settings.links().containsKey("reconfigure:language"),
+                        settings.links().keySet().toString()),
+                () -> assertTrue(settings.links().containsKey("reconfigure:plan-defaults"),
+                        settings.links().keySet().toString()));
     }
 
     @Test
@@ -144,7 +146,7 @@ class ConfigRoutesTest {
         assertNotNull(settings, "settings.choose");
 
         var aspects = List.of(
-                            "language", "harnesses", "models", "roles", "credentials", "providers", "plan-defaults");
+                "language", "harnesses", "models", "roles", "credentials", "providers", "plan-defaults");
         for (var aspect : aspects) {
             var link = settings.links().get("reconfigure:" + aspect);
             assertNotNull(link, aspect);
@@ -170,7 +172,7 @@ class ConfigRoutesTest {
         return values;
     }
 
-    private static List<String> linkIds(String body) throws java.io.IOException {
+    private static List<String> linkIds(String body) throws IOException {
         var ids = new ArrayList<String>();
         var links = JsonTree.asArray(JsonTree.asObject(JsonTree.parse(body)).get("links"));
         if (links == null) {

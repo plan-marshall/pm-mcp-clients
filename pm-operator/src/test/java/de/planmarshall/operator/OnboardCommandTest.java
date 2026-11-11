@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -177,7 +178,7 @@ class OnboardCommandTest {
         @DisplayName("runs one step again as a later change and reports it")
         void runsOneStepAgain() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
-            var steps = new java.util.ArrayList<String>();
+            var steps = new ArrayList<String>();
             fixture.start((request, response) -> {
                 if ("/api/v1/onboarding/state".equals(request.target())) {
                     response.json(200, ONBOARD_COMPLETED);
@@ -192,9 +193,9 @@ class OnboardCommandTest {
             var out = new StringWriter();
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
-                                () -> new org.jline.terminal.impl.DumbTerminal(
-                                                    new java.io.ByteArrayInputStream("q\n".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                                                    new java.io.ByteArrayOutputStream()),
+                                () -> new DumbTerminal(
+                                                    new ByteArrayInputStream("q\n".getBytes(StandardCharsets.UTF_8)),
+                                                    new ByteArrayOutputStream()),
                                 null);
 
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
@@ -215,9 +216,9 @@ class OnboardCommandTest {
             var err = new StringWriter();
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
-                                () -> new org.jline.terminal.impl.DumbTerminal(
-                                                    new java.io.ByteArrayInputStream("q\n".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                                                    new java.io.ByteArrayOutputStream()),
+                                () -> new DumbTerminal(
+                                                    new ByteArrayInputStream("q\n".getBytes(StandardCharsets.UTF_8)),
+                                                    new ByteArrayOutputStream()),
                                 null);
 
             var code = PmOperator.execute(context, new PrintWriter(new StringWriter()), new PrintWriter(err),

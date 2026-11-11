@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -189,7 +190,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config set writes one key at one level")
     void configSetWritesTheLevelRoute() throws Exception {
-        var requests = new java.util.ArrayList<String>();
+        var requests = new ArrayList<String>();
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
             if ("PUT".equals(request.method()) && "/api/v1/config/machine/custom.timeout".equals(request.target())) {
@@ -211,7 +212,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config unset removes one key at one level")
     void configUnsetRemovesTheLevelRoute() throws Exception {
-        var requests = new java.util.ArrayList<String>();
+        var requests = new ArrayList<String>();
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
             if ("DELETE".equals(request.method()) && "/api/v1/config/machine/custom.flag".equals(request.target())) {
@@ -304,7 +305,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config language runs the aspect's later run with its arguments as answers")
     void configLanguageRunsTheAspect() throws Exception {
-        var steps = new java.util.ArrayList<String>();
+        var steps = new ArrayList<String>();
         fixture.start((request, response) -> {
             if ("/api/v1/onboarding/state".equals(request.target())) {
                 response.json(200, ONBOARD_COMPLETED);
@@ -338,7 +339,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("a config aspect carries its consent and answers a consent state with yes")
     void configHarnessesRunsTheAspect() throws Exception {
-        var steps = new java.util.ArrayList<String>();
+        var steps = new ArrayList<String>();
         fixture.start((request, response) -> {
             if ("/api/v1/onboarding/state".equals(request.target())) {
                 response.json(200, ONBOARD_COMPLETED);
@@ -459,7 +460,7 @@ class ConfigCommandTest {
         );
     }
 
-    private static de.planmarshall.api.testsupport.FakeRuntimeServer.Handler sensibleSettings() {
+    private static FakeRuntimeServer.Handler sensibleSettings() {
         return (request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target())) {
                 response.json(200, SETTINGS);
@@ -488,7 +489,8 @@ class ConfigCommandTest {
         return null;
     }
 
-    private static String rowOf(String text, String key) {        for (var line : text.split("\n")) {
+    private static String rowOf(String text, String key) {
+        for (var line : text.split("\n")) {
             if (line.stripLeading().startsWith(key + " ")) {
                 return line;
             }
@@ -496,7 +498,8 @@ class ConfigCommandTest {
         return null;
     }
 
-    private static String valueAt(String text, String label, int column) {        for (var line : text.split("\n")) {
+    private static String valueAt(String text, String label, int column) {
+        for (var line : text.split("\n")) {
             var stripped = line.stripLeading();
             if (stripped.matches("\\d+\\) " + Pattern.quote(label) + "\\s+.*")) {
                 return line.substring(Math.min(column, line.length())).stripTrailing();
