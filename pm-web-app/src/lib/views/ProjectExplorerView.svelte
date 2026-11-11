@@ -7,7 +7,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
     type ProjectExplorer,
@@ -37,7 +37,7 @@
   let settings = $state<ProjectSettingsRecord | null>(null);
   let settingsLoading = $state(false);
   /** The code of a failed settings read, which `ErrorState` resolves to its words. */
-  let settingsLoadError = $state('');
+  let settingsLoadError = $state<string | null>(null);
   let settingsError = $state('');
   let settingsNotice = $state('');
   let settingsDrafts = $state<Record<string, string>>({});
@@ -65,10 +65,12 @@
   async function loadExplorer() {
     isLoading = true;
     errorMessage = null;
+    // A reload answers for the last act's failure too: the banner it left is no longer news.
+    actionError = '';
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      errorMessage = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -172,7 +174,7 @@
       releaseReason = '';
       await loadExplorer();
     } catch (err: unknown) {
-      releaseError = (err as Error)?.message || $t('project.release.failed');
+      releaseError = actFailureText(err, $t('project.release.failed'));
     } finally {
       isReleasing = false;
     }
@@ -188,14 +190,15 @@
       unenrolTarget = null;
       await loadExplorer();
     } catch (err: unknown) {
-      const msg = (err as Error)?.message || '';
+      // The refusal's own code is what tells the two cases apart; it is never printed.
+      const msg = err instanceof Error ? err.message : '';
       if (msg.includes('scope_active') || msg.includes('409')) {
         unenrolError =
           $t('project.release.refused', { project: target.display_name }) +
           '. ' +
           $t('project.release.refused_hint');
       } else {
-        unenrolError = msg || $t('project.release.unenrol_failed');
+        unenrolError = actFailureText(err, $t('project.release.unenrol_failed'));
       }
     } finally {
       isUnenrolling = false;
@@ -212,7 +215,7 @@
       abandonTarget = null;
       await loadExplorer();
     } catch (err: unknown) {
-      abandonError = (err as Error)?.message || $t('project.adding.abandon_failed');
+      abandonError = actFailureText(err, $t('project.adding.abandon_failed'));
     } finally {
       isAbandoning = false;
     }
@@ -318,7 +321,7 @@
    */
   async function loadProjectSettings(projectId: string): Promise<void> {
     settingsLoading = true;
-    settingsLoadError = '';
+    settingsLoadError = null;
     settingsError = '';
     try {
       const loaded = await apiClient.getProjectSettings(projectId);
@@ -330,7 +333,7 @@
       }
       settingsDrafts = drafts;
     } catch (err: unknown) {
-      settingsLoadError = errorCodeOf(err) || 'unknown';
+      settingsLoadError = errorCodeOf(err);
     } finally {
       settingsLoading = false;
     }
@@ -499,13 +502,14 @@
     <div class="explorer-loading" role="status">
       <Skeleton shape="card" rows={3} label={$t('project.explorer.loading')} />
     </div>
-  {:else if errorMessage}
+  {:else if errorMessage !== null}
     <div class="alert alert--danger" data-testid="explorer-error">
       <ErrorState
         code={errorMessage}
         actionLabel={$t('common.action.retry')}
         onAct={loadExplorer}
         titleLevel={2}
+        announce={explorer !== null}
       />
     </div>
   {:else if explorer}
@@ -1344,7 +1348,7 @@
 
       {#if settingsLoading}
         <Skeleton shape="card" rows={3} label={$t('project.settings.loading')} />
-      {:else if settingsLoadError}
+      {:else if settingsLoadError !== null}
         <div class="alert alert--danger" data-testid="setup-error">
           <ErrorState
             code={settingsLoadError}

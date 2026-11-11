@@ -88,12 +88,14 @@
         data-testid="brand-home"
         onclick={() => void openStartPage()}
       >
-        <BrandMark size={24} plate />
+        <BrandMark size={28} />
         <span class="nav-rail__title">{$t('web.frame.brand')}</span>
       </button>
     {:else}
+      <!-- Collapsed, the mark stands alone and carries the wordmark as its name; expanded, the
+           visible wordmark beside it names the brand and the mark stays decorative. -->
       <span class="nav-rail__brand nav-rail__brand--inert" data-testid="brand-inert">
-        <BrandMark size={24} plate />
+        <BrandMark size={28} label={collapsed ? $t('web.frame.brand') : undefined} />
         <span class="nav-rail__title">{$t('web.frame.brand')}</span>
       </span>
     {/if}

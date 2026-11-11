@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("EventKind")
 class EventKindTest {
@@ -69,6 +71,16 @@ class EventKindTest {
                 () -> assertEquals(EventKind.HELD, EventKind.fromType("held")),
                 () -> assertEquals(EventKind.SETUP, EventKind.fromType("setup"))
         );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"chat.turn.started", "chat.turn.delta", "chat.turn.progress", "chat.turn.completed",
+            "chat.proposal", "chat.ended", "plan.revision_queued"})
+    @DisplayName("the chat's events and plan.revision_queued name no kind: none becomes a notice of the console")
+    void chatEventsNameNoKind(String event) {
+        assertAll(
+                () -> assertTrue(EventName.isCatalogueMember(event)),
+                () -> assertNull(EventKind.fromEventName(event)));
     }
 
     @Test

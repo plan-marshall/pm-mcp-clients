@@ -21,7 +21,11 @@
    */
   let devices: PairedDevice[] = [];
   let isLoading = false;
-  let loadError = '';
+  let loadError: string | null = null;
+  /** Whether the devices read has been served at least once, so a later failure is an arrival. */
+  let hasShownDevices = false;
+  /** How many reads this page ran, so a failed retry is announced even before the first success. */
+  let loadAttempts = 0;
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
@@ -100,7 +104,8 @@
     const controller = new AbortController();
     loadController = controller;
     isLoading = true;
-    loadError = '';
+    loadAttempts += 1;
+    loadError = null;
     try {
       const signal = controller.signal;
       const [devList, status] = await Promise.all([
@@ -109,6 +114,7 @@
       ]);
       if (!isMounted || sequence !== loadSequence) return;
       devices = Array.isArray(devList) ? devList : [];
+      hasShownDevices = true;
       listenerKnown = Boolean(status?.web && typeof status.web.lan === 'boolean');
       if (listenerKnown) {
         lanListenerOn = status?.web?.lan === true;
@@ -117,7 +123,7 @@
       // The status read behind this one has nothing left to say: end it here.
       controller.abort();
       if (!isMounted || sequence !== loadSequence) return;
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
       devices = [];
       // Nothing says how the listener stands any more: the earlier answer is not a current one.
       listenerKnown = false;
@@ -377,12 +383,13 @@
       {/if}
       {#if isLoading}
         <Skeleton shape="card" rows={3} label={$t('web.settings.devices.loading')} />
-      {:else if loadError}
+      {:else if loadError !== null}
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
           onAct={() => loadData()}
           titleLevel={3}
+          announce={hasShownDevices || loadAttempts > 1}
         />
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>

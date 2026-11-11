@@ -2,6 +2,7 @@
   import { t } from '../i18n';
   import Button from './Button.svelte';
   import { apiClient } from '../api/client';
+  import { actFailureText } from '../api/errors';
 
   export let credentialKey: string;
   export let label: string;
@@ -26,11 +27,12 @@
       secret = '';
       notice = $t('entry.credentials.stored');
     } catch (err) {
-      const message = (err as Error)?.message;
-      if (message === 'loopback_only') {
+      // Only the loopback refusal has a sentence of its own; every other failure reads its code's.
+      const refusal = err instanceof Error ? err.message : '';
+      if (refusal === 'loopback_only') {
         error = $t('entry.credentials.loopback_only', { command });
       } else {
-        error = message || $t('entry.credentials.save');
+        error = actFailureText(err, $t('entry.credentials.save'));
       }
     } finally {
       isSaving = false;

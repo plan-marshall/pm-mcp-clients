@@ -19,6 +19,7 @@ import {
   type StartPath,
 } from '../routes';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
+import { actFailureReason } from '../api/errors';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -1035,12 +1036,9 @@ export async function stepOnboarding(
   }
 }
 
-/** A caught value as a message: what an `Error` says, or the value itself. */
+/** A caught value as the reason a wrapper shows: its code's sentence without its own full stop. */
 function errorMessage(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message;
-  }
-  return typeof err === 'string' ? err : '';
+  return actFailureReason(err, '');
 }
 
 /**

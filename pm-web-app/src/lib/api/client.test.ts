@@ -613,6 +613,58 @@ describe('ApiClient', () => {
     expect(timeout).toHaveBeenCalledWith(15_000);
   });
 
+  it('reports a caller deadline that fires mid-body as the timeout code', async () => {
+    // Arrange: the status line arrives, and the caller's own deadline fires while the body is read.
+    const controller = new AbortController();
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+        throw new TypeError('The operation was aborted');
+      },
+    });
+
+    // Act & Assert: the same bound says the same thing whether it fires before or inside the body.
+    await expect(client.getStatus(controller.signal)).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('ends a request that never answers in the timeout code when the limit passes, and not before', async () => {
+    // Arrange: a runtime that never answers, and the client's own bound driven by the fake clock.
+    vi.useFakeTimers();
+    const deadline = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((milliseconds: number) => {
+      setTimeout(
+        () => deadline.abort(new DOMException('The operation timed out.', 'TimeoutError')),
+        milliseconds,
+      );
+      return deadline.signal;
+    });
+    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
+      const signal = (init as RequestInit).signal as AbortSignal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener(
+          'abort',
+          () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          { once: true },
+        );
+      });
+    });
+    let failure: unknown = null;
+    const request = client.getReports().catch((err: unknown) => {
+      failure = err;
+    });
+
+    // Act & Assert: nothing is reported a second before the 15-second limit passes.
+    await vi.advanceTimersByTimeAsync(14_000);
+    expect(failure).toBeNull();
+
+    // The limit passes and the request ends in the typed code.
+    await vi.advanceTimersByTimeAsync(1_500);
+    await request;
+    expect(failure).toMatchObject({ code: 'timeout' });
+  });
+
   it('gives a check the longer client limit', async () => {
     // Arrange
     const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort());

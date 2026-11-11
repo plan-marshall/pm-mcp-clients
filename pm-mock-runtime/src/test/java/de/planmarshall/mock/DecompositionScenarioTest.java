@@ -139,8 +139,10 @@ class DecompositionScenarioTest {
     @DisplayName("refuses an edit instruction for a plan the cut does not carry")
     void shouldRefuseInstructForUnknownPlan() throws Exception {
         try (var runtime = MockRuntime.start(STATE)) {
-            var instruct = new DecompositionInstructRequest("no-such-plan",
-                    "Rewrite it.", InstructAction.EDIT);
+            // The generated plan id names no plan of the cut, and the instruction is the test's own.
+            var unknownPlan = Generators.letterStrings(6, 12).next().toLowerCase();
+            var instruction = Generators.letterStrings(10, 40).next();
+            var instruct = new DecompositionInstructRequest(unknownPlan, instruction, InstructAction.EDIT);
             var res = post(runtime, BASE + "relay-hardening/decomposition/instruct", instruct.toJson());
             assertEquals(404, res.status());
             assertEquals("scope_not_found",

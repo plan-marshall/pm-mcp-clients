@@ -47,7 +47,9 @@ offered keys. Enter takes "after the current task" and the line shows it. Each o
 |CLI-UC-S-04
 |`answer Q-007` shows two options with votes, the dissent, the evidence hint "RelayServer.java, lines 42-58", and the
 prompt "Rebase onto main? [Enter]   other: 1-2 …". Enter answers and prints "✓ Q-007 answered: Rebase onto main".
-`answer WR-2` asks y/d/l. The German run has no English word outside the glossary.
+`answer WR-2` asks y/d/l. In the German run the client's own words (the frame: labels, the prompt, the acts, the
+answered line) have no English word outside the glossary; the decision's question, options and reasons are runtime
+text in the model language and are shown as delivered (link:../../../design/shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
 |`running-work` → `decisions.open`; `AnswerDialogueIT`
 
 |CLI-UC-V-05
@@ -60,8 +62,8 @@ label. The prompt shows `pm [3 questions] ›` in `fully-onboarded`.
 |CLI-UC-V-06
 |CLI-UC-S-06
 |From `onboard.mode`, `h` then Enter shows `[1/7] Language`. Each state shows texts, never a link name. The walk
-reaches `onboard.completed`. `onboard --auto --yes` reaches the result table. `project setup cui-parent` shows the
-identity step with id, name, pilot.
+reaches `onboard.completed`. The entry's first choice (decide everything) reaches the result table; `onboard` is no
+verb and exits `2`. `project setup cui-parent` shows the identity step with id, name, pilot.
 |`onboarding`; `projects-and-start` → `projects.being-added`; `OnboardingDialogueIT`
 
 |CLI-UC-V-07

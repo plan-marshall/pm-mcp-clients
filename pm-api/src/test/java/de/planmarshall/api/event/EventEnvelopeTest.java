@@ -49,7 +49,8 @@ class EventEnvelopeTest {
                 "device.revoked", "listener.changed", "settings.changed",
                 // Overview
                 "project.work_started", "project.work_ended", "project.changed", "scope.started", "scope.ended",
-                "phase.changed", "activity.changed", "needs_operator.changed", "condition.raised",
+                "phase.changed", "activity.changed", "plan.revision_queued", "needs_operator.changed",
+                "condition.raised",
                 "condition.cleared", "hold.opened", "hold.changed", "hold.cleared", "epic.row_changed",
                 "task.off_track",
                 // States, process & decisions
@@ -59,6 +60,9 @@ class EventEnvelopeTest {
                 "source.removed", "source.flagged", "entry.started", "entry.abandoned", "entry.moved",
                 "task.offered", "task.ended", "job.started", "job.ended", "worker.started", "worker.recycled",
                 "worker.replaced", "epic.auto_changed", "epic.register_changed", "epic.decomposition_changed",
+                // Chat
+                "chat.turn.started", "chat.turn.delta", "chat.turn.progress", "chat.turn.completed",
+                "chat.proposal", "chat.ended",
                 // Reports & activity
                 "report.sent", "report.read", "activity");
 

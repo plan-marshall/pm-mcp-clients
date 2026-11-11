@@ -4,6 +4,7 @@
   import RecipeSelector from './RecipeSelector.svelte';
   import SourceIntakePanel from './SourceIntakePanel.svelte';
   import { openLessonSource } from '../stores/lessonSource';
+  import { actFailureText } from '../api/errors';
 
   export let open = false;
   export let projectId = '';
@@ -67,7 +68,7 @@
       }
       onStarted(started);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('system.action.failed'));
     } finally {
       busy = false;
     }

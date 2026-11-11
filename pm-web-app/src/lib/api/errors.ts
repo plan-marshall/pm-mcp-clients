@@ -1,3 +1,5 @@
+import { displayError } from '../display';
+
 /**
  * The closed set of error codes the web client raises itself.
  *
@@ -70,4 +72,36 @@ export function errorCodeOf(value: unknown): string {
   }
   const trimmed = message.trim();
   return ERROR_CODE_PATTERN.test(trimmed) ? trimmed : '';
+}
+
+/**
+ * The one sentence an act's failure shows.
+ *
+ * An act that fails carries either one of the client's own codes or a daemon refusal, and both name
+ * a sentence in the catalogue; that sentence is what the operator reads, never the failure's own
+ * message — which is the bare code for a {@link ClientError} and a technical string otherwise. Where
+ * no code can be read, the act's own failure text stands in, so an unfamiliar failure still says
+ * what failed without printing its message.
+ *
+ * @param value the failure the act caught
+ * @param fallback the act's own failure text, resolved from the view's catalogue key
+ * @returns the sentence to show
+ */
+export function actFailureText(value: unknown, fallback: string): string {
+  const code = errorCodeOf(value);
+  return code.length > 0 ? displayError(code).fix : fallback;
+}
+
+/**
+ * The same sentence, for a catalogue text that ends the sentence itself.
+ *
+ * `system.upgrade.check_failed` and its neighbours append their own full stop to `{reason}`, so a
+ * sentence that carries one would double it; this keeps the text readable inside that wrapper.
+ *
+ * @param value the failure the act caught
+ * @param fallback the act's own failure text, resolved from the view's catalogue key
+ * @returns the sentence without its final period
+ */
+export function actFailureReason(value: unknown, fallback: string): string {
+  return actFailureText(value, fallback).replace(/\.$/, '');
 }

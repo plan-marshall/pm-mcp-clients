@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import EpicDecompositionView from './EpicDecompositionView.svelte';
 import { apiClient, type EpicDecomposition } from '../api/client';
+import { ClientError } from '../api/errors';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 
@@ -82,6 +83,25 @@ describe('EpicDecompositionView', () => {
       }),
     );
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  });
+
+  it('draws the error pattern with its act when the cut cannot be read', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockRejectedValue(new ClientError('network_offline'));
+
+    render(EpicDecompositionView);
+
+    const error = await screen.findByTestId('decomposition-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('draws skeletons while the cut is being read', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockReturnValue(new Promise(() => {}));
+
+    render(EpicDecompositionView);
+
+    const loading = await screen.findByTestId('skeleton');
+    expect(loading).toHaveAttribute('data-shape', 'card');
   });
 
   it('renders the workstreams, plans, and the conflict banner', async () => {

@@ -90,6 +90,16 @@
   --color-on-brand: #FFFFFF;
   --color-overlay: rgb(15 23 42 / 0.5);
 
+  /*
+   * The brand palette of the mascot (theme-readability.adoc, Mascot Palette Tokens): declared once
+   * here and overridden by no theme block, so both themes resolve the same values.
+   */
+  --color-mascot-fur: #E17512;
+  --color-mascot-gold: #F2B630;
+  --color-mascot-hat: #A0602E;
+  --color-mascot-cream: #F6DDB0;
+  --color-mascot-outline: #2A1A10;
+
   /* VD-P-04 elevation */
   --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.06);
   --shadow-2: 0 4px 12px -2px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.08);

@@ -224,7 +224,27 @@ class LessonSourceScenarioTest {
 
             assertEquals(404, res.status());
             var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals("lesson_not_found", JsonTree.string(body, "error"));
+            assertEquals("target_not_found", JsonTree.string(body, "error"));
+        }
+    }
+
+    @Test
+    @DisplayName("answers target_not_found for a lesson the claim and the retire do not find")
+    void shouldAnswerTargetNotFoundForUnknownLessonOnClaimAndRetire() throws Exception {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var unknownLesson = "les-" + Generators.integers(1000, 9999).next();
+
+            for (var act : List.of("claim", "retire")) {
+                var res = client.send(HttpRequest.json("POST",
+                        "/api/v1/projects/" + PROJECT + "/sources/lessons/" + unknownLesson + "/" + act, "{}")
+                        .withHeader("Authorization", auth));
+
+                assertEquals(404, res.status(), act);
+                var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
+                assertEquals("target_not_found", JsonTree.string(body, "error"), act);
+            }
         }
     }
 

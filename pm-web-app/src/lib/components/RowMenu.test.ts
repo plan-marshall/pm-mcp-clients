@@ -539,7 +539,7 @@ describe('RowMenu component', () => {
       },
     );
 
-    it('keeps its own scroll and its placement when the capped menu scrolls (D2a)', async () => {
+    it('keeps its placement and its cap when the capped menu scrolls (D2a)', async () => {
       let restore = layOut(340, 360);
       try {
         render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
@@ -550,17 +550,15 @@ describe('RowMenu component', () => {
 
         const menu = screen.getByRole('menu');
         expect(menu.style.maxBlockSize).toBe('336px');
-        menu.scrollTop = 40;
-        expect(menu.scrollTop).toBe(40);
 
         // The trigger would now have room below it: a re-place would flip the menu downwards and
-        // recut the cap. A scroll of the capped menu's own entries must not re-place it.
+        // recut the cap. A scroll of the capped menu's own entries must not re-place it. (jsdom
+        // keeps `scrollTop` at 0, so the cap and the placement are what the assertion can observe.)
         restore();
         restore = layOut(40, 360);
         menu.dispatchEvent(new Event('scroll', { bubbles: true }));
         await tick();
 
-        expect(menu.scrollTop).toBe(40);
         expect(menu.style.maxBlockSize).toBe('336px');
         expect(menu).toHaveClass('row-menu__list--above');
       } finally {

@@ -12,7 +12,7 @@
   import Skeleton from '../components/Skeleton.svelte';
   import TriagePage from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -33,11 +33,21 @@
   let isLoadingOlder = $state(false);
   let isMarkingAll = $state(false);
   /** A failed read of the list; the list area says so and offers the retry. */
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
   /** A failed act on an already loaded list (mark read, mark all, older page). */
   let actionError = $state('');
   /** The act the error line's Retry repeats; `null` means a plain reload of the list. */
   let retryAction = $state<(() => Promise<void>) | null>(null);
+  /** The heading of the list, so a retry that clears the error has somewhere to put the focus. */
+  let listHeading = $state<HTMLElement | null>(null);
+  /** The block of a failed read, so a retry that fails again leaves the focus on the error. */
+  let loadErrorRegion = $state<HTMLElement | null>(null);
+  /** Whether the list has been served at least once, so an error beside it is an arrival. */
+  let hasShownList = $state(false);
+  /** The generation of the newest list read; an answer older than it is dropped. */
+  let loadGeneration = 0;
+  /** How many list mutations an event made, so a snapshot taken before one is not applied. */
+  let listEpoch = 0;
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -63,11 +73,14 @@
    */
   let retainedReadIds = $state<Record<string, boolean>>({});
   /**
-   * The reports whose mark-read request is still in flight. Closing the detail must not drop such a
-   * row yet: a failed request has to put it back as unread. A reload must also keep the read
-   * accounted for until the response settles.
+   * The reports whose mark-read request is still in flight, and how many requests hold each one.
+   *
+   * A row whose read is in flight must not be dropped yet: a failed request has to put it back as
+   * unread, and a reload must keep the read accounted for until the response settles. A mark-all and
+   * a single mark-read can hold the same row at once, so the count decides when it is settled —
+   * the first request to finish does not release the other one's hold.
    */
-  const pendingReadIds = new Set<string>();
+  const pendingReadIds = new Map<string, number>();
   /**
    * The reads this view has already counted against the unread count.
    *
@@ -76,6 +89,29 @@
    * event is a no-op for the same reason.
    */
   const countedReadIds = new Set<string>();
+
+  /**
+   * Records one request holding a row's read.
+   *
+   * @param id the report id
+   */
+  function holdPendingRead(id: string): void {
+    pendingReadIds.set(id, (pendingReadIds.get(id) ?? 0) + 1);
+  }
+
+  /**
+   * Releases one request's hold on a row's read, keeping the row in flight while another holds it.
+   *
+   * @param id the report id
+   */
+  function releasePendingRead(id: string): void {
+    const holds = (pendingReadIds.get(id) ?? 0) - 1;
+    if (holds > 0) {
+      pendingReadIds.set(id, holds);
+    } else {
+      pendingReadIds.delete(id);
+    }
+  }
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -246,6 +282,22 @@
   }
 
   /**
+   * Drops the retained rows that have no open detail any more, once the requests in flight settled.
+   *
+   * A detail the operator closes while a request runs cannot drop its row then — the outcome decides
+   * whether it goes or comes back as unread — so the drop happens when that request is done.
+   */
+  function settleRetainedReads(): void {
+    for (const id of Object.keys(retainedReadIds)) {
+      if (pendingReadIds.has(id)) continue;
+      const row = items.find((item) => item.id === id);
+      if (!row || activeDetailPlanId === null || planIdOf(row) !== activeDetailPlanId) {
+        dropRetainedRow(id);
+      }
+    }
+  }
+
+  /**
    * Drops one retained row.
    *
    * The row's read stays counted: its event may still arrive after the detail closed, and a second
@@ -335,6 +387,7 @@
         if (!items.some((i) => i.id === newReport.id)) {
           items = [newReport, ...items];
           unreadCount++;
+          listEpoch++;
           showArrivalNotice(newReport);
         }
       } else {
@@ -351,6 +404,7 @@
         for (const id of newlyRead) countedReadIds.add(id);
         items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
         unreadCount = Math.max(0, unreadCount - newlyRead.length);
+        listEpoch++;
       } else {
         void loadReports();
       }
@@ -387,16 +441,26 @@
   }
 
   async function loadReports() {
-    // The refresh form of the loading pattern: a list already on screen is not replaced by
+    const generation = ++loadGeneration;
+    const epochAtStart = listEpoch;
+    // The refresh form of the loading pattern: a list that was ever on screen is not replaced by
     // skeletons — that would take the scroll position, the focus and an open row menu with it.
-    // Only a first read, with no rows yet, draws the skeletons.
-    const hadRows = items.length > 0;
+    // Only a read before the page was shown draws the skeletons.
+    const hadRows = hasShownList;
     isLoading = !hadRows;
     refreshing = hadRows;
-    loadError = '';
+    loadError = null;
     actionError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
+      // A newer read owns the list now: this answer is older than it, even though it arrived last.
+      if (generation !== loadGeneration) return;
+      // An event changed the list while the read was in flight; its mutation is newer than this
+      // snapshot, so read again instead of putting the older list back.
+      if (epochAtStart !== listEpoch) {
+        void loadReports();
+        return;
+      }
       const served = page.items || [];
       const servedIds = new Set(served.map((fresh) => fresh.id));
       // A row read beside its open detail stays in the list even when a reload no longer serves it:
@@ -422,13 +486,31 @@
       unreadCount = page.unread_count ?? items.length;
       hasOlder = page.has_older;
       olderCount = page.older_count;
+      hasShownList = true;
       void refreshReportsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      if (generation !== loadGeneration) return;
+      loadError = errorCodeOf(err);
     } finally {
-      isLoading = false;
-      refreshing = false;
+      if (generation === loadGeneration) {
+        isLoading = false;
+        refreshing = false;
+      }
     }
+  }
+
+  /**
+   * Retries a failed read and keeps the focus where it was: on the error's own heading while the
+   * retry still shows one, or on the list. The button that carried the focus is gone once the retry
+   * runs, and the browser drops the focus to the body then.
+   */
+  async function retryListLoad(): Promise<void> {
+    await loadReports();
+    const target =
+      loadError !== null
+        ? (loadErrorRegion?.querySelector<HTMLElement>('.error-state__title') ?? loadErrorRegion)
+        : listHeading;
+    target?.focus();
   }
 
   /**
@@ -453,7 +535,7 @@
       olderCount = page.older_count;
     } catch (err: unknown) {
       retryAction = loadOlder;
-      actionError = (err as Error)?.message || $t('report.list.older_failed');
+      actionError = actFailureText(err, $t('report.list.older_failed'));
     } finally {
       isLoadingOlder = false;
     }
@@ -479,7 +561,7 @@
    */
   async function markRead(item: ReportItem, retain = false) {
     const alreadyRead = Boolean(retainedReadIds[item.id]);
-    pendingReadIds.add(item.id);
+    holdPendingRead(item.id);
     if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
@@ -490,7 +572,7 @@
         countedReadIds.add(item.id);
         unreadCount = Math.max(0, unreadCount - 1);
       }
-      pendingReadIds.delete(item.id);
+      releasePendingRead(item.id);
       if (retain) {
         // The detail may have closed while the request was in flight; a row no longer beside an
         // open detail goes as read now.
@@ -501,13 +583,17 @@
       }
       void refreshReportsCount();
     } catch (err: unknown) {
-      pendingReadIds.delete(item.id);
-      if (retain) {
+      releasePendingRead(item.id);
+      // A read the runtime has already reported stays read, and a row another request still holds
+      // keeps its marker: only a read nobody else holds and nobody reported returns to unread.
+      const stillHeld = (pendingReadIds.get(item.id) ?? 0) > 0;
+      if (retain && !countedReadIds.has(item.id) && !stillHeld) {
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = () => markRead(item, retain);
-      actionError = (err as Error)?.message || $t('report.list.mark_read_failed');
+      actionError = actFailureText(err, $t('report.list.mark_read_failed'));
+      settleRetainedReads();
     }
   }
 
@@ -529,7 +615,7 @@
     isMarkingAll = true;
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
-    for (const id of shownIds) pendingReadIds.add(id);
+    for (const id of shownIds) holdPendingRead(id);
 
     // Pre-mark retention for the open report among shown items before the network request
     // so an early report.read event does not discard it while in flight.
@@ -581,10 +667,13 @@
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = markAllShownRead;
-      actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
+      actionError = actFailureText(err, $t('report.list.mark_all_failed'));
     } finally {
-      for (const id of shownIds) pendingReadIds.delete(id);
+      for (const id of shownIds) releasePendingRead(id);
       isMarkingAll = false;
+      // A detail that closed while the act ran leaves no row to keep beside it: the outcome is
+      // known now, so a retained row without an open detail goes.
+      settleRetainedReads();
     }
   }
 
@@ -891,9 +980,9 @@
     <header class="reports-header">
       <div class="reports-header__title-row">
         {#if !isNarrow || activeDetailPlanId === null}
-          <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
+          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h1>
         {:else}
-          <h2 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h2>
+          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h2>
         {/if}
         {#if unreadCount > 0}
           <span class="unread-count" data-testid="unread-count">
@@ -932,12 +1021,12 @@
     <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
       {refreshing ? $t('report.list.loading') : ''}
     </p>
-    {#if loadError && items.length > 0}
-      <div class="reports-error" data-testid="reports-error">
+    {#if loadError !== null && items.length > 0}
+      <div class="reports-error" data-testid="reports-error" bind:this={loadErrorRegion} tabindex="-1">
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
-          onAct={loadReports}
+          onAct={retryListLoad}
           titleLevel={2}
         />
       </div>
@@ -947,13 +1036,17 @@
       <div class="loading-state">
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
       </div>
-    {:else if loadError && items.length === 0}
-      <ErrorState
-        code={loadError}
-        actionLabel={$t('common.action.retry')}
-        onAct={loadReports}
-        titleLevel={2}
-      />
+    {:else if loadError !== null && items.length === 0}
+      <!-- An error that arrived before the list was ever served is the page's own state: static. -->
+      <div bind:this={loadErrorRegion} tabindex="-1">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={retryListLoad}
+          titleLevel={2}
+          announce={hasShownList}
+        />
+      </div>
     {:else if items.length === 0}
       <EmptyState
         title={$t('report.list.empty.title')}
@@ -1033,7 +1126,7 @@
     {/if}
 
     <!-- Pagination -->
-    {#if hasOlder && !isLoading && !loadError}
+    {#if hasOlder && !isLoading && loadError === null}
       {#if isFiltered}
         <p class="loaded-only-hint" data-testid="loaded-only-hint">
           {$t('report.filter.loaded_only')}

@@ -40,12 +40,15 @@ describe('EmptyState', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('draws the brand mark, as the empty states of VD-P-08 do', () => {
+  it('draws the brand mark in monochrome at 64 px, so the muted text colour sets it', () => {
     const { container } = render(EmptyState, {
       props: { title: TITLE, message: MESSAGE, brand: true },
     });
+    const mark = screen.getByTestId('brand-mark');
 
-    expect(screen.getByTestId('brand-mark')).toBeInTheDocument();
+    expect(mark).toHaveAttribute('data-rendering', 'monochrome');
+    expect(mark).toHaveAttribute('data-size', '64');
+    expect(mark.closest('.empty-state__mark')).not.toBeNull();
     expect(container.querySelector('.ui-icon')).toBeNull();
   });
 

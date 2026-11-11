@@ -12,20 +12,34 @@
    * The texts are not the view's: `displayError` resolves them from the shared catalogue, so a
    * missing text is a catalogue gap reported to the set's owner, never a sentence written here.
    */
-  /** The error code the block speaks about; an unknown code draws the shared fallback. */
-  export let code: string;
+  /**
+   * The error code the block speaks about; an unknown code draws the shared fallback, and no code
+   * at all draws it without the technical line — the state a view reports when it read no code.
+   */
+  export let code: string | null | undefined = undefined;
   /** The one act, from the view's catalogue key; omitted when there is none. */
   export let actionLabel: string | undefined = undefined;
   /** Reports the act the person took. */
   export let onAct: () => void = () => {};
   /** The heading level of the title, so a view keeps its outline in order. */
   export let titleLevel: 1 | 2 | 3 | 4 | 5 | 6 = 3;
+  /**
+   * Whether the block appeared after the page was shown and is therefore announced.
+   *
+   * A block that is the page's own first state is static: it is read where it stands, and a live
+   * role would announce it a second time over the content beside it.
+   */
+  export let announce = true;
 
   $: error = displayError(code, $t);
   $: hasCode = (code ?? '').trim().length > 0;
 </script>
 
-<div class="error-state" data-testid="error-state" role="alert">
+<div
+  class="error-state"
+  data-testid="error-state"
+  role={announce ? 'alert' : undefined}
+>
   <span class="error-state__mark"><Icon name="state.error" size={24} /></span>
   <svelte:element this={`h${titleLevel}`} class="error-state__title" tabindex="-1">{error.title}</svelte:element>
   <p class="error-state__message">{error.fix}</p>

@@ -8,6 +8,7 @@
   } from '../api/client';
   import LessonPicker from './LessonPicker.svelte';
   import PremiseEvidenceView from './PremiseEvidenceView.svelte';
+  import { actFailureText } from '../api/errors';
 
   export let open = false;
   export let projectId = '';
@@ -47,7 +48,7 @@
     try {
       lessons = await apiClient.getUnclaimedLessons(projectId);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       loading = false;
     }
@@ -64,7 +65,7 @@
         await claimAndStart(false);
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }
@@ -80,7 +81,7 @@
       started = result;
       onStarted(result);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }
@@ -94,7 +95,7 @@
       const notice = await apiClient.retireLesson(projectId, selected.lesson_id);
       unchanged = notice.lesson_id;
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }

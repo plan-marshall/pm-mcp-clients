@@ -9,6 +9,7 @@
   import ChatPanel from './ChatPanel.svelte';
   import Icon from './Icon.svelte';
   import { uniqueId } from '../utils/uniqueId';
+  import { actFailureText } from '../api/errors';
   import { actsFor, handledActIds, type ActSpec } from '../actions/byState';
   import {
     apiClient,
@@ -506,7 +507,7 @@
   }
 
   function reasonOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureText(err, $t('error.unknown.fix'));
   }
 
   /**

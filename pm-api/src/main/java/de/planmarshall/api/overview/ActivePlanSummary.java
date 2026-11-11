@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -41,6 +42,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param needsOperatorKind  first reason why plan needs operator, or {@code null}
  * @param needsOperatorCount number of items needing operator attention, or {@code null}
  * @param change             size of the plan's change at its last capture, or {@code null}
+ * @param queuedRevision     the revision accepted in a chat that waits for the plan's next task boundary
+ *                           ({@code queued_revision}), or {@code null} when none is queued
  */
 public record ActivePlanSummary(
         String planId,
@@ -59,8 +62,11 @@ public record ActivePlanSummary(
         @Nullable String offTrackSignal,
         @Nullable String needsOperatorKind,
         @Nullable Integer needsOperatorCount,
-        @Nullable ChangeSize change
+        @Nullable ChangeSize change,
+        @Nullable QueuedRevision queuedRevision
 ) {
+    private static final String QUEUED_REVISION = "queued_revision";
+
     public ActivePlanSummary {
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
@@ -113,6 +119,9 @@ public record ActivePlanSummary(
         }
         if (change != null) {
             map.put("change", change.toMap());
+        }
+        if (queuedRevision != null) {
+            map.put(QUEUED_REVISION, queuedRevision.toMap());
         }
         return map;
     }
@@ -189,6 +198,8 @@ public record ActivePlanSummary(
         Integer needsOperatorCount = needsCountNum != null ? needsCountNum.intValue() : null;
 
         var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+        var queuedRevisionMap = JsonTree.objectOrNull(map, QUEUED_REVISION, "ActivePlanSummary");
+        var queuedRevision = queuedRevisionMap != null ? QueuedRevision.fromMap(queuedRevisionMap) : null;
 
         return new ActivePlanSummary(
                 planId,
@@ -207,7 +218,8 @@ public record ActivePlanSummary(
                 offTrackSignal,
                 needsKind,
                 needsOperatorCount,
-                change
+                change,
+                queuedRevision
         );
     }
 

@@ -6,7 +6,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import ChatPanel from '../components/ChatPanel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import {
@@ -24,8 +24,12 @@
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  /** The act that owns the banner, so another act's success cannot clear its failure. */
+  let errorOwner: string | null = $state(null);
   /** The code of a failed list read, which `ErrorState` resolves to its words. */
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
+  /** Whether the list has been served at least once, so a later failure is an arrival. */
+  let hasShownDecisions = $state(false);
 
   /** The filter query; it runs over the loaded decisions only. */
   let query = $state('');
@@ -400,14 +404,43 @@
     }
   }
 
+  /**
+   * Shows one act's failure, owning the banner.
+   *
+   * Two acts of two decisions can be in flight together; the banner belongs to the one that failed,
+   * so a later success of the other one does not clear a failure the operator has not seen.
+   *
+   * @param owner the act that failed
+   * @param message the sentence to show
+   */
+  function showActFailure(owner: string, message: string): void {
+    errorOwner = owner;
+    errorMessage = message;
+  }
+
+  /**
+   * Clears the banner when this act owns it.
+   *
+   * @param owner the act that succeeded
+   */
+  function clearActFailure(owner: string): void {
+    if (errorOwner !== owner) return;
+    errorOwner = null;
+    errorMessage = '';
+  }
+
   async function loadDecisions() {
     isLoading = true;
-    loadError = '';
+    loadError = null;
+    // A reload answers for the act the banner reported too: the act's failure is no longer news.
+    errorMessage = '';
+    errorOwner = null;
     try {
       decisions = await apiClient.getDecisions();
+      hasShownDecisions = true;
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -515,10 +548,11 @@
     isSubmitting[id] = true;
     try {
       await apiClient.answerDecision(id, { action, reason });
+      clearActFailure(`waiver:${id}`);
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.waiver.failed');
+      showActFailure(`waiver:${id}`, actFailureText(err, $t('decision.waiver.failed')));
     } finally {
       isSubmitting[id] = false;
     }
@@ -535,8 +569,9 @@
     isInterpreting[key] = true;
     try {
       interpretations[key] = await apiClient.interpretDecision(dec.id, words);
+      clearActFailure(`interpret:${key}`);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.interpret.failed');
+      showActFailure(`interpret:${key}`, actFailureText(err, $t('decision.interpret.failed')));
     } finally {
       isInterpreting[key] = false;
     }
@@ -565,10 +600,11 @@
         option,
         note: partNotes[key],
       });
+      clearActFailure(`answer:${key}`);
       setAnswer(dec, part, index, option);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
+      showActFailure(`answer:${key}`, actFailureText(err, $t('decision.answer.failed')));
     } finally {
       isSubmitting[key] = false;
     }
@@ -599,9 +635,10 @@
           ...(notes.length > 0 ? { note: notes.join('\n') } : {}),
         });
       }
+      clearActFailure(`answer:${submittingKey}`);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
+      showActFailure(`answer:${submittingKey}`, actFailureText(err, $t('decision.answer.failed')));
     } finally {
       isSubmitting[submittingKey] = false;
     }
@@ -611,9 +648,10 @@
     isSubmitting[dec.id] = true;
     try {
       await apiClient.withdrawDecision(dec.id);
+      clearActFailure(`withdraw:${dec.id}`);
       closeDecision(dec.id);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decision.withdraw.failed');
+      showActFailure(`withdraw:${dec.id}`, actFailureText(err, $t('decision.withdraw.failed')));
     } finally {
       isSubmitting[dec.id] = false;
     }
@@ -643,7 +681,7 @@
   }
 
   function reasonOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureText(err, $t('error.unknown.fix'));
   }
 
   async function openChat(dec: DecisionEnvelope): Promise<void> {
@@ -1294,7 +1332,7 @@
       </div>
     {/if}
 
-    {#if loadError && decisions.length > 0}
+    {#if loadError !== null && decisions.length > 0}
       <div class="error-banner" data-testid="decisions-error">
         <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
       </div>
@@ -1304,9 +1342,14 @@
       <div class="loading-state" data-testid="decisions-loading">
         <Skeleton shape="card" rows={3} label={$t('decisions.list.loading')} />
       </div>
-    {:else if loadError && decisions.length === 0}
+    {:else if loadError !== null && decisions.length === 0}
       <div class="error-banner" data-testid="decisions-error">
-        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadDecisions}
+          announce={hasShownDecisions}
+        />
       </div>
     {:else if decisions.length === 0}
       <div class="empty-state">

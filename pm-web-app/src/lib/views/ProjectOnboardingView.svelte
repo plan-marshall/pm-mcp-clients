@@ -6,7 +6,7 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import { apiClient } from '../api/client';
   import type {
     BeingAddedProject,
@@ -60,7 +60,9 @@
   }
 
   let isLoading = $state(true);
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
+  /** Whether this page has shown a run, so a later failure is an arrival. */
+  let hasShownRun = $state(false);
   let run = $state<ProjectOnboardingState | null>(null);
   let beingAdded = $state<BeingAddedProject | null>(null);
   let checkoutDraft = $state('');
@@ -193,7 +195,7 @@
    */
   async function load(startedPath?: string): Promise<void> {
     isLoading = true;
-    loadError = '';
+    loadError = null;
     error = '';
     run = null;
     beingAdded = null;
@@ -203,17 +205,17 @@
           run = await apiClient.getProjectOnboarding(projectId);
         } catch (err: unknown) {
           run = null;
-          loadError = errorCodeOf(err) || 'unknown';
+          loadError = errorCodeOf(err);
         }
         if (!run) {
-          loadError = loadError || 'unknown';
           return;
         }
       } else {
         await loadBeingAdded(startedPath);
       }
+      hasShownRun = run !== null || beingAdded !== null;
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
     }
@@ -279,7 +281,7 @@
       await apiClient.startProjectOnboarding(checkoutDraft.trim());
       await load(checkoutDraft.trim());
     } catch (err: unknown) {
-      error = (err as Error)?.message || $t('project.adding.start_failed');
+      error = actFailureText(err, $t('project.adding.start_failed'));
     } finally {
       isStarting = false;
     }
@@ -309,7 +311,7 @@
       }
       run = result;
     } catch (err: unknown) {
-      error = (err as Error)?.message || $t('project.settings.update_failed');
+      error = actFailureText(err, $t('project.settings.update_failed'));
     } finally {
       isSubmitting = false;
     }
@@ -363,7 +365,7 @@
       await apiClient.abandonOnboarding(beingAdded.abandon_link || beingAdded.checkout_path);
       navigateTo('projects');
     } catch (err: unknown) {
-      error = (err as Error)?.message || $t('project.adding.abandon_failed');
+      error = actFailureText(err, $t('project.adding.abandon_failed'));
     }
   }
 
@@ -460,13 +462,14 @@
       <div class="state-card" role="status">
         <Skeleton shape="card" rows={3} label={$t('project.onboarding.loading')} />
       </div>
-    {:else if loadError}
+    {:else if loadError !== null || (projectId && !run)}
       <div class="state-card" data-testid="project-onboarding-error">
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
           onAct={() => load()}
           titleLevel={2}
+          announce={hasShownRun}
         />
       </div>
     {:else if isComplete}

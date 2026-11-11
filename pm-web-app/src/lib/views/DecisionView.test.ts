@@ -132,6 +132,63 @@ describe('DecisionView component', () => {
     await waitFor(() => expect(decisions).toHaveBeenCalledTimes(2));
   });
 
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Rebase onto main')).toBeInTheDocument());
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+
+    expect(
+      await screen.findByText(
+        'Try again; if it keeps taking this long, check that the runtime is running.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('timeout')).not.toBeInTheDocument();
+  });
+
+  it('clears the act banner on the reload its Retry runs', async () => {
+    vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Rebase onto main')).toBeInTheDocument());
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+
+    const sentence =
+      'Try again; if it keeps taking this long, check that the runtime is running.';
+    expect(await screen.findByText(sentence)).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByText(sentence)).toBeNull());
+  });
+
+  it("keeps another act's failure when a second act of the same decision succeeds (review)", async () => {
+    vi.spyOn(apiClient, 'interpretDecision').mockRejectedValue(new ClientError('timeout'));
+    render(DecisionView);
+
+    await waitFor(() => expect(screen.getByText('Select merge strategy')).toBeInTheDocument());
+    await fireEvent.click(screen.getByText('in my own words'));
+    await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+      target: { value: 'Use rebase please' },
+    });
+    await fireEvent.click(screen.getByText('Read back'));
+
+    const sentence =
+      'Try again; if it keeps taking this long, check that the runtime is running.';
+    expect(await screen.findByText(sentence)).toBeInTheDocument();
+
+    // A successful Decide owns its own act only; the failed read-back keeps its banner.
+    await fireEvent.click(screen.getByDisplayValue('rebase'));
+    await fireEvent.click(screen.getByText('Decide'));
+    await waitFor(() => expect(apiClient.answerDecision).toHaveBeenCalled());
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
   it('renders open decisions and waivers', async () => {
     render(DecisionView);
 
@@ -467,7 +524,7 @@ describe('DecisionView component', () => {
     expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent('What does option B mean?');
     expect(screen.getByTestId('decision-chat-dec-101')).toHaveTextContent(
-      'dec-101 stays open; answer it once the chat has ended.',
+      'dec-101 stays open; answer it whenever you are ready.',
     );
   });
 

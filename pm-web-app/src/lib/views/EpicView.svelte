@@ -4,7 +4,7 @@
   import Button from '../components/Button.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { errorCodeOf, actFailureText } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
@@ -39,7 +39,7 @@
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
   let isLoading = $state(true);
-  let errorCode = $state('');
+  let errorCode = $state<string | null>(null);
 
   let unsubscribeEvents: (() => void) | null = null;
 
@@ -148,7 +148,7 @@
   async function loadEpic(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    errorCode = '';
+    errorCode = null;
     const [process, epicResource] = await Promise.allSettled([
       apiClient.getEpicProcess(epicId),
       apiClient.getEpicResource(epicId),
@@ -162,7 +162,7 @@
       resource = null;
     }
     if (!epic) {
-      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '') || 'unknown';
+      errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
     }
     if (initial) isLoading = false;
   }
@@ -351,7 +351,7 @@
   }
 
   function reasonOf(err: unknown): string {
-    return err instanceof Error ? err.message : String(err);
+    return actFailureText(err, $t('error.unknown.fix'));
   }
 
   async function keepItem(itemId: string, as: 'finding' | 'watch') {
@@ -516,13 +516,14 @@
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
     </div>
-  {:else if errorCode}
+  {:else if errorCode !== null}
     <div class="epic-view__error" data-testid="epic-error">
       <ErrorState
         code={errorCode}
         actionLabel={$t('common.action.retry')}
         onAct={() => loadEpic(true)}
         titleLevel={2}
+        announce={epic !== null}
       />
     </div>
   {:else if epic}

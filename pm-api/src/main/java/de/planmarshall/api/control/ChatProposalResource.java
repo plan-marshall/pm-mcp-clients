@@ -26,6 +26,11 @@ import de.planmarshall.api.json.JsonTree;
  * line names where it takes effect ({@code after the current task}, {@code when fix-relay starts
  * again}), or the archive where the one proposal is a follow-up plan.
  *
+ * <p>Superseded by {@code de.planmarshall.api.chat.ChatProposal} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
+ *
  * @param summary a one-sentence description of the change
  * @param before  the line before the change, or {@code null}
  * @param after   the line after the change, or {@code null}

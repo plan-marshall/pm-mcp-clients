@@ -214,6 +214,25 @@ describe('CleanupView component', () => {
     expect(deleteSpy).toHaveBeenCalledWith('cln-0007', ['plan-1']);
   });
 
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+    vi.spyOn(apiClient, 'executeCleanup').mockRejectedValue(new ClientError('timeout'));
+
+    render(CleanupView);
+
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: /Delete 3 items/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+
+    expect(
+      await screen.findByText(
+        'Try again; if it keeps taking this long, check that the runtime is running.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('timeout')).not.toBeInTheDocument();
+  });
+
   it('handles remind and ignore action triggers', async () => {
     vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });

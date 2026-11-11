@@ -37,6 +37,11 @@ import de.planmarshall.api.report.ReportSentEvent;
  * {@link EventName} carries today: the runtime reports a failed landing as a hold of kind
  * {@code landing_failed} ({@code hold.opened}). The name is kept because the event contract of
  * CLI-UC-P-04 names it.
+ *
+ * <p>The chat's events ({@code chat.turn.started}, {@code chat.turn.delta}, {@code chat.turn.progress},
+ * {@code chat.turn.completed}, {@code chat.proposal}, {@code chat.ended}) and {@code plan.revision_queued}
+ * name no kind: a chat's notices stay in the chat, and neither a chat event nor a queued revision becomes
+ * a notice of the console.
  */
 public enum EventKind {
 

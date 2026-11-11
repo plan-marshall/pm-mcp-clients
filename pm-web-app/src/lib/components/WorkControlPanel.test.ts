@@ -276,7 +276,9 @@ describe('WorkControlPanel component', () => {
     });
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
-    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent('the epic is landing');
+    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent(
+      'The action did not go through: Update the client and try again; if the refusal stays, look at the details.',
+    );
     expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
 
     await rerender({ subjectId: 'relay-docs', subjectKind: 'epic' });
@@ -320,7 +322,9 @@ describe('WorkControlPanel component', () => {
       target: { value: 'superseded' },
     });
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
-    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent('the epic is landing');
+    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent(
+      'The action did not go through: Update the client and try again; if the refusal stays, look at the details.',
+    );
 
     // The operator keeps the epic and opens the dialogue again: the last refusal belonged to the
     // attempt before, not to this one.
@@ -428,7 +432,9 @@ describe('WorkControlPanel component', () => {
     // Act: the fresh read fails, so the dialogue would show a hold nobody confirmed any more.
     await fireEvent.click(await screen.findByTestId('action-resolve_hold'));
 
-    expect(await screen.findByTestId('control-failure')).toHaveTextContent('the ledger is landing');
+    expect(await screen.findByTestId('control-failure')).toHaveTextContent(
+      'The act did not go through: Update the client and try again; if the refusal stays, look at the details.',
+    );
     expect(screen.queryByTestId('hold-modal')).not.toBeInTheDocument();
   });
 

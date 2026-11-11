@@ -268,6 +268,42 @@ describe('ProjectExplorerView component', () => {
     });
   });
 
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(mockExplorer);
+    vi.spyOn(apiClient, 'releaseProject').mockRejectedValue(new ClientError('timeout'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('release-btn-pm-mcp-clients')).toBeInTheDocument(),
+    );
+    await fireEvent.click(screen.getByTestId('release-btn-pm-mcp-clients'));
+    await fireEvent.click(screen.getByTestId('confirm-release-btn'));
+
+    const banner = await screen.findByTestId('release-error-banner');
+    expect(banner).toHaveTextContent(
+      'Try again; if it keeps taking this long, check that the runtime is running.',
+    );
+    expect(banner).not.toHaveTextContent(/^timeout$/);
+  });
+
+  it('clears the favourite banner after a toggle succeeds', async () => {
+    vi.spyOn(apiClient, 'toggleFavourite').mockRejectedValueOnce(new ClientError('timeout'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => expect(screen.getByTestId('star-btn-pm-mcp-clients')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
+
+    expect(await screen.findByTestId('explorer-action-error')).toHaveTextContent(
+      'Failed to update favourite',
+    );
+
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
+
+    await waitFor(() => expect(screen.queryByTestId('explorer-action-error')).toBeNull());
+  });
+
   it('handles unenrolment safety check refusal on active work', async () => {
     vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('409 scope_active'));
 

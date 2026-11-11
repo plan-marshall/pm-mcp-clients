@@ -353,10 +353,14 @@ class ReportsScenarioTest {
             var res1 = client.send(HttpRequest.get("/api/v1/reports/" + unknownReport)
                     .withHeader("Authorization", auth));
             assertEquals(404, res1.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(res1.bodyText())), "error"));
 
             var res2 = client.send(HttpRequest.json("POST", "/api/v1/reports/" + unknownReport + "/read", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(404, res2.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(res2.bodyText())), "error"));
 
             var res3 = client.send(HttpRequest.get("/api/v1/plans/" + unknownPlan + "/completion")
                     .withHeader("Authorization", auth));

@@ -16,6 +16,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
+  import { actFailureReason, isClientError } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -106,6 +107,8 @@
   let conflictDiff = $state<LineDiff | null>(null);
   let landingSteps = $state<string[]>([]);
   let landingError = $state('');
+  /** Whether the failure left the placement's outcome unknown, so no claim about the unit is made. */
+  let placeOutcomeUnknown = $state(false);
 
   let projectLabel = $derived(projectId ?? '');
   let checkedAgainst = $derived(
@@ -786,7 +789,7 @@
       placeDigest = baseline.digest;
       placeDiff = diffLines(baseline.text, text);
     } catch {
-      landingError = $t('designer.place.failed', { reason: $t('system.figure.unavailable') });
+      landingError = $t('system.figure.unavailable');
       placeStage = 'failed';
       return;
     }
@@ -815,6 +818,7 @@
     if (!result?.valid) return;
     isPlacing = true;
     landingError = '';
+    placeOutcomeUnknown = false;
     landingSteps = [];
     placeStage = 'progress';
     try {
@@ -845,12 +849,15 @@
         // The placement already landed; a failed refresh leaves the placed text on screen.
       }
     } catch (err: unknown) {
-      const message = (err as Error)?.message ?? $t('system.action.failed');
-      if (/conflict/i.test(message)) {
+      // A refusal that names a conflict opens the card; every other failure reads its sentence.
+      const refusal = err instanceof Error ? err.message : '';
+      if (/conflict/i.test(refusal)) {
         await showConflict();
       } else {
         placeStage = 'failed';
-        landingError = message;
+        placeOutcomeUnknown = isClientError(err) &&
+          (err.code === 'timeout' || err.code === 'network_offline');
+        landingError = actFailureReason(err, $t('system.action.failed'));
       }
     } finally {
       isPlacing = false;
@@ -1540,7 +1547,11 @@
       {:else if placeStage === 'failed'}
         <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
         <p class="designer__notice" role="alert" data-testid="designer-place-failed">
-          {$t('designer.place.failed', { reason: landingError })}
+          {#if placeOutcomeUnknown}
+            {$t('designer.place.unknown', { reason: landingError })}
+          {:else}
+            {$t('designer.place.failed', { reason: landingError })}
+          {/if}
         </p>
         <div class="designer__modal-actions">
           <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>

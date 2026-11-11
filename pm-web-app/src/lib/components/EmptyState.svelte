@@ -27,7 +27,7 @@
 
 <div class="empty-state" data-testid="empty-state">
   {#if brand}
-    <span class="empty-state__mark"><BrandMark size={64} /></span>
+    <span class="empty-state__mark"><BrandMark rendering="monochrome" size={64} /></span>
   {:else if icon}
     <span class="empty-state__mark"><Icon name={icon} size={24} /></span>
   {/if}
