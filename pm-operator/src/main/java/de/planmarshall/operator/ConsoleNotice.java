@@ -192,20 +192,30 @@ public final class ConsoleNotice {
                                 Map.of("epic", safeScope, DETAIL, safeDetail));
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
                                 Map.of(KEY_PROJECT, safeScope, "what", safeDetail));
-            case "credential" -> {
-                var credKey = safeScope.isBlank()
-                                    ? safeDetail.isBlank() ? MessageCatalogue.format(locale, "common.unknown", Map.of())
-                                    : safeDetail
-                                    : safeScope;
-                yield MessageCatalogue.format(locale, "operator.console.notice.credential",
-                                    Map.of("key", credKey));
-            }
+            case "credential" -> MessageCatalogue.format(locale, "operator.console.notice.credential",
+                                Map.of("key", credentialKey(locale, safeScope, safeDetail)));
             case "cleanup_due" -> MessageCatalogue.format(locale, "operator.console.notice.cleanup_due",
                                 Map.of());
             default -> MessageCatalogue.format(locale, "operator.console.notice.generic",
                                 Map.of("kind", TerminalSanitizer.sanitizeLine(kind), SCOPE, safeScope, DETAIL, safeDetail));
         };
         return BULLET + text;
+    }
+
+    /**
+     * @param locale     the interface locale
+     * @param scope      the sanitized scope, the key where it names one
+     * @param safeDetail the sanitized detail
+     * @return the credential's key, or the catalogue's own word for one the event does not name
+     */
+    private static String credentialKey(String locale, String scope, String safeDetail) {
+        if (!scope.isBlank()) {
+            return scope;
+        }
+        if (!safeDetail.isBlank()) {
+            return safeDetail;
+        }
+        return MessageCatalogue.format(locale, "common.unknown", Map.of());
     }
 
     /**

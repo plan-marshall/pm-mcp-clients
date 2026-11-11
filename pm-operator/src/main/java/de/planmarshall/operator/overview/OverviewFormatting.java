@@ -44,6 +44,8 @@ public final class OverviewFormatting {
     private static final String CMD_PLANS = "plans";
     private static final String CMD_EPIC = "epic ";
     private static final String NEEDS_BADGE_KEY = "overview.needs.badge";
+    private static final String STATE_UNKNOWN_KEY = "state.unknown";
+    private static final String COMMON_KIND_PREFIX = "common.kind.";
 
     private OverviewFormatting() {
     }
@@ -189,7 +191,7 @@ public final class OverviewFormatting {
             return "";
         }
         var key = needsKeyForKind(kind);
-        var labelKey = key != null ? key : "state.unknown";
+        var labelKey = key != null ? key : STATE_UNKNOWN_KEY;
         var label = MessageCatalogue.format(locale, labelKey, Map.of());
         if (count > 1) {
             var countPrefix = MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", count));
@@ -399,10 +401,10 @@ public final class OverviewFormatting {
         if (blocks == null || blocks.isBlank()) {
             return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
-        var key = "common.kind." + blocks;
+        var key = COMMON_KIND_PREFIX + blocks;
         var what = MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, "state.unknown", Map.of());
+                            : MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());
         return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", what));
     }
 
