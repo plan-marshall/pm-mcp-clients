@@ -242,7 +242,7 @@ class IntentContractTest {
         @DisplayName("a plan intent without a goal, criteria, or unique ids is refused")
         void invalidPlanIntent() {
             var repeated = List.of(criterion(), criterion());
-            var goals = List.of("none");
+            var goals = List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format."));
             List<PlanIntentResource.Decision> noDecisions = List.of();
             List<String> noQuestions = List.of();
             List<PlanIntentResource.DeferredItem> noDeferred = List.of();
@@ -454,22 +454,80 @@ class IntentContractTest {
         }
     }
 
+    @Nested
+    @DisplayName("The non-goals as items")
+    class NonGoalItems {
+
+        @Test
+        @DisplayName("non-goals round-trip as {id, text} in the record's order, ids out of sequence")
+        void nonGoalsRoundTrip() throws Exception {
+            var outOfSequence = List.of(
+                    new PlanIntentResource.NonGoal("NG-3", "Do not change the queue format."),
+                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."),
+                    new PlanIntentResource.NonGoal("NG-12", "Do not raise the backoff ceiling."));
+            var intent = intentWith(List.of(), outOfSequence);
+
+            verify(intent, PlanIntentResource::toJson, PlanIntentResource::toMap,
+                    PlanIntentResource::fromJson, PlanIntentResource::fromMap,
+                    PlanIntentResource::readFrom, PlanIntentResource::writeTo);
+
+            var parsed = PlanIntentResource.fromJson(intent.toJson());
+            assertEquals(outOfSequence, parsed.nonGoals());
+            assertEquals(List.of("NG-3", "NG-1", "NG-12"),
+                    parsed.nonGoals().stream().map(PlanIntentResource.NonGoal::id).toList());
+            assertTrue(intent.toJson().contains("\"non_goals\":[{\"id\":\"NG-3\",\"text\":"));
+        }
+
+        @Test
+        @DisplayName("a string non-goal, a malformed id, a duplicate id, and a blank text are refused")
+        void malformedNonGoalsAreRefused() {
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[\"Do not change the queue format.\"]")));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new PlanIntentResource.NonGoal("NG_1", "Do not change the queue format."));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[{\"id\":\"NG_1\",\"text\":\"Do not change the queue format.\"}]")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[{\"id\":\"NG-1\",\"text\":\" \"}]")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJsonWithNonGoals(
+                    "[{\"id\":\"NG-1\",\"text\":\"Do not change the queue format.\"},"
+                            + "{\"id\":\"NG-1\",\"text\":\"Do not add a second relay per machine.\"}]")));
+            assertThrows(IllegalArgumentException.class, () -> intentWith(List.of(), List.of(
+                    new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format."),
+                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."))));
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Helpers
 
     private static PlanIntentResource intentWith(List<PlanIntentResource.Decision> decisions) {
+        return intentWith(decisions,
+                List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format.")));
+    }
+
+    private static PlanIntentResource intentWith(List<PlanIntentResource.Decision> decisions,
+                                                 List<PlanIntentResource.NonGoal> nonGoals) {
         return new PlanIntentResource("plan-" + Generators.letterStrings(4, 10).next().toLowerCase(), 1,
                 "The relay keeps every event across a restart.",
                 List.of(new IntentCriterion("AC-001", "The relay shall keep every event.", List.of(1), null, null)),
-                List.of("Do not change the queue format."),
-                decisions, List.of(), List.of(), null);
+                nonGoals, decisions, List.of(), List.of(), null);
     }
 
     private static String intentJson(String decisions) {
+        return intentJsonWithNonGoals(
+                "[{\"id\":\"NG-1\",\"text\":\"Do not change the queue format.\"}]", decisions);
+    }
+
+    private static String intentJsonWithNonGoals(String nonGoals) {
+        return intentJsonWithNonGoals(nonGoals, "");
+    }
+
+    private static String intentJsonWithNonGoals(String nonGoals, String decisions) {
         return "{\"plan_id\":\"" + Generators.letterStrings(4, 10).next().toLowerCase() + "\","
                 + "\"revision\":1,\"goal\":\"The relay keeps every event across a restart.\","
                 + "\"criteria\":[{\"id\":\"AC-001\",\"text\":\"The relay shall keep every event.\","
-                + "\"satisfies\":[]}],\"non_goals\":[\"Do not change the queue format.\"],"
+                + "\"satisfies\":[]}],\"non_goals\":" + nonGoals + ","
                 + "\"decisions\":[" + decisions + "],\"open_questions\":[],\"deferred\":[]}";
     }
 
@@ -527,7 +585,7 @@ class IntentContractTest {
                                 List.of(1), CriterionStatus.NOT_MET, "The format moved in memory."),
                         new IntentCriterion("AC-004", "The old endpoint shall keep working.",
                                 List.of(2), null, null)),
-                List.of("Do not change the queue format."),
+                List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format.")),
                 List.of(new PlanIntentResource.Decision("DC-001", "Retry with exponential backoff",
                                 IntentDecider.OPERATOR, List.of("fixed", "exponential"), "Q-007", null, null),
                         new PlanIntentResource.Decision("DC-002", "A quorum chose the backoff ceiling",

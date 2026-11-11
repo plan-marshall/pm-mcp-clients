@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
@@ -39,7 +40,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param revision     the intent record's revision, from 1
  * @param goal         the plan's goal in one sentence
  * @param criteria     the EARS criteria, at least one
- * @param nonGoals     what the plan deliberately leaves out, at least one
+ * @param nonGoals     what the plan deliberately leaves out, at least one, each with its record id
  * @param decisions    the decisions the record carries, each with its decider
  * @param openQuestions the questions the plan still carries
  * @param deferred     the items the plan defers, each with its reason
@@ -50,7 +51,7 @@ public record PlanIntentResource(
         int revision,
         String goal,
         List<IntentCriterion> criteria,
-        List<String> nonGoals,
+        List<NonGoal> nonGoals,
         List<Decision> decisions,
         List<String> openQuestions,
         List<DeferredItem> deferred,
@@ -305,6 +306,64 @@ public record PlanIntentResource(
     }
 
     /**
+     * One non-goal of the intent record: what the plan deliberately leaves out, with the record's
+     * own id and never a position (design <em>Intent and Outline</em>, Non-Goals).
+     *
+     * @param id   the non-goal's id ({@code NG-n})
+     * @param text the claim the plan does not make
+     */
+    public record NonGoal(String id, String text) {
+
+        public static final String FIELD_ID = "id";
+        public static final String FIELD_TEXT = "text";
+
+        /** The engine's non-goal id form ({@code IntentRecord.NON_GOAL_ID}). */
+        public static final Pattern ID = Pattern.compile("NG-[0-9]{1,4}");
+
+        private static final String TYPE = "NonGoal";
+        private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_ID, FIELD_TEXT);
+
+        public NonGoal {
+            Objects.requireNonNull(id, FIELD_ID);
+            Objects.requireNonNull(text, FIELD_TEXT);
+            if (!ID.matcher(id).matches()) {
+                throw new IllegalArgumentException(FIELD_ID + " is NG-<n>: " + id);
+            }
+            if (text.isBlank()) {
+                throw new IllegalArgumentException(FIELD_TEXT + " must not be blank");
+            }
+        }
+
+        /**
+         * @return the map representation
+         */
+        public Map<String, Object> toMap() {
+            var map = new LinkedHashMap<String, Object>();
+            map.put(FIELD_ID, id);
+            map.put(FIELD_TEXT, text);
+            return map;
+        }
+
+        private void writeTo(JsonGenerator generator) throws IOException {
+            generator.writeStartObject();
+            generator.writeStringField(FIELD_ID, id);
+            generator.writeStringField(FIELD_TEXT, text);
+            generator.writeEndObject();
+        }
+
+        private static NonGoal fromMap(Map<String, Object> map) throws IOException {
+            IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
+            try {
+                return new NonGoal(
+                        IntentJson.requireText(map, FIELD_ID, TYPE),
+                        IntentJson.requireText(map, FIELD_TEXT, TYPE));
+            } catch (IllegalArgumentException e) {
+                throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
      * One deferred item of the intent record.
      *
      * @param id     the item's id ({@code DF-n})
@@ -312,7 +371,6 @@ public record PlanIntentResource(
      * @param reason why the plan defers it
      */
     public record DeferredItem(String id, String text, String reason) {
-
         private static final String FIELD_ID = "id";
         private static final String FIELD_TEXT = "text";
         private static final String FIELD_REASON = "reason";
@@ -381,9 +439,7 @@ public record PlanIntentResource(
         if (nonGoals.isEmpty()) {
             throw new IllegalArgumentException("non_goals must not be empty");
         }
-        if (nonGoals.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("non_goals must not carry a blank entry");
-        }
+        requireUnique(nonGoals.stream().map(NonGoal::id).toList(), "non-goal");
         decisions = decisions == null ? List.of() : List.copyOf(decisions);
         requireUnique(decisions.stream().map(Decision::id).toList(), "decision");
         openQuestions = openQuestions == null ? List.of() : List.copyOf(openQuestions);
@@ -477,7 +533,7 @@ public record PlanIntentResource(
         map.put(FIELD_REVISION, revision);
         map.put(FIELD_GOAL, goal);
         map.put(FIELD_CRITERIA, criteria.stream().map(IntentCriterion::toMap).toList());
-        map.put(FIELD_NON_GOALS, nonGoals);
+        map.put(FIELD_NON_GOALS, nonGoals.stream().map(NonGoal::toMap).toList());
         map.put(FIELD_DECISIONS, decisions.stream().map(Decision::toMap).toList());
         map.put(FIELD_OPEN_QUESTIONS, openQuestions);
         map.put(FIELD_DEFERRED, deferred.stream().map(DeferredItem::toMap).toList());
@@ -506,7 +562,7 @@ public record PlanIntentResource(
         generator.writeNumberField(FIELD_REVISION, revision);
         generator.writeStringField(FIELD_GOAL, goal);
         IntentJson.writeArray(generator, FIELD_CRITERIA, criteria, IntentCriterion::writeTo);
-        IntentJson.writeStrings(generator, FIELD_NON_GOALS, nonGoals);
+        IntentJson.writeArray(generator, FIELD_NON_GOALS, nonGoals, NonGoal::writeTo);
         IntentJson.writeArray(generator, FIELD_DECISIONS, decisions, Decision::writeTo);
         IntentJson.writeStrings(generator, FIELD_OPEN_QUESTIONS, openQuestions);
         IntentJson.writeArray(generator, FIELD_DEFERRED, deferred, DeferredItem::writeTo);
@@ -532,7 +588,7 @@ public record PlanIntentResource(
                     IntentJson.requireInt(map, FIELD_REVISION, 1, Integer.MAX_VALUE, TYPE),
                     IntentJson.requireText(map, FIELD_GOAL, TYPE),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_CRITERIA), IntentCriterion::fromMap),
-                    IntentJson.readStrings(map, FIELD_NON_GOALS),
+                    IntentJson.readEach(IntentJson.readObjects(map, FIELD_NON_GOALS), NonGoal::fromMap),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DECISIONS), Decision::fromMap),
                     IntentJson.readStrings(map, FIELD_OPEN_QUESTIONS),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DEFERRED), DeferredItem::fromMap),
