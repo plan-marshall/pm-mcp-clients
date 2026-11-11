@@ -456,6 +456,14 @@ class ControlScenarioTest {
                     "/api/v1/plans/" + unknownPlan + "/chat/turns")) {
                 assertEquals(404, post(runtime, path, "{}").status(), path);
             }
+            var proposal = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/proposal/accept", "{}");
+            assertEquals(404, proposal.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(proposal.body())), "error"));
+            var epicAction = post(runtime, "/api/v1/epics/" + unknownEpic + "/actions/cancel", "{}");
+            assertEquals(404, epicAction.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(epicAction.body())), "error"));
         }
     }
 

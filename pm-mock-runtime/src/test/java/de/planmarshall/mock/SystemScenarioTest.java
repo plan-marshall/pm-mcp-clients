@@ -268,12 +268,14 @@ class SystemScenarioTest {
             var auth = "Bearer " + runtime.token();
             var unknownJob = "cln-" + Generators.integers(5000, 9999).next();
 
-            var response = client.send(HttpRequest.post("/api/v1/system/cleanup/" + unknownJob + "/remind")
-                    .withHeader("Authorization", auth));
+            for (var act : List.of("remind", "ignore", "delete")) {
+                var response = client.send(HttpRequest.post("/api/v1/system/cleanup/" + unknownJob + "/" + act)
+                        .withHeader("Authorization", auth).withBody("{}"));
 
-            assertEquals(404, response.status());
-            assertEquals("scope_not_found",
-                    JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "error"));
+                assertEquals(404, response.status(), act);
+                assertEquals("scope_not_found",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "error"), act);
+            }
         }
     }
 
