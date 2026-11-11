@@ -99,8 +99,7 @@ class FullyOnboardedScenarioTest {
             var check = intent.builderCheck();
             assertNotNull(check);
             assertEquals(BuilderCheckResource.Resolution.NOT_RUN, check.resolution());
-            assertEquals("The builder could not reach the operator before the relaunch window closed.",
-                    check.reason());
+            assertEquals("The builder check task was lost before it could start.", check.reason());
             assertTrue(check.questions().isEmpty());
             assertEquals(1, intent.roleCalls().size());
             assertEquals("NG-1", intent.nonGoals().getFirst().id());

@@ -967,7 +967,7 @@
         ],
         "builder_check": {
           "resolution": "not_run",
-          "reason": "The builder could not reach the operator before the relaunch window closed.",
+          "reason": "The builder check task was lost before it could start.",
           "questions": []
         }
       }
