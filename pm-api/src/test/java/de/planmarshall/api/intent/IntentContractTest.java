@@ -498,6 +498,87 @@ class IntentContractTest {
         }
     }
 
+    @Nested
+    @DisplayName("The builder check's reason")
+    class BuilderCheckReason {
+
+        @Test
+        @DisplayName("a not_run check round-trips with its reason")
+        void notRunCarriesItsReason() throws Exception {
+            var check = new BuilderCheckResource(BuilderCheckResource.Resolution.NOT_RUN, List.of(),
+                    "The builder could not reach the operator within the relaunch window.");
+
+            verify(check, BuilderCheckResource::toJson, BuilderCheckResource::toMap,
+                    BuilderCheckResource::fromJson, BuilderCheckResource::fromMap,
+                    BuilderCheckResource::readFrom, BuilderCheckResource::writeTo);
+            assertEquals("The builder could not reach the operator within the relaunch window.",
+                    BuilderCheckResource.fromJson(check.toJson()).reason());
+            assertTrue(check.toJson().contains("\"reason\":"));
+        }
+
+        @Test
+        @DisplayName("a not_run without a reason and a pending or answered with one are refused")
+        void reasonBelongsToNotRun() {
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.NOT_RUN, List.of(), null));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.NOT_RUN, List.of(), " "));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.PENDING, List.of(), "A reason it must not carry."));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.ANSWERED, List.of(), "A reason it must not carry."));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"not_run\",\"questions\":[]}"));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"pending\",\"questions\":[],"
+                            + "\"reason\":\"A reason it must not carry.\"}"));
+        }
+    }
+
+    @Nested
+    @DisplayName("The distribution without a proposal")
+    class DistributionWithoutProposal {
+
+        @Test
+        @DisplayName("a distribution without proposed_multiple round-trips with no flagged comparison")
+        void absentProposal() throws Exception {
+            var distribution = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,
+                    List.of(new TokenBucket("0-1x", 0.0, 1.0, 8, 0),
+                            new TokenBucket("1-2x", 1.0, 2.0, 5, 0),
+                            new TokenBucket("2-3x", 2.0, 3.0, 3, 0),
+                            new TokenBucket("3x and more", 3.0, 6.0, 4, 0)));
+
+            verify(distribution, OverSizeDistributionResource::toJson,
+                    OverSizeDistributionResource::toMap, OverSizeDistributionResource::fromJson,
+                    OverSizeDistributionResource::fromMap, OverSizeDistributionResource::readFrom,
+                    OverSizeDistributionResource::writeTo);
+
+            var parsed = OverSizeDistributionResource.fromJson(distribution.toJson());
+            assertNull(parsed.proposedMultiple());
+            assertEquals(0, parsed.flaggedTasks());
+            assertEquals(0.0, parsed.flaggedShare(), 0.0001);
+            assertTrue(parsed.flaggedBuckets().isEmpty());
+            assertFalse(parsed.flagsMore());
+            assertEquals(20, parsed.totalTasks());
+            assertFalse(distribution.toJson().contains("\"proposed_multiple\""));
+        }
+
+        @Test
+        @DisplayName("a flagged task without a proposal and a non-positive proposal are refused")
+        void flagRulesHold() {
+            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
+                    "p", "r", 3.0, null, List.of(bucket())));
+            assertThrows(JsonFormatException.class, () -> OverSizeDistributionResource.fromJson(
+                    "{\"project_id\":\"p\",\"role\":\"r\",\"current_multiple\":3.0,"
+                            + "\"buckets\":[{\"label\":\"x\",\"from_multiple\":1.0,\"to_multiple\":2.0,"
+                            + "\"task_count\":1,\"flagged_tasks\":1}]}"));
+            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
+                    "p", "r", 3.0, 0.0, List.of(bucket())));
+            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
+                    "p", "r", 3.0, -1.0, List.of(bucket())));
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Helpers
 
@@ -571,7 +652,7 @@ class IntentContractTest {
     }
 
     private static BuilderCheckResource builderCheck() {
-        return new BuilderCheckResource(BuilderCheckResource.Resolution.PENDING, List.of(question()));
+        return new BuilderCheckResource(BuilderCheckResource.Resolution.PENDING, List.of(question()), null);
     }
 
     private static PlanIntentResource planIntent() {

@@ -178,7 +178,7 @@ public record PlanIntentResource(
 
         private static Decision fromMap(Map<String, Object> map) throws IOException {
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
-            var adrMap = JsonTree.objectOrNull(map, FIELD_ADR, TYPE);
+            var adrMap = IntentJson.optionalObject(map, FIELD_ADR, TYPE);
             try {
                 return new Decision(
                         IntentJson.requireText(map, FIELD_ID, TYPE),

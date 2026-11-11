@@ -198,6 +198,39 @@ final class IntentJson {
     }
 
     /**
+     * Reads an optional finite floating-point number. A member absent or {@code null} yields
+     * {@code null}; a member that is not a finite number is refused.
+     *
+     * @param object the object
+     * @param key    the member name
+     * @param type   the record's type name for the refusal
+     * @return the value, or {@code null}
+     * @throws IOException if the member is present and not a finite number
+     */
+    static @Nullable Double optionalDouble(Map<String, Object> object, String key, String type)
+            throws IOException {
+        if (!object.containsKey(key) || object.get(key) == null) {
+            return null;
+        }
+        return requireDouble(object, key, type);
+    }
+
+    /**
+     * Reads an optional object member. A member absent or {@code null} yields {@code null}; a
+     * member of another type is refused.
+     *
+     * @param object the object
+     * @param key    the member name
+     * @param type   the record's type name for the refusal
+     * @return the object map, or {@code null}
+     * @throws IOException if the member is present and not an object
+     */
+    static @Nullable Map<String, Object> optionalObject(Map<String, Object> object, String key, String type)
+            throws IOException {
+        return JsonTree.objectOrNull(object, key, type);
+    }
+
+    /**
      * Reads a required boolean member.
      *
      * @param object the object

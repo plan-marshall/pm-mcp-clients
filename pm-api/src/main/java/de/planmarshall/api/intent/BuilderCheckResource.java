@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -28,19 +29,23 @@ import de.planmarshall.api.json.JsonTree;
  * <em>Intent and Outline</em>).
  * <p>
  * The check adds evidence and never holds a plan: a check that did not run says so with
- * {@link Resolution#NOT_RUN}, and the operator questions the relaunch could not take remain in the
- * outline review as open questions.
+ * {@link Resolution#NOT_RUN} and its {@code reason}, and the operator questions the relaunch could
+ * not take remain in the outline review as open questions.
  *
  * @param resolution whether the check is pending, answered, or did not run
  * @param questions  the questions the builder asked
+ * @param reason     why the check did not run, present and not blank exactly when the resolution is
+ *                   {@link Resolution#NOT_RUN}; a text the clients show as it stands
  */
-public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> questions) {
+public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> questions,
+                                   @Nullable String reason) {
 
     public static final String FIELD_RESOLUTION = "resolution";
     public static final String FIELD_QUESTIONS = "questions";
+    public static final String FIELD_REASON = "reason";
 
     private static final String TYPE = "BuilderCheckResource";
-    private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_RESOLUTION, FIELD_QUESTIONS);
+    private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_RESOLUTION, FIELD_QUESTIONS, FIELD_REASON);
 
     /** The closed list of a builder check's resolution states. */
     public enum Resolution {
@@ -51,7 +56,7 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
         /** The check is resolved; open questions may remain and are shown with the outline. */
         ANSWERED("answered"),
 
-        /** The check did not run, with its reason in the questions' absence and the plan's history. */
+        /** The check did not run, with its {@code reason} in the questions' absence and the plan's history. */
         NOT_RUN("not_run");
 
         private final String wireValue;
@@ -107,6 +112,12 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
     public BuilderCheckResource {
         Objects.requireNonNull(resolution, FIELD_RESOLUTION);
         questions = questions == null ? List.of() : List.copyOf(questions);
+        if (resolution == Resolution.NOT_RUN && (reason == null || reason.isBlank())) {
+            throw new IllegalArgumentException("a not_run check requires its " + FIELD_REASON);
+        }
+        if (resolution != Resolution.NOT_RUN && reason != null) {
+            throw new IllegalArgumentException("only a not_run check names its " + FIELD_REASON);
+        }
     }
 
     /**
@@ -137,6 +148,9 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
         var map = new LinkedHashMap<String, Object>();
         map.put(FIELD_RESOLUTION, resolution.wireValue());
         map.put(FIELD_QUESTIONS, questions.stream().map(BuilderQuestion::toMap).toList());
+        if (reason != null) {
+            map.put(FIELD_REASON, reason);
+        }
         return map;
     }
 
@@ -157,6 +171,7 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
         generator.writeStartObject();
         generator.writeStringField(FIELD_RESOLUTION, resolution.wireValue());
         IntentJson.writeArray(generator, FIELD_QUESTIONS, questions, BuilderQuestion::writeTo);
+        IntentJson.writeOptionalString(generator, FIELD_REASON, reason);
         generator.writeEndObject();
     }
 
@@ -176,7 +191,12 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
         }
         var questions = IntentJson.readEach(IntentJson.readObjects(map, FIELD_QUESTIONS),
                 BuilderQuestion::fromMap);
-        return new BuilderCheckResource(resolution, questions);
+        try {
+            return new BuilderCheckResource(resolution, questions,
+                    IntentJson.optionalText(map, FIELD_REASON, TYPE));
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
+        }
     }
 
     /**

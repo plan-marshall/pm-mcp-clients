@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -30,19 +31,21 @@ import de.planmarshall.api.json.JsonTree;
  * done: the buckets are the tasks' spent tokens as a multiple of each task's own prediction, and
  * {@link #flaggedShare()} is the share of past tasks the proposed multiple would have flagged. A
  * client never recomputes a bucket; it shows the runtime's distribution and flags only the buckets
- * that carry a change.
+ * that carry a change. Without a proposal the runtime serves the distribution under the multiple in
+ * force and no flagged comparison, so nothing is flagged and {@link #flagsMore()} is {@code false}.
  *
  * @param projectId       the project whose role is measured
  * @param role            the role whose multiple is changed
  * @param currentMultiple the multiple in force
- * @param proposedMultiple the multiple the operator considers
+ * @param proposedMultiple the multiple the operator considers, or {@code null} where the runtime
+ *                         serves the distribution without a proposal
  * @param buckets         the distribution's buckets, in ascending order and not overlapping
  */
 public record OverSizeDistributionResource(
         String projectId,
         String role,
         double currentMultiple,
-        double proposedMultiple,
+        @Nullable Double proposedMultiple,
         List<TokenBucket> buckets
 ) {
 
@@ -66,7 +69,9 @@ public record OverSizeDistributionResource(
             throw new IllegalArgumentException("role must not be blank");
         }
         requirePositive(currentMultiple, FIELD_CURRENT_MULTIPLE);
-        requirePositive(proposedMultiple, FIELD_PROPOSED_MULTIPLE);
+        if (proposedMultiple != null) {
+            requirePositive(proposedMultiple, FIELD_PROPOSED_MULTIPLE);
+        }
         buckets = buckets == null ? List.of() : List.copyOf(buckets);
         if (buckets.isEmpty()) {
             throw new IllegalArgumentException("buckets must not be empty");
@@ -75,6 +80,10 @@ public record OverSizeDistributionResource(
             if (buckets.get(i).fromMultiple() < buckets.get(i - 1).toMultiple()) {
                 throw new IllegalArgumentException("buckets must be ordered and must not overlap");
             }
+        }
+        if (proposedMultiple == null && buckets.stream().anyMatch(TokenBucket::flagged)) {
+            throw new IllegalArgumentException(
+                    "a distribution without a " + FIELD_PROPOSED_MULTIPLE + " carries no flagged task");
         }
     }
 
@@ -92,32 +101,35 @@ public record OverSizeDistributionResource(
     }
 
     /**
-     * @return the number of tasks the proposed multiple would have flagged
+     * @return the number of tasks the proposed multiple would have flagged, {@code 0} without a
+     *         proposal
      */
     public int flaggedTasks() {
-        return buckets.stream().mapToInt(TokenBucket::flaggedTasks).sum();
+        return proposedMultiple == null ? 0 : buckets.stream().mapToInt(TokenBucket::flaggedTasks).sum();
     }
 
     /**
-     * @return the share of tasks the proposed multiple would have flagged, from 0 to 1
+     * @return the share of tasks the proposed multiple would have flagged, from 0 to 1, {@code 0}
+     *         without a proposal
      */
     public double flaggedShare() {
         var total = totalTasks();
-        return total == 0 ? 0.0 : (double) flaggedTasks() / total;
+        return total == 0 || proposedMultiple == null ? 0.0 : (double) flaggedTasks() / total;
     }
 
     /**
-     * @return the buckets that carry a flagged task
+     * @return the buckets that carry a flagged task, empty without a proposal
      */
     public List<TokenBucket> flaggedBuckets() {
-        return buckets.stream().filter(TokenBucket::flagged).toList();
+        return proposedMultiple == null ? List.of() : buckets.stream().filter(TokenBucket::flagged).toList();
     }
 
     /**
-     * @return {@code true} if the proposal would flag more tasks than the current multiple
+     * @return {@code true} if the proposal would flag more tasks than the current multiple,
+     *         {@code false} without a proposal
      */
     public boolean flagsMore() {
-        return proposedMultiple < currentMultiple;
+        return proposedMultiple != null && proposedMultiple < currentMultiple;
     }
 
     /**
@@ -128,7 +140,9 @@ public record OverSizeDistributionResource(
         map.put(FIELD_PROJECT_ID, projectId);
         map.put(FIELD_ROLE, role);
         map.put(FIELD_CURRENT_MULTIPLE, currentMultiple);
-        map.put(FIELD_PROPOSED_MULTIPLE, proposedMultiple);
+        if (proposedMultiple != null) {
+            map.put(FIELD_PROPOSED_MULTIPLE, proposedMultiple);
+        }
         map.put(FIELD_BUCKETS, buckets.stream().map(TokenBucket::toMap).toList());
         return map;
     }
@@ -151,7 +165,9 @@ public record OverSizeDistributionResource(
         generator.writeStringField(FIELD_PROJECT_ID, projectId);
         generator.writeStringField(FIELD_ROLE, role);
         generator.writeNumberField(FIELD_CURRENT_MULTIPLE, currentMultiple);
-        generator.writeNumberField(FIELD_PROPOSED_MULTIPLE, proposedMultiple);
+        if (proposedMultiple != null) {
+            generator.writeNumberField(FIELD_PROPOSED_MULTIPLE, proposedMultiple);
+        }
         IntentJson.writeArray(generator, FIELD_BUCKETS, buckets, TokenBucket::writeTo);
         generator.writeEndObject();
     }
@@ -169,7 +185,7 @@ public record OverSizeDistributionResource(
                     IntentJson.requireText(map, FIELD_PROJECT_ID, TYPE),
                     IntentJson.requireText(map, FIELD_ROLE, TYPE),
                     IntentJson.requireDouble(map, FIELD_CURRENT_MULTIPLE, TYPE),
-                    IntentJson.requireDouble(map, FIELD_PROPOSED_MULTIPLE, TYPE),
+                    IntentJson.optionalDouble(map, FIELD_PROPOSED_MULTIPLE, TYPE),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_BUCKETS), TokenBucket::fromMap));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
