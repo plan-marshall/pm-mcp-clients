@@ -559,10 +559,10 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertTrue(requests.contains(
-                                                "PUT /api/v1/config/project/custom.timeout?project=fix-relay"),
+                                                                    "PUT /api/v1/config/project/custom.timeout?project=fix-relay"),
                                                 requests.toString()),
                             () -> assertTrue(requests.contains(
-                                                "DELETE /api/v1/config/plan/custom.timeout?plan=p-7"),
+                                                                    "DELETE /api/v1/config/plan/custom.timeout?plan=p-7"),
                                                 requests.toString()));
     }
 
