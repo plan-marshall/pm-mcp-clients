@@ -514,10 +514,12 @@
   /**
    * Marks every shown report read and takes the resulting list and count from the server.
    *
-   * The count is subtracted from the shown ids first, so the reload cannot be raced by a request
-   * that lands before its response. The first page of the unread list is then reloaded: the server
-   * is the authority on what is left, and the retained open row stays beside its detail through
-   * the reload.
+   * The shown ids are marked in flight before the request, so a reload that lands first keeps a
+   * read it has already counted and the response cannot subtract that read a second time. The count
+   * itself is subtracted only when the response settles. A failed request cannot unmake a read the
+   * runtime has already reported: such a row stays read. The first page of the unread list is then
+   * reloaded after a success, so the server is the authority on what is left and the retained open
+   * row stays beside its detail through the reload.
    *
    * A report opened through `?plan=` is shown and retained without ever being read beside its
    * detail, so it is counted by this request exactly like every other shown report.
@@ -569,9 +571,10 @@
       // was already in flight now cannot make this act subtract the same read twice.
       await loadReports();
     } catch (err: unknown) {
-      // Roll back only the retention markers this request added; a row another act retained keeps
-      // its place.
+      // Roll back only the retention markers this request added, and keep the marker of a read the
+      // runtime has already reported: a counted read stays read even though this act failed (L3-2).
       for (const id of newlyRetainedIds) {
+        if (countedReadIds.has(id)) continue;
         delete retainedReadIds[id];
       }
       if (newlyRetainedIds.length > 0) {
