@@ -12,6 +12,7 @@
   import Skeleton from '../components/Skeleton.svelte';
   import TriagePage from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
+  import { errorCodeOf } from '../api/errors';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -27,6 +28,8 @@
   let hasOlder = $state(false);
   let olderCount = $state(0);
   let isLoading = $state(true);
+  /** Whether a reload runs behind rows that stay on screen (the refresh form of the pattern). */
+  let refreshing = $state(false);
   let isLoadingOlder = $state(false);
   let isMarkingAll = $state(false);
   /** A failed read of the list; the list area says so and offers the retry. */
@@ -384,7 +387,12 @@
   }
 
   async function loadReports() {
-    isLoading = true;
+    // The refresh form of the loading pattern: a list already on screen is not replaced by
+    // skeletons — that would take the scroll position, the focus and an open row menu with it.
+    // Only a first read, with no rows yet, draws the skeletons.
+    const hadRows = items.length > 0;
+    isLoading = !hadRows;
+    refreshing = hadRows;
     loadError = '';
     actionError = '';
     try {
@@ -416,9 +424,10 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      loadError = (err as Error)?.message || $t('report.list.load_failed');
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
+      refreshing = false;
     }
   }
 
@@ -505,10 +514,12 @@
   /**
    * Marks every shown report read and takes the resulting list and count from the server.
    *
-   * The count is subtracted from the shown ids first, so the reload cannot be raced by a request
-   * that lands before its response. The first page of the unread list is then reloaded: the server
-   * is the authority on what is left, and the retained open row stays beside its detail through
-   * the reload.
+   * The shown ids are marked in flight before the request, so a reload that lands first keeps a
+   * read it has already counted and the response cannot subtract that read a second time. The count
+   * itself is subtracted only when the response settles. A failed request cannot unmake a read the
+   * runtime has already reported: such a row stays read. The first page of the unread list is then
+   * reloaded after a success, so the server is the authority on what is left and the retained open
+   * row stays beside its detail through the reload.
    *
    * A report opened through `?plan=` is shown and retained without ever being read beside its
    * detail, so it is counted by this request exactly like every other shown report.
@@ -560,9 +571,10 @@
       // was already in flight now cannot make this act subtract the same read twice.
       await loadReports();
     } catch (err: unknown) {
-      // Roll back only the retention markers this request added; a row another act retained keeps
-      // its place.
+      // Roll back only the retention markers this request added, and keep the marker of a read the
+      // runtime has already reported: a counted read stays read even though this act failed (L3-2).
       for (const id of newlyRetainedIds) {
+        if (countedReadIds.has(id)) continue;
         delete retainedReadIds[id];
       }
       if (newlyRetainedIds.length > 0) {
@@ -912,20 +924,33 @@
       <div class="error-line" role="alert">
         <p>{actionError}</p>
         <Button variant="ghost" size="small" onclick={retryFailedAction}>
-          {$t('web.common.retry')}
+          {$t('common.action.retry')}
         </Button>
       </div>
     {/if}
 
-    {#if isLoading}
+    <p class="reports-refreshing" role="status" aria-live="polite" data-testid="reports-refreshing">
+      {refreshing ? $t('report.list.loading') : ''}
+    </p>
+    {#if loadError && items.length > 0}
+      <div class="reports-error" data-testid="reports-error">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadReports}
+          titleLevel={2}
+        />
+      </div>
+    {/if}
+
+    {#if isLoading && items.length === 0}
       <div class="loading-state">
         <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
       </div>
-    {:else if loadError}
+    {:else if loadError && items.length === 0}
       <ErrorState
-        title={$t('report.list.load_failed')}
-        message={loadError}
-        actionLabel={$t('web.common.retry')}
+        code={loadError}
+        actionLabel={$t('common.action.retry')}
         onAct={loadReports}
         titleLevel={2}
       />
@@ -1305,6 +1330,21 @@
 
   .loading-state {
     padding: var(--space-4) 0;
+  }
+
+  /* The quiet cue of a refresh: the rows stay, so the words sit above them and say what runs. */
+  .reports-refreshing {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .reports-refreshing:empty {
+    margin: 0;
+  }
+
+  .reports-error {
+    margin-bottom: var(--space-3);
   }
 
   .empty-state {

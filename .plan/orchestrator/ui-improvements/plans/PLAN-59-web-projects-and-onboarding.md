@@ -66,23 +66,31 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-07` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/proposals.adoc:339-340 [#UX-P-10]; use-cases/proposals.adoc:138-139 UC-P-07 Project onboarding and the start gate
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/proposals.adoc:339` `[#UX-P-10]` and `use-cases/proposals.adoc` UC-P-07 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed `doc/design/shared/project-explorer.adoc` (`#project-row`): in the web app the row of a ready project carries _Add a plan_ (`project.action.add_plan`) beside its marks, a project that is not ready shows it disabled with the reason (`project.action.disabled_not_ready`), and _Add an epic_ stays among the actions. this plan builds it as deliverable 4 (moved here from `PLAN-83`, together with the project acts of the former `PLAN-47` D4), into the rebuilt grid and table cards. The design also now orders projects as the runtime serves them (needs the operator first, then the start of their oldest active work): "last activity" on a card is information, never a sort key.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates); project.action.add_plan and project.action.disabled_not_ready already exist in projects.en.properties (added with the PR #278 design); ProjectExplorerView/ProjectOnboardingView were touched by PLAN-90/a11y.
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: `ProjectOnboardingView.svelte` has no id, name or pilot field (only the step key `identity` at :42) — confirm/refute at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` § identity (verify-at-outline)
+- HYPOTHESIS: the explorer does not render `project.action.add_plan` / `project.action.disabled_not_ready` although both keys exist — confirm/refute at `pm-web-app/src/lib/views/ProjectExplorerView.svelte` § actions (verify-at-outline)
+- HYPOTHESIS: the project page route `/projects/{id}` does not exist; only `/projects/[id]/start` does — confirm/refute at `pm-web-app/src/routes/projects/` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/projects.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/project-explorer.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/shared/project-onboarding.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/actions/byState.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/actions/byState.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/routes/projects/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/projects.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/project-explorer.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/shared/project-onboarding.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/plans/README.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -121,3 +129,35 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/shared/project-explorer.adoc` (#layout, #being-added, #project-row, #actions, #project-page, #release, #marks), `doc/design/shared/project-onboarding.adoc` (#steps, #build-environment, #not-ready, #several), `doc/design/web-app/navigation.adoc` (#lenses, #url), `doc/design/web-app/components.adoc` (#row-link, #row-menu, #fixed-places, #confirm-dialog), `doc/design/web-app/components-fields.adoc`. HEAD 1cc0e10e.
+
+1. **Projects as list and one project page.** `ProjectExplorerView.svelte` becomes the Projects lens: the list column (favourites, recent, being added, all projects; rows are `RowLink` with `KindMark`, name and id, `StatusLabel` for readiness, `ReasonBadge` for what the setup needs, work counts, last active as an age; a `FilterInput`), and the project page at `/projects/{id}` as the object column: head with `KindMark`, name, readiness, the favourite `Toggle` and the `ActionBar` (_Add a plan_ primary while ready, _Continue the setup_ while not, _Enrol again_ while released), the work tab (running and ended work), and `?tab=setup` (a later run, release, unenrol). Favourites are ordered by drag and by a keyboard route; the arrow buttons go. A project link outside the chain opens the project page.
+   - Done when: `projects.spec.js`: the list at 1440 px, the project page, release and unenrol only in the setup/overflow (evidence order: `test-first`); the browser check on `fully-onboarded` → `/projects` and `projects-and-start` → `projects.being-added` (evidence order: `none`).
+2. **The identity step.** `ProjectOnboardingView` ②: the fields id, name and (only while the lifecycle gate holds) pilot, the proposal filled in, on the field system; the run has its own address `/project-onboarding/{entry}`.
+   - Done when: `projects.spec.js` on `projects.being-added`: the fields; no pilot field once the gate is open (evidence order: `test-first`).
+3. **Needs the terminal.** A step that needs the terminal shows what is missing, the command, _Check again_ and what happens after; _Abandon…_ is secondary and asks first.
+   - Done when: a unit test of the pattern; _Check again_ re-reads the state (evidence order: `test-first`).
+4. **Acts of a project and _Add a plan_ on the row.** Row acts are `PROJECT_ACTS` (`pm-web-app/src/lib/actions/byState.ts`, changed so that _Add a plan_ is the primary while ready) in a `RowMenu`; _Add a plan_ (`project.action.add_plan`) is visible before the menu and opens the start flow of `PLAN-53` for that project, disabled with `project.action.disabled_not_ready` when the project is not ready; release and unenrol confirm through `ConfirmDialog` (the reason in a `TextArea`). The row of the package `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` by the last of the D2 navigation engine, this deliverable and `PLAN-51` D5 (`PLAN-83` is superseded).
+   - Done when: `ProjectExplorerView.test.ts`: the action on a ready row, disabled with its reason on a not-ready row (evidence order: `test-first`); an e2e: a plan is started from a project's row (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
+5. **The onboarding chat and the ✓ Ready figure.** The project-onboarding chat is the `Chat` side column of `WizardPage` (owner: see the ownership note); ✓ Ready shows the mascot's `done` figure (D3 brand).
+
+Removed or replaced: the three-column card grid and the table toggle; `ActionBar` on cards; the arrow-button ordering.
+
+Ownership: the chat of the project onboarding has two owners in the designs (`chat.adoc#rely`); the orchestrator names one.
+
+Implements: `doc/design/shared/project-explorer.adoc` § A Project, The Project Page in the Web App, Release and Unenrol; `doc/design/shared/project-onboarding.adoc` § Steps, The Build Environment.
+
+Dependencies: D1 foundation (RowLink, RowMenu, StatusLabel, ReasonBadge, KindMark, Field, TextArea, ConfirmDialog), D2 navigation engine (the project page route and `tab=`, `/project-onboarding/{entry}`, old addresses replaced), `PLAN-53` (_Add a plan_ opens its flow), D3 brand assets (deliverable 5 figure), D4 web chat package (deliverable 5 chat). Sequence after `PLAN-45`.
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.
+
+## Operator Decisions 2026-11-10 (Amendment)
+
+Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
+
+- **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.

@@ -299,14 +299,14 @@ describe('SystemView component', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Die Systemübersicht konnte nicht geladen werden'),
+        screen.getByText('Die Runtime hat die Anfrage abgelehnt'),
       ).toBeInTheDocument();
     });
 
     useCatalogue('en');
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load system snapshot')).toBeInTheDocument();
+      expect(screen.getByText('The runtime refused the request')).toBeInTheDocument();
     });
   });
 

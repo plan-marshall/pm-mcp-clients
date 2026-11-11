@@ -3,7 +3,9 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import StatusLabel from '../components/StatusLabel.svelte';
   import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
@@ -34,7 +36,7 @@
    * the loading and error states keep focus on the visible heading instead of the body.
    */
   function focusReportHeading(): void {
-    const heading = rootEl?.querySelector<HTMLElement>('.report-title');
+    const heading = rootEl?.querySelector<HTMLElement>('.report-title, .error-state__title');
     heading?.focus();
   }
 
@@ -73,17 +75,24 @@
     // does not leave focus on the body while it runs.
     await tick();
     focusReportHeading();
+    // Where the act left the focus, so a report that resolves later knows whether the operator has
+    // moved on meanwhile.
+    const actFocus = document.activeElement;
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('report.completion.load_failed');
+      errorMessage = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }
-    // A fetched report (or the error state) replaces the loading placeholder; take focus to the
-    // visible heading now, so focus does not fall to the body when the placeholder is removed.
+    // A fetched report (or the error state) replaces the loading placeholder. Take the visible
+    // heading only while the focus is still where the act left it, or where the removed placeholder
+    // dropped it; a focus the operator moved meanwhile stays where they put it.
     await tick();
-    if (data || errorMessage) {
+    const active = document.activeElement;
+    const stillWhereTheActLeftIt =
+      active === actFocus || active === null || active === document.body;
+    if ((data || errorMessage) && stillWhereTheActLeftIt) {
       focusReportHeading();
     }
   }
@@ -158,15 +167,16 @@
       >
         {$t('report.completion.loading')}
       </svelte:element>
-      <span aria-hidden="true"><Spinner size="2.5rem" label="" /></span>
+      <span aria-hidden="true"><Skeleton shape="card" rows={2} /></span>
     </div>
   {:else if errorMessage}
-    <div class="completion-report__error" role="alert">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error" tabindex="-1">
-        {$t('report.completion.load_failed')}
-      </svelte:element>
-      <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={fetchReport}>{$t('web.common.retry')}</Button>
+    <div class="completion-report__error" data-testid="completion-report-error">
+      <ErrorState
+        code={errorMessage}
+        actionLabel={$t('common.action.retry')}
+        onAct={fetchReport}
+        titleLevel={titleLevel}
+      />
     </div>
   {:else if data}
     <!-- Path breadcrumb -->

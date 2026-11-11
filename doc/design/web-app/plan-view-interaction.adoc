@@ -7,34 +7,42 @@ link:README.adoc[Design] » Web App » Plan View Interaction
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../shared/plan-view.adoc[Plan View], link:../shared/texts-and-languages.adoc[Texts and Languages]_
+_Relies on: link:../shared/plan-view.adoc[Plan View], link:navigation.adoc[Navigation] (the columns, the addresses), link:components.adoc#object-page[Components, ObjectPage], link:../shared/intent-and-outline.adoc[Intent and Outline], link:../shared/texts-and-languages.adoc[Texts and Languages]_
 
-Status: `DRAFT`. The web app's interaction with the shared plan view (link:../shared/plan-view.adoc[Plan View]). The process contract, the records, and the server are unchanged: the right-hand narrative is derived from the `ProcessTree` the view already holds.
+Status: `AGREED`. The web app's interaction with the shared plan view (link:../shared/plan-view.adoc[Plan View]) in the column model of link:navigation.adoc[Navigation]. The process contract, the records, and the server are unchanged: the narrative is derived from the `ProcessTree` the view already holds.
 
 [#layout]
-== The Two-Panel Rule
+== The Plan in the Column Model
 
-The plan view keeps the structure the operator already knows:
+The plan is a level of the chain of levels — the lens, the project, the epic, the plan, the task (link:navigation.adoc#levels[Navigation, Levels as Columns]) and takes the two forms of a level:
+
+* *The object column*, while no task of it is open: the head of link:components-tags.adoc#tag-places[Tags and Kinds, One Fixed Place] (`KindMark`, title, id, pull request, the head links, `PhaseLabel`, `StatusLabel`, the state sentence, the `ActionBar`), the lines _tokens so far_ and _change so far_, the attention strip, and the tabs *Process*, *Intent* and *Changes* (link:../shared/plan-view.adoc#tabs[Plan View, The Tabs of the Web App]). The head draws no path: the breadcrumb of the top bar is the only one (link:navigation.adoc#up[Navigation, Up, the Breadcrumb, Back]).
+* *A list column*, while a task of it is open as the next level: the compact head (`KindMark`, title, state word, its main act as a secondary button) and the phase tree as its list. Selecting the plan's head closes the task, and the plan is the object column again with all its tabs.
 
 ----
-  header       project › epic › plan · title · phase · state · tokens · actions
-  ──────────────────────────────────────────────────────────────────────────
-  tree (left)                             narrative (right)
-  ├─ ✓ phase init           done          part narrative for init
-  ├─ ✓ phase refine         done          state · duration · runs
-  ├─ ▶ phase execute        running       tasks in this part
-  │    └─ ▶ tasks execute.envelope        TASK-001 · TASK-002 · TASK-003
-  └─ ○ phase finalize       planned       or: nothing selected
+  ▤ Plan  Fix Relay Transport                               [Pause the plan] [⋯]
+  fix-relay  PR #214  ▶ execute  ● running · for 2 h 10 min · task 3 of 5
+  tokens so far   412 k (380 k in · 32 k out)
+  change so far   12 files · +340 −27 · 2 unplanned
+  [Process]  Intent  Changes
+  ┌ tree ────────────────────────────┬ narrative of the selected node ─────────┐
+  │ ✓ init           done · 2 min    │ execute · running · 25 min              │
+  │ ✓ refine         done · 14 min   │ tasks in this part                      │
+  │ ▶ execute        running   ◀     │   TASK-001 · TASK-002 · TASK-003        │
+  │   └ ▶ tasks envelope  running    │ parts in this part                      │
+  │ ○ finalize       planned         │   envelope-ready · envelope-close       │
+  └──────────────────────────────────┴─────────────────────────────────────────┘
 ----
 
-The tree is the navigation surface; the narrative is what the tree points at. The split is
-preserved on the desktop and stacks on the tablet and the phone, as the visual language says
-(link:README.adoc#breakpoints[Web App, Responsive Breakpoints]).
+* *The Process tab* holds the tree and the narrative of the node the tree points at. While the object column is at least `720 px` wide they stand side by side, the tree `280` to `360 px` wide and the narrative taking the rest; in a narrower column the narrative stands below the tree. The deepest chain leaves the object column below `720 px` on most windows (link:navigation.adoc#window[Navigation, The Column Window]), so side by side is the case of a shorter chain or a wide window, and stacking the usual one. Each keeps its own scroll.
+* *The Intent tab* shows the plan's intent record, its builder check and its outline in the order of link:../shared/intent-and-outline.adoc#intent[Intent and Outline] (<<intent>>).
+* *The Changes tab* shows the plan's changes (<<changes>>); it is absent before the first capture, as the size line is.
+* *An ended plan* has the same tabs, read-only (link:../shared/plan-view.adoc#ended[Plan View, An Ended Plan]).
 
 [#selection]
 == Selection, Expansion, and Scrolling
 
-There are three acts, and none of them stands in for another:
+There are three acts in the tree, and none of them stands in for another:
 
 [cols="1,2,3",options="header"]
 |===
@@ -42,42 +50,29 @@ There are three acts, and none of them stands in for another:
 
 |Select a part
 |the row body of a phase, sub-workflow, or task group, a native button
-|The right panel shows that part's narrative. A row body never expands or collapses.
+|The narrative shows that part. A row body never expands or collapses.
 
 |Select a task
 |the body of a leaf task row
-|The right panel shows the task's live activity feed and subscribes to its stream.
+|The task opens as the next level (`/plans/{id}/tasks/{task}`, a push): its object column shows the task's live activity and subscribes to its stream, and the plan becomes a list column whose list is this tree.
 
 |Expand or collapse
 |the chevron/glyph button beside the row
-|The children show or hide. A toggle never changes the selection or the right panel.
+|The children show or hide. A toggle never changes the selection or the narrative.
 |===
 
-* The row body is a `<button>` with an accessible name made of the node's own title and the
-  catalogue's inspect action; the toggle is a sibling button with its own `aria-label`
-  (`plan.view.toggle_node`, `plan.view.toggle_sub_node`). Buttons are never nested.
-* `Enter` and `Space` select the focused row body; `Tab` moves between the toggle and the body.
-  The selected row keeps the focus ring of the design system and the selected background.
-* The selected row carries `aria-current` and the `node-row--selected` style; a selected task
-  carries `aria-current` and `task-row--selected`.
-* Only a task selection subscribes to `subscribeTaskActivity`. Selecting a node unsubscribes and
-  clears the feed, so a hidden stream cannot keep appending to a panel nobody sees.
-* Ordinary selection does not scroll. Only the jump control expands the path to the current
-  position, selects the running task (or the running node when there is no running task), and
-  scrolls that item into view.
+* The row body is a `<button>` with an accessible name made of the node's own title and the catalogue's inspect action; the toggle is a sibling button with its own `aria-label` (`plan.view.toggle_node`, `plan.view.toggle_sub_node`). Buttons are never nested.
+* `Enter` and `Space` select the focused row body; `Tab` moves between the toggle and the body. The selected row keeps the focus ring of the design system and the selected background.
+* The selected row carries `aria-current` and the `node-row--selected` style; the row of the open task carries `aria-current` and `task-row--selected`.
+* Only the open task's level subscribes to `subscribeTaskActivity`. Selecting a part in the tree of the plan's list column closes the task (a push, the plan the object column again, with the part's `node=` and without `follow=on`, which the selection ends: link:navigation.adoc#url[Navigation, Addresses]) and unsubscribes, so a hidden stream cannot keep appending to a column nobody sees.
+* Ordinary selection does not scroll. Only the jump control expands the path to the current position, selects the running node, opens the running task where there is one, and scrolls that item into view.
 
 [#defaults]
 == Opening, Defaults, and Refresh
 
-* On first load the selection is the running task; if there is none, the running node; if there
-  is none, the first visible node. The tree never opens with the panel at “select something” while
-  it shows at least one item.
-* A refresh (`plan.changed`, `activity.changed`, `phase.changed`, `task.off_track`,
-  `project.work_ended`) keeps the inspected subject when the refreshed tree still shows it —
-  matched by task id or node id, never by list position. When the subject disappeared, or became
-  `not_in_plan`, the same fallback order applies deliberately.
-* Nodes omitted from the tree (`not_in_plan`) stay in the pruned group at the end and are not
-  selectable. Their reason remains visible there.
+* On a load without `node=` and without a task in the path, the selection is the node that holds the running task; if there is none, the running node; if there is none, the first visible node. The tree never opens with the narrative at “select something” while it shows at least one item. A task opens as a level only when the operator selects it, or under the follow mode (`follow=on`, link:navigation.adoc#url[Navigation, Addresses and History]).
+* A refresh (`plan.changed`, `activity.changed`, `phase.changed`, `task.off_track`, `project.work_ended`) keeps the inspected subject when the refreshed tree still shows it — matched by task id or node id, never by list position. When the subject disappeared, or became `not_in_plan`, the same fallback order applies deliberately, and the address is replaced.
+* Nodes omitted from the tree (`not_in_plan`) stay in the pruned group at the end and are not selectable. Their reason remains visible there.
 
 [#node-narrative]
 == What a Node Narrative Contains
@@ -85,35 +80,28 @@ There are three acts, and none of them stands in for another:
 A selected phase, sub-workflow, or task group narrates only what the process resource and its
 child tasks already contain:
 
-* *The head*: the part's title, its kind, its localized state (with the run count where the plan
-  ran it more than once), and its duration. `waits_for` and `prune_reason` are shown when the
-  node carries them.
-* *Tasks in this part*: one row per leaf task the node carries, including the tasks of its
-  sub-nodes. Each row names the task id, role, harness and model, attempt, status, duration,
-  tokens, and whether an activity route exists. Selecting a row opens that task's live feed.
-* *Parts in this part*: the direct sub-nodes as a compact outline with their state. Selecting one
-  opens its own narrative, so the operator can walk down the tree from the right panel as well as
-  from the left.
-* *No invented summary*: a node narrative never aggregates free-text activity into a fabricated
-  phase summary, never adds a state the process did not report, and never fetches anything the
-  plan view did not already load.
+* *The head*: the part's title, its kind, its localized state (with the run count where the plan ran it more than once), and its duration. `waits_for` and `prune_reason` are shown when the node carries them.
+* *Tasks in this part*: one row per leaf task the node carries, including the tasks of its sub-nodes. Each row names the task id, role, harness and model, attempt, status, duration, tokens, and whether an activity route exists. Selecting a row opens that task as the next level.
+* *Parts in this part*: the direct sub-nodes as a compact outline with their state. Selecting one selects it in the tree, so the operator can walk down the tree from the narrative as well as from the tree.
+* *Refine and outline*: the narrative of these two phases links to the Intent tab (_Intent_, `intent.tab.title`), where their records stand.
+* *No invented summary*: a node narrative never aggregates free-text activity into a fabricated phase summary, never adds a state the process did not report, and never fetches anything the plan view did not already load.
 
 [#empty-states]
 == The Three Empty States
 
 [cols="1,2,2",options="header"]
 |===
-|Situation |What the panel says |Key
+|Situation |What the narrative says |Key
 
 |Nothing is selected
-|Select a part or a task on the left to inspect it.
+|Select a part or a task in the tree to inspect it.
 |`plan.activity.select_item`
 
 |A selected part carries no leaf tasks
 |This part has no task-level activity. Its state and duration are shown above.
 |`plan.node.no_activity`
 
-|A selected task has no activity entries
+|An open task has no activity entries
 |No activity entries yet.
 |`plan.activity.empty`
 |===
@@ -121,23 +109,50 @@ child tasks already contain:
 The three states are distinct on purpose: “nothing selected” is not a property of a part, and a
 part that completed without tasks is not a task with an empty feed.
 
+[#intent]
+== The Intent Tab
+
+The tab shows the records of link:../shared/intent-and-outline.adoc#web[Intent and Outline, The Web App]: the intent, the builder check and the outline, in that order, one below the other, each reference one step away. Before refine has submitted a record the tab says so (`intent.plan.none`) and shows no empty sections.
+
+[#changes]
+== The Changes Tab
+
+The size line of the head is a link to this tab (link:../shared/plan-view.adoc#changes[Plan View, The Changes]): the list of files, and a selected file's hunks on `--color-diff-removed` and `--color-diff-added`, in `--font-mono`, the same diff tokens as a proposal of the chat (link:components-chat.adoc#proposal-card[Chat Pieces, Proposal Card]). The list and the hunks follow the rule of the Process tab: side by side while the object column is at least `720 px` wide, the hunks below the list otherwise. The tab is absent before the first capture; an address that names it then opens the first tab and is replaced.
+
+[#addresses]
+== Addresses
+
+The plan's tab is `tab={id}` (`process`, `intent`, `changes`; link:navigation.adoc#url[Navigation, Addresses and History]); an address without it opens _Process_.
+
+* *A key per tab*: `node={path}` belongs to _Process_ and `file={path}` to _Changes_ (`/plans/fix-relay?tab=changes&file=pm-relay/pom.xml`), and each is written only while its tab is shown.
+* *Switching the tab* replaces the address and drops the other tab's key; the view keeps the other tab's selection in memory while the plan stays open, so going back to that tab shows it again.
+* *A task* is a level (`/plans/{id}/tasks/{task}`) and carries no tab of the plan.
+
 [#safety]
 == Untrusted Text
 
-`title`, `waits_for`, `prune_reason`, sub-node titles, task labels, and activity content are
-untrusted text from the runtime. They are rendered as text after `stripControlSequences`, never
-with `{@html}`, and never turned into links the client follows. The narrative inherits the same
-trust boundary as the existing activity feed (link:../shared/plan-view.adoc#worker[Plan View, A
-Worker at Work]).
+`title`, `waits_for`, `prune_reason`, sub-node titles, task labels, activity content, paths and
+diff lines are untrusted text from the runtime. They are rendered as text after
+`stripControlSequences`, never with `{@html}`, and never turned into links the client follows. The
+narrative inherits the same trust boundary as the existing activity feed
+(link:../shared/plan-view.adoc#worker[Plan View, A Worker at Work]).
 
 [#texts]
 == Texts
 
-Keys of the area `plan`; English and German carry every key.
+Keys of the area `plan`; English and German carry every key. The label of the Intent tab is `intent.tab.title` (link:../shared/intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]).
 
 [cols="3,4,4",options="header"]
 |===
 |Key |English |German
+
+|`plan.tab.process`
+|Process
+|Prozess
+
+|`plan.tab.changes`
+|Changes
+|Änderungen
 
 |`plan.node.select`
 |Inspect this part
@@ -184,9 +199,14 @@ Keys of the area `plan`; English and German carry every key.
 |Keine Aktivität aufgezeichnet
 
 |`plan.activity.select_item`
-|Select a part or a task on the left to inspect it.
-|Wähle links einen Teil oder eine Aufgabe, um ihn zu betrachten.
+|Select a part or a task in the tree to inspect it.
+|Wähle im Baum einen Teil oder eine Aufgabe, um ihn zu betrachten.
 |===
 
 The tree and the node narrative share `getNodeStateText` and `getNodeGlyph`, so a state cannot
 drift into one wording in the tree and another in the narrative.
+
+[#decisions]
+== Decisions of the Operator
+
+Settled by the operator on 2026-11-10 (D6): the plan is the object column with the tabs Process, Intent and Changes, and a list column whose list is the tree while a task is open; the tokens stay the one-step disclosure of the head line, and there is no Activity, Tokens or Settings tab (_Plan settings…_ stays a dialogue, link:../shared/work-actions.adoc#plan-actions[Work Actions, Plan Actions]); the changes are a tab rather than a disclosure; tree and narrative stand side by side from an object column of `720 px`; `node=` and `file=` are written only with their tab.

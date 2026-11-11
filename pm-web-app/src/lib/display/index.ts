@@ -104,10 +104,19 @@ export interface DisplayErrorText {
 }
 
 /**
- * Names the error a code stands for, through the shared error texts of `PLAN-86`.
+ * The catalogue area of the client's own error codes (`timeout`, `network_offline`,
+ * `unauthorized`), kept apart from the daemon's `error.*` catalogue so neither set can silently
+ * grow the other.
+ */
+const CLIENT_ERROR_AREA = 'common.error';
+
+/**
+ * Names the error a code stands for, through the shared error texts of `PLAN-86` and the client
+ * area of this client's own codes.
  *
- * A code the client does not know reads as the shared unknown fallback (`error.unknown.*`), so a
- * raw code (`UNENROLLED_PROJECT`) never reaches the operator.
+ * A client code (`timeout`, `network_offline`, `unauthorized`) resolves from `common.error.*`; a
+ * daemon code resolves from `error.*`. A code the client does not know reads as the shared unknown
+ * fallback (`error.unknown.*`), so a raw code (`UNENROLLED_PROJECT`) never reaches the operator.
  *
  * @param code the error code a refusal carries
  * @returns its title, cause and fix
@@ -118,8 +127,13 @@ export function displayError(
 ): DisplayErrorText {
   const lookup = translator(translate);
   const normalized = (code ?? '').trim().toLowerCase();
-  const known = normalized.length > 0 && hasMessage(`error.${normalized}.title`);
-  const base = known ? `error.${normalized}` : 'error.unknown';
+  const clientBase = `${CLIENT_ERROR_AREA}.${normalized}`;
+  let base = 'error.unknown';
+  if (normalized.length > 0 && hasMessage(`${clientBase}.title`)) {
+    base = clientBase;
+  } else if (normalized.length > 0 && hasMessage(`error.${normalized}.title`)) {
+    base = `error.${normalized}`;
+  }
   return {
     title: lookup(`${base}.title`),
     cause: lookup(`${base}.cause`),

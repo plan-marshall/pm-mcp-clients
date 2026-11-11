@@ -41,7 +41,7 @@
   {/key}
 {:else if !$runtimeStore.isPaired}
   <PairingView />
-{:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'project-onboarding'}
+{:else if !$runtimeStore.isOnboarded && !$runtimeStore.isOffline && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'project-onboarding'}
   <OnboardingView />
 {:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding'}
   <OnboardingView />

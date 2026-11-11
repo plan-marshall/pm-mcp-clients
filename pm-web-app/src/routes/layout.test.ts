@@ -280,7 +280,7 @@ describe('the app shell', () => {
     );
     expect(stopNow).not.toHaveBeenCalled();
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
-    expect(stopNow).toHaveBeenCalledWith('now', undefined, expect.anything());
+    expect(stopNow).toHaveBeenCalledWith('now');
 
     // The accepted stop ends the drain at once, even before a lifecycle event arrives.
     await waitFor(() => {
@@ -390,7 +390,6 @@ describe('the app shell', () => {
     const withdraw = vi
       .spyOn(apiClient, 'withdrawStop')
       .mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'));
-    const timeout = vi.spyOn(AbortSignal, 'timeout');
 
     render(Layout);
     const banner = await screen.findByTestId('draining-banner');
@@ -399,9 +398,8 @@ describe('the app shell', () => {
 
     await fireEvent.click(withdrawAct);
 
-    // The request carries its own deadline, so a DELETE the runtime never answers ends.
-    expect(withdraw).toHaveBeenCalledWith(expect.any(AbortSignal));
-    expect(timeout).toHaveBeenCalledWith(15_000);
+    // The client's own request limit bounds the act, so the view passes no deadline of its own.
+    expect(withdraw).toHaveBeenCalledWith();
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
       'The withdrawal was sent but not confirmed; check the runtime state.',
     );

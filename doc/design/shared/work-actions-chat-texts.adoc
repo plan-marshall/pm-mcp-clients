@@ -14,7 +14,7 @@ Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Pla
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` a plan a message is about (the chat's plan, the plan a decision belongs to, an epic's row), so a revision in a decision's chat names its plan, never the decision; `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue: `{point}` through the pause points of link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], a decision's `{reason}` through link:decisions-texts.adoc#texts[Decisions, Texts], `{outcome}` through `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview, Texts]), `{disposition}` through link:work-actions-review-texts.adoc[Reviews and Holds, Texts], a hold's `{reason}` and a source's flag `{reason}` through their own keys of the same areas; a waiver's `{gate}` and a re-planning `{trigger}` are identifiers and pass through as they are, in code style, never translated. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` a plan a message is about (the chat's plan, the plan a decision belongs to, an epic's row), so a revision in a decision's chat names its plan, never the decision; `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue: `{point}` through the pause points of link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], a decision's `{reason}` through link:decisions-texts.adoc#texts[Decisions, Texts], `{outcome}` through `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview, Texts]), also the `{outcome}` of `control.chat.line.row_failed`, which is the ended plan's outcome that mapped onto the epic's row, never the row's status, `{disposition}` through link:work-actions-review-texts.adoc[Reviews and Holds, Texts], a hold's `{reason}` and a source's flag `{reason}` through their own keys of the same areas; a waiver's `{gate}` and a re-planning `{trigger}` are identifiers and pass through as they are, in code style, never translated. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -350,16 +350,16 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Halt aufgehoben: {reason}
 
 |`control.chat.line.plan_pausing`
-|{subject} pauses {point}
-|{subject} pausiert {point}
+|{plan} pauses {point}
+|{plan} pausiert {point}
 
 |`control.chat.line.plan_paused`
-|{subject} paused in {channel, select, web {the web app ({device})} other {the terminal}}
-|{subject} pausiert in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
+|{plan} paused in {channel, select, web {the web app ({device})} other {the terminal}}
+|{plan} pausiert in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
 
 |`control.chat.line.plan_started`
-|{subject} started again in {channel, select, web {the web app ({device})} other {the terminal}}
-|{subject} wieder gestartet in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
+|{plan} started again in {channel, select, web {the web app ({device})} other {the terminal}}
+|{plan} wieder gestartet in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
 
 |`control.chat.line.version_changed`
 |version {version}: {cause, select, chat {revision from this chat applied} replan {re-planned} other {revised}}
@@ -438,6 +438,6 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |{origin, select, decision {aus dem Chat von {id}} other {aus einem früheren Chat}}
 
 |`control.chat.already_queued`
-|not applied: a revision of {plan} is already queued; accept this one once it has applied, or reject it
-|nicht übernommen: eine Revision von {plan} ist schon vorgemerkt; nimm diese an, sobald sie übernommen ist, oder lehne sie ab
+|not applied: a revision of {plan} is already queued; reject this one, or accept it if the queued one is not applied
+|nicht übernommen: eine Revision von {plan} ist schon vorgemerkt; lehne diese ab, oder nimm sie an, falls die vorgemerkte nicht übernommen wird
 |===

@@ -4,6 +4,7 @@ import { tick } from 'svelte';
 import ReportsView from './ReportsView.svelte';
 import { formatTime } from '../display/format';
 import { runtimeStore } from '../stores/runtime';
+import { ClientError } from '../api/errors';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import {
@@ -265,6 +266,31 @@ describe('ReportsView component', () => {
     await waitFor(() => {
       expect(apiClient.markReportRead).toHaveBeenCalledWith('rep-0142');
     });
+  });
+
+  it('keeps the rows, the scroll position and an open row menu while the list reloads', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    const menu = await within(card).findByRole('menuitem', { name: /Mark read/i });
+    expect(menu).toBeInTheDocument();
+
+    const tree = document.querySelector('.reports-tree') as HTMLElement;
+    tree.scrollTop = 480;
+
+    // A report without a payload announces that the list should be read again.
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockClear();
+    eventHandler?.('report.sent', {});
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(1));
+    await tick();
+
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(document.querySelector('.reports-tree')).toBe(tree);
+    expect(tree.scrollTop).toBe(480);
+    expect(within(card).getByRole('menuitem', { name: /Mark read/i })).toBeInTheDocument();
+    expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
   });
 
   it('marks unread rows with a dot and the bold subject', async () => {
@@ -697,6 +723,25 @@ describe('ReportsView component', () => {
     expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
   });
 
+  it('keeps a failed reload visible while the filter matches nothing', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await typeFilter('nothing-matches-this');
+    expect(await screen.findByTestId('report-filter-empty')).toBeInTheDocument();
+
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new ClientError('timeout'),
+    );
+    eventHandler?.('report.sent', {});
+
+    const error = await screen.findByTestId('reports-error');
+    expect(error).toHaveTextContent('The request took too long');
+    // The list stays where it is: the failure is reported above it, and the filter still says why
+    // the list shows no row.
+    expect(screen.getByTestId('report-filter-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('reports-refreshing')).toBeInTheDocument();
+  });
+
   it('keeps the unread count and makes no request while typing', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
@@ -723,13 +768,11 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
   });
 
-  it('sits on the triage template with no layout toggle', async () => {
+  it('sits on the triage template', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
     expect(document.querySelector('[data-testid="triage-page"]')).not.toBeNull();
-    expect(screen.queryByTestId('layout-split')).toBeNull();
-    expect(screen.queryByTestId('layout-compact')).toBeNull();
   });
 
   it('keeps the list beside the detail and marks the active card', async () => {
@@ -834,7 +877,7 @@ describe('ReportsView component', () => {
     });
 
     read.mockResolvedValueOnce(undefined);
-    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
@@ -1605,7 +1648,7 @@ describe('ReportsView component', () => {
 
     const h1Elements = document.querySelectorAll('h1');
     expect(h1Elements).toHaveLength(1);
-    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
+    expect(h1Elements[0]).toHaveTextContent(/The runtime refused the request/i);
   });
 
   it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
@@ -1918,5 +1961,151 @@ describe('ReportsView component', () => {
     await waitFor(() => {
       expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
     });
+  });
+
+  it('keeps a counted read read when the mark-all request fails (D1 L3-2)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    // A report opened through the route is retained by the mark-all itself: no read of its own
+    // retained it, which is the marker the old rollback deleted.
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+    let rejectMarkAll: (error: Error) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((_, reject) => {
+          rejectMarkAll = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+
+    // The runtime reports the read of the retained row while the request is still in flight.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    rejectMarkAll(new Error('mark all failed'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+    });
+
+    const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(card).toHaveAttribute('data-unread', 'false');
+    expect(within(card).getByTestId('report-read-state')).toBeInTheDocument();
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+  });
+
+  it('keeps the retained row and its counted read through a reload before the failed mark-all (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+    let served: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
+    let rejectMarkAll: (error: Error) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((_, reject) => {
+          rejectMarkAll = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    // The server no longer serves the retained row, and a reload lands before the response.
+    served = {
+      items: mockReports.filter((report) => report.id !== 'rep-0142'),
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    };
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockClear();
+    eventHandler?.('report.read', {});
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(1));
+
+    rejectMarkAll(new Error('mark all failed'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+    });
+
+    const cards = Array.from(document.querySelectorAll('.report-card')).map((card) =>
+      card.getAttribute('data-report-id'),
+    );
+    expect(cards).toEqual(['rep-0142', 'rep-0139', 'rep-0131']);
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toHaveAttribute(
+      'data-unread',
+      'false',
+    );
+  });
+
+  it('keeps a reload in flight before the mark-all response from counting a read twice (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+    let served: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
+    let rejectMarkAll: (error: Error) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((_, reject) => {
+          rejectMarkAll = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    // The retained row and a row outside the detail are read while the request runs.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    eventHandler?.('report.read', { report_id: 'rep-0139' });
+    await waitFor(() => {
+      expect(screen.getByText(/1 unread/)).toBeInTheDocument();
+    });
+
+    // A reload in flight lands before the response; the server has counted both reads and serves
+    // the one unread row that is left.
+    served = {
+      items: mockReports.filter((report) => report.id === 'rep-0131'),
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    };
+    (apiClient.getReports as ReturnType<typeof vi.fn>).mockClear();
+    eventHandler?.('report.read', {});
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(1));
+
+    rejectMarkAll(new Error('mark all failed'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+    });
+
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toHaveAttribute(
+      'data-unread',
+      'false',
+    );
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
+    // The reload kept the read in flight counted, so a repeated event for it moves no count.
+    eventHandler?.('report.read', { report_id: 'rep-0139' });
+    await tick();
+    await tick();
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
   });
 });

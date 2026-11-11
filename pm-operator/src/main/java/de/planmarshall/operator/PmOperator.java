@@ -62,7 +62,8 @@ import picocli.CommandLine.Option;
                                         EnrolHarnessCommand.class,
                                         RolesCommand.class,
                                         AcceptEditCommand.class,
-                                        NeedsCommand.class
+                                        NeedsCommand.class,
+                                        FindCommand.class
                     })
 @OperatorVerb
 public final class PmOperator implements Callable<Integer> {

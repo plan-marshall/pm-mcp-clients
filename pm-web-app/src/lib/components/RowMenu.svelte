@@ -67,9 +67,21 @@
     }
   }
 
-  /** Places the open menu again after the page scrolled or the viewport changed its size. */
-  function onViewportChange(): void {
-    if (open) place();
+  /**
+   * Places the open menu again after the page scrolled or the viewport changed its size.
+   *
+   * A scroll inside the menu itself moves none of the trigger's box: a menu capped to the room on
+   * its side scrolls its own entries, and re-placing it would reset both the cap and the entry the
+   * operator scrolled to. Only a scroll of the page around the trigger re-places the menu.
+   *
+   * @param event the viewport event that asked for the re-place
+   */
+  function onViewportChange(event?: Event): void {
+    if (!open) return;
+    if (event?.type === 'scroll' && event.target instanceof Node && menuHost?.contains(event.target)) {
+      return;
+    }
+    place();
   }
 
   function followViewport(follow: boolean): void {

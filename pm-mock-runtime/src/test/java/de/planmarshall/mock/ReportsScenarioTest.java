@@ -32,6 +32,7 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReadReportsRequest;
 import de.planmarshall.api.report.ReadReportsResponse;
+import de.planmarshall.api.report.ReportItem;
 import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 
@@ -149,22 +150,34 @@ class ReportsScenarioTest {
 
             var listBefore = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             var pageBefore = ReportsPage.fromJson(listBefore.bodyText());
-            var shownIds = pageBefore.items().stream().map(r -> r.id()).toList();
+            var shownIds = pageBefore.items().stream().map(ReportItem::id).toList();
             assertEquals(5, shownIds.size());
 
-            var reqBody = ReadReportsRequest.of(shownIds).toJson();
+            // A non-prefix selection: the second and the fourth shown report. A selection of the
+            // first n would pass even if the mock ignored which ids it was given.
+            var chosenIds = List.of(shownIds.get(1), shownIds.get(3));
+            var untouchedIds = shownIds.stream().filter(id -> !chosenIds.contains(id)).toList();
+
+            var reqBody = ReadReportsRequest.of(chosenIds).toJson();
             var res = client.send(HttpRequest.json("POST", "/api/v1/reports/read", reqBody)
                     .withHeader("Authorization", auth));
             assertEquals(200, res.status());
 
             var readResp = ReadReportsResponse.fromJson(res.bodyText());
-            assertEquals(5, readResp.markedCount());
+            assertEquals(2, readResp.markedCount());
 
-            // 2 older unread reports remain
+            // Five of the seven unread reports remain: the three unrequested shown ones and the two
+            // older ones.
             var listRes = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             var page = ReportsPage.fromJson(listRes.bodyText());
-            assertEquals(2, page.unreadCount());
-            assertEquals(2, page.items().size());
+            var remainingIds = page.items().stream().map(ReportItem::id).toList();
+            assertAll(
+                    () -> assertEquals(5, page.unreadCount()),
+                    () -> assertEquals(5, page.items().size()),
+                    () -> assertTrue(chosenIds.stream().noneMatch(remainingIds::contains),
+                            "every requested id left the unread list: " + remainingIds),
+                    () -> assertTrue(remainingIds.containsAll(untouchedIds),
+                            "every unrequested shown id stays unread: " + remainingIds));
         }
     }
 

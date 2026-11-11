@@ -45,13 +45,15 @@ Run the design-system checks against the merged code and record the result. Ever
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/visual-design/verification.adoc exists on origin/main with checks VD-V-01..VD-V-10
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/visual-design/verification.adoc` holds VD-V-01..VD-V-10 (lines 10-65).; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+- HYPOTHESIS: the vocabulary lint runs in the build and can be read as a count per view — confirm/refute at `pm-web-app/eslint.config.js` § `vocabulary` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `doc/claude_review/verification-results/verify-web-design-system.adoc` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/claude_review/visual-design/analysis.adoc` — present at HEAD c4dc9bb4
+
+- OBSERVED: `doc/claude_review/verification-results/verify-web-design-system.adoc` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/claude_review/visual-design/analysis.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -83,3 +85,22 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: re-grounding of 2026-11-10 at HEAD 1cc0e10e. D1–D3 are `AGREED` and merged; the checks are rewritten against them. The three deliverables and their ids stay; the Done-when clauses name these checks:
+
+- `VD-V-01`: the decisions of 2026-10-25 stand in `doc/design/web-app/README.adoc` § Decisions of the Operator (passes by reading).
+- `VD-V-02`: every text and state colour pair of `doc/design/web-app/theme-readability.adoc` passes in both themes; the audit allowlist is empty or reasoned.
+- `VD-V-03`: the theme choice survives a reload; where it is offered is the placement of `PLAN-85` (see the placement note of `PLAN-29`).
+- `VD-V-04`: no emoji in any rendered text; a harness without an icon shows a monogram (`doc/design/web-app/harness-icons.adoc`); a mascot figure appears only on the calm surfaces of `doc/design/web-app/brand-mark-mascot.adoc#surfaces` and never beside the waiting mark.
+- `VD-V-05`: every component of the closed vocabulary of `doc/design/web-app/components.adoc#vocabulary` (tags, interaction, fields, containers, data, supporting, chat, templates) has a unit test and a fixture on `/dev/components` in both themes.
+- `VD-V-05b` (defined here, recorded as its own row): the vocabulary lint of `doc/design/web-app/components.adoc#rules` reports nothing (no raw `<button>`, `<a>`, `<input>`, `<textarea>`, `<select>`, no `outline: none` outside `lib/components`) on every view.
+- `CC-V-06`: Escape, focus return and disabled reasons as before, plus the column keys of `doc/design/web-app/navigation.adoc#keys` (`Ctrl+←/→`, `[` `]`, focus to the heading after a window shift, the live-region announcement); T2 by keyboard.
+- `CC-V-07`: the axe-core audit (baseline of `PLAN-37`) finds no serious issue on every view, the new ones included.
+
+Dependencies (all landed before it is emitted): the D1 foundation package, the D2 navigation engine, the D3 brand assets package, the views package, and the web plans `PLAN-49`, `51`, `52`, `53`, `55`, `58`, `59`, `60`, `62` (so that the lint is clean).
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.

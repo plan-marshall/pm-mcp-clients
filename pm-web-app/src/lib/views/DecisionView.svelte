@@ -4,7 +4,9 @@
   import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import { errorCodeOf } from '../api/errors';
   import ChatPanel from '../components/ChatPanel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import {
@@ -22,6 +24,8 @@
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  /** The code of a failed list read, which `ErrorState` resolves to its words. */
+  let loadError = $state('');
 
   /** The filter query; it runs over the loaded decisions only. */
   let query = $state('');
@@ -398,12 +402,12 @@
 
   async function loadDecisions() {
     isLoading = true;
-    errorMessage = '';
+    loadError = '';
     try {
       decisions = await apiClient.getDecisions();
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('decisions.list.load_failed');
+      loadError = errorCodeOf(err) || 'unknown';
     } finally {
       isLoading = false;
     }
@@ -1285,14 +1289,24 @@
       <div class="error-banner" role="alert">
         <p>{errorMessage}</p>
         <Button variant="secondary" size="small" onclick={loadDecisions}
-          >{$t('web.common.retry')}</Button
+          >{$t('common.action.retry')}</Button
         >
       </div>
     {/if}
 
+    {#if loadError && decisions.length > 0}
+      <div class="error-banner" data-testid="decisions-error">
+        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
+      </div>
+    {/if}
+
     {#if isLoading}
-      <div class="loading-state">
-        <Spinner size="2.5rem" label={$t('decisions.list.loading')} />
+      <div class="loading-state" data-testid="decisions-loading">
+        <Skeleton shape="card" rows={3} label={$t('decisions.list.loading')} />
+      </div>
+    {:else if loadError && decisions.length === 0}
+      <div class="error-banner" data-testid="decisions-error">
+        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
       </div>
     {:else if decisions.length === 0}
       <div class="empty-state">

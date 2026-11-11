@@ -358,7 +358,7 @@ Every component draws these itself, so every use has them:
 [#templates]
 == Page Templates
 
-A view sits on one of the four templates of `pm-web-app/src/lib/templates/` and takes its width and its split from it (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]). Two of them carry the columns of link:navigation.adoc[Navigation]; `WizardPage` and `DashboardPage` stay single pages, and `WizardPage` hosts the chat's side column beside its content (link:navigation.adoc#side-columns[Navigation, Side Columns]).
+A view sits on one of the four templates of `pm-web-app/src/lib/templates/` and takes its width and its split from it (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]). Two of them carry the columns of link:navigation.adoc[Navigation]; `WizardPage` and `DashboardPage` stay single pages, and `WizardPage` hosts the chat's side column beside its content with the same props as `TriagePage` (`side`, `sideOpen`, `onHideSide`; link:navigation.adoc#side-columns[Navigation, Side Columns]).
 
 [#triage-page]
 === TriagePage: the Column Engine
@@ -371,14 +371,14 @@ The template of every lens: it draws the chain of levels as columns and owns the
 * *The focus*: after a shift of the window it moves the focus to the heading of the column now in view and announces it in the frame's live region; a column out of the window is not rendered.
 * *The template owns the columns, never the items*: the view gives each level and fills its column; it keeps its rows, its filter, its matches, its selection and its `j`/`k`/`Enter`.
 
-Source and surface: `pm-web-app/src/lib/templates/TriagePage.svelte`, tests in `TriagePage.test.ts`; the props are `levels` (`key`, `kind`, `title`, `href`, `state`), `label` and `side`, with one snippet per level for its column's body and one for the object column.
+Source and surface: `pm-web-app/src/lib/templates/TriagePage.svelte`, tests in `TriagePage.test.ts`; the props are `levels` (`key`, `kind`, `title`, `href`, `state`), `label`, `side` (the snippet of the side column, the chat), `sideOpen` (whether it is shown, from `chat=open`) and `onHideSide` (called by _Hide the chat_ and `Escape`, which replace the address), with one snippet per level for its column's body and one for the object column. The template computes the side column's width from its container; the view gives only its content. `WizardPage` takes the same three props, and the package that builds the column engine builds them on both (the operator, 2026-11-10, D6).
 
 [#object-page]
 === ObjectPage: the Object Column
 
 The regions of an object — the head (`KindMark`, title, id, state sentence, and the `ActionBar`), the attention strip, the tabs and the body — are the regions of the object column (link:navigation.adoc#column-types[Navigation, Two Column Types]). Inside the column engine it draws no path (the top bar's breadcrumb is the only one) and no page cap; outside it, on a page of its own, it keeps its cap of `1440 px`. The same object as a list column shows only the compact head: `KindMark`, title, state word, and its main act as a secondary `Button`.
 
-Source and surface: `pm-web-app/src/lib/templates/ObjectPage.svelte`, tests in `ObjectPage.test.ts`; the slots are `kind`, `title`, `id`, `state`, `primary`, `secondary`, `overflow`, `attention`, `tabs` and the body, and the prop `compact` draws the head of a list column. The slot `path` goes.
+Source and surface: `pm-web-app/src/lib/templates/ObjectPage.svelte`, tests in `ObjectPage.test.ts`; the slots are `kind`, `title`, `id`, `state`, `primary`, `secondary`, `overflow`, `attention`, `tabs` and the body, and the prop `compact` draws the head of a list column. The slot `path` goes. It has no side column of its own: inside the engine the side column is the engine's.
 
 [#containers]
 == Containers
@@ -447,9 +447,9 @@ Source and surface: `pm-web-app/src/lib/components/EmptyState.svelte`, tests in 
 
 image::../../resources/diagrams/web-component-error-state.svg[A failed state with the code folded under Details,360,align=center]
 
-The same block as an empty state, in the danger role, with the technical code folded under `Details`. The sentence says what the person can do next; the code is there for a report and never leads, so it stays closed until someone opens it.
+The same block as an empty state, in the danger role. Its words are not the view's: the block reads the error's code through the display layer (`displayError`), which resolves the title, the cause and the fix from the shared catalogue — the daemon's `error.<code>.*` texts or the client's own `common.error.<code>.*` area. The title says what happened, the one sentence is the fix, and the cause and the technical code fold under `Details` (the shared `common.action.details`); the code is there for a report and never leads, so it stays closed until someone opens it. A code the catalogue does not know reads as the shared unknown fallback, and the code itself still stands under `Details`, so a raw wire value never leads.
 
-Source and surface: `pm-web-app/src/lib/components/ErrorState.svelte`, tests in `ErrorState.test.ts`; the props are `title`, `message`, `code`, `detailsLabel`, `actionLabel`, `onAct` and `titleLevel`.
+Source and surface: `pm-web-app/src/lib/components/ErrorState.svelte`, tests in `ErrorState.test.ts`; the props are `code`, `actionLabel`, `onAct` and `titleLevel`.
 
 [#skeleton]
 === Skeleton

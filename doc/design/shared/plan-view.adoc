@@ -46,6 +46,17 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
 * A level shows its nodes one line each; what the line cannot hold (times, counts) is the next line, or one step away.
 
+[#tabs]
+=== The Tabs of the Web App
+
+In the web app the plan is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]). As the object column it shows the head above and three tabs below it; as a list column, while one of its tasks is open as the next level, it shows its compact head and the tree (link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]).
+
+* *Process* (the default): the levels of this document, the tree beside the narrative of the selected node.
+* *Intent*: the plan's intent record, its builder check and its outline (link:intent-and-outline.adoc#intent[Intent and Outline]); the narrative of `refine` and `outline` links to it. This is the one step from the head the intent design names.
+* *Changes*: the plan's changes (<<changes>>), absent before the first capture; the size line of the head is a link to it.
+* *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_), and the activity of a worker is the task's own level (<<worker>>).
+* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view: the tree and the changes in link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], the intent's sections in link:intent-and-outline.adoc#terminal[Intent and Outline, The Terminal].
+
 [#states]
 == The State of a Node
 
@@ -150,12 +161,35 @@ Selecting a task of a leaf shows what its worker does, as it does it (link:../..
 * *The activity*, newest last, each entry with its time and its kind: what the model wrote (cut to the runtime's bound), each tool it called with its target (a file, a command, a link of the task such as `submit:TASK-003`), whether the call failed and the size of its result, never its content, the files it changed, the links of its task it followed, the questions it asked, and its acknowledgement of an answer. A task of a harness whose output gives no event stream shows only the server's entries, and the head says so (`plan.activity.server_only`).
 * *Live while shown*: the client reads the activity from a cursor and opens its live stream only while it shows the task, and closes it when the task is left (`GET /api/v1/plans/{plan_id}/tasks/{queue_task_id}/activity` and `…/activity/events`, link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API]). Entries that gave way to the journal's bound show as a gap (`plan.activity.gap`). A task that ended shows its activity as it was.
 * *Untrusted*: every text and target may come from the project, a review comment, or a tool result: shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets in it are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
+* *Another model*: an entry `model_differs` says that the harness answered a turn with another model than the one the worker was launched with, naming both (`plan.activity.model_differs`; link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#served-model[The Model That Answered]); it is information only, needs no act, and the head keeps the launch model.
 * *Off track*: where the server judged the worker off track, the head and the entry say so with the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its measured value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`; link:../../../../pm-mcp-core/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[A Worker Off Track]). It needs no act and is never shown as something that needs the operator; a `yield` or a `restart` is also a report (link:reports.adoc[Reports]).
 
 [#change-size]
 == Change So Far
 
-The line below the tokens says how large the plan's change was at its last capture: `change so far   12 files · +340 −27 · 2 unplanned` (`plan.change.size`; link:../../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]). Git measured it, the runtime serves it, and the client adds nothing up. Before the first capture the line is absent, never `0 files`; `2 unplanned` is shown only where there are any. The diff itself is read in the pull request.
+The line below the tokens says how large the plan's change was at its last capture: `change so far   12 files · +340 −27 · 2 unplanned` (`plan.change.size`; link:../../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]). Git measured it, the runtime serves it, and the client adds nothing up. Before the first capture the line is absent, never `0 files`; `2 unplanned` is shown only where there are any. The line opens the plan's changes (<<changes>>): in the web app it is a link to the _Changes_ tab, in the terminal the key `d`.
+
+[#changes]
+== The Changes
+
+The code the plan changed, read where the operator is, also where no pull request exists (a plan that lands on the base branch itself; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]). Everything comes from the runtime's answer at the `head` of the last capture (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#plan-changes[The Plan's Changes]); the client computes no diff.
+
+----
+  fix-relay › changes · at 3f2a91c · 12 files · +340 −27 · 2 unplanned
+  M  pm-relay/src/main/java/…/Transport.java          +48  −12
+  A  pm-relay/src/test/java/…/TransportTest.java      +96
+  R  pm-relay/…/Frame.java ← pm-relay/…/Packet.java   +3   −3
+  M  pom.xml                                          +1   −1   unplanned
+  B  doc/resources/relay.png                          binary
+----
+
+* *The list*: one row per file in the order served, with its status mark (`A` added, `M` modified, `D` deleted, `R` renamed with the path it came from, `B` binary), its lines added and removed, and `unplanned` where it is (`plan.changes.unplanned`); the head names the capture's `head` (short) and the size line's figures.
+* *A file*: selecting a row opens its hunks: each hunk's header with its old and new lines, the lines with `−`, `+`, or a space, on the diff tokens of the client. A file the runtime cut shows `plan.changes.truncated` with the count of lines left out. A binary file shows only its row.
+* *Untrusted*: every path and line is shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
+* *Read only*: no hunk is accepted or rejected here, and the view offers no act on the code; a change the operator wants goes into the plan's chat (link:work-actions.adoc#chat[Chatting with the Planning Role]).
+* *Absent*: before the first capture the terminal's `d` says `plan.changes.not_captured`, never an empty list, and the web app shows no _Changes_ tab and no size line (<<tabs>>); where the captured commit is gone both say `plan.changes.unavailable` (in the web app inside the tab, which is present then). An ended plan shows its last capture.
+* *Live*: on `plan.change_captured` an open list is read again and keeps the selected file by its path; an open file is read again only when its row changed.
+
 
 [#tokens]
 == Tokens So Far
@@ -198,7 +232,7 @@ While a revision the operator accepted in the plan's chat waits for its task bou
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]), shows read-only as it ended, in the web app with the same tabs (<<tabs>>): every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
 
 [#texts]
 == Texts
@@ -212,6 +246,34 @@ Keys of the area `plan`, shared by both clients.
 |`plan.change.size`
 |{files, plural, one {# file} other {# files}} · +{insertions} −{deletions}{unplanned, plural, =0 {} other { · # unplanned}}
 |{files, plural, one {# Datei} other {# Dateien}} · +{insertions} −{deletions}{unplanned, plural, =0 {} other { · # ungeplant}}
+
+|`plan.changes.title`
+|changes · at {head} · {size}
+|Änderungen · bei {head} · {size}
+
+|`plan.changes.unplanned`
+|unplanned
+|ungeplant
+
+|`plan.changes.binary`
+|binary
+|binär
+
+|`plan.changes.truncated`
+|{lines, plural, one {# more line not shown} other {# more lines not shown}}
+|{lines, plural, one {# weitere Zeile nicht gezeigt} other {# weitere Zeilen nicht gezeigt}}
+
+|`plan.changes.not_captured`
+|No changes captured yet
+|Noch keine Änderungen erfasst
+
+|`plan.changes.unavailable`
+|The changes are no longer in the repository
+|Die Änderungen sind nicht mehr im Repository
+
+|`plan.activity.model_differs`
+|answered by {served} instead of {launched}
+|beantwortet von {served} statt {launched}
 
 |`plan.view.title`
 |{plan}

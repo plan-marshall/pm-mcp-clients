@@ -117,7 +117,7 @@ The window for the deepest chain (lens › project › epic › plan › task), 
 
 [cols="1,1,3,1,3",options="header"]
 |===
-|Viewport |Content, rail expanded |Window, rail expanded |Content, rail collapsed |Window, rail collapsed
+|Viewport (the container widths it gives) |Content, rail expanded |Window, rail expanded |Content, rail collapsed |Window, rail collapsed
 
 |`360 px`
 2+|`336 px`, no rail: one column, Up, the breadcrumb shortened in the middle, no strip (<<phone>>)
@@ -169,8 +169,8 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 [#up]
 == Up, the Breadcrumb, Back
 
-* *Up* sits at a fixed place in the head of the first visible column: the parent's `KindMark` and name (the epic's mark and _Relay Hardening_). It *navigates*: it pushes the parent's address, and the parent becomes the deepest selection. It behaves the same at every width.
-* *One breadcrumb*, in the top bar: lens › project › epic › plan, each segment with its `KindMark`, titles rather than slugs (link:components.adoc#breadcrumb[Components, Breadcrumb]). Every segment but the last navigates as Up does: the project segment of a plan in Running work goes to the project's level of Running work, not to the project page. The object column's head carries no second path.
+* *Up* sits at a fixed place in the head of the first visible column: the parent's `KindMark` and name (the epic's mark and _Relay Hardening_). It *navigates*: it pushes the parent's address, and the parent becomes the deepest selection. It behaves the same at every width. Up from a project of a lens reaches the lens's own list with nothing selected, never filled from the remembered place (<<url>>).
+* *One breadcrumb*, in the top bar: lens › project › epic › plan, each segment with its `KindMark`, titles rather than slugs (link:components.adoc#breadcrumb[Components, Breadcrumb]). Every segment but the last navigates as Up does: the project segment of a plan in Running work goes to the project's level of Running work, not to the project page, and the lens segment to the lens's own list with nothing selected (<<url>>). The object column's head carries no second path.
 * *The browser's back and forward* move through the history (<<url>>).
 * *There is no caller stack.* No page keeps a list of where the operator came from, and no view draws a Back of its own: the in-page Back of the plan, the epic, the settings, the completion report, the overview, the project onboarding, the epic's adoption and decomposition, the machine settings and the cleanup go.
 * *The backs that remain have a meaning of their own*: the Back of a wizard (link:components.adoc#hierarchy[Components, Hierarchy]), the cancel of a dialogue, and the closing of an object opened in place (<<lenses>>): a ghost act _Back to the job_ in the head of that column, which returns to the caller with its state (link:../shared/cleanup.adoc#details[Cleanup, Details]).
@@ -194,13 +194,16 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 |`mode=ended` (running is the default), `group=epic` (by plan is the default), `follow=on`; carried on every address of the lens (`/plans/{id}?mode=ended`); an address without it takes the mode its object implies (an ended plan is in the ended mode)
 
 |A tab of an object
-|`tab={id}` (`/settings?tab=access`); an address without it opens the first tab
+|`tab={id}` (`/settings?tab=access`, `/plans/fix-relay?tab=intent`); an address without it opens the first tab. A plan's tabs are `process`, `intent` and `changes` (link:../shared/plan-view.adoc#tabs[Plan View, The Tabs of the Web App]), an epic's `plans`, `intent`, `landings`, `reviews` and `events` (link:../shared/epic-view.adoc#tabs[Epic View, The Tabs of the Web App])
 
 |An object opened in place
 |`open={kind}:{id}` on the caller's address (`/system/cleanup?open=plan:fix-relay`, `/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report:fix-relay`); the completion report takes the kind `completion-report` and the id of its plan
 
 |A node of the plan's phase tree
-|`node={path}`, the node ids from the plan down, joined by `/` (`/plans/fix-relay?node=execute/land`): a phase or a sub-workflow selected in the plan's list column; the tree opens with the path to it expanded and the node selected. A task is a level of its own and takes the path (`/plans/{id}/tasks/{task}`); the follow mode writes no node
+|`node={path}`, the node ids from the plan down, joined by `/` (`/plans/fix-relay?node=execute/land`): a phase or a sub-workflow selected in the plan's tree; the tree opens with the path to it expanded and the node selected. It is written only with the tab _Process_. A task is a level of its own and takes the path (`/plans/{id}/tasks/{task}`); the follow mode writes no node
+
+|A file of the plan's changes
+|`file={path}` with `tab=changes` (`/plans/fix-relay?tab=changes&file=pm-relay/pom.xml`), written only with that tab; switching the tab replaces the address without it (link:plan-view-interaction.adoc#addresses[Plan View Interaction, Addresses])
 
 |A side column
 |`chat=open` (<<side-columns>>), and with it `turn={turn_id}` for a turn of the chat, which the chat scrolls into view (link:chat.adoc#live[Chat and Voice, Scroll and Live])
@@ -209,8 +212,11 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 * *Push* only for a change of depth — opening a child, Up, a breadcrumb segment, opening in place — or of lens.
 * *Replace* for a change to a sibling in the same column, for a `j`/`k` move, for a node selected in the phase tree, for a tab, a mode or a scope switched inside the lens, for opening or hiding a side column, and for every selection the app makes on its own (a fallback to the parent, the follow mode moving to the next task, filling a bare lens).
 * *An object in place* is opened by a push and closed by the history's back, so _Back to the job_ is a history back. An address loaded with `open=` has nothing to go back to: its close replaces the address with the caller's.
-* *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task; selecting one ends it.
-* *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names, and an explicit click on a lens opens that lens, so the rail's What waits always opens the list at `/`. Only two loads are filled from the remembered place, by `replaceState`: a bare start of the app (the app opened at `/` from outside it, not by a click inside it), which opens where the operator left it and, without a remembered place, stays on What waits; and the bare lens `/overview`.
+* *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task or a part of the tree; selecting one ends it: the push drops `follow=on` and writes the task's path or the part's `node=`.
+* *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names, and an explicit click on a lens opens that lens, so the app's links to What waits (the rail's, the bottom bar's) address it as `/?lens=waits`, an address that names the lens and so wins in any tab, a new one included; a bare `/` is the start the remembered place may fill. The remembered place fills an address at two entry points only:
+** *A load without the app's mark*: every entry the app writes carries its mark in `history.state`, so a load whose state has none is the app opened from outside it (a typed address, a bookmark, a new tab). At `/` or at the bare `/overview` it opens where the operator left it, by a replace; without a remembered place `/` stays on What waits.
+** *A click on Running work* (the rail's, or the bottom bar's on a phone): it opens `/overview` filled from the remembered place, by a push of the filled address.
+** *Never filled*: Up and the breadcrumb's lens segment push the lens's own list with nothing selected, with the app's mark, and a reload of that entry keeps the mark and so stays unfilled; a reload of `/?lens=waits` stays on What waits. The remembered place never holds the mode, so the rail opens running work (the operator, 2026-11-10, D6).
 * *A pairing code in the fragment* is redeemed before the first write and is never written into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
 * *Objects and workflows never collide*: an object is `/{kind}s/{id}`, and the segment after `/{kind}s/` is always an id. A workflow has a path of its own (`/project-onboarding/{entry}`, `/decomposition`, `/start`) or a fixed segment below its object's id (`/projects/{id}/start`, `/epics/{id}/decomposition`), never a name beside the ids, so no id — a project called `onboard`, an epic called `decompose` — can collide with it.
 * *An old address* of a moved view (`/decisions?decision=`, `/reports?plan=`, `/settings/machine`, `/settings/browser`, `/projects?project=`, `/projects/onboard`, `/epics/decompose`) is replaced by its address in this scheme when it is opened; pre-1.0, there is no other compatibility.
@@ -270,18 +276,19 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 == Side Columns: the Chat
 
 * *The chat is a side column*, not a level. It docks to the right of the object column it belongs to, or of a `WizardPage`'s content where it is opened in a wizard (starting work, the decomposition, a question of the project's setup step, link:components.adoc#templates[Components, Page Templates]); the object keeps its full head, and the gap strip never shows the chat.
-* *Its width* is `480 px`, or `400 px` where `480 px` would cost the window a column or would drop a wizard's content below `480 px`.
+* *Its templates*: the column engine (`TriagePage`) and `WizardPage` dock it, through the same props (link:components.adoc#triage-page[Components, TriagePage]); the object column has no side column of its own, since it stands inside the engine.
+* *Its width* is `480 px`, or `400 px` where `480 px` would cost the window a column or would drop a wizard's content below `480 px`. Both, and whether the object and the chat fit side by side, are computed from the width of the template's container, as the window is (<<window>>), never from the viewport.
 * *Where the window cannot show the object column (or the wizard's content) and the chat side by side*, the chat takes the space and the object becomes a hidden level; with one column there is no strip, and _Hide the chat_ returns to the object or the wizard. The object column's own levels shift left as usual.
 * *Its address* is the query `chat=open`; opening and hiding it replace the address and never push.
 * *Hiding the chat* (`Escape`, _Hide the chat_) keeps it running; _New chat_ is the chat's own act. What the chat shows is the chat design's.
-* *From the chat to an object*: a reference chip or a status card's _Open it_ (link:chat.adoc#status-cards[Chat and Voice, Status Cards]) opens the target. A target of the chat's own subject (its task, its decision, its hold, its queued revision; in a decision's chat the plan, and with it its queued revision, is another subject) replaces the object column's address and keeps `chat=open`, so it stands beside the chat (`/plans/fix-relay/tasks/TASK-4?chat=open`, a decision in place `/plans/fix-relay?open=decision:Q-007&chat=open`); closing a decision opened so replaces the address again with the one it replaced (its `open` removed, `chat=open` kept), never a history back, which would leave the plan. `chat=open` always names the chat of the object column's object (the plan), never one of an object opened in place: a decision's own chat opens at the decision's own address (`/decisions/Q-007?chat=open`). A target of another subject (another plan, the epic) is a change of object: its address is pushed without `chat`, the chat stays with its subject, and the history's back returns to it. Where the window shows one column only, every target is pushed without `chat`, so a reload shows the target, and the history's back returns to the chat (D5, the operator, 2026-11-09).
+* *From the chat to an object*: a reference chip or a status card's _Open it_ (link:chat.adoc#status-cards[Chat and Voice, Status Cards]) opens the target. A target of the chat's own subject (its task, its decision, its hold, its queued revision; in a decision's chat the plan, and with it its queued revision, is another subject) replaces the object column's address and keeps `chat=open`, so it stands beside the chat (`/plans/fix-relay/tasks/TASK-4?chat=open`, a decision in place `/plans/fix-relay?open=decision:Q-007&chat=open`, an `open=` form that waits for the address model of `PLAN-143`, until which the decision's own address is pushed); closing a decision opened so replaces the address again with the one it replaced (its `open` removed, `chat=open` kept), never a history back, which would leave the plan. `chat=open` always names the chat of the object column's object (the plan), never one of an object opened in place: a decision's own chat opens at the decision's own address (`/decisions/Q-007?chat=open`). On a task's address the task stands in the object column, but a task has no chat of its own: `chat=open` there names the chat of the plan the address is in (`/plans/fix-relay/tasks/TASK-4?chat=open` is the plan's chat beside the task), and a reload restores it so. A target of another subject (another plan, the epic) is a change of object: its address is pushed without `chat`, the chat stays with its subject, and the history's back returns to it. Where the window shows one column only, every target is pushed without `chat`, so a reload shows the target, and the history's back returns to the chat (D5, the operator, 2026-11-09).
 
 [cols="1,3,3",options="header"]
 |===
-|Viewport |Rail expanded, chat open |Rail collapsed, chat open
+|Viewport (the container widths it gives) |Rail expanded, chat open |Rail collapsed, chat open
 
 |below `768 px`
-2+|the chat takes the screen
+2+|the chat takes the screen, the bottom bar included
 
 |`1024 px`
 |the chat only, at the full width (`744`)
@@ -382,14 +389,14 @@ Each plan reads the parts named here; a plan that finds them changed is re-scope
 |===
 |Plan |The parts of this design it relies on
 
-|The navigation engine
-|<<window>> and <<gap-strip>> on `TriagePage` as the column engine; <<url>> in the address sync; <<up>>: Up and the breadcrumb with its `KindMark`s in `TopBar`; the rail's lens from the route (<<lenses>>); the caller stack and the in-page Backs removed; <<keys>>; the work list beside a plan (the task of `web-moving-between-plans`); the template is link:components.adoc#triage-page[Components, TriagePage]
+|The navigation engine (`PLAN-142`, `PLAN-143`, `PLAN-144`)
+|<<window>> and <<gap-strip>> on `TriagePage` as the column engine, and the side column of <<side-columns>> on `TriagePage` and `WizardPage` with the props of link:components.adoc#triage-page[Components, TriagePage] (`PLAN-142`); <<url>> in the address sync, with the app's mark in `history.state` and the remembered place filled only at the two entry points (`PLAN-143`); <<up>>: Up and the breadcrumb with its `KindMark`s in `TopBar`, the lens segment and Up from a project pushing the lens's unfilled list (`PLAN-144`); the rail's lens from the route (<<lenses>>); the caller stack and the in-page Backs removed; <<keys>>; the work list beside a plan (the task of `web-moving-between-plans`)
 
 |`PLAN-52` (Running work)
-|<<levels>>: the project list column, running and ended, by plan and by epic and the follow mode as modes in the address (<<url>>)
+|<<levels>>: the project list column, running and ended, by plan and by epic and the follow mode as modes in the address (<<url>>); the remembered place without the mode, so the rail opens running work (<<url>>)
 
 |`PLAN-55`, `PLAN-58` (the plan, the epic)
-|<<column-types>>: the object column and the list column; the decision of a waiting plan in place (<<lenses>>); the chat as a side column (<<side-columns>>)
+|<<column-types>>: the object column and the list column; the plan's tabs Process, Intent and Changes (link:../shared/plan-view.adoc#tabs[Plan View, The Tabs of the Web App], link:plan-view-interaction.adoc[Plan View Interaction]) and the epic's tabs Plans, Intent, Landings, Reviews and Events (link:../shared/epic-view.adoc#tabs[Epic View, The Tabs of the Web App]) as `tab=` (<<url>>); the decision of a waiting plan in place (<<lenses>>); the chat as a side column (<<side-columns>>)
 
 |`PLAN-59` (Projects)
 |the one project page as the Projects lens's object (<<lenses>>)
@@ -401,7 +408,10 @@ Each plan reads the parts named here; a plan that finds them changed is re-scope
 |What waits as a launcher (<<lenses>>); its rows (<<kinds>>); the bottom bar (<<phone>>)
 
 |`PLAN-62` (the phase tree)
-|the phase tree as the plan's list of children (<<levels>>); plain arrows stay with the tree (<<keys>>)
+|the phase tree as the plan's list of children (<<levels>>) and in its tab _Process_, `node=` written only with that tab (<<url>>); plain arrows stay with the tree (<<keys>>)
+
+|The web chat packages (`PLAN-135`, `PLAN-136`, `PLAN-137`)
+|<<side-columns>>: no side column of their own; they wait for the engine's side column (`PLAN-142`), and the chat's `open=` forms (a target in place beside the chat) for the address model (`PLAN-143`): until it lands, a target's pushed address is the only form
 
 |`PLAN-60`, `PLAN-85` (settings)
 |the tabs of the settings as `tab=` (<<url>>), `/settings/machine` and `/settings/browser` replaced by their tabs

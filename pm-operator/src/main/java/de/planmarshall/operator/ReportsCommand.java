@@ -240,6 +240,13 @@ public final class ReportsCommand implements Callable<Integer> {
             if (response.status() == 200 || response.status() == 204) {
                 var parsed = ReadReportsResponse.fromJson(response.bodyText());
                 out.printf("✓ %d reports marked read.%n", parsed.markedCount());
+                // The command reads only the first page it lists: say so instead of letting the
+                // operator read "marked read" as "nothing unread is left" (decision 10).
+                if (page.hasOlder() && page.olderCount() > 0) {
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.reports.read_all.older",
+                                        Map.of("count", page.olderCount())));
+                }
                 out.flush();
                 return 0;
             }

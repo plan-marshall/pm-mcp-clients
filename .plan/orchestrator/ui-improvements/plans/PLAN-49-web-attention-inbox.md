@@ -52,22 +52,44 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-02)`, `doc/claude_review/ux/proposals.adoc#UX-P-01` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc UX-S-02 row (line 24) -> UX-P-01 with attention.ts, InboxView.svelte, routes.ts; ux/proposals.adoc:12-13 [#UX-P-01] The Attention Inbox as Home
+  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` carries UX-S-02 (2 hits), `ux/proposals.adoc` UX-P-01, `use-cases/proposals.adoc` UC-P-09.; re-grounded vs D1-D5 2026-11-10 (Amendment)
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-7 is `AGREED` and the runtime serves the list, so "derived on the client from the stores that exist" no longer holds. The operator decided two views against one combined entry (what waits; go to work by name), and the web "what waits" view is "a route of its own, a destination of the rail with its count" per the package `needs-and-find`; the rail from `PLAN-39` exists and the rail item and tab title carry the total. `PLAN-83` and `PLAN-52` share the running-work rows with this view.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): attention.ts, InboxView.svelte and inbox.spec.js are still absent; the claim of the spec narrative that the rail exists holds (nav-inbox.svg icon and routes.ts present); routes.ts has no inbox/attention/needs route yet; OverviewView.svelte is still home.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+- HYPOTHESIS: `fully-onboarded.json` serves no `needs-operator` resource (only `running-work.json` does), so the browser check names `running-work` or extends the fixture — confirm/refute at `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` § `needs-operator` (verify-at-outline)
+- HYPOTHESIS: the Event `needs_operator.changed` reaches the web stream with the machine summary in its payload — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorChangedEvent.java` § `EVENT_NAME` (verify-at-outline)
+- HYPOTHESIS: `web.rail.needs` and `web.inbox.title` are absent from the catalogue and belong in `common.{en,de}.properties` — confirm/refute at `pm-api/src/main/resources/messages/common.en.properties` § `web.rail` (verify-at-outline)
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/stores/attention.ts` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/stores/attention.test.ts` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/views/InboxView.svelte` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/routes/+page.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/inbox.spec.js` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `doc/design/shared/plan-overview.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD c4dc9bb4
+
+- OBSERVED: `pm-web-app/src/lib/stores/attention.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/stores/attention.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/InboxView.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/InboxView.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/AppRouter.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/routes.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/routeTitles.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/nav.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/nav.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/NavRail.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/NavRail.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/shell/BottomBar.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/favicon.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/favicon.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/routes/+page.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/inbox.spec.js` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/needs-and-find.adoc` — present at HEAD 1cc0e10e
 
 ## Dependencies and Sequencing
 
@@ -107,3 +129,24 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Re-grounding 2026-11-10 against the agreed D1–D5 designs (Amendment)
+
+Source: `doc/design/web-app/needs-and-find.adoc` (#start-page, #route, #list-layout), `doc/design/shared/needs-and-find.adoc#waits`, `doc/design/web-app/navigation.adoc` (#lenses, #kinds, #phone), `doc/design/web-app/components-tags.adoc` (#reason-badge, #kind-mark, #tag-places), `doc/design/web-app/brand-mark-mascot.adoc#surfaces`. HEAD 1cc0e10e. The three deliverables below replace the two above.
+
+1. **Attention store.** `pm-web-app/src/lib/stores/attention.ts` holds the runtime's list as `GET /api/v1/machine/needs-operator` serves it, in the order served, kept in step by `needs_operator.changed`; reports are never items; an item resolved elsewhere leaves with the quiet notice `overview.needs.left`. A `getNeedsOperator` method is added to `pm-web-app/src/lib/api/client.ts`.
+   - Done when: `attention.test.ts` shows each kind as an item with its act, the served order, and an answered decision leaving (evidence order: `test-first`); `client.test.ts` pins the call and the page (`Show more`, `overview.needs.more`) (evidence order: `test-first`).
+2. **What waits at `/`.** `pm-web-app/src/lib/views/InboxView.svelte` is the list column of the lens What waits on the column engine, no object column of its own. Each row is a `RowLink`: the `KindMark` of the object the item belongs to, its name, the item kind as `ReasonBadge` (`overview.needs.*`; none for a `decision` item), path, since, what it blocks, and the act as a button that opens the place (the list performs no act). A due cleanup opens the cleanup job; a credential opens the settings' providers. Empty: `overview.needs.empty`, the mascot pose "nothing waits" (D3 brand), and the running projects (`overview.needs.empty.running`).
+   - Done when: `inbox.spec.js` on `running-work` (the scenario that serves `needs-operator`; or `fully-onboarded` once its fixture serves it): blocking first, each act opens its place, an answered decision leaves, nothing waits shows the empty state (evidence order: `test-first`); the Playwright browser check at 1440×900 and 390×844 in `de` and `en`, both themes (evidence order: `none`); the open-issue read at the head (evidence order: `none`).
+3. **The shell shows What waits.** `nav.ts` gets the entry `web.rail.needs` as the first rail entry with the total (`! 4`), the phone's bottom bar becomes What waits · Running work · Decisions · More (Reports moves into More and its unread count shows on More), the tab title carries `web.inbox.title`, and the tab icon, the header badge and the title read the same total (`+layout.svelte`, `favicon.ts`).
+   - Done when: `nav.test.ts`, `NavRail.test.ts`, `favicon.test.ts` and `routes.test.ts` show the entry, the total and the three consumers agreeing (evidence order: `test-first`); `chrome.spec.js` shows the bottom bar on the phone (evidence order: `test-first`).
+
+Removed or replaced: "derived on the client from the stores" (already struck); the toggle-less `landingRoute` (nothing to take over); a rail entry that disappears when nothing waits (it stays visible, without a count).
+
+Implements: `doc/design/web-app/needs-and-find.adoc` § The Start Page Is What Waits, The Route and the Rail, The List in the Frame; `doc/design/web-app/navigation.adoc` § Lenses and the Rail, The Phone.
+
+Dependencies: D1 foundation (KindMark, ReasonBadge, RowLink, CountBadge), D2 navigation engine (column engine, the route `/` as an `AppRoute`, the remembered-place fill at a bare start), D3 brand assets for the mascot pose (the figure may follow in a later plan if D3 is late; then the empty state ships text and project rows only). Sequence after `PLAN-45` (it holds `routes/+layout.svelte` and `views/`).
+
+New claim bullets:
+
+New claims of this re-grounding are in `## Claim Labels`.

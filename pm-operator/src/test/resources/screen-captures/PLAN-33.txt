@@ -1,0 +1,80 @@
+# Screen captures for PLAN-33: Verify the Terminal Acts (evidence only)
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
+#
+# The set holds the console badge and the two pushed notices of `fully-onboarded` (both sizes, both locales), the first
+# guided onboarding state, the project-setup identity state, `onboard --auto --yes`, `config show`, `plan nope`, the
+# full-screen overview of `reports-and-system`, and the pause prompt at 80 x 24 in both locales. Where an existing set
+# (baseline, 10, 17, 20, 21, 23, 26, 36, 124) already shows a check, that set is run instead. Every line is one check of
+# `doc/claude_review/cli/use-cases/verification.adoc`; the result file names the capture that evidences it.
+
+# CLI-UC-V-05: the prompt badge in `fully-onboarded` carries the open question count.
+badge-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | -
+badge-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | -
+badge-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | -
+badge-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-05: a broadcast `decision.opened` draws a `◆ Question` notice above the prompt.
+notice-opened-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | - | - | {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay","blocks":"plan","description":"The change conflicts with main in RelayServer.java.","parts":[{"part_id":"1","question":"How should the conflict be resolved?","options":[{"key":"1","label":"Merge main into the branch"},{"key":"2","label":"Rebase onto main"}],"recommendation":"2"}]}}}
+notice-opened-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | - | {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay","blocks":"plan","description":"Die Änderung steht in RelayServer.java gegen main.","parts":[{"part_id":"1","question":"Wie soll der Konflikt gelöst werden?","options":[{"key":"1","label":"main in den Zweig mergen"},{"key":"2","label":"Auf main rebasen"}],"recommendation":"2"}]}}}
+
+# CLI-UC-V-05: a broadcast `decision.answered` draws the "answered in the web app" notice.
+notice-answered-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | - | - | {"event":"decision.answered","data":{"id":"Q-007","answer":"Rebase onto main","channel":"web","device":"iPad"}}
+notice-answered-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | - | {"event":"decision.answered","data":{"id":"Q-007","answer":"Auf main rebasen","channel":"web","device":"iPad"}}
+
+# CLI-UC-V-06: `h` then Enter draws the first guided state, `[1/7] Language`.
+step-one-120x30-en | onboarding | - |  | q\nexit\n | 120x30 | en_US.UTF-8 | - | h\n\n
+step-one-80x24-en | onboarding | - |  | q\nexit\n | 80x24 | en_US.UTF-8 | - | h\n\n
+step-one-120x30-de | onboarding | - |  | q\nexit\n | 120x30 | de_DE.UTF-8 | - | h\n\n
+step-one-80x24-de | onboarding | - |  | q\nexit\n | 80x24 | de_DE.UTF-8 | - | h\n\n
+
+# CLI-UC-V-06: `project setup cui-parent` shows the identity state with id, name and pilot.
+project-setup-120x30-en | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | en_US.UTF-8 | -
+project-setup-80x24-en | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | en_US.UTF-8 | -
+project-setup-120x30-de | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | de_DE.UTF-8 | -
+project-setup-80x24-de | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-06: `onboard --auto --yes` — the automatic onboarding path as the check names it.
+onboard-auto-yes-120x30-en | onboarding | - | onboard --auto --yes | - | 120x30 | en_US.UTF-8 | - | - | - | 2
+onboard-auto-yes-120x30-de | onboarding | - | onboard --auto --yes | - | 120x30 | de_DE.UTF-8 | - | - | - | 2
+onboard-auto-yes-80x24-en | onboarding | - | onboard --auto --yes | - | 80x24 | en_US.UTF-8 | - | - | - | 2
+onboard-auto-yes-80x24-de | onboarding | - | onboard --auto --yes | - | 80x24 | de_DE.UTF-8 | - | - | - | 2
+
+# CLI-UC-V-08: `config show` either works or exits 1.
+config-show-120x30-en | reports-and-system | system.running | config show | - | 120x30 | en_US.UTF-8 | - | - | - | 1
+config-show-80x24-en | reports-and-system | system.running | config show | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+config-show-120x30-de | reports-and-system | system.running | config show | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
+config-show-80x24-de | reports-and-system | system.running | config show | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+# CLI-UC-V-01: the pause prompt at 120x30 in German (`v` leaves, `9` re-asks).
+pause-q-120x30-de | running-work | - | plan pause fix-relay | v\n | 120x30 | de_DE.UTF-8 | -
+pause-9-120x30-de | running-work | - | plan pause fix-relay | 9\nv\n | 120x30 | de_DE.UTF-8 | -
+
+# CLI-UC-V-09: `plan nope` — the refusal of an unknown plan, in the interactive path the check names.
+plan-nope-view-120x30-en | running-work | - | plan nope | q | 120x30 | en_US.UTF-8 | -
+plan-nope-view-80x24-en | running-work | - | plan nope | q | 80x24 | en_US.UTF-8 | -
+plan-nope-view-120x30-de | running-work | - | plan nope | q | 120x30 | de_DE.UTF-8 | -
+plan-nope-view-80x24-de | running-work | - | plan nope | q | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-09: `plan nope --print` — the printed form, for the refusal text.
+plan-nope-120x30-en | running-work | - | plan nope --print | - | 120x30 | en_US.UTF-8 | - | - | - | 1
+plan-nope-120x30-de | running-work | - | plan nope --print | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
+plan-nope-80x24-en | running-work | - | plan nope --print | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+plan-nope-80x24-de | running-work | - | plan nope --print | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+# CLI-UC-V-09: the full-screen overview of `reports-and-system` lists the running work.
+overview-refused-120x30-en | reports-and-system | - | plans | q | 120x30 | en_US.UTF-8 | -
+overview-refused-120x30-de | reports-and-system | - | plans | q | 120x30 | de_DE.UTF-8 | -
+overview-refused-80x24-en | reports-and-system | - | plans | q | 80x24 | en_US.UTF-8 | -
+overview-refused-80x24-de | reports-and-system | - | plans | q | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-01: the pause prompt at 80x24 in both locales (`q`, German `v`; an unknown key).
+pause-q-80x24-en | running-work | - | plan pause fix-relay | q\n | 80x24 | en_US.UTF-8 | -
+pause-q-80x24-de | running-work | - | plan pause fix-relay | v\n | 80x24 | de_DE.UTF-8 | -
+pause-9-80x24-en | running-work | - | plan pause fix-relay | 9\nq\n | 80x24 | en_US.UTF-8 | -
+pause-9-80x24-de | running-work | - | plan pause fix-relay | 9\nv\n | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-V-05: the pushed notices at 80x24 in both locales.
+notice-opened-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | - | - | {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay","blocks":"plan","description":"The change conflicts with main in RelayServer.java.","parts":[{"part_id":"1","question":"How should the conflict be resolved?","options":[{"key":"1","label":"Merge main into the branch"},{"key":"2","label":"Rebase onto main"}],"recommendation":"2"}]}}}
+notice-opened-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | - | {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay","blocks":"plan","description":"Die Änderung steht in RelayServer.java gegen main.","parts":[{"part_id":"1","question":"Wie soll der Konflikt gelöst werden?","options":[{"key":"1","label":"main in den Zweig mergen"},{"key":"2","label":"Auf main rebasen"}],"recommendation":"2"}]}}}
+notice-answered-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | - | - | {"event":"decision.answered","data":{"id":"Q-007","answer":"Rebase onto main","channel":"web","device":"iPad"}}
+notice-answered-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | - | {"event":"decision.answered","data":{"id":"Q-007","answer":"Auf main rebasen","channel":"web","device":"iPad"}}
