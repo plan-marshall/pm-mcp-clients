@@ -56,7 +56,7 @@ class IntentScenarioTest {
     class PlanIntent {
 
         @Test
-        @DisplayName("serves the intent record with its self-review and builder check")
+        @DisplayName("serves the intent record with its criteria and their verdicts")
         void servesIntentRecord() throws Exception {
             try (var runtime = MockRuntime.start(STATE)) {
                 assertEquals(StandardScenarios.RUNNING_WORK, runtime.currentScenarioName());
@@ -69,35 +69,32 @@ class IntentScenarioTest {
                 assertEquals("fix-relay", intent.planId());
                 assertEquals(3, intent.revision());
                 assertEquals(4, intent.criteria().size());
-                assertEquals(3, intent.operatorDecisions().size());
-                assertEquals(1, intent.roleCalls().size());
                 assertEquals(1, intent.notVerifiedCount());
                 assertTrue(intent.hasNotVerified());
                 assertEquals(1, intent.notMetCount());
                 assertEquals(2, intent.metCount());
-                assertEquals(2, intent.nonGoals().size());
-                assertEquals("NG-1", intent.nonGoals().getFirst().id());
-                assertEquals("Change the on-disk queue format.", intent.nonGoals().getFirst().text());
-                assertEquals(List.of("NG-1", "NG-2"),
-                        intent.nonGoals().stream().map(PlanIntentResource.NonGoal::id).toList());
 
                 var notVerified = intent.criterion("AC-003");
                 assertEquals(CriterionStatus.NOT_VERIFIED, notVerified.status());
                 assertEquals("The mock harness does not expose the reconnect counter.",
                         notVerified.statusReason());
+            }
+        }
 
-                var check = intent.builderCheck();
-                assertNotNull(check);
-                assertEquals(BuilderCheckResource.Resolution.PENDING, check.resolution());
-                assertEquals(1, check.operatorQuestions().size());
-                assertEquals(1, check.recommendedQuestions().size());
-                assertEquals("BQ-001", check.operatorQuestions().getFirst().id());
-                assertTrue(check.operatorQuestions().getFirst().needsOperator());
-                assertEquals("BQ-003", check.questions().get(2).id());
-                assertEquals("AC-002", check.questions().get(2).answer());
+        @Test
+        @DisplayName("serves the non-goals as items and the decisions with the role decider")
+        void servesGrownIntentShapes() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var intent = PlanIntentResource.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/intent").bodyText());
 
-                assertTrue(intent.decisions().stream()
-                        .anyMatch(decision -> decision.decider() == IntentDecider.FACT));
+                assertEquals(2, intent.nonGoals().size());
+                assertEquals("NG-1", intent.nonGoals().getFirst().id());
+                assertEquals("Change the on-disk queue format.", intent.nonGoals().getFirst().text());
+                assertEquals(List.of("NG-1", "NG-2"),
+                        intent.nonGoals().stream().map(PlanIntentResource.NonGoal::id).toList());
+                assertEquals(3, intent.operatorDecisions().size());
+                assertEquals(1, intent.roleCalls().size());
 
                 var fact = intent.decisions().stream()
                         .filter(decision -> decision.decider() == IntentDecider.FACT).findFirst().orElseThrow();
@@ -108,6 +105,25 @@ class IntentScenarioTest {
                 assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
                         intent.decisions().getLast().adr().relation());
                 assertEquals("ADR-0002", intent.decisions().getLast().adr().adrId());
+            }
+        }
+
+        @Test
+        @DisplayName("serves the pending builder check with its questions")
+        void servesBuilderCheck() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var intent = PlanIntentResource.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/intent").bodyText());
+
+                var check = intent.builderCheck();
+                assertNotNull(check);
+                assertEquals(BuilderCheckResource.Resolution.PENDING, check.resolution());
+                assertEquals(1, check.operatorQuestions().size());
+                assertEquals(1, check.recommendedQuestions().size());
+                assertEquals("BQ-001", check.operatorQuestions().getFirst().id());
+                assertTrue(check.operatorQuestions().getFirst().needsOperator());
+                assertEquals("BQ-003", check.questions().get(2).id());
+                assertEquals("AC-002", check.questions().get(2).answer());
             }
         }
 

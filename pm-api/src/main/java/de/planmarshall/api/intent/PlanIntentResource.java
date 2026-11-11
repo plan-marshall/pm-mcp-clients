@@ -117,9 +117,19 @@ public record PlanIntentResource(
                 throw new IllegalArgumentException("id and text must not be blank");
             }
             optionsWeighed = optionsWeighed == null ? List.of() : List.copyOf(optionsWeighed);
+            requireOptions(optionsWeighed);
+            requireQuestion(decider, questionId);
+            requireEvidence(decider, evidence);
+            requireOperatorAdr(decider, adr);
+        }
+
+        private static void requireOptions(List<String> optionsWeighed) {
             if (optionsWeighed.stream().anyMatch(option -> option == null || option.isBlank())) {
                 throw new IllegalArgumentException(FIELD_OPTIONS_WEIGHED + " must not carry a blank option");
             }
+        }
+
+        private static void requireQuestion(IntentDecider decider, @Nullable String questionId) {
             if (decider.operatorFacing() && (questionId == null || questionId.isBlank())) {
                 throw new IllegalArgumentException(
                         "a " + decider.wireValue() + " decision requires its " + FIELD_QUESTION_ID);
@@ -127,14 +137,19 @@ public record PlanIntentResource(
             if (!decider.operatorFacing() && questionId != null) {
                 throw new IllegalArgumentException("only an operator or quorum decision names a question");
             }
+        }
+
+        private static void requireEvidence(IntentDecider decider, @Nullable String evidence) {
             if (decider == IntentDecider.FACT && (evidence == null || evidence.isBlank())) {
                 throw new IllegalArgumentException("a fact decision requires its " + FIELD_EVIDENCE);
             }
             if (decider != IntentDecider.FACT && evidence != null) {
                 throw new IllegalArgumentException("only a fact decision names its " + FIELD_EVIDENCE);
             }
-            if (adr != null && adr.relation() == AdrRelation.CONTRADICTS
-                    && decider != IntentDecider.OPERATOR) {
+        }
+
+        private static void requireOperatorAdr(IntentDecider decider, @Nullable AdrReference adr) {
+            if (adr != null && adr.relation() == AdrRelation.CONTRADICTS && decider != IntentDecider.OPERATOR) {
                 throw new IllegalArgumentException("a contradicts decision is only the operator's, never the "
                         + decider.wireValue() + " decision's");
             }
@@ -318,7 +333,7 @@ public record PlanIntentResource(
         public static final String FIELD_TEXT = "text";
 
         /** The engine's non-goal id form ({@code IntentRecord.NON_GOAL_ID}). */
-        public static final Pattern ID = Pattern.compile("NG-[0-9]{1,4}");
+        public static final Pattern NON_GOAL_ID = Pattern.compile("NG-\\d{1,4}");
 
         private static final String TYPE = "NonGoal";
         private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_ID, FIELD_TEXT);
@@ -326,7 +341,7 @@ public record PlanIntentResource(
         public NonGoal {
             Objects.requireNonNull(id, FIELD_ID);
             Objects.requireNonNull(text, FIELD_TEXT);
-            if (!ID.matcher(id).matches()) {
+            if (!NON_GOAL_ID.matcher(id).matches()) {
                 throw new IllegalArgumentException(FIELD_ID + " is NG-<n>: " + id);
             }
             if (text.isBlank()) {

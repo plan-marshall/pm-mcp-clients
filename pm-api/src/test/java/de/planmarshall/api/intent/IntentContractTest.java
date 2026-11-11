@@ -495,9 +495,10 @@ class IntentContractTest {
             assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJsonWithNonGoals(
                     "[{\"id\":\"NG-1\",\"text\":\"Do not change the queue format.\"},"
                             + "{\"id\":\"NG-1\",\"text\":\"Do not add a second relay per machine.\"}]")));
-            assertThrows(IllegalArgumentException.class, () -> intentWith(List.of(), List.of(
+            var duplicates = List.of(
                     new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format."),
-                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."))));
+                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."));
+            assertThrows(IllegalArgumentException.class, () -> intentWith(List.of(), duplicates));
         }
     }
 
@@ -571,16 +572,17 @@ class IntentContractTest {
         @Test
         @DisplayName("a flagged task without a proposal and a non-positive proposal are refused")
         void flagRulesHold() {
-            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
-                    "p", "r", 3.0, null, List.of(bucket())));
+            var flagged = List.of(bucket());
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, null, flagged));
             assertThrows(JsonFormatException.class, () -> OverSizeDistributionResource.fromJson(
                     "{\"project_id\":\"p\",\"role\":\"r\",\"current_multiple\":3.0,"
                             + "\"buckets\":[{\"label\":\"x\",\"from_multiple\":1.0,\"to_multiple\":2.0,"
                             + "\"task_count\":1,\"flagged_tasks\":1}]}"));
-            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
-                    "p", "r", 3.0, 0.0, List.of(bucket())));
-            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource(
-                    "p", "r", 3.0, -1.0, List.of(bucket())));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, 0.0, flagged));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, -1.0, flagged));
         }
     }
 
