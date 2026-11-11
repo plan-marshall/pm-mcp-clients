@@ -2,6 +2,7 @@
   import { t } from '../i18n';
   import { apiClient, type ConfinedFileList, type ConfinedFile } from '../api/client';
   import { failureMessage } from '../start/sourceLabels';
+  import { actFailureText } from '../api/errors';
 
   export let open = false;
   export let projectId = '';
@@ -34,7 +35,7 @@
       listing = await apiClient.listProjectFiles(projectId, root, path);
       selected = [];
     } catch (e) {
-      error = e instanceof Error ? e.message : '';
+      error = actFailureText(e, $t('error.unknown.fix'));
       listing = null;
     } finally {
       loading = false;

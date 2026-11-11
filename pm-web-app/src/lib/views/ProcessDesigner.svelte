@@ -16,7 +16,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
-  import { actFailureText } from '../api/errors';
+  import { actFailureReason } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -787,7 +787,7 @@
       placeDigest = baseline.digest;
       placeDiff = diffLines(baseline.text, text);
     } catch {
-      landingError = $t('designer.place.failed', { reason: $t('system.figure.unavailable') });
+      landingError = $t('system.figure.unavailable');
       placeStage = 'failed';
       return;
     }
@@ -852,7 +852,7 @@
         await showConflict();
       } else {
         placeStage = 'failed';
-        landingError = actFailureText(err, $t('system.action.failed'));
+        landingError = actFailureReason(err, $t('system.action.failed'));
       }
     } finally {
       isPlacing = false;
