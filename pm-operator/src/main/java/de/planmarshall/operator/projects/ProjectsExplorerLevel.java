@@ -24,6 +24,7 @@ import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
+import de.planmarshall.operator.LoadRefusal;
 import de.planmarshall.operator.OutputSafety;
 import de.planmarshall.operator.overview.OverviewFormatting;
 import de.planmarshall.operator.tui.TuiLayout;
@@ -41,8 +42,10 @@ import de.planmarshall.operator.tui.TuiRow;
  *
  * @param explorer   the runtime's report of the machine's projects
  * @param byMostUsed {@code true} to order _All projects_ by most used, {@code false} by name
+ * @param refusal    the refusal of the projects read, or {@code null} when it succeeded
  */
-public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed) {
+public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed,
+                    @Nullable LoadRefusal refusal) {
 
     /** Row id of the _Being added_ group header. */
     public static final String GROUP_BEING_ADDED_ID = "__projects_group_being_added__";
@@ -88,6 +91,14 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
     }
 
     /**
+     * @param explorer   the runtime's report
+     * @param byMostUsed {@code true} to order _All projects_ by most used
+     */
+    public ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed) {
+        this(explorer, byMostUsed, null);
+    }
+
+    /**
      * @param explorer the runtime's report
      * @return the explorer ordered by name
      */
@@ -113,8 +124,15 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         var rows = new ArrayList<TuiRow>();
         if (explorer.beingAdded().isEmpty() && explorer.favourites().isEmpty()
                             && explorer.recent().isEmpty() && explorer.allProjects().isEmpty()) {
-            rows.add(TuiRow.leaf(EMPTY_ROW_ID, MessageCatalogue.format(locale, "project.explorer.empty", Map.of())));
+            if (refusal != null) {
+                rows.addAll(refusal.rows());
+            } else {
+                rows.add(TuiRow.leaf(EMPTY_ROW_ID, MessageCatalogue.format(locale, "project.explorer.empty", Map.of())));
+            }
             return List.copyOf(rows);
+        }
+        if (refusal != null) {
+            rows.addAll(refusal.rows());
         }
 
         appendBeingAdded(rows, locale);
@@ -225,14 +243,14 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
     public ProjectsExplorerLevel withFavourites(List<EnrolledProject> favourites) {
         var next = new ProjectExplorer(List.copyOf(favourites), explorer.recent(), explorer.allProjects(),
                             explorer.beingAdded());
-        return new ProjectsExplorerLevel(next, byMostUsed);
+        return new ProjectsExplorerLevel(next, byMostUsed, refusal);
     }
 
     /**
      * @return the same projects ordered the other way
      */
     public ProjectsExplorerLevel withSortToggled() {
-        return new ProjectsExplorerLevel(explorer, !byMostUsed);
+        return new ProjectsExplorerLevel(explorer, !byMostUsed, refusal);
     }
 
     /**

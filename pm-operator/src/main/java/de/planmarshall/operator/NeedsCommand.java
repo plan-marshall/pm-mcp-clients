@@ -85,8 +85,23 @@ public final class NeedsCommand implements Callable<Integer> {
         for (var item : page.items()) {
             printItem(out, item, locale);
         }
+        printShowMore(out, page, locale);
         out.flush();
         return 0;
+    }
+
+    /**
+     * Names the end of the loaded pages as one step when the runtime has more
+     * ({@code doc/design/shared/needs-and-find.adoc#waits}): a page is never a silent cut.
+     *
+     * @param out    the command's writer
+     * @param page   the page the runtime served
+     * @param locale the interface locale
+     */
+    private static void printShowMore(PrintWriter out, NeedsOperatorPage page, String locale) {
+        if (page.hasOlder()) {
+            out.println(MessageCatalogue.format(locale, "overview.needs.more", Map.of()));
+        }
     }
 
     private void printItem(PrintWriter out, NeedsOperatorItem item, String locale) {

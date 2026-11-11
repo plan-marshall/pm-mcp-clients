@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -185,6 +186,34 @@ class NeedsCommandTest {
             var output = out.toString();
             assertTrue(output.contains("Nothing waits") || output.contains("Nichts wartet") || !output.isBlank(), output);
         }
+    }
+
+    @Test
+    @DisplayName("needs names the end of the loaded pages as Show more, never a silent cut")
+    void needsShowsMoreWhenTheRuntimeHasMore() throws Exception {
+        var context = new OperatorContext(
+                            Map.of(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(Map.of()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null
+        );
+        var page = "{\"page\":1,\"total_pages\":2,\"has_newer\":false,\"has_older\":true,\"total\":3,"
+                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\",\"blocks\":\"plan\"}]}";
+        NeedsCommand.RuntimeSender sender = req -> new HttpResponse(200, "application/json",
+                            page.getBytes(StandardCharsets.UTF_8));
+
+        var withMore = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(withMore), "en"));
+        assertTrue(withMore.toString().contains("Show more"), withMore.toString());
+
+        var lastPage = page.replace("\"has_older\":true", "\"has_older\":false");
+        NeedsCommand.RuntimeSender single = req -> new HttpResponse(200, "application/json",
+                            lastPage.getBytes(StandardCharsets.UTF_8));
+        var withoutMore = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(single, new PrintWriter(withoutMore), "en"));
+        assertFalse(withoutMore.toString().contains("Show more"), withoutMore.toString());
     }
 
     @Test

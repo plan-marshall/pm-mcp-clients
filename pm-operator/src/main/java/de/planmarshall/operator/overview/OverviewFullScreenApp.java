@@ -63,6 +63,7 @@ import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
+import de.planmarshall.operator.LoadRefusal;
 import de.planmarshall.operator.NeedsOperatorNotices;
 import de.planmarshall.operator.OperatorActions;
 import de.planmarshall.operator.OperatorContext;
@@ -207,7 +208,10 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuKind;
     private @Nullable String menuLandingUnit;
     private @Nullable String menuDecision;
-    private @Nullable String statusMessage;
+    private volatile @Nullable String statusMessage;
+    private volatile @Nullable LoadRefusal projectsRefusal;
+    private volatile @Nullable LoadRefusal needsRefusal;
+    private volatile @Nullable LoadRefusal explorerRefusal;
     private @Nullable String systemBanner;
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
@@ -401,6 +405,10 @@ public final class OverviewFullScreenApp {
             fetchExplorer(runtime);
             fetchUnreadReports(runtime);
             var level = explorerLevel.get();
+            if (level == null && explorerRefusal != null) {
+                level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(), List.of(), List.of(), List.of()),
+                                    false, explorerRefusal);
+            }
             if (level != null) {
                 var rows = level.rows(locale, clock);
                 stack.replaceRoot(ProjectsExplorerLevel.level(locale), rows,
@@ -414,7 +422,7 @@ public final class OverviewFullScreenApp {
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
         currentOverviewLevel.set(rootLevel);
         var rootRows = rootLevel.rows(locale, clock);
 
@@ -479,9 +487,14 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
             if (response.status() == 200) {
                 cachedNeedsOperator.set(NeedsOperatorPage.fromJson(response.bodyText()));
+                needsRefusal = null;
+                return;
             }
-        } catch (IOException _) {
-            // Keep existing cached needs operator if runtime read fails
+            needsRefusal = LoadRefusal.of(locale, response);
+        } catch (IOException failure) {
+            needsRefusal = LoadRefusal.of(locale, failure);
+        } catch (IllegalArgumentException failure) {
+            needsRefusal = LoadRefusal.of(locale, failure.getMessage());
         }
     }
 
@@ -490,23 +503,33 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
                 cachedProjects.set(ProjectOverviewResponse.fromJson(response.bodyText()));
+                projectsRefusal = null;
+                return;
             }
-        } catch (IOException _) {
-            // Keep existing cached projects if runtime read fails
+            projectsRefusal = LoadRefusal.of(locale, response);
+        } catch (IOException failure) {
+            projectsRefusal = LoadRefusal.of(locale, failure);
+        } catch (IllegalArgumentException failure) {
+            projectsRefusal = LoadRefusal.of(locale, failure.getMessage());
         }
     }
 
     void fetchExplorer(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
-            if (response.status() == 200) {
-                var explorer = ProjectExplorer.fromJson(response.bodyText());
-                var current = explorerLevel.get();
-                boolean byMostUsed = current != null && current.byMostUsed();
-                explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed));
+            if (response.status() != 200) {
+                explorerRefusal = LoadRefusal.of(locale, response);
+                return;
             }
-        } catch (IOException | IllegalArgumentException _) {
-            // Keep the last report of the projects when the runtime read fails.
+            var explorer = ProjectExplorer.fromJson(response.bodyText());
+            var current = explorerLevel.get();
+            boolean byMostUsed = current != null && current.byMostUsed();
+            explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
+            explorerRefusal = null;
+        } catch (IOException failure) {
+            explorerRefusal = LoadRefusal.of(locale, failure);
+        } catch (IllegalArgumentException failure) {
+            explorerRefusal = LoadRefusal.of(locale, failure.getMessage());
         }
     }
 
@@ -1670,7 +1693,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
             currentOverviewLevel.set(levelModel);
             stack.refresh(levelModel.rows(locale, clock));
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
@@ -1700,8 +1723,12 @@ public final class OverviewFullScreenApp {
         }
         var level = explorerLevel.get();
         if (level != null) {
+            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), explorerRefusal);
+        }
+        if (level != null) {
+            var refreshed = level;
             synchronized (this) {
-                stack.refresh(level.rows(locale, clock));
+                stack.refresh(refreshed.rows(locale, clock));
                 if (selectedId != null) {
                     stack.select(selectedId);
                 }

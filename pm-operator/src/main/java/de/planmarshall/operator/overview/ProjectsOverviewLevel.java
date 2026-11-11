@@ -21,6 +21,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.operator.LoadRefusal;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
 
@@ -28,10 +29,13 @@ import de.planmarshall.operator.tui.TuiRow;
  * Level 1 of the full-screen overview: the projects list and needs-you group
  * ({@code doc/design/terminal-client/15-overview.adoc#full-screen-layout}).
  *
- * @param projects      the list of project summaries
- * @param needsOperator the page of items needing operator attention, or {@code null}
+ * @param projects        the list of project summaries
+ * @param needsOperator   the page of items needing operator attention, or {@code null}
+ * @param projectsRefusal the refusal of the projects read, or {@code null} when it succeeded
+ * @param needsRefusal    the refusal of the needs read, or {@code null} when it succeeded
  */
-public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator) {
+public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator,
+                    @Nullable LoadRefusal projectsRefusal, @Nullable LoadRefusal needsRefusal) {
 
     /** Group header row ID for the Needs You section. */
     public static final String GROUP_NEEDS_YOU_ID = "__group_needs_you__";
@@ -50,12 +54,22 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
     }
 
     /**
-     * Convenience constructor without needs-operator page.
+     * Convenience constructor without needs-operator page and without a refusal.
      *
      * @param projects the list of project summaries
      */
     public ProjectsOverviewLevel(List<ProjectSummary> projects) {
-        this(projects, null);
+        this(projects, null, null, null);
+    }
+
+    /**
+     * Convenience constructor without a refusal.
+     *
+     * @param projects      the list of project summaries
+     * @param needsOperator the page of items needing operator attention, or {@code null}
+     */
+    public ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator) {
+        this(projects, needsOperator, null, null);
     }
 
     /**
@@ -81,9 +95,18 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
      */
     public List<TuiRow> rows(String locale, Clock clock) {
         var rows = new ArrayList<TuiRow>();
-        addNeedsYouRows(rows, locale, clock);
+        if (needsRefusal != null) {
+            rows.addAll(needsRefusal.rows());
+        } else {
+            addNeedsYouRows(rows, locale, clock);
+        }
 
-        if (projects.isEmpty()) {
+        if (projectsRefusal != null) {
+            rows.addAll(projectsRefusal.rows());
+            if (projects.isEmpty()) {
+                return rows;
+            }
+        } else if (projects.isEmpty()) {
             if (rows.isEmpty()) {
                 var emptyText = MessageCatalogue.format(locale, "overview.projects.empty", Map.of());
                 return List.of(new TuiRow(EMPTY_ROW_ID, emptyText, null, false, false));
