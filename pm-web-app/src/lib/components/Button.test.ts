@@ -142,7 +142,10 @@ describe('Button', () => {
     // below assumes the default surface background behind it. The rule must still name its
     // foreground token, or the table would check a colour the variant does not use.
     expect(ruleOf(style, '.btn--ghost')).toContain('var(--color-text-secondary)');
+    // The disabled state pairs a muted foreground with the subtle fill; both tokens are named so
+    // the pair below is the one the state actually paints (D2 d-style).
     expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-bg-subtle)');
+    expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-text-muted)');
 
     const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');
 
@@ -164,13 +167,16 @@ describe('Button', () => {
       return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
     };
 
+    // The header comment names both selectors; the theme blocks are read from the rules only.
+    const tokenRules = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
+
     /** @param marker the theme selector @returns that block's declarations */
     const blockOf = (marker: string) => {
-      const start = tokensCss.indexOf(marker);
+      const start = tokenRules.indexOf(marker);
       expect(start, `${marker} must exist in tokens.css`).toBeGreaterThanOrEqual(0);
-      const open = tokensCss.indexOf('{', start);
-      const close = tokensCss.indexOf('}', open);
-      return tokensCss.slice(open + 1, close);
+      const open = tokenRules.indexOf('{', start);
+      const close = tokenRules.indexOf('}', open);
+      return tokenRules.slice(open + 1, close);
     };
 
     /** @returns a token's colour from a theme block */
@@ -196,6 +202,7 @@ describe('Button', () => {
       ['danger', 'color-on-brand', 'color-danger'],
       ['secondary', 'color-text-primary', 'color-bg-surface'],
       ['ghost', 'color-text-secondary', 'color-bg-surface'],
+      ['disabled', 'color-text-muted', 'color-bg-subtle'],
     ] as const;
 
     for (const [variant, foreground, background] of pairs) {

@@ -33,6 +33,8 @@ test.describe('RowMenu at phone width', () => {
     await page.goto('/reports');
     await expect(page.locator('.reports-view')).toBeVisible();
     await expect(page.getByTestId('unread-count')).toBeVisible();
+    // The list, not only its count, must be drawn before the row's place is measured.
+    await expect(page.locator('.report-card').last()).toBeVisible();
 
     const bar = page.getByTestId('bottom-bar');
     await expect(bar).toBeVisible();
