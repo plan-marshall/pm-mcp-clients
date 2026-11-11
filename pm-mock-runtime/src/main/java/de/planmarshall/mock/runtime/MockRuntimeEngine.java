@@ -413,7 +413,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_INTERFACE = "interface";
     private static final String KEY_MODEL = "model";
-    private static final String KEY_STORE = "store";
+    private static final String KEY_CURRENT = "current";
     private static final String KEY_VERIFY = "verify";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
     private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
@@ -7324,14 +7324,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         if (state.startsWith("store.reconfigure")) {
-            var store = JsonTree.string(body, KEY_STORE);
+            var store = JsonTree.string(body, KEY_CURRENT);
             if (store != null && !store.isBlank()) {
                 machineCredentialStore = store;
             }
             return;
         }
         if (state.startsWith("providers.reconfigure")) {
-            machineProvidersVerified = JsonTree.bool(body, KEY_VERIFY) == Boolean.TRUE;
+            machineProvidersVerified = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
         }
     }
 

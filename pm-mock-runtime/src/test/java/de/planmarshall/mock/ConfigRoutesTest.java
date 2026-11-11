@@ -156,6 +156,50 @@ class ConfigRoutesTest {
         }
     }
 
+    @Test
+    @DisplayName("a later run records the answer it submits and the read serves it")
+    void aLaterRunRecordsItsAnswer() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"reconfigure:language\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"set\",\"interface\":\"de\",\"model\":\"same\"}"), runtime));
+            var language = values(runtime).get("language.interface");
+
+            assertAll(
+                                () -> assertEquals("de", language.get(VALUE), language.toString()),
+                                () -> assertEquals("machine", language.get(ORIGIN), language.toString()));
+        }
+    }
+
+    @Test
+    @DisplayName("a later run of the store and of the plan defaults records what they submit")
+    void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"reconfigure:credentials\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"set\",\"landing\":\"landing.files\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"reconfigure:providers\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                                "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+            var values = values(runtime);
+
+            assertAll(
+                                () -> assertEquals("file", values.get("credentials.store").get(VALUE),
+                                                    values.toString()),
+                                () -> assertEquals("landing.files", values.get("plan_defaults.landing").get(VALUE),
+                                                    values.toString()),
+                                () -> assertTrue(String.valueOf(values.get("providers.enabled").get(VALUE))
+                                                    .contains("verified"), values.toString()));
+        }
+    }
+
     private static Map<String, Map<String, Object>> values(MockRuntime runtime) throws Exception {
         var response = client(runtime).send(authorized(HttpRequest.get("/api/v1/config"), runtime));
         assertEquals(200, response.status(), response.bodyText());
