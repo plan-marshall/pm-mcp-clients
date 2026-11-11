@@ -100,9 +100,11 @@ class ChatRoutesTest {
         var blank = blank();
         var plain = plainId();
         var firstBlank = subject.template().contains("{a}");
+        var build = subject.build();
+        var first = firstBlank ? blank : plain;
+        var second = firstBlank ? plain : blank;
 
-        assertThrows(IllegalArgumentException.class, () -> subject.build()
-                .apply(firstBlank ? blank : plain, firstBlank ? plain : blank));
+        assertThrows(IllegalArgumentException.class, () -> build.apply(first, second));
     }
 
     @ParameterizedTest(name = "a dot-segment id of {0} is refused")
@@ -112,9 +114,11 @@ class ChatRoutesTest {
         var dots = Generators.fixedValues(".", "..").next();
         var plain = plainId();
         var firstDots = subject.template().contains("{a}");
+        var build = subject.build();
+        var first = firstDots ? dots : plain;
+        var second = firstDots ? plain : dots;
 
-        assertThrows(IllegalArgumentException.class, () -> subject.build()
-                .apply(firstDots ? dots : plain, firstDots ? plain : dots));
+        assertThrows(IllegalArgumentException.class, () -> build.apply(first, second));
     }
 
     @ParameterizedTest(name = "a missing id of {0} is refused")
@@ -123,9 +127,11 @@ class ChatRoutesTest {
     void missingIdIsRefused(Subject subject) {
         var plain = plainId();
         var firstMissing = subject.template().contains("{a}");
+        var build = subject.build();
+        var first = firstMissing ? null : plain;
+        var second = firstMissing ? plain : null;
 
-        assertThrows(NullPointerException.class, () -> subject.build()
-                .apply(firstMissing ? null : plain, firstMissing ? plain : null));
+        assertThrows(NullPointerException.class, () -> build.apply(first, second));
     }
 
     @Nested

@@ -198,7 +198,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("the operator's message and a role's turn round-trip, each with its own members")
-        void roundTrips() throws Exception {
+        void roundTrips() {
             var operator = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
                     TurnFormat.PLAIN, flag(), null, null, id());
             var role = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN, false,
@@ -222,6 +222,9 @@ class ChatEventsTest {
         void refusals() throws Exception {
             var operator = ChatTurnStartedEvent.fromJson(GOLDEN_OPERATOR_STARTED).toMap();
             var role = ChatTurnStartedEvent.fromJson(GOLDEN_ROLE_STARTED).toMap();
+            var chatId = id();
+            var author = id();
+            var chatContext = context();
 
             assertAll(
                     () -> assertThrows(JsonFormatException.class,
@@ -237,8 +240,8 @@ class ChatEventsTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurnStartedEvent.fromMap(without(role, "untrusted"))),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnStartedEvent(id(), " ", TurnKind.MESSAGE, id(), TurnFormat.PLAIN,
-                                    false, null, context(), null)));
+                            () -> new ChatTurnStartedEvent(chatId, " ", TurnKind.MESSAGE, author, TurnFormat.PLAIN,
+                                    false, null, chatContext, null)));
         }
 
         @Test
@@ -248,15 +251,21 @@ class ChatEventsTest {
             var untrustedRole = with(ChatTurnStartedEvent.fromJson(GOLDEN_ROLE_STARTED).toMap(), "untrusted", true);
             var untrustedPlain = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.PLAIN, true,
                     id(), context(), null);
+            var chatId = id();
+            var turnId = id();
+            var text = id();
+            var author = id();
+            var model = id();
+            var chatContext = context();
 
             assertAll(
                     () -> assertEquals(untrustedPlain, ChatTurnStartedEvent.fromJson(untrustedPlain.toJson())),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
-                                    TurnFormat.MARKDOWN, false, null, null, id())),
+                            () -> new ChatTurnStartedEvent(chatId, turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
+                                    TurnFormat.MARKDOWN, false, null, null, text)),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN,
-                                    true, id(), context(), null)),
+                            () -> new ChatTurnStartedEvent(chatId, turnId, TurnKind.MESSAGE, author,
+                                    TurnFormat.MARKDOWN, true, model, chatContext, null)),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurnStartedEvent.fromMap(with(operator, "format", "markdown"))),
                     () -> assertThrows(JsonFormatException.class,
@@ -272,7 +281,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a piece of text, an empty piece and a step round-trip")
-        void roundTrips() throws Exception {
+        void roundTrips() {
             var delta = new ChatTurnDeltaEvent(id(), id(), id());
             var empty = new ChatTurnDeltaEvent(id(), id(), "");
             var progress = new ChatTurnProgressEvent(id(), id(), message("control.chat.step.reading"));
@@ -290,6 +299,8 @@ class ChatEventsTest {
         void refusals() throws Exception {
             var delta = ChatTurnDeltaEvent.fromJson(GOLDEN_DELTA).toMap();
             var progress = ChatTurnProgressEvent.fromJson(GOLDEN_PROGRESS).toMap();
+            var turnId = id();
+            var text = id();
 
             assertAll(
                     () -> assertThrows(JsonFormatException.class,
@@ -301,7 +312,7 @@ class ChatEventsTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurnProgressEvent.fromMap(with(progress, "extra", id()))),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnDeltaEvent(" ", id(), id())));
+                            () -> new ChatTurnDeltaEvent(" ", turnId, text)));
         }
     }
 
@@ -322,7 +333,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("absent text and refs read as empty; absent lines and reason are not written")
-        void absentMembers() throws Exception {
+        void absentMembers() {
             var event = new ChatTurnCompletedEvent(id(), id(), TurnKind.MESSAGE, TurnStatus.STOPPED, flag(), null,
                     null, null, null);
             var map = event.toMap();
@@ -340,6 +351,9 @@ class ChatEventsTest {
         void reasonIsTiedToFailed() throws Exception {
             var failed = ChatTurnCompletedEvent.fromJson(GOLDEN_FAILED).toMap();
             var complete = ChatTurnCompletedEvent.fromJson(GOLDEN_COMPLETED).toMap();
+            var chatId = id();
+            var turnId = id();
+            var text = id();
 
             assertAll(
                     () -> assertThrows(JsonFormatException.class,
@@ -347,8 +361,8 @@ class ChatEventsTest {
                     () -> assertThrows(JsonFormatException.class, () -> ChatTurnCompletedEvent.fromMap(
                             with(complete, "reason", MessageText.of("control.chat.reason.lost").toMap()))),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnCompletedEvent(id(), id(), TurnKind.MESSAGE, TurnStatus.FAILED,
-                                    false, id(), null, null, null)));
+                            () -> new ChatTurnCompletedEvent(chatId, turnId, TurnKind.MESSAGE, TurnStatus.FAILED,
+                                    false, text, null, null, null)));
         }
 
         @Test
@@ -424,6 +438,8 @@ class ChatEventsTest {
         void refusals() throws Exception {
             var ended = ChatEndedEvent.fromJson(GOLDEN_ENDED).toMap();
             var unknown = "zz_" + Generators.letterStrings(3, 10).next();
+            var chatId = id();
+            var device = id();
 
             assertAll(
                     () -> assertThrows(JsonFormatException.class,
@@ -437,7 +453,7 @@ class ChatEventsTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatEndedEvent.fromMap(without(ended, "ended_by"))),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatEndedEvent(id(), ChatEndedEvent.EndedBy.ENTRY_CLOSED, null, id())));
+                            () -> new ChatEndedEvent(chatId, ChatEndedEvent.EndedBy.ENTRY_CLOSED, null, device)));
         }
     }
 
@@ -447,7 +463,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a plan with and without a queued revision round-trips; an absent one is not written")
-        void roundTrips() throws Exception {
+        void roundTrips() {
             var revision = new QueuedRevision(id(), id(), new ChatSubject(ChatSubjectKind.DECISION, id()), flag(),
                     MessageText.of("control.chat.applies.on_start"));
             var queued = new PlanRevisionQueuedEvent(id(), revision);
@@ -484,23 +500,25 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a chat origin round-trips with its kind chat; another kind is refused")
-        void chatOrigin() throws Exception {
+        void chatOrigin() {
             var origin = new ChatOrigin(id(), id());
             var map = origin.toMap();
+            var chatId = id();
 
             assertAll(
                     () -> assertEquals(origin, ChatOrigin.fromJson(origin.toJson())),
                     () -> assertEquals("chat", map.get("kind")),
                     () -> assertThrows(JsonFormatException.class, () -> ChatOrigin.fromMap(with(map, "kind", "plan"))),
                     () -> assertThrows(JsonFormatException.class, () -> ChatOrigin.fromMap(without(map, "kind"))),
-                    () -> assertThrows(IllegalArgumentException.class, () -> new ChatOrigin(id(), " ")));
+                    () -> assertThrows(IllegalArgumentException.class, () -> new ChatOrigin(chatId, " ")));
         }
 
         @Test
         @DisplayName("a turn pointer round-trips; a missing turn and an unknown member are refused")
-        void turnPointer() throws Exception {
+        void turnPointer() {
             var pointer = new ChatTurnPointer(id(), id());
             var map = pointer.toMap();
+            var turnId = id();
 
             assertAll(
                     () -> assertEquals(pointer, ChatTurnPointer.fromJson(pointer.toJson())),
@@ -508,7 +526,7 @@ class ChatEventsTest {
                             () -> ChatTurnPointer.fromMap(without(map, "turn_id"))),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurnPointer.fromMap(with(map, "kind", "chat"))),
-                    () -> assertThrows(IllegalArgumentException.class, () -> new ChatTurnPointer(" ", id())));
+                    () -> assertThrows(IllegalArgumentException.class, () -> new ChatTurnPointer(" ", turnId)));
         }
     }
 

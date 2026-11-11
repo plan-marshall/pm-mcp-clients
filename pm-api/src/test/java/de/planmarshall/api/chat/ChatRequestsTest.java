@@ -97,12 +97,14 @@ class ChatRequestsTest {
             var astral = new String(Character.toChars(0x1F600));
             var clientTurnId = id();
 
+            var tooLong = astral.repeat(8001);
+
             var request = new ChatTurnRequest(astral.repeat(8000), clientTurnId);
 
             assertAll(
                     () -> assertEquals(16000, request.text().length()),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurnRequest(astral.repeat(8001), clientTurnId)));
+                            () -> new ChatTurnRequest(tooLong, clientTurnId)));
         }
 
         @Test
