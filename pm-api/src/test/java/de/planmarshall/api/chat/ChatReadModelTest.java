@@ -554,13 +554,9 @@ class ChatReadModelTest {
         @Test
         @DisplayName("only an open proposal awaits accept or reject; a replaced one does not")
         void hasProposalOnlyWhenOpen() throws Exception {
-            var open = chat(proposal(ProposalState.OPEN), List.of(messageTurn()), null);
             var replaced = chat(proposal(ProposalState.REPLACED), List.of(messageTurn()), null);
 
-            assertAll(
-                    () -> assertTrue(open.hasProposal()),
-                    () -> assertFalse(replaced.hasProposal()),
-                    () -> assertFalse(ChatResource.fromJson(replaced.toJson()).hasProposal()));
+            assertFalse(ChatResource.fromJson(replaced.toJson()).hasProposal());
             for (var state : ProposalState.values()) {
                 assertEquals(state == ProposalState.OPEN, chat(proposal(state), List.of(), null).hasProposal(),
                         state.wireValue());
