@@ -501,6 +501,133 @@ class ConfigCommandTest {
         };
     }
 
+    @Test
+    @DisplayName("config show selects an aspect and renders a structured value")
+    void configShowSelectsAnAspect() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + OVERRIDDEN_VALUE + ","
+                                    + "{\"key\":\"roles.assigned\",\"value\":{\"architect\":\"claude\"},\"origin\":\"machine\",\"revision\":1}]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "show", "plan-defaults");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("plan_defaults.landing"), text),
+                            () -> assertFalse(text.contains("web.port"), text));
+
+        out.getBuffer().setLength(0);
+        int structured = execute("config", "show", "roles");
+        assertAll(
+                            () -> assertEquals(0, structured, out.toString()),
+                            () -> assertTrue(out.toString().contains("architect"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("config names a 200 body it cannot read as unreadable")
+    void configNamesAnUnreadableBody() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "\"not a value list\"");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(out.toString().contains("did not report its configuration values"),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("config set and unset write at the project and plan level")
+    void configWritesAtTheProjectAndPlanLevel() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.json(200, "{\"key\":\"custom.timeout\",\"value\":\"60\",\"origin\":\"project\"}");
+        });
+
+        execute("config", "set", "custom.timeout", "60", "--project", "fix-relay");
+        execute("config", "unset", "custom.timeout", "--plan", "p-7");
+
+        assertAll(
+                            () -> assertTrue(requests.contains(
+                                                "PUT /api/v1/config/project/custom.timeout?project=fix-relay"),
+                                                requests.toString()),
+                            () -> assertTrue(requests.contains(
+                                                "DELETE /api/v1/config/plan/custom.timeout?plan=p-7"),
+                                                requests.toString()));
+    }
+
+    @Test
+    @DisplayName("config set refuses two levels at once")
+    void configRefusesTwoLevels() throws Exception {
+        int machineAndProject = execute("config", "set", "--machine", "--project", "p", "custom.key", "1");
+        var text = out.toString();
+        out.getBuffer().setLength(0);
+        int both = execute("config", "unset", "custom.key", "--project", "p", "--plan", "q");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, machineAndProject, text),
+                            () -> assertTrue(text.contains("Name one level"), text),
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, both, out.toString()));
+    }
+
+    @Test
+    @DisplayName("the overview shortens a long label and right-aligns a two-digit index")
+    void overviewShortensALongLabel() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, manyAspects());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertTrue(text.contains("\u2026"), text),
+                            () -> assertTrue(text.contains("  10)"), text));
+    }
+
+    @Test
+    @DisplayName("config documents names the failed settings read")
+    void configDocumentsWithoutSettings() throws Exception {
+        fixture.start((request, response) -> response.send(500, null, ""));
+
+        int code = execute("config", "documents", "--mode", "copy");
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(out.toString().contains("documents mode is a machine setting"),
+                                                out.toString()));
+    }
+
+    private static String manyAspects() {
+        var aspects = new StringBuilder();
+        for (int index = 1; index <= 10; index++) {
+            if (index > 1) {
+                aspects.append(',');
+            }
+            aspects.append("{\"aspect\":\"language\",\"step\":").append(index)
+                                .append(",\"summary\":\"A summary of the aspect\"}");
+        }
+        return "{\"revision\":4,\"aspects\":[" + aspects + "],"
+                            + "\"credentials\":[{\"key\":\"a-very-long-credential-key-name\",\"provider\":\"GitHub\","
+                            + "\"kind\":\"fine-grained\",\"expires_in_days\":9,\"expired\":false}],"
+                            + "\"cleanup_durations\":{\"plans_after_days\":30,\"epics_after_days\":30,"
+                            + "\"logs_after_days\":30,\"reports_after_days\":30,\"unenrolled_after_days\":30,"
+                            + "\"remind_after_days\":3},\"documents_mode\":\"ask\"}";
+    }
+
     private static List<String> rowsOf(String text) {
         var rows = new ArrayList<String>();
         for (var line : text.split("\n")) {
