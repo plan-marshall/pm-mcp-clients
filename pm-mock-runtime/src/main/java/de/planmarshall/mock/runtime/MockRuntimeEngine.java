@@ -490,6 +490,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
+    private static final String MESSAGE_NO_CHAT = "No chat for ";
+    private static final String MESSAGE_CLEANUP_JOB_NOT_FOUND = "Cleanup job not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
@@ -5073,7 +5075,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(subjectId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "No chat for " + subjectId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + subjectId));
                 return;
             }
             response.json(200, chat.toMap());
@@ -5087,7 +5089,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(planId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "No chat for " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
                 return;
             }
             var at = Instant.now().toString();
@@ -5106,7 +5108,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(planId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "No chat for " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
                 return;
             }
             if (!chat.hasProposal()) {
@@ -9300,7 +9302,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
@@ -9407,7 +9409,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleRemindCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
         synchronized (systemLock) {
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.POSTPONED) {
@@ -9451,7 +9453,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleIgnoreCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
         synchronized (systemLock) {
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
