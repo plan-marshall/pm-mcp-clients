@@ -324,7 +324,9 @@ describe('the app shell', () => {
     expect(withdraw).toHaveBeenCalledOnce();
 
     refuseWithdraw(new Error('too late'));
-    expect(await screen.findByTestId('draining-failure')).toHaveTextContent('too late');
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The stop could not be withdrawn: Action failed.',
+    );
   });
 
   it('shows the refusal of Stop now and ignores a second confirm while it runs', async () => {
@@ -363,7 +365,9 @@ describe('the app shell', () => {
     expect(stopNow).toHaveBeenCalledOnce();
 
     refuseStopNow(new Error('already stopping'));
-    expect(await screen.findByTestId('draining-failure')).toHaveTextContent('already stopping');
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The stop now could not be started: Action failed.',
+    );
   });
 
   it('lets go of a hung withdrawal, saying so and re-enabling both drain acts', async () => {

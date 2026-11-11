@@ -432,23 +432,63 @@ class ControlScenarioTest {
     }
 
     @Test
-    @DisplayName("answers 404 for an unknown subject")
+    @DisplayName("answers the catalogue's scope or target code for an unknown subject")
     void unknownSubject() throws Exception {
         var unknownEpic = Generators.letterStrings(4, 10).next().toLowerCase();
         var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
         try (var runtime = MockRuntime.start(READY)) {
-            for (var path : List.of(
-                    "/api/v1/epics/" + unknownEpic,
-                    "/api/v1/epics/" + unknownEpic + "/tokens",
-                    "/api/v1/epics/" + unknownEpic + "/archive-check",
-                    "/api/v1/epics/" + unknownEpic + "/decomposition",
-                    "/api/v1/epics/" + unknownEpic + "/review",
-                    "/api/v1/plans/" + unknownPlan + "/tokens",
-                    "/api/v1/plans/" + unknownPlan + "/chat")) {
-                assertEquals(404, get(runtime, path).status(), path);
+            var codes = Map.of(
+                    "/api/v1/epics/" + unknownEpic, "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/tokens", "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/archive-check", "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/decomposition", "scope_not_found",
+                    "/api/v1/epics/" + unknownEpic + "/review", "scope_not_found",
+                    "/api/v1/plans/" + unknownPlan + "/tokens", "scope_not_found",
+                    "/api/v1/plans/" + unknownPlan + "/chat", "target_not_found");
+            for (var entry : codes.entrySet()) {
+                var response = get(runtime, entry.getKey());
+                assertEquals(404, response.status(), entry.getKey());
+                assertEquals(entry.getValue(), JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())),
+                        "error"), entry.getKey());
             }
-            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/actions/pause", "{}").status());
-            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/turns", "{}").status());
+            for (var path : List.of(
+                    "/api/v1/plans/" + unknownPlan + "/actions/pause",
+                    "/api/v1/plans/" + unknownPlan + "/chat/turns")) {
+                assertEquals(404, post(runtime, path, "{}").status(), path);
+            }
+            var proposal = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/proposal/accept", "{}");
+            assertEquals(404, proposal.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(proposal.body())), "error"));
+            var epicAction = post(runtime, "/api/v1/epics/" + unknownEpic + "/actions/cancel", "{}");
+            assertEquals(404, epicAction.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(epicAction.body())), "error"));
+        }
+    }
+
+    @Test
+    @DisplayName("answers target_not_found for a sub-resource a known epic does not carry")
+    void knownEpicWithoutSubResource() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var review = get(runtime, "/api/v1/epics/relay-hardening/review?register=nothing-of-that-kind");
+            assertEquals(404, review.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(review.body())), "error"));
+        }
+    }
+
+    @Test
+    @DisplayName("answers target_not_found for an unknown hold of a known plan")
+    void unknownHold() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
+            var unknownHold = "hold-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var response = post(runtime, "/api/v1/plans/relay-cursor-order/holds/" + unknownHold + "/resolve",
+                    JsonTree.write(Map.of("act", "accept")));
+
+            assertEquals(404, response.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error"));
         }
     }
 

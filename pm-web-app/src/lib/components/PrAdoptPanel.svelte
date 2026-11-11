@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import { apiClient, type PullRequestObservation, type PrAdoptResult } from '../api/client';
+  import { actFailureText } from '../api/errors';
 
   export let projectId = '';
   export let onAdopted: (result: PrAdoptResult) => void = () => {};
@@ -25,7 +26,7 @@
     try {
       observation = await apiClient.observePullRequest(projectId, reference.trim());
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }
@@ -42,7 +43,7 @@
       });
       onAdopted(result);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }

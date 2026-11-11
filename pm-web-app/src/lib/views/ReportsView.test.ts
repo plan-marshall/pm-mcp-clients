@@ -723,6 +723,25 @@ describe('ReportsView component', () => {
     expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
   });
 
+  it('keeps the focus off the body when Retry reloads a failed list', async () => {
+    vi.spyOn(apiClient, 'getReports')
+      .mockRejectedValueOnce(new ClientError('timeout'))
+      .mockResolvedValue(mockPage);
+
+    render(ReportsView);
+
+    // The first read failed before the page was shown, so its block is static: no live role.
+    const error = await screen.findByTestId('error-state');
+    expect(error).not.toHaveAttribute('role');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByTestId('error-state')).toBeNull());
+    // The button that carried the focus is gone; the focus belongs to the list, not the body.
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.textContent?.trim()).toBe('Reports');
+  });
+
   it('keeps a failed reload visible while the filter matches nothing', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
@@ -873,7 +892,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
     await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
 
     read.mockResolvedValueOnce(undefined);
@@ -1007,12 +1026,242 @@ describe('ReportsView component', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
 
     expect(document.querySelector('.report-card--active')).not.toBeNull();
     expect(screen.queryByTestId('report-read-state')).toBeNull();
     expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+  });
+
+  it('keeps a row the runtime reported read when its mark-read request then fails (PLAN-129 residue 1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let rejectRead: ((reason: Error) => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectRead = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => expect(document.querySelector('.report-title')).not.toBeNull());
+
+    // The runtime reports the read while the request is still in flight, so the read is counted.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    if (!rejectRead) throw new Error('the read request was never created');
+    rejectRead(new Error('read failed'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
+    });
+
+    // A counted read stays read: the row keeps its marker instead of coming back as unread.
+    expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+  });
+
+  it('drops the retained row of a detail that closed while a failed mark-all ran (PLAN-129 residue 2)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+    let rejectMarkAll: (error: Error) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((_resolve, reject) => {
+          rejectMarkAll = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await waitFor(() => expect(document.querySelector('.report-title')).not.toBeNull());
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    // The runtime reports the retained row read while the act runs, so its marker survives the
+    // failure; the operator closes the detail meanwhile, so nothing is left to keep the row for.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+
+    rejectMarkAll(new Error('mark all failed'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
+    });
+
+    // The request settled, so the retained row has no open detail any more and goes.
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+  });
+
+  it('does not apply a list answer that an event overtook (review)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let releaseStale: ((page: ReportsPage) => void) | undefined;
+    vi.spyOn(apiClient, 'getReports')
+      .mockResolvedValueOnce(mockPage)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            releaseStale = resolve;
+          }),
+      )
+      .mockResolvedValue({
+        items: mockReports.filter((report) => report.id !== 'rep-0142'),
+        unread_count: 2,
+        has_older: false,
+        older_count: 0,
+      });
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    // A reload starts, then the runtime reports the read of a row the reload will still serve.
+    eventHandler?.('report.read', {});
+    await waitFor(() => expect(releaseStale).toBeDefined());
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+
+    // The answer taken before the event must not put the read row back.
+    if (!releaseStale) throw new Error('the stale reload was never created');
+    releaseStale(mockPage);
+    await tick();
+    await tick();
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+  });
+
+  it('keeps the newer page when an older list read answers last (PLAN-129 residue 3)', async () => {
+    const pending: Array<(page: ReportsPage) => void> = [];
+    vi.spyOn(apiClient, 'getReports').mockImplementation(
+      () =>
+        new Promise<ReportsPage>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+
+    render(ReportsView);
+    await tick();
+    // A reload starts while the first read is still in flight.
+    eventHandler?.('report.read', {});
+    await tick();
+    expect(pending).toHaveLength(2);
+
+    const newer: ReportsPage = {
+      items: mockReports.filter((report) => report.id !== 'rep-0131'),
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    };
+    const older: ReportsPage = {
+      items: mockReports.filter((report) => report.id === 'rep-0131'),
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    };
+
+    pending[1]!(newer);
+    await tick();
+    pending[0]!(older);
+    await tick();
+    await tick();
+
+    // The older response answered last; it must not put its page back.
+    expect(document.querySelectorAll('.report-card')).toHaveLength(2);
+    expect(document.querySelector('[data-report-id="rep-0131"]')).toBeNull();
+  });
+
+  it('keeps a read in flight when a failed mark-all settles (PLAN-129 residue 4)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    let rejectMarkAll: (error: Error) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((_resolve, reject) => {
+          rejectMarkAll = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => expect(document.querySelector('.report-title')).not.toBeNull());
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    // The runtime reports the row read, so its marker survives the failure; its own read request
+    // is still in flight.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    rejectMarkAll(new Error('mark all failed'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    // The single read is still in flight, so its row stays until that outcome is known.
+    expect(document.querySelector('[data-report-id="rep-0142"]')).not.toBeNull();
+
+    if (!resolveRead) throw new Error('the read request was never created');
+    resolveRead();
+    await tick();
+    await tick();
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+  });
+
+  it('keeps the empty state while a mark-all reload runs (PLAN-129 residue 5)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    vi.spyOn(apiClient, 'markAllReportsRead').mockResolvedValue({ marked_count: 3 });
+    let releaseReload: ((page: ReportsPage) => void) | undefined;
+    vi.spyOn(apiClient, 'getReports')
+      .mockResolvedValueOnce(mockPage)
+      .mockImplementation(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            releaseReload = resolve;
+          }),
+      );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    await waitFor(() => expect(releaseReload).toBeDefined());
+    await tick();
+
+    // Every shown report is read, so the reload serves an empty list; the page was already shown,
+    // so the refresh form keeps it instead of drawing skeletons.
+    expect(screen.queryByTestId('skeleton')).toBeNull();
+
+    releaseReload!({
+      items: [],
+      unread_count: 0,
+      has_older: false,
+      older_count: 0,
+    });
+    await tick();
+    await tick();
+    expect(screen.getByText(/Nothing new/)).toBeInTheDocument();
+  });
+
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    vi.spyOn(apiClient, 'markReportRead').mockRejectedValue(new ClientError('timeout'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Try again; if it keeps taking this long, check that the runtime is running.',
+    );
+    expect(alert).not.toHaveTextContent(/^timeout$/);
   });
 
   it('keeps the row until a read that outlived its detail fails', async () => {
@@ -1041,7 +1290,7 @@ describe('ReportsView component', () => {
     rejectRead(new Error('read failed'));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark report read');
     });
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
     expect(screen.queryByTestId('report-read-state')).toBeNull();
@@ -1775,7 +2024,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(markAllBtn);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
     expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
@@ -1992,7 +2241,7 @@ describe('ReportsView component', () => {
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
     const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
@@ -2040,7 +2289,7 @@ describe('ReportsView component', () => {
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
     const cards = Array.from(document.querySelectorAll('.report-card')).map((card) =>
@@ -2094,7 +2343,7 @@ describe('ReportsView component', () => {
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
     expect(document.querySelector('[data-report-id="rep-0142"]')).toHaveAttribute(
@@ -2104,6 +2353,72 @@ describe('ReportsView component', () => {
     expect(screen.getByText(/1 unread/)).toBeInTheDocument();
     // The reload kept the read in flight counted, so a repeated event for it moves no count.
     eventHandler?.('report.read', { report_id: 'rep-0139' });
+    await tick();
+    await tick();
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
+  });
+
+  it('subtracts only the reads the reload did not already count when mark-all succeeds (PLAN-129 residue 6)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+    let served: ReportsPage = mockPage;
+    let releaseReload: ((page: ReportsPage) => void) | undefined;
+    vi.spyOn(apiClient, 'getReports')
+      .mockImplementationOnce(() => Promise.resolve(served))
+      .mockImplementationOnce(() => Promise.resolve(served))
+      .mockImplementation(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            releaseReload = resolve;
+          }),
+      );
+    let resolveMarkAll: (result: { marked_count: number }) => void = () => {};
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveMarkAll = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await waitFor(() => expect(document.querySelector('.report-title')).not.toBeNull());
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    eventHandler?.('report.read', { report_id: 'rep-0139' });
+    await waitFor(() => expect(screen.getByText(/1 unread/)).toBeInTheDocument());
+
+    // A reload lands first and serves two unread rows, one of them only this response marks read.
+    const secondUnread = {
+      id: 'rep-0125',
+      from: { project: 'pm-mcp-core' },
+      kind: 'project.onboarded',
+      subject: 'Still unread',
+      created_at: '2026-10-15T10:00:00Z',
+      created: 'yesterday 10:00',
+    } as ReportItem;
+    served = {
+      items: [mockReports[2]!, secondUnread],
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    };
+    eventHandler?.('report.read', {});
+    await waitFor(() => expect(apiClient.getReports).toHaveBeenCalledTimes(2));
+
+    resolveMarkAll({ marked_count: 3 });
+    // The reload's count (2) already includes the two rows the events reported read; only the row
+    // no event counted, rep-0131, is subtracted from it: 2 - 1 = 1, never below.
+    await waitFor(() => expect(releaseReload).toBeDefined());
+    expect(screen.getByText(/1 unread/)).toBeInTheDocument();
+
+    releaseReload!({
+      items: [secondUnread],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
     await tick();
     await tick();
     expect(screen.getByText(/1 unread/)).toBeInTheDocument();

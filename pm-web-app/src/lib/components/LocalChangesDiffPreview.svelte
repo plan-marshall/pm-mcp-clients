@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t } from '../i18n';
   import { apiClient, type LocalChangesPreview, type LocalChangesCaptureResult } from '../api/client';
+  import { actFailureText } from '../api/errors';
 
   export let projectId = '';
   export let onCaptured: (result: LocalChangesCaptureResult) => void = () => {};
@@ -19,7 +20,7 @@
     try {
       preview = await apiClient.previewLocalChanges(projectId);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }
@@ -32,7 +33,7 @@
       const result = await apiClient.captureLocalChanges(projectId, preview?.preview_id);
       onCaptured(result);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       busy = false;
     }

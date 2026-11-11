@@ -24,7 +24,7 @@
   import DecompositionReviewView from './DecompositionReviewView.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import { errorCodeOf } from '../api/errors';
+  import { actFailureText, errorCodeOf } from '../api/errors';
   import { remoteInfo, readForgeReference, type RemoteInfo } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
@@ -35,7 +35,9 @@
   let loading = true;
   let busy = false;
   /** The code of the failed load, which `ErrorState` resolves to its words. */
-  let loadError = '';
+  let loadError: string | null = null;
+  /** How many reads this page ran, so a failed retry is announced even before the first success. */
+  let loadAttempts = 0;
   let actionError = '';
 
   let projects: ProjectSummary[] = [];
@@ -124,7 +126,8 @@
   async function load(generation: number): Promise<void> {
     const requestedEntryId = entryId;
     loading = true;
-    loadError = '';
+    loadAttempts += 1;
+    loadError = null;
     try {
       if (requestedEntryId) {
         const resource = await apiClient.getEntry(requestedEntryId);
@@ -154,7 +157,7 @@
       await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
       if (generation === entryGeneration) {
-        loadError = errorCodeOf(e) || 'unknown';
+        loadError = errorCodeOf(e);
       }
     } finally {
       if (generation === entryGeneration) {
@@ -251,9 +254,13 @@
     parameters = next;
   }
 
+  /**
+   * @param error the failure an act reported
+   * @returns the sentence the operator reads: the one the failure's code stands for, or the act's
+   *   own failure text where the failure carries no code
+   */
   function messageOf(error: unknown): string {
-    if (error instanceof Error) return error.message;
-    return typeof error === 'string' ? error : '';
+    return actFailureText(error, $t('system.action.failed'));
   }
 
   async function act(link: string, body: Record<string, unknown> = {}): Promise<StartState | null> {
@@ -678,13 +685,14 @@
     <div class="start-view__loading" data-testid="start-loading">
       <Skeleton shape="card" rows={3} label={$t('start.state.loading')} />
     </div>
-  {:else if loadError}
+  {:else if loadError !== null}
     <div class="start-view__error" data-testid="start-error">
       <ErrorState
         code={loadError}
         actionLabel={$t('common.action.retry')}
         onAct={() => void load(++entryGeneration)}
         titleLevel={2}
+        announce={state !== null || loadAttempts > 1}
       />
     </div>
   {:else if !entry && !state?.refusal}
@@ -779,6 +787,17 @@
         {#if decompositionError}
           <p class="start-view__error" data-testid="decomposition-error">{decompositionError}</p>
         {/if}
+      {:else if decompositionError}
+        <div class="start-view__error" data-testid="decomposition-error">
+          <p>{decompositionError}</p>
+          <button
+            type="button"
+            data-testid="decomposition-retry"
+            on:click={() => void loadDecomposition()}
+          >
+            {$t('common.action.retry')}
+          </button>
+        </div>
       {:else}
         <p class="start-view__status" data-testid="decomposition-loading">
           {$t('start.decomposition.drafting', { workstream: '' })}

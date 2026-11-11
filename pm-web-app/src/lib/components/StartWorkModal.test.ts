@@ -112,7 +112,9 @@ describe('StartWorkModal component', () => {
 
     await fireEvent.click(screen.getByTestId('start-submit'));
     await waitFor(() =>
-      expect(screen.getByTestId('start-error')).toHaveTextContent('start_refused'),
+      expect(screen.getByTestId('start-error')).toHaveTextContent(
+        'The start failed: Update the client and try again; if the refusal stays, look at the details.',
+      ),
     );
   });
 });

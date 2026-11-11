@@ -19,9 +19,9 @@
 
   let cut = $state<EpicDecomposition | null>(null);
   let isLoading = $state(true);
-  let errorMessage = $state('');
+  let errorMessage = $state<string | null>(null);
   /** The code of a failed cut read, which replaces the cut with the error pattern. */
-  let loadError = $state('');
+  let loadError = $state<string | null>(null);
   let busy = $state(false);
   let committed = $state<DecompositionCommitResult | null>(null);
   let droppedPlans = $state<string[]>([]);
@@ -63,11 +63,11 @@
   async function load(initial = false) {
     if (!epicId) return;
     if (initial) isLoading = true;
-    loadError = '';
+    loadError = null;
     try {
       cut = await apiClient.getDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      loadError = errorCodeOf(err) || 'unknown';
+      loadError = errorCodeOf(err);
     } finally {
       if (initial) isLoading = false;
     }
@@ -108,7 +108,7 @@
   async function submitInstruct() {
     if (!cut || instruction.trim().length === 0) return;
     busy = true;
-    errorMessage = '';
+    errorMessage = null;
     try {
       const request: DecompositionInstructRequest = {
         plan_id: instructPlanId,
@@ -119,7 +119,7 @@
       readBack = { before: cut, after };
       instructOpen = false;
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      errorMessage = errorCodeOf(err);
     } finally {
       busy = false;
     }
@@ -132,11 +132,11 @@
     // An edit can resolve a check: re-run the server's checks so the commit gate follows the
     // changed plan instead of the findings of the cut before the edit.
     busy = true;
-    errorMessage = '';
+    errorMessage = null;
     try {
       cut = await apiClient.checkDecomposition(projectId, epicId);
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      errorMessage = errorCodeOf(err);
     } finally {
       busy = false;
     }
@@ -159,7 +159,7 @@
   async function agree() {
     if (!cut) return;
     busy = true;
-    errorMessage = '';
+    errorMessage = null;
     try {
       const checked = await apiClient.checkDecomposition(projectId, epicId);
       cut = checked;
@@ -167,7 +167,7 @@
         committed = await apiClient.commitDecomposition(projectId, epicId);
       }
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err) || 'unknown';
+      errorMessage = errorCodeOf(err);
     } finally {
       busy = false;
     }
@@ -257,17 +257,18 @@
     <div class="decomposition__loading">
       <Skeleton shape="card" rows={3} label={$t('decomposition.loading')} />
     </div>
-  {:else if loadError}
+  {:else if loadError !== null}
     <div class="decomposition__error" data-testid="decomposition-error">
       <ErrorState
         code={loadError}
         actionLabel={$t('common.action.retry')}
         onAct={() => load(true)}
         titleLevel={2}
+        announce={cut !== null}
       />
     </div>
   {:else if cut}
-    {#if errorMessage}
+    {#if errorMessage !== null}
       <div class="decomposition__error" data-testid="decomposition-action-error">
         <ErrorState code={errorMessage} titleLevel={2} />
       </div>

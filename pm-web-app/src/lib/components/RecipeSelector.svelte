@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t } from '../i18n';
   import { apiClient, type RecipeRef } from '../api/client';
+  import { actFailureText } from '../api/errors';
 
   export let projectId = '';
   export let recipes: RecipeRef[] | null = null;
@@ -21,7 +22,7 @@
     try {
       loaded = await apiClient.getRecipes(projectId);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'error';
+      error = actFailureText(e, $t('error.unknown.fix'));
     } finally {
       loading = false;
     }

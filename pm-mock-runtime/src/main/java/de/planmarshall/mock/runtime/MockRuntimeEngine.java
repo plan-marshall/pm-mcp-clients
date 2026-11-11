@@ -348,6 +348,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_ENROLLED = "project_not_enrolled";
     private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
+    private static final String ERR_TARGET_NOT_FOUND = "target_not_found";
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
     private static final String KEY_NODE_ID = "node_id";
@@ -377,7 +378,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_CURRENT_SHA256 = "current_sha256";
     private static final String KEY_NEW_SHA256 = "new_sha256";
     private static final String KEY_STORE_PATH_QUERY = "path";
-    private static final String ERR_STORE_NOT_FOUND = "store_not_found";
     private static final String ERR_CONFIRMATION_MISMATCH = "confirmation_mismatch";
     private static final String ENROL_STORE_PATH = ".plan/marshal.json";
     private static final String ENROL_RECORDED_SHA256 =
@@ -488,9 +488,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SUFFIX_DECOMPOSITION_COMMIT = "/decomposition/commit";
     private static final String EVENT_DECOMPOSITION_UPDATED = "epic.decomposition_updated";
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
-    private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
+    private static final String MESSAGE_NO_CHAT = "No chat for ";
+    private static final String MESSAGE_CLEANUP_JOB_NOT_FOUND = "Cleanup job not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
@@ -518,7 +519,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LESSON_ID = "lesson_id";
     private static final String EVENT_LESSON_CLAIMED = "source.lesson_claimed";
     private static final String EVENT_LESSON_RETIRED = "source.lesson_retired";
-    private static final String ERR_LESSON_NOT_FOUND = "lesson_not_found";
     private static final String ERR_LESSON_CLAIM_REFUSED = "lesson_claim_refused";
     private static final String REASON_LESSON_CLAIMED_ELSEWHERE = "lesson_claimed_elsewhere";
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
@@ -2261,7 +2261,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     updated.deviceId(), PairedDeviceResource.DEFAULT_PAIRED_BY));
             response.json(200, body);
         } else {
-            response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+            response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "Device not found: " + targetId));
         }
     }
 
@@ -2283,7 +2283,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastDeviceRevoked(removed, isWeb);
             response.json(200, Map.of(KEY_STATUS, "revoked", KEY_DEVICE_ID, removed.deviceId(), KEY_LABEL, removed.label()));
         } else {
-            response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+            response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "Device not found: " + targetId));
         }
     }
 
@@ -3216,7 +3216,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var seed = findLesson(projectId, lessonId);
         if (seed == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+            response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
                     KEY_MESSAGE, "No lesson carries that id in " + projectId));
             return;
         }
@@ -3245,7 +3245,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var seeds = lessonSourceSeeds.get(projectId);
             var index = indexOfLesson(seeds, lessonId);
             if (index < 0) {
-                response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
                         KEY_MESSAGE, "No lesson carries that id in " + projectId));
                 return;
             }
@@ -3283,7 +3283,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var seeds = lessonSourceSeeds.get(projectId);
             var index = indexOfLesson(seeds, lessonId);
             if (index < 0) {
-                response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
                         KEY_MESSAGE, "No lesson carries that id in " + projectId));
                 return;
             }
@@ -3439,7 +3439,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var projectId = rest.substring(0, marker);
         var epicId = rest.substring(marker + SEGMENT_EPICS.length());
         if (projectId.isBlank() || epicId.isBlank()) {
-            response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND, KEY_MESSAGE, "No epic in the request"));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "No epic in the request"));
             return true;
         }
         if (!Set.of(CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE).contains(projectId)) {
@@ -3483,7 +3483,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var decomposition = decompositions.get(epicId);
             if (decomposition == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3500,7 +3500,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3530,7 +3530,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -3635,7 +3635,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
@@ -4787,7 +4787,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlEpicStates.containsKey(epicId)) {
-                response.json(404, Map.of(KEY_ERROR, "epic_not_found", KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
                 return;
             }
             var availability = buildEpicActions(epicId).action(action);
@@ -4857,7 +4857,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var hold = controlHolds.get(holdKey(planId, holdId));
             if (hold == null) {
-                response.json(404, Map.of(KEY_ERROR, "hold_not_found", KEY_MESSAGE, "Hold not found: " + holdId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, "Hold not found: " + holdId));
                 return;
             }
             if (!hold.offers(resolution.act())) {
@@ -4976,7 +4976,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var resource = controlEpics.get(epicId);
             if (resource == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
                 return;
             }
             var map = new LinkedHashMap<>(resource.toMap());
@@ -5003,7 +5003,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
-            response.json(404, Map.of(KEY_ERROR, "tokens_not_found", KEY_MESSAGE, "No tokens for " + subjectId));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "No tokens for " + subjectId));
         }
     }
 
@@ -5011,7 +5011,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var check = controlArchiveChecks.get(epicId);
             if (check == null) {
-                response.json(404, Map.of(KEY_ERROR, "epic_not_found",
+                response.json(404, Map.of(KEY_ERROR, epicKnownUnderControlLock(epicId)
+                                ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND,
                         KEY_MESSAGE, "No archive check for epic: " + epicId));
                 return;
             }
@@ -5026,7 +5027,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var review = controlReviews.get(reviewKey(epicId, wanted));
             if (review == null) {
-                response.json(404, Map.of(KEY_ERROR, "review_not_found",
+                response.json(404, Map.of(KEY_ERROR, epicKnownUnderControlLock(epicId)
+                                ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND,
                         KEY_MESSAGE, "No " + wanted + " review for epic: " + epicId));
                 return;
             }
@@ -5034,11 +5036,31 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * @param epicId an epic id
+     * @return whether the scenario carries that epic, so a missing sub-resource is its target rather
+     *     than the scope the address names; the caller holds {@code controlLock}
+     */
+    private boolean epicKnownUnderControlLock(String epicId) {
+        return controlEpics.containsKey(epicId);
+    }
+
+    /**
+     * @param epicId an epic id
+     * @return the code a missing decomposition stands for: the target when the epic exists, the scope
+     *     when the address names an epic the scenario does not carry
+     */
+    private String decompositionMissingCode(String epicId) {
+        synchronized (controlLock) {
+            return controlEpics.containsKey(epicId) ? ERR_TARGET_NOT_FOUND : ERR_SCOPE_NOT_FOUND;
+        }
+    }
+
     private void handleGetControlDecomposition(MockHttpResponse response, String epicId) throws IOException {
         synchronized (decompositionLock) {
             var cut = decompositions.get(epicId);
             if (cut == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
                         KEY_MESSAGE, "No decomposition for epic: " + epicId));
                 return;
             }
@@ -5075,7 +5097,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(subjectId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + subjectId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + subjectId));
                 return;
             }
             response.json(200, chat.toMap());
@@ -5089,7 +5111,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(planId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
                 return;
             }
             var at = Instant.now().toString();
@@ -5108,7 +5130,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var chat = controlChats.get(planId);
             if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
                 return;
             }
             if (!chat.hasProposal()) {
@@ -5552,7 +5574,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (target != null) {
             response.json(200, target.toMap());
         } else {
-            response.json(404, Map.of(KEY_ERROR, "report_not_found", KEY_MESSAGE, "Report not found: " + reportId));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Report not found: " + reportId));
         }
     }
 
@@ -5588,7 +5610,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (target == null) {
-            response.json(404, Map.of(KEY_ERROR, "report_not_found", KEY_MESSAGE, "Report not found: " + reportId));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Report not found: " + reportId));
             return;
         }
         if (target.isRead()) {
@@ -8068,7 +8090,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (!isEnrolled(projectId)) {
-            sendStoreNotFound(response, projectId);
+            sendStoreMissing(response, projectId, false);
             return;
         }
         response.json(200, new StoreDigestComparison(enrolmentFile(projectId), ENROLMENT_RECORDED_SIZE,
@@ -8202,10 +8224,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleStoreDigest(MockHttpRequest request, MockHttpResponse response, String projectId)
             throws IOException {
         var requestedPath = readQueryParam(request.query(), KEY_STORE_PATH_QUERY);
+        // The enrolment question is asked before the store lock, whose holder may also want the
+        // projects lock; the two are never nested.
+        var enrolled = isEnrolled(projectId);
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendStoreNotFound(response, projectId);
+                sendStoreMissing(response, projectId, enrolled);
                 return;
             }
             var storePath = requestedPath != null && !requestedPath.isBlank() ? requestedPath : store.storePath();
@@ -8220,10 +8245,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleAcceptEdit(MockHttpRequest request, MockHttpResponse response, String projectId)
             throws IOException {
         var accept = parseAcceptEdit(request.body());
+        var enrolled = isEnrolled(projectId);
         synchronized (storeLock) {
             var store = mockStores.get(projectId);
             if (store == null) {
-                sendStoreNotFound(response, projectId);
+                sendStoreMissing(response, projectId, enrolled);
                 return;
             }
             if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
@@ -8266,8 +8292,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return null;
     }
 
-    private static void sendStoreNotFound(MockHttpResponse response, String projectId) throws IOException {
-        response.json(404, Map.of(KEY_ERROR, ERR_STORE_NOT_FOUND,
+    private static void sendStoreMissing(MockHttpResponse response, String projectId, boolean enrolled)
+            throws IOException {
+        // An enrolled project the scenario records no store for is missing its store; only a project
+        // the machine does not know at all is missing its enrolment.
+        response.json(404, Map.of(KEY_ERROR, enrolled ? ERR_TARGET_NOT_FOUND : ERR_PROJECT_NOT_ENROLLED,
                 KEY_MESSAGE, "No store recorded for project " + projectId));
     }
 
@@ -9302,7 +9331,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
@@ -9409,7 +9438,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleRemindCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
         synchronized (systemLock) {
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.POSTPONED) {
@@ -9453,7 +9482,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleIgnoreCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
         synchronized (systemLock) {
             if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
-                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_CLEANUP_JOB_NOT_FOUND + jobId));
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {

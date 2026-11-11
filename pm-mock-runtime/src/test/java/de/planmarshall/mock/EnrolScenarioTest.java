@@ -185,7 +185,7 @@ class EnrolScenarioTest {
     }
 
     @Test
-    @DisplayName("reports store_not_found for a project without a recorded store")
+    @DisplayName("reports project_not_enrolled for a project the machine does not know")
     void shouldReportStoreNotFound() throws Exception {
         try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
@@ -196,7 +196,23 @@ class EnrolScenarioTest {
                     .withHeader("Authorization", auth));
             assertEquals(404, response.status());
             var json = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            assertEquals("store_not_found", json.get("error"));
+            assertEquals("project_not_enrolled", json.get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("reports target_not_found for an enrolled project the scenario records no store for")
+    void shouldReportMissingStoreOfAnEnrolledProject() throws Exception {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            // pm-mcp-core is enrolled in the explorer of the scenario but carries no store fixture.
+            var response = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-core/stores/digest")
+                    .withHeader("Authorization", auth));
+            assertEquals(404, response.status());
+            var json = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+            assertEquals("target_not_found", json.get("error"));
         }
     }
 

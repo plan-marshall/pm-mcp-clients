@@ -200,7 +200,8 @@ class MockRuntimeEngineTest {
     @DisplayName("refuses a start whose project segment is empty")
     void shouldRefuseStartWithBlankProject() throws Exception {
         // Arrange: the path names the start route but carries no project id.
-        var body = "{\"request\":\"anything\"}".getBytes(StandardCharsets.UTF_8);
+        var request = JsonTree.write(Map.of("request", Generators.letterStrings(4, 12).next()));
+        var body = request.getBytes(StandardCharsets.UTF_8);
 
         // Act
         var res = send("POST", "/api/v1/projects//plans/start", auth, body, false);
@@ -748,7 +749,7 @@ class MockRuntimeEngineTest {
         // 6. PATCH non-existent -> 404
         var notFoundRes = send("PATCH", "/api/v1/web/devices/non-existent", auth, renameBody, false);
         assertEquals(404, notFoundRes.status());
-        assertEquals("device_not_found", notFoundRes.json().get("error"));
+        assertEquals("target_not_found", notFoundRes.json().get("error"));
 
         // 7. DELETE /api/v1/web/devices/dev-2 (single)
         var delRes = send("DELETE", "/api/v1/web/devices/dev-2", auth, new byte[0], false);

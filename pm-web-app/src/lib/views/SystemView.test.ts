@@ -4,6 +4,7 @@ import SystemView from './SystemView.svelte';
 import { runtimeStore, lifecycleEpochOf, lifecycleFieldsOf } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot, type StatusResponse } from '../api/client';
+import { ClientError } from '../api/errors';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { get } from 'svelte/store';
@@ -347,6 +348,23 @@ describe('SystemView component', () => {
     await fireEvent.click(confirmBtn);
 
     expect(stopSpy).toHaveBeenCalledWith('drain');
+  });
+
+  it("shows the sentence of the act failure's code instead of the code", async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    vi.spyOn(apiClient, 'stopRuntime').mockRejectedValue(new ClientError('timeout'));
+
+    render(SystemView);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Stop/i })).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: /Stop/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Try again; if it keeps taking this long, check that the runtime is running.',
+    );
+    expect(alert).not.toHaveTextContent(/^timeout$/);
   });
 
   it('navigates to cleanup route when review button is clicked', async () => {
