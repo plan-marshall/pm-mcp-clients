@@ -890,8 +890,14 @@
           }
         ],
         "non_goals": [
-          "Change the on-disk queue format.",
-          "Support more than one relay per machine."
+          {
+            "id": "NG-1",
+            "text": "Change the on-disk queue format."
+          },
+          {
+            "id": "NG-2",
+            "text": "Support more than one relay per machine."
+          }
         ],
         "decisions": [
           {
@@ -902,7 +908,11 @@
               "fixed interval",
               "exponential backoff"
             ],
-            "question_id": "Q-007"
+            "question_id": "Q-007",
+            "adr": {
+              "adr_id": "ADR-0001",
+              "relation": "follows"
+            }
           },
           {
             "id": "DC-002",
@@ -917,7 +927,7 @@
           {
             "id": "DC-003",
             "text": "The transport stays HTTP/2.",
-            "decider": "model",
+            "decider": "role",
             "options_weighed": [
               "HTTP/1.1",
               "HTTP/2"
@@ -927,7 +937,22 @@
             "id": "DC-004",
             "text": "The existing queue already persists each accepted event.",
             "decider": "fact",
-            "options_weighed": []
+            "options_weighed": [],
+            "evidence": "pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java"
+          },
+          {
+            "id": "DC-005",
+            "text": "The reconnect count leaves the status resource for now.",
+            "decider": "operator",
+            "options_weighed": [
+              "keep the count",
+              "leave it out"
+            ],
+            "question_id": "Q-009",
+            "adr": {
+              "adr_id": "ADR-0002",
+              "relation": "contradicts"
+            }
           }
         ],
         "open_questions": [
@@ -941,31 +966,9 @@
           }
         ],
         "builder_check": {
-          "resolution": "pending",
-          "questions": [
-            {
-              "id": "BQ-001",
-              "text": "Which timeout applies when the queue is full during a reconnect?",
-              "sort": "operator",
-              "recommended": true,
-              "state": "open"
-            },
-            {
-              "id": "BQ-002",
-              "text": "Use the existing retry helper from cui-http.",
-              "sort": "minor",
-              "recommended": false,
-              "state": "open"
-            },
-            {
-              "id": "BQ-003",
-              "text": "AC-002 answers the event-retention question.",
-              "sort": "answered",
-              "recommended": false,
-              "state": "answered",
-              "answer": "AC-002"
-            }
-          ]
+          "resolution": "not_run",
+          "reason": "The builder could not reach the operator before the relaunch window closed.",
+          "questions": []
         }
       }
     },
@@ -1119,7 +1122,6 @@
         "project_id": "pm-mcp-clients",
         "role": "implement",
         "current_multiple": 3.0,
-        "proposed_multiple": 2.0,
         "buckets": [
           {
             "label": "0-1x",
@@ -1140,14 +1142,14 @@
             "from_multiple": 2.0,
             "to_multiple": 3.0,
             "task_count": 3,
-            "flagged_tasks": 3
+            "flagged_tasks": 0
           },
           {
             "label": "3x and more",
             "from_multiple": 3.0,
             "to_multiple": 6.0,
             "task_count": 4,
-            "flagged_tasks": 4
+            "flagged_tasks": 0
           }
         ]
       }

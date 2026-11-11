@@ -12,6 +12,7 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -49,7 +50,9 @@ import de.planmarshall.api.entry.DeviceListResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.intent.BuilderCheckResource;
 import de.planmarshall.api.intent.EpicIntentResource;
+import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
 import de.planmarshall.api.intent.OverSizeDistributionResource;
 import de.planmarshall.api.intent.PlanIntentResource;
@@ -85,6 +88,40 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 class FullyOnboardedScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
+
+    @Test
+    @DisplayName("serves the grown intent fixtures: the not_run reason and the absent proposal")
+    void shouldServeGrownIntentFixtures() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+            var intent = PlanIntentResource.fromJson(
+                    get(runtime, "/api/v1/plans/fix-relay/intent").bodyText());
+
+            var check = intent.builderCheck();
+            assertNotNull(check);
+            assertEquals(BuilderCheckResource.Resolution.NOT_RUN, check.resolution());
+            assertEquals("The builder could not reach the operator before the relaunch window closed.",
+                    check.reason());
+            assertTrue(check.questions().isEmpty());
+            assertEquals(1, intent.roleCalls().size());
+            assertEquals("NG-1", intent.nonGoals().getFirst().id());
+            assertEquals("Change the on-disk queue format.", intent.nonGoals().getFirst().text());
+            var fact = intent.decisions().stream()
+                    .filter(decision -> decision.decider() == IntentDecider.FACT).findFirst().orElseThrow();
+            assertEquals("pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java", fact.evidence());
+            assertEquals(PlanIntentResource.AdrRelation.FOLLOWS,
+                    intent.decisions().getFirst().adr().relation());
+            assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
+                    intent.decisions().getLast().adr().relation());
+
+            var distribution = OverSizeDistributionResource.fromJson(
+                    get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText());
+            assertNull(distribution.proposedMultiple());
+            assertEquals(0, distribution.flaggedTasks());
+            assertEquals(0.0, distribution.flaggedShare(), 0.0001);
+            assertTrue(distribution.flaggedBuckets().isEmpty());
+            assertFalse(distribution.flagsMore());
+        }
+    }
 
     @Test
     @DisplayName("loads from the classpath with the showroom state and pairing code")

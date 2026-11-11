@@ -69,12 +69,17 @@ class IntentScenarioTest {
                 assertEquals("fix-relay", intent.planId());
                 assertEquals(3, intent.revision());
                 assertEquals(4, intent.criteria().size());
-                assertEquals(2, intent.operatorDecisions().size());
-                assertEquals(1, intent.modelCalls().size());
+                assertEquals(3, intent.operatorDecisions().size());
+                assertEquals(1, intent.roleCalls().size());
                 assertEquals(1, intent.notVerifiedCount());
                 assertTrue(intent.hasNotVerified());
                 assertEquals(1, intent.notMetCount());
                 assertEquals(2, intent.metCount());
+                assertEquals(2, intent.nonGoals().size());
+                assertEquals("NG-1", intent.nonGoals().getFirst().id());
+                assertEquals("Change the on-disk queue format.", intent.nonGoals().getFirst().text());
+                assertEquals(List.of("NG-1", "NG-2"),
+                        intent.nonGoals().stream().map(PlanIntentResource.NonGoal::id).toList());
 
                 var notVerified = intent.criterion("AC-003");
                 assertEquals(CriterionStatus.NOT_VERIFIED, notVerified.status());
@@ -93,6 +98,43 @@ class IntentScenarioTest {
 
                 assertTrue(intent.decisions().stream()
                         .anyMatch(decision -> decision.decider() == IntentDecider.FACT));
+
+                var fact = intent.decisions().stream()
+                        .filter(decision -> decision.decider() == IntentDecider.FACT).findFirst().orElseThrow();
+                assertEquals("pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java", fact.evidence());
+                assertEquals(PlanIntentResource.AdrRelation.FOLLOWS,
+                        intent.decisions().getFirst().adr().relation());
+                assertEquals("ADR-0001", intent.decisions().getFirst().adr().adrId());
+                assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
+                        intent.decisions().getLast().adr().relation());
+                assertEquals("ADR-0002", intent.decisions().getLast().adr().adrId());
+            }
+        }
+
+        @Test
+        @DisplayName("serves the fully onboarded scenario's grown intent fixtures")
+        void servesFullyOnboardedIntent() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+                var intent = PlanIntentResource.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/intent").bodyText());
+
+                assertEquals("fix-relay", intent.planId());
+                assertEquals(1, intent.roleCalls().size());
+                assertEquals("NG-1", intent.nonGoals().getFirst().id());
+                var check = intent.builderCheck();
+                assertNotNull(check);
+                assertEquals(BuilderCheckResource.Resolution.NOT_RUN, check.resolution());
+                assertEquals("The builder could not reach the operator before the relaunch window closed.",
+                        check.reason());
+                assertTrue(check.questions().isEmpty());
+
+                var distribution = OverSizeDistributionResource.fromJson(
+                        get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText());
+                assertNull(distribution.proposedMultiple());
+                assertEquals(0, distribution.flaggedTasks());
+                assertEquals(0.0, distribution.flaggedShare(), 0.0001);
+                assertTrue(distribution.flaggedBuckets().isEmpty());
+                assertFalse(distribution.flagsMore());
             }
         }
 
@@ -201,7 +243,7 @@ class IntentScenarioTest {
                 assertEquals("pm-mcp-clients", distribution.projectId());
                 assertEquals("implement", distribution.role());
                 assertEquals(3.0, distribution.currentMultiple());
-                assertEquals(2.0, distribution.proposedMultiple());
+                assertEquals(2.0, distribution.proposedMultiple().doubleValue());
                 assertEquals(4, distribution.buckets().size());
                 assertEquals(20, distribution.totalTasks());
                 assertEquals(7, distribution.flaggedTasks());
