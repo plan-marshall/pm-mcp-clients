@@ -9,13 +9,12 @@
  */
 package de.planmarshall.api.resource;
 
+import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
-
-import com.fasterxml.jackson.core.JsonParser;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;

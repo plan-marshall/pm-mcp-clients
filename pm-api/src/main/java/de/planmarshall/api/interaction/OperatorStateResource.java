@@ -9,6 +9,8 @@
  */
 package de.planmarshall.api.interaction;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,9 +20,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.id.DottedIdentifier;
