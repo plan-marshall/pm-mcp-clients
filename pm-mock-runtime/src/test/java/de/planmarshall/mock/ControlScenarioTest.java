@@ -468,6 +468,17 @@ class ControlScenarioTest {
     }
 
     @Test
+    @DisplayName("answers target_not_found for a sub-resource a known epic does not carry")
+    void knownEpicWithoutSubResource() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var review = get(runtime, "/api/v1/epics/relay-hardening/review?register=nothing-of-that-kind");
+            assertEquals(404, review.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(review.body())), "error"));
+        }
+    }
+
+    @Test
     @DisplayName("answers target_not_found for an unknown hold of a known plan")
     void unknownHold() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
