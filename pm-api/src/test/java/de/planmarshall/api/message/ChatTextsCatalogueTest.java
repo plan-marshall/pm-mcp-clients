@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -29,6 +30,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 /**
  * Checks the chat's texts of the {@code control} and {@code decisions} packs against the key tables of the
  * design, read from the repository: {@code doc/design/shared/work-actions-chat-texts.adoc#texts} for every
@@ -36,6 +40,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * {@code decision.chat.*} key. The table texts are the expectation, so they are compared verbatim.
  */
 @DisplayName("Chat texts: the packs hold the design tables' keys with their texts verbatim")
+@EnableGeneratorController
 class ChatTextsCatalogueTest {
 
     private static final Path DESIGN = moduleDirectory().resolve("../doc/design/shared").normalize();
@@ -101,7 +106,7 @@ class ChatTextsCatalogueTest {
 
     @Test
     @DisplayName("both tables are read and yield rows, so an unreadable table never passes")
-    void tablesYieldRows() throws Exception {
+    void tablesYieldRows() {
         assertAll(
                 () -> assertTrue(Files.isRegularFile(CHAT_TEXTS), CHAT_TEXTS.toString()),
                 () -> assertTrue(Files.isRegularFile(DECISION_TEXTS), DECISION_TEXTS.toString()),
@@ -121,6 +126,32 @@ class ChatTextsCatalogueTest {
     @DisplayName("each decision.chat.* key of the table is in the en and de packs with the table's text")
     void decisionChatKey(String key, Row row) {
         assertRow("decisions", row);
+    }
+
+    @Test
+    @DisplayName("a decision answered names no channel when it carries none, the terminal for cli, and no device "
+            + "in the variant without one")
+    void decisionAnsweredWithAbsentChannelOrDevice() {
+        var answered = "control.chat.line.decision_answered";
+        var noDevice = "control.chat.line.decision_answered_no_device";
+        var id = Generators.letterStrings(3, 12).next();
+        var device = Generators.letterStrings(3, 12).next();
+
+        assertAll(
+                () -> assertEquals(id + " answered", MessageCatalogue.format("en", answered, Map.of("id", id))),
+                () -> assertEquals(id + " answered in the terminal",
+                        MessageCatalogue.format("en", answered, Map.of("id", id, "channel", "cli"))),
+                () -> assertEquals(id + " answered in the web app (" + device + ")",
+                        MessageCatalogue.format("en", answered, Map.of("id", id, "channel", "web", "device", device))),
+                () -> assertEquals(id + " answered in the web app",
+                        MessageCatalogue.format("en", noDevice, Map.of("id", id, "channel", "web"))),
+                () -> assertEquals(id + " answered", MessageCatalogue.format("en", noDevice, Map.of("id", id))),
+                () -> assertEquals(id + " beantwortet",
+                        MessageCatalogue.format("de", answered, Map.of("id", id))),
+                () -> assertEquals(id + " beantwortet im Terminal",
+                        MessageCatalogue.format("de", answered, Map.of("id", id, "channel", "cli"))),
+                () -> assertEquals(id + " beantwortet in der Web-App",
+                        MessageCatalogue.format("de", noDevice, Map.of("id", id, "channel", "web"))));
     }
 
     @Test

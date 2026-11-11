@@ -35,10 +35,15 @@ import de.planmarshall.api.overview.ChangeSize;
 @EnableGeneratorController
 class ProcessTreeTest {
 
-    @Test
-    @DisplayName("should serialize and deserialize complete ProcessTree round-trip")
-    void shouldRoundTripProcessTree() throws Exception {
-        // Arrange
+    /**
+     * A complete process tree with the generated values it was built from: a running execute phase with one
+     * envelope and one off-track task, and a pruned refine phase.
+     */
+    private record FullTree(String planId, String planTitle, String projectId, String epicId, String taskId,
+                            long totalTokens, ProcessTree tree) {
+    }
+
+    private static FullTree fullTree() {
         var planId = Generators.nonBlankStrings().next();
         var planTitle = Generators.nonBlankStrings().next();
         var projectId = Generators.nonBlankStrings().next();
@@ -131,23 +136,42 @@ class ProcessTreeTest {
                 null,
                 null
         );
+        return new FullTree(planId, planTitle, projectId, epicId, taskId, totalTokens, tree);
+    }
+
+    @Test
+    @DisplayName("should round-trip the plan's own members of a complete ProcessTree")
+    void shouldRoundTripProcessTree() throws Exception {
+        // Arrange
+        var full = fullTree();
 
         // Act
-        var json = tree.toJson();
+        var json = full.tree().toJson();
         assertNotNull(json);
         var parsed = ProcessTree.fromJson(json);
 
         // Assert
-        assertEquals(planId, parsed.planId());
-        assertEquals(planTitle, parsed.title());
-        assertEquals(projectId, parsed.project().projectId());
-        assertEquals(epicId, parsed.epic() != null ? parsed.epic().epicId() : "");
+        assertEquals(full.planId(), parsed.planId());
+        assertEquals(full.planTitle(), parsed.title());
+        assertEquals(full.projectId(), parsed.project().projectId());
+        assertEquals(full.epicId(), parsed.epic() != null ? parsed.epic().epicId() : "");
         assertEquals("execute", parsed.currentPhase());
         assertEquals("running", parsed.phaseState());
-        assertEquals(totalTokens, parsed.tokensSoFar().total());
+        assertEquals(full.totalTokens(), parsed.tokensSoFar().total());
         assertTrue(parsed.tokensSoFar().floor());
         assertEquals(2, parsed.nodes().size());
+    }
 
+    @Test
+    @DisplayName("should round-trip the running phase of a complete ProcessTree with its envelope and its task")
+    void shouldRoundTripProcessTreeRunningPhase() throws Exception {
+        // Arrange
+        var full = fullTree();
+
+        // Act
+        var parsed = ProcessTree.fromJson(full.tree().toJson());
+
+        // Assert
         var parsedExec = parsed.nodes().get(0);
         assertEquals("execute", parsedExec.nodeId());
         assertEquals("running", parsedExec.state());
@@ -158,12 +182,24 @@ class ProcessTreeTest {
         assertEquals(1, parsedLeaf.leafTasks().size());
 
         var parsedTask = parsedLeaf.leafTasks().get(0);
-        assertEquals(taskId, parsedTask.taskId());
+        assertEquals(full.taskId(), parsedTask.taskId());
         assertEquals("implement", parsedTask.role());
         assertNotNull(parsedTask.offTrack());
         assertEquals("repeating", parsedTask.offTrack().signal());
         assertEquals("show", parsedTask.offTrack().action());
+    }
 
+    @Test
+    @DisplayName("should round-trip the pruned phase of a complete ProcessTree and write no absent member")
+    void shouldRoundTripProcessTreePrunedPhaseAndAbsentMembers() throws Exception {
+        // Arrange
+        var full = fullTree();
+
+        // Act
+        var json = full.tree().toJson();
+        var parsed = ProcessTree.fromJson(json);
+
+        // Assert
         var parsedPruned = parsed.nodes().get(1);
         assertEquals("refine", parsedPruned.nodeId());
         assertEquals("not_in_plan", parsedPruned.state());

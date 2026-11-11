@@ -311,7 +311,7 @@ class DecisionRecordsTest {
 
     @Test
     @DisplayName("an answer without a channel reads back without one, never as cli")
-    void answerRequestWithoutChannelStaysAbsent() throws Exception {
+    void answerRequestWithoutChannelStaysAbsent() {
         var option = Generators.nonBlankStrings().next();
         var request = new DecisionAnswerRequest(Map.of("1", option), option, null, null, "answer", null, null, null);
 
@@ -341,7 +341,7 @@ class DecisionRecordsTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"web", "cli"})
     @DisplayName("a sent channel round-trips unchanged in the request and the event")
-    void sentChannelRoundTrips(String channel) throws Exception {
+    void sentChannelRoundTrips(String channel) {
         var id = Generators.nonBlankStrings().next();
         var answer = Generators.nonBlankStrings().next();
         var device = Generators.nonBlankStrings().next();

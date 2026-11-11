@@ -276,12 +276,13 @@ class ChatReadModelTest {
                 assertEquals(subject, ChatSubject.fromJson(subject.toJson()));
             }
             var role = new RoutedRole(id(), id());
+            var roleId = id();
 
             assertAll(
                     () -> assertEquals(role, RoutedRole.fromJson(role.toJson())),
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new ChatSubject(ChatSubjectKind.PLAN, " ")),
-                    () -> assertThrows(IllegalArgumentException.class, () -> new RoutedRole(id(), " ")),
+                    () -> assertThrows(IllegalArgumentException.class, () -> new RoutedRole(roleId, " ")),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatSubject.fromMap(without(subject(ChatSubjectKind.PLAN).toMap(), "id"))),
                     () -> assertThrows(JsonFormatException.class,
@@ -290,7 +291,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a message text round-trips with and without arguments; an invalid key is refused")
-        void messageText() throws Exception {
+        void messageText() {
             var withArgs = new MessageText("control.chat.knows.plan", Map.of("id", id(), "title", id()));
             var bare = MessageText.of("control.chat.knows.epic");
 
@@ -331,13 +332,16 @@ class ChatReadModelTest {
                 assertEquals(revision, QueuedRevision.fromJson(revision.toJson()));
             }
             var applies = message("control.chat.applies.on_start");
+            var chatId = id();
+            var turnId = id();
+            var epic = subject(ChatSubjectKind.EPIC);
+            var withoutChatOpen = without(
+                    new QueuedRevision(id(), id(), subject(ChatSubjectKind.PLAN), false, applies).toMap(), "chat_open");
 
             assertAll(
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new QueuedRevision(id(), id(), subject(ChatSubjectKind.EPIC), true, applies)),
-                    () -> assertThrows(JsonFormatException.class, () -> QueuedRevision.fromMap(without(
-                            new QueuedRevision(id(), id(), subject(ChatSubjectKind.PLAN), false, applies).toMap(),
-                            "chat_open"))));
+                            () -> new QueuedRevision(chatId, turnId, epic, true, applies)),
+                    () -> assertThrows(JsonFormatException.class, () -> QueuedRevision.fromMap(withoutChatOpen)));
         }
     }
 
@@ -362,20 +366,22 @@ class ChatReadModelTest {
         @DisplayName("the constructor refuses an act without act and subject and any other kind without id")
         void constructorRefusals() {
             var subject = subject(ChatSubjectKind.PLAN);
+            var refId = id();
+            var act = id();
 
             assertAll(
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new TurnRef(RefKind.ACT, null, null, subject)),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new TurnRef(RefKind.ACT, null, id(), null)),
+                            () -> new TurnRef(RefKind.ACT, null, act, null)),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new TurnRef(RefKind.ACT, id(), id(), subject)),
+                            () -> new TurnRef(RefKind.ACT, refId, act, subject)),
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new TurnRef(RefKind.TASK, null, null, null)),
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new TurnRef(RefKind.HOLD, " ", null, null)),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new TurnRef(RefKind.PLAN, id(), id(), null)),
+                            () -> new TurnRef(RefKind.PLAN, refId, act, null)),
                     () -> assertThrows(JsonFormatException.class,
                             () -> TurnRef.fromMap(Map.of("kind", "act", "act", id()))),
                     () -> assertThrows(JsonFormatException.class,
@@ -446,6 +452,7 @@ class ChatReadModelTest {
         void kindAndStatusRefusals() {
             var failed = turn(TurnKind.MESSAGE, TurnStatus.FAILED, List.of()).toMap();
             var complete = messageTurn().toMap();
+            var noticeLines = List.of(line());
 
             assertAll(
                     () -> assertThrows(JsonFormatException.class, () -> ChatTurn.fromMap(without(failed, "reason"))),
@@ -454,7 +461,7 @@ class ChatReadModelTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurn.fromMap(with(complete, "lines", List.of(line().toMap())))),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> turn(TurnKind.PROPOSAL, TurnStatus.COMPLETE, List.of(line()))));
+                            () -> turn(TurnKind.PROPOSAL, TurnStatus.COMPLETE, noticeLines)));
         }
 
         static Stream<Arguments> alwaysPlainTurns() {
@@ -471,12 +478,15 @@ class ChatReadModelTest {
             var plain = new ChatTurn(id(), kind, author, TurnStatus.COMPLETE, TurnFormat.PLAIN, untrusted, null,
                     id(), null, null, id(), null, null);
             var markdown = with(plain.toMap(), "format", "markdown");
+            var turnId = id();
+            var text = id();
+            var at = id();
 
             assertAll(
                     () -> assertEquals(plain, ChatTurn.fromJson(plain.toJson()), name),
                     () -> assertThrows(IllegalArgumentException.class,
-                            () -> new ChatTurn(id(), kind, author, TurnStatus.COMPLETE, TurnFormat.MARKDOWN,
-                                    untrusted, null, id(), null, null, id(), null, null), name),
+                            () -> new ChatTurn(turnId, kind, author, TurnStatus.COMPLETE, TurnFormat.MARKDOWN,
+                                    untrusted, null, text, null, null, at, null, null), name),
                     () -> assertThrows(JsonFormatException.class, () -> ChatTurn.fromMap(markdown), name),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurn.fromJson(JsonTree.write(markdown)), name));
@@ -508,7 +518,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("absent applies, before and after read as absent; a finding is tied to refused")
-        void absentAndRefusals() throws Exception {
+        void absentAndRefusals() {
             var bare = new ChatProposal(id(), id(), ProposalKind.FOLLOW_UP, id(), null, null, null,
                     ProposalState.REJECTED, null);
             var refused = proposal(ProposalState.REFUSED).toMap();
