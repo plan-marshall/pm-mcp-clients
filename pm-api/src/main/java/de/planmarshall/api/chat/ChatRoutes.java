@@ -149,8 +149,7 @@ public final class ChatRoutes {
      * @return the path of the page of turns before that turn ({@code GET …/chat?before=<turn_id>})
      */
     public String page(String beforeTurnId) {
-        return chat() + "?before=" + URLEncoder.encode(requireId(beforeTurnId, "beforeTurnId"),
-                StandardCharsets.UTF_8).replace("+", "%20");
+        return chat() + "?before=" + segment(beforeTurnId, "beforeTurnId");
     }
 
     /**

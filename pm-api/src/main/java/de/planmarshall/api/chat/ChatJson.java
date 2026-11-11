@@ -160,25 +160,6 @@ final class ChatJson {
     }
 
     /**
-     * Reads an optional member of a closed list: absent or {@code null} reads as {@code null}.
-     *
-     * @param object the object
-     * @param key    the member name
-     * @param lookup the closed list's lookup, {@code null} for a value it does not name
-     * @param type   the record's type name for the refusal
-     * @param <E>    the closed list
-     * @return the value, or {@code null}
-     * @throws IOException if the member is present and names no value of the list
-     */
-    static <E> @Nullable E optionalEnum(Map<String, Object> object, String key,
-                                        Function<String, @Nullable E> lookup, String type) throws IOException {
-        if (object.get(key) == null) {
-            return null;
-        }
-        return requireEnum(object, key, lookup, type);
-    }
-
-    /**
      * Reads a required nested record.
      *
      * @param object the object
