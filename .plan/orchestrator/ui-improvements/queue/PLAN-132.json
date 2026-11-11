@@ -2,10 +2,10 @@
   "id": "PLAN-132",
   "slug": "chat-contract",
   "workstream": "WS-07",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "plan-132-chat-contract",
+  "pr": "409",
+  "landing": "landings/PLAN-132.md",
   "seq": 132
 }

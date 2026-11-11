@@ -277,7 +277,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   test-integrity check accepts them without an operator stop; (3) a criterion about how a mark or screen looks is evidenced
   only by a rendered comparison (screenshot or rendered sheet), never by reading the source — plan the render; (4) never write a
   deliverable criterion whose evidence exists only after the PR (Sonar count, CI result, review outcome): state it as a landing
-  obligation of the finalize steps instead.
+  obligation of the finalize steps instead. (5) (PLAN-132 lesson 014) never declare a design table read-only when a test
+  compares the message packs to it: a change of wording then has to change the table.
 
 ## Decisions
 
@@ -605,7 +606,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   the PR body; the eight candidate lessons adopted and archived (spec-authoring rules in Queue annotations; Open Defects for the
   plan-marshall-side three; the pm-web-app inventory mapping a direct-PR candidate). PLAN-159 took the freed slot.
 
+- 2026-11-11 — PLAN-132 landed (#409, `572dc739`; `landings/PLAN-132.md`): one MAJOR (the wire form of the chat's message
+  keys: the design says `chat.*`, the pm-api goldens send `control.chat.*`, 11 of them in no catalogue). Operator
+  (AskUserQuestion): PLAN-133 amended before it initialised — deliverable 0 settles the key form first, deliverable 6 the pm-api
+  and mock minors; `DecisionView`'s absent channel/device → PLAN-136; lessons adopted (rule 5) and archived. PLAN-133 was
+  emitted on the operator's word as a fifth plan beside N=4.
+
 ## Open Defects
+
+- PLAN-132 (2026-11-11): (a) runtime spec, owner plan-marshall-documentation: a machine-scope decision chat has a route
+  (`ChatRoutes.machineDecision`) but no event stream (`06-event-catalogue.adoc#chat-events` lists P, E, W, N only).
+  (b) owner plan-marshall, lessons 001-009: the pre-commit gate's whole-tree import rewrite swept unrelated files into the PR and
+  over the review bots' size cap (split out as #410); `kind=change` ledger rows keep pre-rebase SHAs and block 5-execute → 6-finalize
+  (`execute_commits_unrecorded`); the test-integrity audit counts a test split as `weakened_test`; Sonar new-code issues in new
+  tests surface only after the first push (two extra cycles); a quota refusal on a later head still escalates although one review
+  of the PR exists; `review_completeness trigger-bot` called with `--pr-number`; the build-server wait poll writes hundreds of
+  identical work-log lines (4775 entries), hiding the `architecture` and `manage-findings` script failures.
 
 - PLAN-130 lessons 006-008 (2026-11-11, owner plan-marshall): (a) an edit of a bot's walkthrough comment that was already
   triaged is picked up again as a pending finding and held the #414 merge — key triage by comment id, treat an edit of a

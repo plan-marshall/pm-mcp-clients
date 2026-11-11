@@ -199,3 +199,11 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - Parked behind PLAN-135 (D6 side column, D1 building blocks). *2026-11-11:* D6 merged (#403, `8568b56e`): the side column is
   `PLAN-142`'s (`side`, `sideOpen`, `onHideSide` on `TriagePage` and `WizardPage`); the `open=` forms wait for `PLAN-143`, the pushed
   address being the only form until then (deliverable 3 states it). The wait is now on `PLAN-135` and, through it, `PLAN-142`.
+
+## PLAN-132 Landing Residue (Amendment 2026-11-11)
+
+Routed here by the operator (AskUserQuestion, 2026-11-11) from `landings/PLAN-132.md`. `DecisionAnsweredEvent.channel` and `.device`
+are now optional (PLAN-132, `572dc739`), but `DecisionView.svelte:375-381` (`closed_elsewhere`) maps an absent channel to "web" and
+an absent device to "—". Carry "absent stays absent" to this consumer: no channel names no channel, no device selects the
+`decision_answered_no_device` wording (`work-actions-chat-texts.adoc:17`). Done when a `DecisionView.test.ts` case for each absence
+fails on revert. Expected surface added: `pm-web-app/src/lib/views/DecisionView.svelte`, `pm-web-app/src/lib/views/DecisionView.test.ts`.
