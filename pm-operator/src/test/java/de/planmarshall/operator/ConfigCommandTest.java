@@ -460,9 +460,9 @@ class ConfigCommandTest {
         }
         final int found = promptIndex;
         assertAll(
-                            () -> assertEquals(6, rows.size(), text),
+                            () -> assertEquals(7, rows.size(), text),
                             () -> assertTrue(found > 0, text),
-                            () -> assertTrue(lines[found].startsWith("Open: 1-6"), lines[found]),
+                            () -> assertTrue(lines[found].startsWith("Open: 1-7"), lines[found]),
                             () -> assertTrue(lines[found - 1].stripLeading().matches("\\d+\\) .*"),
                                                 lines[found - 1])
         );

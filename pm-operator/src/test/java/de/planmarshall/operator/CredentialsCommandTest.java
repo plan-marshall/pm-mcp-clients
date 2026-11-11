@@ -18,6 +18,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -41,6 +43,7 @@ class CredentialsCommandTest {
     private RuntimeFixture fixture;
     private StringWriter out;
     private StringWriter err;
+    private final List<String> requests = new ArrayList<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -48,6 +51,7 @@ class CredentialsCommandTest {
         PmOperatorTest.writeLiveRecord(fixture);
         out = new StringWriter();
         err = new StringWriter();
+        requests.clear();
     }
 
     @AfterEach
@@ -71,14 +75,13 @@ class CredentialsCommandTest {
 
     private void present() throws Exception {
         fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
             if ("/api/v1/credentials/github".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, "{\"status\":\"present\",\"token_path\":\"github\"}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "PUT".equals(request.method())) {
                 response.json(200, "{\"derived_tokens_dropped\":2}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "DELETE".equals(request.method())) {
                 response.send(204, null, "");
-            } else if ("/api/v1/config/providers".equals(request.target())) {
-                response.send(404, null, "");
             } else {
                 response.send(404, null, "");
             }
@@ -96,6 +99,8 @@ class CredentialsCommandTest {
         assertTrue(text.contains("Token github stored"), text);
         assertTrue(text.contains("2 tokens derived from the old one dropped"), text);
         assertTrue(text.contains("are checked with: pm-operator config providers --verify"), text);
+        assertTrue(requests.stream().noneMatch(request -> request.contains("/api/v1/config/")),
+                            requests.toString());
     }
 
     @Test

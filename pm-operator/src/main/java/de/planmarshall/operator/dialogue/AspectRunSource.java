@@ -71,6 +71,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private static final String NO = "no";
     private static final String YES = "yes";
     private static final String CONFIRM_MARKER = "confirm";
+    private static final String YES_FLAG = "yes";
     private static final int MAX_STEPS = 32;
 
     private final RuntimeClient runtime;
@@ -132,6 +133,15 @@ public final class AspectRunSource implements StateDialogue.Source {
             if (!usedAnswers.contains(kind)) {
                 unused.add("consent:" + kind);
             }
+        }
+        if (yes && !usedAnswers.contains(YES_FLAG)) {
+            unused.add(YES_FLAG);
+        }
+        if (noIcons && !usedAnswers.contains(FETCH_ICONS)) {
+            unused.add("no-icons");
+        }
+        if (noAdvice && !usedAnswers.contains(MODEL_ADVICE)) {
+            unused.add("no-advice");
         }
         return List.copyOf(unused);
     }

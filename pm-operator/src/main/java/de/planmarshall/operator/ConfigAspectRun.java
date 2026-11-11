@@ -37,6 +37,9 @@ final class ConfigAspectRun {
     private static final String ASPECT = "aspect";
     private static final String CONSENT = "consent";
     private static final String CONSENT_MARKER = "consent:";
+    /** The store step names its fact {@code current}; the operator types {@code --store}. */
+    private static final String STORE_FACT = "current";
+    private static final String STORE_OPTION = "store";
 
     /**
      * The answers a verb carries before the run asks.
@@ -137,11 +140,24 @@ final class ConfigAspectRun {
 
     private void reportUnused(AspectRunSource source) {
         for (var unused : source.unusedAnswers()) {
-            var argument = unused.startsWith(CONSENT_MARKER)
-                                ? VALUE_FLAG + CONSENT + " " + unused.substring(CONSENT_MARKER.length())
-                                : VALUE_FLAG + unused;
+            var argument = optionName(unused);
             out.println(MessageCatalogue.format(locale, "operator.config.argument_unused",
                                 Map.of("argument", argument)));
         }
+    }
+
+    /**
+     * @param unused an answer the run did not ask for: a fact field, {@code consent:<kind>}, or a
+     *               flag name
+     * @return the option the operator typed for it
+     */
+    private static String optionName(String unused) {
+        if (unused.startsWith(CONSENT_MARKER)) {
+            return VALUE_FLAG + CONSENT + " " + unused.substring(CONSENT_MARKER.length());
+        }
+        if (STORE_FACT.equals(unused)) {
+            return VALUE_FLAG + STORE_OPTION;
+        }
+        return VALUE_FLAG + unused.replace('_', '-');
     }
 }

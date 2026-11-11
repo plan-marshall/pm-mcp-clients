@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,22 +169,6 @@ class ConfigRoutesTest {
         }
         return values;
     }
-
-    private static List<String> linkIds(String body) throws IOException {
-        var ids = new ArrayList<String>();
-        var links = JsonTree.asArray(JsonTree.asObject(JsonTree.parse(body)).get("links"));
-        if (links == null) {
-            return ids;
-        }
-        for (var element : links) {
-            var link = JsonTree.asObject(element);
-            if (link != null) {
-                ids.add(JsonTree.string(link, "id"));
-            }
-        }
-        return ids;
-    }
-
 
     private static HttpRequest authorized(HttpRequest request, MockRuntime runtime) {
         return request.withHeader(AUTHORIZATION, "Bearer " + runtime.token());

@@ -53,8 +53,8 @@ public final class MockConfigRoutes {
 
     /** The keys an aspect owns, as the terminal client refuses them (`409 aspect_owned`). */
     private static final List<String> ASPECT_OWNED = List.of(
-            "language.", "credentials.store", "providers.", "plan_defaults.",
-            "sources.documents_mode", "roles.");
+            "language.", "harness.", "models.", "credentials.store", "providers.",
+            "plan_defaults.", "sources.documents_mode", "roles.");
 
     private final Map<String, Map<String, Object>> written = new LinkedHashMap<>();
     private long revision;

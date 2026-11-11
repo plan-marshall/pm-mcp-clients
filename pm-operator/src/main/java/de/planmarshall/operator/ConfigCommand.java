@@ -31,6 +31,7 @@ import de.planmarshall.api.onboarding.MachineCredentialStatus;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -78,10 +79,18 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ONBOARD_SETTINGS = "onboard.settings.";
     private static final List<String> ASPECT_COMMANDS = List.of(
                         "language", "harnesses", "models", ROLES, CREDENTIALS, "providers", "plan-defaults");
+    private static final Map<OnboardingAspect, String> ASPECT_VERBS = Map.of(
+                        OnboardingAspect.LANGUAGE, "language",
+                        OnboardingAspect.HARNESSES, "harnesses",
+                        OnboardingAspect.MODELS, "models",
+                        OnboardingAspect.ROLES, ROLES,
+                        OnboardingAspect.CREDENTIALS, CREDENTIALS,
+                        OnboardingAspect.PROVIDERS, "providers",
+                        OnboardingAspect.PLANS, "plan-defaults");
 
     static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        "language.", "credentials.store", "providers.", "plan_defaults.",
-                        "sources.documents_mode", "roles.", ROLES
+                        "language.", "harness.", "models.", "credentials.store", "providers.",
+                        "plan_defaults.", "sources.documents_mode", "roles.", ROLES
     );
 
     /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
@@ -118,8 +127,9 @@ public final class ConfigCommand implements Callable<Integer> {
         try {
             items = settings != null ? itemsOf(locale, settings) : itemsOfValues(locale);
         } catch (ReadFailedException failure) {
-            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                Map.of(STATUS, failure.status())));
+            out.println(failure.status() > 0
+                                ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
+                                : MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -132,7 +142,7 @@ public final class ConfigCommand implements Callable<Integer> {
         return 0;
     }
 
-    /** A settings read the runtime refused: the status it answered with. */
+    /** A settings read the runtime refused: the status it answered with, or a body it could not read. */
     private static final class ReadFailedException extends IOException {
 
         private static final long serialVersionUID = 1L;
@@ -147,6 +157,9 @@ public final class ConfigCommand implements Callable<Integer> {
             return status;
         }
     }
+
+    /** The marker {@link ReadFailedException} carries for a 200 body that is not a value list. */
+    private static final int UNREADABLE = -1;
 
     /**
      * One row of the settings overview: the group it belongs to, the label, the value, and the
@@ -176,7 +189,7 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
-     * @param locale   the interface locale
+     * @param locale the interface locale
      * @param settings the machine's settings
      * @return the overview's rows, in the order the prompt offers them
      */
@@ -184,7 +197,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var items = new ArrayList<Item>();
         for (int index = 0; index < settings.aspects().size(); index++) {
             var aspect = settings.aspects().get(index);
-            var verb = index < ASPECT_COMMANDS.size() ? ASPECT_COMMANDS.get(index) : aspect.aspect().wireValue();
+            var verb = ASPECT_VERBS.getOrDefault(aspect.aspect(), aspect.aspect().wireValue());
             items.add(new Item("operator.settings.aspects.title",
                                 MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of()),
                                 TerminalSanitizer.sanitizeLine(aspect.summary()),
@@ -203,6 +216,12 @@ public final class ConfigCommand implements Callable<Integer> {
         items.add(new Item("operator.settings.documents.title", MessageCatalogue.format(locale,
                                                 ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(), Map.of()),
                             settings.documentsMode().wireValue(), List.of(CONFIG_VERB, DOCUMENTS)));
+        items.add(new Item(null,
+                            MessageCatalogue.format(locale, "operator.settings.cleanup.title", Map.of()),
+                            MessageCatalogue.format(locale, "operator.settings.cleanup.value", Map.of(
+                                                "days", settings.cleanupDurations().plansAfterDays(),
+                                                "remind", settings.cleanupDurations().remindAfterDays())),
+                            List.of(CONFIG_VERB, "cleanup")));
         return List.copyOf(items);
     }
 
@@ -312,7 +331,7 @@ public final class ConfigCommand implements Callable<Integer> {
         try {
             return parseValues(response.bodyText());
         } catch (IOException _) {
-            throw new ReadFailedException(response.status());
+            throw new ReadFailedException(UNREADABLE);
         }
     }
 
@@ -643,6 +662,13 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var out = spec.commandLine().getOut();
+            if (isAspectOwned(key)) {
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
+                                    Map.of("key", key, ASPECT, getOwningAspect(key))));
+                err.flush();
+                return 1;
+            }
             if (project != null && plan != null) {
                 out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
                 out.flush();
