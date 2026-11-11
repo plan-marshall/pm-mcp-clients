@@ -22,7 +22,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -50,22 +49,22 @@ import org.junit.jupiter.api.io.TempDir;
 class NeedsSelectionTest {
 
     private static final String FIRST_PAGE = """
-                    {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
-                      {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
-                       "since":"2026-10-16T15:05:00Z","blocks":"plan"},
-                      {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
-                       "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
-                    """;
+                        {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
+                          {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
+                           "since":"2026-10-16T15:05:00Z","blocks":"plan"},
+                          {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
+                           "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
+                        """;
 
     private static final String SECOND_PAGE = """
-                    {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
-                      {"kind":"condition","link":"/api/v1/plans/plan-x","plan":{"id":"plan-x","title":"Plan X"},
-                       "since":"2026-10-16T15:00:00Z","blocks":"plan"},
-                      {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
-                       "since":"2026-10-16T15:05:00Z","blocks":"plan"},
-                      {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
-                       "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
-                    """;
+                        {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
+                          {"kind":"condition","link":"/api/v1/plans/plan-x","plan":{"id":"plan-x","title":"Plan X"},
+                           "since":"2026-10-16T15:00:00Z","blocks":"plan"},
+                          {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
+                           "since":"2026-10-16T15:05:00Z","blocks":"plan"},
+                          {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
+                           "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
+                        """;
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-16T16:00:00Z"), ZoneOffset.UTC);
 
@@ -149,6 +148,7 @@ class NeedsSelectionTest {
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
                             + self.info().startInstant().orElseThrow() + "\"}");
     }
+
     private static String rowOf(OverviewFullScreenApp app, String title) {
         return app.stack().visibleRows().stream()
                             .filter(row -> row.line().contains(title))

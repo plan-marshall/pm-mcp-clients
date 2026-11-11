@@ -5718,18 +5718,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Counts what waits for the operator, by the kind the clients badge it as
-     * (04-console.adoc#prompt): the one list of what waits the mock serves, kind by kind. The
-     * clients never count these themselves; they read this map, and it derives from the same list
-     * they read, so a badge and a row can never disagree.
+     * (04-console.adoc#prompt). A scenario that declares the one list of what waits is counted from
+     * that list — one source, so a badge and a row can never disagree. A scenario that declares no
+     * list is counted from the stores it serves (the open decisions, the holds, and the machine's
+     * own summary), which is what it can answer from.
      *
-     * @return the waiting count per kind, in the order the kinds appear in the list
+     * @return the waiting count per kind, in the order the kinds appear
      */
     private Map<String, Object> waitingCounts() {
+        var listed = kindsOfTheServedList();
+        if (listed != null) {
+            return listed;
+        }
         var kinds = new LinkedHashMap<String, Integer>();
+        synchronized (decisionsLock) {
+            for (var decision : openDecisions.values()) {
+                kinds.merge(decision.isWaiver() ? "waiver_request" : "decision", 1, Integer::sum);
+            }
+        }
+        synchronized (controlLock) {
+            for (var hold : controlHolds.values()) {
+                var kind = hold.kind() != null && !hold.kind().isBlank() ? hold.kind() : "held";
+                kinds.merge(kind, 1, Integer::sum);
+            }
+        }
+        mergeMachineNeeds(kinds);
+        return new LinkedHashMap<>(kinds);
+    }
+
+    /**
+     * @return the kinds of the list the scenario serves, or {@code null} when it declares none
+     */
+    private @Nullable Map<String, Object> kindsOfTheServedList() {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
-        if (route == null || route.status() < 200 || route.status() >= 300) {
+        if (route == null) {
+            return null;
+        }
+        if (route.status() < 200 || route.status() >= 300) {
             return new LinkedHashMap<>();
         }
+        var kinds = new LinkedHashMap<String, Integer>();
         var rep = JsonTree.asObject(route.representation());
         for (var raw : rowsOf(rep, KEY_ITEMS)) {
             var item = JsonTree.asObject(raw);
@@ -5738,6 +5766,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         return new LinkedHashMap<>(kinds);
+    }
+
+    /**
+     * Adds the machine's own items to a store-derived count: a scenario that declares no list still
+     * says what the machine itself waits for.
+     *
+     * @param kinds the counts to extend
+     */
+    private void mergeMachineNeeds(Map<String, Integer> kinds) {
+        var machineRoute = activeRoute("GET", MachineApiPaths.MACHINE);
+        if (machineRoute == null || !(machineRoute.representation() instanceof Map<?, ?> mMap)) {
+            return;
+        }
+        if (!(mMap.get(KEY_NEEDS_OPERATOR) instanceof Map<?, ?> mNeeds)) {
+            return;
+        }
+        if (!(mNeeds.get(KEY_ITEMS) instanceof List<?> items)) {
+            return;
+        }
+        for (var item : items) {
+            if (item instanceof Map<?, ?> itemMap && itemMap.get(KEY_KIND) instanceof String k) {
+                kinds.merge(k, 1, Integer::sum);
+            }
+        }
     }
 
     /**

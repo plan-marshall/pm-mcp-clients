@@ -53,10 +53,10 @@ public final class NeedsOperatorNotices {
 
     /** The kinds no other event announces, so {@code needs_operator.changed} is their only notice. */
     private static final Set<NeedsOperatorKind> UNANNOUNCED = Set.of(
-                            NeedsOperatorKind.CREDENTIAL,
-                            NeedsOperatorKind.CLEANUP_DUE,
-                            NeedsOperatorKind.SETUP,
-                            NeedsOperatorKind.FINDINGS);
+                        NeedsOperatorKind.CREDENTIAL,
+                        NeedsOperatorKind.CLEANUP_DUE,
+                        NeedsOperatorKind.SETUP,
+                        NeedsOperatorKind.FINDINGS);
 
     private static final String MACHINE = "machine";
 

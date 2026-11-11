@@ -59,7 +59,8 @@ class FindIT {
 
     @Test
     @DisplayName("Esc leaves the find field with nothing sent")
-    void escLeavesTheFieldWithoutARequest() throws Exception {        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
+    void escLeavesTheFieldWithoutARequest() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open()) {
             awaitPrompt(session);
 

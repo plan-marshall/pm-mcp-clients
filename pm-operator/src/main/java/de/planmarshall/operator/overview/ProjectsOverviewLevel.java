@@ -35,7 +35,7 @@ import de.planmarshall.operator.tui.TuiRow;
  * @param needsRefusal    the refusal of the needs read, or {@code null} when it succeeded
  */
 public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator,
-                    @Nullable LoadRefusal projectsRefusal, @Nullable LoadRefusal needsRefusal) {
+@Nullable LoadRefusal projectsRefusal, @Nullable LoadRefusal needsRefusal) {
 
     /** Group header row ID for the Needs You section. */
     public static final String GROUP_NEEDS_YOU_ID = "__group_needs_you__";

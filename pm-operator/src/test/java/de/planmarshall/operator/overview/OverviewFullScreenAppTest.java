@@ -520,8 +520,9 @@ class OverviewFullScreenAppTest {
 
         var handler = app.keyHandler();
 
-        // Open selected project
-        app.stack().first(); // select pm-mcp-clients
+        // Open the project the fixture serves; the root carries the refusal of the unserved needs
+        // read above it, so the first row is not the project.
+        app.stack().select("pm-mcp-clients");
         assertTrue(handler.handle(TuiKeyAction.OPEN));
         assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
 
@@ -561,8 +562,9 @@ class OverviewFullScreenAppTest {
 
         var handler = app.keyHandler();
 
-        // Open selected project
-        app.stack().first();
+        // Open the project the fixture serves; the root carries the refusal of the unserved needs
+        // read above it, so the first row is not the project.
+        app.stack().select("pm-mcp-clients");
         assertTrue(handler.handle(TuiKeyAction.OPEN));
         assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
 
@@ -586,8 +588,9 @@ class OverviewFullScreenAppTest {
         assertTrue(handler.handle(TuiKeyAction.BACK));
         assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
 
-        // Open ended level from overview
-        app.stack().first();
+        // Open ended level from the overview's project row (the first row is the unserved needs
+        // read's refusal).
+        app.stack().select("pm-mcp-clients");
         assertTrue(handler.handle(TuiKeyAction.ENDED));
         assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));

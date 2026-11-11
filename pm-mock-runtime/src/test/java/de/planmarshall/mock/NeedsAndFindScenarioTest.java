@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -76,9 +78,9 @@ class NeedsAndFindScenarioTest {
                 // The items that block running work first, the oldest first; the machine's own
                 // items, which block nothing, after them.
                 var kinds = parsed.items().stream()
-                                    .collect(java.util.stream.Collectors.groupingBy(
-                                                        item -> item.kind().value(), java.util.TreeMap::new,
-                                                        java.util.stream.Collectors.counting()));
+                        .collect(Collectors.groupingBy(
+                                item -> item.kind().value(), TreeMap::new,
+                                Collectors.counting()));
                 assertEquals(6L, kinds.get("decision"), "the six open decisions of the store: " + kinds);
                 assertEquals(2L, kinds.get("waiver"), "the two open waiver requests of the store: " + kinds);
                 assertEquals(12, kinds.size(), "every kind of the closed list is served: " + kinds);
@@ -91,7 +93,7 @@ class NeedsAndFindScenarioTest {
                 }
                 assertEquals(14, firstFree, "the four items that block nothing come last: " + parsed.items());
                 for (int i = 1; i < firstFree; i++) {
-                    assertFalse(parsed.items().get(i).since() == null, "a blocking item names its since: " + parsed.items());
+                    assertNotNull(parsed.items().get(i).since(), "a blocking item names its since: " + parsed.items());
                 }
             }
         }
@@ -188,19 +190,19 @@ class NeedsAndFindScenarioTest {
                 // The map is the list's own composition: no kind appears that the list does not
                 // carry, and the counts sum to the list's total.
                 var page = NeedsOperatorPage.fromJson(new String(client.send(
-                                    HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR).withHeader(AUTH_HEADER, auth)).body()));
-                var listKinds = page.items().stream().collect(java.util.stream.Collectors.groupingBy(
-                                    item -> item.kind().value(), java.util.TreeMap::new,
-                                    java.util.stream.Collectors.counting()));
+                        HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR).withHeader(AUTH_HEADER, auth)).body()));
+                var listKinds = page.items().stream().collect(Collectors.groupingBy(
+                        item -> item.kind().value(), TreeMap::new,
+                        Collectors.counting()));
                 for (var entry : needs.entrySet()) {
                     assertEquals(listKinds.get(entry.getKey()).intValue(),
-                                        JsonTree.integer(needs, entry.getKey()).intValue(),
-                                        entry.getKey() + " disagrees with the list: " + needs);
+                            JsonTree.integer(needs, entry.getKey()).intValue(),
+                            entry.getKey() + " disagrees with the list: " + needs);
                 }
                 var sum = needs.values().stream()
-                                    .mapToInt(value -> value instanceof Number number ? number.intValue()
-                                                        : value instanceof JsonNumber json ? (int) json.longValue() : 0)
-                                    .sum();
+                        .mapToInt(value -> value instanceof Number number ? number.intValue()
+                                : value instanceof JsonNumber json ? (int) json.longValue() : 0)
+                        .sum();
                 assertEquals(page.total(), sum, "the counts sum to the list's total: " + needs);
             }
         }

@@ -704,7 +704,7 @@ public final class PmConsole {
         }
         var name = eventName != null ? eventName : "";
         var payload = ConsoleNotice.payloadOf(eventMap);
-        var type = !notices.isEmpty() ? notices.getFirst().kind() : "";
+        var type = notices.isEmpty() ? "" : notices.getFirst().kind();
         if ("device.paired".equals(name) || "paired".equals(type)) {
             var label = JsonTree.string(payload, "label");
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",

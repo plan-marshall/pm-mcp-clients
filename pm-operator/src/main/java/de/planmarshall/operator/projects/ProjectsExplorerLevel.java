@@ -45,7 +45,7 @@ import de.planmarshall.operator.tui.TuiRow;
  * @param refusal    the refusal of the projects read, or {@code null} when it succeeded
  */
 public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed,
-                    @Nullable LoadRefusal refusal) {
+@Nullable LoadRefusal refusal) {
 
     /** Row id of the _Being added_ group header. */
     public static final String GROUP_BEING_ADDED_ID = "__projects_group_being_added__";

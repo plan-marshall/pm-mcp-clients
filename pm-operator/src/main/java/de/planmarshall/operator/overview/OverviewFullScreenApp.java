@@ -1227,14 +1227,16 @@ public final class OverviewFullScreenApp {
      *         item. The row carries the item's own identity, so an item that arrived above it does
      *         not change what this answers.
      */
-    @Nullable NeedsOperatorItem selectedNeedsItem() {
+    @Nullable
+    NeedsOperatorItem selectedNeedsItem() {
         var overview = currentOverviewLevel.get();
         var selected = stack.selected();
         return overview != null && selected != null ? overview.needsItemOf(selected.id()) : null;
     }
 
     /** Opens what waits for the operator in the selected row, or jumps to the next waiting row. */
-    private void openWhatWaits() {        var lvl = stack.level();
+    private void openWhatWaits() {
+        var lvl = stack.level();
         var selected = stack.selected();
         if (lvl == null || selected == null) {
             return;

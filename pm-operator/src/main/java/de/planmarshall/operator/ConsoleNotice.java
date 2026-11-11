@@ -193,9 +193,9 @@ public final class ConsoleNotice {
                                 Map.of(KEY_PROJECT, scope, "what", safeDetail));
             case "credential" -> {
                 var safeScope = TerminalSanitizer.sanitize(scope).strip();
-                var credKey = !safeScope.isBlank()
-                                    ? safeScope
-                                    : !safeDetail.isBlank() ? safeDetail : MessageCatalogue.format(locale, "common.unknown", Map.of());
+                var credKey = safeScope.isBlank()
+                                    ? safeDetail.isBlank() ? MessageCatalogue.format(locale, "common.unknown", Map.of()) : safeDetail
+                                    : safeScope;
                 yield MessageCatalogue.format(locale, "operator.console.notice.credential",
                                     Map.of("key", credKey));
             }

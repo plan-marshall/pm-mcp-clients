@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -165,8 +164,8 @@ class NeedsOneCountTest {
             assertAll(
                                 () -> assertTrue(badgeTexts.contains("6 questions"), "badges should have 6 questions: " + badgeTexts),
                                 () -> assertEquals(2, badges.stream()
-                                                    .filter(badge -> "waiver".equals(badge.itemKind()))
-                                                    .mapToInt(ConsoleBadge::count).sum(),
+                                                                        .filter(badge -> "waiver".equals(badge.itemKind()))
+                                                                        .mapToInt(ConsoleBadge::count).sum(),
                                                     "the badges count the list's 2 waivers: " + badgeTexts),
                                 () -> assertTrue(badgeTexts.contains("1 credential"), "badges should have 1 credential: " + badgeTexts),
                                 () -> assertTrue(badgeTexts.contains("1 cleanup due"), "badges should have 1 cleanup due: " + badgeTexts),

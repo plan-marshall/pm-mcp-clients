@@ -17,16 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.message.MessageCatalogue;
