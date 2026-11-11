@@ -757,6 +757,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
 
+    /** The wire name of the operator channel, in the fixtures that report it. */
+    private static final String OPERATOR_FIELD = "operator";
+
     /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
     private final MockConfigRoutes configRoutes = new MockConfigRoutes();
 
@@ -5256,7 +5259,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new ReplanningRecord("the base moved", "09:55", "TASK-5 added")
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad"),
+                new DecisionRecord("Q-003", "Rebase onto main", "rebase", OPERATOR_FIELD, "web", "iPad"),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
         );
         var fixRelayOwnCalls = List.of(
@@ -7077,7 +7080,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (state != null && state.representation() instanceof Map<?, ?> rep) {
             copyOperatorFacts(rep, body);
             copyOperatorScope(rep, body);
-            body.put("operator", rep);
+            body.put(OPERATOR_FIELD, rep);
         }
         var links = onboardingLinkMap(state);
         if (!links.isEmpty()) {
@@ -9408,7 +9411,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "by", "operator",
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
                     FIELD_FREED_BYTES, freedBytes
@@ -9460,7 +9463,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "by", "operator",
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli",
                     KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
@@ -9509,7 +9512,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "ignore",
-                    "by", "operator",
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli"
             ));
 

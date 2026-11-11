@@ -70,6 +70,11 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ROLES = "roles";
     private static final String PROVIDERS = "providers";
     private static final String PLAN_DEFAULTS = "plan-defaults";
+    private static final String HARNESS_PREFIX = "harness.";
+    private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
+    private static final String CREDENTIAL_STORE_KEY = "credentials.store";
+    private static final String DOCUMENTS_MODE_KEY = "sources.documents_mode";
+    private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
     private static final String CONFIG_VERB = "config";
     private static final String DOCUMENTS = "documents";
     private static final String CREDENTIALS = "credentials";
@@ -84,7 +89,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
-    private static final String ONBOARD_SETTINGS = "onboard.settings.";
     private static final Map<OnboardingAspect, String> ASPECT_VERBS = Map.of(
                         OnboardingAspect.LANGUAGE, LANGUAGE,
                         OnboardingAspect.HARNESSES, HARNESSES,
@@ -96,18 +100,18 @@ public final class ConfigCommand implements Callable<Integer> {
 
     /** The key prefixes an aspect owns: only its verb changes such a key. */
     private static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        LANGUAGE + ".", "harness.", MODELS + ".", "credentials.store", PROVIDERS + ".",
-                        "plan_defaults.", "sources.documents_mode", ROLES + ".", ROLES);
+                        LANGUAGE + ".", HARNESS_PREFIX, MODELS + ".", CREDENTIAL_STORE_KEY, PROVIDERS + ".",
+                        PLAN_DEFAULTS_PREFIX, DOCUMENTS_MODE_KEY, ROLES + ".", ROLES);
 
     /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
     private static final Map<String, String> ASPECT_PREFIXES = Map.of(
                         LANGUAGE, LANGUAGE + ".",
-                        HARNESSES, "harness.",
+                        HARNESSES, HARNESS_PREFIX,
                         MODELS, MODELS + ".",
                         ROLES, ROLES + ".",
                         CREDENTIALS, CREDENTIALS + ".",
                         PROVIDERS, PROVIDERS + ".",
-                        PLAN_DEFAULTS, "plan_defaults.");
+                        PLAN_DEFAULTS, PLAN_DEFAULTS_PREFIX);
 
     /** The catalogue prefixes a configuration value's text is looked up in, in this order. */
     private static final List<String> VALUE_TEXT_KEYS = List.of(
@@ -220,7 +224,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 consent.kind().wireValue(), List.of(CONFIG_VERB, CONSENTS)));
         }
         items.add(new Item("operator.settings.documents.title", MessageCatalogue.format(locale,
-                                                ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(), Map.of()),
+                                                DOCUMENTS_TEXT_PREFIX + settings.documentsMode().wireValue(), Map.of()),
                             settings.documentsMode().wireValue(), List.of(CONFIG_VERB, DOCUMENTS)));
         items.add(new Item(null,
                             MessageCatalogue.format(locale, "operator.settings.cleanup.title", Map.of()),
@@ -526,12 +530,12 @@ public final class ConfigCommand implements Callable<Integer> {
     static String getOwningAspect(@Nullable String key) {
         if (key == null) return CONFIG_VERB;
         if (key.startsWith(LANGUAGE + ".")) return LANGUAGE;
-        if (key.startsWith("harness.")) return HARNESSES;
+        if (key.startsWith(HARNESS_PREFIX)) return HARNESSES;
         if (key.startsWith(MODELS + ".")) return MODELS;
         if (key.startsWith(CREDENTIALS + ".")) return CREDENTIALS;
         if (key.startsWith(PROVIDERS + ".")) return PROVIDERS;
-        if (key.startsWith("plan_defaults.")) return PLAN_DEFAULTS;
-        if (key.startsWith("sources.documents_mode")) return DOCUMENTS;
+        if (key.startsWith(PLAN_DEFAULTS_PREFIX)) return PLAN_DEFAULTS;
+        if (key.startsWith(DOCUMENTS_MODE_KEY)) return DOCUMENTS;
         if (key.startsWith(ROLES)) return ROLES;
         return CONFIG_VERB;
     }
@@ -640,7 +644,7 @@ public final class ConfigCommand implements Callable<Integer> {
             }
             var body = new LinkedHashMap<String, Object>();
             body.put(VALUE, value);
-            var path = OperatorUrlUtil.appendScope(levelPath(key), project, plan);
+            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
             var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.config.set_done", Map.of("key", key, VALUE, value)));
@@ -653,9 +657,8 @@ public final class ConfigCommand implements Callable<Integer> {
             return 1;
         }
 
-        private String levelPath(String configurationKey) {
-            var level = writeLevel(project, plan);
-            return CONFIG_PATH + "/" + level.wire() + "/" + OperatorUrlUtil.encodePathSegment(configurationKey);
+        private String levelPath() {
+            return CONFIG_PATH + "/" + writeLevel(project, plan).wire() + "/" + OperatorUrlUtil.encodePathSegment(key);
         }
     }
 
@@ -701,7 +704,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            var path = OperatorUrlUtil.appendScope(levelPath(key), project, plan);
+            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
             var response = context.runtime(true).send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key)));
@@ -714,9 +717,8 @@ public final class ConfigCommand implements Callable<Integer> {
             return 1;
         }
 
-        private String levelPath(String configurationKey) {
-            var level = writeLevel(project, plan);
-            return CONFIG_PATH + "/" + level.wire() + "/" + OperatorUrlUtil.encodePathSegment(configurationKey);
+        private String levelPath() {
+            return CONFIG_PATH + "/" + writeLevel(project, plan).wire() + "/" + OperatorUrlUtil.encodePathSegment(key);
         }
     }
 
@@ -742,7 +744,6 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
             var facts = new LinkedHashMap<String, String>();
             if (interfaceLocale != null) facts.put("interface", interfaceLocale);
             if (modelLocale != null) facts.put("model", modelLocale);
@@ -914,7 +915,7 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var facts = new LinkedHashMap<String, String>();
             if (store != null) facts.put("current", store);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "credentials",
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), CREDENTIALS,
                                 ConfigAspectRun.Answers.of(facts));
         }
     }
