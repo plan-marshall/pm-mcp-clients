@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jline.reader.LineReader;
@@ -71,6 +72,8 @@ class TuiCapabilityIT {
     private static final String TERM = "TERM";
     private static final String TERM_PROGRAM = "TERM_PROGRAM";
     private static final String PATH = "PATH";
+    private static final Pattern LONE_DASH_CELL = Pattern.compile("(?<![^ \\t\\u00b7:])-(?![^ \\t\\u00b7])");
+    private static final Pattern ISO_INSTANT = Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}");
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -445,6 +448,99 @@ class TuiCapabilityIT {
             session.send("exit\n");
             assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
             assertEquals(0, session.exitCode(), session.rawOutput());
+        }
+    }
+
+    @Test
+    @DisplayName("the captured screens and transcripts of overview, plan view, epic, status, questions and projects contain no raw wire token, lone dash cell or ISO instant")
+    void screensAndTranscriptsHaveNoRawWireTokensOrPlaceholders() throws Exception {
+        try (var session = start(List.of("plans"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitText("pm-mcp-clients", TIMEOUT), session.rawOutput());
+            assertNoRawResidue("overview projects", session.screenText());
+            session.send("\n");
+            assertTrue(session.awaitText("alongside", TIMEOUT), session.screenText());
+            assertNoRawResidue("overview", session.screenText());
+            session.send("q");
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+        }
+
+        try (var session = start(List.of("plan", "fix-relay"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitText("tokens so far", TIMEOUT), session.rawOutput());
+            assertNoRawResidue("plan view", session.screenText());
+            session.send("q");
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+        }
+
+        try (var session = start(List.of("plan", "fix-relay"), Map.of(TERM, "dumb"), 120, 30)) {
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertNoRawResidue("plan tree", session.screenText());
+        }
+
+        try (var session = start(List.of("epic", "relay-hardening"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertNoRawResidue("printed epic", session.screenText());
+        }
+
+        try (var session = start(List.of("status"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertNoRawResidue("status", session.screenText());
+        }
+
+        try (var session = start(List.of("projects", "--list"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertNoRawResidue("projects", session.screenText());
+        }
+
+        startScenario(StandardScenarios.RUNNING_WORK);
+        runtime.goToState("decisions.open");
+        try (var session = start(List.of("questions"), Map.of(), 120, 30)) {
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            var questionsScreen = session.screenText();
+            assertNoRawResidue("questions", questionsScreen);
+            assertTrue(questionsScreen.contains("CI check · integration tests"), questionsScreen);
+        }
+    }
+
+    static void assertNoRawResidue(String surface, String text) {
+        assertAll(
+                            () -> assertFalse(text.contains("remediation."), surface + " contains remediation.:\n" + text),
+                            () -> assertFalse(text.contains("ci_check:"), surface + " contains ci_check::\n" + text),
+                            () -> assertFalse(text.contains("(step current)"), surface + " contains (step current):\n" + text),
+                            () -> assertFalse(LONE_DASH_CELL.matcher(text).find(), surface + " contains a lone '-' cell:\n" + text),
+                            () -> assertFalse(ISO_INSTANT.matcher(text).find(), surface + " contains an ISO instant:\n" + text)
+        );
+    }
+
+    @Test
+    @DisplayName("the lone-dash pattern finds a dash cell and no hyphen inside a word")
+    void loneDashPattern() {
+        assertAll(
+                            () -> assertTrue(LONE_DASH_CELL.matcher("pid       -").find()),
+                            () -> assertTrue(LONE_DASH_CELL.matcher("- \u00b7 running").find()),
+                            () -> assertTrue(LONE_DASH_CELL.matcher("value: -").find()),
+                            () -> assertFalse(LONE_DASH_CELL.matcher("TASK-001").find()),
+                            () -> assertFalse(LONE_DASH_CELL.matcher("refine \u00b7 waiting \u00b7 24 d").find())
+        );
+    }
+
+    @Test
+    @DisplayName("the recorded transcripts carry none of the raw wire tokens or placeholders")
+    void transcriptsHaveNoRawResidue() throws Exception {
+        var directory = Path.of("src", "test", "resources", "transcript");
+        assertTrue(Files.isDirectory(directory), "the transcript resources are read from " + directory);
+        try (var files = Files.list(directory)) {
+            var transcripts = files.filter(path -> path.getFileName().toString().endsWith(".transcript")).toList();
+            assertFalse(transcripts.isEmpty(), "no transcript was found in " + directory);
+            for (var transcript : transcripts) {
+                var text = Files.readString(transcript);
+                assertFalse(text.isBlank(), transcript.getFileName() + " is empty");
+                assertNoRawResidue(transcript.getFileName().toString(), text);
+            }
         }
     }
 

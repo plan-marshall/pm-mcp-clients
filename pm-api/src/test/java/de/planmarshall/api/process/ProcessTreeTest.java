@@ -12,6 +12,7 @@ package de.planmarshall.api.process;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -159,6 +160,8 @@ class ProcessTreeTest {
         assertEquals("refine", parsedPruned.nodeId());
         assertEquals("not_in_plan", parsedPruned.state());
         assertEquals("lane_choice", parsedPruned.pruneReason());
+        assertFalse(json.contains("\"change\""), json);
+        assertNull(parsed.change());
     }
 
     @Test

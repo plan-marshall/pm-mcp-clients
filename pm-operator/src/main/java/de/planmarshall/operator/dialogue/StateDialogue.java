@@ -22,6 +22,7 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
@@ -455,7 +456,7 @@ public final class StateDialogue {
         }
         var unit = "unit." + text;
         if (MessageCatalogue.hasKey(locale, unit)) {
-            return MessageCatalogue.format(locale, unit, Map.of());
+            return Display.title(locale, null, text);
         }
         return null;
     }

@@ -123,7 +123,7 @@ public final class ProjectsCommand implements Callable<Integer> {
             return -1;
         }
         var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
-                            Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                            context.clock(), new OverviewStateStore(context.stateDirectory()),
                             context.noticeBuffer());
         if (app.run(spec.commandLine().getOut()) == TuiScreenDriver.Result.TOO_NARROW) {
             return -1;
@@ -136,7 +136,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         if (response.status() == 200) {
             var explorer = parseExplorer(response.body());
-            renderExplorer(out, explorer, filter, context.clientEnvironment().locale());
+            renderExplorer(out, explorer, filter, context.clientEnvironment().locale(), context.clock());
         } else {
             var err = spec.commandLine().getErr();
             err.printf("Failed to list projects: HTTP %d%n", response.status());
@@ -175,7 +175,8 @@ public final class ProjectsCommand implements Callable<Integer> {
         };
     }
 
-    private static void renderExplorer(PrintWriter out, ProjectExplorer explorer, @Nullable String filter, String locale) {
+    private static void renderExplorer(PrintWriter out, ProjectExplorer explorer, @Nullable String filter, String locale,
+                        Clock clock) {
         if (explorer.allProjects().isEmpty() && explorer.beingAdded().isEmpty() && explorer.favourites().isEmpty()) {
             out.println(MessageCatalogue.hasKey("project.explorer.empty")
                                 ? MessageCatalogue.format(locale, "project.explorer.empty", Map.of())
@@ -187,17 +188,18 @@ public final class ProjectsCommand implements Callable<Integer> {
         out.println("─────────────────────────────────────────────────────────────────────────────");
 
         if (filter != null && !filter.isBlank()) {
-            renderFiltered(out, explorer.allProjects(), filter, locale);
+            renderFiltered(out, explorer.allProjects(), filter, locale, clock);
             return;
         }
 
         renderBeingAdded(out, explorer.beingAdded(), locale);
-        renderFavourites(out, explorer.favourites(), locale);
-        renderRecent(out, explorer.recent(), locale);
-        renderAll(out, explorer.allProjects(), locale);
+        renderFavourites(out, explorer.favourites(), locale, clock);
+        renderRecent(out, explorer.recent(), locale, clock);
+        renderAll(out, explorer.allProjects(), locale, clock);
     }
 
-    private static void renderFiltered(PrintWriter out, List<EnrolledProject> allProjects, String filter, String locale) {
+    private static void renderFiltered(PrintWriter out, List<EnrolledProject> allProjects, String filter, String locale,
+                        Clock clock) {
         var query = filter.trim().toLowerCase(Locale.ROOT);
         var matches = allProjects.stream()
                             .filter(p -> p.projectId().toLowerCase(Locale.ROOT).contains(query)
@@ -208,7 +210,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         } else {
             out.printf("Matches for '%s'%n", OutputSafety.stripControlSequences(filter));
             for (var p : matches) {
-                printProjectRow(out, p, locale);
+                printProjectRow(out, p, locale, clock);
             }
         }
     }
@@ -227,7 +229,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         }
     }
 
-    private static void renderFavourites(PrintWriter out, List<EnrolledProject> favourites, String locale) {
+    private static void renderFavourites(PrintWriter out, List<EnrolledProject> favourites, String locale, Clock clock) {
         if (favourites.isEmpty()) {
             return;
         }
@@ -235,11 +237,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                             ? MessageCatalogue.format(locale, "project.explorer.favourites", Map.of())
                             : "Favourites");
         for (var p : favourites) {
-            printProjectRow(out, p, locale);
+            printProjectRow(out, p, locale, clock);
         }
     }
 
-    private static void renderRecent(PrintWriter out, List<EnrolledProject> recent, String locale) {
+    private static void renderRecent(PrintWriter out, List<EnrolledProject> recent, String locale, Clock clock) {
         if (recent.isEmpty()) {
             return;
         }
@@ -247,11 +249,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                             ? MessageCatalogue.format(locale, "project.explorer.recent", Map.of())
                             : "Recent");
         for (var p : recent) {
-            printProjectRow(out, p, locale);
+            printProjectRow(out, p, locale, clock);
         }
     }
 
-    private static void renderAll(PrintWriter out, List<EnrolledProject> allProjects, String locale) {
+    private static void renderAll(PrintWriter out, List<EnrolledProject> allProjects, String locale, Clock clock) {
         if (allProjects.isEmpty()) {
             return;
         }
@@ -263,11 +265,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                             : "by name";
         out.println(allTitle + " (" + byName + ")");
         for (var p : allProjects) {
-            printProjectRow(out, p, locale);
+            printProjectRow(out, p, locale, clock);
         }
     }
 
-    private static void printProjectRow(PrintWriter out, EnrolledProject project, String locale) {
+    private static void printProjectRow(PrintWriter out, EnrolledProject project, String locale, Clock clock) {
         var mark = project.isFavourite() ? "  ★ " : "    ";
         var name = OutputSafety.stripControlSequences(project.displayName());
         var readiness = switch (project.readiness()) {
@@ -296,7 +298,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         }
 
         if (project.lastActive() != null) {
-            sb.append("   ").append(formatRelativeTime(locale, project.lastActive()));
+            sb.append("   ").append(formatRelativeTime(locale, project.lastActive(), clock));
         }
 
         out.println(sb.toString().stripTrailing());
@@ -308,9 +310,10 @@ public final class ProjectsCommand implements Callable<Integer> {
      *
      * @param locale  the interface locale
      * @param instant the last activity, or {@code null}
+     * @param clock   the clock "now" means, the context's
      * @return the age, or an empty string for {@code null}
      */
-    public static String formatRelativeTime(String locale, @Nullable Instant instant) {
-        return Display.time(locale, instant, Clock.systemUTC());
+    public static String formatRelativeTime(String locale, @Nullable Instant instant, Clock clock) {
+        return Display.time(locale, instant, clock);
     }
 }

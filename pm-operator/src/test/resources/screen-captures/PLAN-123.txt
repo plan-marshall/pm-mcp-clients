@@ -1,0 +1,44 @@
+# Screen captures for PLAN-123: Terminal: What the Display Layer Left Open (PLAN-34 Residue)
+# Covers:
+#   - plan view with change size (fix-relay) and without change size (drop-legacy-api)
+#   - the completion report (plan report fix-relay, the scrollback form of the completion level)
+#   - status and projects ages
+#   - the printed epic (epic relay-hardening)
+# in en and de, at 120x30 and 80x24.
+#
+# name | scenario | states | command | keys | columnsxrows | locale | environment | beforeKeys
+
+plan-with-change-120x30-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | -
+plan-with-change-120x30-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | -
+plan-with-change-80x24-en | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | -
+plan-with-change-80x24-de | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | -
+
+plan-without-change-120x30-en | running-work | - | plan drop-legacy-api | q | 120x30 | en_US.UTF-8 | -
+plan-without-change-120x30-de | running-work | - | plan drop-legacy-api | q | 120x30 | de_DE.UTF-8 | -
+plan-without-change-80x24-en | running-work | - | plan drop-legacy-api | q | 80x24 | en_US.UTF-8 | -
+plan-without-change-80x24-de | running-work | - | plan drop-legacy-api | q | 80x24 | de_DE.UTF-8 | -
+
+completion-120x30-en | reports-and-system | - | plan report fix-relay | - | 120x30 | en_US.UTF-8 | -
+completion-120x30-de | reports-and-system | - | plan report fix-relay | - | 120x30 | de_DE.UTF-8 | -
+completion-80x24-en | reports-and-system | - | plan report fix-relay | - | 80x24 | en_US.UTF-8 | -
+completion-80x24-de | reports-and-system | - | plan report fix-relay | - | 80x24 | de_DE.UTF-8 | -
+
+status-120x30-en | running-work | - | status | - | 120x30 | en_US.UTF-8 | -
+status-120x30-de | running-work | - | status | - | 120x30 | de_DE.UTF-8 | -
+status-80x24-en | running-work | - | status | - | 80x24 | en_US.UTF-8 | -
+status-80x24-de | running-work | - | status | - | 80x24 | de_DE.UTF-8 | -
+
+projects-120x30-en | fully-onboarded | - | projects | q | 120x30 | en_US.UTF-8 | -
+projects-120x30-de | fully-onboarded | - | projects | q | 120x30 | de_DE.UTF-8 | -
+projects-80x24-en | fully-onboarded | - | projects | q | 80x24 | en_US.UTF-8 | -
+projects-80x24-de | fully-onboarded | - | projects | q | 80x24 | de_DE.UTF-8 | -
+
+projects-list-120x30-en | fully-onboarded | - | projects --list | - | 120x30 | en_US.UTF-8 | -
+projects-list-120x30-de | fully-onboarded | - | projects --list | - | 120x30 | de_DE.UTF-8 | -
+projects-list-80x24-en | fully-onboarded | - | projects --list | - | 80x24 | en_US.UTF-8 | -
+projects-list-80x24-de | fully-onboarded | - | projects --list | - | 80x24 | de_DE.UTF-8 | -
+
+epic-120x30-en | fully-onboarded | - | epic relay-hardening | - | 120x30 | en_US.UTF-8 | -
+epic-120x30-de | fully-onboarded | - | epic relay-hardening | - | 120x30 | de_DE.UTF-8 | -
+epic-80x24-en | fully-onboarded | - | epic relay-hardening | - | 80x24 | en_US.UTF-8 | -
+epic-80x24-de | fully-onboarded | - | epic relay-hardening | - | 80x24 | de_DE.UTF-8 | -

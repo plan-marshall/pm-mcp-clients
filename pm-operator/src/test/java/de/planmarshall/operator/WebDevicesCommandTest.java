@@ -395,7 +395,7 @@ class WebDevicesCommandTest {
     @Test
     @DisplayName("tests WebCommand.describe formatting edge cases")
     void webCommandFormattingEdgeCases() {
-        assertEquals("-", WebCommand.describe(null));
+        assertEquals("none", WebCommand.describe(null));
         assertEquals("disabled", WebCommand.describe(Map.of("enabled", false)));
         assertEquals("enabled (loopback), port 7420, open",
                             WebCommand.describe(Map.of("enabled", true, "lan", false, "port", 7420, "open", true)));
@@ -789,6 +789,17 @@ class WebDevicesCommandTest {
                             () -> assertEquals("last month", WebCommand.DevicesCommand.formatLastUsed("en", fiftyFiveDaysAgo.toString(), clock)),
                             () -> assertEquals("last month", WebCommand.DevicesCommand.formatLastUsed("en", fiftySixDaysAgo.toString(), clock)),
                             () -> assertEquals("4 months ago", WebCommand.DevicesCommand.formatLastUsed("en", hundredFortyDaysAgo.toString(), clock))
+        );
+    }
+
+    @Test
+    @DisplayName("formatLastUsed of a device never used says never, not just now")
+    void formatLastUsedNeverUsed() {
+        var clock = Clock.fixed(Instant.parse("2026-06-01T12:00:00Z"), ZoneOffset.UTC);
+
+        assertAll(
+                            () -> assertEquals("never", WebCommand.DevicesCommand.formatLastUsed("en", null, clock)),
+                            () -> assertEquals("nie", WebCommand.DevicesCommand.formatLastUsed("de", null, clock))
         );
     }
 }

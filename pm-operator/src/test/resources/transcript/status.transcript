@@ -9,8 +9,8 @@ Runtime pm-mcpd 0.9.1, running since <time> · 2 workers · 1 of 2 build slots i
                 plan  Relay metrics                    execute · paused · <duration>
                             in epic Relay Hardening · 8 of 8 tasks
      alongside
-     ! landing failed   landing CI failure                    failed
-                        removing 2 moved documents from git   running
+     ! landing failed    landing CI failure · failed
+                         removing 2 moved documents from git · running
 ! 1  plan-marshall · setup needs you
      pm-mcp-core · 2 plans
                 plan  Session log and generations      execute · running · <duration>

@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator.epicview;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -22,6 +23,7 @@ import de.planmarshall.api.control.EpicEvent;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.PlanTokenFigure;
 import de.planmarshall.api.control.WorkRow;
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
@@ -87,6 +89,7 @@ public final class EpicViewLevel {
     private final Map<String, String> workstreamOfPlan = new LinkedHashMap<>();
     private final Set<String> expanded = new HashSet<>();
 
+    private final Clock clock;
     private EpicResource epic;
     private @Nullable EndedNote endedNote;
 
@@ -110,34 +113,38 @@ public final class EpicViewLevel {
     }
 
     /**
-     * @param epic the epic as the runtime serves it
+     * @param clock the clock whose zone times are shown in
+     * @param epic  the epic as the runtime serves it
      */
-    public EpicViewLevel(EpicResource epic) {
+    public EpicViewLevel(Clock clock, EpicResource epic) {
+        this.clock = Objects.requireNonNull(clock, "clock");
         this.epic = Objects.requireNonNull(epic, "epic");
         index();
     }
 
     /**
+     * @param clock     the clock whose zone times are shown in
      * @param epic      the epic
      * @param endedNote how it ended, shown in place of the sections
      */
-    public EpicViewLevel(EpicResource epic, @Nullable EndedNote endedNote) {
-        this(epic);
+    public EpicViewLevel(Clock clock, EpicResource epic, @Nullable EndedNote endedNote) {
+        this(clock, epic);
         this.endedNote = endedNote;
     }
 
     /**
+     * @param clock the clock whose zone times are shown in
      * @param epicId the epic
      * @param projectId the project
      * @param displayName the title the runtime or the ended work row gives
      * @param endedNote how it ended
      * @return a read-only view of an ended epic whose resource the runtime no longer serves
      */
-    public static EpicViewLevel ended(String epicId, String projectId, String displayName,
+    public static EpicViewLevel ended(Clock clock, String epicId, String projectId, String displayName,
                         EndedNote endedNote) {
         var resource = new EpicResource(epicId, projectId, displayName, null, "ended", false, 0, 0, 0,
                             endedNote.end(), List.of(), List.of(), 0, null, null, null, List.of());
-        return new EpicViewLevel(resource, endedNote);
+        return new EpicViewLevel(clock, resource, endedNote);
     }
 
     /**
@@ -616,9 +623,9 @@ public final class EpicViewLevel {
         }
     }
 
-    private static String eventLine(String locale, EpicEvent event) {
+    private String eventLine(String locale, EpicEvent event) {
         return MessageCatalogue.format(locale, "operator.epic.event",
-                            Map.of("time", EpicViewFormatting.eventTime(event.at()),
+                            Map.of("time", EpicViewFormatting.clean(Display.eventTime(event.at(), clock)),
                                                 "text", EpicViewFormatting.clean(event.text())));
     }
 

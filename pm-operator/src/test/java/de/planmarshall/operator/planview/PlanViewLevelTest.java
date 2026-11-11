@@ -95,7 +95,30 @@ class PlanViewLevelTest {
                             () -> assertTrue(line.contains("+340"), line),
                             () -> assertTrue(line.contains("\u221227"), line),
                             () -> assertTrue(line.contains("2 unplanned"), line),
-                            () -> assertFalse(ids(view()).contains(PlanViewLevel.CHANGE_ROW_ID)));
+                            () -> assertFalse(ids(view()).contains(PlanViewLevel.CHANGE_ROW_ID)),
+                            () -> assertTrue(germanChangeLine(withChange).contains("Änderung bisher"),
+                                                germanChangeLine(withChange)));
+    }
+
+    private static String germanChangeLine(PlanViewLevel level) {
+        return level.rows("de").stream()
+                            .filter(row -> PlanViewLevel.CHANGE_ROW_ID.equals(row.id()))
+                            .map(TuiRow::line)
+                            .findFirst()
+                            .orElse("");
+    }
+
+    @Test
+    @DisplayName("two days renders as 2 d in English and 2 T in German")
+    void twoDaysRendersInBothLanguages() throws Exception {
+        var twoDays = new PlanViewLevel(ProcessTree.fromJson(
+                            TREE.replace("\"duration_seconds\": 7800", "\"duration_seconds\": 172800")));
+
+        var enLine = twoDays.rows("en").getFirst().line();
+        var deLine = twoDays.rows("de").getFirst().line();
+
+        assertTrue(enLine.contains("2 d"), enLine);
+        assertTrue(deLine.contains("2 T"), deLine);
     }
 
     private static List<String> ids(PlanViewLevel view) {

@@ -10,7 +10,6 @@
 package de.planmarshall.operator.overview;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -186,15 +185,15 @@ public final class OverviewFormatting {
             return "";
         }
         var key = needsKeyForKind(kind);
-        var label = key != null
-                            ? MessageCatalogue.format(locale, key, Map.of())
-                            : "! " + clean(kind);
+        var labelKey = key != null ? key : "state.unknown";
+        var label = MessageCatalogue.format(locale, labelKey, Map.of());
         if (count > 1) {
-            var bareLabel = label.startsWith("! ") ? label.substring(2) : label;
             var countPrefix = MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", count));
-            return countPrefix + " \u00b7 " + bareLabel;
+            return countPrefix + " \u00b7 " + label;
         }
-        return label;
+        return key != null
+                            ? label
+                            : MessageCatalogue.format(locale, "overview.needs.badge", Map.of("count", 1, "reason", label));
     }
 
     /**
@@ -219,61 +218,6 @@ public final class OverviewFormatting {
             case "held" -> MessageCatalogue.format(locale, "overview.state.held", Map.of());
             default -> clean(phaseState);
         };
-    }
-
-    /**
-     * Formats an elapsed duration from an Instant to {@code clock.instant()}.
-     *
-     * @param instant start instant
-     * @param clock   reference clock
-     * @return human-readable duration (e.g. {@code "18 min"}, {@code "1 h 12 min"})
-     */
-    public static String formatDuration(@Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
-        return formatSeconds(seconds);
-    }
-
-    /**
-     * Formats an elapsed duration from an ISO-8601 timestamp to {@code clock.instant()}.
-     *
-     * @param timestampIso ISO-8601 timestamp or pre-formatted duration string
-     * @param clock        reference clock
-     * @return human-readable duration (e.g. {@code "18 min"}, {@code "1 h 12 min"})
-     */
-    public static String formatDuration(@Nullable String timestampIso, Clock clock) {
-        if (timestampIso == null || timestampIso.isBlank()) {
-            return "";
-        }
-        var parsed = parseInstant(timestampIso);
-        if (parsed == null) {
-            return clean(timestampIso);
-        }
-        return formatDuration(parsed, clock);
-    }
-
-    /**
-     * Formats a duration in seconds as {@code "<m> min"} or {@code "<h> h <m> min"}.
-     *
-     * @param seconds non-negative seconds
-     * @return formatted duration string
-     */
-    public static String formatSeconds(long seconds) {
-        if (seconds < 60L) {
-            return Math.max(1L, seconds) + " s";
-        }
-        long totalMinutes = seconds / 60L;
-        long hours = totalMinutes / 60L;
-        long minutes = totalMinutes % 60L;
-        if (hours == 0L) {
-            return minutes + " min";
-        }
-        if (minutes == 0L) {
-            return hours + " h";
-        }
-        return hours + " h " + minutes + " min";
     }
 
     /**
@@ -384,19 +328,30 @@ public final class OverviewFormatting {
         }
         var value = kind.value();
         var key = needsKeyForKind(value);
-        if (key != null && MessageCatalogue.hasKey(locale, key)) {
+        if (key != null) {
             return MessageCatalogue.format(locale, key, Map.of());
         }
-        return value.replace('_', ' ');
+        return MessageCatalogue.format(locale, "state.unknown", Map.of());
     }
 
     /**
-     * Formats the subject of a {@link NeedsOperatorItem}.
+     * Formats the subject of a {@link NeedsOperatorItem} in English.
      *
      * @param item the needs-operator item
      * @return clean subject string
      */
     public static String formatNeedsItemSubject(NeedsOperatorItem item) {
+        return formatNeedsItemSubject(item, "en");
+    }
+
+    /**
+     * Formats the subject of a {@link NeedsOperatorItem}.
+     *
+     * @param item   the needs-operator item
+     * @param locale the target locale
+     * @return clean subject string
+     */
+    public static String formatNeedsItemSubject(NeedsOperatorItem item, String locale) {
         if (item.plan() != null && !item.plan().id().isBlank()) {
             return clean(item.plan().id());
         }
@@ -407,12 +362,12 @@ public final class OverviewFormatting {
             return clean(item.project().id());
         }
         if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
-            return "cleanup";
+            return MessageCatalogue.format(locale, "overview.needs.subject.cleanup", Map.of());
         }
         if (item.kind() == NeedsOperatorKind.CREDENTIAL) {
-            return "credential";
+            return MessageCatalogue.format(locale, "overview.needs.credential", Map.of());
         }
-        return "machine";
+        return MessageCatalogue.format(locale, "common.kind.machine", Map.of());
     }
 
     /**
@@ -424,15 +379,9 @@ public final class OverviewFormatting {
      */
     public static String formatNeedsItemBlocks(@Nullable String blocks, String locale) {
         if (blocks == null || blocks.isBlank()) {
-            if (MessageCatalogue.hasKey(locale, "overview.needs.blocks_nothing")) {
-                return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
-            }
-            return "blocks no work";
+            return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
-        if (MessageCatalogue.hasKey(locale, "overview.needs.blocks")) {
-            return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
-        }
-        return "blocks: " + blocks;
+        return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
     }
 
     /**
@@ -451,10 +400,7 @@ public final class OverviewFormatting {
         if (formatted.isBlank()) {
             formatted = Display.time(locale, since, clock);
         }
-        if (MessageCatalogue.hasKey(locale, "overview.needs.since")) {
-            return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
-        }
-        return "waits since " + formatted;
+        return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
     }
 
     /**

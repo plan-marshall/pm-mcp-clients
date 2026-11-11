@@ -49,21 +49,4 @@ public final class SystemFormatting {
         }
         return String.format(Locale.ROOT, "%.1f GB", rounded);
     }
-
-    /**
-     * @param seconds an uptime in seconds
-     * @return the uptime as {@code 3 d 4 h}, {@code 6 h 12 min}, or {@code 12 min}
-     */
-    public static String uptime(long seconds) {
-        long days = seconds / 86_400L;
-        long hours = (seconds % 86_400L) / 3_600L;
-        long minutes = (seconds % 3_600L) / 60L;
-        if (days > 0) {
-            return days + " d " + hours + " h";
-        }
-        if (hours > 0) {
-            return hours + " h " + minutes + " min";
-        }
-        return minutes + " min";
-    }
 }

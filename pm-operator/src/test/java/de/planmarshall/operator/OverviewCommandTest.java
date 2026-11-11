@@ -17,6 +17,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.HashMap;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -153,6 +156,10 @@ class OverviewCommandTest {
                               "state": "running",
                               "count": 2,
                               "kind": "removal"
+                            },
+                            {
+                              "state": "running",
+                              "kind": "unit"
                             }
                           ]
                         }
@@ -248,6 +255,10 @@ class OverviewCommandTest {
     }
 
     private int run(String... args) {
+        return run(null, args);
+    }
+
+    private int run(Clock clock, String... args) {
         var env = new HashMap<>(fixture.environment());
         if ("de".equals(activeLocale)) {
             env.put("LANG", "de_DE.UTF-8");
@@ -261,7 +272,8 @@ class OverviewCommandTest {
                             ClientEnvironment.capture(env),
                             null,
                             _ -> {
-                            }
+                            },
+                            clock
         );
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
@@ -332,8 +344,11 @@ class OverviewCommandTest {
 
         // Alongside landings
         assertTrue(output.contains("alongside"));
-        assertTrue(output.contains("! landing failed   landing CI failure"));
+        assertTrue(output.contains("! landing failed"));
+        assertTrue(output.contains("landing CI failure \u00b7 failed"));
         assertTrue(output.contains("removing 2 moved documents from git"));
+        assertTrue(output.contains("landing unknown"), output);
+        assertFalse(output.contains("landing unit"), output);
     }
 
     @Test
@@ -408,7 +423,7 @@ class OverviewCommandTest {
     }
 
     @Test
-    @DisplayName("status renders '-' placeholder when running_since is missing")
+    @DisplayName("status renders the unknown word when running_since is missing")
     void shouldRenderPlaceholderWhenRunningSinceMissing() throws Exception {
         writeLiveRecord();
         fixture.writeToken("test-token");
@@ -427,7 +442,54 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        assertTrue(output.contains("running since -"));
+        assertTrue(output.contains("running since unknown"));
+    }
+
+    @Test
+    @DisplayName("status renders the unknown word when running_since is blank")
+    void shouldRenderUnknownWhenRunningSinceBlank() throws Exception {
+        writeLiveRecord();
+        fixture.writeToken("test-token");
+        fixture.start((request, response) -> {
+            var path = request.target();
+            if ("/api/v1/status".equals(path)) {
+                response.json(200,
+                                    "{\"status\":\"ready\",\"version\":\"0.9.1\",\"listener\":\"unix\",\"workers_count\":2,"
+                                                        + "\"running_since\":\"  \"}");
+            } else if ("/api/v1/projects".equals(path)) {
+                response.json(200, "{\"projects\":[]}");
+            } else {
+                response.send(404, null, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        int code = run("status");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("running since unknown"), out.toString());
+    }
+
+    @Test
+    @DisplayName("status renders an ISO running_since as local HH:mm in the context clock's zone")
+    void runningSinceUsesTheContextClockZone() throws Exception {
+        writeLiveRecord();
+        fixture.writeToken("test-token");
+        fixture.start((request, response) -> {
+            var path = request.target();
+            if ("/api/v1/status".equals(path)) {
+                response.json(200, "{\"status\":\"ready\",\"version\":\"0.9.1\",\"listener\":\"unix\",\"running_since\":\"2026-10-20T10:14:00Z\",\"workers_count\":2}");
+            } else if ("/api/v1/projects".equals(path)) {
+                response.json(200, "{\"projects\":[]}");
+            } else {
+                response.send(404, null, "{\"error\":\"not_found\"}");
+            }
+        });
+        var clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneId.of("Pacific/Auckland"));
+
+        int code = run(clock, "status");
+        assertEquals(0, code);
+
+        var output = out.toString();
+        assertTrue(output.contains("running since 23:14"), output);
     }
 
     @Test

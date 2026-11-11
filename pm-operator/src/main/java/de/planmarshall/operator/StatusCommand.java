@@ -12,7 +12,6 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -132,7 +131,7 @@ final class StatusCommand implements Callable<Integer> {
             // Fall through to legacy render
         }
 
-        out.print(render(status));
+        out.print(render(status, context.clientEnvironment().locale(), context.clock()));
         out.flush();
         return 0;
     }
@@ -224,7 +223,7 @@ final class StatusCommand implements Callable<Integer> {
             var outcome = "epic".equalsIgnoreCase(item.kind())
                                 ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
                                 : MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", Objects.toString(item.outcome(), "ended")));
-            var time = formatRelativeTime(locale, item.endedAt());
+            var time = formatRelativeTime(locale, item.endedAt(), context.clock());
             out.printf("  %-4s  %-30s   %s \u00b7 %s%n", kind, title, outcome, time);
 
             if (item.pullRequestNumber() != null) {
@@ -251,7 +250,13 @@ final class StatusCommand implements Callable<Integer> {
         if (!version.startsWith("pm-mcpd")) {
             version = "pm-mcpd " + version;
         }
-        var runningSince = Objects.toString(status.get("running_since"), "-");
+        var rawSince = status.get("running_since");
+        var runningSince = rawSince != null
+                            ? OutputSafety.stripControlSequences(Display.eventTime(rawSince.toString(), context.clock()))
+                            : "";
+        if (runningSince.isBlank()) {
+            runningSince = MessageCatalogue.format(locale, "common.time.unknown", Map.of());
+        }
         var workers = status.get("workers_count") != null ? status.get("workers_count") : 0;
         var slots = status.get("build_slots_used") != null ? status.get("build_slots_used") : 0;
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;
@@ -356,7 +361,7 @@ final class StatusCommand implements Callable<Integer> {
         var state = stateKey != null
                             ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
                             : "running";
-        var timeInPhase = formatDuration(locale, plan.phaseEnteredAt());
+        var timeInPhase = Display.duration(locale, plan.phaseEnteredAt(), context.clock());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
         out.printf("%s%splan  %-30s   %s \u00b7 %s%s%n", baseIndent, marker, title, phase, state, timePart);
@@ -422,55 +427,61 @@ final class StatusCommand implements Callable<Integer> {
         }
     }
 
-    private void renderAlongsideLandings(PrintWriter out, List<AlongsideLanding> landings, String locale) {
+    static void renderAlongsideLandings(PrintWriter out, List<AlongsideLanding> landings, String locale) {
         if (landings.isEmpty()) {
             return;
         }
         out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.alongside", Map.of()));
+        var texts = new ArrayList<String>();
+        var markers = new ArrayList<String>();
+        var width = 20;
         for (var landing : landings) {
-            String marker = "failed".equalsIgnoreCase(landing.state())
-                                ? "! landing failed   "
-                                : "                   ";
-            String desc;
-            var unit = landing.unit();
-            if (unit != null) {
-                desc = "landing " + unitTitle(locale, unit);
-            } else if (landing.count() != null) {
-                desc = "removing " + landing.count() + " moved documents from git";
-            } else {
-                desc = "landing " + OutputSafety.stripControlSequences(landing.kind());
-            }
-            var state = OutputSafety.stripControlSequences(landing.state());
-            out.printf("     %s%-35s   %s%n", marker, desc, state);
+            var marker = landingMarker(locale, landing);
+            markers.add(marker);
+            texts.add(landingText(locale, landing));
+            width = Math.max(width, marker.length());
+        }
+        var format = "     %-" + width + "s%s%n";
+        for (var index = 0; index < texts.size(); index++) {
+            out.printf(format, markers.get(index), texts.get(index));
         }
     }
 
-    private static String unitTitle(String locale, String unit) {
-        var key = "unit." + unit;
-        if (MessageCatalogue.hasKey(locale, key)) {
-            return MessageCatalogue.format(locale, key, Map.of());
-        }
-        return OutputSafety.stripControlSequences(unit);
-    }
-
-    private static String formatDuration(String locale, @Nullable Object raw) {
-        var instant = instantOf(raw);
-        if (instant == null) {
+    private static String landingMarker(String locale, AlongsideLanding landing) {
+        if (!"failed".equalsIgnoreCase(landing.state()) && landing.holdKind() == null) {
             return "";
         }
-        long seconds = Math.max(0L, Duration.between(instant, Instant.now()).getSeconds());
-        return Display.duration(locale, seconds);
+        return "! " + MessageCatalogue.format(locale, "overview.needs.landing_failed", Map.of()) + " ";
     }
 
-    static String formatRelativeTime(String locale, @Nullable Object raw) {
+    private static String landingText(String locale, AlongsideLanding landing) {
+        var state = landingStateWord(locale, landing);
+        if ("removal".equalsIgnoreCase(landing.kind())) {
+            var count = landing.count() != null ? landing.count() : 1;
+            return MessageCatalogue.format(locale, "overview.landing.removal",
+                                Map.of("count", count, "state", state));
+        }
+        var unitTitle = OutputSafety.stripControlSequences(Display.title(locale, null, landing.unit()));
+        return MessageCatalogue.format(locale, "overview.landing.unit",
+                            Map.of("unit", unitTitle, "state", state));
+    }
+
+    private static String landingStateWord(String locale, AlongsideLanding landing) {
+        var rawState = landing.state() != null ? landing.state() : "running";
+        return MessageCatalogue.hasKey(locale, "state.landing." + rawState)
+                            ? Display.word(locale, "landing", rawState)
+                            : OutputSafety.stripControlSequences(rawState);
+    }
+
+    static String formatRelativeTime(String locale, @Nullable Object raw, Clock clock) {
         if (raw == null) {
-            return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
+            return MessageCatalogue.format(locale, "common.time.unknown", Map.of());
         }
         var instant = instantOf(raw);
         if (instant == null) {
             return raw.toString();
         }
-        return Display.time(locale, instant, Clock.systemUTC());
+        return Display.time(locale, instant, clock);
     }
 
     private static @Nullable Instant instantOf(@Nullable Object raw) {
@@ -523,18 +534,34 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     static String render(Map<String, Object> status) {
+        return render(status, "en", Clock.systemDefaultZone());
+    }
+
+    static String render(Map<String, Object> status, String locale, Clock clock) {
         var text = new StringBuilder();
-        line(text, "runtime", "running");
-        line(text, "version", status.get("version"));
-        line(text, "pid", status.get("pid"));
-        line(text, "listener", status.get("listener"));
-        line(text, "socket", status.get("socket_path"));
-        line(text, "started", status.get("started_at"));
-        line(text, "web", WebCommand.describe(JsonTree.object(status, "web")));
+        line(text, locale, "runtime", "running");
+        line(text, locale, "version", status.get("version"));
+        line(text, locale, "pid", status.get("pid"));
+        line(text, locale, "listener", status.get("listener"));
+        line(text, locale, "socket", status.get("socket_path"));
+        line(text, locale, "started", formatStartedAt(locale, status.get("started_at"), clock));
+        line(text, locale, "web", WebCommand.describe(locale, JsonTree.object(status, "web")));
         return text.toString();
     }
 
-    private static void line(StringBuilder text, String label, @Nullable Object value) {
-        text.append(String.format("%-9s %s%n", label, value == null ? "-" : value));
+    private static @Nullable String formatStartedAt(String locale, @Nullable Object raw, Clock clock) {
+        if (raw == null) {
+            return null;
+        }
+        var instant = instantOf(raw);
+        if (instant == null) {
+            return raw.toString();
+        }
+        return Display.time(locale, instant, Display.TimeStyle.SHORT, clock);
+    }
+
+    private static void line(StringBuilder text, String locale, String label, @Nullable Object value) {
+        var none = MessageCatalogue.format(locale, "common.none", Map.of());
+        text.append(String.format("%-9s %s%n", label, value == null ? none : value));
     }
 }

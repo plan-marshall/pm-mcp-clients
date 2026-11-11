@@ -11,7 +11,6 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
@@ -151,7 +150,7 @@ public final class SystemCommand implements Callable<Integer> {
             }
             var app = new OverviewFullScreenApp(context, terminal,
                                 OverviewFullScreenApp.InitialSelection.system(window, by, resolvedProject()),
-                                Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                                context.clock(), new OverviewStateStore(context.stateDirectory()),
                                 context.noticeBuffer());
             app.run(out);
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;

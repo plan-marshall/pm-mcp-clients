@@ -35,9 +35,9 @@ Maschine für plan-marshall einrichten
 Verlassen: Maschine für plan-marshall einrichten. Es wurde nichts gesendet.
 pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › web devices
 Gekoppelte Geräte · Die Browser, die auf dieser Maschine handeln können
-    1) Firefox on mbp-oliver   gekoppelt 12 May von loopback   zuletzt benutzt <ago>
-    2) Safari on iPad   gekoppelt 20 May von network   zuletzt benutzt <ago>
-    3) Chrome on build-box   gekoppelt 2 Jun von loopback   zuletzt benutzt <ago>
+    1) Firefox on mbp-oliver   gekoppelt 12. Mai von loopback   zuletzt benutzt <ago>
+    2) Safari on iPad   gekoppelt 20. Mai von network   zuletzt benutzt <ago>
+    3) Chrome on build-box   gekoppelt 2. Juni von loopback   zuletzt benutzt <ago>
 
   Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: on.
 pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › config consents

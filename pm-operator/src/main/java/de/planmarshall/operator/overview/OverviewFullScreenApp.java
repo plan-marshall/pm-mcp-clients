@@ -224,7 +224,7 @@ public final class OverviewFullScreenApp {
     public OverviewFullScreenApp(OperatorContext context, Terminal terminal,
                         @Nullable String initialProject, @Nullable String initialBy,
                         boolean initialEnded) {
-        this(context, terminal, new InitialSelection(initialProject, initialBy, initialEnded), Clock.systemUTC(),
+        this(context, terminal, new InitialSelection(initialProject, initialBy, initialEnded), context.clock(),
                             new OverviewStateStore(context.stateDirectory()), context.noticeBuffer());
     }
 
@@ -623,7 +623,7 @@ public final class OverviewFullScreenApp {
     boolean openEpicView(String epicId) {
         try {
             var resource = new WorkActionsClient(context).epic(epicId);
-            var view = new EpicViewLevel(resource);
+            var view = new EpicViewLevel(clock, resource);
             currentEpicView.set(view);
             stack.push(view.level(locale), view.rows(locale), view.initialRowId());
             return true;
@@ -643,7 +643,7 @@ public final class OverviewFullScreenApp {
                             item.terminalReason() != null ? item.terminalReason() : "completed",
                             item.reason(),
                             OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock));
-        var view = EpicViewLevel.ended(item.id(), projectId, item.title(), note);
+        var view = EpicViewLevel.ended(clock, item.id(), projectId, item.title(), note);
         currentEpicView.set(view);
         stack.push(view.level(locale), view.rows(locale), view.initialRowId());
     }

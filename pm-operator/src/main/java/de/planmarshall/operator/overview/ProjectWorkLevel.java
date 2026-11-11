@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
@@ -187,7 +188,7 @@ public final class ProjectWorkLevel {
 
         var detailsParts = new ArrayList<String>();
         if (epic.runningSince() != null) {
-            var dur = OverviewFormatting.formatDuration(epic.runningSince(), clock);
+            var dur = OverviewFormatting.clean(Display.duration(locale, epic.runningSince(), clock));
             if (!dur.isEmpty()) {
                 detailsParts.add(MessageCatalogue.format(locale, "overview.time.running", Map.of(KEY_DURATION, dur)));
             }
@@ -246,13 +247,13 @@ public final class ProjectWorkLevel {
 
     private static void appendTimeDetails(List<String> detailParts, ActivePlanSummary plan, String locale, Clock clock) {
         if (plan.runningSince() != null) {
-            var dur = OverviewFormatting.formatDuration(plan.runningSince(), clock);
+            var dur = OverviewFormatting.clean(Display.duration(locale, plan.runningSince(), clock));
             if (!dur.isEmpty()) {
                 detailParts.add(MessageCatalogue.format(locale, "overview.time.running", Map.of(KEY_DURATION, dur)));
             }
         }
         if (plan.phaseEnteredAt() != null) {
-            var phaseDur = OverviewFormatting.formatDuration(plan.phaseEnteredAt(), clock);
+            var phaseDur = OverviewFormatting.clean(Display.duration(locale, plan.phaseEnteredAt(), clock));
             if (!phaseDur.isEmpty()) {
                 detailParts.add(MessageCatalogue.format(locale, "overview.time.in_phase",
                                     Map.of("phase", OverviewFormatting.clean(plan.currentPhase()), KEY_DURATION, phaseDur)));
@@ -296,18 +297,17 @@ public final class ProjectWorkLevel {
 
     private static TuiRow formatLandingRow(String locale, AlongsideLanding landing) {
         boolean failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
-        String state = OverviewFormatting.clean(landing.state() != null ? landing.state() : RUNNING);
+        String rawState = landing.state() != null ? landing.state() : RUNNING;
+        String state = MessageCatalogue.hasKey(locale, "state.landing." + rawState)
+                            ? Display.word(locale, "landing", rawState)
+                            : OverviewFormatting.clean(rawState);
         String text;
         if ("removal".equalsIgnoreCase(landing.kind())) {
             int count = landing.count() != null ? landing.count() : 1;
             text = MessageCatalogue.format(locale, "overview.landing.removal",
                                 Map.of("count", count, "state", state));
         } else {
-            String unit = OverviewFormatting.clean(landing.unit() != null ? landing.unit() : "");
-            var unitKey = "unit." + unit;
-            var unitTitle = MessageCatalogue.hasKey(locale, unitKey)
-                                ? MessageCatalogue.format(locale, unitKey, Map.of())
-                                : unit;
+            var unitTitle = OverviewFormatting.clean(Display.title(locale, null, landing.unit()));
             text = MessageCatalogue.format(locale, "overview.landing.unit",
                                 Map.of("unit", unitTitle, "state", state));
         }

@@ -160,7 +160,7 @@ class ProjectWorkLevelTest {
     @Test
     @DisplayName("alongside landings and setup rows are rendered under alongside header")
     void alongsideAndSetupRows() {
-        var landing1 = new AlongsideLanding("auth", "running", null, "unit", null);
+        var landing1 = new AlongsideLanding("landing.main", "running", null, "unit", null);
         var landing2 = new AlongsideLanding(null, "failed", 2, "removal", "landing_failed");
 
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(), List.of(), List.of(landing1, landing2));
@@ -173,9 +173,9 @@ class ProjectWorkLevelTest {
         assertEquals(ProjectWorkLevel.GROUP_ALONGSIDE_ID, rows.get(0).id());
 
         var authLanding = rows.get(1);
-        assertEquals("landing:auth", authLanding.id());
+        assertEquals("landing:landing.main", authLanding.id());
         assertFalse(authLanding.needsOperator());
-        assertTrue(authLanding.line().contains("landing auth · running"));
+        assertTrue(authLanding.line().contains("landing Main branch · running"));
 
         var failedRemoval = rows.get(2);
         assertEquals("landing:removal", failedRemoval.id());
@@ -187,5 +187,39 @@ class ProjectWorkLevelTest {
         assertEquals("setup:proj-a", setupRow.id());
         assertTrue(setupRow.needsOperator());
         assertTrue(setupRow.line().contains("setup needs you"));
+    }
+
+    @Test
+    @DisplayName("a landing without a known unit shows the placeholder, never an empty slot or the raw id")
+    void landingWithoutUnitShowsPlaceholder() {
+        var missing = new AlongsideLanding(null, "running", null, "unit", null);
+        var unknown = new AlongsideLanding("no.such.unit", "running", null, "unit", null);
+        var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(), List.of(),
+                            List.of(missing, unknown));
+        var level = new ProjectWorkLevel(detail, false, false);
+
+        var english = level.rows("en", clock, false);
+        var german = level.rows("de", clock, false);
+
+        assertTrue(english.get(1).line().contains("landing unknown · running"), english.get(1).line());
+        assertTrue(english.get(2).line().contains("landing unknown · running"), english.get(2).line());
+        assertTrue(german.get(1).line().contains("lande unbekannt · läuft"), german.get(1).line());
+        assertFalse(english.get(2).line().contains("no.such.unit"), english.get(2).line());
+    }
+
+    @Test
+    @DisplayName("two days renders as 2 d in English and 2 T in German")
+    void twoDaysRendersInBothLanguages() {
+        var plan = new ActivePlanSummary("plan-2d", "Two day plan", "execute", "running", null,
+                            clock.instant().minusSeconds(2 * 86_400L), null, 2, 4, null, null, null,
+                            null, null, null, null, null);
+        var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(plan), List.of(), List.of());
+        var level = new ProjectWorkLevel(detail, false, false);
+
+        var enDetails = level.rows("en", clock, false).get(0).details();
+        var deDetails = level.rows("de", clock, false).get(0).details();
+
+        assertTrue(enDetails != null && enDetails.contains("2 d"), enDetails);
+        assertTrue(deDetails != null && deDetails.contains("2 T"), deDetails);
     }
 }

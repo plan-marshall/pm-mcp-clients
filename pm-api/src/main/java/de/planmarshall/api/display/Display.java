@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.decision.GateKind;
 import de.planmarshall.api.message.MessageCatalogue;
 
 /**
@@ -92,24 +93,75 @@ public final class Display {
      * the data, not a reason to fall back to the id.
      *
      * <p>A workflow unit id whose {@code unit.<id>} key exists renders that key's plain name; any
-     * other value without a title is refused.
+     * missing or unknown unit renders the catalogue's {@code unit.unknown} placeholder, never the
+     * raw id and never an exception.
      *
      * @param locale the interface locale
      * @param title  the value's title, or {@code null}
-     * @param id     the value's id, used for the refusal message and for a unit key
-     * @return the title
-     * @throws IllegalArgumentException when the value carries no title and no unit text, so a raw
-     *                                  id can never reach the operator
+     * @param id     the value's id or unit key, or {@code null}
+     * @return the title, the unit name, or the placeholder
      */
-    public static String title(String locale, @Nullable String title, String id) {
+    public static String title(String locale, @Nullable String title, @Nullable String id) {
         if (title != null && !title.isBlank()) {
             return title;
         }
-        var unitKey = "unit." + id;
-        if (MessageCatalogue.hasKey(locale, unitKey)) {
-            return MessageCatalogue.format(locale, unitKey, Map.of());
+        if (id != null && !id.isBlank()) {
+            var unitKey = "unit." + id;
+            if (MessageCatalogue.hasKey(locale, unitKey)) {
+                return MessageCatalogue.format(locale, unitKey, Map.of());
+            }
         }
-        throw new IllegalArgumentException("A value is never shown by its id alone: " + id);
+        return MessageCatalogue.format(locale, "unit.unknown", Map.of());
+    }
+
+    /**
+     * Renders a waiver gate's wire token ({@code ci_check:smoke-tests}, {@code coverage:pm-core})
+     * as its catalogue word ({@code state.gate.*}) and the plain scope name after the colon
+     * ({@code CI check · smoke tests}, {@code CI-Prüfung · smoke tests}).
+     *
+     * @param locale the interface locale
+     * @param gate   the wire gate token, or {@code null}
+     * @return the rendered gate text, or an empty string for {@code null} or blank
+     */
+    public static String gate(String locale, @Nullable String gate) {
+        if (gate == null || gate.isBlank()) {
+            return "";
+        }
+        var kind = GateKind.fromValue(gate);
+        var colon = gate.indexOf(':');
+        if (kind == null) {
+            return colon < 0
+                    ? gate.replace('_', ' ')
+                    : gate.substring(0, colon).replace('_', ' ') + " \u00b7 " + gateScope(gate.substring(colon + 1));
+        }
+        var kindWord = word(locale, "gate", kind.value());
+        if (colon < 0 || colon == gate.length() - 1) {
+            return kindWord;
+        }
+        return kindWord + " \u00b7 " + gateScope(gate.substring(colon + 1));
+    }
+
+    private static String gateScope(String scope) {
+        return scope.replace('_', ' ').replace('-', ' ').trim();
+    }
+
+    /**
+     * Renders an event's time as {@code HH:mm} in the clock's zone when it is an ISO-8601 instant,
+     * or returns the text unchanged when it is already a short time.
+     *
+     * @param at    the event's time, an ISO instant or an already short time
+     * @param clock the clock whose zone the time is shown in
+     * @return the time as {@code HH:mm}, or the text unchanged when it cannot be read as an instant
+     */
+    public static String eventTime(@Nullable String at, Clock clock) {
+        if (at == null || at.isBlank()) {
+            return "";
+        }
+        try {
+            return CLOCK.format(Instant.parse(at.trim()).atZone(clock.getZone()));
+        } catch (DateTimeParseException _) {
+            return at;
+        }
     }
 
     /**
@@ -206,6 +258,43 @@ public final class Display {
                 : MessageCatalogue.format(locale, "common.time.unit.day", Map.of(COUNT, days));
     }
 
+    /**
+     * Renders the span from a starting moment to {@code clock.instant()} as the design's duration
+     * rows ({@code 30 s}, {@code 25 min}, {@code 2 h 10 min}, {@code 2 d} / {@code 2 T}).
+     *
+     * @param locale the interface locale
+     * @param since  the starting moment, or {@code null}
+     * @param clock  the clock "now" means
+     * @return the rendered duration, or an empty string for {@code null}
+     */
+    public static String duration(String locale, @Nullable Instant since, Clock clock) {
+        if (since == null) {
+            return "";
+        }
+        return duration(locale, Math.max(0L, Duration.between(since, clock.instant()).getSeconds()));
+    }
+
+    /**
+     * Renders the span from an ISO-8601 starting moment to {@code clock.instant()} as the design's
+     * duration rows. A value that is not an instant is returned as it arrived, so no caller writes
+     * a second parse of its own.
+     *
+     * @param locale   the interface locale
+     * @param sinceIso the ISO-8601 starting moment, or {@code null}
+     * @param clock    the clock "now" means
+     * @return the rendered duration, an empty string for {@code null}, or the unchanged non-instant
+     */
+    public static String duration(String locale, @Nullable String sinceIso, Clock clock) {
+        if (sinceIso == null || sinceIso.isBlank()) {
+            return "";
+        }
+        try {
+            return duration(locale, Instant.parse(sinceIso.trim()), clock);
+        } catch (DateTimeParseException _) {
+            return sinceIso;
+        }
+    }
+
     private static String age(String locale, long millis) {
         if (millis < Duration.ofMinutes(1).toMillis()) {
             return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
@@ -244,7 +333,8 @@ public final class Display {
                     .format(instant.atZone(zone));
             return weekday.replace(".", "") + " " + time;
         }
-        var dayMonth = DateTimeFormatter.ofPattern("d MMM", javaLocale(locale))
+        var german = Locale.GERMAN.equals(javaLocale(locale));
+        var dayMonth = DateTimeFormatter.ofPattern(german ? "d. MMM" : "d MMM", javaLocale(locale))
                 .format(instant.atZone(zone));
         return dayMonth + ", " + time;
     }

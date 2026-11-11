@@ -103,11 +103,48 @@ class DisplayTest {
     }
 
     @Test
-    @DisplayName("title prefers the title, renders a unit id, and refuses an id alone")
+    @DisplayName("title prefers the title, renders a unit id, and falls back to the placeholder instead of the raw id")
     void titleNeverShowsAnIdAlone() {
         assertEquals("Fix Relay", Display.title("en", "Fix Relay", "fix-relay"));
         assertEquals("Pull request", Display.title("en", null, "landing.pull-request"));
-        assertThrows(IllegalArgumentException.class, () -> Display.title("en", null, "fix-relay"));
-        assertThrows(IllegalArgumentException.class, () -> Display.title("en", "  ", "fix-relay"));
+        assertEquals("unknown", Display.title("en", null, "fix-relay"));
+        assertEquals("unknown", Display.title("en", "  ", "fix-relay"));
+    }
+
+    @Test
+    @DisplayName("SHORT puts the dot after the day in German")
+    void shortStyleGermanDot() {
+        assertEquals("12. Sept., 12:00", Display.time("de", Instant.parse("2026-09-12T12:00:00Z"),
+                Display.TimeStyle.SHORT, CLOCK));
+    }
+
+    @Test
+    @DisplayName("title of a missing unit is the catalogue placeholder, never the id and never an exception")
+    void titleOfMissingUnit() {
+        assertEquals("unknown", Display.title("en", null, null));
+        assertEquals("unbekannt", Display.title("de", null, "  "));
+        assertEquals("unknown", Display.title("en", null, "no.such.unit"));
+        assertEquals("Pull request", Display.title("en", null, "landing.pull-request"));
+    }
+
+    @Test
+    @DisplayName("eventTime renders an ISO instant in the clock's zone and keeps other text")
+    void eventTime() {
+        assertEquals("11:00", Display.eventTime("2026-09-12T11:00:00Z", CLOCK));
+        assertEquals("", Display.eventTime(null, CLOCK));
+        assertEquals("", Display.eventTime("  ", CLOCK));
+        assertEquals("14:40", Display.eventTime("14:40", CLOCK));
+    }
+
+    @Test
+    @DisplayName("gate renders its catalogue word and the plain scope in both languages")
+    void gate() {
+        assertEquals("", Display.gate("en", null));
+        assertEquals("", Display.gate("en", "  "));
+        assertEquals("CI check \u00b7 integration tests", Display.gate("en", "ci_check:integration-tests"));
+        assertEquals("CI-Pr\u00fcfung \u00b7 integration tests", Display.gate("de", "ci_check:integration-tests"));
+        assertEquals("coverage", Display.gate("en", "coverage"));
+        assertEquals("custom gate \u00b7 smoke tests", Display.gate("en", "custom_gate:smoke-tests"));
+        assertEquals("custom gate", Display.gate("en", "custom_gate"));
     }
 }

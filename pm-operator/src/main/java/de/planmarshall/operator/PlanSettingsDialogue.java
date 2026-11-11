@@ -116,8 +116,11 @@ final class PlanSettingsDialogue {
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.settings.header",
                             Map.of("aspect", groupLabel(group), "plan", planId)));
         for (var value : values) {
+            var renderedValue = value.value() != null
+                                ? OutputSafety.stripControlSequences(value.value())
+                                : MessageCatalogue.format(prompt.locale(), "common.none", Map.of());
             prompt.raw("  " + OutputSafety.stripControlSequences(value.aspect()) + "  "
-                                + (value.value() != null ? OutputSafety.stripControlSequences(value.value()) : "-")
+                                + renderedValue
                                 + "   " + MessageCatalogue.format(prompt.locale(), "control.settings.origin",
                                 Map.of("origin", value.origin())));
         }
