@@ -133,7 +133,7 @@ class ChatEventsTest {
         var reason = status == TurnStatus.FAILED ? message("control.chat.reason.lost") : null;
         var lines = kind == TurnKind.NOTICE
                 ? List.of(new NarrativeLine("control.chat.line.task_done", Map.of("task_id", id()),
-                        List.of(TurnRef.of(RefKind.TASK, id())), id()))
+                List.of(TurnRef.of(RefKind.TASK, id())), id()))
                 : List.<NarrativeLine>of();
         return new ChatTurnCompletedEvent(id(), id(), kind, status, flag(), id(),
                 List.of(TurnRef.of(RefKind.FILE, id())), reason, lines);
@@ -173,7 +173,7 @@ class ChatEventsTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("goldenPayloads")
     @DisplayName("the golden payload of the catalogue reads and writes back unchanged")
-    void goldenPayloadRoundTrips(String name, String golden, Codec codec) throws IOException {
+    void goldenPayloadRoundTrips(String name, String golden, Codec codec) throws Exception {
         var written = codec.roundTrip(golden);
 
         assertEquals(JsonTree.parse(golden), JsonTree.parse(written), name);
@@ -183,13 +183,13 @@ class ChatEventsTest {
     @DisplayName("each payload names its own catalogue event")
     void eventNames() {
         assertAll(
-                () -> assertEquals(EventName.CHAT_TURN_STARTED.wire(), ChatTurnStartedEvent.EVENT_NAME),
-                () -> assertEquals(EventName.CHAT_TURN_DELTA.wire(), ChatTurnDeltaEvent.EVENT_NAME),
-                () -> assertEquals(EventName.CHAT_TURN_PROGRESS.wire(), ChatTurnProgressEvent.EVENT_NAME),
-                () -> assertEquals(EventName.CHAT_TURN_COMPLETED.wire(), ChatTurnCompletedEvent.EVENT_NAME),
-                () -> assertEquals(EventName.CHAT_PROPOSAL.wire(), ChatProposalEvent.EVENT_NAME),
-                () -> assertEquals(EventName.CHAT_ENDED.wire(), ChatEndedEvent.EVENT_NAME),
-                () -> assertEquals(EventName.PLAN_REVISION_QUEUED.wire(), PlanRevisionQueuedEvent.EVENT_NAME));
+                () -> assertEquals(ChatTurnStartedEvent.EVENT_NAME, EventName.CHAT_TURN_STARTED.wire()),
+                () -> assertEquals(ChatTurnDeltaEvent.EVENT_NAME, EventName.CHAT_TURN_DELTA.wire()),
+                () -> assertEquals(ChatTurnProgressEvent.EVENT_NAME, EventName.CHAT_TURN_PROGRESS.wire()),
+                () -> assertEquals(ChatTurnCompletedEvent.EVENT_NAME, EventName.CHAT_TURN_COMPLETED.wire()),
+                () -> assertEquals(ChatProposalEvent.EVENT_NAME, EventName.CHAT_PROPOSAL.wire()),
+                () -> assertEquals(ChatEndedEvent.EVENT_NAME, EventName.CHAT_ENDED.wire()),
+                () -> assertEquals(PlanRevisionQueuedEvent.EVENT_NAME, EventName.PLAN_REVISION_QUEUED.wire()));
     }
 
     @Nested
@@ -198,7 +198,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("the operator's message and a role's turn round-trip, each with its own members")
-        void roundTrips() throws IOException {
+        void roundTrips() throws Exception {
             var operator = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
                     TurnFormat.PLAIN, flag(), null, null, id());
             var role = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN, flag(),
@@ -219,7 +219,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a kind other than message and members against the author are refused")
-        void refusals() throws IOException {
+        void refusals() throws Exception {
             var operator = ChatTurnStartedEvent.fromJson(GOLDEN_OPERATOR_STARTED).toMap();
             var role = ChatTurnStartedEvent.fromJson(GOLDEN_ROLE_STARTED).toMap();
 
@@ -248,7 +248,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a piece of text, an empty piece and a step round-trip")
-        void roundTrips() throws IOException {
+        void roundTrips() throws Exception {
             var delta = new ChatTurnDeltaEvent(id(), id(), id());
             var empty = new ChatTurnDeltaEvent(id(), id(), "");
             var progress = new ChatTurnProgressEvent(id(), id(), message("control.chat.step.reading"));
@@ -263,7 +263,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a missing text or step, a blank turn id and an unknown member are refused")
-        void refusals() throws IOException {
+        void refusals() throws Exception {
             var delta = ChatTurnDeltaEvent.fromJson(GOLDEN_DELTA).toMap();
             var progress = ChatTurnProgressEvent.fromJson(GOLDEN_PROGRESS).toMap();
 
@@ -287,7 +287,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a message and a notice in each completed status round-trip")
-        void eachKindAndStatus() throws IOException {
+        void eachKindAndStatus() throws Exception {
             for (var kind : List.of(TurnKind.MESSAGE, TurnKind.NOTICE)) {
                 for (var status : List.of(TurnStatus.COMPLETE, TurnStatus.STOPPED, TurnStatus.FAILED)) {
                     var event = completed(kind, status);
@@ -298,7 +298,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("absent text and refs read as empty; absent lines and reason are not written")
-        void absentMembers() throws IOException {
+        void absentMembers() throws Exception {
             var event = new ChatTurnCompletedEvent(id(), id(), TurnKind.MESSAGE, TurnStatus.STOPPED, flag(), null,
                     null, null, null);
             var map = event.toMap();
@@ -313,7 +313,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a failed turn without reason is refused, and so is a reason on any other status")
-        void reasonIsTiedToFailed() throws IOException {
+        void reasonIsTiedToFailed() throws Exception {
             var failed = ChatTurnCompletedEvent.fromJson(GOLDEN_FAILED).toMap();
             var complete = ChatTurnCompletedEvent.fromJson(GOLDEN_COMPLETED).toMap();
 
@@ -329,7 +329,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("lines on a message, a proposal kind and the streaming status are refused")
-        void kindAndStatusRefusals() throws IOException {
+        void kindAndStatusRefusals() throws Exception {
             var complete = ChatTurnCompletedEvent.fromJson(GOLDEN_COMPLETED).toMap();
             var notice = ChatTurnCompletedEvent.fromJson(GOLDEN_NOTICE).toMap();
 
@@ -351,7 +351,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a proposal in each state round-trips, a refused one with its finding")
-        void eachState() throws IOException {
+        void eachState() throws Exception {
             for (var state : ProposalState.values()) {
                 var event = proposal(state);
                 assertEquals(event, ChatProposalEvent.fromJson(event.toJson()), state.wireValue());
@@ -361,7 +361,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a finding is tied to refused, and an unknown kind or state is refused")
-        void refusals() throws IOException {
+        void refusals() throws Exception {
             var refused = ChatProposalEvent.fromJson(GOLDEN_PROPOSAL).toMap();
 
             assertAll(
@@ -382,7 +382,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("ended_by is the closed catalogue list, and a chat ended each way round-trips")
-        void eachEndedBy() throws IOException {
+        void eachEndedBy() throws Exception {
             assertEquals(List.of("operator", "proposal_carried", "answered_elsewhere", "subject_ended",
                     "entry_closed"), ChatEndedEvent.EndedBy.wireValues());
             for (var endedBy : ChatEndedEvent.EndedBy.values()) {
@@ -397,7 +397,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("an unknown ended_by is refused, and only the operator's end carries a channel")
-        void refusals() throws IOException {
+        void refusals() throws Exception {
             var ended = ChatEndedEvent.fromJson(GOLDEN_ENDED).toMap();
             var unknown = "zz_" + Generators.letterStrings(3, 10).next();
 
@@ -423,7 +423,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a plan with and without a queued revision round-trips; an absent one is not written")
-        void roundTrips() throws IOException {
+        void roundTrips() throws Exception {
             var revision = new QueuedRevision(id(), id(), new ChatSubject(ChatSubjectKind.DECISION, id()), flag(),
                     MessageText.of("control.chat.applies.on_start"));
             var queued = new PlanRevisionQueuedEvent(id(), revision);
@@ -437,7 +437,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a missing or blank plan id, a malformed revision and an unknown member are refused")
-        void refusals() throws IOException {
+        void refusals() throws Exception {
             var queued = PlanRevisionQueuedEvent.fromJson(GOLDEN_REVISION_QUEUED).toMap();
 
             assertAll(
@@ -460,7 +460,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a chat origin round-trips with its kind chat; another kind is refused")
-        void chatOrigin() throws IOException {
+        void chatOrigin() throws Exception {
             var origin = new ChatOrigin(id(), id());
             var map = origin.toMap();
 
@@ -474,7 +474,7 @@ class ChatEventsTest {
 
         @Test
         @DisplayName("a turn pointer round-trips; a missing turn and an unknown member are refused")
-        void turnPointer() throws IOException {
+        void turnPointer() throws Exception {
             var pointer = new ChatTurnPointer(id(), id());
             var map = pointer.toMap();
 

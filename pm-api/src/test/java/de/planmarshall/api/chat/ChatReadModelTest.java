@@ -147,7 +147,7 @@ class ChatReadModelTest {
 
     @Test
     @DisplayName("The golden chat of the routes reads and writes back with every member")
-    void goldenChat() throws IOException {
+    void goldenChat() throws Exception {
         var chat = ChatResource.fromJson(GOLDEN_CHAT);
 
         assertAll(
@@ -263,7 +263,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a subject of each kind and a routed role round-trip; a blank id is refused")
-        void subjectAndRole() throws IOException {
+        void subjectAndRole() throws Exception {
             for (var kind : ChatSubjectKind.values()) {
                 var subject = subject(kind);
                 assertEquals(subject, ChatSubject.fromJson(subject.toJson()));
@@ -283,7 +283,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a message text round-trips with and without arguments; an invalid key is refused")
-        void messageText() throws IOException {
+        void messageText() throws Exception {
             var withArgs = new MessageText("control.chat.knows.plan", Map.of("id", id(), "title", id()));
             var bare = MessageText.of("control.chat.knows.epic");
 
@@ -298,7 +298,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a context round-trips with none, one, many and a duplicate; absent knows reads as none")
-        void contextRoundTrips() throws IOException {
+        void contextRoundTrips() throws Exception {
             var duplicate = message("control.chat.knows.plan");
             var contexts = List.of(context(0), context(1), context(3),
                     new ChatContext(List.of(duplicate, duplicate), id()));
@@ -317,7 +317,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a queued revision of a plan or a decision round-trips; any other subject is refused")
-        void queuedRevision() throws IOException {
+        void queuedRevision() throws Exception {
             for (var kind : List.of(ChatSubjectKind.PLAN, ChatSubjectKind.DECISION)) {
                 var revision = new QueuedRevision(id(), id(), subject(kind), Generators.booleans().next(),
                         message("control.chat.applies.after_task"));
@@ -340,7 +340,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a reference of each kind round-trips, the act with its act and subject")
-        void eachKindRoundTrips() throws IOException {
+        void eachKindRoundTrips() throws Exception {
             for (var ref : refsOfEachKind()) {
                 assertEquals(ref, TurnRef.fromJson(ref.toJson()));
             }
@@ -377,7 +377,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a narrative line round-trips with refs of each kind, with none, and with a duplicate")
-        void narrativeLine() throws IOException {
+        void narrativeLine() throws Exception {
             var duplicate = ref(RefKind.TASK);
             var lines = List.of(line(),
                     new NarrativeLine("control.chat.line.started", null, List.of(), id()),
@@ -403,7 +403,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a turn of each kind and status round-trips with every member")
-        void eachKindAndStatus() throws IOException {
+        void eachKindAndStatus() throws Exception {
             for (var kind : TurnKind.values()) {
                 for (var status : TurnStatus.values()) {
                     var lines = kind == TurnKind.NOTICE ? List.of(line(), line()) : List.<NarrativeLine>of();
@@ -415,7 +415,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("absent optional members read as absent or empty; empty text is kept")
-        void absentMembers() throws IOException {
+        void absentMembers() throws Exception {
             var turn = new ChatTurn(id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.STREAMING,
                     TurnFormat.PLAIN, false, null, null, null, null, id(), null, null);
             var map = turn.toMap();
@@ -457,7 +457,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a proposal in each state round-trips, a refused one with its finding")
-        void eachState() throws IOException {
+        void eachState() throws Exception {
             for (var state : ProposalState.values()) {
                 var proposal = proposal(state);
                 assertEquals(proposal, ChatProposal.fromJson(proposal.toJson()), state.wireValue());
@@ -467,7 +467,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("absent applies, before and after read as absent; a finding is tied to refused")
-        void absentAndRefusals() throws IOException {
+        void absentAndRefusals() throws Exception {
             var bare = new ChatProposal(id(), id(), ProposalKind.FOLLOW_UP, id(), null, null, null,
                     ProposalState.REJECTED, null);
             var refused = proposal(ProposalState.REFUSED).toMap();
@@ -491,7 +491,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a chat round-trips with no turn, one, many and a duplicate, with and without proposal")
-        void turnPages() throws IOException {
+        void turnPages() throws Exception {
             var duplicate = messageTurn();
             var chats = List.of(chat(null, List.of(), null),
                     chat(proposal(ProposalState.OPEN), List.of(messageTurn()), id()),

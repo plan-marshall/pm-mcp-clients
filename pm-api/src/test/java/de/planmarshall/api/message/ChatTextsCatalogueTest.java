@@ -101,7 +101,7 @@ class ChatTextsCatalogueTest {
 
     @Test
     @DisplayName("both tables are read and yield rows, so an unreadable table never passes")
-    void tablesYieldRows() throws IOException {
+    void tablesYieldRows() throws Exception {
         assertAll(
                 () -> assertTrue(Files.isRegularFile(CHAT_TEXTS), CHAT_TEXTS.toString()),
                 () -> assertTrue(Files.isRegularFile(DECISION_TEXTS), DECISION_TEXTS.toString()),
@@ -125,7 +125,7 @@ class ChatTextsCatalogueTest {
 
     @Test
     @DisplayName("the control packs hold no control.chat.* key the table does not name")
-    void noControlChatKeyBeyondTheTable() throws IOException {
+    void noControlChatKeyBeyondTheTable() throws Exception {
         var tableKeys = new TreeSet<String>();
         rows(CHAT_TEXTS, "control.chat.").forEach(row -> tableKeys.add(row.key()));
 

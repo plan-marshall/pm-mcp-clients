@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,7 @@ class ChatRequestsTest {
 
         @ParameterizedTest(name = "a text of {0} characters is accepted and round-trips")
         @ValueSource(ints = {1, 8000})
-        void acceptsTheBounds(int length) throws IOException {
+        void acceptsTheBounds(int length) throws Exception {
             var request = new ChatTurnRequest(textOf(length), id());
 
             var parsed = ChatTurnRequest.fromJson(request.toJson());
@@ -121,7 +120,7 @@ class ChatRequestsTest {
 
         @Test
         @DisplayName("a repeated client_turn_id round-trips unchanged")
-        void repeatedClientTurnIdRoundTrips() throws IOException {
+        void repeatedClientTurnIdRoundTrips() throws Exception {
             var clientTurnId = id();
             var first = new ChatTurnRequest(textOf(20), clientTurnId);
             var repeat = new ChatTurnRequest(first.text(), clientTurnId);
@@ -169,7 +168,7 @@ class ChatRequestsTest {
 
         @Test
         @DisplayName("the answer is 202 and round-trips")
-        void roundTrips() throws IOException {
+        void roundTrips() throws Exception {
             var accepted = new ChatTurnAccepted(id());
 
             var parsed = ChatTurnAccepted.fromJson(accepted.toJson());
@@ -182,7 +181,7 @@ class ChatRequestsTest {
 
         @Test
         @DisplayName("the turn id is read off the wire as sent")
-        void readsTheWire() throws IOException {
+        void readsTheWire() throws Exception {
             var turnId = Generators.letterStrings(2, 12).next();
 
             var parsed = ChatTurnAccepted.fromJson("{\"turn_id\":\"" + turnId + "\"}");
@@ -211,7 +210,7 @@ class ChatRequestsTest {
 
         @Test
         @DisplayName("the answer names the proposal's turn id and round-trips")
-        void roundTrips() throws IOException {
+        void roundTrips() throws Exception {
             var answer = new ProposalAnswerRequest(id());
 
             var parsed = ProposalAnswerRequest.fromJson(answer.toJson());
