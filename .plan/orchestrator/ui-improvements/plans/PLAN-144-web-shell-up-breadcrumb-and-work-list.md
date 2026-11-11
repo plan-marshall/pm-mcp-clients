@@ -20,8 +20,9 @@ language stay in the rail foot and the More sheet (the operator, 2026-11-10; REA
 
 The documents are the specification; read them first: `doc/design/web-app/navigation.adoc` (#lenses, #levels, #up, #kinds,
 #phone, #scope), `doc/design/web-app/README.adoc` (#shell), `doc/design/web-app/components.adoc` (#breadcrumb, #fixed-places),
-`doc/design/web-app/components-tags.adoc` (#kind-mark), `doc/plans/web-moving-between-plans.adoc`, and the D6 documents (Q6:
-the lens segment).
+`doc/design/web-app/components-tags.adoc` (#kind-mark), `doc/plans/web-moving-between-plans.adoc`, and `doc/design/web-app/navigation.adoc`
+(#up :169-176, #url :216-219). D6 merged (#403, `8568b56e`) and settled Q6 (Up, the lens segment and What waits's address); the
+deliverables below state its rulings.
 
 1. **The rail's lens from the route, and the phone's bar**
  - What:
@@ -30,7 +31,10 @@ the lens segment).
      Reports; the cleanup is System; the machine settings are Settings), and an object opened in place leaves the rail where
      it is.
    - The bottom bar is built from the lens model: Running work · Decisions · More, with **What waits** as the first item the
-     moment PLAN-49 registers its route (one entry of the model, no further change here). Reports moves into More, its unread
+     moment PLAN-49 registers its route (one entry of the model, no further change here). The lens model's What waits entry, in
+     the rail and in the bar, addresses `/?lens=waits` (D6: an address that names the lens, never filled from the remembered
+     place, also on a reload); its Running work entry, in the rail and in the bar, opens `/overview` filled from the remembered
+     place by a push, through `PLAN-143`'s Running work function. Reports moves into More, its unread
      count shows on More, and More is active while the current route's lens is one the sheet holds. The sheet keeps every
      destination and the language switch and the theme choice (the rail foot's controls); a side column takes the bar's place
      on the phone; targets are `44 px`.
@@ -38,7 +42,8 @@ the lens segment).
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - `nav.test.ts`, `NavRail.test.ts` and a new `BottomBar.test.ts` show the kind-to-lens table, the bar's items, Reports and its
-     count in More, More active for a lens it holds, and the theme and language controls still in the sheet. Evidence order:
+     count in More, More active for a lens it holds, the theme and language controls still in the sheet, What waits's entry
+     addressing `/?lens=waits` (once registered), and Running work's entry pushing the filled `/overview`. Evidence order:
      `test-first`.
    - `chrome.spec.js` shows the bar on the phone and Reports in More. Evidence order: `test-first`.
 2. **Up and the one breadcrumb**
@@ -47,16 +52,20 @@ the lens segment).
      epic, plan, task), each with `kind`, title and address, from what the app already loads: a plan's project and epic from
      its process (`ProcessTree.project`, `epic`), an epic's project from its resource.
    - The top bar draws one breadcrumb: lens › project › epic › plan, each segment with its `KindMark` and a title (not a slug);
-     every segment but the last pushes the parent's address as Up does, and the lens segment as D6 settled; on a phone an
-     identifier is shortened in its middle. Outside the lenses it draws its group and title (the cleanup as `Machine › System ›
+     every segment but the last pushes the parent's address as Up does (the project segment of a plan in Running work goes to
+     the project's level of Running work, not to the project page); the lens segment pushes the lens's own list with nothing
+     selected — the **unfilled** lens address, written with the app's mark by `PLAN-143`'s writer, so a reload keeps it unfilled
+     (D6 Q6; `navigation.adoc#up` :171-172, `#url` :219); on a phone an identifier is shortened in its middle. Outside the lenses it draws its group and title (the cleanup as `Machine › System ›
      Cleanup`).
    - Up fills the `up` slot PLAN-142 left in the head of the first visible column: the parent's `KindMark` and name, accessible name
-     `web.nav.up`, a push of the parent's address, the same at every width, absent at a lens list.
+     `web.nav.up`, a push of the parent's address, the same at every width, absent at a lens list. Up from a project of a lens
+     pushes the lens's unfilled list, as the lens segment does, never filled from the remembered place.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - `chain.test.ts`, `Breadcrumb.test.ts`, `TopBar` and `Up` tests: a plan of an epic, a plan of no epic, a project's plan
-     in the ended mode, a phone, each segment's address, and Up pushing the parent. Evidence order: `test-first`.
+     in the ended mode, a phone, each segment's address, and Up pushing the parent; the lens segment and Up from a project push
+     the unfilled lens list with the app's mark, and a remembered place does not fill it. Evidence order: `test-first`.
 3. **The caller stack and the in-page Backs go**
  - What:
    - Remove `navigationStack`, `NavigationEntry` and `goBack` from `runtime.ts` and the stack push of `pushRoute`.
@@ -91,7 +100,8 @@ the lens segment).
      plan and `PLAN-59` D4 (state in the landing message which it is). Evidence order: `none`.
 5. **Browser evidence**
  - What: `pm-web-e2e/tests/work-list.spec.js` (new) on `running-work`: from `fix-relay` one step to its neighbour and back by
-   Up, the breadcrumb segments, the bar on the phone.
+   Up, the breadcrumb segments, the lens segment opening the unfilled list and a reload of it staying unfilled, the bar on the
+   phone.
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
@@ -133,7 +143,8 @@ the lens segment).
 - HYPOTHESIS: a project's plans and epics, in the order served, are readable from the data `getProjectDetail` already returns, so the work list needs no new endpoint — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getProjectDetail` (:2730) and `ProjectDetailResponse` (verify-at-outline)
 - HYPOTHESIS: an epic's project is known from `getEpicResource` — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getEpicResource` (:3171) and `EpicResource` (verify-at-outline)
 - HYPOTHESIS: no view other than the ten named renders an in-page Back — confirm/refute by `git grep -n "common.actions.back\|web.common.back\|web.settings.back" -- pm-web-app/src/lib/views` (verify-at-outline)
-- Verify-first clause: re-read the D6 documents (Q6, the lens segment) and PLAN-142's `up` slot at the then-current HEAD. If PLAN-49 has landed, add What waits to the bar and the rail in deliverable 1; if PLAN-130 has not, stop and loop back.
+- OBSERVED: D6 settled Up and the lens segment (the lens's own list with nothing selected, pushed with the app's mark, a reload keeps it unfilled) and What waits's address `/?lens=waits` — read at `doc/design/web-app/navigation.adoc:171-172,216-219`, `doc/design/web-app/README.adoc:445-449`, `doc/design/web-app/needs-and-find.adoc:26` (`4a84f727`, D6 merged `8568b56e`)
+- Verify-first clause: re-read `navigation.adoc#up` and `#url`, PLAN-142's `up` slot and PLAN-143's unfilled-lens and Running-work functions at the then-current HEAD. If PLAN-49 has landed, add What waits to the bar and the rail in deliverable 1; if PLAN-130 has not, stop and loop back.
 
 ## Expected Surface
 
@@ -180,7 +191,7 @@ the lens segment).
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-142` (the `up` slot, the engine), `PLAN-143` (the address scheme and the history writer); the D1 foundation part with `KindMark`, `RowLink` and `Link`; `PLAN-130` landed (`NavRail.svelte`, `chrome.spec.js`); the D6 documents (Q6).
+- Depends on: `PLAN-142` (the `up` slot, the engine), `PLAN-143` (the address scheme and the history writer); the D1 foundation part with `KindMark`, `RowLink` and `Link`; `PLAN-130` landed (`NavRail.svelte`, `chrome.spec.js`); the D6 documents (Q6) — merged (#403, `8568b56e`), satisfied.
 - Overlaps with:
   - `PLAN-49` (parked): `shell/nav.ts`, `NavRail.svelte`, `BottomBar.svelte`, `routes.ts`, `+layout.svelte`, `chrome.spec.js`. This plan lands first; PLAN-49 D3 then adds only What waits, its count, the tab title and the tab icon.
   - `PLAN-130` (staged): `NavRail.svelte`, `chrome.spec.js`. It lands first.

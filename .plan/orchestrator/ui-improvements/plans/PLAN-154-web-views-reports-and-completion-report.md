@@ -63,6 +63,30 @@ Not in this plan: the `RowLink` row and `aria-current` selection of the Reports 
    - Browser check (Playwright MCP) on `reports-and-system` and `running-work` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for both views (evidence order: `none`).
    - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
+5. **What PLAN-158 left in the reports and the designer (from its landing, folded 2026-11-11 on the operator's decision)**
+ - What: read `landings/PLAN-158.md` of the epic; lines as read at `4a84f727`. Three CodeRabbit findings of #408 that were
+   never answered, and the rest of the residue:
+   - `ProcessDesigner.svelte`: `placeOutcomeUnknown` is reset only in `place()` (`:821`); after a placement timeout, Close,
+     reopen and a failed comparison, the failed stage (`:1550`) reads as an unconfirmed placement. Reset it when a
+     comparison starts (`compareForPlacement`, `:783-795`).
+   - `ReportsView.svelte`: a successful single Mark read (`:571-584`) does not advance `listEpoch` (only the events at
+     `:390`, `:407` do), so a list read issued before the POST and answered after it restores the read row and the old
+     `unread_count`. Advance the epoch (or discard the older snapshot) for a local read.
+   - `ReportsView.svelte`: a retained row whose `markRead` fails while a mark-all holds it keeps its marker (`:589-590`), and
+     the mark-all's rollback skips it (`:622-629`, `:662-665`); if both fail, the row shows read though nothing was read.
+     When the last hold settles, clear an unconfirmed marker whoever created it.
+   - The failing-Retry arm of the focus rule (`:507-514`: focus on the error title) has no test.
+   - `errors.ts` `actFailureText` (`:90-92`): a wire-shaped code the catalogue lacks yields `error.unknown.fix` ("look at the
+     details") on an act line that shows no details, and the act's own text is lost: use the act's fallback for an unknown code.
+   - `ReportsCommandTest.java`: four of five tests keep hand-written ids and counts (`:177-230`); draw them from `Generators`.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - A test per item fails before the change (evidence order: `test-first`); the `ReportsCommandTest` change is test-only
+     (evidence order: `none`).
+
+Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator folded here (2026-11-11). Rationale recorded by the orchestrator.
+
 ## Standing Constraints
 
 - Build and test through Maven only (`CLAUDE.md`): `./mvnw -pl pm-web-app verify`, `-Ppre-commit` (review every rewrite), and at the head `PM_MOCK_WEB_PORT=<mock port> PM_WEB_PORT=<app port> ./mvnw -pl pm-web-e2e verify -Pe2e`.
@@ -102,6 +126,11 @@ Not in this plan: the `RowLink` row and `aria-current` selection of the Reports 
 - OBSERVED: `pm-api/src/main/resources/messages/reports.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/reports.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/completion-report.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.svelte` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.test.ts` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-web-app/src/lib/api/errors.ts` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-web-app/src/lib/api/errors.test.ts` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReportsCommandTest.java` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
 
 ## Dependencies and Sequencing
 

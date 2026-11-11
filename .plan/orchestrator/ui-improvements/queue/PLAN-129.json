@@ -2,10 +2,10 @@
   "id": "PLAN-129",
   "slug": "web-reports-fifth-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-129-web-reports-fifth-residue",
+  "pr": "406",
+  "landing": "landings/PLAN-129.md",
   "seq": 129
 }

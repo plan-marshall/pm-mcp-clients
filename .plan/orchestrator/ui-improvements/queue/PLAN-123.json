@@ -2,10 +2,10 @@
   "id": "PLAN-123",
   "slug": "cli-display-layer-residue",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-123-cli-display-layer-residue",
+  "pr": "404",
+  "landing": "landings/PLAN-123.md",
   "seq": 123
 }

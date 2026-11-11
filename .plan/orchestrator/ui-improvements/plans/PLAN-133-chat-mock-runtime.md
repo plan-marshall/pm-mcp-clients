@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-07
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Drafted 2026-11-10 from the AGREED
+> Staged plan spec, one shippable unit of work, ready for hand-off on the `plan-marshall` lane. Drafted 2026-11-10 from the AGREED
 > D4 and D5 documents. SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -16,6 +16,10 @@ test uses. This plan builds that on the contract of PLAN-132. The context line, 
 are PLAN-134. Voice and transcription are not part of this plan.
 
 ## Deliverables
+
+> AMENDED 2026-11-11 after PLAN-132 landed (#409, `572dc739`): read § _PLAN-132 Landing Residue (Amendment 2026-11-11)_ at the end
+> FIRST. Its deliverable 0 settles the wire form of the chat's message keys before any deliverable below emits one, and its
+> deliverable 6 carries the contract's residue.
 
 Specification: `doc/design/web-app/chat.adoc` § `#contract` (the mock paragraph), `#working`, `#notices`, `#proposal`;
 `../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc` § `#mock-timing`, `01-processes-and-transport.adoc`
@@ -157,10 +161,13 @@ Re-read every file above at the then-current HEAD; settle the HYPOTHESES; re-run
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-11 by the operator's size rule: 16 files, five deliverables of new mock behaviour). Emitted
+2026-11-11 on the operator's word as a fifth plan beside N=4 (PLAN-32, 126, 159, 147). Since staging: PLAN-132 landed (#409,
+`572dc739`) and PLAN-45 landed (#399); overlaps now running: PLAN-126 (`MockRuntimeEngine.java`), PLAN-159 (`running-work.json`,
+`fully-onboarded.json`), PLAN-32 (`mock/http/`, if an SSE flush is added) — whichever lands second rebases.
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-133-chat-mock-runtime.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-133-chat-mock-runtime.md"
 ```
 
 ## Write-Boundary
@@ -174,3 +181,54 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Voice (O7):** the mock's scripted transcription is not part of this plan.
 - **Review and decomposition chats (O10):** served at their own addresses once PLAN-132 has the route builders.
+
+## PLAN-132 Landing Residue (Amendment 2026-11-11)
+
+Routed here by the operator (AskUserQuestion, 2026-11-11) from `landings/PLAN-132.md`. It supersedes any text above that differs.
+Re-read every cited line at the then-current HEAD.
+
+0. **The wire form of the chat's message keys (do this first)**
+ - Finding (major, PLAN-132 layer 1): `work-actions-chat-texts.adoc:17` says the runtime's message keys are `chat.line.<name>`,
+   `chat.knows.<item>` and `chat.applies.after_task|on_start`, which the clients render through `control.chat.line.<name>`
+   (`decision_answered` without `device` as `control.chat.line.decision_answered_no_device`), `control.chat.knows.item` (with that
+   `item`) and `control.chat.revision_queued` / `control.chat.at_boundary` / `control.chat.at_start`. `MessageText.java:19-24` and
+   `ChatContext.java:23` say the same. But every golden and test value of PLAN-132 sends `control.chat.*` keys
+   (`ChatEventsTest.java` ~45-95 and 117-468, `ChatReadModelTest.java:57-61`), and 11 of them exist in no catalogue:
+   `control.chat.line.task_done`, `line.started`, `reason.lost`, `reason.too_long`, `step.reading`, `step.writing`,
+   `applies.after_task`, `applies.on_start`, `proposal.refused`, `knows.plan`, `knows.epic` (the catalogue has e.g.
+   `control.chat.lost`, `too_long_reply`, `infeasible`, `step.read|search|check`, `at_boundary`, `control.en.properties:227-322`).
+   `MessageText` and `NarrativeLine` accept any dotted key, so nothing enforces the closed set.
+ - What: the wire carries the runtime's `chat.*` keys per the design table. Correct the pm-api goldens and test values to real
+   runtime keys whose rendering key exists in `control.*.properties`; add a test that every `chat.line.*`/`chat.knows.*`/
+   `chat.applies.*` key the goldens and the mock use maps to an existing `control.chat.*` key (en and de). For the keys the table
+   does not map (a step `chat.turn.progress` key, a failed turn's `reason`, a refused proposal's finding), state the mapping in
+   the table's prose only if the design already implies it; otherwise STOP and ask the operator before choosing. The mock
+   (deliverables 1–5) emits only keys this deliverable fixed.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when: no `control.chat.` value remains as a wire key in `pm-api/src/test` or the mock's scenarios; the mapping test fails
+   when a golden names a key with no rendering key. Evidence order: `test-first`.
+
+6. **The contract's residue (PLAN-132, minor)**
+ - What:
+   - `ChatTurn.java:117-140` accepts `model` and `steps` on an operator turn, which `ChatTurnStartedEvent.java:94-111` refuses: one
+     rule for both.
+   - `EventName.java:287-297`: the stream-set constructor accepts an empty set against its "never empty" Javadoc; refuse it.
+     `EventNameTest.java:59-66` cannot fail: pin `RESET` and `STREAM_CLOSED` as derived from every `EventStream`, and a stream
+     added later.
+   - `EventStream.java:27-51` duplicates six of the eight `EventScopeKind` values by hand: derive one from the other or pin
+     their correspondence in a test (no new dependency).
+   - `ChatResource.java:85`: the constructor Javadoc still says "the open proposal" generally; align with `hasProposal`
+     (`:108-110`).
+   - Mock: `MockRuntimeEngine.java:9871-9881` writes an absent device as `""`, so `decision_answered_no_device` is never chosen;
+     leave the field absent and pin it (CodeRabbit's last reply on #409, comment 4539796167, asks for this recheck).
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core
+ - Done when: each point has a test that fails on revert. Evidence order: `test-first`.
+
+Expected surface added: `pm-api/src/main/java/de/planmarshall/api/chat/MessageText.java`,
+`pm-api/src/main/java/de/planmarshall/api/chat/ChatTurn.java`, `pm-api/src/main/java/de/planmarshall/api/chat/ChatResource.java`,
+`pm-api/src/main/java/de/planmarshall/api/event/EventName.java`, `pm-api/src/main/java/de/planmarshall/api/event/EventStream.java`,
+`pm-api/src/test/java/de/planmarshall/api/chat/ChatEventsTest.java`, `pm-api/src/test/java/de/planmarshall/api/chat/ChatReadModelTest.java`,
+`pm-api/src/test/java/de/planmarshall/api/event/EventNameTest.java`, `doc/design/shared/work-actions-chat-texts.adoc` (prose of the
+mapping only, if deliverable 0 needs it). `MockRuntimeEngine.java` is already in the surface.

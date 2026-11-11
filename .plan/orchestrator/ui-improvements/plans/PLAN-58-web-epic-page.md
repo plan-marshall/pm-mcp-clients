@@ -26,8 +26,8 @@ Source of this plan (read before scoping):
    - Done when:
      - `epic-view.spec.js` on `control.epic`: waits show since; titles first (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-2. **Tabs and Intent**
-   - What: Tabs Workstreams, Intent (destination, done-when checks with evidence, non-goals), Landings, Findings and watches, Tokens, Events (timeline).
+2. **Tabs and Intent** (superseded by D6: the tabs are Plans, Intent, Landings, Reviews and Events, with no Tokens tab; the binding text is D6-1 of `## D6 Merged 2026-11-11 (Amendment)`)
+   - What: Tabs Plans (the workstreams with their plans), Intent (the sources at its top, then destination, done-when checks with evidence, non-goals), Landings, Reviews (findings and watches), Events (timeline), as D6-1 states.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
@@ -127,9 +127,9 @@ sole sanctioned write mechanism are stated in
 
 Source: `doc/design/shared/epic-view.adoc` (#layout, #reactions), `doc/design/web-app/navigation.adoc` (#levels, #column-types, #side-columns), `doc/design/web-app/components-tags.adoc#tag-places`, `doc/design/shared/work-actions.adoc#review`, `doc/design/shared/intent-and-outline.adoc#epic`. HEAD 1cc0e10e.
 
-1. **The epic in the column chain.** `EpicView.svelte` is the epic's column: as the list column its plans grouped by workstream (a workstream is no level) with status and what each waits for (reason and a relative _since_), the id as a `Chip`; selecting a plan opens the plan column to its right. As the object column it keeps the full head (`KindMark`, title, state sentence, one `ActionBar` with the primary from `byState`, no _Back_) and the lines for sources, landings, findings, watches, tokens and events. No path in the head.
+1. **The epic in the column chain.** `EpicView.svelte` is the epic's column: as the list column its plans grouped by workstream (a workstream is no level) with status and what each waits for (reason and a relative _since_), the id as a `Chip`; selecting a plan opens the plan column to its right. As the object column it keeps the full head (`KindMark`, title, state sentence, one `ActionBar` with the primary from `byState`, no _Back_), the tokens line, and the five tabs of D6-1 below (the former lines for sources, landings, findings, watches and events become tabs; D6). No path in the head.
    - Done when: `epic-view.spec.js` on `running-work` → `control.epic`: waits show since, titles first, selecting a plan opens it to the right (evidence order: `test-first`); the browser check on `control.epic`, `control.review` (evidence order: `none`).
-2. **Tabs and the Intent tab.** The tab set is decided first (G1); the epic's Intent (destination, done-when checks with evidence, non-goals, each plan's criterion) is the web intent and outline package's content; this plan places the tab.
+2. **Tabs and the Intent tab.** Decided by D6 (merged, #403, `8568b56e`): Plans, Intent, Landings, Reviews, Events — the full rule is D6-1 of `## D6 Merged 2026-11-11 (Amendment)`. The epic's Intent (destination, done-when checks with evidence, non-goals, each plan's criterion) is the web intent and outline package's content (`EpicIntentPanel`, `PLAN-146`); this plan places the tab with the sources at its top.
 3. **Counts and findings review.** Head counts and _Landungen_ come from the rows the view lists (`EpicView.svelte:117,746`); `FindingsReviewModal` opens with the first open item selected and its counts match the card.
    - Done when: unit tests: epic counts equal rows; the modal selects the first open item (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
 4. **A failed epic-resource read says so and can be retried** (PLAN-100 residue). Unchanged: after a failed initial `getEpicResource` (`EpicView.svelte:157-161`) show `ErrorState` with _Try again_ and let _Next plan_ stop claiming the epic is still being read (`control.epic.next_waiting`).
@@ -153,7 +153,51 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
-- **Tab set:** the tabs of this page are decided by the D6 design session (WS-06, staged 2026-11-10); this plan stays parked until that session's documents are `AGREED`, and the Intent tab's content belongs to the web intent & outline package (this plan only reserves the tab).
+- **Tab set:** the tabs of this page are decided by the D6 design session (WS-06, staged 2026-11-10); this plan stays parked until that session's documents are `AGREED`, and the Intent tab's content belongs to the web intent & outline package (this plan only reserves the tab). *Settled 2026-11-11:* D6 merged (#403, `8568b56e`), the documents are `AGREED`; the decided set is in the amendment below.
+
+## D6 Merged 2026-11-11 (Amendment)
+
+Source: the D6 design session `PLAN-141`, merged as #403 (`8568b56e`, 2026-11-10); answer Q2 of `landings/PLAN-141-findings.md`
+§ Answers. Documents read on `main` at `4a84f727`: `doc/design/shared/epic-view.adoc` (#layout :16-54, #tabs :56-68),
+`doc/design/web-app/navigation.adoc` (#url :178-222, #rely :383-418), `doc/design/web-app/components-tags.adoc#count-badge`,
+`doc/design/shared/intent-and-outline.adoc#epic`. These supersede any text above that differs, including the original deliverable 2's
+six tabs.
+
+D6-1. **The epic's tabs and its list-column form**
+ - What:
+   - As the **object column**: the head of `components-tags.adoc#tag-places` with the epic's acts, under it the tokens line
+     (`overview.epic.tokens`) with its one-step disclosure per plan (as the plan's tokens line; `epic-view.adoc#layout` _Tokens_), then
+     five tabs, `tab={id}` in the address by a replace:
+     - **Plans** (`plans`, the default): the workstreams with their plans (deliverable 1's rows: status, what each waits for and since,
+       a shipped plan's pull request).
+     - **Intent** (`intent`): the epic's sources at its top, as stored (`overview.epic.sources`), then `EpicIntentPanel` of `PLAN-146`.
+     - **Landings** (`landings`): the landings with their pull requests and the epic's analysis.
+     - **Reviews** (`reviews`): the findings and the watches with their counts, each opening its review (`FindingsReviewModal`,
+       deliverable 3); the tab carries a `CountBadge` `! n` while findings are new.
+     - **Events** (`events`): the epic's history, newest first (`epicEvents.ts`).
+   - **No Tokens tab**: the tokens are the head line with its one-step disclosure per plan.
+   - As a **list column** (one of its plans open to its right): the compact head and its plans grouped by workstream, a workstream a
+     group head and no level; nothing of the other tabs.
+   - An **ended epic** has the same tabs, read-only.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+ - Done when:
+   - `EpicView.test.ts`: the five tabs and no Tokens tab; Plans the default; the Intent tab with the sources first; the Reviews tab's
+     `! n` badge present while findings are new and absent without; `tab=` written by a replace; the list-column form shows only the
+     plans grouped by workstream; an ended epic read-only. It fails on a revert (evidence order: `test-first`).
+   - `epic-view.spec.js` on `running-work` → `control.epic` and `control.review`: each tab, and a plan opened to the right with the epic
+     as list column (evidence order: `test-first`).
+   - Browser check (Playwright MCP) of the five tabs and the list-column form at `1440 × 900` and `390 × 844`, `de`/`en`, dark/light
+     (evidence order: `none`).
+
+Removed or replaced by D6: the tab Workstreams (now Plans), Findings and watches (now Reviews), the Tokens tab, and the lines for
+sources, landings, findings, watches and events in the object column (now tabs).
+
+Dependencies added: `PLAN-142`/`PLAN-144` (the epic on the column engine, `ObjectPage` `compact`), `PLAN-143` (`tab=` and the one
+address writer), `PLAN-146` (`EpicIntentPanel`), the tag family of `PLAN-147`/`PLAN-148` (`CountBadge`).
+
+Expected Surface (when restarted; the parked rule above still holds until then): unchanged; the tabs live in `EpicView.svelte` and
+`EpicView.test.ts`, already listed. No new file.
 
 ## Staging Note 2026-11-10
 
