@@ -17,9 +17,9 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 . The changes in the terminal: the level of the full-screen view on `d`, a file's hunks on `Enter`, and `plan <plan_id> --changes [--file <path>]`.
   Anchor: link:../design/terminal-client/16-plan-view.adoc#changes[Terminal Client, The Changes]; link:../design/shared/plan-view.adoc#changes[Plan View, The Changes].
   Proof: against the mock runtime the list and a file print as designed, a planted control sequence in a path and a line prints removed, and `not_captured` prints its text, never an empty list.
-. The changes in the web app: the size line opens them in the narrative panel, a file's hunks on the diff tokens, the open file in the address.
+. The changes in the web app: the plan's tab _Changes_ (absent before the first capture), which the size line opens, a file's hunks on the diff tokens, the open file in the address `/plans/{plan_id}?tab=changes&file=<path>`.
   Anchor: link:../design/web-app/plan-view-interaction.adoc#changes[Web App, Plan View Interaction, The Changes]; link:../design/shared/plan-view.adoc#changes[Plan View, The Changes].
-  Proof: component tests show the list, a file, a cut file, and a binary row; a line holding markup renders as text; a reload with `?changes=open&file=` opens the same file.
+  Proof: component tests show the list, a file, a cut file, and a binary row; a line holding markup renders as text; a reload with `?tab=changes&file=` opens the same tab and file.
 . The entry `model_differs` in a worker's activity in both clients.
   Anchor: link:../design/shared/plan-view.adoc#worker[Plan View, A Worker at Work]; link:../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#served-model[The Model That Answered].
   Proof: against a mock scenario whose activity holds the entry, both clients show both models and the head keeps the launch model.
