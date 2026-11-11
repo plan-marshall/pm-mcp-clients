@@ -651,6 +651,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-10: `rb-84-cli-find-001.md` (PLAN-84) and `rb-123-cli-display-layer-residue-001.md` (PLAN-123), both
   opencode, `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-10: `rb-33-verify-cli-acts-005.md` (PLAN-33, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-11: `rb-129-web-reports-fifth-residue-001.md` (PLAN-129, opencode), `total_tokens` and `plugin_version` missing.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
