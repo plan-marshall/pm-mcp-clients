@@ -35,7 +35,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param scope    the chat's scope
  * @param state    the chat's state
  * @param context  what the role knows
- * @param proposal the open proposal, or {@code null}
+ * @param proposal the chat's proposal in whatever state it is in (open, replaced, accepted, rejected,
+ *                 applied, refused or lapsed), or {@code null}; only an open one awaits an answer
  * @param turns    the page of turns, oldest first
  * @param before   the turn id of the page before, or {@code null} when there is none
  */

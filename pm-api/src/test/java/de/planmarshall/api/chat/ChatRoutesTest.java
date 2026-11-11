@@ -105,6 +105,18 @@ class ChatRoutesTest {
                 .apply(firstBlank ? blank : plain, firstBlank ? plain : blank));
     }
 
+    @ParameterizedTest(name = "a dot-segment id of {0} is refused")
+    @MethodSource("subjects")
+    @DisplayName("an id of . or .. is refused by every builder: it would not address one path segment")
+    void dotSegmentIdIsRefused(Subject subject) {
+        var dots = Generators.fixedValues(".", "..").next();
+        var plain = plainId();
+        var firstDots = subject.template().contains("{a}");
+
+        assertThrows(IllegalArgumentException.class, () -> subject.build()
+                .apply(firstDots ? dots : plain, firstDots ? plain : dots));
+    }
+
     @ParameterizedTest(name = "a missing id of {0} is refused")
     @MethodSource("subjects")
     @DisplayName("a missing id is refused by every builder")
@@ -179,6 +191,17 @@ class ChatRoutesTest {
             assertAll(
                     () -> assertThrows(IllegalArgumentException.class, () -> routes.stop(blank)),
                     () -> assertThrows(IllegalArgumentException.class, () -> routes.page(blank)));
+        }
+
+        @Test
+        @DisplayName("a turn id or before of . or .. is refused")
+        void refusesDotSegmentTurnIds() {
+            var routes = ChatRoutes.entry(plainId());
+            var dots = Generators.fixedValues(".", "..").next();
+
+            assertAll(
+                    () -> assertThrows(IllegalArgumentException.class, () -> routes.stop(dots)),
+                    () -> assertThrows(IllegalArgumentException.class, () -> routes.page(dots)));
         }
     }
 }

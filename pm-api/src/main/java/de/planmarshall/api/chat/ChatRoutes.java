@@ -209,6 +209,9 @@ public final class ChatRoutes {
         if (id.isBlank()) {
             throw new IllegalArgumentException(name + " must not be blank");
         }
+        if (".".equals(id) || "..".equals(id)) {
+            throw new IllegalArgumentException(name + " must not be a dot segment");
+        }
         return id;
     }
 }
