@@ -32,9 +32,11 @@ import de.planmarshall.api.id.DottedIdentifier;
  * and the identifier registry (Event Name): a new event, a new payload field, or a new stream is a
  * change of {@code pm-api}.
  * <p>
- * Every member declares the streams it is sent on ({@link #streams()}), taken from the catalogue. The
- * constructor takes at least one stream, so no member can lack a declaration and a missing stream is
- * never read as none.
+ * Every member declares the streams it is sent on ({@link #streams()}), taken from the catalogue. A
+ * constructor takes either at least one stream or the set of all streams, so no member can lack a
+ * declaration and a missing stream is never read as none. The stream-control events {@link #RESET} and
+ * {@link #STREAM_CLOSED} are sent on every stream and take the set of all of them, so a stream added
+ * later is never left out.
  * <p>
  * The catalogue's {@code plan.change_captured} is not a member yet: it comes with the package for a
  * plan's changes.
@@ -47,11 +49,14 @@ public enum EventName {
 
     // Stream control.
 
-    /** The events after the client's {@code Last-Event-ID} are no longer held, or the runtime started since. */
-    RESET("reset", RUNTIME, PLAN, EPIC, WORKSPACE, MACHINE, ENTRY, REPORTS, EventStream.ACTIVITY),
+    /**
+     * The events after the client's {@code Last-Event-ID} are no longer held, or the runtime started since.
+     * Sent on every stream.
+     */
+    RESET("reset", EnumSet.allOf(EventStream.class)),
 
-    /** The stream ends after it, with its reason. */
-    STREAM_CLOSED("stream.closed", RUNTIME, PLAN, EPIC, WORKSPACE, MACHINE, ENTRY, REPORTS, EventStream.ACTIVITY),
+    /** The stream ends after it, with its reason. Sent on every stream. */
+    STREAM_CLOSED("stream.closed", EnumSet.allOf(EventStream.class)),
 
     // Runtime, system & cleanup.
 
@@ -280,8 +285,16 @@ public enum EventName {
     private final Set<EventStream> streams;
 
     EventName(String wire, EventStream first, EventStream... rest) {
+        this(wire, EnumSet.of(first, rest));
+    }
+
+    /**
+     * For an event sent on a set of streams derived from {@link EventStream} rather than listed, such as
+     * all of them, so a stream added later is included without a change here.
+     */
+    EventName(String wire, EnumSet<EventStream> streams) {
         this.wire = wire;
-        this.streams = Collections.unmodifiableSet(EnumSet.of(first, rest));
+        this.streams = Collections.unmodifiableSet(streams);
     }
 
     /**

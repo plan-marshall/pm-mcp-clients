@@ -34,6 +34,7 @@ public final class ChatRoutes {
 
     private static final String CHAT = "/chat";
     private static final String DECISIONS = "/decisions/";
+    private static final String QUESTION_ID = "questionId";
 
     private final String subjectPath;
 
@@ -91,7 +92,7 @@ public final class ChatRoutes {
      * @return the routes of the chat about a plan's decision
      */
     public static ChatRoutes planDecision(String planId, String questionId) {
-        return new ChatRoutes(planPath(planId) + DECISIONS + segment(questionId, "questionId"));
+        return new ChatRoutes(planPath(planId) + DECISIONS + segment(questionId, QUESTION_ID));
     }
 
     /**
@@ -100,7 +101,7 @@ public final class ChatRoutes {
      * @return the routes of the chat about an epic's decision
      */
     public static ChatRoutes epicDecision(String epicId, String questionId) {
-        return new ChatRoutes(epicPath(epicId) + DECISIONS + segment(questionId, "questionId"));
+        return new ChatRoutes(epicPath(epicId) + DECISIONS + segment(questionId, QUESTION_ID));
     }
 
     /**
@@ -109,7 +110,7 @@ public final class ChatRoutes {
      * @return the routes of the chat about an entry's decision
      */
     public static ChatRoutes entryDecision(String entryId, String questionId) {
-        return new ChatRoutes(entryPath(entryId) + DECISIONS + segment(questionId, "questionId"));
+        return new ChatRoutes(entryPath(entryId) + DECISIONS + segment(questionId, QUESTION_ID));
     }
 
     /**
@@ -119,7 +120,7 @@ public final class ChatRoutes {
      */
     public static ChatRoutes workspaceDecision(String projectId, String questionId) {
         return new ChatRoutes(API_PREFIX + "/projects/" + segment(projectId, "projectId") + "/workspace"
-                + DECISIONS + segment(questionId, "questionId"));
+                + DECISIONS + segment(questionId, QUESTION_ID));
     }
 
     /**
@@ -127,7 +128,7 @@ public final class ChatRoutes {
      * @return the routes of the chat about a decision of the machine scope
      */
     public static ChatRoutes machineDecision(String questionId) {
-        return new ChatRoutes(API_PREFIX + "/machine" + DECISIONS + segment(questionId, "questionId"));
+        return new ChatRoutes(API_PREFIX + "/machine" + DECISIONS + segment(questionId, QUESTION_ID));
     }
 
     /**

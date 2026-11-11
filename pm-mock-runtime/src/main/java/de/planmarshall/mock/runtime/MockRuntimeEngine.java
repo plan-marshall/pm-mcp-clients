@@ -9828,7 +9828,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             openDecisions.remove(decisionId);
         }
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
-                answerReq.channel(), answerReq.device() != null ? answerReq.device() : ""));
+                answerReq.channel(), answerReq.device()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
@@ -9857,8 +9857,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             openDecisions.remove(decisionId);
         }
 
-        var device = answerReq.device() != null ? answerReq.device() : "";
-        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(), device));
+        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(), answerReq.device()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
@@ -9869,17 +9868,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * The payload of {@code decision.answered}: the channel is the one the answer carried, and an absent
-     * channel stays absent, never read as {@code cli}.
+     * channel stays absent, never read as {@code cli}; an absent device is written as the empty name.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
-            String device) {
+            @Nullable String device) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", decisionId);
         payload.put("answer", answer);
         if (channel != null) {
             payload.put("channel", channel);
         }
-        payload.put("device", device);
+        payload.put("device", device != null ? device : "");
         return payload;
     }
 
