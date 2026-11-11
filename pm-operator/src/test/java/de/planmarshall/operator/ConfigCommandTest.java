@@ -11,14 +11,23 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -55,16 +64,24 @@ class ConfigCommandTest {
     }
 
     private int execute(String... args) {
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
+        var typed = new ByteArrayInputStream(TYPED.getBytes(StandardCharsets.UTF_8));
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(typed, new ByteArrayOutputStream()), null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
+
+    /** The keys a test types at a prompt: leaving it is enough for every case that reaches one. */
+    private static final String TYPED = "q\n";
 
     @Test
     @DisplayName("bare config prints machine settings")
     void bareConfig() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/config".equals(request.target())) {
-                response.json(200, "{\"language.interface\":\"en\",\"web.port\":7420}");
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
             } else {
                 response.send(404, null, "");
             }
@@ -73,9 +90,143 @@ class ConfigCommandTest {
         int code = execute("config");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("Machine Settings:")),
-                            () -> assertTrue(out.toString().contains("language.interface"))
+                            () -> assertTrue(out.toString().contains("How this machine is set up"), out.toString()),
+                            () -> assertTrue(out.toString().contains("Language"), out.toString())
         );
+    }
+
+    @Test
+    @DisplayName("bare config falls back to the effective values the runtime serves")
+    void bareConfigFallsBackToTheEffectiveValues() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("web.port"), out.toString()),
+                            () -> assertTrue(out.toString().contains("7420"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("config show reads the effective values and names each origin")
+    void configShowListsTheEffectiveValues() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "," + OVERRIDDEN_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "show");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Configuration"), text),
+                            () -> assertTrue(text.contains("web.port"), text),
+                            () -> assertTrue(text.contains("7420"), text),
+                            () -> assertTrue(text.contains("machine"), text),
+                            () -> assertTrue(text.contains("overshoots") || text.contains("overrides machine"), text)
+        );
+    }
+
+    @Test
+    @DisplayName("config show aligns the values in one column")
+    void configShowAlignsTheValues() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config", "show");
+        var text = out.toString();
+        var port = rowOf(text, "web.port");
+        var flag = rowOf(text, "console.full_screen");
+
+        assertAll(
+                            () -> assertNotNull(port, text),
+                            () -> assertNotNull(flag, text),
+                            () -> assertEquals(port.indexOf("7420"), flag.indexOf("true"), text),
+                            () -> assertEquals("machine", port.substring(port.indexOf("7420")).replace("7420", "").trim(),
+                                                text));
+    }
+
+    @Test
+    @DisplayName("config show selects one key and leaves with 1 when it is not set")
+    void configShowSelectsOneKey() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int selected = execute("config", "show", "web.port");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, selected, text),
+                            () -> assertTrue(text.contains("web.port"), text),
+                            () -> assertFalse(text.contains("console.full_screen"), text));
+
+        out.getBuffer().setLength(0);
+        int missing = execute("config", "show", "nope.key");
+        assertAll(
+                            () -> assertEquals(1, missing, out.toString()),
+                            () -> assertTrue(out.toString().contains("is not set"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("config set writes one key at one level")
+    void configSetWritesTheLevelRoute() throws Exception {
+        var requests = new java.util.ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("PUT".equals(request.method()) && "/api/v1/config/machine/custom.timeout".equals(request.target())) {
+                response.json(200, "{\"key\":\"custom.timeout\",\"value\":\"60\",\"origin\":\"machine\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "set", "custom.timeout", "60");
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("✓ Config custom.timeout set to 60"),
+                                                out.toString()),
+                            () -> assertTrue(requests.contains("PUT /api/v1/config/machine/custom.timeout"),
+                                                requests.toString()));
+    }
+
+    @Test
+    @DisplayName("config unset removes one key at one level")
+    void configUnsetRemovesTheLevelRoute() throws Exception {
+        var requests = new java.util.ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("DELETE".equals(request.method()) && "/api/v1/config/machine/custom.flag".equals(request.target())) {
+                response.send(204, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "unset", "custom.flag");
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("✓ Config custom.flag unset"), out.toString()),
+                            () -> assertTrue(requests.contains("DELETE /api/v1/config/machine/custom.flag"),
+                                                requests.toString()));
     }
 
     @Test
@@ -122,42 +273,6 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config show displays effective configuration")
-    void configShow() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/web.port".equals(request.target())) {
-                response.json(200, "{\"key\":\"web.port\",\"value\":7420,\"origin\":\"machine\"}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "show", "web.port");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("\"web.port\""))
-        );
-    }
-
-    @Test
-    @DisplayName("config set sets plain configuration key")
-    void configSetPlainKey() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config".equals(request.target()) && "PUT".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "set", "custom.timeout", "60");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Config custom.timeout set to 60"))
-        );
-    }
-
-    @Test
     @DisplayName("config set refuses aspect-owned keys with 409 aspect_owned")
     void configSetRefusesAspectOwned() {
         int code = execute("config", "set", "language.interface", "de");
@@ -177,24 +292,6 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config unset unsets configuration key")
-    void configUnset() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/custom.flag".equals(request.target()) && "DELETE".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "unset", "custom.flag");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Config custom.flag unset"))
-        );
-    }
-
-    @Test
     @DisplayName("config harnesses stops with code 3 on --no-input without consent")
     void configHarnessesNoInputNeedsConsent() {
         int code = execute("config", "harnesses", "--add", "codex", "--no-input");
@@ -205,101 +302,67 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config harnesses updates harnesses successfully")
-    void configHarnessesSuccess() throws Exception {
+    @DisplayName("config language runs the aspect's later run with its arguments as answers")
+    void configLanguageRunsTheAspect() throws Exception {
+        var steps = new java.util.ArrayList<String>();
         fixture.start((request, response) -> {
-            if ("/api/v1/config/harnesses".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                var body = request.bodyText() == null ? "" : request.bodyText();
+                steps.add(body);
+                if (body.contains("reconfigure:language")) {
+                    response.json(200, LANGUAGE_RECONFIGURE);
+                } else if (body.contains("\"set\"")) {
+                    response.json(200, SETTINGS_CHOOSE);
+                } else {
+                    response.json(200, SETTINGS_CHOOSE);
+                }
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("config", "harnesses", "--add", "codex", "--remove", "cursor",
-                            "--default", "codex", "--no-icons", "--consent", "scan_harnesses");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Harnesses updated"));
+        int code = execute("config", "language", "--interface", "de");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(steps.get(0).contains("\"link\":\"settings\""), steps.toString()),
+                            () -> assertTrue(steps.get(1).contains("\"link\":\"reconfigure:language\""),
+                                                steps.toString()),
+                            () -> assertTrue(steps.get(2).contains("\"link\":\"set\""), steps.toString()),
+                            () -> assertTrue(steps.get(2).contains("\"interface\":\"de\""), steps.toString()),
+                            () -> assertTrue(text.contains("✓ language run again"), text));
     }
 
     @Test
-    @DisplayName("config language updates language settings")
-    void configLanguage() throws Exception {
+    @DisplayName("a config aspect carries its consent and answers a consent state with yes")
+    void configHarnessesRunsTheAspect() throws Exception {
+        var steps = new java.util.ArrayList<String>();
         fixture.start((request, response) -> {
-            if ("/api/v1/config/language".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                var body = request.bodyText() == null ? "" : request.bodyText();
+                steps.add(body);
+                if (body.contains("reconfigure:harnesses")) {
+                    response.json(200, HARNESS_CONSENT);
+                } else {
+                    response.json(200, SETTINGS_CHOOSE);
+                }
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("config", "language", "--interface", "de", "--model", "same");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Language settings updated"));
-    }
-
-    @Test
-    @DisplayName("config models updates allowed models")
-    void configModels() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/models".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "models", "--allow", "anthropic:claude-3-5-sonnet", "--no-advice");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Models updated"));
-    }
-
-    @Test
-    @DisplayName("config roles updates role assignments")
-    void configRoles() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/roles".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "roles", "--defaults", "--set", "architect=anthropic:claude-3-5-sonnet:high",
-                            "--reset", "auditor", "--reset-all");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Roles updated"));
-    }
-
-    @Test
-    @DisplayName("config credentials updates credential store")
-    void configCredentials() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/credentials".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "credentials", "--store", "os");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Credential store updated: os"));
-    }
-
-    @Test
-    @DisplayName("config providers updates provider settings")
-    void configProviders() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/providers".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("config", "providers", "--use", "github", "--without", "gitlab", "--verify");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Providers updated"));
+        int code = execute("config", "harnesses", "--consent", "scan_harnesses", "--no-icons");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(steps.get(1).contains("\"link\":\"reconfigure:harnesses\""),
+                                                steps.toString()),
+                            () -> assertTrue(steps.get(2).contains("\"link\":\"yes\""), steps.toString()),
+                            () -> assertTrue(text.contains("✓ harnesses run again"), text));
     }
 
     @Test
@@ -339,38 +402,147 @@ class ConfigCommandTest {
     @DisplayName("config documents updates documents mode")
     void configDocuments() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/config/documents".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
             } else {
                 response.send(404, null, "");
             }
         });
 
         int code = execute("config", "documents", "--mode", "copy");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Documents mode updated: copy"));
+        assertEquals(0, code, out.toString());
+        assertTrue(out.toString().contains("✓ Documents mode updated: copy"), out.toString());
     }
 
     @Test
-    @DisplayName("config plan-defaults applies defaults with --yes")
-    void configPlanDefaults() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/plan-defaults".equals(request.target())) {
-                response.json(200, "{\"ok\":true}");
+    @DisplayName("the overview aligns every value in one column")
+    void overviewAlignsTheValues() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var text = out.toString();
+        var language = rowOfLabel(text, "Language");
+        int column = language.indexOf("English, models English");
+        assertAll(
+                            () -> assertTrue(column > 0, text),
+                            () -> assertEquals("English, models English", valueAt(text, "Language", column), text),
+                            () -> assertEquals("Claude Code 2.4.1", valueAt(text, "Harnesses", column), text),
+                            () -> assertEquals("scan_harnesses", valueAt(text, "look for harnesses", column), text),
+                            () -> assertEquals("ask", valueAt(text, "Ask each time", column), text)
+        );
+    }
+
+    @Test
+    @DisplayName("the overview prints its prompt on a line of its own and offers every row it shows")
+    void overviewPrintsThePromptOnItsOwnLine() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var text = out.toString();
+        var lines = text.split("\n");
+        var rows = rowsOf(text);
+        int promptIndex = -1;
+        for (int index = 0; index < lines.length; index++) {
+            if (lines[index].startsWith("Open: 1-")) {
+                promptIndex = index;
+            }
+        }
+        final int found = promptIndex;
+        assertAll(
+                            () -> assertEquals(6, rows.size(), text),
+                            () -> assertTrue(found > 0, text),
+                            () -> assertTrue(lines[found].startsWith("Open: 1-6"), lines[found]),
+                            () -> assertTrue(lines[found - 1].stripLeading().matches("\\d+\\) .*"),
+                                                lines[found - 1])
+        );
+    }
+
+    private static de.planmarshall.api.testsupport.FakeRuntimeServer.Handler sensibleSettings() {
+        return (request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
             } else {
                 response.send(404, null, "");
             }
-        });
-
-        int code = execute("config", "plan-defaults", "--landing", "pull-request", "--method", "test-first",
-                            "--asking", "key-points", "--posture", "standard", "--yes");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("Plans · How should plans run on this machine?")),
-                            () -> assertTrue(out.toString().contains("✓ Landing   pull-request")),
-                            () -> assertTrue(out.toString().contains("✓ Method    test-first")),
-                            () -> assertTrue(out.toString().contains("✓ Asking    key-points")),
-                            () -> assertTrue(out.toString().contains("✓ Plan defaults recorded"))
-        );
+        };
     }
+
+    private static List<String> rowsOf(String text) {
+        var rows = new ArrayList<String>();
+        for (var line : text.split("\n")) {
+            if (line.stripLeading().matches("\\d+\\) .*")) {
+                rows.add(line);
+            }
+        }
+        return rows;
+    }
+
+    private static String rowOfLabel(String text, String label) {
+        for (var line : text.split("\n")) {
+            if (line.stripLeading().matches("\\d+\\) " + Pattern.quote(label) + "\\s+.*")) {
+                return line;
+            }
+        }
+        return null;
+    }
+
+    private static String rowOf(String text, String key) {        for (var line : text.split("\n")) {
+            if (line.stripLeading().startsWith(key + " ")) {
+                return line;
+            }
+        }
+        return null;
+    }
+
+    private static String valueAt(String text, String label, int column) {        for (var line : text.split("\n")) {
+            var stripped = line.stripLeading();
+            if (stripped.matches("\\d+\\) " + Pattern.quote(label) + "\\s+.*")) {
+                return line.substring(Math.min(column, line.length())).stripTrailing();
+            }
+        }
+        return null;
+    }
+
+    private static final String SETTINGS = """
+                        {"revision":4,
+                         "aspects":[{"aspect":"language","step":1,"summary":"English, models English"},
+                                    {"aspect":"harness","step":2,"summary":"Claude Code 2.4.1"}],
+                         "language_interface":"de","language_model":"en","documents_mode":"ask",
+                         "cleanup_durations":{"plans_after_days":30,"epics_after_days":30,"logs_after_days":30,"reports_after_days":30,"unenrolled_after_days":30,"remind_after_days":3},
+                         "plan_defaults":{"landing":"landing.pull-request","method":"method.test-first","asking":"ask.key-points"},
+                         "consents":[{"kind":"scan_harnesses","status":"remembered","remember":true,"channel":"terminal"},
+                                     {"kind":"fetch_icons","status":"remembered","remember":true,"channel":"terminal"}],
+                         "credentials":[{"key":"github","provider":"GitHub","kind":"fine-grained","expires_in_days":9,"expired":false}]}
+                        """;
+
+    private static final String PORT_VALUE =
+                        "{\"key\":\"web.port\",\"value\":7420,\"origin\":\"machine\",\"revision\":4}";
+    private static final String FLAG_VALUE =
+                        "{\"key\":\"console.full_screen\",\"value\":true,\"origin\":\"default\",\"revision\":0}";
+    private static final String OVERRIDDEN_VALUE = "{\"key\":\"plan_defaults.landing\","
+                        + "\"value\":\"landing.pull-request\",\"origin\":\"team\",\"overrides\":\"machine\",\"revision\":0}";
+
+    private static final String ONBOARD_COMPLETED = """
+                        {"state":{"state_id":"onboard.completed","kind":"completed","level":"machine"},
+                         "links":[{"id":"settings","rel":"next","method":"POST","href":"/api/v1/onboarding/settings"}]}
+                        """;
+    private static final String SETTINGS_CHOOSE = """
+                        {"state":{"state_id":"settings.choose","kind":"operator_wait","level":"machine"},
+                         "links":[{"id":"reconfigure:language","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/language"},
+                                  {"id":"reconfigure:harnesses","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/harnesses"},
+                                  {"id":"done","rel":"next","method":"POST","href":"/api/v1/onboarding/settings/done","preselected":true}]}
+                        """;
+    private static final String LANGUAGE_RECONFIGURE = """
+                        {"state":{"state_id":"language.reconfigure","kind":"operator_wait","level":"machine"},
+                         "facts":{"summary":"The languages run again","aspect":"language","interface":"en","model":"same"},
+                         "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/language/set","preselected":true}]}
+                        """;
+    private static final String HARNESS_CONSENT = """
+                        {"state":{"state_id":"harness.consent","kind":"operator_wait","level":"machine"},
+                         "facts":{"summary":"Look for harnesses?","kind":"scan_harnesses"},
+                         "links":[{"id":"no","rel":"alt","method":"POST","href":"/api/v1/onboarding/harness/decline"},
+                                  {"id":"yes","rel":"next","method":"POST","href":"/api/v1/onboarding/harness/scan","preselected":true}]}
+                        """;
 }

@@ -203,6 +203,7 @@ import de.planmarshall.api.system.WorkerMetric;
 import de.planmarshall.api.system.WorkerState;
 import de.planmarshall.api.web.PairedDevice;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.http.MockConfigRoutes;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
@@ -755,6 +756,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
+
+    /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
+    private final MockConfigRoutes configRoutes = new MockConfigRoutes();
 
     private final Object controlLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
@@ -1862,7 +1866,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             "/api/v1/enrol",
             "/api/v1/credentials",
             "/api/v1/machine/decisions",
-            "/api/v1/machine/settings");
+            "/api/v1/machine/settings",
+            MockConfigRoutes.PATH);
 
     private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
@@ -1872,6 +1877,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return handleDeviceRoutes(request, response, isWeb)
                 || handleOnboardingRoutes(request, response)
                 || handleMachineSettingsRoutes(request, response)
+                || handleConfigRoutes(request, response)
                 || handleEnrolmentRoutes(request, response)
                 || refuseTamperedEnrolment(request, response)
                 || handleDesignerRoutes(request, response, isWeb)
@@ -7279,6 +7285,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         handleOnboardingState(response);
+    }
+
+    private boolean handleConfigRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        return configRoutes.handle(request, response, machineConfigValues());
+    }
+
+    /**
+     * @return the machine's own configuration values, by effective key ({@code GET /api/v1/config})
+     */
+    private Map<String, Object> machineConfigValues() {
+        var values = new LinkedHashMap<String, Object>();
+        synchronized (onboardingLock) {
+            values.put("language.interface", machineLanguageInterface);
+            values.put("language.model", machineLanguageModel);
+            values.put("sources.documents_mode", machineDocumentsMode);
+            machinePlanDefaults.forEach((key, value) -> values.put("plan_defaults." + key, value));
+            machineCleanupDurations.forEach((key, value) -> values.put("cleanup." + key, value));
+        }
+        return values;
     }
 
     private boolean handleMachineSettingsRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
