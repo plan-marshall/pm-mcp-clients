@@ -11,7 +11,6 @@ package de.planmarshall.mock.http;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,17 +41,22 @@ public final class MockConfigRoutes {
 
     private static final String KEY_VALUE = "value";
     private static final String KEY_ERROR = "error";
+    private static final String KEY_PROJECT = "project";
+    private static final String KEY_PLAN = "plan";
     private static final String SLASH = "/";
     private static final int LEVEL_AND_KEY = 2;
-    private static final List<ConfigOrigin> OPERATOR_LEVELS = List.of(
-            ConfigOrigin.MACHINE, ConfigOrigin.PROJECT, ConfigOrigin.PLAN);
+
+    /** The levels an operator may write, from the one catalogue that defines them. */
+    private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
+            .map(ConfigOrigin::fromWire)
+            .toList();
 
     /** The keys an aspect owns, as the terminal client refuses them (`409 aspect_owned`). */
     private static final List<String> ASPECT_OWNED = List.of(
             "language.", "credentials.store", "providers.", "plan_defaults.",
             "sources.documents_mode", "roles.");
 
-    private final Map<ConfigOrigin, Map<String, Object>> written = new EnumMap<>(ConfigOrigin.class);
+    private final Map<String, Map<String, Object>> written = new LinkedHashMap<>();
     private long revision;
 
     /**
@@ -64,11 +68,15 @@ public final class MockConfigRoutes {
      */
     public boolean handle(MockHttpRequest request, MockHttpResponse response,
             Map<String, Object> machineValues) throws IOException {
-        if (!PATH.equals(request.path()) && !request.path().startsWith(PATH + SLASH)) {
+        var collection = PATH.equals(request.path());
+        if (!collection && !request.path().startsWith(PATH + SLASH)) {
             return false;
         }
         if ("GET".equals(request.method())) {
-            response.json(200, effective(machineValues));
+            if (!collection) {
+                return false;
+            }
+            response.json(200, effective(machineValues, request.query()));
             return true;
         }
         var segments = segments(request.path());
@@ -82,29 +90,53 @@ public final class MockConfigRoutes {
             return true;
         }
         var key = segments.get(1);
+        var scope = scopeOf(request.query());
         if ("PUT".equals(request.method())) {
-            put(response, level, key, readValue(request));
+            put(response, level, key, readValue(request), scope);
             return true;
         }
         if ("DELETE".equals(request.method())) {
-            delete(response, level, key);
+            delete(response, level, key, scope);
             return true;
         }
         return false;
     }
 
-    private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value)
-            throws IOException {
+    /**
+     * @param query the request's query string, or {@code null}
+     * @return the project or plan the query names, or {@code null} when it names neither
+     */
+    private static @Nullable String scopeOf(@Nullable String query) {
+        if (query == null) {
+            return null;
+        }
+        for (var pair : query.split("&")) {
+            var separator = pair.indexOf('=');
+            if (separator > 0) {
+                var name = pair.substring(0, separator);
+                var value = pair.substring(separator + 1);
+                if ((KEY_PROJECT.equals(name) || KEY_PLAN.equals(name)) && !value.isBlank()) {
+                    return name + "=" + value;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value,
+            @Nullable String scope) throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, "aspect_owned"));
             return;
         }
-        byLevel(level).put(key, value);
+        byLevel(level, scope).put(key, value);
+        revision++;
         response.json(200, resource(key, level, value));
     }
 
-    private void delete(MockHttpResponse response, ConfigOrigin level, String key) throws IOException {
-        var removed = byLevel(level).remove(key);
+    private void delete(MockHttpResponse response, ConfigOrigin level, String key, @Nullable String scope)
+            throws IOException {
+        var removed = byLevel(level, scope).remove(key);
         if (removed == null) {
             response.json(404, Map.of(KEY_ERROR, "config_key_unknown"));
             return;
@@ -112,8 +144,9 @@ public final class MockConfigRoutes {
         response.send(204, null, "");
     }
 
-    private Map<String, Object> byLevel(ConfigOrigin level) {
-        return written.computeIfAbsent(level, _ -> new LinkedHashMap<>());
+    private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
+        return written.computeIfAbsent(level.wire() + "|" + Objects.toString(scope, ""),
+                            _ -> new LinkedHashMap<>());
     }
 
     /**
@@ -133,25 +166,28 @@ public final class MockConfigRoutes {
         return parsed;
     }
 
-    private List<Map<String, Object>> effective(Map<String, Object> machineValues) {
+    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query) {
+        var scope = scopeOf(query);
         var keys = new TreeMap<String, Boolean>();
         machineValues.keySet().forEach(key -> keys.put(key, Boolean.TRUE));
-        written.values().forEach(values -> values.keySet().forEach(key -> keys.put(key, Boolean.TRUE)));
+        for (var level : OPERATOR_LEVELS) {
+            byLevel(level, scope).keySet().forEach(key -> keys.put(key, Boolean.TRUE));
+        }
         var resources = new ArrayList<Map<String, Object>>();
         for (var key : keys.keySet()) {
-            resources.add(effective(key, machineValues));
+            resources.add(effective(key, machineValues, scope));
         }
         return resources;
     }
 
-    private Map<String, Object> effective(String key, Map<String, Object> machineValues) {
+    private Map<String, Object> effective(String key, Map<String, Object> machineValues, @Nullable String scope) {
         ConfigOrigin origin = null;
         Object value = null;
         ConfigOrigin overridden = null;
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
-            var levelValue = byLevel(level).get(key);
+            var levelValue = byLevel(level, scope).get(key);
             if (levelValue == null && level == ConfigOrigin.MACHINE) {
                 levelValue = machineValues.get(key);
             }

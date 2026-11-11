@@ -139,9 +139,12 @@ class ConfigSettingsTest {
         var code = run(context("1\n\n"), "config");
         assertEquals(0, code, out.toString());
         assertAll(
+                            () -> assertEquals(3, steps.size(), steps.toString()),
                             () -> assertTrue(steps.get(0).contains("\"link\":\"settings\""), steps.toString()),
                             () -> assertTrue(steps.get(1).contains("\"link\":\"reconfigure:language\""),
-                                                steps.toString()));
+                                                steps.toString()),
+                            () -> assertTrue(steps.get(2).contains("\"link\":\"set\""), steps.toString()),
+                            () -> assertTrue(out.toString().contains("Change the languages again"), out.toString()));
     }
 
     private static final String ONBOARD_COMPLETED = """

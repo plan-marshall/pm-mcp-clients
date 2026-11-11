@@ -210,7 +210,8 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return send(linkId, current);
             }
             if (current.links().stream().noneMatch(link -> SETTINGS_LINK.equals(link.id()))) {
-                throw new IOException("the runtime offers neither the machine settings nor " + linkId);
+                throw new IOException("the machine settings are not reachable: the runtime offers neither "
+                                    + SETTINGS_LINK + " nor " + linkId);
             }
             current = send(SETTINGS_LINK);
         }

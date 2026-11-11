@@ -77,8 +77,8 @@ class CredentialsCommandTest {
                 response.json(200, "{\"derived_tokens_dropped\":2}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "DELETE".equals(request.method())) {
                 response.send(204, null, "");
-            } else if ("/api/v1/config/providers".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
+            } else if ("/api/v1/config/providers".equals(request.target())) {
+                response.send(404, null, "");
             } else {
                 response.send(404, null, "");
             }
@@ -95,7 +95,7 @@ class CredentialsCommandTest {
         assertTrue(text.contains("A new token for github"), text);
         assertTrue(text.contains("Token github stored"), text);
         assertTrue(text.contains("2 tokens derived from the old one dropped"), text);
-        assertTrue(text.contains("github verified."), text);
+        assertTrue(text.contains("are checked with: pm-operator config providers --verify"), text);
     }
 
     @Test

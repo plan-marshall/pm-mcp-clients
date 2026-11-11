@@ -134,7 +134,8 @@ class ConfigCommandTest {
                             () -> assertTrue(text.contains("web.port"), text),
                             () -> assertTrue(text.contains("7420"), text),
                             () -> assertTrue(text.contains("machine"), text),
-                            () -> assertTrue(text.contains("overshoots") || text.contains("overrides machine"), text)
+                            () -> assertTrue(text.contains("team"), text),
+                            () -> assertTrue(text.contains("overrides machine"), text)
         );
     }
 
@@ -369,34 +370,41 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config consents shows remembered consents")
     void configConsents() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/config/consents".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "[\"scan_harnesses\",\"external_web\"]");
-            } else {
-                response.send(404, null, "");
-            }
-        });
+        fixture.start(sensibleSettings());
 
         int code = execute("config", "consents");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("Remembered consents:"));
-        assertTrue(out.toString().contains("scan_harnesses"));
+        assertEquals(0, code, out.toString());
+        assertTrue(out.toString().contains("The consents you said not to ask again"), out.toString());
+        assertTrue(out.toString().contains("scan_harnesses"), out.toString());
     }
 
     @Test
-    @DisplayName("config consents shows empty message when none remembered")
-    void configConsentsEmpty() throws Exception {
+    @DisplayName("config consents names the failed settings read when there are none to list")
+    void configConsentsWithoutSettings() throws Exception {
+        fixture.start((request, response) -> response.send(500, null, ""));
+
+        int code = execute("config", "consents");
+        assertEquals(1, code, out.toString());
+        assertTrue(out.toString().contains("Unable to load settings"), out.toString());
+    }
+
+    @Test
+    @DisplayName("an argument no state of the run asks for is reported, never dropped")
+    void configReportsAnUnusedArgument() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/config/consents".equals(request.target())) {
-                response.json(200, "[]");
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                var body = request.bodyText() == null ? "" : request.bodyText();
+                response.json(200, body.contains("reconfigure:models") ? MODELS_RECONFIGURE : SETTINGS_CHOOSE);
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("config", "consents");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("No consent is remembered."));
+        int code = execute("config", "models", "--allow", "anthropic:claude");
+        assertEquals(0, code, "out: " + out + " err: " + err);
+        assertTrue(out.toString().contains("--allow was not used"), out.toString());
     }
 
     @Test
@@ -535,12 +543,18 @@ class ConfigCommandTest {
                         {"state":{"state_id":"settings.choose","kind":"operator_wait","level":"machine"},
                          "links":[{"id":"reconfigure:language","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/language"},
                                   {"id":"reconfigure:harnesses","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/harnesses"},
+                                  {"id":"reconfigure:models","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/models"},
                                   {"id":"done","rel":"next","method":"POST","href":"/api/v1/onboarding/settings/done","preselected":true}]}
                         """;
     private static final String LANGUAGE_RECONFIGURE = """
                         {"state":{"state_id":"language.reconfigure","kind":"operator_wait","level":"machine"},
                          "facts":{"summary":"The languages run again","aspect":"language","interface":"en","model":"same"},
                          "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/language/set","preselected":true}]}
+                        """;
+    private static final String MODELS_RECONFIGURE = """
+                        {"state":{"state_id":"catalogue.reconfigure","kind":"operator_wait","level":"machine"},
+                         "facts":{"summary":"The models run again","aspect":"catalogue"},
+                         "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/catalogue/set","preselected":true}]}
                         """;
     private static final String HARNESS_CONSENT = """
                         {"state":{"state_id":"harness.consent","kind":"operator_wait","level":"machine"},

@@ -106,12 +106,13 @@ final class ConfigAspectRun {
             dialogue.run();
         } catch (StartPrompt.InterruptException _) {
             return StartPrompt.EXIT_INTERRUPTED;
-        } catch (StartPrompt.MissingInputException missing) {
-            out.println(MessageCatalogue.format(locale, "operator.config.aspect_stopped",
-                                Map.of("state", missing.state())));
+        } catch (StartPrompt.MissingInputException _) {
+            reportUnused(source);
+            out.println(MessageCatalogue.format(locale, "operator.config.aspect_stopped", Map.of()));
             out.flush();
             return EXIT_MISSING_INPUT;
         } catch (StartPrompt.StartLeftException _) {
+            reportUnused(source);
             out.flush();
             return 0;
         } catch (OperatorRefusedException e) {
