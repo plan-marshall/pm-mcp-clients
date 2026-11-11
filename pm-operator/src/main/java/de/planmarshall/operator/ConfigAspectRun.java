@@ -49,7 +49,7 @@ final class ConfigAspectRun {
      * @param noInput  whether the run stops at a state it may not be asked about
      */
     record Answers(Map<String, String> facts, List<String> consents, boolean noIcons, boolean noAdvice,
-                        boolean yes, boolean noInput) {
+    boolean yes, boolean noInput) {
 
         Answers {
             facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
@@ -67,12 +67,14 @@ final class ConfigAspectRun {
 
     private final OperatorContext context;
     private final PrintWriter out;
+    private final PrintWriter err;
     private final String locale;
     private final Answers answers;
 
-    private ConfigAspectRun(OperatorContext context, PrintWriter out, String aspect, Answers answers) {
+    private ConfigAspectRun(OperatorContext context, PrintWriter out, PrintWriter err, Answers answers) {
         this.context = Objects.requireNonNull(context, "context");
         this.out = Objects.requireNonNull(out, "out");
+        this.err = Objects.requireNonNull(err, "err");
         this.locale = context.clientEnvironment().locale();
         this.answers = Objects.requireNonNull(answers, "answers");
     }
@@ -82,13 +84,15 @@ final class ConfigAspectRun {
      *
      * @param context the operator context
      * @param out     the verb's output
+     * @param err     the verb's error output
      * @param aspect  the aspect's name as the verb spells it
      * @param answers the answers the verb carries
      * @return the exit code
      * @throws IOException on transport failure
      */
-    static int run(OperatorContext context, PrintWriter out, String aspect, Answers answers) throws IOException {
-        return new ConfigAspectRun(context, out, aspect, answers).execute(aspect);
+    static int run(OperatorContext context, PrintWriter out, PrintWriter err, String aspect, Answers answers)
+                        throws IOException {
+        return new ConfigAspectRun(context, out, err, answers).execute(aspect);
     }
 
     private int execute(String aspect) throws IOException {
@@ -114,9 +118,14 @@ final class ConfigAspectRun {
             out.println(e.getMessage());
             out.flush();
             return PmOperator.EXIT_FAILURE;
+        } catch (AspectRunSource.RefusedException refused) {
+            err.println(MessageCatalogue.format(locale, "operator.config.aspect_refused",
+                                Map.of(ASPECT, aspect, "status", refused.status())));
+            err.flush();
+            return PmOperator.EXIT_FAILURE;
         } catch (IOException _) {
-            out.println(MessageCatalogue.format(locale, "operator.config.aspect_failed", Map.of(ASPECT, aspect)));
-            out.flush();
+            err.println(MessageCatalogue.format(locale, "operator.config.aspect_failed", Map.of(ASPECT, aspect)));
+            err.flush();
             return PmOperator.EXIT_FAILURE;
         }
         reportUnused(source);

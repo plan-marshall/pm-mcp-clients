@@ -21,7 +21,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -178,24 +177,34 @@ class OnboardCommandTest {
         @DisplayName("runs one step again as a later change and reports it")
         void runsOneStepAgain() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
-            var server = fixture.start((request, response) -> {
-                if ("/api/v1/config/language".equals(request.target()) && "POST".equals(request.method())) {
-                    response.json(200, "{}");
+            var steps = new java.util.ArrayList<String>();
+            fixture.start((request, response) -> {
+                if ("/api/v1/onboarding/state".equals(request.target())) {
+                    response.json(200, ONBOARD_COMPLETED);
+                } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                    var body = request.bodyText() == null ? "" : request.bodyText();
+                    steps.add(body);
+                    response.json(200, body.contains("reconfigure:language") ? LANGUAGE_RECONFIGURE : SETTINGS_CHOOSE);
                 } else {
                     response.send(404, null, "");
                 }
             });
             var out = new StringWriter();
-            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new org.jline.terminal.impl.DumbTerminal(
+                                                    new java.io.ByteArrayInputStream("q\n".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                                                    new java.io.ByteArrayOutputStream()),
+                                null);
 
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                                 "config", "language", "--interface", "de");
 
-            var request = server.awaitRequest(Duration.ofSeconds(1));
             assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(request.bodyText().contains("\"interface\":\"de\""), request.bodyText()),
-                                () -> assertTrue(out.toString().contains("Language settings updated"), out.toString()));
+                                () -> assertEquals(0, code, out.toString()),
+                                () -> assertTrue(steps.stream().anyMatch(step -> step.contains("\"interface\":\"de\"")),
+                                                    steps.toString()),
+                                () -> assertTrue(out.toString().contains("language run again"), out.toString()));
         }
 
         @Test
@@ -204,7 +213,12 @@ class OnboardCommandTest {
             PmOperatorTest.writeLiveRecord(fixture);
             fixture.start((request, response) -> response.send(409, null, ""));
             var err = new StringWriter();
-            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new org.jline.terminal.impl.DumbTerminal(
+                                                    new java.io.ByteArrayInputStream("q\n".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                                                    new java.io.ByteArrayOutputStream()),
+                                null);
 
             var code = PmOperator.execute(context, new PrintWriter(new StringWriter()), new PrintWriter(err),
                                 "config", "language", "--interface", "de");
@@ -213,6 +227,21 @@ class OnboardCommandTest {
                                 () -> assertEquals(1, code),
                                 () -> assertTrue(err.toString().contains("HTTP 409"), err.toString()));
         }
+
+        private static final String ONBOARD_COMPLETED = """
+                            {"state":{"state_id":"onboard.completed","kind":"completed","level":"machine"},
+                             "links":[{"id":"settings","rel":"next","method":"POST","href":"/api/v1/onboarding/settings"}]}
+                            """;
+        private static final String SETTINGS_CHOOSE = """
+                            {"state":{"state_id":"settings.choose","kind":"operator_wait","level":"machine"},
+                             "links":[{"id":"reconfigure:language","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/language"},
+                                      {"id":"done","rel":"next","method":"POST","href":"/api/v1/onboarding/settings/done","preselected":true}]}
+                            """;
+        private static final String LANGUAGE_RECONFIGURE = """
+                            {"state":{"state_id":"language.reconfigure","kind":"operator_wait","level":"machine"},
+                             "facts":{"summary":"The languages run again","aspect":"language","interface":"en","model":"same"},
+                             "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/language/set","preselected":true}]}
+                            """;
     }
 
     @Test

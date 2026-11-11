@@ -84,7 +84,8 @@ public final class ConfigCommand implements Callable<Integer> {
                         "sources.documents_mode", "roles.", ROLES
     );
 
-    /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */    private static final Map<String, String> ASPECT_PREFIXES = Map.of(
+    /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
+    private static final Map<String, String> ASPECT_PREFIXES = Map.of(
                         "language", "language.",
                         "harnesses", "harness.",
                         "models", "models.",
@@ -196,7 +197,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 consent.kind().wireValue(), CONFIG_VERB, CONSENTS));
         }
         items.add(new Item("operator.settings.documents.title", MessageCatalogue.format(locale,
-                            ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(), Map.of()),
+                                                ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(), Map.of()),
                             settings.documentsMode().wireValue(), CONFIG_VERB, DOCUMENTS));
         return List.copyOf(items);
     }
@@ -669,7 +670,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var facts = new LinkedHashMap<String, String>();
             if (interfaceLocale != null) facts.put("interface", interfaceLocale);
             if (modelLocale != null) facts.put("model", modelLocale);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), "language",
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "language",
                                 ConfigAspectRun.Answers.of(facts));
         }
     }
@@ -723,7 +724,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (defaultHarness != null) facts.put("default", defaultHarness);
             var answers = new ConfigAspectRun.Answers(facts,
                                 consent != null ? consent : List.of(), noIcons, false, false, noInput);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), "harnesses", answers);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "harnesses", answers);
         }
     }
 
@@ -749,7 +750,7 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var answers = new ConfigAspectRun.Answers(Map.of(), List.of(), false, noAdvice, false, false);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), "models", answers);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "models", answers);
         }
     }
 
@@ -795,7 +796,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 }
                 return PlanSettingsDialogue.run(context, out, plan, "roles", false);
             }
-            return ConfigAspectRun.run(context, out, "roles", ConfigAspectRun.Answers.of(Map.of()));
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "roles", ConfigAspectRun.Answers.of(Map.of()));
         }
     }
 
@@ -819,7 +820,7 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var facts = new LinkedHashMap<String, String>();
             if (store != null) facts.put("current", store);
-            return ConfigAspectRun.run(context, spec.commandLine().getOut(), "credentials",
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), "credentials",
                                 ConfigAspectRun.Answers.of(facts));
         }
     }
@@ -863,7 +864,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 }
                 return PlanSettingsDialogue.run(context, out, plan, "providers", false);
             }
-            return ConfigAspectRun.run(context, out, "providers", ConfigAspectRun.Answers.of(Map.of()));
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "providers", ConfigAspectRun.Answers.of(Map.of()));
         }
     }
 
@@ -920,7 +921,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (asking != null) facts.put("asking", asking);
             if (posture != null) facts.put("posture", posture);
             var answers = new ConfigAspectRun.Answers(facts, List.of(), false, false, yes, false);
-            return ConfigAspectRun.run(context, out, "plan-defaults", answers);
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "plan-defaults", answers);
         }
     }
 
