@@ -201,10 +201,10 @@ class ChatEventsTest {
         void roundTrips() throws Exception {
             var operator = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
                     TurnFormat.PLAIN, flag(), null, null, id());
-            var role = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN, flag(),
+            var role = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN, false,
                     id(), context(), null);
             var roleWithoutModel = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(),
-                    TurnFormat.MARKDOWN, flag(), null, context(), null);
+                    TurnFormat.PLAIN, flag(), null, context(), null);
 
             assertAll(
                     () -> assertEquals(operator, ChatTurnStartedEvent.fromJson(operator.toJson())),
@@ -239,6 +239,30 @@ class ChatEventsTest {
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new ChatTurnStartedEvent(id(), " ", TurnKind.MESSAGE, id(), TurnFormat.PLAIN,
                                     false, null, context(), null)));
+        }
+
+        @Test
+        @DisplayName("the operator's message and an untrusted turn are plain; markdown is refused")
+        void alwaysPlain() throws Exception {
+            var operator = ChatTurnStartedEvent.fromJson(GOLDEN_OPERATOR_STARTED).toMap();
+            var untrustedRole = with(ChatTurnStartedEvent.fromJson(GOLDEN_ROLE_STARTED).toMap(), "untrusted", true);
+            var untrustedPlain = new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.PLAIN, true,
+                    id(), context(), null);
+
+            assertAll(
+                    () -> assertEquals(untrustedPlain, ChatTurnStartedEvent.fromJson(untrustedPlain.toJson())),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
+                                    TurnFormat.MARKDOWN, false, null, null, id())),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurnStartedEvent(id(), id(), TurnKind.MESSAGE, id(), TurnFormat.MARKDOWN,
+                                    true, id(), context(), null)),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurnStartedEvent.fromMap(with(operator, "format", "markdown"))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurnStartedEvent.fromMap(untrustedRole)),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurnStartedEvent.fromJson(JsonTree.write(untrustedRole))));
         }
     }
 

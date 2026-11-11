@@ -88,7 +88,8 @@ public record ChatTurnStartedEvent(
      * @param context   the context, required on a role's turn and refused on the operator's
      * @param text      the text, required on the operator's turn and refused on a role's
      * @throws IllegalArgumentException if a member is blank, the kind is not {@code message}, or a member
-     *                                  is missing or present against the author
+     *                                  is missing or present against the author, or an operator's or
+     *                                  untrusted turn is not {@code plain}
      */
     public ChatTurnStartedEvent {
         Objects.requireNonNull(chatId, FIELD_CHAT_ID);
@@ -108,6 +109,9 @@ public record ChatTurnStartedEvent(
         }
         if (!operator && (text != null || context == null)) {
             throw new IllegalArgumentException("a role's turn carries the chat's context and no text");
+        }
+        if (format != TurnFormat.PLAIN && (operator || untrusted)) {
+            throw new IllegalArgumentException("an operator's turn and an untrusted turn are always plain");
         }
     }
 

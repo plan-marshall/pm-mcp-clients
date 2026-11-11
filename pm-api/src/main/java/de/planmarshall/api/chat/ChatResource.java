@@ -105,7 +105,7 @@ public record ChatResource(
      * @return {@code true} if a proposal is open and awaits accept or reject
      */
     public boolean hasProposal() {
-        return proposal != null;
+        return proposal != null && proposal.isOpen();
     }
 
     /**

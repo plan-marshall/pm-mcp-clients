@@ -19,8 +19,9 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * A pointer to one turn of a chat, {@code {chat_id, turn_id}}: the form of a decision record's
- * {@code after_chat} (the chat after which the decision was taken) and of a re-planning record's
- * {@code chat} block (the chat that led to the re-planning).
+ * {@code after_chat} (the chat after which the decision was taken) and the reduced form in which the
+ * report view names the chat that led to a re-planning (the re-planning record's own {@code chat} block
+ * carries more).
  *
  * @param chatId the chat's id
  * @param turnId the turn's id

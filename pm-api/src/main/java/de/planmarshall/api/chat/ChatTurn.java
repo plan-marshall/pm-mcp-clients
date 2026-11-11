@@ -110,6 +110,9 @@ public record ChatTurn(
      * @param at        the instant, not blank
      * @param reason    the reason, required for {@code failed} and refused otherwise
      * @param lines     the lines, {@code null} read as none, refused for every kind but {@code notice}
+     * @throws IllegalArgumentException if a member is blank, a reason or lines are missing or present
+     *                                  against the status or kind, or an operator's turn, an untrusted
+     *                                  turn or a notice is not {@code plain}
      */
     public ChatTurn {
         Objects.requireNonNull(turnId, FIELD_TURN_ID);
@@ -130,6 +133,10 @@ public record ChatTurn(
         }
         if (kind != TurnKind.NOTICE && !lines.isEmpty()) {
             throw new IllegalArgumentException("only a notice carries lines");
+        }
+        if (format != TurnFormat.PLAIN
+                && (AUTHOR_OPERATOR.equals(author) || untrusted || kind == TurnKind.NOTICE)) {
+            throw new IllegalArgumentException("an operator's turn, an untrusted turn and a notice are always plain");
         }
     }
 

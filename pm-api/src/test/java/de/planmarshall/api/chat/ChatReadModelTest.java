@@ -105,9 +105,16 @@ class ChatReadModelTest {
 
     private static ChatTurn turn(TurnKind kind, TurnStatus status, List<NarrativeLine> lines) {
         var reason = status == TurnStatus.FAILED ? message("control.chat.reason.too_long") : null;
-        return new ChatTurn(id(), kind, id(), status, TurnFormat.MARKDOWN, Generators.booleans().next(), id(),
+        var author = id();
+        var untrusted = Generators.booleans().next();
+        var format = plainOnly(kind, author, untrusted) ? TurnFormat.PLAIN : TurnFormat.MARKDOWN;
+        return new ChatTurn(id(), kind, author, status, format, untrusted, id(),
                 id(), List.of(message("control.chat.step.reading"), message("control.chat.step.writing")),
                 refsOfEachKind(), id(), reason, lines);
+    }
+
+    private static boolean plainOnly(TurnKind kind, String author, boolean untrusted) {
+        return kind == TurnKind.NOTICE || untrusted || ChatTurn.AUTHOR_OPERATOR.equals(author);
     }
 
     private static ChatTurn messageTurn() {
@@ -449,6 +456,40 @@ class ChatReadModelTest {
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> turn(TurnKind.PROPOSAL, TurnStatus.COMPLETE, List.of(line()))));
         }
+
+        static Stream<Arguments> alwaysPlainTurns() {
+            return Stream.of(
+                    Arguments.of("the operator's turn", TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, false),
+                    Arguments.of("an untrusted turn", TurnKind.MESSAGE, id(), true),
+                    Arguments.of("a notice", TurnKind.NOTICE, id(), false));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("alwaysPlainTurns")
+        @DisplayName("an operator's turn, an untrusted turn and a notice are plain; markdown is refused")
+        void alwaysPlain(String name, TurnKind kind, String author, boolean untrusted) {
+            var plain = new ChatTurn(id(), kind, author, TurnStatus.COMPLETE, TurnFormat.PLAIN, untrusted, null,
+                    id(), null, null, id(), null, null);
+            var markdown = with(plain.toMap(), "format", "markdown");
+
+            assertAll(
+                    () -> assertEquals(plain, ChatTurn.fromJson(plain.toJson()), name),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurn(id(), kind, author, TurnStatus.COMPLETE, TurnFormat.MARKDOWN,
+                                    untrusted, null, id(), null, null, id(), null, null), name),
+                    () -> assertThrows(JsonFormatException.class, () -> ChatTurn.fromMap(markdown), name),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurn.fromJson(JsonTree.write(markdown)), name));
+        }
+
+        @Test
+        @DisplayName("a trusted role's message may be markdown")
+        void roleMessageMayBeMarkdown() throws Exception {
+            var turn = new ChatTurn(id(), TurnKind.MESSAGE, id(), TurnStatus.COMPLETE, TurnFormat.MARKDOWN, false,
+                    id(), id(), null, null, id(), null, null);
+
+            assertEquals(turn, ChatTurn.fromJson(turn.toJson()));
+        }
     }
 
     @Nested
@@ -508,6 +549,22 @@ class ChatReadModelTest {
                     () -> assertFalse(chats.getFirst().toMap().containsKey("proposal")),
                     () -> assertFalse(chats.getFirst().toMap().containsKey("before")),
                     () -> assertEquals(2, ChatResource.fromJson(chats.get(3).toJson()).turns().size()));
+        }
+
+        @Test
+        @DisplayName("only an open proposal awaits accept or reject; a replaced one does not")
+        void hasProposalOnlyWhenOpen() throws Exception {
+            var open = chat(proposal(ProposalState.OPEN), List.of(messageTurn()), null);
+            var replaced = chat(proposal(ProposalState.REPLACED), List.of(messageTurn()), null);
+
+            assertAll(
+                    () -> assertTrue(open.hasProposal()),
+                    () -> assertFalse(replaced.hasProposal()),
+                    () -> assertFalse(ChatResource.fromJson(replaced.toJson()).hasProposal()));
+            for (var state : ProposalState.values()) {
+                assertEquals(state == ProposalState.OPEN, chat(proposal(state), List.of(), null).hasProposal(),
+                        state.wireValue());
+            }
         }
 
         @Test
