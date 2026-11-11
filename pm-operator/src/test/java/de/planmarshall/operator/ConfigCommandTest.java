@@ -275,6 +275,17 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config set refuses an aspect-owned key and names its verb")
+    void configSetRefusesTheNewAspects() {
+        int code = execute("config", "set", "models.allowed", "anthropic:claude");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("409 aspect_owned"), err.toString()),
+                            () -> assertTrue(err.toString().contains("pm-operator config models"), err.toString())
+        );
+    }
+
+    @Test
     @DisplayName("config set refuses aspect-owned keys with 409 aspect_owned")
     void configSetRefusesAspectOwned() {
         int code = execute("config", "set", "language.interface", "de");

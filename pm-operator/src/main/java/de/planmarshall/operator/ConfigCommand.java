@@ -69,6 +69,7 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String DOCUMENTS = "documents";
     private static final String CREDENTIALS = "credentials";
     private static final String CONSENTS = "consents";
+    private static final String CLEANUP = "cleanup";
     private static final String STATUS = "status";
     private static final String VALUE = "value";
     private static final String INDEX = "index";
@@ -77,8 +78,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String ONBOARD_SETTINGS = "onboard.settings.";
-    private static final List<String> ASPECT_COMMANDS = List.of(
-                        "language", "harnesses", "models", ROLES, CREDENTIALS, "providers", "plan-defaults");
     private static final Map<OnboardingAspect, String> ASPECT_VERBS = Map.of(
                         OnboardingAspect.LANGUAGE, "language",
                         OnboardingAspect.HARNESSES, "harnesses",
@@ -221,7 +220,7 @@ public final class ConfigCommand implements Callable<Integer> {
                             MessageCatalogue.format(locale, "operator.settings.cleanup.value", Map.of(
                                                 "days", settings.cleanupDurations().plansAfterDays(),
                                                 "remind", settings.cleanupDurations().remindAfterDays())),
-                            List.of(CONFIG_VERB, "cleanup")));
+                            List.of(CLEANUP)));
         return List.copyOf(items);
     }
 
@@ -501,6 +500,8 @@ public final class ConfigCommand implements Callable<Integer> {
     static String getOwningAspect(@Nullable String key) {
         if (key == null) return CONFIG_VERB;
         if (key.startsWith("language.")) return "language";
+        if (key.startsWith("harness.")) return "harnesses";
+        if (key.startsWith("models.")) return "models";
         if (key.startsWith("credentials.")) return CREDENTIALS;
         if (key.startsWith("providers.")) return "providers";
         if (key.startsWith("plan_defaults.")) return "plan-defaults";
