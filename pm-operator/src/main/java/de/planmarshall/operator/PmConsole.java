@@ -889,10 +889,6 @@ public final class PmConsole {
      * @param kind     the notice kind, or {@code null}
      * @param eventMap the event frame
      */
-    private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
-        notifyOperator(terminal, kind, eventMap, null);
-    }
-
     /**
      * Sends the desktop notification of one notice, where the terminal supports one, and the bell
      * everywhere else ({@code 04-console.adoc#notifications}): the scope and the kind, never the

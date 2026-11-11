@@ -112,6 +112,9 @@ public final class OverviewFullScreenApp {
     private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
     private static final String PLANS_VERB = "plans";
+    private static final String NEEDS_LEVEL = "needs";
+    private static final String PROJECTS_LEVEL = "projects";
+    private static final String EXPLORER_LEVEL = "explorer";
 
     /**
      * Initial CLI selection state.
@@ -209,10 +212,10 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuKind;
     private @Nullable String menuLandingUnit;
     private @Nullable String menuDecision;
-    private volatile @Nullable String statusMessage;
-    private volatile @Nullable LoadRefusal projectsRefusal;
-    private volatile @Nullable LoadRefusal needsRefusal;
-    private volatile @Nullable LoadRefusal explorerRefusal;
+    private @Nullable String statusMessage;
+    private @Nullable LoadRefusal projectsRefusal;
+    private @Nullable LoadRefusal needsRefusal;
+    private @Nullable LoadRefusal explorerRefusal;
     private @Nullable String systemBanner;
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
@@ -491,11 +494,11 @@ public final class OverviewFullScreenApp {
                 needsRefusal = null;
                 return;
             }
-            needsRefusal = LoadRefusal.of(locale, response, "needs");
+            needsRefusal = LoadRefusal.of(locale, response, NEEDS_LEVEL);
         } catch (IOException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure, "needs");
+            needsRefusal = LoadRefusal.of(locale, failure, NEEDS_LEVEL);
         } catch (IllegalArgumentException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), "needs");
+            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL);
         }
     }
 
@@ -507,11 +510,11 @@ public final class OverviewFullScreenApp {
                 projectsRefusal = null;
                 return;
             }
-            projectsRefusal = LoadRefusal.of(locale, response, "projects");
+            projectsRefusal = LoadRefusal.of(locale, response, PROJECTS_LEVEL);
         } catch (IOException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure, "projects");
+            projectsRefusal = LoadRefusal.of(locale, failure, PROJECTS_LEVEL);
         } catch (IllegalArgumentException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), "projects");
+            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL);
         }
     }
 
@@ -519,7 +522,7 @@ public final class OverviewFullScreenApp {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                explorerRefusal = LoadRefusal.of(locale, response, "explorer");
+                explorerRefusal = LoadRefusal.of(locale, response, EXPLORER_LEVEL);
                 return;
             }
             var explorer = ProjectExplorer.fromJson(response.bodyText());
@@ -528,9 +531,9 @@ public final class OverviewFullScreenApp {
             explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
             explorerRefusal = null;
         } catch (IOException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure, "explorer");
+            explorerRefusal = LoadRefusal.of(locale, failure, EXPLORER_LEVEL);
         } catch (IllegalArgumentException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), "explorer");
+            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL);
         }
     }
 

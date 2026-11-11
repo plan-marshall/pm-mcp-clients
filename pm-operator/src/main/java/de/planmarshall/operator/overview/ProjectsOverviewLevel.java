@@ -103,11 +103,12 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
 
         if (projectsRefusal != null) {
             rows.addAll(projectsRefusal.rows());
-            if (projects.isEmpty()) {
+        }
+        if (projects.isEmpty()) {
+            if (!rows.isEmpty()) {
                 return rows;
             }
-        } else if (projects.isEmpty()) {
-            if (rows.isEmpty()) {
+            if (projectsRefusal == null) {
                 var emptyText = MessageCatalogue.format(locale, "overview.projects.empty", Map.of());
                 return List.of(new TuiRow(EMPTY_ROW_ID, emptyText, null, false, false));
             }
@@ -117,35 +118,46 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         var sorted = OverviewFormatting.sortProjects(projects);
 
         for (var project : sorted) {
-            boolean needs = OverviewFormatting.needsOperator(project);
-            int attentionCount = OverviewFormatting.projectAttentionCount(project);
-
-            String marker;
-            if (attentionCount > 0) {
-                marker = String.format("%-5s", MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", attentionCount)));
-            } else {
-                marker = "     ";
-            }
-
-            var name = project.displayName() != null && !project.displayName().isBlank()
-                                ? project.displayName()
-                                : project.projectId();
-            var cleanName = OverviewFormatting.clean(name);
-
-            var summary = formatSummary(locale, project);
-            var relativeTime = OverviewFormatting.formatRelativeActivity(locale, project.lastActivityAt(), clock);
-
-            String line;
-            if (!relativeTime.isEmpty()) {
-                line = String.format("%s%-16s %-36s %s", marker, cleanName, summary, relativeTime);
-            } else {
-                line = String.format("%s%-16s %s", marker, cleanName, summary);
-            }
-
-            rows.add(new TuiRow(project.projectId(), line.stripTrailing(), null, needs, true));
+            rows.add(projectRow(project, locale, clock));
         }
 
         return rows;
+    }
+
+    /**
+     * @param project the project
+     * @param locale  the target locale
+     * @param clock   the reference clock
+     * @return the row of one project
+     */
+    private static TuiRow projectRow(ProjectSummary project, String locale, Clock clock) {
+        boolean needs = OverviewFormatting.needsOperator(project);
+        int attentionCount = OverviewFormatting.projectAttentionCount(project);
+
+        String marker;
+        if (attentionCount > 0) {
+            marker = String.format("%-5s", MessageCatalogue.format(locale, "overview.needs.count",
+                                Map.of("count", attentionCount)));
+        } else {
+            marker = "     ";
+        }
+
+        var name = project.displayName() != null && !project.displayName().isBlank()
+                            ? project.displayName()
+                            : project.projectId();
+        var cleanName = OverviewFormatting.clean(name);
+
+        var summary = formatSummary(locale, project);
+        var relativeTime = OverviewFormatting.formatRelativeActivity(locale, project.lastActivityAt(), clock);
+
+        String line;
+        if (!relativeTime.isEmpty()) {
+            line = String.format("%s%-16s %-36s %s", marker, cleanName, summary, relativeTime);
+        } else {
+            line = String.format("%s%-16s %s", marker, cleanName, summary);
+        }
+
+        return new TuiRow(project.projectId(), line.stripTrailing(), null, needs, true);
     }
 
     /**

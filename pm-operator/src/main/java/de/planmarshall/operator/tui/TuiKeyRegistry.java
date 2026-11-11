@@ -362,7 +362,10 @@ public final class TuiKeyRegistry {
         if (displayWidth(line) <= width) {
             return line;
         }
-        return displayWidth(tail) <= width ? tail : displayWidth(help) <= width ? help : "";
+        if (displayWidth(tail) <= width) {
+            return tail;
+        }
+        return displayWidth(help) <= width ? help : "";
     }
 
     /**

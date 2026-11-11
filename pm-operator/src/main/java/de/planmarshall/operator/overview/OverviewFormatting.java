@@ -42,6 +42,8 @@ public final class OverviewFormatting {
     private static final String KIND_PAUSED = "paused";
     private static final String ANSWER_PREFIX = "answer ";
     private static final String CMD_PLANS = "plans";
+    private static final String CMD_EPIC = "epic ";
+    private static final String NEEDS_BADGE_KEY = "overview.needs.badge";
 
     private OverviewFormatting() {
     }
@@ -195,7 +197,7 @@ public final class OverviewFormatting {
         }
         return key != null
                             ? label
-                            : MessageCatalogue.format(locale, "overview.needs.badge", Map.of("count", 1, "reason", label));
+                            : MessageCatalogue.format(locale, NEEDS_BADGE_KEY, Map.of("count", 1, "reason", label));
     }
 
     /**
@@ -345,14 +347,9 @@ public final class OverviewFormatting {
      * @return clean subject string
      */
     public static String formatNeedsItemSubject(NeedsOperatorItem item, String locale) {
-        if (item.plan() != null && !item.plan().id().isBlank()) {
-            return nameOf(item.plan());
-        }
-        if (item.epic() != null && !item.epic().id().isBlank()) {
-            return nameOf(item.epic());
-        }
-        if (item.project() != null && !item.project().id().isBlank()) {
-            return nameOf(item.project());
+        var place = firstPlaceOf(item);
+        if (place != null) {
+            return nameOf(place);
         }
         if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
             return MessageCatalogue.format(locale, "overview.needs.subject.cleanup", Map.of());
@@ -361,6 +358,24 @@ public final class OverviewFormatting {
             return MessageCatalogue.format(locale, "overview.needs.credential", Map.of());
         }
         return MessageCatalogue.format(locale, "common.kind.machine", Map.of());
+    }
+
+    /**
+     * @param item the needs-operator item
+     * @return the narrowest place it belongs to — its plan, else its epic, else its project — or
+     *         {@code null} when it belongs to no place
+     */
+    private static @Nullable WorkLocation firstPlaceOf(NeedsOperatorItem item) {
+        if (item.plan() != null && !item.plan().id().isBlank()) {
+            return item.plan();
+        }
+        if (item.epic() != null && !item.epic().id().isBlank()) {
+            return item.epic();
+        }
+        if (item.project() != null && !item.project().id().isBlank()) {
+            return item.project();
+        }
+        return null;
     }
 
     /**
@@ -454,10 +469,10 @@ public final class OverviewFormatting {
      */
     private static String landingFailedCommand(@Nullable String planId, @Nullable String epicId) {
         if (epicId != null) {
-            return "epic " + epicId;
+            return CMD_EPIC + epicId;
         }
         if (planId != null) {
-            return "epic " + planId;
+            return CMD_EPIC + planId;
         }
         return CMD_PLANS;
     }
@@ -467,7 +482,7 @@ public final class OverviewFormatting {
             return "plan " + planId;
         }
         if (epicId != null) {
-            return "epic " + epicId;
+            return CMD_EPIC + epicId;
         }
         return CMD_PLANS;
     }
