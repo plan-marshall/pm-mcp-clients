@@ -655,7 +655,9 @@ plan spec names the plan, proposal and finding documents it comes from.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
-  plan-marshall (`plan-orchestrator` inbox id validation, or the lane's id form).
+  plan-marshall (`plan-orchestrator` inbox id validation, or the lane's id form). Recurrence 2026-11-11: PLAN-129's lane read with the `rb-` id on the operator's word; PLAN-158's lane read
+  `no_mailbox` while `inbox/to/rb-158-web-error-pattern-residue/` held a delivered advisory — the operator re-sent the exact
+  read command. Until fixed, a delivery to a lane plan is followed by a paste naming the `rb-` id.
 - `runbook_lane sonar-facts` refuses `--rules none` beside a confirmed zero (`confirmed_zero_with_rules`), although the skill says
   `--rules` is `none` at a measured `0` (found by PLAN-45, 2026-11-10). Owner: plan-marshall (runbook lane).
 - Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
