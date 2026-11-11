@@ -576,11 +576,10 @@ class StartDialogueTest {
             environment.put(LANG, ENGLISH);
             environment.put("USER", "operator");
             driver.project(environment, runtime.base().getParent());
-            if (input == null) {
-                driver.endOfInput();
-            } else {
+            if (input != null) {
                 driver.type(input);
             }
+            driver.endOfInput();
             var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
             return new Outcome(code, driver.render(), runtime.requests());
         }
