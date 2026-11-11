@@ -256,7 +256,7 @@
       "project_key": "plan-marshall_pm-mcp-clients"
     }
   },
-  "interaction_mode": "advanced",
+  "interaction_mode": "basic",
   "project": {
     "default_base_branch": "main",
     "working_prefixes": [
