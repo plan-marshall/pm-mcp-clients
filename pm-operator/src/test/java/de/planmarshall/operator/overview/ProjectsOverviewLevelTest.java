@@ -129,20 +129,20 @@ class ProjectsOverviewLevelTest {
         assertTrue(rows.get(0).line().contains("Needs you · 2"));
         assertFalse(rows.get(0).openable());
 
-        assertEquals("needs:0", rows.get(1).id());
+        assertEquals("needs:/api/v1/decisions/Q-001", rows.get(1).id());
         assertTrue(rows.get(1).line().contains("! decision"));
-        assertTrue(rows.get(1).line().contains("plan-1"));
+        assertTrue(rows.get(1).line().contains("Plan One"));
         assertTrue(rows.get(1).openable());
         assertTrue(rows.get(1).needsOperator());
 
-        assertEquals("needs:1", rows.get(2).id());
+        assertEquals(ProjectsOverviewLevel.rowIdOf(item2), rows.get(2).id());
         assertTrue(rows.get(2).line().contains("! cleanup due"));
         assertTrue(rows.get(2).openable());
 
         assertEquals("proj-a", rows.get(3).id());
-        assertEquals(item1, level.needsItemOf("needs:0"));
-        assertEquals(item2, level.needsItemOf("needs:1"));
-        assertEquals("needs:0", ProjectsOverviewLevel.firstSelectableId(rows));
+        assertEquals(item1, level.needsItemOf(ProjectsOverviewLevel.rowIdOf(item1)));
+        assertEquals(item2, level.needsItemOf(ProjectsOverviewLevel.rowIdOf(item2)));
+        assertEquals(ProjectsOverviewLevel.rowIdOf(item1), ProjectsOverviewLevel.firstSelectableId(rows));
     }
 
     @Test
@@ -156,7 +156,7 @@ class ProjectsOverviewLevelTest {
         var rows = level.rows("en", clock);
         assertEquals(2, rows.size());
         assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, rows.get(0).id());
-        assertEquals("needs:0", rows.get(1).id());
+        assertEquals(ProjectsOverviewLevel.rowIdOf(item), rows.get(1).id());
         assertNull(level.needsItemOf("needs:invalid"));
         assertNull(level.needsItemOf("needs:999"));
         assertNull(level.needsItemOf("not-a-needs-id"));

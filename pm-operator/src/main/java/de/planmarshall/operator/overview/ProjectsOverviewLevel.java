@@ -135,15 +135,37 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         if (needsOperator == null || rowId == null || !rowId.startsWith(NEEDS_ITEM_PREFIX)) {
             return null;
         }
-        try {
-            int index = Integer.parseInt(rowId.substring(NEEDS_ITEM_PREFIX.length()));
-            if (index >= 0 && index < needsOperator.items().size()) {
-                return needsOperator.items().get(index);
+        for (var item : needsOperator.items()) {
+            if (rowIdOf(item).equals(rowId)) {
+                return item;
             }
-        } catch (NumberFormatException _) {
-            // unmatched
         }
         return null;
+    }
+
+    /**
+     * The row ID of one item: its own identity, never its position, so an item that arrives above a
+     * row never moves the selection or what {@code !} opens
+     * ({@code doc/design/shared/needs-and-find.adoc#waits}).
+     *
+     * @param item the item
+     * @return the row ID
+     */
+    public static String rowIdOf(NeedsOperatorItem item) {
+        if (item.link() != null && !item.link().isBlank()) {
+            return NEEDS_ITEM_PREFIX + item.link();
+        }
+        var id = new StringBuilder(NEEDS_ITEM_PREFIX).append(item.kind().value());
+        if (item.project() != null) {
+            id.append("@project:").append(item.project().id());
+        }
+        if (item.epic() != null) {
+            id.append("@epic:").append(item.epic().id());
+        }
+        if (item.plan() != null) {
+            id.append("@plan:").append(item.plan().id());
+        }
+        return id.toString();
     }
 
     /**
@@ -165,19 +187,15 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         if (needsOperator == null || needsOperator.items().isEmpty()) {
             return;
         }
-        var header = MessageCatalogue.hasKey(locale, "operator.needs.title")
-                            ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
-                            : "Needs you · " + needsOperator.total();
+        var header = MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()));
         rows.add(new TuiRow(GROUP_NEEDS_YOU_ID, header, null, false, false));
 
-        var items = needsOperator.items();
-        for (int i = 0; i < items.size(); i++) {
-            var item = items.get(i);
+        for (var item : needsOperator.items()) {
             var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
-            var subject = OverviewFormatting.formatNeedsItemSubject(item);
+            var subject = OverviewFormatting.formatNeedsItemSubject(item, locale);
             var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
             var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, clock);
-            var cmd = OverviewFormatting.formatNeedsItemCommand(item, Map.of());
+            var cmd = OverviewFormatting.formatNeedsItemCommand(item);
 
             var line = String.format("%-16s %-16s %-19s %-13s %s",
                                 "! " + kindLabel,
@@ -186,7 +204,7 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
                                 since,
                                 cmd).stripTrailing();
 
-            rows.add(new TuiRow(NEEDS_ITEM_PREFIX + i, line, null, true, true));
+            rows.add(new TuiRow(rowIdOf(item), line, null, true, true));
         }
     }
 

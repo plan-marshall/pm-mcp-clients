@@ -92,10 +92,7 @@ public record NeedsOperatorItem(
      */
     public static NeedsOperatorItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var kind = NeedsOperatorKind.fromValue(JsonTree.string(map, "kind"));
-        if (kind == null) {
-            throw new JsonFormatException("Unknown kind in NeedsOperatorItem: " + JsonTree.string(map, "kind"));
-        }
+        var kind = NeedsOperatorKind.fromWireOrOther(JsonTree.string(map, "kind"));
         return new NeedsOperatorItem(
                 kind,
                 JsonTree.string(map, "link"),

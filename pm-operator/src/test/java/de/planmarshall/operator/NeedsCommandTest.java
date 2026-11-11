@@ -229,45 +229,4 @@ class NeedsCommandTest {
         cmd.executeNeeds(sender, writer, "fr");
         assertTrue(sw.toString().contains("Needs you · 1"));
     }
-
-    @Test
-    @DisplayName("parseDecisions extracts plan and project mappings, ignoring null ids")
-    void parseDecisionsMapping() {
-        var list = List.of(
-                            Map.of("missing_id", "val"),
-                            Map.of("id", "Q-1", "plan", "plan-1"),
-                            Map.of("id", "Q-2", "project", "proj-1")
-        );
-        var map = NeedsCommand.parseDecisions(list);
-        assertEquals("Q-1", map.get("plan-1"));
-        assertEquals("Q-2", map.get("proj-1"));
-        assertEquals(2, map.size());
-    }
-
-    @Test
-    @DisplayName("fetchDecisionIds handles IOException gracefully")
-    void fetchDecisionIdsHandlesIoException() {
-        NeedsCommand.RuntimeSender sender = request -> {
-            throw new IOException("network error");
-        };
-        var map = NeedsCommand.fetchDecisionIds(sender);
-        assertTrue(map.isEmpty());
-    }
-
-    @Test
-    @DisplayName("fetchDecisionIds falls back to questions when decisions returns non-200")
-    void fetchDecisionIdsFallbackToQuestions() {
-        NeedsCommand.RuntimeSender sender = request -> {
-            if ("/api/v1/decisions".equals(request.target())) {
-                return new HttpResponse(404, null, new byte[0]);
-            }
-            if ("/api/v1/questions".equals(request.target())) {
-                var json = "[{\"id\":\"Q-100\",\"plan\":\"plan-x\"}]".getBytes(StandardCharsets.UTF_8);
-                return new HttpResponse(200, "application/json", json);
-            }
-            return new HttpResponse(404, null, new byte[0]);
-        };
-        var map = NeedsCommand.fetchDecisionIds(sender);
-        assertEquals("Q-100", map.get("plan-x"));
-    }
 }

@@ -12,8 +12,6 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -21,11 +19,9 @@ import java.util.concurrent.Callable;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
-import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorPage;
-import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.overview.OverviewFormatting;
 
 import picocli.CommandLine.Command;
@@ -84,23 +80,22 @@ public final class NeedsCommand implements Callable<Integer> {
             return 0;
         }
 
-        var decisionIds = fetchDecisionIds(sender);
         out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", page.total())));
 
         for (var item : page.items()) {
-            printItem(out, item, locale, decisionIds);
+            printItem(out, item, locale);
         }
         out.flush();
         return 0;
     }
 
-    private void printItem(PrintWriter out, NeedsOperatorItem item, String locale, Map<String, String> decisionIds) {
+    private void printItem(PrintWriter out, NeedsOperatorItem item, String locale) {
         var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
         var badge = MessageCatalogue.format(locale, "overview.needs.badge", Map.of("count", 1, "reason", kindLabel));
         var subject = OverviewFormatting.formatNeedsItemSubject(item, locale);
         var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
         var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, context.clock());
-        var cmd = OverviewFormatting.formatNeedsItemCommand(item, decisionIds);
+        var cmd = OverviewFormatting.formatNeedsItemCommand(item);
 
         out.printf("  %-16s %-16s %-19s %-13s %s%n",
                             badge,
@@ -113,50 +108,5 @@ public final class NeedsCommand implements Callable<Integer> {
     @FunctionalInterface
     interface RuntimeSender {
         HttpResponse send(HttpRequest request) throws IOException;
-    }
-
-    static Map<String, String> fetchDecisionIds(RuntimeClient client) {
-        return fetchDecisionIds(client::send);
-    }
-
-    static Map<String, String> fetchDecisionIds(RuntimeSender sender) {
-        try {
-            var resp = sender.send(HttpRequest.get("/api/v1/decisions"));
-            if (resp.status() != 200) {
-                resp = sender.send(HttpRequest.get("/api/v1/questions"));
-            }
-            if (resp.status() == 200 && JsonTree.parse(resp.body()) instanceof List<?> list) {
-                return parseDecisions(list);
-            }
-        } catch (IOException _) {
-            // Fall back gracefully to empty map if decisions route is unavailable
-        }
-        return Map.of();
-    }
-
-    static Map<String, String> parseDecisions(List<?> list) {
-        var map = new HashMap<String, String>();
-        for (var el : list) {
-            if (el instanceof Map<?, ?> m) {
-                recordDecisionMapping(m, map);
-            }
-        }
-        return map;
-    }
-
-    private static void recordDecisionMapping(Map<?, ?> m, Map<String, String> map) {
-        var id = m.get("id");
-        if (id == null) {
-            return;
-        }
-        var plan = m.get("plan");
-        if (plan != null) {
-            map.put(plan.toString(), id.toString());
-            return;
-        }
-        var proj = m.get("project");
-        if (proj != null) {
-            map.put(proj.toString(), id.toString());
-        }
     }
 }

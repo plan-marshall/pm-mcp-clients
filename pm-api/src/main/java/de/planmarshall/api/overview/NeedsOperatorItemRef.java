@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -51,11 +50,7 @@ public record NeedsOperatorItemRef(NeedsOperatorKind kind, @Nullable String link
      */
     public static NeedsOperatorItemRef fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var kind = NeedsOperatorKind.fromValue(JsonTree.string(map, "kind"));
-        if (kind == null) {
-            throw new JsonFormatException(
-                    "Unknown kind in NeedsOperatorItemRef: " + JsonTree.string(map, "kind"));
-        }
-        return new NeedsOperatorItemRef(kind, JsonTree.string(map, "link"));
+        return new NeedsOperatorItemRef(NeedsOperatorKind.fromWireOrOther(JsonTree.string(map, "kind")),
+                JsonTree.string(map, "link"));
     }
 }

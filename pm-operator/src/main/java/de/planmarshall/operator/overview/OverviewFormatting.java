@@ -24,6 +24,7 @@ import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.operator.OutputSafety;
 
 /**
@@ -335,17 +336,8 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the subject of a {@link NeedsOperatorItem} in English.
-     *
-     * @param item the needs-operator item
-     * @return clean subject string
-     */
-    public static String formatNeedsItemSubject(NeedsOperatorItem item) {
-        return formatNeedsItemSubject(item, "en");
-    }
-
-    /**
-     * Formats the subject of a {@link NeedsOperatorItem}.
+     * Formats the subject of a {@link NeedsOperatorItem}: the title of the place it belongs to, and
+     * its id only where the store carries no title.
      *
      * @param item   the needs-operator item
      * @param locale the target locale
@@ -353,13 +345,13 @@ public final class OverviewFormatting {
      */
     public static String formatNeedsItemSubject(NeedsOperatorItem item, String locale) {
         if (item.plan() != null && !item.plan().id().isBlank()) {
-            return clean(item.plan().id());
+            return nameOf(item.plan());
         }
         if (item.epic() != null && !item.epic().id().isBlank()) {
-            return clean(item.epic().id());
+            return nameOf(item.epic());
         }
         if (item.project() != null && !item.project().id().isBlank()) {
-            return clean(item.project().id());
+            return nameOf(item.project());
         }
         if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
             return MessageCatalogue.format(locale, "overview.needs.subject.cleanup", Map.of());
@@ -371,7 +363,17 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the blocking description of a {@link NeedsOperatorItem}.
+     * @param place the place an item belongs to
+     * @return its title, or its id where the store carries none
+     */
+    private static String nameOf(WorkLocation place) {
+        var title = place.title();
+        return clean(title != null && !title.isBlank() ? title : place.id());
+    }
+
+    /**
+     * Formats the blocking description of a {@link NeedsOperatorItem}: what it blocks in the
+     * operator's own words ({@code common.kind.*}), never the wire token.
      *
      * @param blocks the blocks target
      * @param locale the target locale
@@ -381,7 +383,11 @@ public final class OverviewFormatting {
         if (blocks == null || blocks.isBlank()) {
             return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
-        return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
+        var key = "common.kind." + blocks;
+        var what = MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : MessageCatalogue.format(locale, "state.unknown", Map.of());
+        return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", what));
     }
 
     /**
@@ -404,49 +410,53 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the resolving command for a {@link NeedsOperatorItem}.
+     * Formats the resolving command for a {@link NeedsOperatorItem}. Every command it can print is a
+     * registered verb, and none of them joins a store of its own: the decision id comes from the
+     * item's own link, which the runtime fills
+     * ({@code doc/design/shared/needs-and-find.adoc#terminal}).
      *
-     * @param item        the needs-operator item
-     * @param decisionIds map of plan/project IDs to open decision IDs
+     * @param item the needs-operator item
      * @return resolving command string
      */
-    public static String formatNeedsItemCommand(NeedsOperatorItem item, Map<String, String> decisionIds) {
+    public static String formatNeedsItemCommand(NeedsOperatorItem item) {
         var kind = item.kind();
         var planId = item.plan() != null ? item.plan().id() : null;
         var epicId = item.epic() != null ? item.epic().id() : null;
         var projId = item.project() != null ? item.project().id() : null;
 
         return switch (kind) {
-            case DECISION, WAIVER -> decisionCommand(planId, projId, item.link(), decisionIds);
+            case DECISION, WAIVER -> decisionCommand(item.link());
             case FINDINGS -> epicId != null ? "epic findings " + epicId : "reports";
             case SETUP -> projId != null ? "project setup " + projId : "project setup";
             case CREDENTIAL -> "credentials";
             case CLEANUP_DUE -> "cleanup";
             case LANDING_FAILED -> landingFailedCommand(planId, epicId);
             case HELD, CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> planOrEpicCommand(planId, epicId);
+            case OTHER -> CMD_PLANS;
         };
     }
 
-    private static String decisionCommand(@Nullable String planId, @Nullable String projId,
-                        @Nullable String link, Map<String, String> decisionIds) {
-        if (planId != null && decisionIds.containsKey(planId)) {
-            return ANSWER_PREFIX + decisionIds.get(planId);
-        }
-        if (projId != null && decisionIds.containsKey(projId)) {
-            return ANSWER_PREFIX + decisionIds.get(projId);
-        }
+    private static String decisionCommand(@Nullable String link) {
         if (link != null && link.contains("/decisions/")) {
             return ANSWER_PREFIX + link.substring(link.lastIndexOf('/') + 1);
         }
         return "answer";
     }
 
+    /**
+     * A failed landing opens the epic that owns it ({@code 04-console.adoc:76-80}), never a hold
+     * verb: the design gives {@code epic <id>} for {@code held} and {@code landing_failed} alike.
+     *
+     * @param planId  the plan whose landing failed, or {@code null}
+     * @param epicId  the epic that owns it, or {@code null}
+     * @return the command that opens the place
+     */
     private static String landingFailedCommand(@Nullable String planId, @Nullable String epicId) {
-        if (planId != null) {
-            return "plan hold " + planId;
-        }
         if (epicId != null) {
             return "epic " + epicId;
+        }
+        if (planId != null) {
+            return "epic " + planId;
         }
         return CMD_PLANS;
     }

@@ -1,0 +1,12 @@
+# Screen captures for PLAN-126: Terminal: "Needs You" Made Correct (PLAN-36 Residue)
+# Covers:
+#   - the overview with the "Needs you" group: titles as subjects, what an item blocks in
+#     catalogue words, and the command that opens it
+# in en and de, at 120x30 and 80x24.
+#
+# name | scenario | states | command | keys | columnsxrows | locale | environment | beforeKeys
+
+overview-needs-120x30-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | -
+overview-needs-120x30-de | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | -
+overview-needs-80x24-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | -
+overview-needs-80x24-de | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | -
