@@ -119,12 +119,37 @@ test.describe('Web chrome, navigation and action advisories', () => {
     const mark = rail.getByTestId('brand-mark');
     await expect(mark).toBeVisible();
     await expect(mark).toHaveAttribute('aria-hidden', 'true');
-    await expect(rail.getByTestId('brand-mark-plate')).toBeVisible();
+    await expect(mark).toHaveAttribute('data-size', '28');
+    await expect(mark).toHaveAttribute('data-rendering', 'colour');
+    // The badge stands on the rail itself: no plate is drawn behind it.
+    await expect(page.locator('.brand-mark-plate')).toHaveCount(0);
+    await expect(page.getByTestId('brand-mark-plate')).toHaveCount(0);
 
     const box = await mark.boundingBox();
     expect(box).not.toBeNull();
-    expect(box.width).toBeGreaterThanOrEqual(20);
-    expect(box.height).toBeGreaterThanOrEqual(20);
+    expect(box.width).toBeGreaterThanOrEqual(28);
+    expect(box.height).toBeGreaterThanOrEqual(28);
+  });
+
+  test('shows the mark alone in the collapsed rail, named by the wordmark', async ({ page }) => {
+    const rail = page.getByTestId('nav-rail');
+    await page.getByTestId('rail-toggle').click();
+    await expect(rail).toHaveClass(/nav-rail--collapsed/);
+
+    try {
+      const brand = rail.getByTestId('brand-home');
+      await expect(brand).toBeVisible();
+      await expect(brand.getByTestId('brand-mark')).toBeVisible();
+      await expect(brand.getByTestId('brand-mark')).toHaveAttribute('data-size', '28');
+      await expect(brand.getByTestId('brand-mark')).toHaveAttribute('data-rendering', 'colour');
+      // The wordmark is not drawn beside the mark, yet it names the brand control.
+      await expect(brand.locator('.nav-rail__title')).toBeHidden();
+      await expect(brand).toHaveAccessibleName(/plan-marshall/);
+    } finally {
+      // The collapse is kept in the browser: the following tests start from the expanded rail.
+      await page.getByTestId('rail-toggle').click();
+      await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+    }
   });
 
   test('opens the start page from the brand', async ({ page }) => {
