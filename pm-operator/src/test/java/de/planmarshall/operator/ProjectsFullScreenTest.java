@@ -231,6 +231,7 @@ class ProjectsFullScreenTest {
             assertTrue(screen.contains("\u2605 pm-mcp-clients"), screen);
             assertTrue(screen.contains("! 2") || screen.contains("needs you: 2"), screen);
             assertTrue(screen.contains("3 plans \u00b7 1 epic"), screen);
+            assertTrue(screen.contains("2 min ago"), "the age is rendered at the fixed context clock: " + screen);
             assertTrue(screen.contains("Recent"), screen);
             assertTrue(screen.contains("setup needs: credential sonar"), screen);
             assertTrue(screen.contains("All projects \u00b7 by name"), screen);

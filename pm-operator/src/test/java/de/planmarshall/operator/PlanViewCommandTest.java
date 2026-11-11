@@ -19,6 +19,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -187,13 +188,15 @@ class PlanViewCommandTest {
     }
 
     @Test
-    @DisplayName("formats durations correctly for sub-minute, minute, and multi-hour intervals")
+    @DisplayName("formats durations correctly for sub-minute, minute, multi-hour, and multi-day intervals")
     void shouldFormatPlanDurationsCorrectly() {
         assertAll(
-                            () -> assertEquals("0 s", PlanCommand.formatPlanDuration(0)),
-                            () -> assertEquals("45 s", PlanCommand.formatPlanDuration(45)),
-                            () -> assertEquals("2 min", PlanCommand.formatPlanDuration(120)),
-                            () -> assertEquals("1 h 1 min", PlanCommand.formatPlanDuration(3660))
+                            () -> assertEquals("0 s", Display.duration("en", 0)),
+                            () -> assertEquals("45 s", Display.duration("en", 45)),
+                            () -> assertEquals("2 min", Display.duration("en", 120)),
+                            () -> assertEquals("1 h 1 min", Display.duration("en", 3660)),
+                            () -> assertEquals("2 d", Display.duration("en", 172_800)),
+                            () -> assertEquals("2 T", Display.duration("de", 172_800))
         );
     }
 
@@ -413,13 +416,13 @@ class PlanViewCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("pm-mcp-clients › relay-hardening")),
+                            () -> assertTrue(output.contains("pm-mcp-clients › Relay Hardening")),
                             () -> assertTrue(output.contains("relay-hardening · epic · running · 1 running · 1 staged")),
                             () -> assertTrue(output.contains("running plans:")),
-                            () -> assertTrue(output.contains("▶ running   fix-relay")),
+                            () -> assertTrue(output.contains("▶ running   Fix Relay Transport")),
                             () -> assertTrue(output.contains("staged plans:")),
-                            () -> assertTrue(output.contains("○ staged    relay-auth-v2")),
-                            () -> assertTrue(output.contains("completion review: not ready")),
+                            () -> assertTrue(output.contains("○ staged    Relay Auth v2")),
+                            () -> assertTrue(output.contains("completion review: completion review in progress")),
                             () -> assertTrue(output.contains("CI failure · done"))
         );
     }

@@ -9,6 +9,11 @@
  */
 package de.planmarshall.api.json;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.json.JsonWriteFeature;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
@@ -21,12 +26,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.json.JsonWriteFeature;
 
 /**
  * The minimal JSON tree of {@code pm-api} on the {@code jackson-core} streaming API: an object is a

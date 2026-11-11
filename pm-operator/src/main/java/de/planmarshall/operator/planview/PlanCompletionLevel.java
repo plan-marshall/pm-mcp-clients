@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.ChangeMapRecord;
 import de.planmarshall.api.report.OwnCallRecord;
@@ -70,15 +71,17 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         var rows = new ArrayList<TuiRow>();
         rows.add(TuiRow.leaf("completion:summary", summary(locale)));
         rows.add(entry("completion:outcome", locale, "report.completion.outcome",
-                            description(report.terminalReason() != null ? report.terminalReason() : report.outcome())));
+                            description(locale, report.terminalReason() != null ? report.terminalReason() : report.outcome())));
         rows.add(entry("completion:reason", locale, "report.completion.reason",
-                            report.reason() != null && !report.reason().isBlank() ? report.reason() : "-"));
+                            report.reason() != null && !report.reason().isBlank()
+                                                ? report.reason()
+                                                : MessageCatalogue.format(locale, "common.none", Map.of())));
         var ran = report.ran();
         if (ran != null && !ran.isBlank()) {
             rows.add(entry("completion:ran", locale, "report.completion.ran", ran));
         } else if (report.durationSeconds() > 0) {
             rows.add(entry("completion:ran", locale, "report.completion.ran",
-                                PlanViewFormatting.duration(report.durationSeconds())));
+                                Display.duration(locale, report.durationSeconds())));
         }
         appendDeliverables(rows, locale);
         appendDecisions(rows, locale);
@@ -91,7 +94,6 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     private String summary(String locale) {
         var parts = new ArrayList<String>();
-        parts.add(PlanViewFormatting.clean(report.planId()));
         parts.add(MessageCatalogue.format(locale, "report.completion.title",
                             Map.of("plan", PlanViewFormatting.clean(report.planId()))));
         parts.add(PlanViewFormatting.clean(report.outcome()));
@@ -187,7 +189,9 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
     private static String judgmentText(String locale, OwnCallRecord ownCall) {
         if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
             var target = ownCall.conflictTarget();
-            var item = target != null && !target.isBlank() ? PlanViewFormatting.clean(target) : "-";
+            var item = target != null && !target.isBlank()
+                                ? PlanViewFormatting.clean(target)
+                                : MessageCatalogue.format(locale, "common.unknown", Map.of());
             return MessageCatalogue.format(locale, "report.completion.own_call_conflicts", Map.of("item", item));
         }
         if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
@@ -257,7 +261,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
                             + PlanViewFormatting.clean(value));
     }
 
-    private static String description(@Nullable String value) {
-        return value != null ? value : "-";
+    private static String description(String locale, @Nullable String value) {
+        return value != null ? value : MessageCatalogue.format(locale, "common.unknown", Map.of());
     }
 }

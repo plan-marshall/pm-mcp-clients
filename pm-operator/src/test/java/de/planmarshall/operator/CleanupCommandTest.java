@@ -799,6 +799,13 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("a runtime date in German carries the dot after the day")
+    void formatWhenGermanDot() {
+        assertEquals("12. Sept.", CleanupCommand.formatWhen("2026-09-12T12:00:00Z", "de", ZoneOffset.UTC));
+        assertEquals("12 Sep", CleanupCommand.formatWhen("2026-09-12T12:00:00Z", "en", ZoneOffset.UTC));
+    }
+
+    @Test
     @DisplayName("o names the item's view, or refuses a kind that has none")
     void dialogOpensTheItem() {
         var items = List.of(

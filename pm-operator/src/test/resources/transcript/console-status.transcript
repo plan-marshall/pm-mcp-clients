@@ -4,9 +4,9 @@
 pm › status
 runtime   running
 version   0.1.0-SNAPSHOT
-pid       -
+pid       none
 listener  unix
-socket    -
-started   -
-web       -
+socket    none
+started   none
+web       none
 pm › exit

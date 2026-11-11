@@ -85,11 +85,7 @@ public final class NeedsCommand implements Callable<Integer> {
         }
 
         var decisionIds = fetchDecisionIds(sender);
-        if (MessageCatalogue.hasKey(locale, "operator.needs.title")) {
-            out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", page.total())));
-        } else {
-            out.printf("Needs you · %d%n", page.total());
-        }
+        out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", page.total())));
 
         for (var item : page.items()) {
             printItem(out, item, locale, decisionIds);
@@ -100,13 +96,14 @@ public final class NeedsCommand implements Callable<Integer> {
 
     private void printItem(PrintWriter out, NeedsOperatorItem item, String locale, Map<String, String> decisionIds) {
         var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
-        var subject = OverviewFormatting.formatNeedsItemSubject(item);
+        var badge = MessageCatalogue.format(locale, "overview.needs.badge", Map.of("count", 1, "reason", kindLabel));
+        var subject = OverviewFormatting.formatNeedsItemSubject(item, locale);
         var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
         var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, context.clock());
         var cmd = OverviewFormatting.formatNeedsItemCommand(item, decisionIds);
 
         out.printf("  %-16s %-16s %-19s %-13s %s%n",
-                            "! " + kindLabel,
+                            badge,
                             subject,
                             blocks,
                             since,

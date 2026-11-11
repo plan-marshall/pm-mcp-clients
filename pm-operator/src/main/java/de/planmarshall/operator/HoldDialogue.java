@@ -11,8 +11,8 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +41,7 @@ final class HoldDialogue {
 
     private final StartPrompt prompt;
     private final WorkActionsClient client;
+    private final Clock clock;
     private final String planId;
     private final @Nullable String preselectedAct;
 
@@ -48,6 +49,7 @@ final class HoldDialogue {
                         @Nullable String preselectedAct) {
         this.planId = planId;
         this.preselectedAct = preselectedAct;
+        this.clock = context.clock();
         this.prompt = new StartPrompt(context, out, context.clientEnvironment().locale(), noInput);
         this.client = new WorkActionsClient(context);
     }
@@ -276,8 +278,8 @@ final class HoldDialogue {
         return slash >= 0 && slash + 1 < url.length() ? url.substring(slash + 1) : "";
     }
 
-    private static String time(Instant instant) {
+    private String time(Instant instant) {
         return DateTimeFormatter.ofPattern("HH:mm")
-                            .format(instant.atZone(ZoneId.systemDefault()));
+                            .format(instant.atZone(clock.getZone()));
     }
 }

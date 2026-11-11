@@ -4,7 +4,7 @@
   },
   "plan": {
     "effort": "level-3",
-    "open_in_ide": true,
+    "open_in_ide": false,
     "coverage": {
       "thoroughness": "inherit",
       "scope": "inherit"
@@ -18,7 +18,7 @@
       "escalation": "auto",
       "auto_route_recipe": true,
       "auto_route_recipe_threshold": 0.6,
-      "lane_selection": "ask",
+      "lane_selection": "auto",
       "lane_prune_thresholds": {
         "confidence_complete": 95,
         "linear_change_max_deliverables": 1
@@ -32,7 +32,7 @@
       "revalidation": "auto"
     },
     "phase-3-outline": {
-      "plan_without_asking": false,
+      "plan_without_asking": true,
       "q_gate_validation": "once",
       "effort": "level-4"
     },
@@ -81,7 +81,9 @@
           "auto_rebase_threshold": "no_overlap_only",
           "lane": "minimal"
         },
-        "default:finalize-step-simplify": {},
+        "default:finalize-step-simplify": {
+          "lane": "standard"
+        },
         "default:finalize-step-security-audit": {
           "lane": "full"
         },
@@ -254,7 +256,7 @@
       "project_key": "plan-marshall_pm-mcp-clients"
     }
   },
-  "interaction_mode": "advanced",
+  "interaction_mode": "basic",
   "project": {
     "default_base_branch": "main",
     "working_prefixes": [
@@ -374,7 +376,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.2017",
-    "config_seed_fingerprint": "a2efc4ac"
+    "provisioned_version": "0.1.2106",
+    "config_seed_fingerprint": "9aaf980d"
   }
 }

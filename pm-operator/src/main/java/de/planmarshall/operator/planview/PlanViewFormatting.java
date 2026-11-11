@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
@@ -41,25 +42,6 @@ final class PlanViewFormatting {
      */
     static String clean(@Nullable String text) {
         return TuiLayout.sanitizeCell(OutputSafety.stripControlSequences(text)).strip();
-    }
-
-    /**
-     * @param seconds duration in seconds
-     * @return a compact duration ({@code 45 s}, {@code 5 min}, {@code 1 h 5 min}), or empty
-     */
-    static String duration(long seconds) {
-        if (seconds <= 0) {
-            return "";
-        }
-        if (seconds < 60) {
-            return seconds + " s";
-        }
-        long hours = seconds / 3600;
-        long minutes = (seconds % 3600) / 60;
-        if (hours > 0) {
-            return hours + " h " + minutes + " min";
-        }
-        return minutes + " min";
     }
 
     /**
@@ -128,17 +110,63 @@ final class PlanViewFormatting {
      * @return the task's one-line detail
      */
     static String taskLine(String locale, LeafTask task) {
-        var outcome = task.outcome() != null ? task.outcome() : "-";
         var line = clean(task.taskId()) + DOT_SEPARATOR
                             + MessageCatalogue.format(locale, "plan.leaf.task", Map.of(
                             "role", clean(task.role()),
                             "harness", clean(task.harness()),
                             "model", clean(task.model()),
                             "attempt", task.attempt(),
-                            "status", clean(task.status()),
-                            "outcome", clean(outcome)));
-        var duration = duration(task.durationSeconds());
-        return duration.isEmpty() ? line : line + DOT_SEPARATOR + duration;
+                            "status", taskStatus(locale, task.status()),
+                            "outcome", taskOutcome(locale, task.outcome())));
+        return task.durationSeconds() > 0
+                            ? line + DOT_SEPARATOR + Display.duration(locale, task.durationSeconds())
+                            : line;
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param status the task's status value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String taskStatus(String locale, @Nullable String status) {
+        return closedWord(locale, "plan.task.status.", status);
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param outcome the task's outcome value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String taskOutcome(String locale, @Nullable String outcome) {
+        return closedWord(locale, "plan.task.outcome.", outcome);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param status the job's status value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String jobStatus(String locale, @Nullable String status) {
+        return closedWord(locale, "plan.job.status.", status);
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param outcome the job's outcome value
+     * @return its catalogue word, or the cleaned value when the closed list has no key
+     */
+    static String jobOutcome(String locale, @Nullable String outcome) {
+        return closedWord(locale, "plan.job.outcome.", outcome);
+    }
+
+    private static String closedWord(String locale, String prefix, @Nullable String value) {
+        if (value == null || value.isBlank()) {
+            return MessageCatalogue.format(locale, "common.none", Map.of());
+        }
+        var key = prefix + value.toLowerCase(Locale.ROOT);
+        return MessageCatalogue.hasKey(key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : clean(value);
     }
 
     /**

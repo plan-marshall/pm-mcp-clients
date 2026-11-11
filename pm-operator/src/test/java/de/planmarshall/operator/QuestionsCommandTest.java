@@ -112,6 +112,28 @@ class QuestionsCommandTest {
     }
 
     @Test
+    @DisplayName("a kind-only waiver payload is headed as waiver requests")
+    void questionsWaiverByKindOnly() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions".equals(request.target())) {
+                response.json(200, """
+                                    [
+                                      {"id":"X-1","kind":"waiver","title":"Approve"}
+                                    ]
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("questions");
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("Waiver Requests"), out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("questions reports no open questions when list is empty")
     void questionsEmpty() throws Exception {
         fixture.start((request, response) -> {

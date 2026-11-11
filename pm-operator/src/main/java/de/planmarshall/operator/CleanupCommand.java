@@ -339,7 +339,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 return null;
             }
             return LocalDate.now(context.clock()).plusDays(days)
-                                .format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
+                                .format(DateTimeFormatter.ofPattern(dayMonthPattern(locale), Locale.forLanguageTag(locale)));
         } catch (IOException | IllegalArgumentException _) {
             return null;
         }
@@ -358,10 +358,14 @@ public final class CleanupCommand implements Callable<Integer> {
         var text = OutputSafety.stripControlSequences(at);
         try {
             var day = Instant.parse(text).atZone(zone).toLocalDate();
-            return day.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
+            return day.format(DateTimeFormatter.ofPattern(dayMonthPattern(locale), Locale.forLanguageTag(locale)));
         } catch (DateTimeParseException _) {
             return text;
         }
+    }
+
+    private static String dayMonthPattern(String locale) {
+        return locale.toLowerCase(Locale.ROOT).startsWith("de") ? "d. MMM" : "d MMM";
     }
 
     private int executeIgnore(PrintWriter out, PrintWriter err) throws IOException {

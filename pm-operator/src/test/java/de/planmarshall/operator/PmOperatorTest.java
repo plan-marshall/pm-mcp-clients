@@ -486,7 +486,7 @@ class PmOperatorTest {
         @Test
         @DisplayName("describes a missing and a closed listener")
         void describe() {
-            assertEquals("-", WebCommand.describe(null));
+            assertEquals("none", WebCommand.describe(null));
             assertEquals("enabled (loopback), port 1, not open", WebCommand.describe(Map.of("enabled", true,
                                 "port", 1)));
         }

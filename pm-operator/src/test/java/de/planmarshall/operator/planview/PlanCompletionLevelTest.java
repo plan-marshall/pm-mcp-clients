@@ -75,6 +75,11 @@ class PlanCompletionLevelTest {
                             .orElse("");
         assertAll(
                             () -> assertTrue(line.startsWith("  " + String.format("%-16s", "Change")), line),
+                            () -> assertTrue(withChange.rows("de").stream()
+                                                .filter(row -> "completion:change".equals(row.id()))
+                                                .map(TuiRow::line)
+                                                .findFirst().orElse("")
+                                                .startsWith("  " + String.format("%-16s", "Änderung"))),
                             () -> assertTrue(line.contains("12 files"), line),
                             () -> assertTrue(line.contains("+340"), line),
                             () -> assertTrue(line.contains("\u221227"), line),
@@ -90,7 +95,8 @@ class PlanCompletionLevelTest {
         var text = text();
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
         assertEquals("fix-relay", level.planId());
-        assertTrue(text.contains("completion report"), text);
+        assertTrue(text.contains("fix-relay \u00b7 completion report"), text);
+        assertFalse(text.contains("fix-relay \u00b7 fix-relay"), text);
         assertTrue(text.contains("merged"), text);
         assertTrue(text.contains("#214"), text);
         assertTrue(text.contains("the relay transport is hardened"), text);

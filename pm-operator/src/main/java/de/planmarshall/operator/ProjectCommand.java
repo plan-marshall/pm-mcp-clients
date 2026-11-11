@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -103,7 +104,7 @@ public final class ProjectCommand implements Callable<Integer> {
 
         if (response.status() == 200) {
             var project = EnrolledProject.fromJson(response.bodyText());
-            renderProjectDetail(out, locale, project);
+            renderProjectDetail(out, locale, project, context.clock());
             return 0;
         }
 
@@ -119,7 +120,8 @@ public final class ProjectCommand implements Callable<Integer> {
         return MessageCatalogue.format(locale, key, Map.of());
     }
 
-    private static void renderProjectDetail(PrintWriter out, String locale, EnrolledProject project) {
+    private static void renderProjectDetail(PrintWriter out, String locale, EnrolledProject project,
+                        Clock clock) {
         var name = OutputSafety.stripControlSequences(project.displayName());
         var pId = OutputSafety.stripControlSequences(project.projectId());
         var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
@@ -149,7 +151,7 @@ public final class ProjectCommand implements Callable<Integer> {
                                                 "epics", String.valueOf(project.activeEpicsCount()))));
         if (project.lastActive() != null) {
             out.println(MessageCatalogue.format(locale, "operator.project.detail.last_seen",
-                                Map.of("when", ProjectsCommand.formatRelativeTime(locale, project.lastActive()))));
+                                Map.of("when", ProjectsCommand.formatRelativeTime(locale, project.lastActive(), clock))));
         }
         out.println(MessageCatalogue.format(locale, "operator.project.detail.favourite", Map.of(PARAM_VALUE,
                             project.isFavourite() ? text(locale, "operator.project.detail.favourite_yes") : no)));

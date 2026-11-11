@@ -12,6 +12,7 @@ package de.planmarshall.operator.dialogue;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -164,6 +165,10 @@ class StateDialogueTest {
         var dialogue = dialogue(new FakeSource(frame), "", writer);
 
         assertEquals(List.of("Landing: Main branch"), dialogue.content(frame));
+        assertEquals("Main branch", StateDialogue.rendered("en", "landing.main"));
+        assertEquals("Main-Branch", StateDialogue.rendered("de", "landing.main"));
+        assertNull(StateDialogue.rendered("en", "no.such.unit"));
+        assertNull(StateDialogue.rendered("de", "no.such.unit"));
     }
 
     @Test

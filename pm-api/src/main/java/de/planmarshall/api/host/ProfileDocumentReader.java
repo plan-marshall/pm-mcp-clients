@@ -9,6 +9,10 @@
  */
 package de.planmarshall.api.host;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,11 +25,6 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import lombok.experimental.UtilityClass;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.StreamReadFeature;
 
 /**
  * The generic reader of the shipped client profile documents below {@code classpath:/profiles}: it

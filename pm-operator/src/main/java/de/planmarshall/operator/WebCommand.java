@@ -15,7 +15,6 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
@@ -166,7 +165,7 @@ public final class WebCommand implements Callable<Integer> {
                 var url = json != null && json.get("url") instanceof String u && !u.isBlank()
                                     ? u
                                     : LOOPBACK_URL_PREFIX + DEFAULT_PORT + "/pair#code=" + code;
-                var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
+                var validUntil = LocalTime.now(context.clock()).plusMinutes(10).format(TIME_FORMATTER);
 
                 var locale = localeFor(context);
                 out.println(MessageCatalogue.format(locale, "operator.web.pair_code",
@@ -248,7 +247,7 @@ public final class WebCommand implements Callable<Integer> {
             var status = StatusCommand.fetch(runtime);
             var port = EntryFlow.getWebPort(status);
             var pairing = new EntryFlow(context).issuePairingCode(runtime, port);
-            var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
+            var validUntil = LocalTime.now(context.clock()).plusMinutes(10).format(TIME_FORMATTER);
             var sideLines = List.of(pairing.url(), "Code " + pairing.code() + ", valid until " + validUntil);
             var out = spec.commandLine().getOut();
             out.println(QrCodeRenderer.render(pairing.url(), sideLines));
@@ -591,7 +590,7 @@ public final class WebCommand implements Callable<Integer> {
                 } else if (pairedFrom != null) {
                     fromStr = TerminalSanitizer.sanitizeLine(pairedFrom.toString());
                 }
-                var pairedDate = formatPairedDate(dev.get("created_at"));
+                var pairedDate = formatPairedDate(dev.get("created_at"), locale, clock);
                 var lastUsed = formatLastUsed(locale, dev.get("last_used_at"), clock);
 
                 out.println(MessageCatalogue.format(locale, "operator.devices.row",
@@ -603,15 +602,16 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private static String formatPairedDate(@Nullable Object raw) {
+        private static String formatPairedDate(@Nullable Object raw, String locale, Clock clock) {
             if (raw == null) {
-                return "recently";
+                return MessageCatalogue.format(locale, "common.time.unknown", Map.of());
             }
             var s = raw.toString();
             try {
                 var instant = Instant.parse(s);
-                return DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
-                                    .withZone(ZoneId.of("UTC"))
+                var german = locale.toLowerCase(Locale.ROOT).startsWith("de");
+                return DateTimeFormatter.ofPattern(german ? "d. MMM" : "d MMM", german ? Locale.GERMAN : Locale.ENGLISH)
+                                    .withZone(clock.getZone())
                                     .format(instant);
             } catch (DateTimeParseException _) {
                 return s;
@@ -620,7 +620,7 @@ public final class WebCommand implements Callable<Integer> {
 
         static String formatLastUsed(String locale, @Nullable Object raw, Clock clock) {
             if (raw == null) {
-                return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
+                return MessageCatalogue.format(locale, "common.time.never", Map.of());
             }
             try {
                 return Display.time(locale, Instant.parse(raw.toString()), clock);
@@ -675,7 +675,8 @@ public final class WebCommand implements Callable<Integer> {
         }
         var out = spec.commandLine().getOut();
         out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.web.status_line",
-                            Map.of("state", describe(JsonTree.asObject(JsonTree.parse(response.body()))))));
+                            Map.of("state", describe(context.clientEnvironment().locale(),
+                                                JsonTree.asObject(JsonTree.parse(response.body()))))));
         out.flush();
         return 0;
     }
@@ -734,9 +735,11 @@ public final class WebCommand implements Callable<Integer> {
         if (!Boolean.TRUE.equals(web.get("enabled"))) {
             return MessageCatalogue.format(locale, "operator.web.state.disabled", Map.of());
         }
+        var mode = Boolean.TRUE.equals(web.get("lan")) ? "operator.web.mode.lan" : "operator.web.mode.loopback";
+        var open = Boolean.TRUE.equals(web.get("open")) ? "operator.web.open.yes" : "operator.web.open.no";
         return MessageCatalogue.format(locale, "operator.web.state.enabled", Map.of(
-                            "mode", Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK,
+                            "mode", MessageCatalogue.format(locale, mode, Map.of()),
                             "port", web.get("port"),
-                            "open", Boolean.TRUE.equals(web.get("open")) ? "open" : "not open"));
+                            "open", MessageCatalogue.format(locale, open, Map.of())));
     }
 }

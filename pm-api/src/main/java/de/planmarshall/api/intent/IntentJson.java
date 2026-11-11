@@ -9,6 +9,8 @@
  */
 package de.planmarshall.api.intent;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -18,9 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
