@@ -193,7 +193,7 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
                 BuilderQuestion::fromMap);
         try {
             return new BuilderCheckResource(resolution, questions,
-                    IntentJson.optionalText(map, FIELD_REASON, TYPE));
+                    IntentJson.optionalRawText(map, FIELD_REASON, TYPE));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
         }

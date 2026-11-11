@@ -424,6 +424,9 @@ class IntentContractTest {
             assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
                     "{\"id\":\"DC-011\",\"text\":\"A role call with evidence.\",\"decider\":\"role\","
                             + "\"options_weighed\":[],\"evidence\":\"some/evidence\"}")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-016\",\"text\":\"A role call with a blank evidence.\",\"decider\":\"role\","
+                            + "\"options_weighed\":[],\"evidence\":\" \"}")));
         }
 
         @Test
@@ -532,6 +535,8 @@ class IntentContractTest {
             assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
                     "{\"resolution\":\"pending\",\"questions\":[],"
                             + "\"reason\":\"A reason it must not carry.\"}"));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"pending\",\"questions\":[],\"reason\":\" \"}"));
         }
     }
 

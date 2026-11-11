@@ -186,7 +186,7 @@ public record PlanIntentResource(
                         IntentDecider.fromWire(IntentJson.requireText(map, FIELD_DECIDER, TYPE)),
                         IntentJson.readStrings(map, FIELD_OPTIONS_WEIGHED),
                         IntentJson.optionalText(map, FIELD_QUESTION_ID, TYPE),
-                        IntentJson.optionalText(map, FIELD_EVIDENCE, TYPE),
+                        IntentJson.optionalRawText(map, FIELD_EVIDENCE, TYPE),
                         adrMap != null ? AdrReference.fromMap(adrMap) : null);
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
@@ -220,7 +220,7 @@ public record PlanIntentResource(
         /**
          * @return the map representation
          */
-        Map<String, Object> toMap() {
+        public Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
             map.put(FIELD_ADR_ID, adrId);
             map.put(FIELD_RELATION, relation.wireValue());
@@ -371,6 +371,7 @@ public record PlanIntentResource(
      * @param reason why the plan defers it
      */
     public record DeferredItem(String id, String text, String reason) {
+
         private static final String FIELD_ID = "id";
         private static final String FIELD_TEXT = "text";
         private static final String FIELD_REASON = "reason";
