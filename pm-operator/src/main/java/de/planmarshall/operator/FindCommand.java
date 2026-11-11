@@ -21,6 +21,7 @@ import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal;
 import org.jline.utils.NonBlockingReader;
 import org.jspecify.annotations.Nullable;
@@ -128,9 +129,11 @@ public final class FindCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var query = String.join(" ", text).strip();
         if (query.isEmpty()) {
+            // The runtime refuses an empty text and the client never sends one; the operator gave a
+            // caller error, not a finished read (01-commands.adoc#exit-codes).
             out.println(MessageCatalogue.format(locale, "overview.find.no_text", Map.of()));
             out.flush();
-            return 0;
+            return 2;
         }
         return executeFind(context.runtime(true)::send, out, locale, query);
     }
@@ -152,7 +155,7 @@ public final class FindCommand implements Callable<Integer> {
         }
         var page = FindPage.fromJson(response.bodyText());
         var chooses = chooses();
-        printMatches(out, page, locale, chooses);
+        printMatches(out, page, locale, chooses, query);
         out.flush();
         if (!chooses || page.matches().isEmpty()) {
             return 0;
@@ -176,8 +179,10 @@ public final class FindCommand implements Callable<Integer> {
         return !print && context.isInteractiveTerminal();
     }
 
-    private void printMatches(PrintWriter out, FindPage page, String locale, boolean numbered) {
-        var query = TerminalSanitizer.sanitizeLine(page.query());
+    private void printMatches(PrintWriter out, FindPage page, String locale, boolean numbered, String typed) {
+        // The text the operator typed, never the runtime's echo: an echo can be absent or another
+        // text, and the operator must see what was searched for.
+        var query = TerminalSanitizer.sanitizeLine(typed);
         if (page.matches().isEmpty()) {
             out.println(MessageCatalogue.format(locale, "overview.find.empty", Map.of("text", query)));
             return;
@@ -193,8 +198,22 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     private void printMatch(PrintWriter out, FindMatch match, String locale, String number) {
-        out.printf(TITLE_LINE, number, match.kind().value(), TerminalSanitizer.sanitizeLine(match.title()));
+        out.printf(TITLE_LINE, number, match.kind().value(), titleOfMatch(match, locale));
         out.printf(DETAIL_LINE, "", "", details(match, locale));
+    }
+
+    /**
+     * Renders a match's title as the display layer says: a blank or control-only title falls to the
+     * catalogue's word for the unit, and to {@code unit.unknown} where the catalogue knows none, so
+     * a row never carries an empty cell or a bare id.
+     *
+     * @param match  the match
+     * @param locale the interface locale
+     * @return the rendered, sanitized title
+     */
+    static String titleOfMatch(FindMatch match, String locale) {
+        var safe = TerminalSanitizer.sanitizeLine(match.title());
+        return TerminalSanitizer.sanitizeLine(Display.title(locale, safe, match.id()));
     }
 
     /**
@@ -315,11 +334,12 @@ public final class FindCommand implements Callable<Integer> {
                 out.flush();
                 var line = readChoice(reader);
                 if (line == null || ChoicePrompt.isLeave(locale, line)) {
-                    return 0;
+                    // The operator left the choice before its done state (01-commands.adoc#exit-codes).
+                    return StartPrompt.EXIT_NOT_FINISHED;
                 }
                 var selected = numberOf(line, matches.size());
                 if (selected != null) {
-                    return open(matches.get(selected - 1), out);
+                    return open(matches.get(selected - 1), out, lease.terminal());
                 }
                 out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered",
                                     Map.of("input", TerminalSanitizer.sanitizeLine(line),
@@ -361,14 +381,26 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     /**
-     * Opens one match where it belongs, through the verb of its kind.
+     * Opens one match where it belongs, through the verb of its kind, on the terminal the choice
+     * holds: the nested view reads the terminal the operator is already at, never a second one
+     * ({@code 01-commands.adoc}, the full-screen hand-off).
      *
-     * @param match the match to open
-     * @param out   the writer the view draws on
+     * @param match    the match to open
+     * @param out      the writer the view draws on
+     * @param terminal the terminal the lease holds
      * @return the exit code of the view
      */
-    private int open(FindMatch match, PrintWriter out) {
-        return PmOperator.execute(context, out, out, openCommand(match).split(" "));
+    private int open(FindMatch match, PrintWriter out, Terminal terminal) {
+        context.useTerminal(terminal);
+        try {
+            return PmOperator.execute(context, out, out, openCommand(match).split(" "));
+        } finally {
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+                // The scope was already cleared.
+            }
+        }
     }
 
     /**
@@ -382,13 +414,19 @@ public final class FindCommand implements Callable<Integer> {
      */
     static @Nullable String readField(LineReader reader, String prompt) {
         var terminal = reader.getTerminal();
-        var attributes = terminal.enterRawMode();
+        var previous = terminal.enterRawMode();
+        // The field leaves on Ctrl+C, and a terminal that keeps ISIG turns it into a signal that
+        // kills the console instead of reaching this reader: the interrupt is read as text here.
+        // The current attributes are the raw ones, so the flag changes what the raw mode left.
+        var raw = terminal.getAttributes();
+        raw.setLocalFlag(Attributes.LocalFlag.ISIG, false);
+        terminal.setAttributes(raw);
         try {
             terminal.writer().print(prompt);
             terminal.writer().flush();
             return readKeyedText(terminal);
         } finally {
-            terminal.setAttributes(attributes);
+            terminal.setAttributes(previous);
             terminal.flush();
         }
     }
@@ -454,12 +492,30 @@ public final class FindCommand implements Callable<Integer> {
     }
 
     private static void eraseLast(Terminal terminal, StringBuilder text) {
-        if (text.isEmpty()) {
+        var chars = removeLastCodePoint(text);
+        if (chars == 0) {
             return;
         }
-        text.deleteCharAt(text.length() - 1);
-        terminal.writer().print("\b \b");
+        terminal.writer().print("\b \b".repeat(chars));
         terminal.writer().flush();
+    }
+
+    /**
+     * Removes the last code point of the field's text, never half of a supplementary character:
+     * deleting one UTF-16 unit of a surrogate pair would leave a lone surrogate in the text the
+     * search is sent.
+     *
+     * @param text the field's text
+     * @return the number of terminal cells the character occupied, {@code 0} for an empty text
+     */
+    static int removeLastCodePoint(StringBuilder text) {
+        if (text.isEmpty()) {
+            return 0;
+        }
+        var codePoint = text.codePointBefore(text.length());
+        var chars = Character.charCount(codePoint);
+        text.delete(text.length() - chars, text.length());
+        return chars;
     }
 
     private static void endField(Terminal terminal) {
