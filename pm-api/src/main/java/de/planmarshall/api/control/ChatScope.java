@@ -20,6 +20,11 @@ import org.jspecify.annotations.Nullable;
  * whole epic), from the decomposition (the draft), and from a review (one register item or the
  * whole register); an ended plan or epic opens it about its archived record, and the request while
  * starting about the entry.
+ *
+ * <p>Superseded by {@code de.planmarshall.api.chat.ChatScopeKind} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
  */
 public enum ChatScope {
     PLAN("plan"),

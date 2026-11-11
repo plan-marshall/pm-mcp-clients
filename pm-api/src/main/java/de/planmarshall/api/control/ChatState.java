@@ -19,6 +19,11 @@ import java.util.Locale;
  * ({@code chat.<wire>}); the state id is that same prefixed name, as the state catalogue spells it
  * ({@code chat.open}, {@code chat.turn}, {@code chat.read-back}, {@code chat.apply},
  * {@code chat.end}).
+ *
+ * <p>Superseded by {@code de.planmarshall.api.chat.ChatStatus} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
  */
 public enum ChatState {
 

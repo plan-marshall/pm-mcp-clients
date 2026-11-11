@@ -33,8 +33,13 @@ import de.planmarshall.api.json.JsonTree;
  * project with that description stored, and the operator goes on at {@code start.sources} as with
  * any start. The follow-up plan is the entry the accepted proposal opens
  * ({@code start-follow-up}).
+ * <p>
+ * Superseded by the one chat of {@code de.planmarshall.api.chat}, whose proposal of the kind
+ * {@code follow_up} carries the follow-up plan. This type is deleted by the package that migrates its
+ * last consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
  *
- * @param subjectId   the ended plan or epic the chat is about
+ * @param subjectId  the ended plan or epic the chat is about
  * @param subjectKind {@code plan} or {@code epic}
  * @param role        the routed role ({@code replan} for a plan, {@code decompose} for an epic)
  * @param scope       the scope of the chat ({@code archive})

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,10 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.MessageText;
+import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("OverviewRecordsTest")
@@ -176,11 +181,15 @@ class OverviewRecordsTest {
                 "repeating",
                 "decision",
                 needsOperatorCount,
+                null,
                 null
         );
 
         var json = plan.toJson();
         var parsed = ActivePlanSummary.fromJson(json);
+
+        assertNull(parsed.queuedRevision());
+        assertFalse(plan.toMap().containsKey("queued_revision"));
 
         assertEquals(plan.planId(), parsed.planId());
         assertEquals(plan.title(), parsed.title());
@@ -195,6 +204,27 @@ class OverviewRecordsTest {
         assertEquals("repeating", parsed.offTrackSignal());
         assertEquals("decision", parsed.needsOperatorKind());
         assertEquals(needsOperatorCount, parsed.needsOperatorCount());
+    }
+
+    @Test
+    @DisplayName("an ActivePlanSummary carries its queued_revision through a round-trip, and refuses a malformed one")
+    void activePlanSummaryWithQueuedRevision() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var applies = new MessageText("control.chat.applies.after_task",
+                Map.of("task_id", Generators.nonBlankStrings().next()));
+        var revision = new QueuedRevision(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                new ChatSubject(ChatSubjectKind.PLAN, planId), Generators.booleans().next(), applies);
+        var plan = new ActivePlanSummary(planId, Generators.nonBlankStrings().next(), "execute", "running", null,
+                null, null, 0, 0, null, null, null, null, null, null, null, null, revision);
+
+        var parsed = ActivePlanSummary.fromJson(plan.toJson());
+        var malformed = new LinkedHashMap<>(plan.toMap());
+        malformed.put("queued_revision", Map.of("chat_id", planId));
+
+        assertAll(
+                () -> assertEquals(revision, parsed.queuedRevision()),
+                () -> assertEquals(planId, parsed.planId()),
+                () -> assertThrows(JsonFormatException.class, () -> ActivePlanSummary.fromMap(malformed)));
     }
 
     @Test
@@ -218,6 +248,7 @@ class OverviewRecordsTest {
                 0,
                 epicId,
                 epicTitle,
+                null,
                 null,
                 null,
                 null,
@@ -455,7 +486,7 @@ class OverviewRecordsTest {
     @DisplayName("validates error conditions on missing required fields or bad JSON")
     void recordValidationErrors() {
         assertThrows(NullPointerException.class, () -> new ProjectSummary(null, "Name", 0, 0, 0, null, false, null));
-        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null, null));
+        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null, null, null));
         assertThrows(NullPointerException.class, () -> new ActiveEpicSummary(null, "T", null, 0, 0, 0, 0, null, null, null));
         assertThrows(NullPointerException.class, () -> new ProjectDetailResponse(null, "D", null, null, null));
         assertThrows(NullPointerException.class, () -> new EndedWorkPage(null, null, 1, 1, false, false));
