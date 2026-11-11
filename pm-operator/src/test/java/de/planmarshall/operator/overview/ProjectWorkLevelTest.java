@@ -212,7 +212,7 @@ class ProjectWorkLevelTest {
     void twoDaysRendersInBothLanguages() {
         var plan = new ActivePlanSummary("plan-2d", "Two day plan", "execute", "running", null,
                             clock.instant().minusSeconds(2 * 86_400L), null, 2, 4, null, null, null,
-                            null, null, null, null, null);
+                            null, null, null, null, null, null);
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(plan), List.of(), List.of());
         var level = new ProjectWorkLevel(detail, false, false);
 
