@@ -146,7 +146,7 @@ public final class MockConfigRoutes {
 
     private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
         return written.computeIfAbsent(level.wire() + "|" + Objects.toString(scope, ""),
-                            _ -> new LinkedHashMap<>());
+                _ -> new LinkedHashMap<>());
     }
 
     /**
