@@ -2612,6 +2612,9 @@
         "facts": {
           "summary": "The enrolled harnesses run again with the recorded values as the proposal",
           "aspect": "harness"
+          ,"add": "",
+          "remove": "",
+          "default": "claude"
         },
         "links": [
           {
@@ -2655,6 +2658,7 @@
         "facts": {
           "summary": "The models plans may use run again with the recorded values as the proposal",
           "aspect": "catalogue"
+          ,"allow": ""
         },
         "links": [
           {
@@ -2698,6 +2702,10 @@
         "facts": {
           "summary": "The role assignments run again with the recorded values as the proposal",
           "aspect": "roles"
+          ,"set": "",
+          "reset": "",
+          "reset_all": "false",
+          "defaults": "false"
         },
         "links": [
           {
@@ -2785,6 +2793,9 @@
         "facts": {
           "summary": "The providers run again with the recorded values as the proposal",
           "aspect": "providers"
+          ,"verify": "false",
+          "use": "",
+          "without": ""
         },
         "links": [
           {

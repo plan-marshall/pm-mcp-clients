@@ -411,6 +411,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
+    private static final String KEY_INTERFACE = "interface";
+    private static final String KEY_MODEL = "model";
+    private static final String KEY_STORE = "store";
+    private static final String KEY_VERIFY = "verify";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
     private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
     private static final String KEY_LANGUAGE_MODEL = "language_model";
@@ -757,6 +761,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
 
+    /** The credential store a later run of the store aspect chose. */
+    private String machineCredentialStore = "os";
+    /** Whether the providers' later run verified them. */
+    private boolean machineProvidersVerified;
+
     /** The wire name of the operator channel, in the fixtures that report it. */
     private static final String OPERATOR_FIELD = "operator";
 
@@ -840,6 +849,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.pairingCounter = 0;
         offeredOperatorLinks.clear();
         operatorActs.clear();
+        configRoutes.clear();
         seedStateFixtures();
         designer.init(scenario);
         transitionTo(scenario.start());
@@ -852,6 +862,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     public synchronized void reset() {
         offeredOperatorLinks.clear();
         operatorActs.clear();
+        configRoutes.clear();
         this.currentPairingCode = currentScenario.get().pairingCode();
         this.pairingCounter = 0;
         this.fixtureStateId.set(currentScenario.get().start());
@@ -7227,8 +7238,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     Objects.requireNonNullElse(link.error(), "rejected"), KEY_STATE, previousState));
             return;
         }
-        if (previousState != null && previousState.startsWith("language.")) {
-            recordInterfaceLanguage(body);
+        if (previousState != null && (previousState.startsWith("language.")
+                || previousState.startsWith("language.reconfigure"))) {
+            recordInterfaceLanguage(body, previousState);
+        }
+        if (previousState != null && previousState.endsWith(".reconfigure")) {
+            recordAspectAnswer(previousState, body);
         }
         String newState;
         synchronized (this) {
@@ -7247,17 +7262,54 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Records the interface and model language the operator chose at the language step (UC-ONB-3).
+     * The first run names the fields {@code language_interface}/{@code language_model}; a later run
+     * submits the state's own {@code interface}/{@code model} facts.
      *
-     * @param body the step's request body
+     * @param body          the step's request body
+     * @param previousState the state the step left
      */
-    private void recordInterfaceLanguage(Map<String, Object> body) {
-        var chosenInterface = JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
+    private void recordInterfaceLanguage(Map<String, Object> body, String previousState) {
+        var reconfigure = previousState.startsWith("language.reconfigure");
+        var chosenInterface = reconfigure
+                ? JsonTree.string(body, KEY_INTERFACE)
+                : JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
         if (isSupportedLanguage(chosenInterface)) {
             machineLanguageInterface = Objects.requireNonNull(chosenInterface);
         }
-        var chosenModel = JsonTree.string(body, KEY_LANGUAGE_MODEL);
+        var chosenModel = reconfigure
+                ? JsonTree.string(body, KEY_MODEL)
+                : JsonTree.string(body, KEY_LANGUAGE_MODEL);
         if (isSupportedLanguage(chosenModel)) {
             machineLanguageModel = Objects.requireNonNull(chosenModel);
+        }
+    }
+
+    /**
+     * Records what a later run submitted at its own state: a plan default, the documents mode, the
+     * credential store, or nothing the aspect keeps.
+     *
+     * @param state the reconfigure state the step left
+     * @param body  the step's request body
+     */
+    private void recordAspectAnswer(String state, Map<String, Object> body) {
+        if (state.startsWith("defaults.reconfigure")) {
+            for (var key : List.of(KEY_LANDING, KEY_METHOD, KEY_ASKING)) {
+                var chosen = JsonTree.string(body, key);
+                if (chosen != null && !chosen.isBlank()) {
+                    machinePlanDefaults.put(key, chosen);
+                }
+            }
+            return;
+        }
+        if (state.startsWith("store.reconfigure")) {
+            var store = JsonTree.string(body, KEY_STORE);
+            if (store != null && !store.isBlank()) {
+                machineCredentialStore = store;
+            }
+            return;
+        }
+        if (state.startsWith("providers.reconfigure")) {
+            machineProvidersVerified = JsonTree.bool(body, KEY_VERIFY) == Boolean.TRUE;
         }
     }
 
@@ -7305,6 +7357,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             values.put("sources.documents_mode", machineDocumentsMode);
             machinePlanDefaults.forEach((key, value) -> values.put("plan_defaults." + key, value));
             machineCleanupDurations.forEach((key, value) -> values.put("cleanup." + key, value));
+            values.put("harness.default", CONST_CLAUDE);
+            values.put("models.allowed", "4");
+            values.put("roles.assigned", "31");
+            values.put("credentials.store", machineCredentialStore);
+            values.put("providers.enabled", machineProvidersVerified ? "github (verified)" : "github");
         }
         return values;
     }

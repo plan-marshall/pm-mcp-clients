@@ -305,12 +305,24 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config harnesses stops with code 3 on --no-input without consent")
-    void configHarnessesNoInputNeedsConsent() {
+    @DisplayName("config harnesses stops with code 3 when --no-input meets the scan consent")
+    void configHarnessesNoInputNeedsConsent() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                response.json(200, request.bodyText().contains("reconfigure:harnesses")
+                                    ? HARNESS_CONSENT : SETTINGS_CHOOSE);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
         int code = execute("config", "harnesses", "--add", "codex", "--no-input");
         assertAll(
-                            () -> assertEquals(3, code),
-                            () -> assertTrue(out.toString().contains("Needs a choice: --consent scan_harnesses"))
+                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("The run stopped at a choice it was not given"),
+                                                out.toString())
         );
     }
 

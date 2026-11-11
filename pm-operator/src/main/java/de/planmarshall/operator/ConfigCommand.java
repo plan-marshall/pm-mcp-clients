@@ -642,6 +642,11 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
+            if (machine && (project != null || plan != null)) {
+                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             var body = new LinkedHashMap<String, Object>();
             body.put(VALUE, value);
             var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
@@ -700,6 +705,11 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 1;
             }
             if (project != null && plan != null) {
+                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            if (machine && (project != null || plan != null)) {
                 out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
@@ -788,15 +798,6 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
-            if (noInput && (consent == null || !consent.contains("scan_harnesses"))) {
-                var out = spec.commandLine().getOut();
-                out.println(MessageCatalogue.format(locale, "operator.config.harnesses_title", Map.of()));
-                out.println(MessageCatalogue.format(locale, "operator.config.needs_choice",
-                                    Map.of("option", "--consent scan_harnesses")));
-                out.flush();
-                return 3;
-            }
             var facts = new LinkedHashMap<String, String>();
             if (add != null && !add.isEmpty()) {
                 facts.put("add", String.join(",", add));

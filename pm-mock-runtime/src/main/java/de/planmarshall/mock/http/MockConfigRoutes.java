@@ -55,7 +55,7 @@ public final class MockConfigRoutes {
     /** The keys an aspect owns, as the terminal client refuses them (`409 aspect_owned`). */
     private static final List<String> ASPECT_OWNED = List.of(
             "language.", "harness.", "models.", "credentials.store", "providers.",
-            "plan_defaults.", "sources.documents_mode", "roles.");
+            "plan_defaults.", "sources.documents_mode", "roles.", "roles");
 
     private final Map<String, Map<String, Object>> written = new LinkedHashMap<>();
     private long revision;
@@ -106,23 +106,34 @@ public final class MockConfigRoutes {
 
     /**
      * @param query the request's query string, or {@code null}
-     * @return the project or plan the query names, or {@code null} when it names neither
+     * @param name  the parameter to read
+     * @return the parameter's value, or {@code null} when the query names nothing
      */
-    private static @Nullable String scopeOf(@Nullable String query) {
+    private static @Nullable String scopeValue(@Nullable String query, String name) {
         if (query == null) {
             return null;
         }
         for (var pair : query.split("&")) {
             var separator = pair.indexOf('=');
-            if (separator > 0) {
-                var name = pair.substring(0, separator);
+            if (separator > 0 && name.equals(pair.substring(0, separator))) {
                 var value = pair.substring(separator + 1);
-                if ((KEY_PROJECT.equals(name) || KEY_PLAN.equals(name)) && !value.isBlank()) {
-                    return name + "=" + value;
-                }
+                return value.isBlank() ? null : value;
             }
         }
         return null;
+    }
+
+    /**
+     * @param query the request's query string, or {@code null}
+     * @return the scope a write is stored under, or {@code null} for the machine-wide store
+     */
+    private static @Nullable String scopeOf(@Nullable String query) {
+        var project = scopeValue(query, KEY_PROJECT);
+        if (project != null) {
+            return KEY_PROJECT + "=" + project;
+        }
+        var plan = scopeValue(query, KEY_PLAN);
+        return plan == null ? null : KEY_PLAN + "=" + plan;
     }
 
     private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value,
@@ -138,12 +149,22 @@ public final class MockConfigRoutes {
 
     private void delete(MockHttpResponse response, ConfigOrigin level, String key, @Nullable String scope)
             throws IOException {
-        var removed = byLevel(level, scope).remove(key);
-        if (removed == null) {
+        var values = byLevel(level, scope);
+        if (!values.containsKey(key)) {
             response.json(404, Map.of(KEY_ERROR, "config_key_unknown"));
             return;
         }
+        values.remove(key);
         response.send(204, null, "");
+    }
+
+    /**
+     * Forgets every value a {@code PUT} wrote, so a reset or a scenario switch does not carry a
+     * previous state's configuration.
+     */
+    public void clear() {
+        written.clear();
+        revision = 0;
     }
 
     private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
@@ -169,27 +190,45 @@ public final class MockConfigRoutes {
     }
 
     private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query) {
-        var scope = scopeOf(query);
+        var project = scopeValue(query, KEY_PROJECT);
+        var plan = scopeValue(query, KEY_PLAN);
         var keys = new TreeMap<String, Boolean>();
         machineValues.keySet().forEach(key -> keys.put(key, Boolean.TRUE));
         for (var level : OPERATOR_LEVELS) {
-            byLevel(level, scope).keySet().forEach(key -> keys.put(key, Boolean.TRUE));
+            byLevel(level, levelScope(level, project, plan)).keySet()
+                    .forEach(key -> keys.put(key, Boolean.TRUE));
         }
         var resources = new ArrayList<Map<String, Object>>();
         for (var key : keys.keySet()) {
-            resources.add(effective(key, machineValues, scope));
+            resources.add(effective(key, machineValues, project, plan));
         }
         return resources;
     }
 
-    private Map<String, Object> effective(String key, Map<String, Object> machineValues, @Nullable String scope) {
+    /**
+     * @param level   a level
+     * @param project the project the read names, or {@code null}
+     * @param plan    the plan the read names, or {@code null}
+     * @return the scope that level's values are stored under: each level keeps its own identity, so a
+     *         plan read inherits the machine's and its project's values
+     */
+    private static @Nullable String levelScope(ConfigOrigin level, @Nullable String project, @Nullable String plan) {
+        return switch (level) {
+            case MACHINE, DEFAULT, DERIVED -> null;
+            case PROJECT, TEAM -> project == null ? null : KEY_PROJECT + "=" + project;
+            case PLAN -> plan == null ? null : KEY_PLAN + "=" + plan;
+        };
+    }
+
+    private Map<String, Object> effective(String key, Map<String, Object> machineValues,
+            @Nullable String project, @Nullable String plan) {
         ConfigOrigin origin = null;
         Object value = null;
         ConfigOrigin overridden = null;
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
-            var levelValue = byLevel(level, scope).get(key);
+            var levelValue = byLevel(level, levelScope(level, project, plan)).get(key);
             if (levelValue == null && level == ConfigOrigin.MACHINE) {
                 levelValue = machineValues.get(key);
             }
