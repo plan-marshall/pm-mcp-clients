@@ -56,6 +56,23 @@ Not in this plan: `StartView`, its footer and its steps (PLAN-53 owns them, with
    - Browser check (Playwright MCP) on the scenario `decomposition.spec.js` uses and on `projects-and-start` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for the views (evidence order: `none`).
    - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
+5. **What PLAN-158 left in the start steps and the mock (from its landing, folded 2026-11-11 on the operator's decision)**
+ - What: read `landings/PLAN-158.md` of the epic; lines as read at `4a84f727`.
+   - `StartView.svelte:790-800`: the decomposition error with its Retry is a raw `<button data-testid="decomposition-retry">`
+     with no test; use the shared `Button` and add the test.
+   - The mock's not-found codes are pinned per code, not per site: the project-route decomposition handlers
+     (`MockRuntimeEngine.java` ~`:3483,3500,3533,3638`, only the status asserted in `DecompositionScenarioTest:222`), the
+     device DELETE (~`:2283`), the chat turns POST (`ControlScenarioTest` asserts the status only), the accept-edit store
+     (~`:8250`) and the archive-check target arm (`:5015`): assert the code at each site. An unknown plan answers
+     `scope_not_found` for tokens and the plan view but `target_not_found` for its chat (`ControlScenarioTest`
+     `unknownSubject`): make plans follow the split epics follow (`:5044,5053`).
+ - Persona: plan-marshall:persona-module-tester
+ - Skills: pm-dev-frontend:jest-testing, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - The StartView test and each per-site pin fail when their line is reverted (evidence order: `mutation-after`).
+
+Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator folded here (2026-11-11). Rationale recorded by the orchestrator.
+
 ## Standing Constraints
 
 - Build and test through Maven only (`CLAUDE.md`): `./mvnw -pl pm-web-app verify`, `-Ppre-commit` (review every rewrite), and at the head `PM_MOCK_WEB_PORT=<mock port> PM_WEB_PORT=<app port> ./mvnw -pl pm-web-e2e verify -Pe2e`.
@@ -98,6 +115,11 @@ Not in this plan: `StartView`, its footer and its steps (PLAN-53 owns them, with
 - OBSERVED: `pm-api/src/main/resources/messages/decomposition.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/decomposition.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/starting-work.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/DecompositionScenarioTest.java` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ControlScenarioTest.java` — present at `4a84f727` (PLAN-158 residue, folded 2026-11-11)
 
 ## Dependencies and Sequencing
 

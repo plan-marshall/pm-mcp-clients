@@ -653,6 +653,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-10: `rb-33-verify-cli-acts-005.md` (PLAN-33, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-11: `rb-129-web-reports-fifth-residue-001.md` (PLAN-129, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-11: `rb-123-cli-display-layer-residue-002.md` (PLAN-123, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-11: `rb-158-web-error-pattern-residue-001.md` (PLAN-158, opencode), `total_tokens` and `plugin_version` missing.
+- A lane writes `unresolved_review_threads=0` for a count its gate could not read (found at the PLAN-158 landing, 2026-11-11):
+  `runbook_lane review-gate` answered `undecidable_read` on #408 (it cannot parse CodeRabbit's informational "Files with no
+  reviewable changes" block), the operator merged despite it, and the landing claimed 0 unresolved threads while 3
+  CodeRabbit threads of a second review stood unanswered (`landings/PLAN-158.md`; the findings went to PLAN-154 D5). Owner:
+  plan-marshall (runbook lane: parse the block; write `unknown`, never `0`, for an unread count). Until fixed the orchestrator
+  counts open inline threads from `ci pr comments` at every landing.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:

@@ -2,10 +2,10 @@
   "id": "PLAN-158",
   "slug": "web-error-pattern-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
   "plan_marshall_plan_id": "rb-158-web-error-pattern-residue",
-  "pr": "",
-  "landing": "",
+  "pr": "408",
+  "landing": "landings/PLAN-158.md",
   "seq": 158
 }
