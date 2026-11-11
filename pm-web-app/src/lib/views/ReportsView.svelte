@@ -44,6 +44,8 @@
   let loadErrorRegion = $state<HTMLElement | null>(null);
   /** Whether the list has been served at least once, so an error beside it is an arrival. */
   let hasShownList = $state(false);
+  /** The generation of the newest list read; an answer older than it is dropped. */
+  let loadGeneration = 0;
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -69,11 +71,14 @@
    */
   let retainedReadIds = $state<Record<string, boolean>>({});
   /**
-   * The reports whose mark-read request is still in flight. Closing the detail must not drop such a
-   * row yet: a failed request has to put it back as unread. A reload must also keep the read
-   * accounted for until the response settles.
+   * The reports whose mark-read request is still in flight, and how many requests hold each one.
+   *
+   * A row whose read is in flight must not be dropped yet: a failed request has to put it back as
+   * unread, and a reload must keep the read accounted for until the response settles. A mark-all and
+   * a single mark-read can hold the same row at once, so the count decides when it is settled —
+   * the first request to finish does not release the other one's hold.
    */
-  const pendingReadIds = new Set<string>();
+  const pendingReadIds = new Map<string, number>();
   /**
    * The reads this view has already counted against the unread count.
    *
@@ -82,6 +87,29 @@
    * event is a no-op for the same reason.
    */
   const countedReadIds = new Set<string>();
+
+  /**
+   * Records one request holding a row's read.
+   *
+   * @param id the report id
+   */
+  function holdPendingRead(id: string): void {
+    pendingReadIds.set(id, (pendingReadIds.get(id) ?? 0) + 1);
+  }
+
+  /**
+   * Releases one request's hold on a row's read, keeping the row in flight while another holds it.
+   *
+   * @param id the report id
+   */
+  function releasePendingRead(id: string): void {
+    const holds = (pendingReadIds.get(id) ?? 0) - 1;
+    if (holds > 0) {
+      pendingReadIds.set(id, holds);
+    } else {
+      pendingReadIds.delete(id);
+    }
+  }
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -252,6 +280,22 @@
   }
 
   /**
+   * Drops the retained rows that have no open detail any more, once the requests in flight settled.
+   *
+   * A detail the operator closes while a request runs cannot drop its row then — the outcome decides
+   * whether it goes or comes back as unread — so the drop happens when that request is done.
+   */
+  function settleRetainedReads(): void {
+    for (const id of Object.keys(retainedReadIds)) {
+      if (pendingReadIds.has(id)) continue;
+      const row = items.find((item) => item.id === id);
+      if (!row || activeDetailPlanId === null || planIdOf(row) !== activeDetailPlanId) {
+        dropRetainedRow(id);
+      }
+    }
+  }
+
+  /**
    * Drops one retained row.
    *
    * The row's read stays counted: its event may still arrive after the detail closed, and a second
@@ -393,16 +437,19 @@
   }
 
   async function loadReports() {
-    // The refresh form of the loading pattern: a list already on screen is not replaced by
+    const generation = ++loadGeneration;
+    // The refresh form of the loading pattern: a list that was ever on screen is not replaced by
     // skeletons — that would take the scroll position, the focus and an open row menu with it.
-    // Only a first read, with no rows yet, draws the skeletons.
-    const hadRows = items.length > 0;
+    // Only a read before the page was shown draws the skeletons.
+    const hadRows = hasShownList;
     isLoading = !hadRows;
     refreshing = hadRows;
     loadError = null;
     actionError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
+      // A newer read owns the list now: this answer is older than it, even though it arrived last.
+      if (generation !== loadGeneration) return;
       const served = page.items || [];
       const servedIds = new Set(served.map((fresh) => fresh.id));
       // A row read beside its open detail stays in the list even when a reload no longer serves it:
@@ -431,10 +478,13 @@
       hasShownList = true;
       void refreshReportsCount();
     } catch (err: unknown) {
+      if (generation !== loadGeneration) return;
       loadError = errorCodeOf(err);
     } finally {
-      isLoading = false;
-      refreshing = false;
+      if (generation === loadGeneration) {
+        isLoading = false;
+        refreshing = false;
+      }
     }
   }
 
@@ -500,7 +550,7 @@
    */
   async function markRead(item: ReportItem, retain = false) {
     const alreadyRead = Boolean(retainedReadIds[item.id]);
-    pendingReadIds.add(item.id);
+    holdPendingRead(item.id);
     if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
@@ -511,7 +561,7 @@
         countedReadIds.add(item.id);
         unreadCount = Math.max(0, unreadCount - 1);
       }
-      pendingReadIds.delete(item.id);
+      releasePendingRead(item.id);
       if (retain) {
         // The detail may have closed while the request was in flight; a row no longer beside an
         // open detail goes as read now.
@@ -522,13 +572,16 @@
       }
       void refreshReportsCount();
     } catch (err: unknown) {
-      pendingReadIds.delete(item.id);
-      if (retain) {
+      releasePendingRead(item.id);
+      // A read the runtime has already reported stays read: its event counted it, and taking the
+      // marker back would put a row the runtime read back as unread (the rule mark-all follows too).
+      if (retain && !countedReadIds.has(item.id)) {
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = () => markRead(item, retain);
       actionError = actFailureText(err, $t('report.list.mark_read_failed'));
+      settleRetainedReads();
     }
   }
 
@@ -550,7 +603,7 @@
     isMarkingAll = true;
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
-    for (const id of shownIds) pendingReadIds.add(id);
+    for (const id of shownIds) holdPendingRead(id);
 
     // Pre-mark retention for the open report among shown items before the network request
     // so an early report.read event does not discard it while in flight.
@@ -604,8 +657,11 @@
       retryAction = markAllShownRead;
       actionError = actFailureText(err, $t('report.list.mark_all_failed'));
     } finally {
-      for (const id of shownIds) pendingReadIds.delete(id);
+      for (const id of shownIds) releasePendingRead(id);
       isMarkingAll = false;
+      // A detail that closed while the act ran leaves no row to keep beside it: the outcome is
+      // known now, so a retained row without an open detail goes.
+      settleRetainedReads();
     }
   }
 

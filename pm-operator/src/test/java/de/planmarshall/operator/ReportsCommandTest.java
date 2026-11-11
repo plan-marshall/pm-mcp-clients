@@ -23,6 +23,9 @@ import java.util.HashMap;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("ReportsCommand")
+@EnableGeneratorController
 class ReportsCommandTest {
 
     @TempDir
@@ -119,24 +123,29 @@ class ReportsCommandTest {
     }
 
     @Test
-    @DisplayName("reports read --all reads the list first and marks the ids it read")
+    @DisplayName("reports read --all reads the list first, marks the ids it read, and says nothing about older pages when there are none")
     void reportsReadAll() throws Exception {
+        var firstId = "rep-" + Generators.integers(1000, 9999).next();
+        var secondId = "rep-" + Generators.integers(1000, 9999).next();
+        var thirdId = "rep-" + Generators.integers(1000, 9999).next();
+        var unreadCount = Generators.integers(3, 9).next();
+        var markedCount = Generators.integers(1, 9).next();
         var server = fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {
                                       "items": [
-                                        {"id":"rep-0142","subject":"fix-relay"},
-                                        {"id":"rep-0139","subject":"docs-typo"},
-                                        {"id":"rep-0131","subject":"Onboarded"}
+                                        {"id":"%s","subject":"fix-relay"},
+                                        {"id":"%s","subject":"docs-typo"},
+                                        {"id":"%s","subject":"Onboarded"}
                                       ],
-                                      "unread_count": 3,
+                                      "unread_count": %d,
                                       "has_older": false,
                                       "older_count": 0
                                     }
-                                    """);
+                                    """.formatted(firstId, secondId, thirdId, unreadCount));
             } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"count\":3}");
+                response.json(200, "{\"count\":" + markedCount + "}");
             } else {
                 response.send(404, null, "");
             }
@@ -155,11 +164,13 @@ class ReportsCommandTest {
                             () -> assertTrue(requests.get(0).receivedNanos() <= requests.get(1).receivedNanos(),
                                                 "the list read precedes the ids write"),
                             () -> assertTrue(requests.get(1).bodyText().contains(
-                                                                    "\"report_ids\":[\"rep-0142\",\"rep-0139\",\"rep-0131\"]"),
+                                                                    "\"report_ids\":[\"" + firstId + "\",\"" + secondId + "\",\"" + thirdId + "\"]"),
                                                 requests.get(1).bodyText()),
                             () -> assertFalse(requests.get(1).bodyText().contains("\"all\""),
                                                 requests.get(1).bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ 3 reports marked read."))
+                            () -> assertTrue(out.toString().contains("✓ " + markedCount + " reports marked read.")),
+                            () -> assertFalse(out.toString().contains("older unread reports remain"),
+                                                "a list with no second page prints no older-page hint: " + out)
         );
     }
 
