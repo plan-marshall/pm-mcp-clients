@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-07
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Drafted 2026-11-10 from the AGREED
+> Staged plan spec, one shippable unit of work, ready for hand-off on the `plan-marshall` lane. Drafted 2026-11-10 from the AGREED
 > D4 and D5 documents. SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -157,10 +157,13 @@ Re-read every file above at the then-current HEAD; settle the HYPOTHESES; re-run
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-11 by the operator's size rule: 16 files, five deliverables of new mock behaviour). Emitted
+2026-11-11 on the operator's word as a fifth plan beside N=4 (PLAN-32, 126, 159, 147). Since staging: PLAN-132 landed (#409,
+`572dc739`) and PLAN-45 landed (#399); overlaps now running: PLAN-126 (`MockRuntimeEngine.java`), PLAN-159 (`running-work.json`,
+`fully-onboarded.json`), PLAN-32 (`mock/http/`, if an SSE flush is added) — whichever lands second rebases.
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-133-chat-mock-runtime.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-133-chat-mock-runtime.md"
 ```
 
 ## Write-Boundary
