@@ -11,8 +11,9 @@ workstream: WS-07
 The AGREED design shows the same `Chat` in every place the operator talks to a role: a decision, the start, the decomposition,
 the review of an epic's findings and watches, a project's setup question, and ended work. The web app has a different chat in
 each of them, all drawn by `ChatPanel`, and the D5 defects live there (a decision's answers disabled the whole time its chat is
-open, a review chat that ignores the item and never ends on the server). This plan puts `Chat` into those places, gives
-`WizardPage` its side column, and deletes `ChatPanel` and the old chat client. The plan's and the epic's own chat acts were
+open, a review chat that ignores the item and never ends on the server). This plan puts `Chat` into those places, through the
+side column `PLAN-142` builds on `WizardPage` and `TriagePage` (D6: no side column of the chat's own), and deletes `ChatPanel` and
+the old chat client. The plan's and the epic's own chat acts were
 done by PLAN-135.
 
 ## Deliverables
@@ -22,10 +23,13 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 `doc/design/shared/starting-work.adoc` § `#chat`; `doc/design/shared/work-actions.adoc` § `#chat-places`, `#chat-ended`, `#review`;
 `doc/design/shared/project-onboarding.adoc`.
 
-1. **`WizardPage` hosts the side column; the start's and the project setup's chat**
+1. **The chat in `WizardPage`'s side column; the start's and the project setup's chat**
  - What:
-   - A side slot on `WizardPage` (`chat=open`, the same width and take-the-space rules as the object column's, `Hide the chat`
-     returns to the wizard's content); where the window cannot show both the content drops below `480` px the chat takes the space.
+   - No side slot of this plan's own (D6 Q5). The wizard views pass `Chat` to `WizardPage`'s `side`, `sideOpen` (from `chat=open`)
+     and `onHideSide` (_Hide the chat_ and `Escape`, a replace without `chat`), which `PLAN-142` builds with the API of
+     `components.adoc#triage-page` (:374) and `#templates` (:361). Width (`480`, or `400` where `480` would drop the wizard's content
+     below `480`), the take-the-space rule, _Hide the chat_ returning to the wizard's content, and the phone (the chat takes the screen
+     and the bottom bar) are the template's, measured on its container; this plan asserts them in its views' tests.
    - The start's chat (`start.sources`, `start-epic.sources`): `refine` for a plan, `decompose` for an epic, not for a recipe, offered
      once a source is stored and each source from outside the machine is screened; proposals are a rewrite of or an addition to the
      description, stored through `start.store-description`, never another source; keys `control.chat.*`, never `start.*`.
@@ -35,8 +39,9 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
-   - `WizardPage.test.ts`, `StartView.scenarios.test.ts` and `ProjectOnboardingView.test.ts` assert the column, the offering rule, a
-     recipe without chat, an untrusted source marked, and the stored description (evidence order: `test-first`).
+   - `StartView.scenarios.test.ts` and `ProjectOnboardingView.test.ts` assert the chat in the wizard's side column (`sideOpen` from
+     `chat=open`, hidden by `onHideSide`), the offering rule, a recipe without chat, an untrusted source marked, and the stored
+     description (evidence order: `test-first`).
 2. **The decomposition chat and the epic review chat**
  - What:
    - The decomposition draft's chat and the review chat of one item or of the whole register as `Chat` with the scope the design names
@@ -51,7 +56,8 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
      the review (evidence order: `test-first`).
 3. **The decision chat**
  - What:
-   - `Chat` beside the decision; the decision stays visible and answerable, its answers disabled only while the role writes a reply or a
+   - `Chat` beside the decision, in the column engine's side column (`TriagePage`'s `side`, `PLAN-142`); a decision's own chat opens at
+     the decision's own address (`/decisions/Q-007?chat=open`), never as the chat of a decision opened in place; the decision stays visible and answerable, its answers disabled only while the role writes a reply or a
      proposal waits for Accept or Reject, with the visible line that says why and the act that opens the chat (`web.chat.answers_wait`),
      enabled otherwise (today `DecisionView` disables them the whole time a chat is open). Answering closes the decision and ends its chat
      with it; a decision answered elsewhere ends the chat with `decision.chat.closed_elsewhere`; a waiver request offers no chat.
@@ -118,6 +124,8 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 - OBSERVED: `EpicView.svelte` renders `ChatPanel` for the review chat — read at `pm-web-app/src/lib/views/EpicView.svelte:973`
 - OBSERVED: `StartView.svelte` renders `ChatPanel` with `entry?.chat_available` — read at `pm-web-app/src/lib/views/StartView.svelte:912,1116,1125`
 - OBSERVED: `WizardPage.svelte` has the slots `steps`, default, `back`, `secondary`, `primary` and no side slot — read at `pm-web-app/src/lib/templates/WizardPage.svelte`
+- OBSERVED: D6 fixed the side column on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`, built by `PLAN-142`), none on `ObjectPage` and none in the chat plans; `open=` forms wait for `PLAN-143`; a decision's own chat is at `/decisions/{id}?chat=open` — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418`, `doc/design/web-app/chat.adoc:40,342` (`4a84f727`, D6 merged `8568b56e`)
+- HYPOTHESIS: each place's view sits on `WizardPage` (the start, the decomposition, the project's setup step) or on `TriagePage` (a decision, the epic's review, ended work) at the then-current HEAD, so its `Chat` has a `side` to go into — confirm/refute at each view's template use (verify-at-outline; a place whose view is on neither stops and loops back for that place: no interim slot)
 - OBSERVED: the docs define no route for the decomposition draft's chat or for a review chat — read at `../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc:166-168,280`
 - HYPOTHESIS: the decision answers are disabled while a chat is open at `DecisionView.svelte` ~1011, 1058, 1161 (lines from `plan-125-001.md`, 2026-11-09) — confirm/refute at `pm-web-app/src/lib/views/DecisionView.svelte` § `isChatting` (verify-at-outline)
 - HYPOTHESIS: the review chat ignores the item at `EpicView.svelte` ~472 and never ends on the server at ~506 (same source) — confirm/refute at `pm-web-app/src/lib/views/EpicView.svelte` § review chat (verify-at-outline)
@@ -127,8 +135,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 
 ## Expected Surface
 
-- OBSERVED: `pm-web-app/src/lib/templates/WizardPage.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/templates/WizardPage.test.ts` — present at `1cc0e10e`
+- OBSERVED: `pm-web-app/src/lib/templates/WizardPage.svelte` — present at `1cc0e10e` (read only: its `side`, `sideOpen`, `onHideSide` are `PLAN-142`'s)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at `1cc0e10e`
@@ -151,7 +158,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-136` (and through it C1, B3); the operator's answers to O3 (who adopts the chat in the views) and O10 (the two chat addresses).
+- Depends on: `PLAN-136` (and through it C1, B3); `PLAN-142` (the side column on `WizardPage` and `TriagePage`; D6); the operator's answers to O3 (who adopts the chat in the views) and O10 (the two chat addresses). `PLAN-143` is soft: the `open=` forms of status cards and reference chips are written only once it has landed; until then the pushed address is the only form.
 - Overlaps with:
   - `PLAN-51` (parked): `DecisionView.svelte`; this plan supersedes its deliverable 6 ("chat guards") and the chat line of its design-review amendment.
   - `PLAN-53` (parked): `StartView.svelte`; its chat line of the amendment is superseded.
@@ -183,7 +190,10 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Chat adoption (O3):** this plan replaces every `ChatPanel` call site and the onboarding drawer, then deletes `ChatPanel`; the parked view plans only place `Chat` in their layouts.
 - **Review and decomposition chats (O10):** own addresses, as PLAN-132 records.
-- **Side column (O2):** per the D6 design session.
+- **Side column (O2):** per the D6 design session. *Settled 2026-11-11:* D6 merged (#403, `8568b56e`): no interim slot; the chat
+  goes into `PLAN-142`'s `side` on `WizardPage` and `TriagePage` (`ObjectPage` has none); this plan builds no side slot on
+  `WizardPage` (deliverable 1 is rewritten accordingly; `WizardPage.test.ts` left the surface); `480`/`400` are measured on the
+  container; on a phone the chat takes the screen and the bottom bar.
 
 ## Staging Note 2026-11-10
 

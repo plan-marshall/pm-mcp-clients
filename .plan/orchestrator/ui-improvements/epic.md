@@ -584,6 +584,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   clause the finding's own evidence passes (the frame is German), so V-04 reads `pass` once #402 is in; PLAN-33's result
   file keeps its `fail` row as the record of the old wording.
 
+- 2026-11-11 — Operator (AskUserQuestion, four answers): #402 queued and merged (`5fc36ebf`); #405 merges once CodeRabbit
+  has reviewed one head (re-triggered once, 2026-11-11); the three open #408 threads replied (routed to PLAN-154 D5) and
+  resolved by the orchestrator; the D6 session is closed and its worktree and local branch removed; the D6 spec amendments
+  are done now: PLAN-52, 55, 58, 62, 135..137, 142..146 amended in the epic tree, the contract + mock step staged as
+  PLAN-159 (`contract-intent-delta`, WS-01, runbook) ahead of PLAN-145, and `doc/plans/plan-changes.adoc` reworded by
+  direct PR #413 (`skip-bot-review`).
+
 ## Open Defects
 
 - A lane merges with NO bot review (2026-11-10, PLAN-36 #391): CodeRabbit refused every trigger on quota and the
@@ -705,6 +712,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   → PLAN-33 LANDED 2026-11-10 (#398, `344515f9`): see `landings/PLAN-33.md`. The verdict corrections (V-06 stale check,
   UC-ONB-2 not verified, four `conforms` → `partial`, Totals 4/19/0/0/14) ride PR #402 (operator); the accept-edit gap is
   folded into PLAN-127. Retire this watch when #402 is merged.
+  → RETIRED 2026-11-11: #402 merged `5fc36ebf` (operator's word).
 - PLAN-45 landed (PR #399, `9fb2e7fa`, analysed 2026-11-10); see `landings/PLAN-45.md`. Error pattern on every load path,
   15 s / 30 s client limit, closed client code set, ReportsView refresh keeps the list; Sonar 0 (gate OK, coverage 100 %);
   merge rule met (CodeRabbit reviewed `6c1c634e`, 6/6 handled). Browser clauses of D1–D3 unmet (reduced matrix). Three-layer:
@@ -746,6 +754,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   for 142, 143), PLAN-142 (side props on TriagePage/WizardPage), PLAN-143 (history.state mark, two entry points), PLAN-144
   (lens segment and Up push the unfilled list), PLAN-145 (verdict tag, texts, `NG-n`, `role`; a contract + mock step
   before it — stage or fold), PLAN-146 (chart on PLAN-59's setup tab).
+  → DONE 2026-11-11 (see Decisions): amendments made, PLAN-159 staged, #413 open. Open questions recorded in the
+  specs as HYPOTHESES: the engine allows 0 non-goals on the light lane while the client and design ask one or more
+  (PLAN-159); the over_size route carries one role and no role parameter, the design one chart per role (PLAN-146,
+  PLAN-159); the builder reason's wire name `reason` and an omitted `proposed_multiple` (no daemon route spec yet).
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE

@@ -49,9 +49,10 @@ in the ledger.
 
 - [x] row `status` → `shipped`; `pr` 403; `landing` `landings/PLAN-141.md`
 - [x] epic.md Watch retired to this report; the owed amendments stay listed there until done
-- [ ] spec amendments owed: PLAN-52, 55, 58, 62, 135..137, 142..146; `doc/plans/plan-changes.adoc` (`?tab=changes&file=`, a
-  repository document: a direct change); a contract + mock step before PLAN-145 (stage, or fold into PLAN-145)
-- [ ] the D6 worktree `.plan/local/worktrees/141-design-d6-tabs-intent-and-side-column` and its local branch to remove
+- [x] spec amendments (2026-11-11): PLAN-52, 55, 58, 62, 135..137, 142..146 amended (one sub-agent, the orchestrator
+  re-read the PLAN-145 catalogue claim); `doc/plans/plan-changes.adoc` by direct PR #413; the contract + mock step staged
+  as PLAN-159 (`contract-intent-delta`, WS-01, runbook), which PLAN-145 and PLAN-146 now depend on
+- [x] the D6 worktree and its local branch removed (operator 2026-11-11: session closed; the remote branch was already deleted at the merge)
 
 ## Follow-Ups
 

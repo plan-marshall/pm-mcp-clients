@@ -14,16 +14,18 @@ D2 (PLAN-113, merged `95df75bb`, AGREED) designed navigation as a chain of level
 still has `TriagePage` as a 40/60 split with a viewport breakpoint at 1099 px (its only user is `ReportsView`), `ObjectPage`
 with a `path` slot and a 1440 px cap, and no side column on any template. This plan builds the engine the design specifies:
 the column window as one tested function of the container width, `TriagePage` as the column engine, the gap strip with its
-peek, the focus and the live announcement, `ObjectPage` as the object column, and the side column on the three templates for
-the chat. The address scheme is PLAN-143 and Up, the breadcrumb and the shell are PLAN-144.
+peek, the focus and the live announcement, `ObjectPage` as the object column, and the side column on `TriagePage` and
+`WizardPage` for the chat (D6: `ObjectPage` has no side column of its own). The address scheme is PLAN-143 and Up, the breadcrumb
+and the shell are PLAN-144.
 
 ## Deliverables
 
 The documents are the specification; read them first: `doc/design/web-app/navigation.adoc` (#levels, #column-types, #missing,
 #window, #width-table, #gap-strip, #keys, #phone, #side-columns, #texts), `doc/design/web-app/components.adoc` (#triage-page,
 #object-page, #templates), `doc/design/web-app/view-density-and-filtering.adoc` (#templates), `doc/design/web-app/README.adoc`
-(#grid). The D6 documents decide the side column's scope (Q5): if they say the chat plans build an interim slot, deliverable 4
-keeps only the engine-side API and the verify-first clause applies.
+(#grid). D6 merged (#403, `8568b56e`) and settled the side column's scope (Q5): no interim slot in the chat plans; this plan
+delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` only, with the API fixed in `components.adoc#triage-page`
+(:374) and `#templates` (:361); `ObjectPage` has no side (`components.adoc#object-page` :381).
 
 1. **The column window as one function**
  - What:
@@ -35,18 +37,19 @@ keeps only the engine-side API and the verify-first clause applies.
      else two with the strip of marks where `220 + 480 + 44 ≤ W`; else one column and no strip; list columns share the room left
      and never exceed `320`; the object column takes the rest; with no level hidden there is no strip. `W` is the container less
      the page inset (`24` each side, `12` below `480`).
-   - The side column: `480`, or `400` where `480` would cost the window a column; where the window cannot show the object and
-     the side column side by side the side column takes the space.
+   - The side column: `480`, or `400` where `480` would cost the window a column (or would drop a wizard's content below `480`);
+     where the window cannot show the object and the side column side by side the side column takes the space. `W` is the
+     template's container, never the viewport (D6).
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - `columnWindow.test.ts` pins every cell of both tables (`navigation.adoc:118-155` and `:279-301`: viewports `360`, `768`, `1024`,
+   - `columnWindow.test.ts` pins every cell of both tables (`navigation.adoc:118-155` and `:286-308` at `4a84f727`: viewports `360`, `768`, `1024`,
      `1280`, `1440`, `1920`, rail expanded `232` and collapsed `64`, chat closed and open), the boundaries one pixel either side
      (`W` `743/744`, `835/836`), the `320` cap and the one-column case; reverting a constant fails it. Evidence order: `test-first`.
 2. **`TriagePage` as the column engine**
  - What:
-   - `TriagePage.svelte` takes `levels` (`key`, `kind`, `title`, `href`, `state`), `label` and `side`, one snippet per level for
-     its column's body and one for the object column. It measures its own container with a `ResizeObserver` (not the viewport)
+   - `TriagePage.svelte` takes `levels` (`key`, `kind`, `title`, `href`, `state`), `label`, `side`, `sideOpen` and `onHideSide`
+     (deliverable 4), one snippet per level for its column's body and one for the object column. It measures its own container with a `ResizeObserver` (not the viewport)
      and computes again on every change of the container's width.
    - It renders only the columns of the window: a column out of the window is not rendered, not only moved out of sight. Each
      column scrolls on its own and the page never scrolls sideways. Widths are applied with `style:` directives (the CSSOM), never
@@ -83,20 +86,29 @@ keeps only the engine-side API and the verify-first clause applies.
    - `GapStrip.test.ts` and `TriagePage.test.ts`: names versus marks, the popover, the peek and its return, the focus after a
      shift, the announcement text, the keys with and without a focused field, reduced motion (no transition). Evidence order:
      `test-first`.
-4. **The object column and the side column on the templates**
+4. **The object column, and the side column on `TriagePage` and `WizardPage`**
  - What:
    - `ObjectPage.svelte` gets `compact` (the head of a list column: `KindMark`, title, state word, the main act as a secondary
      `Button`), loses the `path` slot, and keeps its `1440 px` cap only on a page of its own (no cap inside a column). A slot `up`
-     in the head of the first visible column is left for PLAN-144.
-   - A side column on `TriagePage`, `ObjectPage` (on a page of its own) and `WizardPage`: props `side` (a snippet), `sideOpen`,
-     `onHideSide`, width by deliverable 1, docked right of the object column or of the wizard's content, never shown by the
-     gap strip, own scroll; on a phone it takes the whole screen, the bottom bar included. The template draws no chat; its
-     content is the chat plans'.
+     in the head of the first visible column is left for PLAN-144. It has **no side column of its own**: inside the engine the
+     side column is the engine's (D6 Q5; `components.adoc#object-page` :381).
+   - A side column on `TriagePage` and `WizardPage` only, with the same three props on both (`components.adoc#triage-page` :374):
+     `side` (the snippet of the side column, the chat), `sideOpen` (whether it is shown; the view passes it from `chat=open`) and
+     `onHideSide` (called by _Hide the chat_ and `Escape`; the view replaces the address). Docked right of the object column, or of
+     the wizard's content; never shown by the gap strip; own scroll. Its width is `480`, or `400` where `480` would cost the window a
+     column or would drop a wizard's content below `480`; both, and whether the object (or the wizard's content) and the side column
+     fit side by side, are computed from the width of the template's **container**, never from the viewport
+     (`navigation.adoc#side-columns` :275-284). Where they do not fit, the side column takes the space and the object becomes a hidden
+     level; with one column there is no strip, and `onHideSide` returns to the object or the wizard. On a phone (below `768 px`) it
+     takes the whole screen, the bottom bar included. The template draws no chat; its content is the chat plans' (`PLAN-135..137`),
+     which build no slot of their own.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
-   - `ObjectPage.test.ts`, `WizardPage.test.ts` and `TriagePage.test.ts` show `compact`, no `path` slot, the side column at `480`
-     and `400`, taking the space, and the hide callback. Evidence order: `test-first`.
+   - `ObjectPage.test.ts` shows `compact`, no `path` slot and no side prop. `WizardPage.test.ts` and `TriagePage.test.ts` (with a
+     `ResizeObserver` stub on the container) show the side column at `480` and `400` by container width, the wizard's content kept at
+     `480` or the side column taking the space, `sideOpen` false rendering no side column, the hide callback on _Hide the chat_ and on
+     `Escape`, and the phone case covering the bottom bar. Evidence order: `test-first`.
 5. **Migration, fixtures and browser evidence**
  - What:
    - `ReportsView.svelte` (the only consumer) moves to the new `TriagePage` props: the list as the list column and the report's
@@ -150,7 +162,8 @@ keeps only the engine-side API and the verify-first clause applies.
 - OBSERVED: every row of both width tables follows from the window rule with `W` = viewport − rail − `48` (`12 × 2` below `480`) — checked by hand against `doc/design/web-app/navigation.adoc:86-155,279-301`; `columnWindow.test.ts` is the machine confirmation
 - HYPOTHESIS: the frame's live region can carry the announcement through the runtime store (`quietReportNotice`, `quietDecisionNotice` are its inputs today) or through a region of the engine's own — confirm/refute at `pm-web-app/src/routes/+layout.svelte` § `aria-live` (verify-at-outline)
 - HYPOTHESIS: `@testing-library/svelte` with a `ResizeObserver` stub in `setupTests.ts` is enough to test the window — confirm/refute at `pm-web-app/src/setupTests.ts` (verify-at-outline)
-- Verify-first clause: re-read the D6 documents (`navigation.adoc#side-columns`, `components.adoc#triage-page`) at the then-current HEAD before scoping deliverable 4. If D6 decided an interim slot in the chat plan, keep only the template API and say so in the pull request. If `KindMark` and `Link` do not exist yet, stop and loop back.
+- OBSERVED: D6 fixed the side-column API on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`) and took it off `ObjectPage`; the chat plans build no slot of their own — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418` (`4a84f727`, D6 merged `8568b56e`)
+- Verify-first clause: re-read `navigation.adoc#side-columns` and `components.adoc#triage-page` at the then-current HEAD before scoping deliverable 4; the D6 API above is binding (no interim slot exists in the chat plans). If `KindMark` and `Link` do not exist yet, stop and loop back.
 
 ## Expected Surface
 
@@ -184,18 +197,18 @@ keeps only the engine-side API and the verify-first clause applies.
 
 ## Dependencies and Sequencing
 
-- Depends on: the D1 foundation part that delivers `KindMark` and `Link` (the strip, the compact head); `PLAN-45` landed (it holds `views/`, `routes/dev/components/+page.svelte`); `PLAN-129` landed (`ReportsView`); the D6 ruling on the side column.
+- Depends on: the D1 foundation part that delivers `KindMark` and `Link` (the strip, the compact head); `PLAN-45` landed (it holds `views/`, `routes/dev/components/+page.svelte`); `PLAN-129` landed (`ReportsView`). The D6 ruling on the side column is merged (#403, `8568b56e`): satisfied.
 - Overlaps with:
   - `PLAN-45` (running): `routes/dev/components/+page.svelte`, the `views/` directory.
   - `PLAN-129` (staged): `ReportsView.svelte`, `ReportsView.test.ts`, `reports.spec.js`. It lands first.
   - `PLAN-130` (staged): `routes/dev/components/+page.svelte`.
   - `PLAN-143`: `ReportsView.svelte`. Series: never at the same time.
   - `PLAN-72`, `PLAN-73` (parked): `components/` and `tokens.css`; they follow.
-- Adjacent to: `PLAN-144` (Up, the breadcrumb and the shell fill the `up` slot this plan leaves); `PLAN-135..137` (the chat fills the side column); `PLAN-52`, `55`, `58`, `59`, `62` (they place their views on the engine after PLAN-144).
+- Adjacent to: `PLAN-144` (Up, the breadcrumb and the shell fill the `up` slot this plan leaves); `PLAN-135..137` (the chat fills the side column through `side`, `sideOpen`, `onHideSide`; they wait for this plan); `PLAN-52`, `55`, `58`, `59`, `62` (they place their views on the engine after PLAN-144).
 
 ## Re-Grounding at Restart
 
-Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`). Re-run `corpus surfaces` against everything that landed since (PLAN-45, PLAN-129, PLAN-130 and the D1 foundation first). Settle each HYPOTHESIS. Re-check that the D6 documents are merged and that `navigation.adoc` still carries the width tables unchanged.
+Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`). Re-run `corpus surfaces` against everything that landed since (PLAN-45, PLAN-129, PLAN-130 and the D1 foundation first). Settle each HYPOTHESIS. The D6 documents are merged (#403, `8568b56e`); re-check that `navigation.adoc` still carries the width tables unchanged (at `4a84f727`: `:118-155` and `:286-308`).
 
 ## Hand-Off Command
 

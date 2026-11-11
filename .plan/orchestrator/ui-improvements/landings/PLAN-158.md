@@ -68,7 +68,7 @@ deliverable 5 (surface +5, 18 paths).
 - [x] PLAN-154 D5 and PLAN-155 D5 folds (operator), surfaces updated in the same edit
 - [x] epic.md: incomplete-landing recurrence; the `review-gate` parser gap and the false review count as an Open Defect
 - [x] resume anchor; `queue-view.md` regenerated
-- [ ] the three open threads on #408 — the operator's call
+- [x] the three open threads on #408 — operator 2026-11-11: replied (routed to PLAN-154 D5) and resolved by the orchestrator
 
 ## Follow-Ups
 

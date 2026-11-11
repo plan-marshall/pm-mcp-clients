@@ -9,7 +9,8 @@ workstream: WS-07
 ## Objective
 
 The web app has a small `ChatPanel` that posts a message and shows the answer in one piece. The AGREED design replaces it with
-one `Chat`: a side column beside the object, a transcript that streams the reply, the role's text rendered safely as
+one `Chat`: a side column beside the object (the column engine's side column of `PLAN-142`; D6: no side column of the chat's
+own), a transcript that streams the reply, the role's text rendered safely as
 Markdown through `marked` (approved by the operator), a working line with the `WaitingMark`, a composer with Send and Stop, a
 draft kept per chat, and an address `chat=open`. This plan builds that core for the plan's and the epic's chat acts and
 retires `ChatPanel` there. Proposals, notices and status cards are PLAN-136; the other places and the removal of
@@ -32,7 +33,11 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
      draft per chat in `localStorage` until it is sent; the operator's turn appears at once as `sending…` and is confirmed by the
      `202`; a failed send keeps the text and marks the turn Not sent.
    - The address: `chat=open` and `turn={turn_id}` in `routes.ts` and `adoptRouteFromLocation` (`stores/runtime.ts`), opened and
-     hidden by replacing the address, never pushing; `turn=` reads pages back until the turn is loaded.
+     hidden by replacing the address, never pushing; `turn=` reads pages back until the turn is loaded. Where `PLAN-143` has
+     landed, its typed query vocabulary already carries `chat` and `turn` and its one writer does the replace: use them, add no
+     second parser or writer. On a task's address `chat=open` names the chat of the plan the address is in
+     (`/plans/fix-relay/tasks/TASK-4?chat=open` is the plan's chat beside the task), and a reload restores it so (D6;
+     `navigation.adoc#side-columns` :284).
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security, pm-dev-frontend:jest-testing
  - Done when:
@@ -98,12 +103,16 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
    - `Chat.test.ts` covers the send, stop, composition, limit, counter, starter, `#`, hide, new, draft-survives-reload and focus
      rules and fails on a revert (evidence order: `test-first`).
    - A fixture of `Chat` and `ChatTurn` on `/dev/components` in both themes and both locales.
-5. **The side column and the plan's and epic's chat acts**
+5. **The chat in the engine's side column, and the plan's and epic's chat acts**
  - What:
-   - A side slot on `ObjectPage` and its rules: `480` px wide, `400` px where `480` would drop the object below its minimum;
-     where the window cannot show the object and the chat side by side the chat takes the space and _Hide the chat_ returns; on a
-     phone it takes the whole screen (the bottom bar included) and the transcript keeps a third of the height with the keyboard
-     open. This is built against today's single object column (O2); the column engine moves it later.
+   - No side slot of this plan's own (D6 Q5: no interim slot). The plan's and the epic's `Chat` is passed to the column engine's
+     side column of `PLAN-142`: the `TriagePage` that carries the plan and the epic routes (`PLAN-144` deliverable 4) receives the
+     `Chat` as its `side` snippet, `sideOpen` from `chat=open`, and `onHideSide` from _Hide the chat_ and `Escape`, which replace the
+     address without `chat` (`components.adoc#triage-page` :374). The width (`480`, or `400` where `480` would cost a column), the
+     take-the-space rule and the phone (the chat takes the screen and the bottom bar) are the template's, measured on its
+     container, never the viewport; this plan asserts them, it does not compute them. What stays the chat's own: the transcript keeps
+     a third of the height with the on-screen keyboard open, and the pinned proposal folds into the composer's head
+     (`chat.adoc#placement` :70).
    - Hiding keeps the chat running; the act that opened it carries a `CountBadge` of the replies that arrived meanwhile; the scroll
      position and the draft are kept per chat. Reloading, hiding, or opening on another device returns to the same chat.
    - Replace `ChatPanel` in `WorkControlPanel.svelte` (the plan's and the epic's chat acts); the other call sites are PLAN-137.
@@ -148,14 +157,15 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `package.json` has no `dependencies` block and no `marked` — read at `pm-web-app/package.json`
 - OBSERVED: `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` and `FormStatus` do not exist in `pm-web-app/src/lib/components/` — absence read by `git ls-files | grep` for each name at `1cc0e10e`
 - OBSERVED: `ObjectPage.svelte` has no side slot and `TriagePage.svelte` still has the slots `filters`, `list` and `detail` — read at `pm-web-app/src/lib/templates/ObjectPage.svelte`, `TriagePage.svelte`
+- OBSERVED: D6 fixed the side column on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`, built by `PLAN-142`), none on `ObjectPage`, no side column in the chat plans, `480`/`400` measured on the container, the phone covering the bottom bar, and `open=` forms waiting for `PLAN-143` — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418`, `doc/design/web-app/chat.adoc:40,342` (`4a84f727`, D6 merged `8568b56e`)
 - OBSERVED: `adoptRouteFromLocation` reads no `chat` or `turn` query parameter — read at `pm-web-app/src/lib/stores/runtime.ts:940-966`
 - OBSERVED: `client.ts` holds the chat types at `:1565` and `:1572`, the entry chat at `:2328-2362`, the ended chat at `:2393-2417`, the plan, epic and decision chat at `:3355-3477`, and one shared `/api/v1/events` connection at `:3671` — read at `pm-web-app/src/lib/api/client.ts`
 - OBSERVED: the web app listens for events outside the catalogue (`plan.changed`, `decision.created`) — read at `pm-web-app/src/lib/views/PlanView.svelte:124`, `DecisionView.svelte:322`
 - OBSERVED: there is no Mermaid or diagram renderer for model text in `pm-web-app` — `git grep -i mermaid -- pm-web-app/src pm-web-app/package.json` is empty
 - HYPOTHESIS: `client.ts` can open a plan's, an epic's and a workspace's event stream like the entry's (`subscribeStream` at `:3736`) — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `subscribeStream` (verify-at-outline)
-- HYPOTHESIS: the Svelte 5 components of this app use the legacy slot syntax (`$$slots`) in the templates, and a new `side` slot follows it — confirm/refute at `pm-web-app/src/lib/templates/ObjectPage.svelte` (verify-at-outline)
+- HYPOTHESIS: the plan's and the epic's routes sit on `TriagePage` at the then-current HEAD (`PLAN-144` deliverable 4), so their `Chat` has a `side` to go into — confirm/refute at the route host of `/plans/{id}` and `/epics/{id}` and `pm-web-app/src/lib/templates/TriagePage.svelte` § props (verify-at-outline; refuted → stop and loop back, no interim slot)
 - HYPOTHESIS: `marked` adds no transitive package and no peer conflict with Vite 8 and Svelte 5 — confirm/refute at `pm-web-app/package-lock.json` after `npm install marked` in the worktree (verify-at-outline)
-- Verify-first clause: the D1 foundation components (O1) and the column engine (O2) are read at the current HEAD before scoping; if `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` still do not exist, the operator's answer to O1 decides what this plan builds.
+- Verify-first clause: the D1 foundation components (O1) and the column engine's side props (`PLAN-142`) are read at the current HEAD before scoping; if `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` still do not exist, the operator's answer to O1 decides what this plan builds; if `TriagePage` has no `side`, `sideOpen`, `onHideSide`, stop and loop back.
 
 ## Expected Surface
 
@@ -166,8 +176,7 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by PLAN-137
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/templates/ObjectPage.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/templates/ObjectPage.test.ts` — present at `1cc0e10e`
+- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.svelte` — present at `1cc0e10e` (read only: its `side`, `sideOpen`, `onHideSide` are `PLAN-142`'s)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `1cc0e10e`
@@ -181,7 +190,7 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-130` (`WaitingMark`), `PLAN-132` and `PLAN-133` (contract and mock); `PLAN-45` landing; the operator's answers to O1 (D1 foundation components), O2 (the column engine) and O6 (Mermaid).
+- Depends on: `PLAN-130` (`WaitingMark`), `PLAN-132` and `PLAN-133` (contract and mock); `PLAN-45` landing; `PLAN-142` (the side column's `side`, `sideOpen`, `onHideSide` on `TriagePage`; D6) and `PLAN-144` deliverable 4 (the plan and epic routes on the engine); the operator's answers to O1 (D1 foundation components) and O6 (Mermaid). `PLAN-143` is soft: where it has landed its query vocabulary and writer carry `chat=`/`turn=`.
 - Overlaps with:
   - `PLAN-45` (running): `client.ts`, `views/`, `routes/+layout.svelte`, `routes/dev/components/+page.svelte`; this plan follows it.
   - `PLAN-72` (parked): `package.json`, `package-lock.json`, `components/` and `views/`; it follows this plan.
@@ -190,7 +199,7 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 
 ## Re-Grounding at Restart
 
-Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces` against everything that landed since; re-read the D4 and D5 chat documents (still `AGREED`); confirm the operator's answers to O1, O2, O6, O7.
+Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces` against everything that landed since; re-read the D4 and D5 chat documents (still `AGREED`); confirm the operator's answers to O1, O6, O7 (O2 is settled by D6, merged #403 `8568b56e`: the engine's side column of `PLAN-142`).
 
 ## Hand-Off Command
 
@@ -211,7 +220,7 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Mermaid (O6):** a fenced Mermaid block is shown as its source in a code block labelled `mermaid`; no renderer is added.
 - **Voice (O7):** carved out; the composer keeps the system-dictation hint `web.voice.os_hint` and an empty microphone slot.
-- **Side column (O2):** decided by the D6 design session (WS-06, staged 2026-11-10) together with the tab sets; this plan stays parked until those documents are `AGREED` and the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus has landed (O1).
+- **Side column (O2):** decided by the D6 design session (WS-06, staged 2026-11-10) together with the tab sets; this plan stays parked until those documents are `AGREED` and the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus has landed (O1). *Settled 2026-11-11:* D6 merged (#403, `8568b56e`): no interim slot; the chat goes into `PLAN-142`'s `side` on `TriagePage` and `WizardPage`, `ObjectPage` has none; this plan waits for `PLAN-142` (deliverable 5 above is rewritten accordingly; the former "built against today's single object column" slot is removed).
 
 ## Staging Note 2026-11-10
 

@@ -77,15 +77,21 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
      (a target no view has loaded is read once from its resource), one act _Open it_ (`control.chat.card.open`) as a `Link` with the
      real address, never the target's own acts; a target that ended keeps the card with its last state, muted. For an act the role
      names (`refs` kind `act`) the card reads `Pause fix-relay — in the acts of fix-relay` and opens the subject with its acts in view.
-   - Where it opens: a target of the chat's own subject keeps `chat=open` and replaces the object column's address where today's
-     routes allow it; an in-place `open=` form waits for the column engine (O2); a target of another subject is pushed without
-     `chat`; in a one-column window every target is pushed without `chat` (`navigation.adoc` § `#side-columns`).
+   - Where it opens (D6 Q5; `navigation.adoc#side-columns` :284, `chat.adoc#status-cards` :164): a target of the chat's own subject
+     keeps `chat=open` and replaces the object column's address (a task at `/plans/fix-relay/tasks/TASK-4?chat=open`, where `chat=open`
+     is the plan's chat; the queued revision at the plan's head); a target of another subject is pushed without `chat`; in a
+     one-column window every target is pushed without `chat`. The in-place forms (`open=`, a decision beside the plan as
+     `/plans/fix-relay?open=decision:Q-007&chat=open`) wait for the address model of `PLAN-143`: **until it lands the pushed address
+     is the only form** (the decision's own address `/decisions/Q-007` is pushed); once it has landed, closing a decision opened so
+     replaces the address with the one it replaced (`open` removed, `chat=open` kept), never a history back. A reference chip opens
+     the same way.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - Tests assert the fold at 3 and 4 lines, one status card per decision, hold, act and queued revision, no card for a task, a file
      or a plan, the badge rule, the `knows` line before the first turn and after a turn, and that `ChatStatusCard` never renders an
-     answer or a hold act (evidence order: `test-first`).
+     answer or a hold act; _Open it_ of the own subject's target replaces and keeps `chat=open`, another subject's target pushes
+     without `chat`, and without `PLAN-143` no `open=` address is written (evidence order: `test-first`).
 4. **The queued revision in the plan view and the overview row**
  - What:
    - While `queued_revision` is set, the plan's head says `Revision from the chat queued · applies after TASK-4`
@@ -159,7 +165,9 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-135`, `PLAN-134`.
+- Depends on: `PLAN-135`, `PLAN-134`; through `PLAN-135`, `PLAN-142` (the engine's side column; D6: no interim slot). `PLAN-143` is
+  soft: the `open=` forms of _Open it_ and the reference chips are written only once it has landed; until then the pushed address is
+  the only form.
 - Overlaps with:
   - `PLAN-45` (running): `PlanView.svelte`, `views/`.
   - `PLAN-55` (parked) and `PLAN-62` (parked): `PlanView.svelte`; they follow this plan and are re-grounded on the queued-revision line.
@@ -188,4 +196,6 @@ own `inbox/{sender}-{seq}` message; the orchestrator owns every other ledger wri
 
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
-- Parked behind PLAN-135 (D6 side column, D1 building blocks).
+- Parked behind PLAN-135 (D6 side column, D1 building blocks). *2026-11-11:* D6 merged (#403, `8568b56e`): the side column is
+  `PLAN-142`'s (`side`, `sideOpen`, `onHideSide` on `TriagePage` and `WizardPage`); the `open=` forms wait for `PLAN-143`, the pushed
+  address being the only form until then (deliverable 3 states it). The wait is now on `PLAN-135` and, through it, `PLAN-142`.
