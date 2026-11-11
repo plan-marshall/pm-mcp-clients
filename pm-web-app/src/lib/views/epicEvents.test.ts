@@ -16,7 +16,8 @@ const EVENT_NAME_SOURCE = path.resolve(
 function catalogueNames(): Set<string> {
   const source = fs.readFileSync(EVENT_NAME_SOURCE, 'utf-8');
   const names = new Set<string>();
-  for (const match of source.matchAll(/^\s*[A-Z][A-Z0-9_]*\("([^"]+)"\)/gm)) {
+  // A member is `NAME("wire", STREAM, ...)`: the wire name comes first, its streams follow.
+  for (const match of source.matchAll(/^\s*[A-Z][A-Z0-9_]*\("([^"]+)"[,)]/gm)) {
     names.add(match[1]);
   }
   return names;

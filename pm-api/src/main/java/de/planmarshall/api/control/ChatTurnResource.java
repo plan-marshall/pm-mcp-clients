@@ -24,6 +24,11 @@ import de.planmarshall.api.json.JsonTree;
  * <p>The operator's messages are kept as they are and never interpreted; an item from outside the
  * machine stays marked {@link #untrusted()} and is shown as text, never rendered.
  *
+ * <p>Superseded by {@code de.planmarshall.api.chat.ChatTurn} of the package
+ * {@code de.planmarshall.api.chat}. This type is deleted by the package that migrates its last
+ * consumer: PLAN-133 for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a
+ * recorded transition, not a compatibility layer.
+ *
  * @param role      {@code operator}, or the role that answered ({@code replan}, {@code decompose})
  * @param text      the message, as written
  * @param at        the instant, ISO-8601

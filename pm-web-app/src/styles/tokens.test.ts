@@ -59,6 +59,18 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-overlay': { dark: 'rgb(0 0 0 / 0.7)', light: 'rgb(15 23 42 / 0.5)' },
 };
 
+/**
+ * The brand palette of the mascot (`theme-readability.adoc`, Mascot Palette Tokens): declared once
+ * in `:root`, overridden by no theme block, so both themes resolve the same value.
+ */
+const MASCOT_TOKENS: Record<string, string> = {
+  '--color-mascot-fur': '#E17512',
+  '--color-mascot-gold': '#F2B630',
+  '--color-mascot-hat': '#A0602E',
+  '--color-mascot-cream': '#F6DDB0',
+  '--color-mascot-outline': '#2A1A10',
+};
+
 /** The type scale of VD-P-03, in the px the proposal states; the file declares the rem equivalents. */
 const TYPE_SCALE: Record<string, { size: number; line: number }> = {
   '--text-xs': { size: 12, line: 16 },
@@ -394,7 +406,9 @@ describe('tokens.css: the design system v2 contract', () => {
 
       const rootNames = declaredNames(blockOf(stylesheet, ':root'));
       const rootThemed = [...rootNames].filter(isThemedName);
-      expect(rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES))).toEqual([]);
+      expect(
+        rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES) && !(name in MASCOT_TOKENS)),
+      ).toEqual([]);
       expect([...themed].filter((name) => !rootNames.has(name))).toEqual([]);
 
       for (const [label, block] of [
@@ -409,9 +423,37 @@ describe('tokens.css: the design system v2 contract', () => {
       }
     });
 
+    it('declares the mascot palette tokens in :root only, overridden by no theme block', () => {
+      const stylesheet = withoutComments(css);
+      for (const [label, block] of [
+        ['light', blockOf(stylesheet, "[data-theme='light']")],
+        ['dark', blockOf(stylesheet, "[data-theme='dark']")],
+        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+      ] as const) {
+        const declared = declaredNames(block);
+        expect(
+          Object.keys(MASCOT_TOKENS).filter((name) => declared.has(name)),
+          `${label} overrides a mascot token`,
+        ).toEqual([]);
+      }
+    });
+
     it('keeps every old token name as an alias of its v2 token', () => {
       for (const [oldName, newName] of Object.entries(ALIASES)) {
         expect(themes.root[oldName], `${oldName} is not declared`).toBe(`var(${newName})`);
+      }
+    });
+  });
+
+  describe('mascot palette tokens', () => {
+    it.each(Object.entries(MASCOT_TOKENS))('resolves %s to the same value in every palette', (token, value) => {
+      const palettes = {
+        light: resolveAliases({ ...themes.root, ...themes.light }),
+        dark: resolveAliases({ ...themes.root, ...themes.dark }),
+        'media-dark': resolveAliases({ ...themes.root, ...themes.mediaDark }),
+      };
+      for (const [label, palette] of Object.entries(palettes)) {
+        expect(palette[token]?.toLowerCase(), `${token} in the ${label} palette`).toBe(value.toLowerCase());
       }
     });
   });
@@ -557,6 +599,28 @@ describe('tokens.css: static scans over the source tree', () => {
         }
         while ((match = hslRegex.exec(line)) !== null) {
           violations.push({ file: relPath, line: idx + 1, literal: match[0], snippet: trimmed });
+        }
+      });
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('ensures no mascot colour literal appears in a .svelte or .css file under src/ other than tokens.css', () => {
+    const srcDir = path.resolve(__dirname, '..');
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']).filter(
+      (f) => path.resolve(f) !== TOKENS_PATH,
+    );
+    const literals = Object.values(MASCOT_TOKENS).map((value) => value.toLowerCase());
+    const violations: { file: string; line: number; literal: string }[] = [];
+
+    for (const file of sourceFiles) {
+      const lines = fs.readFileSync(file, 'utf8').toLowerCase().split('\n');
+      lines.forEach((line, idx) => {
+        for (const literal of literals) {
+          if (line.includes(literal)) {
+            violations.push({ file: path.relative(srcDir, file), line: idx + 1, literal });
+          }
         }
       });
     }

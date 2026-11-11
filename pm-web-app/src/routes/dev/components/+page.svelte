@@ -18,6 +18,7 @@
   import EmptyState from '../../../lib/components/EmptyState.svelte';
   import ErrorState from '../../../lib/components/ErrorState.svelte';
   import Skeleton from '../../../lib/components/Skeleton.svelte';
+  import WaitingMark from '../../../lib/components/WaitingMark.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -377,6 +378,11 @@
         {#each SKELETON_SHAPES as shape (shape)}
           <Skeleton {shape} rows={3} label={$t('dev.skeleton.label')} />
         {/each}
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.brand')}</h3>
+      <div class="dev__row">
+        <WaitingMark label={$t('dev.waiting.label')} />
       </div>
     </section>
   {/each}

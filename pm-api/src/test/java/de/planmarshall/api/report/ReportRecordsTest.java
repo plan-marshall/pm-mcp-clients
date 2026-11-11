@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatTurnPointer;
 import de.planmarshall.api.json.JsonFormatException;
 
 @EnableGeneratorController
@@ -198,12 +199,12 @@ class ReportRecordsTest {
         );
 
         var replanning = List.of(
-                new ReplanningRecord("the base moved", "09:55", "TASK-5 added")
+                new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
 
         var decisions = List.of(
-                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad"),
-                new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
+                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad", null),
+                new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
 
         var ownCalls = List.of(
@@ -494,7 +495,7 @@ class ReportRecordsTest {
     }
 
     @Test
-    void shouldRoundTripSupportingRecords() {
+    void shouldRoundTripSupportingRecords() throws Exception {
         var deliverableName = Generators.nonBlankStrings().next();
         var replanTrigger = Generators.nonBlankStrings().next();
         var replanChange = Generators.nonBlankStrings().next();
@@ -508,10 +509,12 @@ class ReportRecordsTest {
         assertEquals("done", deliv.state());
         assertEquals(deliv, DeliverableSummary.fromMap(deliv.toMap()));
 
-        var replan = new ReplanningRecord(replanTrigger, "14:00", replanChange);
+        var replan = new ReplanningRecord(replanTrigger, "14:00", replanChange, null);
         assertEquals(replanTrigger, replan.trigger());
         assertEquals("14:00", replan.time());
         assertEquals(replanChange, replan.change());
+        assertNull(replan.chat());
+        assertFalse(replan.toMap().containsKey("chat"));
         assertEquals(replan, ReplanningRecord.fromMap(replan.toMap()));
 
         var waste = new TokenWasteRecord("retries", wasteTokens, wasteSharePercent, wasteTasksCount,
@@ -522,6 +525,60 @@ class ReportRecordsTest {
         assertEquals(wasteTasksCount, waste.tasksCount());
         assertEquals(wasteCause, waste.causeSummary());
         assertEquals(waste, TokenWasteRecord.fromMap(waste.toMap()));
+    }
+
+    @Test
+    void shouldRoundTripReplanningRecordWithItsChat() throws Exception {
+        var chat = new ChatTurnPointer(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var replan = new ReplanningRecord(Generators.nonBlankStrings().next(), "14:00",
+                Generators.nonBlankStrings().next(), chat);
+
+        var parsed = ReplanningRecord.fromMap(replan.toMap());
+
+        assertAll(
+                () -> assertEquals(replan, parsed),
+                () -> assertEquals(chat, parsed.chat()),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> ReplanningRecord.fromMap(with(replan.toMap(), "chat", Map.of("chat_id", "c-1")))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> ReplanningRecord.fromMap(with(replan.toMap(), "chat", "not-an-object"))));
+    }
+
+    @Test
+    void shouldRoundTripDecisionRecordWithAndWithoutAfterChat() throws Exception {
+        var afterChat = new ChatTurnPointer(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var withChat = new DecisionRecord(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                Generators.nonBlankStrings().next(), "operator", "web", Generators.nonBlankStrings().next(), afterChat);
+        var withoutChat = new DecisionRecord(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                null, "delegated", null, null, null);
+
+        var parsedWithChat = DecisionRecord.fromMap(withChat.toMap());
+
+        assertAll(
+                () -> assertEquals(withChat, parsedWithChat),
+                () -> assertEquals(afterChat, parsedWithChat.afterChat()),
+                () -> assertEquals(withoutChat, DecisionRecord.fromMap(withoutChat.toMap())),
+                () -> assertFalse(withoutChat.toMap().containsKey("after_chat")),
+                () -> assertThrows(JsonFormatException.class, () -> DecisionRecord.fromMap(
+                        with(withChat.toMap(), "after_chat", Map.of("turn_id", "t-1")))));
+    }
+
+    @Test
+    void shouldCarryTheChatPointersThroughACompletionReport() throws Exception {
+        var chat = new ChatTurnPointer(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var withChats = new PlanCompletionReport("fix-relay", "fix-relay",
+                new ReportFrom("pm-mcp-clients", null, "fix-relay"), "merged", null, null, null, null,
+                Instant.parse("2026-10-16T08:40:00Z"), Instant.parse("2026-10-16T09:00:00Z"), 1200, 0, null,
+                List.of(),
+                List.of(new ReplanningRecord("the operator asked", "10:00", "TASK-6 added", chat)),
+                List.of(new DecisionRecord("Q-007", "Split TASK-4", "split", "operator", "web", "iPad", chat)),
+                null);
+
+        var parsed = PlanCompletionReport.fromJson(withChats.toJson());
+
+        assertAll(
+                () -> assertEquals(chat, parsed.replanningRecords().getFirst().chat()),
+                () -> assertEquals(chat, parsed.decisionRecords().getFirst().afterChat()));
     }
 
     @Test

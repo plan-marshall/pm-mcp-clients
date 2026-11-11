@@ -118,27 +118,95 @@ describe('the two tab assets', () => {
     expect(cy + radius).toBeLessThanOrEqual(24);
   });
 
-  it('bakes the light-theme brand and attention colours on the drawn elements', () => {
-    const brand = lightTokenValue('--color-brand');
-    const attention = lightTokenValue('--color-attention');
-    /**
-     * @param href the icon href exported by `favicon.ts`
-     * @returns the colours the drawn elements actually paint with
-     */
-    const paintedColours = (href: string): string[] => {
-      const painted = Array.from(assetDoc(href).querySelectorAll('[fill], [stroke]')).flatMap(
-        (element) => [element.getAttribute('fill'), element.getAttribute('stroke')],
-      );
-      return painted.filter((value): value is string => Boolean(value) && value !== 'none');
-    };
+  it('bakes only the mascot palette, and the attention copy adds only the attention dot and its ring', () => {
+    const palette = ['--color-mascot-fur', '--color-mascot-gold', '--color-mascot-outline'].map((token) =>
+      lightTokenValue(token).toUpperCase(),
+    );
+    const attention = lightTokenValue('--color-attention').toUpperCase();
 
-    expect(new Set(paintedColours(FAVICON_CALM_HREF))).toEqual(new Set([brand]));
-
-    const attentionColours = new Set(paintedColours(FAVICON_ATTENTION_HREF));
-    expect(attentionColours).toContain(brand);
-    expect(attentionColours).toContain(attention);
+    expect(new Set(paintedColours(FAVICON_CALM_HREF))).toEqual(new Set(palette));
     // The dot's separating ring is the one non-token colour, and only the attention copy carries it.
-    expect(attentionColours).toContain('#FFFFFF');
-    expect(paintedColours(FAVICON_CALM_HREF)).not.toContain('#FFFFFF');
+    expect(new Set(paintedColours(FAVICON_ATTENTION_HREF))).toEqual(
+      new Set([...palette, attention, '#FFFFFF']),
+    );
+  });
+
+  it.each([
+    ['calm', FAVICON_CALM_HREF],
+    ['attention', FAVICON_ATTENTION_HREF],
+  ])('draws every shape of the %s copy, its stroke included, inside 1..23 on both axes', (_, href) => {
+    const shapes = Array.from(assetDoc(href).querySelectorAll('path, circle, rect, ellipse, line, polygon, polyline'));
+
+    expect(shapes.length).toBeGreaterThan(0);
+    for (const shape of shapes) {
+      const box = paintedBox(shape);
+
+      expect(box.minX, shape.outerHTML).toBeGreaterThanOrEqual(1);
+      expect(box.minY, shape.outerHTML).toBeGreaterThanOrEqual(1);
+      expect(box.maxX, shape.outerHTML).toBeLessThanOrEqual(23);
+      expect(box.maxY, shape.outerHTML).toBeLessThanOrEqual(23);
+    }
   });
 });
+
+/**
+ * @param href the icon href exported by `favicon.ts`
+ * @returns the colours the drawn elements actually paint with, upper-cased
+ */
+function paintedColours(href: string): string[] {
+  const painted = Array.from(assetDoc(href).querySelectorAll('[fill], [stroke]')).flatMap((element) => [
+    element.getAttribute('fill'),
+    element.getAttribute('stroke'),
+  ]);
+  return painted
+    .filter((value): value is string => Boolean(value) && value !== 'none')
+    .map((value) => value.toUpperCase());
+}
+
+/**
+ * @param element a drawn element
+ * @param attribute the presentation attribute
+ * @returns the attribute of the element or of its nearest ancestor that sets it
+ */
+function inherited(element: Element, attribute: string): string | null {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    const value = node.getAttribute(attribute);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+/**
+ * The box a shape paints, its stroke included: half the stroke width beyond the geometry, which
+ * is exact for the round joins and caps the tab copies use.
+ *
+ * @param shape a circle, or a path of absolute move and line points
+ * @returns the painted box in view-box units
+ */
+function paintedBox(shape: Element): { minX: number; minY: number; maxX: number; maxY: number } {
+  const stroke = inherited(shape, 'stroke');
+  const half = stroke && stroke !== 'none' ? Number(inherited(shape, 'stroke-width') ?? '1') / 2 : 0;
+
+  if (shape.tagName === 'circle') {
+    const cx = Number(shape.getAttribute('cx'));
+    const cy = Number(shape.getAttribute('cy'));
+    const reach = Number(shape.getAttribute('r')) + half;
+    return { minX: cx - reach, minY: cy - reach, maxX: cx + reach, maxY: cy + reach };
+  }
+  if (shape.tagName === 'path') {
+    const d = shape.getAttribute('d') ?? '';
+    // Only absolute move and line points are read; any other command fails here instead of
+    // being measured wrong.
+    expect(d, 'the path is a polygon of absolute points').toMatch(/^M[\d.\s]+Z$/);
+    const numbers = d.replace(/[MZ]/g, ' ').trim().split(/\s+/).map(Number);
+    const xs = numbers.filter((_, index) => index % 2 === 0);
+    const ys = numbers.filter((_, index) => index % 2 === 1);
+    return {
+      minX: Math.min(...xs) - half,
+      minY: Math.min(...ys) - half,
+      maxX: Math.max(...xs) + half,
+      maxY: Math.max(...ys) + half,
+    };
+  }
+  throw new Error(`a tab copy draws a <${shape.tagName}> the bounds check does not measure`);
+}

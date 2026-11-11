@@ -1,17 +1,33 @@
+<script lang="ts" module>
+  /** The two renderings of the brand icon: the mascot palette, or one colour in `currentColor`. */
+  export type BrandMarkRendering = 'colour' | 'monochrome';
+
+  /** Every size a rendering is delivered at (brand-mark.adoc, Where the Icon Is Used). */
+  export const DELIVERED_SIZES: Record<BrandMarkRendering, readonly number[]> = {
+    colour: [16, 28, 64],
+    monochrome: [16, 20, 24, 28, 64],
+  };
+</script>
+
 <script lang="ts">
   interface Props {
-    /** The delivered size: 20 on a compact surface, 24 in the rail head, 64 on the pairing page. */
-    size?: 20 | 24 | 64;
-    /** Draws the mark on the rail head's 28 px brand-coloured square, in the on-brand colour. */
-    plate?: boolean;
-    /** An accessible name, for a mark that stands without the visible brand text. */
+    /** The colour rendering in the mascot palette (the default), or the one-colour rendering. */
+    rendering?: BrandMarkRendering;
+    /**
+     * The delivered size: in colour 16, 28 or 64; in monochrome 16, 20, 24, 28 or 64. A size the
+     * asked rendering is not delivered at draws nothing.
+     */
+    size?: 16 | 20 | 24 | 28 | 64;
+    /** An accessible name, for a mark that stands without the visible wordmark. */
     label?: string;
   }
 
-  let { size = 24, plate = false, label }: Props = $props();
+  let { rendering = 'colour', size = 28, label }: Props = $props();
+
+  const delivered = $derived(DELIVERED_SIZES[rendering].includes(size));
 </script>
 
-{#snippet glyph()}
+{#if delivered}
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -19,35 +35,43 @@
     height={size}
     class="brand-mark"
     data-size={size}
+    data-rendering={rendering}
     role={label ? 'img' : undefined}
     aria-label={label || undefined}
     aria-hidden={label ? undefined : 'true'}
     data-testid="brand-mark"
   >
-    <g fill="currentColor">
-      <path d="M2.5 21.5V14.2L7.2 11.6V21.5Z" />
-      <path d="M9.4 21.5V9.2L14.1 6.6V21.5Z" />
-      <path d="M16.3 21.5V4.8L21 2.2V21.5Z" />
+    {#if rendering === 'colour'}
+      <!-- The colour rendering: the gold star with a ball on each tip and the fur disc, outlined. -->
+      <g class="brand-mark__colour">
+        <g class="brand-mark__star">
+          <path
+            d="M12 4.5 14.59 9.34 19.99 10.3 16.18 14.26 16.94 19.7 12 17.3 7.06 19.7 7.82 14.26 4.01 10.3 9.41 9.34Z"
+          />
+          <circle cx="12" cy="3.9" r="1.5" />
+          <circle cx="20.56" cy="10.12" r="1.5" />
+          <circle cx="17.29" cy="20.18" r="1.5" />
+          <circle cx="6.71" cy="20.18" r="1.5" />
+          <circle cx="3.44" cy="10.12" r="1.5" />
+        </g>
+        <circle class="brand-mark__disc" cx="12" cy="12.9" r="2.9" />
+      </g>
+    {/if}
+    <!-- The monochrome rendering: the star and its balls as one silhouette, a ring cut out around a
+         solid centre. In the colour rendering it is drawn only where forced colours are active. -->
+    <g class="brand-mark__mono" class:brand-mark__mono--fallback={rendering === 'colour'} fill="currentColor">
+      <path
+        fill-rule="evenodd"
+        d="M12 4.5 14.59 9.34 19.99 10.3 16.18 14.26 16.94 19.7 12 17.3 7.06 19.7 7.82 14.26 4.01 10.3 9.41 9.34ZM9.4 12.9a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0-5.2 0Z"
+      />
+      <circle cx="12" cy="12.9" r="1.4" />
+      <circle cx="12" cy="3.9" r="1.8" />
+      <circle cx="20.56" cy="10.12" r="1.8" />
+      <circle cx="17.29" cy="20.18" r="1.8" />
+      <circle cx="6.71" cy="20.18" r="1.8" />
+      <circle cx="3.44" cy="10.12" r="1.8" />
     </g>
-    <path
-      d="M2.7 11.3 13.9 4.4"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.9"
-      stroke-linecap="round"
-    />
-    <circle cx="16.2" cy="3.7" r="1.4" fill="currentColor" />
   </svg>
-{/snippet}
-
-{#if plate}
-  <!-- The rail head's square is part of the mark's delivery: 24 px of drawing in 28 px of colour.
-       Its size lives in the class, never in a style attribute, which the daemon's CSP blocks. -->
-  <span class="brand-mark-plate" data-testid="brand-mark-plate">
-    {@render glyph()}
-  </span>
-{:else}
-  {@render glyph()}
 {/if}
 
 <style>
@@ -57,15 +81,33 @@
     vertical-align: -0.125em;
   }
 
-  .brand-mark-plate {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 28px;
-    block-size: 28px;
-    flex: 0 0 auto;
-    background-color: var(--color-brand);
-    color: var(--color-on-brand);
-    border-radius: var(--radius-sm);
+  .brand-mark__colour {
+    stroke: var(--color-mascot-outline);
+    stroke-linejoin: round;
+  }
+
+  .brand-mark__star {
+    fill: var(--color-mascot-gold);
+    stroke-width: 0.9;
+  }
+
+  .brand-mark__disc {
+    fill: var(--color-mascot-fur);
+    stroke-width: 0.8;
+  }
+
+  .brand-mark__mono--fallback {
+    display: none;
+  }
+
+  /* Forced colours draw the monochrome rendering, whatever was asked. */
+  @media (forced-colors: active) {
+    .brand-mark__colour {
+      display: none;
+    }
+
+    .brand-mark__mono--fallback {
+      display: inline;
+    }
   }
 </style>

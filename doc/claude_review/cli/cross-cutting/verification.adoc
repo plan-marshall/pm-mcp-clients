@@ -14,7 +14,9 @@ link:../README.adoc[CLI Review] » link:README.adoc[Cross-Cutting] » Verificati
 |CLI-CC-V-01
 |CLI-CC-S-03
 |The literal-scanning test passes. In `de_DE.UTF-8`, `answer Q-007`, `onboard`, `bogus`, and `pm-operator -h` print no
-English word outside the glossary.
+English word of the client's own outside the glossary; runtime text in the model language (a decision's question,
+options and reasons) is shown as delivered and is not part of the check
+(link:../../../design/shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
 |unit test; walk
 
 |CLI-CC-V-02

@@ -30,9 +30,12 @@ test.describe('Web Client Pairing Flow', () => {
   }) => {
     await page.goto('/pair');
 
-    // The page carries the mark at its pairing-page size, beside the visible wordmark.
+    // The page carries the colour mark at its pairing-page size, beside the visible wordmark.
     const pairView = page.getByTestId('pairing-view');
-    await expect(pairView.getByTestId('brand-mark')).toHaveAttribute('data-size', '64');
+    const mark = pairView.getByTestId('brand-mark');
+    await expect(mark).toBeVisible();
+    await expect(mark).toHaveAttribute('data-size', '64');
+    await expect(mark).toHaveAttribute('data-rendering', 'colour');
     await expect(pairView.getByText('plan-marshall')).toBeVisible();
 
     // The code is entered in the page's largest monospace figure (VD-P-08, --text-3xl).

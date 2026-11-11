@@ -42,8 +42,13 @@ import de.planmarshall.api.json.JsonTree;
  * Its one change is a description: a rewrite of one description of the entry or an addition to it,
  * read back old against new and stored through {@code start.store-description}. A start chat never
  * changes, adds, or removes another source.
+ * <p>
+ * Superseded by the one chat of {@code de.planmarshall.api.chat}, which a start's entry opens like
+ * every other subject. This type is deleted by the package that migrates its last consumer: PLAN-133
+ * for the mock runtime, PLAN-138 and PLAN-140 for the terminal client. It is a recorded transition,
+ * not a compatibility layer.
  *
- * @param entryId            the entry the chat is about
+ * @param entryId           the entry the chat is about
  * @param role               the routed role ({@code refine} or {@code decompose})
  * @param scope              the scope of the chat ({@code request})
  * @param available          whether the chat may be opened now
