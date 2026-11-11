@@ -180,3 +180,41 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **Rail-foot bear (O4):** the bust is cropped just below the shoulders and shows the top of the clipboard; this plan amends the line of `brand-mark-mascot.adoc:78` to say so and builds the rail foot at its low opacity.
 - **WebP files (O5):** made once with a tool already on the machine (for example `cwebp` or ImageMagick); the exact command and crop box are recorded in `brand-mark-mascot.adoc` § `#assets`; no dependency is added.
+
+## PLAN-130 Landing Residue (Amendment 2026-11-11)
+
+Routed here by the operator (AskUserQuestion, 2026-11-11) from `landings/PLAN-130.md` (#414, squash `078b2ec5`). It supersedes any
+text above that differs. Re-read each point at the then-current HEAD before changing it.
+
+6. **The brand pieces' residue**
+ - What:
+   - `BrandMark.svelte:19` declares `size?: 16 | 20 | 24 | 28 | 64` for both renderings, so `rendering="colour" size={20}` type-checks
+     and draws nothing (`DELIVERED_SIZES` at `:6`). Make the props a discriminated type per rendering (colour: 16, 28, 64; monochrome:
+     16, 20, 24, 28, 64) so a size the rendering is not delivered at is refused by `svelte-check`; keep the runtime refusal.
+   - `favicon.ts:5-6`: the header comment still says "light-theme brand colour"; say what the tab copies are now (the palette
+     baked into `static/brand-mark*.svg`). Comment only; behaviour unchanged.
+   - `pm-web-e2e/tests/brand-s12-screenshots.spec.js` (414 lines, added by PLAN-130 as one-shot evidence): it imports
+     `/src/lib/stores/runtime.ts` inside `page.evaluate` (`:288`, so it only runs against the Vite dev server), renders the tab icon
+     at 64 px (`:301-317`) where S12 is about 16 px, asserts nothing, and runs in every e2e run. Remove it from the permanent suite
+     (the S12 verdict is recorded in #414's body), or keep it only as a tagged, opt-in spec that asserts and renders the tab icon
+     at 16 px — the plan states which, with its reason.
+   - `WaitingMark.svelte:60-64`: with `stroke-linecap: round`, `stroke-dasharray: 1` and `stroke-dashoffset: 1`, a tick may show a
+     round-cap dot at the start frame. Check in the browser at 20 px (light and dark); if the dot shows, hide the tick until it
+     draws (for example opacity `0` at the start frame); reduced motion unchanged.
+   - The literal `brand-mark-plate` stays only as absence assertions (`BrandMark.test.ts:208-210`, `NavRail.test.ts:81-82`,
+     `chrome.spec.js:125-126`); that is intended — no change.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-frontend:css
+ - Done when:
+   - A test (or a `svelte-check` fixture with `@ts-expect-error`) fails when a colour `BrandMark` is given `size={20}`. Evidence
+     order: `test-first`.
+   - The S12 spec is either gone or opt-in, asserting and rendering the tab icon at 16 px; the default e2e run no longer depends on
+     the dev server's module path.
+   - The browser check of deliverable 5 includes the waiting mark's start frame at 20 px.
+
+Expected surface added: `pm-web-app/src/lib/components/BrandMark.svelte`, `pm-web-app/src/lib/components/BrandMark.test.ts`,
+`pm-web-app/src/lib/favicon.ts`, `pm-web-app/src/lib/components/WaitingMark.svelte`, `pm-web-app/src/lib/components/WaitingMark.test.ts`,
+`pm-web-e2e/tests/brand-s12-screenshots.spec.js`.
+
+Also observed (no change here): deliverable 3 replaces `EmptyState`'s `brand` mark, which PLAN-130 drew monochrome at 64 px against
+`brand-mark.adoc:180` ("Not used: the empty states") — this plan's `mascot` removes that use; the dependency on `PLAN-130` is satisfied.

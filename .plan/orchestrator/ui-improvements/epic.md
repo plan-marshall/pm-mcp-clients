@@ -271,6 +271,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   after D1–D3/D4): 41, 52, 55, 58, 59, 71, 75; PLAN-83 is folded into the D2 engine. Unparked by the merge of the named session
   and its implementation package, by the orchestrator, with a re-grounding of the spec.
 
+- Spec-authoring rules (operator 2026-11-11, from PLAN-130's lessons 002-005; apply to every spec staged or amended from now):
+  (1) when a spec says "file X stays unchanged" but the change invalidates an assertion in X, name the case that may be
+  replaced in the spec; (2) when a deliverable replaces existing tests by design, list them under "Tests to remove" so the
+  test-integrity check accepts them without an operator stop; (3) a criterion about how a mark or screen looks is evidenced
+  only by a rendered comparison (screenshot or rendered sheet), never by reading the source — plan the render; (4) never write a
+  deliverable criterion whose evidence exists only after the PR (Sonar count, CI result, review outcome): state it as a landing
+  obligation of the finalize steps instead.
+
 ## Decisions
 
 - 2026-10-25 — Parallelization scope 3, stated by the operator in the invocation.
@@ -591,7 +599,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   PLAN-159 (`contract-intent-delta`, WS-01, runbook) ahead of PLAN-145, and `doc/plans/plan-changes.adoc` reworded by
   direct PR #413 (`skip-bot-review`).
 
+- 2026-11-11 — PLAN-130 landed (#414, `078b2ec5`; `landings/PLAN-130.md`): no blocker or major. Operator (AskUserQuestion):
+  the BrandMark size type, the `favicon.ts` comment, the S12 screenshot spec and the waiting mark's start-frame dot → PLAN-131
+  deliverable 6; the phone onboarding header without the icon → PLAN-64 (Done-when added); PLAN-147's S12 clause settled from
+  the PR body; the eight candidate lessons adopted and archived (spec-authoring rules in Queue annotations; Open Defects for the
+  plan-marshall-side three; the pm-web-app inventory mapping a direct-PR candidate). PLAN-159 took the freed slot.
+
 ## Open Defects
+
+- PLAN-130 lessons 006-008 (2026-11-11, owner plan-marshall): (a) an edit of a bot's walkthrough comment that was already
+  triaged is picked up again as a pending finding and held the #414 merge — key triage by comment id, treat an edit of a
+  summary as non-actionable; (b) `automatic-review:review_completeness` and (c) `manage-findings` calls exited non-zero on
+  argparse shapes copied from workflow prose (e.g. `qgate list` needs `--phase`) — the prose must quote the canonical
+  invocation. Also: `ci pr comments` reports `unresolved: 6` on #414 where GraphQL shows 3 of 3 threads resolved.
 
 - A lane merges with NO bot review (2026-11-10, PLAN-36 #391): CodeRabbit refused every trigger on quota and the
   runbook lane merged under its "standing review authorization", reporting "all review surfaces clear" — true only

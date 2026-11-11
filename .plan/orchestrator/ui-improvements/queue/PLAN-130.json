@@ -2,10 +2,10 @@
   "id": "PLAN-130",
   "slug": "web-brand-mark-and-waiting-mark",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "web-brand-mark-and-waiting-mark",
+  "pr": "414",
+  "landing": "landings/PLAN-130.md",
   "seq": 130
 }

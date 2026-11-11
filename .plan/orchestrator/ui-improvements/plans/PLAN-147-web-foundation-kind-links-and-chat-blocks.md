@@ -28,10 +28,13 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#kind-mark`, `#kind-t
    - `tokens.test.ts`: `COLOUR_TOKENS` drops `--color-epic` and gains the three tints. A new block computes the four measured rules of `components-tags.adoc` § `#kind-tints`
      in both themes (ΔE00 ≥ 20 to running, attention, danger, success, neutral, brand and the mascot orange and gold; OKLCH hue ≥ 30° away; ≥ 30 between tints;
      ≥ 3:1 on bg-app, bg-surface, bg-raised, bg-subtle, bg-rail and brand-subtle). The colour maths (CIEDE2000, OKLCH, contrast) lives in a test helper, no dependency.
-     Fur and gold are read from `--color-mascot-fur` and `--color-mascot-gold` once PLAN-130 has added them, else from `#E17512` and `#F2B630`.
+     Fur and gold are read from `--color-mascot-fur` and `--color-mascot-gold` (added by PLAN-130, `tokens.css:97-101` at `078b2ec5`).
    - Icons: new `kind-project.svg`, `kind-side-job.svg`, `kind-machine.svg`, `act-send.svg`, `act-stop.svg` in `pm-web-app/src/lib/icons/ui/`, registered in `uiIcons.ts`,
      drawn to the UI icon contract of `workflow-visual-language.adoc`. `kind-plan.svg` is redrawn so that it is apart from `kind-task` at 16 px and reads neither as a clipboard
-     nor as the star badge. PLAN-130 deliverable 5 records the S12 finding; follow it.
+     nor as the star badge. PLAN-130 deliverable 5 records the S12 finding; follow it. SETTLED 2026-11-11 (#414 body): rendered at 16 and
+     24 px, `kind-plan`, `kind-task` and `kind-report` read neither as the clipboard nor as the badge, and `kind-plan.svg` was left
+     unchanged; so the redraw here is driven only by being apart from `kind-task` at 16 px, and the clipboard/badge clause is a check,
+     not a reason to redraw. `act-favourite`/`act-favourite-on` stay distinguishable from the badge though close.
    - Catalogue: `common.kind.project|epic|plan|side_job|decision|report|machine`, `common.link.new_tab` and `common.pull_request.chip` (`PR #{number}`) in `common.en/de.properties`
      with the words of `texts-and-languages.adoc` § `#kinds`. The merge of the old `overview.kind.*` keys is PLAN-152's.
  - Persona: plan-marshall:persona-implementer
@@ -124,7 +127,7 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#kind-mark`, `#kind-t
 - OBSERVED: `common.en.properties` has no `common.kind.*`, `common.link.*`, `common.pull_request.*` key; `overview.kind.*` and `overview.find.kind.*` exist — read at `pm-api/src/main/resources/messages/`
 - OBSERVED: `components.adoc` § `#link` says a link is "never drawn as a button" and lists the props `href` and `label` only, while `chat.adoc:162` and `components-chat.adoc:66` require a `Link` in the look of a secondary button and `chat.adoc:135` a `Link` in the chip look — read in the three documents
 - OBSERVED: `Button.svelte` takes an `icon` prop and `base.css:96` defines `.sr-only` — read at both files
-- HYPOTHESIS: the S12 finding of PLAN-130 deliverable 5 changes nothing in the three new icon names — confirm/refute at the merged PR body of PLAN-130 (verify-at-outline)
+- OBSERVED (settled 2026-11-11, #414 body): the S12 finding of PLAN-130 deliverable 5 changes nothing in the three new icon names; `kind-plan.svg` unchanged at `078b2ec5`
 - HYPOTHESIS: the composer of PLAN-135 deliverable 4 needs nothing of `Compose` beyond the props, `stop`, `tools` and `footer` named here — confirm/refute at `.plan/orchestrator/ui-improvements/plans/PLAN-135-web-chat-core.md` § deliverable 4 (verify-at-outline)
 - HYPOTHESIS: the UI icon contract (grid, stroke) is stated in `workflow-visual-language.adoc` — confirm/refute at `doc/design/web-app/workflow-visual-language.adoc` § icon contract (verify-at-outline)
 - Verify-first clause: re-read every named file at the current HEAD; settle the `--color-epic` reader count before choosing between removing the tokens and keeping aliases. If the operator rules D-1 otherwise, deliverable 3 is re-scoped before outline.
