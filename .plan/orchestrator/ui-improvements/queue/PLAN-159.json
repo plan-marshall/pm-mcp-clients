@@ -2,9 +2,9 @@
   "id": "PLAN-159",
   "slug": "contract-intent-delta",
   "workstream": "WS-01",
-  "status": "staged",
+  "status": "running",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
+  "plan_marshall_plan_id": "rb-159-contract-intent-delta",
   "pr": "",
   "landing": "",
   "seq": 159
