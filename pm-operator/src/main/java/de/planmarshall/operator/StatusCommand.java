@@ -253,7 +253,10 @@ final class StatusCommand implements Callable<Integer> {
         var rawSince = status.get("running_since");
         var runningSince = rawSince != null
                             ? OutputSafety.stripControlSequences(Display.eventTime(rawSince.toString(), context.clock()))
-                            : MessageCatalogue.format(locale, "common.time.unknown", Map.of());
+                            : "";
+        if (runningSince.isBlank()) {
+            runningSince = MessageCatalogue.format(locale, "common.time.unknown", Map.of());
+        }
         var workers = status.get("workers_count") != null ? status.get("workers_count") : 0;
         var slots = status.get("build_slots_used") != null ? status.get("build_slots_used") : 0;
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;

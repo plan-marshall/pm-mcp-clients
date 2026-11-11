@@ -446,6 +446,29 @@ class OverviewCommandTest {
     }
 
     @Test
+    @DisplayName("status renders the unknown word when running_since is blank")
+    void shouldRenderUnknownWhenRunningSinceBlank() throws Exception {
+        writeLiveRecord();
+        fixture.writeToken("test-token");
+        fixture.start((request, response) -> {
+            var path = request.target();
+            if ("/api/v1/status".equals(path)) {
+                response.json(200,
+                                    "{\"status\":\"ready\",\"version\":\"0.9.1\",\"listener\":\"unix\",\"workers_count\":2,"
+                                                        + "\"running_since\":\"  \"}");
+            } else if ("/api/v1/projects".equals(path)) {
+                response.json(200, "{\"projects\":[]}");
+            } else {
+                response.send(404, null, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        int code = run("status");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("running since unknown"), out.toString());
+    }
+
+    @Test
     @DisplayName("status renders an ISO running_since as local HH:mm in the context clock's zone")
     void runningSinceUsesTheContextClockZone() throws Exception {
         writeLiveRecord();

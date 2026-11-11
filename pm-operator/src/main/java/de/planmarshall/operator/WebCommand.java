@@ -675,7 +675,8 @@ public final class WebCommand implements Callable<Integer> {
         }
         var out = spec.commandLine().getOut();
         out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.web.status_line",
-                            Map.of("state", describe(JsonTree.asObject(JsonTree.parse(response.body()))))));
+                            Map.of("state", describe(context.clientEnvironment().locale(),
+                                                JsonTree.asObject(JsonTree.parse(response.body()))))));
         out.flush();
         return 0;
     }

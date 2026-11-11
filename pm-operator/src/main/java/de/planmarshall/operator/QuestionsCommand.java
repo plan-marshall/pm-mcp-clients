@@ -71,7 +71,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         var parsed = JsonTree.parse(body);
         if (parsed instanceof List<?> list && !list.isEmpty()) {
             boolean allWaivers = list.stream().allMatch(item -> item instanceof Map<?, ?> m
-                                && (Boolean.TRUE.equals(m.get("is_waiver")) || String.valueOf(m.get("id")).startsWith("WR-")));
+                                && isWaiver(m, text(m.get("id"))));
 
             if (allWaivers) {
                 out.printf("Waiver Requests · %d pending%n", list.size());
