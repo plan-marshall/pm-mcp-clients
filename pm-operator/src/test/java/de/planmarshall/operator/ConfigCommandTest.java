@@ -611,6 +611,62 @@ class ConfigCommandTest {
                                                 out.toString()));
     }
 
+    @Test
+    @DisplayName("config reports an unused consent and an unused confirmation")
+    void configReportsAnUnusedConsentAndConfirmation() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                var body = request.bodyText() == null ? "" : request.bodyText();
+                response.json(200, body.contains("reconfigure:harnesses") ? HARNESS_CONSENT : SETTINGS_CHOOSE);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config", "harnesses", "--consent", "unknown_kind", "--no-icons");
+        var text = out.toString();
+        assertAll(
+                            () -> assertTrue(text.contains("--consent unknown_kind was not used"), text),
+                            () -> assertTrue(text.contains("--no-icons was not used"), text));
+    }
+
+    @Test
+    @DisplayName("a run that cannot reach the machine settings names the failure")
+    void configAspectWithoutTheSettingsLink() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, "{\"state\":{\"state_id\":\"language.choose\",\"kind\":\"operator_wait\"},"
+                                    + "\"links\":[{\"id\":\"set\",\"rel\":\"submit\",\"preselected\":true}]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language");
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertTrue(err.toString().contains("The run of language failed"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("config show reads a single value the runtime serves alone")
+    void configShowReadsASingleValue() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, PORT_VALUE);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "show");
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("web.port"), out.toString()));
+    }
+
     private static String manyAspects() {
         var aspects = new StringBuilder();
         for (int index = 1; index <= 10; index++) {
