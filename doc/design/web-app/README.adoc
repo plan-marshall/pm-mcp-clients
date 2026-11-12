@@ -377,7 +377,7 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 
 |Kind
 |`--color-kind-project`, `--color-kind-epic`, `--color-kind-plan`
-|The icon of a project's, an epic's and a plan's `KindMark`, never a fill, a row or a word; the other kinds are neutral. They replace `--color-epic` and keep a measured distance from every colour above and from the mascot (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
+|The icon of a project's, an epic's and a plan's `KindMark`, never a fill, a row or a word; the other kinds are neutral. The epic tint is also the word of the epic badge, on `--color-bg-subtle`. They are the only kind colours and keep a measured distance from every colour above and from the mascot (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
 |===
 
 The names of design system v1 (`--color-primary`, `--color-warning`, `--color-bg-inset` and the rest) stay declared as aliases of these tokens until link:../../claude_review/visual-design/plan.adoc#VD-S-08[VD-S-08] removes them; a view may still name one, and it renders the v2 value of its theme.

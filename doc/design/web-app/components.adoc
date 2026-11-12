@@ -237,9 +237,9 @@ The modals that are still drawn by hand on layers of their own (`50`, `60`, `110
 
 image::../../resources/diagrams/web-component-link.svg[An in-app link, a link in a sentence, and an external link with its glyph,360,align=center]
 
-An `<a href>` to a place of the app; every place has a URL. A link names its destination as a noun (_Completion report_, _Settings_, _Process designer_). In a sentence it is underlined in the colour of the text around it; standing alone (a head link) it has no underline at rest and gains it on hover. It is never brand-coloured and never drawn as a button.
+An `<a href>` to a place of the app; every place has a URL. A link names its destination as a noun (_Completion report_, _Settings_, _Process designer_). It has three looks and stays a link in each. The `text` look, the default, is underlined in a sentence in the colour of the text around it; standing alone (a head link) it has no underline at rest and gains it on hover. The `button` look is the secondary `Button` look, as the chat's _Open it_ draws it; the `chip` look is that of the chat's reference chips. A link is never brand-coloured in any look, and every look keeps the focus ring.
 
-Source and surface: `pm-web-app/src/lib/components/Link.svelte` (new), tests beside it; the props are `href` and `label`, plus the slot for an icon before it.
+Source and surface: `pm-web-app/src/lib/components/Link.svelte`, tests beside it; the props are `href`, `label` and `look` (`text`, `button` or `chip`), plus the `icon` snippet before the label.
 
 [#external-link]
 === ExternalLink
