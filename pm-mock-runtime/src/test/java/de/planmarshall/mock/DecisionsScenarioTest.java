@@ -14,9 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,8 @@ class DecisionsScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String STATE = StandardScenarios.RUNNING_WORK + "#decisions.open";
+    /** How long an answer's {@code decision.answered} is waited for on the stream. */
+    private static final Duration ANSWERED_WAIT = Duration.ofSeconds(10);
 
     @Nested
     @DisplayName("The open decisions")
@@ -329,14 +333,18 @@ class DecisionsScenarioTest {
 
                     assertEquals(200, post(runtime, "/api/v1/decisions/Q-007/answer", answer).status());
 
-                    for (var i = 0; i < 20; i++) {
-                        var event = sse.next();
-                        assertNotNull(event, "the stream ended before decision.answered");
-                        if ("decision.answered".equals(event.event())) {
-                            return JsonTree.asObject(JsonTree.parse(event.data()));
+                    // The stream stays open, so a missing event would block the read: the wait is bounded, and
+                    // leaving the try closes the exchange, which ends a read still waiting.
+                    return assertTimeoutPreemptively(ANSWERED_WAIT, () -> {
+                        for (var i = 0; i < 20; i++) {
+                            var event = sse.next();
+                            assertNotNull(event, "the stream ended before decision.answered");
+                            if ("decision.answered".equals(event.event())) {
+                                return JsonTree.asObject(JsonTree.parse(event.data()));
+                            }
                         }
-                    }
-                    return fail("no decision.answered among the first 20 events");
+                        return fail("no decision.answered among the first 20 events");
+                    }, () -> "no decision.answered within " + ANSWERED_WAIT.toSeconds() + " s of the answer");
                 }
             }
         }

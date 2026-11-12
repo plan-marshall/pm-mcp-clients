@@ -1284,7 +1284,10 @@
                       "text": "A provider that reads Codeberg issues. Unclear: comments too, and should pull requests of Codeberg follow?",
                       "steps": [
                         {
-                          "key": "chat.step.read"
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the stored sources"
+                          }
                         }
                       ],
                       "refs": [],

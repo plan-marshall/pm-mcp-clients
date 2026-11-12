@@ -2326,7 +2326,10 @@
                       "text": "Yes. TASK-4 tests one transport only; I propose a second test.",
                       "steps": [
                         {
-                          "key": "chat.step.read"
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
                         }
                       ],
                       "refs": [],
@@ -2391,7 +2394,10 @@
                       "text": "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
                       "steps": [
                         {
-                          "key": "chat.step.read"
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
                         }
                       ],
                       "refs": [],
@@ -2446,7 +2452,10 @@
                       "text": "You cancelled it: replaced by relay-v2.",
                       "steps": [
                         {
-                          "key": "chat.step.read"
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
                         }
                       ],
                       "refs": [],
@@ -2506,7 +2515,10 @@
                       "text": "A plan that writes the cursor before acknowledging, tested over websocket and SSE. Unclear: whether the fsync belongs in this plan.",
                       "steps": [
                         {
-                          "key": "chat.step.read"
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
                         }
                       ],
                       "refs": [],
