@@ -942,18 +942,6 @@ public final class PmConsole {
         }
     }
 
-    /**
-     * @param scope    the scope the caller names, or {@code null}
-     * @param eventMap the event frame
-     * @return the scope to name
-     */
-    private static String namedScope(@Nullable String scope, Map<String, Object> eventMap) {
-        if (scope != null) {
-            return scope;
-        }
-        return ConsoleNotice.scopeOf(eventMap);
-    }
-
     private void updateWindowTitle(Terminal terminal) {
         var title = new StringBuilder("pm-operator");
         if (!badges.get().isEmpty()) {
@@ -962,6 +950,13 @@ public final class PmConsole {
                                 .append(']');
         }
         TerminalTitle.set(terminal, title.toString());
+    }
+
+    private static String namedScope(@Nullable String scope, Map<String, Object> eventMap) {
+        if (scope != null) {
+            return scope;
+        }
+        return ConsoleNotice.scopeOf(eventMap);
     }
 
     /**

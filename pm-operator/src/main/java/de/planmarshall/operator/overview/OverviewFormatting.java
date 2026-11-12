@@ -410,9 +410,12 @@ public final class OverviewFormatting {
             return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
         var key = kindKey(blocks);
-        var what = MessageCatalogue.hasKey(locale, key)
-                            ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());
+        String what;
+        if (MessageCatalogue.hasKey(locale, key)) {
+            what = MessageCatalogue.format(locale, key, Map.of());
+        } else {
+            what = MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());
+        }
         return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", what));
     }
 

@@ -338,6 +338,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_NEEDS_OPERATOR = "needs_operator";
     private static final String REBASE_ONTO_MAIN = "Rebase onto main";
     private static final String DECISION_REBASE = "rebase";
+    private static final String OPERATOR_CHANNEL = "operator";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
@@ -5275,7 +5276,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, "operator", "web", "iPad", null),
+                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, OPERATOR_CHANNEL, "web", "iPad", null),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
         var fixRelayOwnCalls = List.of(
@@ -9940,7 +9941,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             interp = new DecisionInterpretation(
                     InterpretationType.OPTION_WITH_CONDITION, "2", "release/0.9 stays as it is",
                     "Rebase onto main, provided release/0.9 stays as it is.", null,
-                    List.of("rebase", "release/0.9")
+                    List.of(DECISION_REBASE, "release/0.9")
             );
         } else if (lower.contains("whatever") || lower.contains("reviewer") || lower.contains("unclear")) {
             interp = new DecisionInterpretation(
