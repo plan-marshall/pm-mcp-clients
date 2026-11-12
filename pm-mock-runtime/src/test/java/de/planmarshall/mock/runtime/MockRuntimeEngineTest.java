@@ -1789,10 +1789,10 @@ class MockRuntimeEngineTest {
         var latches = Map.of(marker, new CountDownLatch(1));
 
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                .registry(registry)
-                .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
-                .timing(MockTiming.ORDERED)
-                .build())) {
+                     .registry(registry)
+                     .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
+                     .timing(MockTiming.ORDERED)
+                     .build())) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var bearer = "Bearer " + runtime.token();
             String resetId;
