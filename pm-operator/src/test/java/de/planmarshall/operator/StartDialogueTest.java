@@ -644,7 +644,7 @@ class StartDialogueTest {
             assertAll(
                                 () -> assertTrue(rendered.contains(replies.getLast()), "the newest reply: " + rendered),
                                 () -> assertEquals(List.of(), shown.stream()
-                                                    .filter(text -> occurrences(rendered, text) != 1).toList(),
+                                                                        .filter(text -> occurrences(rendered, text) != 1).toList(),
                                                     "every turn exactly once: " + rendered));
         }
 
