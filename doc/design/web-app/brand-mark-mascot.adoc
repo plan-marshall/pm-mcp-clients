@@ -46,7 +46,7 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 |full figure, `160`–`200` px
 
 |*Rail foot* (<<rail-foot>>)
-|The bear peeking up from the bottom edge of the rail, cropped at the chest so the clipboard is hidden; a faint background of the rail column.
+|The bear peeking up from the bottom edge of the rail, cropped just below the shoulders so the top of the clipboard shows; a faint background of the rail column.
 |— (always the source bust)
 |rail width, about `200` px tall
 |===
@@ -62,6 +62,17 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 ** `mascot-full` (the whole figure) and `mascot-bust` (head and shoulders, for the empty states and the rail foot) from the source; `mascot-<pose>-full` and `mascot-<pose>-bust` for each accepted pose, with `<pose>` the id of <<poses>>;
 ** each as WebP at `1×` and `2×` (`360` / `720` px tall for a full figure, `200` / `400` px for a bust, so the rail foot's `200` px stays sharp on a `2×` screen and the empty states' `120`–`160` px are drawn from a larger file), with a PNG copy only if a supported browser needs one;
 ** at most `60 KB` per file.
+* *Recipe of the source files*: made once with `cwebp` from the source `planmarshall.png` (`1122` × `1402` px, RGBA) in `doc/resources/` of `plan-marshall/plan-marshall`; a file that grows past `60 KB` raises the compression, never the size cap. The bust is cropped to the box `x=110 y=0 w=900 h=700` of the source, just below the shoulders, so the top of the clipboard shows.
++
+[source,bash]
+----
+cwebp -q 80 -m 6 -alpha_q 100 -resize 0 360 planmarshall.png -o mascot-full-1x.webp
+cwebp -q 80 -m 6 -alpha_q 100 -resize 0 720 planmarshall.png -o mascot-full-2x.webp
+cwebp -q 80 -m 6 -alpha_q 100 -crop 110 0 900 700 -resize 0 200 planmarshall.png -o mascot-bust-1x.webp
+cwebp -q 80 -m 6 -alpha_q 100 -crop 110 0 900 700 -resize 0 400 planmarshall.png -o mascot-bust-2x.webp
+----
++
+The results: `mascot-full` `289` × `360` and `577` × `720` px, `mascot-bust` `258` × `200` and `515` × `400` px.
 * *Delivery*: the files are imported through Vite, so they are emitted as files of the app's own origin. The content security policy admits `img-src 'self' blob:` only, and `assetsInlineLimit: 0` (`pm-web-app/vite.config.ts`) keeps Vite from inlining any of them as a `data:` URL. The rail-foot background is set by a class in a stylesheet, never by a `style` attribute, which the policy blocks.
 * *Loading*: `loading="lazy"` and `decoding="async"`, with the width and the height set, so nothing shifts as an image arrives. The pairing page loads its figure eagerly, because it is the hero there.
 * *Figures of the disconnected states*: the runtime not reachable and the network listener turned off are shown when the app can no longer reach its origin, so their figure cannot be fetched then. Once the app has started, it fetches the figure these states use (the `searching` pose, or the source figure until that pose is accepted) and holds it as an object URL (`blob:`, which the content security policy admits); the two states draw it from there. If the fetch did not complete before the connection was lost, the state shows without its figure — its text says everything.
@@ -75,7 +86,7 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 
 A reversible test (the operator's decision of 2026-11-06): the bear peeking up from the bottom edge of the rail, above the rail's foot controls.
 
-* *Drawing*: `mascot-bust`, cropped at the chest so the clipboard is hidden, as the background of the rail column, anchored to its bottom edge above the foot controls, as wide as the rail.
+* *Drawing*: `mascot-bust`, cropped just below the shoulders so the top of the clipboard shows (<<assets>>), as the background of the rail column, anchored to its bottom edge above the foot controls, as wide as the rail.
 * *Fixed opacity*: `0.18` in the light theme, `0.12` in the dark. The bear lies under no text and no control: its box ends `--space-2` above the foot controls and below the last destination of the rail. PLAN-70's light-theme pass checks it in both themes: the nearest label keeps `4.5:1` with the bear present, and the bear stays faint enough not to draw the eye.
 * *Hidden* when the rail is collapsed (`64` px), when the rail's free height below its last destination is below `260` px, on the phone (no rail), and while the view shows a mascot figure or a mascot empty state, so a screen never shows two.
 * *Always the same*: the neutral source bust; it never changes with state or with the view.
