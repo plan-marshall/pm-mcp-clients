@@ -511,7 +511,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
     private static final String ERR_START_REFUSED = "start_refused";
-    private static final String ERR_INVALID_REQUEST = "invalid_request";
+    /** The catalogue's code of a request body or parameter that violates the endpoint's schema. */
+    private static final String ERR_INVALID_ARGUMENTS = "invalid_arguments";
     private static final String ERR_CONFIRMATION_REQUIRED = "confirmation_required";
     private static final String ERR_RATE_LIMITED = "rate_limited";
     private static final String ERR_NOT_OPEN = "not_open";
@@ -3511,7 +3512,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     ? Map.of(KEY_PROJECT_ID, projectId, KEY_LESSON_ID, lessonId)
                     : withDefaults(bodyMap, projectId, lessonId));
         } catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The claim request could not be read"));
             return;
         }
@@ -3797,7 +3798,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             instruct = DecompositionInstructRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The instruction could not be read"));
             return;
         }
@@ -4144,7 +4145,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = EntryOpenRequest.fromMap(bodyMap);
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The opening request could not be read"));
             return;
         }
@@ -4168,15 +4169,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             response.json(200, state.toMap());
         } catch (StartRegistry.ActRefused refused) {
-            var status = switch (refused.error()) {
-                case ERR_INVALID_REQUEST, "invalid_arguments" -> 400;
-                case ERR_LOOPBACK_ONLY, ERR_CLI_ONLY -> 403;
-                case ERR_SCOPE_NOT_FOUND -> 404;
-                default -> 409;
-            };
-            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail(),
+            response.json(statusOf(refused), Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail(),
                     KEY_STATE, entryId));
         }
+    }
+
+    /**
+     * @param refused a start act the registry refused
+     * @return the HTTP status the catalogue pairs with the refusal's code
+     * @throws IllegalArgumentException if the registry refused with a code outside the catalogue
+     */
+    private static int statusOf(StartRegistry.ActRefused refused) {
+        return ApiErrorCode.fromWire(refused.error()).status();
     }
 
     private void handleProjectFiles(MockHttpRequest request, MockHttpResponse response, String projectId,
@@ -4184,7 +4188,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var rootWire = queryParameter(request, "root");
         var root = ConfinedRoot.fromWireOrNull(rootWire != null ? rootWire : ConfinedRoot.CHECKOUT.wireValue());
         if (root == null) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "Unknown root: " + rootWire));
             return;
         }
@@ -4196,8 +4200,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             response.json(200, listing.toMap());
         } catch (StartRegistry.ActRefused refused) {
-            var status = ERR_LOOPBACK_ONLY.equals(refused.error()) ? 403 : 400;
-            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
+            response.json(statusOf(refused), Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
         }
     }
 
@@ -4285,7 +4288,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = StartPlanRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The start request could not be read"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "The start request could not be read"));
             return;
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), parsed.issue(), parsed.documents());
@@ -4315,7 +4318,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = StartEpicRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The epic request could not be read"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "The epic request could not be read"));
             return;
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
@@ -4333,7 +4336,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var bodyMap = readBodyObject(request);
         var projectId = JsonTree.string(bodyMap, KEY_PROJECT_ID);
         if (projectId == null || projectId.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "project_id is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "project_id is required"));
             return;
         }
         String id;
@@ -4380,7 +4383,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var bodyMap = readBodyObject(request);
         var number = parsePrNumber(JsonTree.string(bodyMap, KEY_PR_REFERENCE));
         if (number <= 0) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The pull request reference names no number"));
             return;
         }
@@ -4401,13 +4404,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = PrAdoptRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The adopt request could not be read"));
             return;
         }
         var number = parsePrNumber(parsed.prUrl());
         if (number <= 0) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The pull request reference names no number"));
             return;
         }
@@ -4470,7 +4473,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = LocalChangesCaptureRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The capture request could not be read"));
             return;
         }
@@ -8535,7 +8538,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         boolean hasId = pathProjectId != null && !pathProjectId.isBlank();
         if (!hasId && (projectPath == null || projectPath.isBlank())) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A checkout path is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "A checkout path is required"));
             return;
         }
         var projectId = hasId ? pathProjectId : projectIdFromPath(projectPath);
