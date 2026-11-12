@@ -54,7 +54,7 @@ class ConfigValueChangeTest {
         var deletion = ConfigValueChange.deletion(revision);
         var parsed = ConfigValueChange.fromJson(deletion.toJson());
 
-        assertTrue(deletion.toMap().get(ConfigValueChange.FIELD_VALUE) == null);
+        assertNull(deletion.toMap().get(ConfigValueChange.FIELD_VALUE));
         assertNull(parsed.value());
         assertEquals(revision, parsed.revision());
     }

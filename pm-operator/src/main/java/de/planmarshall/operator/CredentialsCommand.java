@@ -61,6 +61,10 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String MODE = "mode";
     private static final String ROTATE = "rotate";
     private static final String CREDENTIALS = "credentials";
+    private static final String KEY = "key";
+    private static final String STORED = "operator.credentials.stored";
+    private static final String FAILED = "operator.credentials.failed";
+    private static final String READ_FAILED = "operator.credentials.read_failed";
 
     private final OperatorContext context;
 
@@ -103,7 +107,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             return null;
         }
         out.println(MessageCatalogue.format(locale(), "operator.credentials.status_failed",
-                            Map.of("key", key, STATUS, response.status())));
+                            Map.of(KEY, key, STATUS, response.status())));
         out.flush();
         return null;
     }
@@ -123,7 +127,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                             Map.of("mode", mode, "key", key)));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry_value",
-                            Map.of("key", key, "providers", providerHint(status, locale))));
+                            Map.of(KEY, key, "providers", providerHint(status, locale))));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
                             ? "onboard.settings.credential.rotate" : "onboard.settings.credential.replace", Map.of()));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
@@ -163,14 +167,14 @@ public final class CredentialsCommand implements Callable<Integer> {
                 // The interrupt at the secret prompt is the exit-code table's 130 as well.
                 throw new StartPrompt.InterruptException();
             } catch (IOException e) {
-                out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
+                out.println(MessageCatalogue.format(locale, READ_FAILED,
                                     Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
             try {
                 if (secret.length == 0) {
-                    out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
+                    out.println(MessageCatalogue.format(locale, READ_FAILED,
                                         Map.of("reason", "empty")));
                     out.flush();
                     return PmOperator.EXIT_FAILURE;
@@ -201,7 +205,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
             out.println(MessageCatalogue.format(locale, "operator.credentials.failed",
-                                Map.of("key", key, STATUS, response.status())));
+                                Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -213,8 +217,8 @@ public final class CredentialsCommand implements Callable<Integer> {
         } catch (IOException _) {
             // a body-less 204 is fine
         }
-        out.println(MessageCatalogue.format(locale, "operator.credentials.stored",
-                            Map.of("key", key, "count", dropped)));
+        out.println(MessageCatalogue.format(locale, STORED,
+                            Map.of(KEY, key, "count", dropped)));
         out.flush();
         return verifyProviders(out, err, key, store, terminal);
     }
@@ -257,7 +261,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         }
         var plans = reported.get("plans") instanceof String text ? text : "";
         var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
-                            "onboard.settings.credential.verified", Map.of("key", key)));
+                            "onboard.settings.credential.verified", Map.of(KEY, key)));
         if (!plans.isBlank()) {
             line.append(' ').append(MessageCatalogue.format(locale,
                                 "onboard.settings.credential.plans_go_on",
@@ -311,7 +315,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             var status = command.readStatus(out, key);
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of("key", key)));
+                                    Map.of(KEY, key)));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -384,7 +388,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             var status = command.readStatus(out, key);
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of("key", key)));
+                                    Map.of(KEY, key)));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -416,12 +420,12 @@ public final class CredentialsCommand implements Callable<Integer> {
             var response = context.runtime(true).send(new HttpRequest("DELETE", path(key), Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.credentials.stored", Map.of("key", key, "count", 0)));
+                                    "operator.credentials.stored", Map.of(KEY, key, "count", 0)));
                 out.flush();
                 return 0;
             }
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                "operator.credentials.failed", Map.of("key", key, STATUS, response.status())));
+                                "operator.credentials.failed", Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }

@@ -30,6 +30,8 @@ public final class AspectOwnedKeys {
     /** The one table: an owned key or key prefix, and the aspect verb that owns it. */
     private static final Map<String, String> OWNED = owned();
 
+    private static final String ROLES = "roles";
+
     private AspectOwnedKeys() {
     }
 
@@ -41,8 +43,8 @@ public final class AspectOwnedKeys {
         map.put("credentials.store", "credentials");
         map.put("providers.", "providers");
         map.put("plan_defaults.", "plan-defaults");
-        map.put("roles", "roles");
-        map.put("roles.", "roles");
+        map.put(ROLES, ROLES);
+        map.put(ROLES + ".", ROLES);
         map.put("sources.documents_mode", "documents");
         return Collections.unmodifiableMap(map);
     }

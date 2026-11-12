@@ -75,7 +75,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String PLAN_DEFAULTS = "plan-defaults";
     private static final String HARNESS_PREFIX = "harness.";
     private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
-    private static final String DOCUMENTS_MODE_KEY = "sources.documents_mode";
     private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
     private static final String ONE_LEVEL = "operator.config.one_level";
     private static final String CONFIG_VERB = "config";
@@ -94,6 +93,12 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String CONFLICT = "conflict";
     private static final String ERROR = "error";
+    private static final String SHOW_UNREADABLE = "operator.config.show.unreadable";
+    private static final String NO_SETTING = "operator.settings.no_setting";
+    private static final String APPLY_AGAIN = "operator.settings.apply_again";
+    private static final String KEY = "key";
+    private static final String COUNT = "count";
+    private static final String KEEP = "k";
     private static final String DEVICES_PATH = "/api/v1/web/devices";
     private static final String STATUS_PATH = "/api/v1/status";
     private static final String WEB_VERB = "web";
@@ -151,7 +156,7 @@ public final class ConfigCommand implements Callable<Integer> {
         } catch (ReadFailedException failure) {
             out.println(failure.status() > 0
                                 ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
-                                : MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
+                                : MessageCatalogue.format(locale, SHOW_UNREADABLE, Map.of()));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -278,7 +283,7 @@ public final class ConfigCommand implements Callable<Integer> {
                             : "operator.settings.devices.listener_on";
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
-                                                "count", devices.size(),
+                                                COUNT, devices.size(),
                                                 "listener", MessageCatalogue.format(locale, listener, Map.of()))),
                             List.of(WEB_VERB, DEVICES_VERB));
     }
@@ -583,49 +588,58 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
-     * Sends one change against the revision the value was read with, and answers a {@code conflict}
-     * as the design says: the current value, then apply yours again or keep it
-     * ({@code work-actions.adoc#conflict}).
+     * The parts of one plain-key change that its two steps share.
      *
      * @param out       the verb's output
      * @param err       the verb's error output
      * @param locale    the interface locale
      * @param readPath  the scoped collection the revision is read from
      * @param writePath the scoped value the change addresses
-     * @param deletion  whether the change removes the value
-     * @param value     the value to set, or {@code null} for a deletion
-     * @param noInput   whether the verb stops at a conflict instead of asking
      * @param key       the key the change addresses
      * @param doneLine  the line a written change prints
      * @param failedKey the catalogue key that names a refused change
+     */
+    private record Change(PrintWriter out, PrintWriter err, String locale, String readPath, String writePath,
+    String key, String doneLine, String failedKey) {
+    }
+
+    /**
+     * Sends one change against the revision the value was read with, and answers a {@code conflict}
+     * as the design says: the current value, then apply yours again or keep it
+     * ({@code work-actions.adoc#conflict}).
+     *
+     * @param context  the operator context
+     * @param change   the change's shared parts
+     * @param deletion whether the change removes the value
+     * @param value    the value to set, or {@code null} for a deletion
+     * @param noInput  whether the verb stops at a conflict instead of asking
      * @return the exit code
      * @throws IOException on transport failure
      */
-    private static int writeWithRevision(OperatorContext context, PrintWriter out, PrintWriter err, String locale,
-                        String readPath, String writePath, boolean deletion, @Nullable String value, boolean noInput,
-                        String key, String doneLine, String failedKey) throws IOException {
+    private static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
+                        @Nullable String value, boolean noInput) throws IOException {
         long revision;
         try {
-            revision = revisionOf(context, readPath, key);
+            revision = revisionOf(context, change.readPath(), change.key());
         } catch (ReadFailedException failure) {
-            out.println(failure.status() > 0
-                                ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
-                                : MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
-            out.flush();
+            change.out().println(failure.status() > 0
+                                ? MessageCatalogue.format(change.locale(), SETTINGS_FAILED,
+                                                    Map.of(STATUS, failure.status()))
+                                : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
+            change.out().flush();
             return PmOperator.EXIT_FAILURE;
         }
-        var response = sendChange(context, deletion, writePath, value, revision);
+        var response = sendChange(context, deletion, change.writePath(), value, revision);
         if (response.status() == 200 || response.status() == 204) {
-            out.println(doneLine);
-            out.flush();
+            change.out().println(change.doneLine());
+            change.out().flush();
             return 0;
         }
         var conflict = response.status() == 409 ? conflictOf(response.bodyText()) : null;
         if (conflict == null) {
-            return failed(err, locale, failedKey, key, response.status());
+            return failed(change, response.status());
         }
-        return resolveConflict(context, out, err, locale, writePath, deletion, value, noInput, key, doneLine,
-                            failedKey, conflict);
+        return resolveConflict(context, change, deletion, value, noInput, conflict);
     }
 
     /**
@@ -660,48 +674,50 @@ public final class ConfigCommand implements Callable<Integer> {
         return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
     }
 
-    private static int resolveConflict(OperatorContext context, PrintWriter out, PrintWriter err, String locale,
-                        String writePath, boolean deletion, @Nullable String value, boolean noInput, String key,
-                        String doneLine, String failedKey, ConfigValueResource current) throws IOException {
-        var rendered = renderedValue(locale, current);
+    private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
+                        @Nullable String value, boolean noInput, ConfigValueResource current) throws IOException {
+        var rendered = renderedValue(change.locale(), current);
         if (noInput) {
-            out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(VALUE, rendered)));
-            out.flush();
+            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
+                                Map.of(VALUE, rendered)));
+            change.out().flush();
             return ConfigAspectRun.EXIT_MISSING_INPUT;
         }
-        out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
-        out.flush();
+        change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
+                            Map.of(VALUE, rendered)));
+        change.out().flush();
         if (!context.isInteractiveTerminal()) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
-            out.flush();
+            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+            change.out().flush();
             return ConfigAspectRun.EXIT_MISSING_INPUT;
         }
-        if (!applyAgain(context, locale)) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
-            out.flush();
+        if (!applyAgain(context, change.locale())) {
+            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+            change.out().flush();
             return 0;
         }
-        var retry = sendChange(context, deletion, writePath, value, current.revision());
+        var retry = sendChange(context, deletion, change.writePath(), value, current.revision());
         if (retry.status() == 200 || retry.status() == 204) {
-            out.println(doneLine);
-            out.flush();
+            change.out().println(change.doneLine());
+            change.out().flush();
             return 0;
         }
-        return failed(err, locale, failedKey, key, retry.status());
+        return failed(change, retry.status());
     }
 
-    private static int failed(PrintWriter err, String locale, String failedKey, String key, int status) {
-        err.println(MessageCatalogue.format(locale, failedKey, Map.of("key", key, STATUS, status)));
-        err.flush();
+    private static int failed(Change change, int status) {
+        change.err().println(MessageCatalogue.format(change.locale(), change.failedKey(),
+                            Map.of(KEY, change.key(), STATUS, status)));
+        change.err().flush();
         return 1;
     }
 
     private static boolean applyAgain(OperatorContext context, String locale) throws IOException {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-            var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
+            var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
             // An end of input is no answer: keeping the current value never overwrites another client's.
-            return line != null && !"k".equalsIgnoreCase(line.trim());
+            return line != null && !KEEP.equalsIgnoreCase(line.trim());
         }
     }
 
@@ -760,7 +776,7 @@ public final class ConfigCommand implements Callable<Integer> {
             try {
                 values = ConfigCommand.parseValues(response.bodyText());
             } catch (IOException _) {
-                out.println(MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
+                out.println(MessageCatalogue.format(locale, SHOW_UNREADABLE, Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -833,10 +849,11 @@ public final class ConfigCommand implements Callable<Integer> {
             }
             var done = MessageCatalogue.format(locale, "operator.config.set_done",
                                 Map.of("key", key, VALUE, value));
-            return writeWithRevision(context, out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, spec.commandLine().getErr(), locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
-                                OperatorUrlUtil.appendScope(levelPath(), project, plan), false, value, noInput,
-                                key, done, "operator.config.set_failed");
+                                OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
+                                "operator.config.set_failed");
+            return writeWithRevision(context, change, false, value, noInput);
         }
 
         private String levelPath() {
@@ -895,10 +912,11 @@ public final class ConfigCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
             var done = MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key));
-            return writeWithRevision(context, out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, spec.commandLine().getErr(), locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
-                                OperatorUrlUtil.appendScope(levelPath(), project, plan), true, null, noInput,
-                                key, done, "operator.config.unset_failed");
+                                OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
+                                "operator.config.unset_failed");
+            return writeWithRevision(context, change, true, null, noInput);
         }
 
         private String levelPath() {

@@ -297,7 +297,7 @@ public final class MockConfigRoutes {
             Map<String, String> planProjects) {
         var project = scopeValue(query, KEY_PROJECT);
         var plan = scopeValue(query, KEY_PLAN);
-        var levelProject = project != null ? project : (plan == null ? null : planProjects.get(plan));
+        var levelProject = levelProject(project, plan, planProjects);
         var keys = new TreeMap<String, Boolean>();
         machineValues.keySet().forEach(key -> keys.put(key, Boolean.TRUE));
         for (var level : OPERATOR_LEVELS) {
@@ -348,7 +348,7 @@ public final class MockConfigRoutes {
         Object value = null;
         ConfigOrigin overridden = null;
         long valueRevision = 0;
-        var levelProject = project != null ? project : (plan == null ? null : planProjects.get(plan));
+        var levelProject = levelProject(project, plan, planProjects);
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
@@ -356,22 +356,14 @@ public final class MockConfigRoutes {
                 continue;
             }
             var scope = levelScope(level, levelProject, plan);
-            var values = byLevel(level, scope);
-            var present = values.containsKey(key);
-            Object levelValue = present ? values.get(key) : null;
-            var fromMachine = false;
-            if (!present && level == ConfigOrigin.MACHINE) {
-                present = machineValues.containsKey(key);
-                levelValue = present ? machineValues.get(key) : null;
-                fromMachine = present;
-            }
-            if (!present) {
+            var atLevel = levelValue(level, scope, key, machineValues);
+            if (!atLevel.present()) {
                 continue;
             }
             if (origin == null) {
                 origin = level;
-                value = levelValue;
-                valueRevision = fromMachine ? 0 : storedRevision(level, scope, key);
+                value = atLevel.value();
+                valueRevision = atLevel.fromMachine() ? 0 : storedRevision(level, scope, key);
             } else {
                 overridden = level;
                 break;
@@ -379,6 +371,47 @@ public final class MockConfigRoutes {
         }
         return resource(key, Objects.requireNonNullElse(origin, ConfigOrigin.DEFAULT), value, overridden,
                 valueRevision);
+    }
+
+    /**
+     * @param project      the project the read names, or {@code null}
+     * @param plan         the plan the read names, or {@code null}
+     * @param planProjects the project each plan belongs to, by plan id
+     * @return the project whose level a plan-only read inherits
+     */
+    private static @Nullable String levelProject(@Nullable String project, @Nullable String plan,
+            Map<String, String> planProjects) {
+        if (project != null) {
+            return project;
+        }
+        return plan == null ? null : planProjects.get(plan);
+    }
+
+    /**
+     * @param level         a level
+     * @param scope         that level's scope, or {@code null} for the machine's store
+     * @param key           the key
+     * @param machineValues the machine's own values, by effective key
+     * @return the value the level holds, and whether it came from the machine's own values
+     */
+    private LevelValue levelValue(ConfigOrigin level, @Nullable String scope, String key,
+            Map<String, Object> machineValues) {
+        var values = byLevel(level, scope);
+        if (values.containsKey(key)) {
+            return new LevelValue(true, values.get(key), false);
+        }
+        if (level == ConfigOrigin.MACHINE && machineValues.containsKey(key)) {
+            return new LevelValue(true, machineValues.get(key), true);
+        }
+        return new LevelValue(false, null, false);
+    }
+
+    /**
+     * @param present     whether the level holds a value
+     * @param value       the value, or {@code null}
+     * @param fromMachine whether the value came from the machine's own values
+     */
+    private record LevelValue(boolean present, @Nullable Object value, boolean fromMachine) {
     }
 
     private Map<String, Object> resource(String key, ConfigOrigin origin, @Nullable Object value,

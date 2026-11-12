@@ -340,6 +340,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
     private static final String KEY_KIND = "kind";
+    private static final String KEY_PROVIDER = "provider";
+    private static final String KEY_TOKEN_PATH = "token_path";
+    private static final String KEY_EXPIRES_IN_DAYS = "expires_in_days";
+    private static final String KEY_EXPIRED = "expired";
+    private static final String PATH_PLANS = "/api/v1/plans";
     private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_EPIC_TITLE = "epic_title";
@@ -2501,17 +2506,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var body = new LinkedHashMap<String, Object>();
                 body.put("key", key);
                 body.put(KEY_STATUS, "present");
-                if (credential.get("provider") != null) {
-                    body.put("provider", credential.get("provider"));
+                if (credential.get(KEY_PROVIDER) != null) {
+                    body.put(KEY_PROVIDER, credential.get(KEY_PROVIDER));
                 }
-                if (credential.get("kind") != null) {
-                    body.put("kind", credential.get("kind"));
+                if (credential.get(KEY_KIND) != null) {
+                    body.put(KEY_KIND, credential.get(KEY_KIND));
                 }
-                body.put("token_path", machineCredentialStore);
-                if (credential.get("expires_in_days") != null) {
-                    body.put("expires_in_days", credential.get("expires_in_days"));
+                body.put(KEY_TOKEN_PATH, machineCredentialStore);
+                if (credential.get(KEY_EXPIRES_IN_DAYS) != null) {
+                    body.put(KEY_EXPIRES_IN_DAYS, credential.get(KEY_EXPIRES_IN_DAYS));
                 }
-                body.put("expired", Boolean.TRUE.equals(credential.get("expired")));
+                body.put(KEY_EXPIRED, Boolean.TRUE.equals(credential.get(KEY_EXPIRED)));
                 response.json(200, body);
                 return true;
             }
@@ -7455,7 +7460,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private Map<String, String> planProjects() {
         var projects = new LinkedHashMap<String, String>();
-        var route = currentScenario.get().route("GET", "/api/v1/plans");
+        var route = currentScenario.get().route("GET", PATH_PLANS);
         if (route == null || !(route.representation() instanceof Map<?, ?> map)
                 || !(map.get("plans") instanceof List<?> plans)) {
             return projects;
