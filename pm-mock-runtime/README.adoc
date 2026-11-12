@@ -140,6 +140,14 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 * `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
 * `POST /mock/pairing`: Returns the currently open pairing code, or issues a fresh one when the previous code was consumed. The development loop has no terminal client to ask for a replacement; the single-use rule is unchanged, so a consumed code never becomes valid again.
 * `GET /mock/acts`: Returns every operator act recorded since the last reset, oldest first, as `{"count": n, "acts": [{"method", "path", "state"}, ...]}`. An act is an authenticated request that is not a read and not a call to the relay's `/mcp` endpoint; one the runtime refuses is recorded as well, so a dialogue test proves what was sent rather than only what the screen says. `POST /mock/reset` and a scenario switch empty the list.
+* `POST /mock/inject`: Arms a chat failure, played once by the next chat request or reply it matches, then the chat is clean again. The body names it as `{"failure": <name>}`; the answer is `{"armed", "pending"}`, and an unknown name, or a member its failure does not take, is refused `invalid_arguments`. The failures:
+** `infeasible`, `lost`, `too_long`: the next reply ends `failed` after its first piece, with the reason `chat.reason.<name>`.
+** `stop`: the next reply is stopped after its first piece and keeps its text so far.
+** `worker_replaced`: the next reply's worker is replaced after its first piece; the reply is announced again and restarts from the working line.
+** `http_error` with `status` (400–599) and `code` (an API error code): the next request of a chat answers with that status and `{"error": <code>}`.
+** `slow` with an optional `delay_ms` (default 2000): the next request of a chat answers after that delay.
++
+A scenario state names the same failures under `chat_failures`, armed when the state is entered; an unknown name fails the scenario's load. A scenario switch or a reset disarms what was not played.
 
 === Chats
 

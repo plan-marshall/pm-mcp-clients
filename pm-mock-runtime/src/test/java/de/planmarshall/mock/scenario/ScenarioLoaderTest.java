@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -365,6 +368,75 @@ class ScenarioLoaderTest {
                 () -> ScenarioLoader.load(json, "closed-error.json"));
         assertEquals("links.go.error", ex.field());
         assertTrue(ex.getMessage().contains("not_a_code"));
+    }
+
+    @Test
+    @DisplayName("loads a state naming chat failures, in order and with their members")
+    void loadsChatFailures() {
+        var status = Generators.integers(400, 599).next();
+        var delayMs = Generators.integers(1, 5_000).next();
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]},"chat_failures":[
+                  {"failure":"lost"},
+                  {"failure":"http_error","status":%d,"code":"scope_not_found"},
+                  {"failure":"slow","delay_ms":%d},
+                  {"failure":"slow"}]}}}
+                """.formatted(status, delayMs);
+
+        var failures = Objects.requireNonNull(ScenarioLoader.load(json, "chat-failures.json").state("a"))
+                .chatFailures();
+
+        assertEquals(List.of(
+                StateDefinition.ChatFailure.of(StateDefinition.ChatFailure.Kind.LOST),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.HTTP_ERROR, status,
+                        "scope_not_found", 0),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.SLOW, 0, null, delayMs),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.SLOW, 0, null,
+                        StateDefinition.ChatFailure.DEFAULT_DELAY_MS)), failures);
+    }
+
+    @Test
+    @DisplayName("a state without chat_failures arms none")
+    void noChatFailures() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a","states":{"a":{"representation":{"scope":{"kind":"machine"},
+                 "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        assertTrue(Objects.requireNonNull(ScenarioLoader.load(json, "no-failures.json").state("a"))
+                .chatFailures().isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[{\"failure\":\"no-%s\"}]",
+            "[{\"failure\":\"lost\",\"%s\":1}]",
+            "[{\"failure\":\"http_error\",\"status\":503}]",
+            "[\"%s\"]"})
+    @DisplayName("refuses an unknown chat failure or one a member does not fit, naming the entry")
+    void rejectsUnknownChatFailure(String failures) {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":%s}}}
+                """.formatted(failures.formatted(Generators.letterStrings(4, 10).next()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "bad-failure.json"));
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses chat_failures that are not an array")
+    void rejectsChatFailuresNotAnArray() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":{"failure":"lost"}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "bad-failures.json"));
+        assertEquals("chat_failures", ex.field());
     }
 
     @Test

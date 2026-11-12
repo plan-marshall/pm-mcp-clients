@@ -1440,6 +1440,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
+        // The chat failures the state names, each played once by the next chat request or reply.
+        chatRegistry.arm(stateDef.chatFailures());
+
         // Play events through the timing seam; a drain event belongs to the drain running when it was
         // played.
         for (var eventDef : stateDef.events()) {
@@ -1830,7 +1833,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 1. Control endpoints under /mock/
         if (path.startsWith("/mock/")) {
-            handleControlRequest(request, response);
+            if (!chatRegistry.handleInject(request, response)) {
+                handleControlRequest(request, response);
+            }
             return;
         }
 

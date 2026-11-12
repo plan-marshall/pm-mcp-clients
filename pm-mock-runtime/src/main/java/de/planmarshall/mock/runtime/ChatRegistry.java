@@ -13,8 +13,10 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -60,6 +64,7 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
+import de.planmarshall.mock.scenario.StateDefinition.ChatFailure;
 
 /**
  * Every chat of the mock runtime on the contract of {@code 01-processes-and-transport.adoc#chat-routes}:
@@ -85,6 +90,12 @@ import de.planmarshall.mock.http.MockHttpResponse;
  * <p>
  * The state is seeded from the active state ({@link #seed(Seed)}) and lives in memory; a scenario
  * switch or a reset re-seeds it.
+ * <p>
+ * {@code POST /mock/inject} ({@link #handleInject}) and a state's {@code chat_failures} arm a
+ * {@link ChatFailure}, played once: the next reply ends {@code failed} ({@code infeasible},
+ * {@code lost}, {@code too_long}), is stopped or restarted by a replaced worker after its first piece,
+ * or the next request of a chat answers with an injected error ({@code http_error}) or late
+ * ({@code slow}). A re-seed disarms what was not played.
  */
 final class ChatRegistry {
 
@@ -123,6 +134,12 @@ final class ChatRegistry {
     private static final String CHAT_ID_PREFIX = "chat-";
     private static final String TURN_ID_PREFIX = "turn-";
     private static final String MESSAGE_NO_CHAT = "No chat is open about ";
+    private static final String REASON_PREFIX = "chat.reason.";
+    private static final String KEY_ARMED = "armed";
+    private static final String KEY_PENDING = "pending";
+
+    /** The control route that arms a chat failure. */
+    static final String PATH_INJECT = "/mock/inject";
 
     /** The delay of a reply's {@code chat.turn.started} after the operator's message, realistic timing. */
     static final long REPLY_START_MS = 300;
@@ -153,6 +170,10 @@ final class ChatRegistry {
     private final Set<ChatSubject> endedWork = new HashSet<>();
     private final Set<String> usedChatIds = new HashSet<>();
     private final Set<String> usedTurnIds = new HashSet<>();
+    /** The armed failures the next chat requests play, oldest first. */
+    private final Deque<ChatFailure> requestFailures = new ArrayDeque<>();
+    /** The armed failures the next replies play, oldest first. */
+    private final Deque<ChatFailure> replyFailures = new ArrayDeque<>();
     private long chatCounter;
     private long turnCounter;
 
@@ -209,6 +230,8 @@ final class ChatRegistry {
         endedWork.clear();
         usedChatIds.clear();
         usedTurnIds.clear();
+        requestFailures.clear();
+        replyFailures.clear();
         chatCounter = 0;
         turnCounter = 0;
         endedWork.addAll(seed.endedWork());
@@ -238,6 +261,10 @@ final class ChatRegistry {
             return false;
         }
         rememberStream(target.address());
+        var failure = takeRequestFailure();
+        if (failure != null && playRequestFailure(failure, response)) {
+            return true;
+        }
         var outcome = switch (target.action()) {
             case CHAT -> switch (request.method()) {
                 case METHOD_GET -> read(target.address(), queryValue(request, QUERY_BEFORE));
@@ -338,7 +365,7 @@ final class ChatRegistry {
                 TurnFormat.MARKDOWN, false, chat.role.model(), "", List.of(), List.of(), at, null, List.of());
         chat.turns.add(reply);
         chat.state = ChatStatus.REPLY;
-        var play = chat.startPlay(address, reply.turnId());
+        var play = chat.startPlay(address, reply.turnId(), replyFailures.pollFirst());
         return new Outcome(ChatTurnAccepted.HTTP_STATUS, new ChatTurnAccepted(operatorTurn.turnId()).toMap(),
                 List.of(operatorStarted), () -> playReply(chat, play));
     }
@@ -355,6 +382,8 @@ final class ChatRegistry {
     private void playReply(Chat chat, Play play) {
         var text = replyText(chat.subject.kind());
         var steps = List.of(MessageText.of(STEP_READ));
+        var failure = play.failure();
+        var pieces = failure == null ? pieces(text) : pieces(text).subList(0, 1);
         var at = REPLY_START_MS;
         play.schedule(timing, at, () -> playStep(chat, play, () -> {
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
@@ -370,13 +399,17 @@ final class ChatRegistry {
                         new ChatTurnProgressEvent(chat.id, play.turnId(), step).toMap());
             }));
         }
-        for (var piece : pieces(text)) {
+        for (var piece : pieces) {
             at += READING_PACE_MS;
             play.schedule(timing, at, () -> playStep(chat, play, () -> {
                 chat.updateReply(play.turnId(), turn -> withText(turn, turn.text() + piece, turn.status()));
                 return event(play.address(), ChatTurnDeltaEvent.EVENT_NAME,
                         new ChatTurnDeltaEvent(chat.id, play.turnId(), piece).toMap());
             }));
+        }
+        if (failure != null) {
+            play.schedule(timing, at + READING_PACE_MS, () -> playFailure(chat, play, failure.kind()));
+            return;
         }
         play.schedule(timing, at + READING_PACE_MS, () -> playStep(chat, play, () -> {
             chat.updateReply(play.turnId(), turn -> withText(turn, text, TurnStatus.COMPLETE));
@@ -401,6 +434,104 @@ final class ChatRegistry {
     }
 
     /**
+     * Plays an injected failure after the reply's first piece: the reply ends {@code failed} with the
+     * reason {@code chat.reason.<kind>}, is stopped with its text so far, or restarts for a replaced
+     * worker. Nothing plays when the play is no longer the chat's current one.
+     */
+    private void playFailure(Chat chat, Play play, ChatFailure.Kind kind) {
+        if (kind == ChatFailure.Kind.WORKER_REPLACED) {
+            synchronized (this) {
+                if (chat.play != play || chats.get(chat.subject) != chat) {
+                    return;
+                }
+            }
+            replaceWorker(chat.subject);
+            return;
+        }
+        playStep(chat, play, () -> {
+            var reason = kind.failsReply() ? MessageText.of(REASON_PREFIX + kind.wireValue()) : null;
+            var status = reason != null ? TurnStatus.FAILED : TurnStatus.STOPPED;
+            chat.updateReply(play.turnId(), turn -> new ChatTurn(turn.turnId(), turn.kind(), turn.author(), status,
+                    turn.format(), turn.untrusted(), turn.model(), turn.text(), turn.steps(), turn.refs(), turn.at(),
+                    reason, turn.lines()));
+            chat.endPlay();
+            chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
+            var turn = chat.turns.get(chat.indexOf(play.turnId()));
+            return event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
+                    turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
+                    List.of()).toMap());
+        });
+    }
+
+    /**
+     * Arms failures, each played once by the next request or reply it matches.
+     *
+     * @param failures the failures, in order
+     */
+    synchronized void arm(List<ChatFailure> failures) {
+        for (var failure : failures) {
+            (failure.kind().isReply() ? replyFailures : requestFailures).addLast(failure);
+        }
+    }
+
+    /**
+     * Serves {@code POST /mock/inject}: arms the failure the body names, played once by the next chat
+     * request or reply it matches; a failure of an unknown name, or with a member its kind does not
+     * take, is refused {@code invalid_arguments}.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} if the request was the inject route's and has been answered
+     * @throws IOException if the answer cannot be written
+     */
+    boolean handleInject(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!PATH_INJECT.equals(request.path()) || !METHOD_POST.equals(request.method())) {
+            return false;
+        }
+        ChatFailure failure;
+        try {
+            failure = ChatFailure.fromMap(readBody(request));
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | IllegalArgumentException e) {
+            var refusal = refused(ApiErrorCode.INVALID_ARGUMENTS, e.getMessage());
+            response.json(refusal.status(), refusal.body());
+            return true;
+        }
+        List<String> pending;
+        synchronized (this) {
+            arm(List.of(failure));
+            pending = new ArrayList<String>();
+            requestFailures.forEach(armed -> pending.add(armed.kind().wireValue()));
+            replyFailures.forEach(armed -> pending.add(armed.kind().wireValue()));
+        }
+        response.json(200, Map.of(KEY_ARMED, failure.kind().wireValue(), KEY_PENDING, pending));
+        return true;
+    }
+
+    /**
+     * @return the failure the next chat request plays, or {@code null}
+     */
+    private synchronized @Nullable ChatFailure takeRequestFailure() {
+        return requestFailures.pollFirst();
+    }
+
+    /**
+     * Plays a request failure: an {@code http_error} answers with its status and code, a {@code slow}
+     * request is answered after its delay.
+     *
+     * @return {@code true} if the failure answered the request
+     */
+    private static boolean playRequestFailure(ChatFailure failure, MockHttpResponse response) throws IOException {
+        if (failure.kind() == ChatFailure.Kind.HTTP_ERROR) {
+            response.json(failure.status(), Map.of(KEY_ERROR, Objects.requireNonNull(failure.code()), KEY_MESSAGE,
+                    "Injected failure: " + failure.code()));
+            return true;
+        }
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(failure.delayMs()));
+        return false;
+    }
+
+    /**
      * Replaces the worker writing a chat's reply: the play is cancelled, the reply's text is cleared,
      * and the reply is announced again and played from the working line.
      *
@@ -421,7 +552,7 @@ final class ChatRegistry {
             chat.updateReply(turnId, turn -> new ChatTurn(turn.turnId(), turn.kind(), turn.author(),
                     TurnStatus.STREAMING, turn.format(), turn.untrusted(), turn.model(), "", List.of(),
                     turn.refs(), turn.at(), null, turn.lines()));
-            play = chat.startPlay(address, turnId);
+            play = chat.startPlay(address, turnId, null);
         }
         playReply(chat, play);
         return true;
@@ -887,11 +1018,18 @@ final class ChatRegistry {
     private static final class Play {
         private final Address address;
         private final String turnId;
+        private final @Nullable ChatFailure failure;
         private final List<Future<?>> tasks = new ArrayList<>();
 
-        Play(Address address, String turnId) {
+        Play(Address address, String turnId, @Nullable ChatFailure failure) {
             this.address = address;
             this.turnId = turnId;
+            this.failure = failure;
+        }
+
+        @Nullable
+        ChatFailure failure() {
+            return failure;
         }
 
         Address address() {
@@ -937,10 +1075,10 @@ final class ChatRegistry {
         /** The reply being played, or {@code null}. */
         private @Nullable Play play;
 
-        Play startPlay(Address address, String turnId) {
+        Play startPlay(Address address, String turnId, @Nullable ChatFailure failure) {
             cancelPlay();
             stream = address.stream();
-            play = new Play(address, turnId);
+            play = new Play(address, turnId, failure);
             return play;
         }
 

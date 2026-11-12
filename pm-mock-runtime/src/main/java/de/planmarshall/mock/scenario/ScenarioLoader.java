@@ -68,7 +68,7 @@ public class ScenarioLoader {
     private static final Set<String> ROOT_FIELDS = Set.of(
             "format_version", "name", "description", "start", "pairing_code", "routes", "states");
     private static final Set<String> STATE_FIELDS = Set.of(
-            "representation", "links", "events", "auto");
+            "representation", "links", "events", "auto", "chat_failures");
     private static final Set<String> ROUTE_FIELDS = Set.of("status", "representation", "headers");
     private static final Set<String> LINK_FIELDS = Set.of(
             "method", "href", "status", "next", "delay_ms", "error");
@@ -294,11 +294,44 @@ public class ScenarioLoader {
             // auto
             var auto = parseAuto(stateMap.get("auto"), scenario, stateId);
 
+            // chat failures
+            var chatFailures = parseChatFailures(stateMap.get("chat_failures"), scenario, stateId);
+
             validateOperatorState(representation, links, events, scenario, stateId);
 
-            states.put(stateId, new StateDefinition(representation, links, events, auto));
+            states.put(stateId, new StateDefinition(representation, links, events, auto, chatFailures));
         }
         return states;
+    }
+
+    /**
+     * Reads the chat failures a state arms, the same failures {@code POST /mock/inject} takes; a
+     * failure of an unknown name, or with a member its kind does not take, fails the load.
+     */
+    private static List<StateDefinition.ChatFailure> parseChatFailures(@Nullable Object failuresObj, String scenario,
+            String stateId) {
+        if (failuresObj == null) {
+            return List.of();
+        }
+        if (!(failuresObj instanceof List<?> list)) {
+            throw new ScenarioValidationException(scenario, stateId, "chat_failures",
+                    "chat_failures must be an array");
+        }
+        var failures = new ArrayList<StateDefinition.ChatFailure>();
+        for (var i = 0; i < list.size(); i++) {
+            var failure = JsonTree.asObject(list.get(i));
+            if (failure == null) {
+                throw new ScenarioValidationException(scenario, stateId, "chat_failures[" + i + "]",
+                        "a chat failure must be an object");
+            }
+            try {
+                failures.add(StateDefinition.ChatFailure.fromMap(failure));
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, stateId, "chat_failures[" + i + "]", e.getMessage());
+            }
+        }
+        return failures;
     }
 
     /**
