@@ -61,6 +61,25 @@ Source of this plan (read before scoping):
    - Done when:
      - A test per item fails before the change (evidence order: `test-first`); `git grep -n "MessageCatalogue.get(" -- pm-operator/src/main` names no call without a locale on a screen this plan touches (evidence order: `none`).
 
+6. **What `config` left (from the landing of PLAN-32, folded 2026-11-12 on the operator's decision)**
+   - What: lines are as read at `948c51a1`.
+     - A refused read exits 1 (`01-commands.adoc#exit-codes`, PLAN-26). `ConfigCommand.readSettingsQuiet` (`ConfigCommand.java:193-203`) turns a
+       403, a 500 or a malformed body of `/api/v1/machine/settings` into a silent fallback to the plain value list, and exits 0 when
+       `/api/v1/config` answers. Only a 404 may fall back; any other refusal prints the refusal (D2) and exits 1. `ReadVerbExitCodesTest`
+       passes today only because both reads are refused: add the case where only the settings read is refused.
+     - `ConfigAspectRun.java:131-135` and `AspectRunSource.java:227` swallow the "machine settings not reachable" `IOException`, and the
+       operator reads "the runtime reported no state". Print the refusal. Stopped goes to `out` while failed and refused go to `err`: one
+       rule for the aspect run, as for the other verbs.
+     - Texts: `operator.credentials.verify_with` is defined twice in `operator.en.properties` (`:240`, `:302`); `operator.settings.cleanup.value`
+       `{days} days` has no plural form ("1 days") in en and de; the German `verify_with` ("Die Provider, die {key} nutzen, prüft: …") is
+       ungrammatical (if `PLAN-160` has removed the key, skip it); the key `operator.config.setelines_failed` (`ConfigCommand.java:569`) is
+       misspelt: rename it with its use.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A test per item fails before the change (a refused settings read exits 1; an unreachable aspect run prints the refusal; the duplicate
+       key is caught by a catalogue test that fails on any duplicate key in a pack; `1` day renders singular in en and de). Evidence order: `test-first`.
+
 Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
 
 ## Standing Constraints
@@ -143,10 +162,14 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RolesCommand.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WebDevicesCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigAspectRun.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/AspectRunSource.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
+- Depends on: `PLAN-160` (`cli-config-residue`, the same `ConfigCommand.java`), `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: touches the dialogue classes of WS-04: runs after them
 - Adjacent to: none
 
@@ -250,3 +273,9 @@ are both wide. The earlier suggestion stands: split into "strings and guard" and
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Exit code of a decision refusal (decision 4):** exit 1 (the refusal row of the exit table), with the decision printed as it stands.
+
+## PLAN-32 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-32.md` (operator, AskUserQuestion): deliverable 6 takes the refused settings read (exit 1), the swallowed aspect-run
+refusal, and the `config` texts (a duplicate key, the plural, the German grammar, a misspelt key). Surface +4 paths. Runs after `PLAN-160`.
+Six deliverables now; the "Not split" note above counts five.

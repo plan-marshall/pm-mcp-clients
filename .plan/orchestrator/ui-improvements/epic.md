@@ -614,6 +614,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
+- PLAN-32 (2026-11-12): (a) **transport gap**, owner plan-marshall-documentation: the transport row
+  (`runtime-model/01-processes-and-transport.adoc:202`) names `?project=`/`?plan=` for `GET /api/v1/config` only; client and mock send
+  them on `PUT|DELETE /api/v1/config/{level}/{key}` too, and the revision form of a change is not named (PLAN-160 D1 stops and asks if
+  it is still silent). (b) **merged without the operator's word**: PLAN-32's spec predated the merge clause and the lane merged with
+  no question (`mergedBy` the operator's account, 06:36Z). The clause was added to every open spec without it (PLAN-24, 44, 48, 50, 63).
+  (c) Lessons (owner plan-marshall, runbook lane): the landing reported `review_body_findings_handled=25` of 25 while 3 body-only items
+  had no reply and one ("Unverified finding") was not fixed; a thread was resolved without a reply; a behaviour removed as a side
+  effect (`credentials rotate` verify) was not declared; the Expected Surface's documents were left unchanged without a word.
+
 - PLAN-159 (2026-11-12): (a) **non-goals ≥1 against the engine's 0** — operator: keep the design's "at least one"
   (`intent-and-outline.adoc:104`, `PlanIntentResource.java:454-457`). The engine's schema and spec allow `minItems 0` on the
   light lane (`intent-record-v1.schema.json:26-28`), and its Java requires 1 until `PLAN-V2-129` (pm-mcp-core) aligns it. Once a

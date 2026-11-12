@@ -181,3 +181,17 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Merge Rule (Amendment 2026-11-12)
+
+Added by the orchestrator after PLAN-32 (#415) merged without an operator question because its spec had no merge clause. It supersedes
+any text here that differs.
+
+- The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's "standing review
+  authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
+- The merge question is asked only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  nitpick, "additional comments") has a reply on the PR, not only a fix.
+- The pull request body states the thread count, the resolved count and the review-body items with their count
+  (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
+- The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
+  request body carries no generator footer.
