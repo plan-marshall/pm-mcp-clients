@@ -5,6 +5,7 @@
   import { RAIL_GROUPS, activeNavRoute, type ShellNavItem } from './nav';
   import BrandMark from '../components/BrandMark.svelte';
   import Icon from '../components/Icon.svelte';
+  import { mascotFiguresOnScreen } from '../components/MascotFigure.svelte';
 
   interface Props {
     /** Whether the rail shows icons only. */
@@ -25,6 +26,13 @@
       !$runtimeStore.isRevoked &&
       !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
   );
+
+  /**
+   * Whether the rail-foot bear may show (brand-mark-mascot.adoc, The Rail-Foot Bear): not on the
+   * collapsed rail, and never beside a mascot figure, so a screen shows one mascot at most. The
+   * stylesheet hides it where the free height below the last destination is too small.
+   */
+  const showsBear = $derived(!collapsed && $mascotFiguresOnScreen === 0);
 
   /** The destination that stays selected for the shown route. */
   const active = $derived(activeNavRoute($runtimeStore.currentRoute));
@@ -75,6 +83,7 @@
 <nav
   class="nav-rail"
   class:nav-rail--collapsed={collapsed}
+  class:nav-rail--bear={showsBear}
   data-testid="nav-rail"
   aria-label={$t('web.frame.rail.label')}
 >
@@ -138,6 +147,11 @@
       {/each}
     </div>
   {/if}
+
+  <!-- The free height below the last destination; the rail-foot bear stands at its bottom. -->
+  <div class="nav-rail__spacer" data-testid="rail-spacer">
+    <span class="nav-rail__bear" aria-hidden="true"></span>
+  </div>
 
   <div class="nav-rail__foot">
     <button
@@ -248,7 +262,7 @@
   .nav-rail__groups {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     gap: var(--space-4);
     overflow-y: auto;
   }
@@ -338,6 +352,43 @@
     block-size: 1rem;
     padding-inline: 0.2rem;
     font-size: var(--text-xs);
+  }
+
+  /*
+   * The free height below the last destination, measured as a size container for the bear. It
+   * takes back the rail's gap above it, so the destinations and the foot keep their spacing.
+   */
+  .nav-rail__spacer {
+    position: relative;
+    flex: 1 1 0;
+    min-block-size: 0;
+    margin-block-start: calc(-1 * var(--space-4));
+    container: rail-free / size;
+  }
+
+  /*
+   * The rail-foot bear: the source bust as a faint background, as wide as the rail and anchored to
+   * the bottom of the free height, its box ending --space-2 above the foot. It shows only with the
+   * class on the rail and where the free height reaches 260 px; it never moves.
+   */
+  @container rail-free (min-height: 260px) {
+    .nav-rail--bear .nav-rail__bear {
+      position: absolute;
+      inset-inline: calc(-1 * var(--space-2));
+      inset-block-end: calc(var(--space-2) - var(--space-4));
+      aspect-ratio: 258 / 200;
+      background: image-set(
+          url('../assets/mascot/mascot-bust-1x.webp') 1x,
+          url('../assets/mascot/mascot-bust-2x.webp') 2x
+        )
+        bottom center / 100% auto no-repeat;
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    :global([data-theme='dark']) .nav-rail--bear .nav-rail__bear {
+      opacity: 0.12;
+    }
   }
 
   .nav-rail__foot {
