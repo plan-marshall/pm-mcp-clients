@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -132,7 +133,7 @@ class ConsoleNoticeTest {
 
             assertAll(
                                 () -> assertEquals("◆ another reason · plan-x: detail", notice),
-                                () -> assertTrue(!notice.contains("quota_exhausted"), notice)
+                                () -> assertFalse(notice.contains("quota_exhausted"), notice)
             );
         }
 

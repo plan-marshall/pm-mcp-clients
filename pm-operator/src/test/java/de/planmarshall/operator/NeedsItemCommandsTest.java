@@ -108,7 +108,7 @@ class NeedsItemCommandsTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("designTable")
     @DisplayName("! on a row runs exactly the command the row prints, as the design names it")
-    void bangRunsThePrintedCommand(Case testCase) throws IOException {
+    void bangRunsThePrintedCommand(Case testCase) throws Exception {
         var planId = Generators.letterStrings(4, 12).next();
         var epicId = Generators.letterStrings(4, 12).next();
         var projectId = Generators.letterStrings(4, 12).next();

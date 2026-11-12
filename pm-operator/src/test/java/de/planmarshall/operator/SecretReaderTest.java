@@ -89,12 +89,12 @@ class SecretReaderTest {
         var applied = new ArrayList<Attributes>();
         var input = new ByteArrayInputStream("abc\u0003".getBytes(StandardCharsets.UTF_8));
         try (var terminal = new DumbTerminal(input, rendered) {
-            @Override
-            public void setAttributes(Attributes attributes) {
-                applied.add(new Attributes(attributes));
-                super.setAttributes(attributes);
-            }
-        }) {
+                 @Override
+                 public void setAttributes(Attributes attributes) {
+                     applied.add(new Attributes(attributes));
+                     super.setAttributes(attributes);
+                 }
+             }) {
             // A real tty: the echo is on and Ctrl+C is the interrupt character that ISIG turns
             // into a signal, which would end the JVM before the attributes are restored.
             var tty = terminal.getAttributes();
@@ -112,7 +112,7 @@ class SecretReaderTest {
             var after = terminal.getAttributes();
             assertAll(
                                 () -> assertTrue(applied.stream().anyMatch(set -> !set.getLocalFlag(Attributes.LocalFlag.ECHO)
-                                                    && !set.getLocalFlag(Attributes.LocalFlag.ISIG)),
+                                                                        && !set.getLocalFlag(Attributes.LocalFlag.ISIG)),
                                                     "the secret is read with the echo and the signals off, so Ctrl+C is a key"),
                                 () -> assertEquals(before.getLocalFlags(), after.getLocalFlags(),
                                                     "the echo and the signals are restored"),

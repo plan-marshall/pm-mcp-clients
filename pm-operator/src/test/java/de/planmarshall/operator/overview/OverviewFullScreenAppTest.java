@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
@@ -252,7 +253,7 @@ class OverviewFullScreenAppTest {
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("question"));
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("waiver"));
         assertEquals(ConsoleNoticeBuffer.Category.DECISION,
-                            OverviewFullScreenApp.categoryOf(de.planmarshall.api.event.EventKind.WAIVER.notice()),
+                            OverviewFullScreenApp.categoryOf(EventKind.WAIVER.notice()),
                             "a waiver's notice kind is the contract's kind waiver");
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("answered_elsewhere"));
         assertEquals(ConsoleNoticeBuffer.Category.REPORT, OverviewFullScreenApp.categoryOf("report"));

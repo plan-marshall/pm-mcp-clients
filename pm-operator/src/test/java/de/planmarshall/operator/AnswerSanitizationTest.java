@@ -119,7 +119,7 @@ class AnswerSanitizationTest {
     @ParameterizedTest(name = "{0}")
     @EnumSource(Noun.class)
     @DisplayName("each noun of the envelope is printed without one hostile character")
-    void nounPrintsNoHostileCharacter(Noun noun) throws IOException {
+    void nounPrintsNoHostileCharacter(Noun noun) throws Exception {
         var anchor = anchor();
 
         var rendered = switch (noun) {
@@ -134,10 +134,10 @@ class AnswerSanitizationTest {
 
     @Test
     @DisplayName("the direct answer in own words reaches the terminal only through the sink")
-    void directWordsAreCleanedByTheSink() throws IOException {
+    void directWordsAreCleanedByTheSink() throws Exception {
         var anchor = anchor();
         var words = anchor + ESC + "[2J" + (char) 0x202E + (char) 0x200B + (char) 0x200D + (char) 0xFEFF
-                + new String(Character.toChars(0xE0041)) + ESC + "]52;c;owned" + (char) 0x07;
+                            + new String(Character.toChars(0xE0041)) + ESC + "]52;c;owned" + (char) 0x07;
         fixture.start((request, response) -> {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
@@ -180,7 +180,7 @@ class AnswerSanitizationTest {
         var sink = new SanitizingPrintWriter(new PrintWriter(target));
 
         sink.print(before + (char) 0x202E + (char) 0x2066 + (char) 0x200D + (char) 0x2060
-                + new String(Character.toChars(0xE0041)) + after);
+                            + new String(Character.toChars(0xE0041)) + after);
         sink.flush();
 
         assertEquals(before + after, target.toString());
@@ -347,17 +347,17 @@ class AnswerSanitizationTest {
         rendered.codePoints().forEach(codePoint -> {
             var layout = codePoint == '\n' || codePoint == '\r' || codePoint == '\t';
             var hostile = (Character.isISOControl(codePoint) && !layout)
-                    || (codePoint >= 0x202A && codePoint <= 0x202E)
-                    || (codePoint >= 0x2066 && codePoint <= 0x2069)
-                    || (codePoint >= 0x200B && codePoint <= 0x200D)
-                    || codePoint == 0x2060 || codePoint == 0xFEFF
-                    || (codePoint >= 0xE0000 && codePoint <= 0xE007F);
+                                || (codePoint >= 0x202A && codePoint <= 0x202E)
+                                || (codePoint >= 0x2066 && codePoint <= 0x2069)
+                                || (codePoint >= 0x200B && codePoint <= 0x200D)
+                                || codePoint == 0x2060 || codePoint == 0xFEFF
+                                || (codePoint >= 0xE0000 && codePoint <= 0xE007F);
             assertFalse(hostile, () -> "U+%04X reached the terminal: %s".formatted(codePoint, rendered));
         });
     }
 
     private static String envelope(String subject, String scope, @Nullable String project, @Nullable String plan,
-            String label) {
+                        String label) {
         var extra = new StringBuilder();
         if (project != null) {
             extra.append(", \"project\": \"").append(project).append('"');

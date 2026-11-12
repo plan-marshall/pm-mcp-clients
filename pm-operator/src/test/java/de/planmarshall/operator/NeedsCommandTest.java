@@ -258,7 +258,7 @@ class NeedsCommandTest {
                             () -> assertEquals("Seite 5 liegt hinter dem Ende: 7 Einträge warten auf 1 Seite; needs zeigt die erste.",
                                                 german.toString().strip()),
                             () -> assertFalse(english.toString().contains(
-                                                MessageCatalogue.format("en", "operator.needs.empty", Map.of())),
+                                                                    MessageCatalogue.format("en", "operator.needs.empty", Map.of())),
                                                 english.toString()),
                             () -> assertTrue(requested.get().endsWith("?page=5"), requested.get())
         );

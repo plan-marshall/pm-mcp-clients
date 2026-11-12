@@ -101,19 +101,19 @@ public final class TerminalSanitizer {
             return true;
         }
         return !Character.isISOControl(codePoint) && !isBidiControl(codePoint) && !isZeroWidth(codePoint)
-                && !isTag(codePoint);
+                            && !isTag(codePoint);
     }
 
     /** The embedding, override, and isolate controls that reorder what the terminal shows. */
     private static boolean isBidiControl(int codePoint) {
         return (codePoint >= BIDI_EMBEDDING_FIRST && codePoint <= BIDI_EMBEDDING_LAST)
-                || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST);
+                            || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST);
     }
 
     /** The characters that take no width and so hide between the visible ones. */
     private static boolean isZeroWidth(int codePoint) {
         return (codePoint >= ZERO_WIDTH_FIRST && codePoint <= ZERO_WIDTH_LAST) || codePoint == WORD_JOINER
-                || codePoint == BYTE_ORDER_MARK;
+                            || codePoint == BYTE_ORDER_MARK;
     }
 
     /** The tag characters, invisible supplementary code points that can carry a hidden text. */

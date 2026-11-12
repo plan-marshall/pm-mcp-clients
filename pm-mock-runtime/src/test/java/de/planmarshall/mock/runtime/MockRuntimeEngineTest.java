@@ -61,6 +61,7 @@ import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.system.RuntimeLifecycleState;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
@@ -385,7 +386,7 @@ class MockRuntimeEngineTest {
             var waiting = JsonTree.asObject(status.json().get("needs_operator"));
             assertNotNull(waiting);
             for (var kind : waiting.keySet()) {
-                assertEquals(kind, de.planmarshall.api.overview.NeedsOperatorKind.fromWireOrOther(kind).value(),
+                assertEquals(kind, NeedsOperatorKind.fromWireOrOther(kind).value(),
                         "the status names " + kind + " outside the contract's kinds: " + waiting);
             }
         }

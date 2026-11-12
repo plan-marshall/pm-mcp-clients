@@ -40,7 +40,7 @@ class OverviewCatalogueTest {
     @Test
     @DisplayName("the waiver has one word, under the contract's kind: overview.needs.waiver_request is gone from both packs")
     void shouldNotCarryTheWaiverRequestKey() {
-        for (var locale : new String[] {"en", "de"}) {
+        for (var locale : new String[]{"en", "de"}) {
             var messages = MessageCatalogue.getMessages(locale, "overview");
 
             assertFalse(messages.containsKey("overview.needs.waiver_request"),

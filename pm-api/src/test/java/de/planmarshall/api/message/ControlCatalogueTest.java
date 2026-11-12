@@ -75,7 +75,7 @@ class ControlCatalogueTest {
 
     @Test
     @DisplayName("should contain every key of the work-actions text table in both packs")
-    void shouldContainAllSpecificationKeys() throws IOException {
+    void shouldContainAllSpecificationKeys() throws Exception {
         var en = MessageCatalogue.getMessages("en", "control");
         var keys = specificationKeys();
 

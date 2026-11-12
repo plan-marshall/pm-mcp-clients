@@ -52,8 +52,8 @@ class NeedsSelectionTest {
     private static final String DECISIONS = "/api/v1/decisions/";
 
     private static final String ITEM = """
-                          {"kind":"%s","link":"%s","plan":{"id":"%s","title":"%s"},
-                           "since":"%s","blocks":"plan"}""";
+                        {"kind":"%s","link":"%s","plan":{"id":"%s","title":"%s"},
+                         "since":"%s","blocks":"plan"}""";
 
     private static final String PAGE = """
                         {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[%s]}
