@@ -33,7 +33,8 @@ import de.planmarshall.api.json.JsonTree;
  */
 public record ConfigValueChange(
         @Nullable Object value,
-        long revision
+        long revision,
+        boolean deletion
 ) {
     public static final String FIELD_VALUE = "value";
     public static final String FIELD_REVISION = "revision";
@@ -46,11 +47,19 @@ public record ConfigValueChange(
     }
 
     /**
+     * @param value    the new value, or {@code null} for an explicitly cleared value
+     * @param revision the revision the change was made against
+     */
+    public ConfigValueChange(@Nullable Object value, long revision) {
+        this(value, revision, false);
+    }
+
+    /**
      * @param revision the revision a deletion was made against
      * @return a change that carries no value, as a deletion does
      */
     public static ConfigValueChange deletion(long revision) {
-        return new ConfigValueChange(null, revision);
+        return new ConfigValueChange(null, revision, true);
     }
 
     /**
@@ -60,7 +69,7 @@ public record ConfigValueChange(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        if (value != null) {
+        if (!deletion) {
             map.put(FIELD_VALUE, value);
         }
         map.put(FIELD_REVISION, revision);
@@ -87,7 +96,7 @@ public record ConfigValueChange(
         Objects.requireNonNull(map, "map");
         var revision = JsonTree.integralNumber(map, FIELD_REVISION, 0, Long.MAX_VALUE);
         try {
-            return new ConfigValueChange(map.get(FIELD_VALUE), revision);
+            return new ConfigValueChange(map.get(FIELD_VALUE), revision, !map.containsKey(FIELD_VALUE));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid ConfigValueChange: " + e.getMessage(), e);
         }

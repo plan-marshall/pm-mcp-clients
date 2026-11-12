@@ -293,9 +293,13 @@ public final class ConfigCommand implements Callable<Integer> {
         if (response.status() != 200) {
             return false;
         }
-        var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-        var web = status != null ? JsonTree.object(status, "web") : null;
-        return web != null && Boolean.FALSE.equals(web.get("lan"));
+        try {
+            var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+            var web = status != null ? JsonTree.object(status, "web") : null;
+            return web != null && Boolean.FALSE.equals(web.get("lan"));
+        } catch (IOException _) {
+            return false;
+        }
     }
 
     /**

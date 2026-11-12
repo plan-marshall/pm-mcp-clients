@@ -2574,7 +2574,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
         return switch (request.method()) {
-            case "GET" -> handleGetDeviceRoutes(path, response);
+            case "GET" -> handleGetDeviceRoutes(request, response, isWeb);
             case METHOD_POST -> handlePostDeviceRoutes(request, response, path, isWeb);
             case "PATCH", "PUT" -> handlePutDeviceRoutes(request, response, path, isWeb);
             case METHOD_DELETE -> handleDeleteDeviceRoutes(request, response, path, isWeb);
@@ -2582,12 +2582,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         };
     }
 
-    private boolean handleGetDeviceRoutes(String path, MockHttpResponse response) throws IOException {
+    private boolean handleGetDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
         if (PATH_DEVICES.equals(path)) {
             handleListDevices(response);
             return true;
         }
         if (path.startsWith(PATH_CREDENTIALS)) {
+            if (isWeb) {
+                response.json(403, Map.of(KEY_ERROR, "operator_only"));
+                return true;
+            }
             return handleCredentialGet(response, path);
         }
         if (PATH_CONNECTION_STATUS.equals(path)) {
@@ -2678,8 +2684,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleRouteWithDynamicStatus(override, path, response);
             return true;
         }
+        recordRotatedCredential(request, path);
         handleStoreCredential(response, path);
         return true;
+    }
+
+    /**
+     * @param request the request
+     * @param path    the credential path
+     * @throws IOException on a malformed body
+     */
+    private void recordRotatedCredential(MockHttpRequest request, String path) throws IOException {
+        var key = path.substring(PATH_CREDENTIALS.length());
+        var body = readBodyMap(request);
+        var kind = JsonTree.string(body, KEY_KIND);
+        synchronized (onboardingLock) {
+            for (var credential : machineCredentials) {
+                if (!key.equals(credential.get("key"))) {
+                    continue;
+                }
+                if (kind != null && !kind.isBlank()) {
+                    credential.put(KEY_KIND, kind);
+                }
+                credential.put(KEY_EXPIRED, false);
+                credential.remove(KEY_EXPIRES_IN_DAYS);
+                return;
+            }
+        }
     }
 
     private boolean handleDeleteDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {

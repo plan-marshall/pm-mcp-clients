@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,6 +47,7 @@ class CredentialsCommandTest {
     private StringWriter out;
     private StringWriter err;
     private final List<String> requests = new ArrayList<>();
+    private final List<String> steps = new ArrayList<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -54,6 +56,7 @@ class CredentialsCommandTest {
         out = new StringWriter();
         err = new StringWriter();
         requests.clear();
+        steps.clear();
     }
 
     @AfterEach
@@ -105,6 +108,7 @@ class CredentialsCommandTest {
             } else if ("/api/v1/onboarding/state".equals(request.target())) {
                 response.json(200, state(current.get(), failed));
             } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                steps.add(request.bodyText());
                 current.set(nextOf(current.get()));
                 response.json(200, state(current.get(), failed));
             } else {
@@ -181,7 +185,14 @@ class CredentialsCommandTest {
         assertEquals(0, code, text + " | " + err);
         assertTrue(text.contains("Consent remembered: check the providers with their tokens"), text);
         assertTrue(text.contains("\u2713 github verified. 1 plan that waited for it goes on: fix-relay"), text);
-        assertTrue(requests.contains("POST /api/v1/onboarding/step"), requests.toString());
+        assertAll(
+                            () -> assertEquals(5, steps.size(), steps.toString()),
+                            () -> assertTrue(steps.get(0).contains("\"link\":\"reconfigure:credentials\""),
+                                                steps.get(0)),
+                            () -> assertTrue(steps.get(1).contains("\"link\":\"set\""), steps.get(1)),
+                            () -> assertTrue(steps.get(2).contains("\"link\":\"stored\""), steps.get(2)),
+                            () -> assertTrue(steps.get(3).contains("\"link\":\"yes\""), steps.get(3)),
+                            () -> assertTrue(steps.get(4).contains("\"link\":\"done\""), steps.get(4)));
     }
 
     @Test

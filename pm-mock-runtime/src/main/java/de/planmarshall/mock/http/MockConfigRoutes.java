@@ -158,9 +158,9 @@ public final class MockConfigRoutes {
         return value == null ? null : name + "=" + value;
     }
 
-    private void put(MockHttpResponse response, ConfigOrigin level, String key, ConfigValueChange change,
-            @Nullable String scope, Map<String, Object> machineValues, Map<String, String> planProjects)
-            throws IOException {
+    private synchronized void put(MockHttpResponse response, ConfigOrigin level, String key,
+            ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
+            Map<String, String> planProjects) throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
@@ -176,9 +176,9 @@ public final class MockConfigRoutes {
         response.json(200, resource(key, level, change.value(), null, next));
     }
 
-    private void delete(MockHttpResponse response, ConfigOrigin level, String key, ConfigValueChange change,
-            @Nullable String scope, Map<String, Object> machineValues, Map<String, String> planProjects)
-            throws IOException {
+    private synchronized void delete(MockHttpResponse response, ConfigOrigin level, String key,
+            ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
+            Map<String, String> planProjects) throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
@@ -194,7 +194,9 @@ public final class MockConfigRoutes {
             return;
         }
         values.remove(key);
-        revisionsByLevel(level, scope).remove(key);
+        // The revision stays: a later change made against the value the read served is still stale.
+        var next = ++revision;
+        revisionsByLevel(level, scope).put(key, next);
         response.send(204, null, "");
     }
 
@@ -211,7 +213,15 @@ public final class MockConfigRoutes {
             Map<String, Object> machineValues, Map<String, String> planProjects) {
         var project = scopePart(scope, KEY_PROJECT);
         var plan = scopePart(scope, KEY_PLAN);
-        return effective(key, machineValues, project, plan, planProjects, level);
+        var candidate = effective(key, machineValues, project, plan, planProjects, level);
+        var levelProject = levelProject(project, plan, planProjects);
+        var levelScope = levelScope(level, levelProject, plan);
+        if (!byLevel(level, levelScope).containsKey(key) && revisionsByLevel(level, levelScope).containsKey(key)
+                && revisionOf(candidate) == 0) {
+            // A deleted value keeps its revision, so a change made before the deletion stays stale.
+            return resource(key, ConfigOrigin.DEFAULT, null, null, storedRevision(level, levelScope, key));
+        }
+        return candidate;
     }
 
     /**

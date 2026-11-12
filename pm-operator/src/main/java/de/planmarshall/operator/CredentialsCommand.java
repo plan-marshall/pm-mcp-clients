@@ -222,6 +222,10 @@ public final class CredentialsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, STORED,
                             Map.of(KEY, key, COUNT, dropped)));
         out.flush();
+        if (projectScope != null && !projectScope.isBlank()) {
+            // A project's token is checked where its project work runs; the machine check is not it.
+            return 0;
+        }
         return verifyProviders(out, err, key, store, terminal);
     }
 
@@ -261,7 +265,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             out.flush();
             return 0;
         }
-        var plans = reported.get("plans") instanceof String text ? text : "";
+        var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";
         var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
                             "onboard.settings.credential.verified", Map.of(KEY, key)));
         if (!plans.isBlank()) {
