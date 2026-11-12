@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -37,6 +38,35 @@ import org.junit.jupiter.api.io.TempDir;
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class StartStopScriptsTest {
 
+    /** The line start.sh prints before it compiles the module again with a nested Maven build. */
+    private static final String NESTED_BUILD_LINE = "Building pm-mock-runtime";
+
+    @TempDir
+    Path temp;
+
+    /** The copy of start.sh in a throw-away module tree that the script treats as built. */
+    private Path startScript;
+
+    /**
+     * Copies {@code start.sh} into a throw-away module tree whose classpath file and build stamp
+     * say "up to date" and that holds no class file newer than the stamp. Run from the real module
+     * inside the reactor, the script finds the classes the reactor has just compiled newer than its
+     * stamp, deletes {@code target/classes} of the module and of pm-api and compiles both again with
+     * a nested {@code ./mvnw}; the copy keeps it from building, so the tests exercise the port checks
+     * they are about.
+     *
+     * @throws IOException if the tree cannot be written
+     */
+    @BeforeEach
+    void copyStartScript() throws IOException {
+        var module = temp.resolve("pm-mock-runtime");
+        Files.createDirectories(module.resolve("target/classes"));
+        startScript = module.resolve("start.sh");
+        Files.copy(mockRuntimeDir().resolve("start.sh"), startScript);
+        Files.writeString(module.resolve("target/classpath.txt"), "");
+        Files.writeString(module.resolve("target/.build-stamp"), "");
+    }
+
     private Path mockRuntimeDir() {
         if (Files.exists(Path.of("start.sh"))) {
             return Path.of(".").toAbsolutePath().normalize();
@@ -45,7 +75,7 @@ class StartStopScriptsTest {
     }
 
     private Path startScript() {
-        return mockRuntimeDir().resolve("start.sh");
+        return startScript;
     }
 
     private Path stopScript() {
@@ -62,7 +92,7 @@ class StartStopScriptsTest {
                     "-p", String.valueOf(occupiedPort),
                     "-s", "status-only"
             );
-            pb.directory(mockRuntimeDir().toFile());
+            pb.directory(startScript().getParent().toFile());
             pb.redirectErrorStream(true);
             var process = pb.start();
             var outputFuture = CompletableFuture.supplyAsync(() -> {
@@ -79,6 +109,8 @@ class StartStopScriptsTest {
 
             var combinedOutput = outputFuture.get(5, TimeUnit.SECONDS);
 
+            assertFalse(combinedOutput.contains(NESTED_BUILD_LINE),
+                    "start.sh must not run its own Maven build; got:\n" + combinedOutput);
             assertTrue(combinedOutput.contains(String.valueOf(occupiedPort)),
                     "Output must name the occupied port " + occupiedPort + "; got:\n" + combinedOutput);
             var currentPid = String.valueOf(ProcessHandle.current().pid());
@@ -98,7 +130,7 @@ class StartStopScriptsTest {
                     "bash", startScript().toString(),
                     "-s", "status-only"
             );
-            pb.directory(mockRuntimeDir().toFile());
+            pb.directory(startScript().getParent().toFile());
             pb.environment().put("PM_MOCK_WEB_PORT", String.valueOf(occupiedPort));
             pb.redirectErrorStream(true);
             var process = pb.start();
@@ -116,6 +148,8 @@ class StartStopScriptsTest {
 
             var combinedOutput = outputFuture.get(5, TimeUnit.SECONDS);
 
+            assertFalse(combinedOutput.contains(NESTED_BUILD_LINE),
+                    "start.sh must not run its own Maven build; got:\n" + combinedOutput);
             assertTrue(combinedOutput.contains(String.valueOf(occupiedPort)),
                     "Output must name the occupied port " + occupiedPort + "; got:\n" + combinedOutput);
             var currentPid = String.valueOf(ProcessHandle.current().pid());
@@ -148,11 +182,9 @@ class StartStopScriptsTest {
             portA = s.getLocalPort();
         }
 
-        // Start a mock runtime process simulating worktree A
-        var cpFile = mockRuntimeDir().resolve("target/classpath.txt");
-        var cp = (Files.exists(cpFile) ? Files.readString(cpFile).trim() + ":" : "")
-                + mockRuntimeDir().resolve("target/classes") + ":"
-                + mockRuntimeDir().getParent().resolve("pm-api/target/classes");
+        // Start a mock runtime process simulating worktree A, on the classpath this test runs with:
+        // it holds the module, pm-api and every dependency without a classpath file of start.sh.
+        var cp = System.getProperty("java.class.path");
         var pbA = new ProcessBuilder(
                 "java", "-cp", cp,
                 "de.planmarshall.mock.cli.MockRuntimeCli",
