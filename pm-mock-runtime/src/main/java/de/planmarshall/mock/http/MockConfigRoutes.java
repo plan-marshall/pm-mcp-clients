@@ -20,6 +20,7 @@ import java.util.TreeMap;
 
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.config.AspectOwnedKeys;
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.json.JsonTree;
@@ -51,11 +52,6 @@ public final class MockConfigRoutes {
     private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
             .map(ConfigOrigin::fromWire)
             .toList();
-
-    /** The keys an aspect owns, as the terminal client refuses them (`409 aspect_owned`). */
-    private static final List<String> ASPECT_OWNED = List.of(
-            "language.", "harness.", "models.", "credentials.store", "providers.",
-            "plan_defaults.", "sources.documents_mode", "roles.", "roles");
 
     private final Map<String, Map<String, Object>> written = new LinkedHashMap<>();
     private long revision;
@@ -92,7 +88,7 @@ public final class MockConfigRoutes {
             return true;
         }
         var key = segments.get(1);
-        var scope = scopeOf(request.query());
+        var scope = scopeOf(request.query(), level);
         if ("PUT".equals(request.method())) {
             put(response, level, key, readValue(request), scope);
             return true;
@@ -125,15 +121,16 @@ public final class MockConfigRoutes {
 
     /**
      * @param query the request's query string, or {@code null}
-     * @return the scope a write is stored under, or {@code null} for the machine-wide store
+     * @param level the level the write addresses
+     * @return the scope that level's value is stored under, or {@code null} for the machine's store
      */
-    private static @Nullable String scopeOf(@Nullable String query) {
-        var project = scopeValue(query, KEY_PROJECT);
-        if (project != null) {
-            return KEY_PROJECT + "=" + project;
+    private static @Nullable String scopeOf(@Nullable String query, ConfigOrigin level) {
+        var name = level == ConfigOrigin.PLAN ? KEY_PLAN : level == ConfigOrigin.PROJECT ? KEY_PROJECT : null;
+        if (name == null) {
+            return null;
         }
-        var plan = scopeValue(query, KEY_PLAN);
-        return plan == null ? null : KEY_PLAN + "=" + plan;
+        var value = scopeValue(query, name);
+        return value == null ? null : name + "=" + value;
     }
 
     private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value,
@@ -279,11 +276,6 @@ public final class MockConfigRoutes {
      * @return {@code true} when an aspect owns the key and only its verb changes it
      */
     static boolean isAspectOwned(String key) {
-        for (var prefix : ASPECT_OWNED) {
-            if (key.equals(prefix) || key.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return AspectOwnedKeys.isAspectOwned(key);
     }
 }

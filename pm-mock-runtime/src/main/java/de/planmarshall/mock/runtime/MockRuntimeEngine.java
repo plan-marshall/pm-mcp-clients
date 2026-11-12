@@ -415,6 +415,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_MODEL = "model";
     private static final String KEY_CURRENT = "current";
     private static final String KEY_VERIFY = "verify";
+    /** The later run's submit link: the one that records the answer. */
+    private static final String LINK_SET = "set";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
     private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
     private static final String KEY_LANGUAGE_MODEL = "language_model";
@@ -7026,6 +7028,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             machineDocumentsMode = DocumentsMode.ASK.wireValue();
             machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
             machineLanguageModel = LANGUAGE_CODE_ENGLISH;
+            machineCredentialStore = "os";
+            machineProvidersVerified = false;
             onboardingAuto = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
@@ -7264,10 +7268,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (previousState != null && (previousState.startsWith("language.")
                 || previousState.startsWith("language.reconfigure"))) {
-            recordInterfaceLanguage(body, previousState);
+            recordInterfaceLanguage(body, previousState, linkName);
         }
         if (previousState != null && previousState.endsWith(".reconfigure")) {
-            recordAspectAnswer(previousState, body);
+            recordAspectAnswer(previousState, linkName, body);
         }
         String newState;
         synchronized (this) {
@@ -7287,13 +7291,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Records the interface and model language the operator chose at the language step (UC-ONB-3).
      * The first run names the fields {@code language_interface}/{@code language_model}; a later run
-     * submits the state's own {@code interface}/{@code model} facts.
+     * submits the state's own {@code interface}/{@code model} facts, and only through {@code set}.
      *
      * @param body          the step's request body
      * @param previousState the state the step left
+     * @param linkName      the link the step took
      */
-    private void recordInterfaceLanguage(Map<String, Object> body, String previousState) {
+    private void recordInterfaceLanguage(Map<String, Object> body, String previousState,
+            @Nullable String linkName) {
         var reconfigure = previousState.startsWith("language.reconfigure");
+        if (reconfigure && !LINK_SET.equals(linkName)) {
+            return;
+        }
         var chosenInterface = JsonTree.string(body,
                 reconfigure ? KEY_INTERFACE : KEY_LANGUAGE_INTERFACE);
         if (isSupportedLanguage(chosenInterface)) {
@@ -7307,13 +7316,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Records what a later run submitted at its own state: a plan default, the documents mode, the
-     * credential store, or nothing the aspect keeps.
+     * Records what a later run submitted at its own state: a plan default, the credential store, the
+     * provider check, or nothing the aspect keeps. A run that leaves through {@code back} recorded
+     * nothing, so it changes nothing.
      *
-     * @param state the reconfigure state the step left
-     * @param body  the step's request body
+     * @param state    the reconfigure state the step left
+     * @param linkName the link the step took
+     * @param body     the step's request body
      */
-    private void recordAspectAnswer(String state, Map<String, Object> body) {
+    private void recordAspectAnswer(String state, @Nullable String linkName, Map<String, Object> body) {
+        if (!LINK_SET.equals(linkName)) {
+            return;
+        }
         if (state.startsWith("defaults.reconfigure")) {
             for (var key : List.of(KEY_LANDING, KEY_METHOD, KEY_ASKING)) {
                 var chosen = JsonTree.string(body, key);
@@ -7412,7 +7426,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
                     aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
                     aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
-                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
+                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
                     aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
                             String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));

@@ -71,6 +71,8 @@ public final class AspectRunSource implements StateDialogue.Source {
     private static final String NO = "no";
     private static final String YES = "yes";
     private static final String CONFIRM_MARKER = "confirm";
+    /** The suffix of a later run's own state, whose submit link is the displayed change. */
+    private static final String RECONFIGURE_SUFFIX = ".reconfigure";
     private static final String YES_FLAG = "yes";
     private static final int MAX_STEPS = 32;
 
@@ -239,7 +241,8 @@ public final class AspectRunSource implements StateDialogue.Source {
         if (primary == null) {
             return null;
         }
-        if (flags.confirm() && frame.stateId().contains(CONFIRM_MARKER)) {
+        if (flags.confirm() && (frame.stateId().contains(CONFIRM_MARKER)
+                            || frame.stateId().endsWith(RECONFIGURE_SUFFIX))) {
             usedAnswers.add("yes");
             return primary.id();
         }

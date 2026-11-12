@@ -2451,8 +2451,7 @@
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/harnesses"
-          },
-          {
+          },          {
             "id": "reconfigure:models",
             "rel": "alt",
             "method": "POST",
@@ -2525,7 +2524,7 @@
         "reconfigure:harnesses": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
-          "next": "harness.reconfigure"
+          "next": "harness.reconfigure-consent"
         },
         "reconfigure:models": {
           "method": "POST",
@@ -2596,6 +2595,49 @@
           "method": "POST",
           "href": "/api/v1/onboarding/language/set",
           "next": "settings.choose"
+        }
+      }
+    },
+    "harness.reconfigure-consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.reconfigure-consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Look for harnesses on this machine again?",
+          "kind": "scan_harnesses"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/scan",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/decline",
+          "next": "harness.reconfigure"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/scan",
+          "next": "harness.reconfigure"
         }
       }
     },

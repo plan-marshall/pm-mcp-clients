@@ -20,6 +20,7 @@ import java.util.concurrent.Callable;
 import org.jline.reader.LineReaderBuilder;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.config.AspectOwnedKeys;
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.http.HttpRequest;
@@ -99,10 +100,21 @@ public final class ConfigCommand implements Callable<Integer> {
                         OnboardingAspect.PROVIDERS, PROVIDERS,
                         OnboardingAspect.PLANS, PLAN_DEFAULTS);
 
-    /** The key prefixes an aspect owns: only its verb changes such a key. */
-    private static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        LANGUAGE + ".", HARNESS_PREFIX, MODELS + ".", CREDENTIAL_STORE_KEY, PROVIDERS + ".",
-                        PLAN_DEFAULTS_PREFIX, DOCUMENTS_MODE_KEY, ROLES + ".", ROLES);
+    /**
+     * @param aspect an aspect of the machine onboarding
+     * @return the {@code config <aspect>} verb that runs it again
+     */
+    private static String verbOf(OnboardingAspect aspect) {
+        return switch (aspect) {
+            case LANGUAGE -> LANGUAGE;
+            case HARNESSES -> HARNESSES;
+            case MODELS -> MODELS;
+            case ROLES -> ROLES;
+            case CREDENTIALS -> CREDENTIALS;
+            case PROVIDERS -> PROVIDERS;
+            case PLANS -> PLAN_DEFAULTS;
+        };
+    }
 
     /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
     private static final Map<String, String> ASPECT_PREFIXES = Map.of(
@@ -208,7 +220,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var items = new ArrayList<Item>();
         for (int index = 0; index < settings.aspects().size(); index++) {
             var aspect = settings.aspects().get(index);
-            var verb = ASPECT_VERBS.getOrDefault(aspect.aspect(), aspect.aspect().wireValue());
+            var verb = verbOf(aspect.aspect());
             items.add(new Item("operator.settings.aspects.title",
                                 MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of()),
                                 TerminalSanitizer.sanitizeLine(aspect.summary()),
@@ -517,15 +529,7 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     static boolean isAspectOwned(@Nullable String key) {
-        if (key == null) {
-            return false;
-        }
-        for (var prefix : ASPECT_OWNED_KEYS) {
-            if (key.startsWith(prefix) || key.equals(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return AspectOwnedKeys.isAspectOwned(key);
     }
 
     static String getOwningAspect(@Nullable String key) {

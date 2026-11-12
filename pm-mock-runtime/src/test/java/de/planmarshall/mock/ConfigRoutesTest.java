@@ -150,7 +150,15 @@ class ConfigRoutesTest {
             assertNotNull(link, aspect);
             var start = scenario.state(link.next());
             assertNotNull(start, link.next());
-            var back = start.links().get("set");
+            var submit = start;
+            if (submit.links().get("set") == null) {
+                // a later run may ask its consent first; its submit link is one state further on
+                var consent = start.links().get("yes");
+                assertNotNull(consent, link.next());
+                submit = scenario.state(consent.next());
+                assertNotNull(submit, consent.next());
+            }
+            var back = submit.links().get("set");
             assertNotNull(back, link.next());
             assertEquals("settings.choose", back.next(), link.next());
         }
