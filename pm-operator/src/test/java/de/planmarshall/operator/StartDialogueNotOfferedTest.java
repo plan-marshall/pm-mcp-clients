@@ -48,6 +48,17 @@ class StartDialogueNotOfferedTest {
     }
 
     @Test
+    @DisplayName("Enter on a source list that cannot continue yet says so instead of drawing the list again silently")
+    void enterWithoutASource() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES, "\nq\n",
+                            "plan", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("Enter does nothing here; type one of the keys."), rendered),
+                            () -> assertFalse(rendered.contains("has started"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
     @DisplayName("copy or move takes only 1, 2, a and Enter: the wire word is not a key and q copies nothing")
     void documentsMode() throws Exception {
         var rendered = run(StandardScenarios.START_SOURCES, "f\ndoc.md\nmove\n1\nq\n",

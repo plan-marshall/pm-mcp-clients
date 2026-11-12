@@ -218,7 +218,8 @@ public final class PmConsole {
      *
      * @return the trimmed line, or {@code null} when the console is to leave
      */
-    private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
+    @Nullable
+    String readCommand(LineReader reader, PrintWriter out, String locale) {
         while (running.get()) {
             try {
                 // JLine reads `%` in a prompt as its own escape introducer (`%{...%}` is zero-width
@@ -232,9 +233,14 @@ public final class PmConsole {
                 var line = reader.readLine(ConsolePrompt.format(locale, promptBadges, reconnecting.get()));
                 return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
-                if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
+                var partial = e.getPartialLine();
+                if (partial == null || partial.isBlank()) {
                     out.println(MessageCatalogue.format(locale, "operator.console.ctrl_c_hint", Map.of()));
                     out.flush();
+                } else {
+                    // Ctrl+C clears the typed line, and Up brings it back (04-console.adoc#console-keys):
+                    // JLine keeps no interrupted line in the history, so the console puts it there.
+                    reader.getHistory().add(partial);
                 }
             } catch (EndOfFileException _) {
                 var handled = handleControlD(out);
@@ -418,7 +424,7 @@ public final class PmConsole {
         }
         switch (verb) {
             case "help" -> printHelp(out, parts);
-            case "web" -> handleWebCommand(out, parts);
+            case "web" -> handleWebCommand(line, out, parts, reader, terminal);
             default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
@@ -550,7 +556,13 @@ public final class PmConsole {
         return args.length > 0 && FULL_SCREEN_VERBS.contains(args[0]);
     }
 
-    private void handleWebCommand(PrintWriter out, String[] parts) {
+    /**
+     * Runs {@code web}: {@code qr}, {@code copy ssh} and {@code pair} are the console's own, every
+     * other form is the verb, run as every verb of the console is — from the typed line, on the
+     * console's terminal, with the badges read again afterwards.
+     */
+    private void handleWebCommand(String line, PrintWriter out, String[] parts, LineReader reader,
+                        Terminal terminal) {
         if (parts.length >= 2 && "qr".equals(parts[1])) {
             printWebQr(out);
             return;
@@ -563,8 +575,7 @@ public final class PmConsole {
             issueNewPairingCode(out);
             return;
         }
-        var args = parseArgs(String.join(" ", parts));
-        PmOperator.execute(context, out, out, args.toArray(new String[0]));
+        runOperatorVerb(line, out, reader, terminal);
     }
 
     private void printWebQr(PrintWriter out) {
@@ -681,15 +692,19 @@ public final class PmConsole {
         }
     }
 
-    private void handleSseEvent(SseEvent event, LineReader reader) {
-        if (event.data() == null || event.data().isBlank()) {
-            return;
-        }
+    /**
+     * Applies one event of the stream: data that is no JSON object (empty, malformed, or another
+     * value) is dropped, and the stream goes on.
+     *
+     * @param event  the event as the stream delivered it
+     * @param reader the line reader the notices are printed above
+     */
+    void handleSseEvent(SseEvent event, LineReader reader) {
         Map<String, Object> eventMap;
         try {
             eventMap = JsonTree.asObject(JsonTree.parse(event.data()));
         } catch (IOException _) {
-            // invalid json in the event stream: drop this event, keep the stream
+            // empty or invalid json in the event stream: drop this event, keep the stream
             return;
         }
         if (eventMap != null) {

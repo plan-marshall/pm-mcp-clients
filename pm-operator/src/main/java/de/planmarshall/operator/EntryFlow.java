@@ -62,6 +62,7 @@ import de.planmarshall.operator.dialogue.StateDialogue;
 public final class EntryFlow {
 
     static final int DEFAULT_WEB_PORT = 7420;
+    private static final int MAX_PORT = 65_535;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
     private static final String VERSION = "version";
@@ -572,22 +573,40 @@ public final class EntryFlow {
 
     static int getCompletedOnboardStep(Map<String, Object> status) {
         if (status.get("onboard") instanceof Map<?, ?> onboard) {
-            var step = onboard.get("step");
-            if (step instanceof Number num) {
-                return num.intValue();
+            var step = wholeNumber(onboard.get("step"));
+            if (step >= 0) {
+                return step;
             }
-            if (step instanceof JsonNumber jn) {
-                return (int) jn.longValue();
-            }
-            var completedSteps = onboard.get("completed_steps");
-            if (completedSteps instanceof Number num) {
-                return num.intValue();
-            }
-            if (completedSteps instanceof JsonNumber jn) {
-                return (int) jn.longValue();
+            var completedSteps = wholeNumber(onboard.get("completed_steps"));
+            if (completedSteps >= 0) {
+                return completedSteps;
             }
         }
         return 0;
+    }
+
+    /**
+     * Reads a count, a step or a port the runtime reports: a whole number from {@code 0} to
+     * {@link Integer#MAX_VALUE}, as the wire's {@link JsonNumber} or a Java number.
+     *
+     * @param value the value as the status carries it
+     * @return the number, or {@code -1} when the value is no such number (a fraction, a negative or
+     *         too large a number, or no number at all)
+     */
+    static int wholeNumber(@Nullable Object value) {
+        long number;
+        if (value instanceof JsonNumber json) {
+            try {
+                number = json.longValue();
+            } catch (NumberFormatException _) {
+                return -1;
+            }
+        } else if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+            number = ((Number) value).longValue();
+        } else {
+            return -1;
+        }
+        return number >= 0 && number <= Integer.MAX_VALUE ? (int) number : -1;
     }
 
     String stepName(String locale, int step) {
@@ -599,19 +618,10 @@ public final class EntryFlow {
 
     static int getWebPort(Map<String, Object> status) {
         if (status.get("web") instanceof Map<?, ?> web) {
-            var port = web.get("port");
-            if (port instanceof Number num && num.intValue() > 0) {
-                return num.intValue();
-            }
-            if (port instanceof JsonNumber jn) {
-                try {
-                    int p = (int) jn.longValue();
-                    if (p > 0) {
-                        return p;
-                    }
-                } catch (NumberFormatException _) {
-                    // fallback to default
-                }
+            var port = wholeNumber(web.get("port"));
+            // A TCP port is 1 to 65535; anything else is no port to address, and the default applies.
+            if (port >= 1 && port <= MAX_PORT) {
+                return port;
             }
         }
         return DEFAULT_WEB_PORT;
@@ -809,7 +819,7 @@ public final class EntryFlow {
         }
         var badges = new ArrayList<ConsoleBadge>();
         for (var entry : needs.entrySet()) {
-            var count = countOf(entry.getValue());
+            var count = wholeNumber(entry.getValue());
             if (count < 0) {
                 continue;
             }
@@ -832,24 +842,6 @@ public final class EntryFlow {
         return NeedsOperatorKind.fromValue(wireKind) == NeedsOperatorKind.WAIVER
                             ? NeedsOperatorKind.WAIVER.value()
                             : wireKind;
-    }
-
-    /**
-     * @param value the count the status reports for one kind
-     * @return the count, or {@code -1} when the value is no number
-     */
-    private static int countOf(@Nullable Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof JsonNumber jsonNumber) {
-            try {
-                return (int) jsonNumber.longValue();
-            } catch (NumberFormatException _) {
-                return -1;
-            }
-        }
-        return -1;
     }
 
     private String getHostname() {

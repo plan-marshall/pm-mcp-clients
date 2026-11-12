@@ -268,6 +268,9 @@ final class StartDialogue {
         if (answer.isEmpty()) {
             if (entry.canContinue()) {
                 continueToReady();
+            } else {
+                // Enter continues only a list that can continue; otherwise it is answered, not ignored.
+                unoffered(answer, sourceKeys(entry));
             }
             return;
         }
