@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
@@ -39,7 +40,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectByTitle(session, "Drop the legacy endpoints");
+            selectRow(session, "Drop the legacy endpoints");
 
             // Type ! on the waiting row: it must open the decision dialogue directly
             DialogueHarness.type(session, "!");
@@ -58,7 +59,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectByTitle(session, "Fix Relay Transport");
+            selectRow(session, "Fix Relay Transport");
 
             // Fix Relay Transport has no wait; pressing ! must jump to the next waiting row
             DialogueHarness.type(session, "!");
@@ -77,9 +78,11 @@ class NeedsIT {
              var session = harness.open("plans")) {
             // The overview itself, not a project's level: the group of what waits leads it.
             awaitText(session, "Needs you");
-            selectByTitle(session, "Drop the legacy endpoints");
+            // The group lists the plan three times (landing failed, questions, answer Q-009);
+            // the row meant is the decision whose own command is "answer Q-009".
+            selectRow(session, "Drop the legacy endpoints", "answer Q-009");
 
-            // ! on an item of the group runs the item's own command: the decision opens.
+            // ! on that item runs the command its row prints: the decision opens.
             DialogueHarness.type(session, "!");
             awaitText(session, "Delete the published v1 endpoints");
 
@@ -89,17 +92,19 @@ class NeedsIT {
         }
     }
 
-    private static void selectByTitle(PtySession session, String title) throws Exception {
+    /** Moves the selection down to the first row whose line holds every one of the given texts. */
+    private static void selectRow(PtySession session, String... texts) throws Exception {
+        var wanted = List.of(texts);
         for (int step = 0; step < 40; step++) {
             var line = selected(session);
-            if (line.contains(title)) {
+            if (wanted.stream().allMatch(line::contains)) {
                 return;
             }
             var before = line;
             DialogueHarness.type(session, "j");
             await(() -> !selected(session).equals(before));
         }
-        fail("the row " + title + " was not reached: " + session.screenText());
+        fail("the row " + wanted + " was not reached: " + session.screenText());
     }
 
     private static String selected(PtySession session) {
