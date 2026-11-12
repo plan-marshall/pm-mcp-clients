@@ -209,7 +209,8 @@ final class ChatRegistry {
 
     /**
      * A proposal applied in a chat, handed to the hook that changes its subject's resource: an entry's
-     * description, an epic's staged rows or decomposition draft.
+     * description, an epic's staged rows or decomposition draft, or the start a follow-up plan of ended
+     * work opens.
      *
      * @param subject what the chat is about
      * @param kind    the kind of change
@@ -535,7 +536,7 @@ final class ChatRegistry {
             chat.state = chat.idleState();
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
             return List.of(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(
-                    chat.id,turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
+                    chat.id, turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
                     List.of()).toMap()));
         });
     }

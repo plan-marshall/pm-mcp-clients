@@ -72,8 +72,9 @@ import de.planmarshall.mock.scenario.Scenario;
  * <p>
  * An entry's chat is not held here: it is served by {@link ChatRegistry} on the entry's chat routes,
  * and an entry's state carries no chat member. The registry only derives whether the entry offers its
- * chat yet ({@code chat_available}), and names the ended work whose chats are about the archived record
- * ({@link #endedSubjects()}).
+ * chat yet ({@code chat_available}), names the ended work whose chats are about the archived record
+ * ({@link #endedSubjects()}), and opens the start of the follow-up plan such a chat proposed and the
+ * operator accepted ({@link #openFollowUp(String, String)}).
  * <p>
  * The state is seeded from the active state's operator representation and the scenario's routes, and
  * then driven by the operator's acts: every act returns the entry's new {@link StartStateResource}, so
@@ -180,6 +181,8 @@ final class StartRegistry {
     private static final String DEFAULT_ISSUE = "https://codeberg.org/forgejo/forgejo/issues/4711";
     private static final String DEFAULT_PULL_REQUEST = "https://github.com/plan-marshall/pm-mcp-clients/pull/214";
     private static final String DEFAULT_WORK = "started-work";
+    private static final String DEFAULT_PROJECT = "pm-mcp-clients";
+    private static final String FOLLOWS = "follows ";
 
     /** The callback a start uses to tell its clients of an event. */
     private final Consumer<StartEvent> broadcaster;
@@ -254,8 +257,12 @@ final class StartRegistry {
 
     /**
      * One ended plan or epic, whose chat is about the archived record.
+     *
+     * @param subjectId the ended plan or epic
+     * @param kind      whether it is a plan or an epic
+     * @param projectId the project it ran in, where its follow-up plan starts
      */
-    private record EndedWork(String subjectId, EntryKind kind) {
+    private record EndedWork(String subjectId, EntryKind kind, String projectId) {
     }
 
     /**
@@ -322,11 +329,17 @@ final class StartRegistry {
         return facts != null ? JsonTree.asObject(facts.get(FIXTURE_RUNTIME)) : null;
     }
 
-    private void seedDefaults(Scenario scenario, Map<String, Object> fixture) {
+    /**
+     * @param fixture the state's start fixture
+     * @return the project the fixture names, {@code pm-mcp-clients} when it names none
+     */
+    private static String projectOf(Map<String, Object> fixture) {
         var projectId = JsonTree.string(fixture, KEY_PROJECT_ID);
-        if (projectId == null) {
-            projectId = "pm-mcp-clients";
-        }
+        return projectId != null ? projectId : DEFAULT_PROJECT;
+    }
+
+    private void seedDefaults(Scenario scenario, Map<String, Object> fixture) {
+        var projectId = projectOf(fixture);
         var landing = JsonTree.string(fixture, KEY_LANDING);
         projectLandings.put(projectId, landing != null ? landing : LANDING_PULL_REQUEST);
         var mode = DocumentsMode.fromWire(JsonTree.string(fixture, KEY_DOCUMENTS_MODE));
@@ -386,13 +399,14 @@ final class StartRegistry {
     }
 
     private void seedEndedWork(Map<String, Object> fixture) {
+        var projectId = projectOf(fixture);
         objects(fixture.get(KEY_ENDED_WORK)).stream()
                 .filter(object -> JsonTree.string(object, KEY_SUBJECT_ID) != null
                         && EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND)) != null)
                 .forEach(object -> {
                     var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
                     endedWork.put(subjectId, new EndedWork(subjectId,
-                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND))));
+                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)), projectId));
                 });
     }
 
@@ -585,6 +599,37 @@ final class StartRegistry {
         entry.sources.removeIf(source -> source.kind() == SourceKind.DESCRIPTION);
         storeDescription(entry, text);
         refresh(entry);
+        return true;
+    }
+
+    /**
+     * Opens the start of a new plan from the follow-up plan a chat about ended work proposed and the
+     * operator accepted: a plan's entry in the project the ended work ran in, at {@code start.sources},
+     * with the accepted description stored as its description source. The description names the ended
+     * plan or epic; one that does not is followed by {@code follows <id>}.
+     *
+     * @param subjectId the ended plan or epic
+     * @param text      the accepted description, {@code null} or blank read as none
+     * @return {@code true} if the subject is ended work of a known project and the entry was opened
+     */
+    synchronized boolean openFollowUp(String subjectId, @Nullable String text) {
+        var ended = endedWork.get(subjectId);
+        if (ended == null || !projectLandings.containsKey(ended.projectId())) {
+            return false;
+        }
+        var description = text == null ? "" : text.strip();
+        if (!description.contains(subjectId)) {
+            description = (description + " " + FOLLOWS + subjectId).strip();
+        }
+        var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, ended.projectId(), STATE_SOURCES);
+        entry.landing = projectLandings.get(ended.projectId());
+        entry.lessonsAvailable = true;
+        entry.localChanges = true;
+        entry.recipes = projectRecipes.getOrDefault(ended.projectId(), List.of());
+        entry.chatAvailable = true;
+        storeDescription(entry, description);
+        refresh(entry);
+        entries.put(entry.entryId, entry);
         return true;
     }
 

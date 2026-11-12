@@ -849,8 +849,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * The hook through which a proposal applied in a chat changes its subject's resource: an entry's
      * description replaces the entry's description, and a change to an epic's staged rows or to its
-     * decomposition draft moves the epic's decomposition on by one revision. A plan's revision is
-     * accepted and queued, never applied here, and a follow-up plan of ended work changes no resource.
+     * decomposition draft moves the epic's decomposition on by one revision, and a follow-up plan of
+     * ended work opens the start of a new plan in the ended work's project with that description stored.
+     * A plan's revision is accepted and queued, never applied here.
      *
      * @param applied the applied proposal
      */
@@ -858,6 +859,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var subject = applied.subject();
         if (subject.kind() == ChatSubjectKind.ENTRY && applied.kind() == ProposalKind.DESCRIPTION) {
             startRegistry.applyDescription(subject.id(), applied.after());
+        } else if (applied.kind() == ProposalKind.FOLLOW_UP) {
+            startRegistry.openFollowUp(subject.id(), applied.after());
         } else if (subject.kind() == ChatSubjectKind.EPIC
                 && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
             synchronized (decompositionLock) {

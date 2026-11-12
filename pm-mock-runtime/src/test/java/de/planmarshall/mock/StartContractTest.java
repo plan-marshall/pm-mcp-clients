@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -35,6 +36,9 @@ import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.chat.ProposalAnswerRequest;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorLink;
@@ -51,6 +55,7 @@ import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.SourceTrust;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
@@ -234,6 +239,36 @@ class StartContractTest {
                         .withHeader("Authorization", auth));
                 assertEquals(201, opened.status(), opened.bodyText());
                 assertEquals(ChatScopeKind.ARCHIVE, ChatResource.fromJson(opened.bodyText()).scope());
+            }
+        }
+
+        @Test
+        @DisplayName("the accepted follow-up plan opens at start.sources with the ended work named in its description")
+        void followUpPlan() throws Exception {
+            var routes = ChatRoutes.endedPlan("codeberg-issues");
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.follow-up"))
+                         .timing(MockTiming.ORDERED).build())) {
+                var auth = "Bearer " + runtime.token();
+                assertEquals(201, client(runtime).send(HttpRequest.json("POST", routes.chat(), "")
+                        .withHeader("Authorization", auth)).status());
+                for (var message = 0; message < 2; message++) {
+                    var turn = new ChatTurnRequest(Generators.letterStrings(4, 40).next(),
+                            Generators.letterStrings(12, 16).next());
+                    assertEquals(ChatTurnAccepted.HTTP_STATUS, client(runtime).send(HttpRequest.json("POST",
+                            routes.turns(), turn.toJson()).withHeader("Authorization", auth)).status());
+                }
+                var chat = ChatResource.fromJson(client(runtime).send(HttpRequest.get(routes.chat())
+                        .withHeader("Authorization", auth)).bodyText());
+                var proposal = Objects.requireNonNull(chat.proposal(), "the second reply proposes a follow-up plan");
+
+                var accepted = client(runtime).send(HttpRequest.json("POST", routes.accept(),
+                        new ProposalAnswerRequest(proposal.turnId()).toJson()).withHeader("Authorization", auth));
+                assertEquals(200, accepted.status(), accepted.bodyText());
+
+                var state = fetch(runtime, "ent-3f9a2c42");
+                assertEquals(StartState.SOURCES, state.state());
+                assertEquals(EntryKind.PLAN, state.entry().kind());
+                assertTrue(state.entry().sources().getFirst().reference().contains("codeberg-issues"));
             }
         }
     }

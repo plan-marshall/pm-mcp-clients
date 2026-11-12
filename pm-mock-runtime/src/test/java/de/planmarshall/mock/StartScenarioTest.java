@@ -846,20 +846,47 @@ class StartScenarioTest {
     class FollowUp {
 
         @Test
-        @DisplayName("start-follow-up opens a chat about the archived record of an ended plan and an ended epic")
+        @DisplayName("start-follow-up opens a chat about an ended plan and an ended epic, and the epic's accepted"
+                + " follow-up plan opens a plan's entry")
         void followUpScenario() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.follow-up"))) {
+            var epicRoutes = ChatRoutes.endedEpic("relay-hardening");
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.follow-up"))
+                         .timing(MockTiming.ORDERED).build())) {
                 var plan = post(runtime, ChatRoutes.endedPlan("codeberg-issues").chat(), "");
                 assertEquals(201, plan.status(), plan.bodyText());
                 var planChat = ChatResource.fromJson(plan.bodyText());
                 assertEquals("replan", planChat.role().name());
                 assertEquals(ChatScopeKind.ARCHIVE, planChat.scope());
 
-                var epic = post(runtime, ChatRoutes.endedEpic("relay-hardening").chat(), "");
+                var epic = post(runtime, epicRoutes.chat(), "");
                 assertEquals(201, epic.status(), epic.bodyText());
                 var epicChat = ChatResource.fromJson(epic.bodyText());
                 assertEquals("decompose", epicChat.role().name());
                 assertEquals(ChatScopeKind.ARCHIVE, epicChat.scope());
+
+                for (var message = 0; message < 2; message++) {
+                    var turn = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
+                            Generators.letterStrings(8, 12).next());
+                    var sent = post(runtime, epicRoutes.turns(), turn.toJson());
+                    assertEquals(ChatTurnAccepted.HTTP_STATUS, sent.status(), sent.bodyText());
+                }
+                var proposed = ChatResource.fromJson(client(runtime).send(HttpRequest.get(epicRoutes.chat())
+                        .withHeader("Authorization", "Bearer " + runtime.token())).bodyText());
+                var proposal = Objects.requireNonNull(proposed.proposal(), "the epic's chat proposes a follow-up");
+                var accepted = post(runtime, epicRoutes.accept(),
+                        new ProposalAnswerRequest(proposal.turnId()).toJson());
+                assertEquals(200, accepted.status(), accepted.bodyText());
+                assertEquals(ProposalState.APPLIED,
+                        Objects.requireNonNull(ChatResource.fromJson(accepted.bodyText()).proposal()).state());
+
+                var opened = client(runtime).send(HttpRequest.get("/api/v1/entries/ent-3f9a2c42")
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, opened.status(), opened.bodyText());
+                var state = StartStateResource.fromJson(opened.bodyText());
+                assertEquals(StartState.SOURCES, state.state());
+                assertEquals(EntryKind.PLAN, state.entry().kind());
+                assertEquals(1, state.entry().sourceCount());
+                assertTrue(state.entry().sources().getFirst().reference().contains("follows relay-hardening"));
             }
         }
     }

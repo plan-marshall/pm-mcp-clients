@@ -53,8 +53,10 @@ import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.SourceKind;
 import de.planmarshall.api.start.SourceResource;
+import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.mock.runtime.MockTiming;
 
@@ -75,6 +77,11 @@ class ChatProposalsTest {
     private static final String START_CHAT_STATE = StandardScenarios.PROJECTS_AND_START + "#start.chat";
     private static final String FOLLOW_UP_STATE = StandardScenarios.PROJECTS_AND_START + "#start.follow-up";
     private static final String ENTRY_ID = "ent-3f9a2c41";
+    private static final String ENTRIES = "/api/v1/entries/";
+    private static final String ENDED_PLAN = "codeberg-issues";
+    /** The id the start opened next after the seeded entry receives. */
+    private static final String FOLLOW_UP_ENTRY = "ent-3f9a2c42";
+    private static final String SECOND_FOLLOW_UP_ENTRY = "ent-3f9a2c43";
     private static final String EPIC_ID = "relay-hardening";
     private static final String DECOMPOSITION = "/api/v1/projects/pm-mcp-clients/epics/" + EPIC_ID
             + "/decomposition";
@@ -253,17 +260,28 @@ class ChatProposalsTest {
         }
 
         @Test
-        @DisplayName("applies a follow-up plan of ended work")
+        @DisplayName("applies a follow-up plan of ended work: a new plan starts in the project with it, once")
         void followUp() throws Exception {
-            var routes = ChatRoutes.endedPlan("codeberg-issues");
+            var routes = ChatRoutes.endedPlan(ENDED_PLAN);
             try (var runtime = ordered(FOLLOW_UP_STATE)) {
                 assertEquals(ChatScopeKind.ARCHIVE, openChat(runtime, routes).scope());
                 var proposal = proposeAt(runtime, routes, 2, ProposalKind.FOLLOW_UP);
+                assertEquals(404, get(runtime, ENTRIES + FOLLOW_UP_ENTRY).status(), "no start before the accept");
 
                 var accepted = answer(runtime, routes.accept(), proposal);
 
                 assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
+                var started = startState(runtime, FOLLOW_UP_ENTRY).entry();
+                assertAll("the new plan's start",
+                        () -> assertEquals(EntryKind.PLAN, started.kind()),
+                        () -> assertEquals("pm-mcp-clients", started.projectId()),
+                        () -> assertEquals(StartState.SOURCES, started.state()),
+                        () -> assertEquals(List.of(proposal.after() + " follows " + ENDED_PLAN),
+                                started.sources().stream().filter(source -> source.kind() == SourceKind.DESCRIPTION)
+                                        .map(SourceResource::reference).toList()));
                 assertRefusedTwice(runtime, routes, proposal);
+                assertEquals(404, get(runtime, ENTRIES + SECOND_FOLLOW_UP_ENTRY).status(),
+                        "a second accept opens no second start");
             }
         }
     }
@@ -360,11 +378,15 @@ class ChatProposalsTest {
     }
 
     private static List<String> descriptions(MockRuntime runtime) throws Exception {
-        var response = get(runtime, "/api/v1/entries/" + ENTRY_ID);
-        assertEquals(200, response.status(), response.bodyText());
-        return StartStateResource.fromJson(response.bodyText()).entry().sources().stream()
+        return startState(runtime, ENTRY_ID).entry().sources().stream()
                 .filter(source -> source.kind() == SourceKind.DESCRIPTION).map(SourceResource::reference)
                 .toList();
+    }
+
+    private static StartStateResource startState(MockRuntime runtime, String entryId) throws Exception {
+        var response = get(runtime, ENTRIES + entryId);
+        assertEquals(200, response.status(), response.bodyText());
+        return StartStateResource.fromJson(response.bodyText());
     }
 
     private static long decompositionRevision(MockRuntime runtime) throws Exception {
