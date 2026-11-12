@@ -77,14 +77,16 @@ public class ScenarioLoader {
 
     /** The member of a state and of a route that holds its representation. */
     private static final String FIELD_REPRESENTATION = "representation";
+    /** The member of a route and of a link that holds its HTTP status. */
+    private static final String FIELD_STATUS = "status";
 
     private static final Set<String> ROOT_FIELDS = Set.of(
             "format_version", "name", "description", "start", "pairing_code", "routes", "states");
     private static final Set<String> STATE_FIELDS = Set.of(
             FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
-    private static final Set<String> ROUTE_FIELDS = Set.of("status", FIELD_REPRESENTATION, "headers");
+    private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
     private static final Set<String> LINK_FIELDS = Set.of(
-            "method", "href", "status", "next", "delay_ms", "error");
+            "method", "href", FIELD_STATUS, "next", "delay_ms", "error");
     private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
     private static final Set<String> AUTO_FIELDS = Set.of("after_ms", "next");
 
@@ -272,7 +274,7 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                         "route representation must be a JSON object or a list");
             }
-            var status = asInt(routeMap.get("status"), 200);
+            var status = asInt(routeMap.get(FIELD_STATUS), 200);
             validateRouteRepresentation(routeKey, rep, status, scenario);
             result.put(routeKey, new RouteDefinition(rep, status));
         }
@@ -548,7 +550,7 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, stateId, "links." + linkName + ".delay_ms",
                         "delay_ms cannot be negative");
             }
-            var status = asInt(linkMap.get("status"), 200);
+            var status = asInt(linkMap.get(FIELD_STATUS), 200);
             var error = JsonTree.string(linkMap, "error");
             if (error != null && ApiErrorCode.fromWireOrNull(error) == null) {
                 throw new ScenarioValidationException(scenario, stateId, "links." + linkName + ".error",

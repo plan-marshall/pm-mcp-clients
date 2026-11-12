@@ -208,6 +208,70 @@ class ScenarioLoaderTest {
     }
 
     @Test
+    @DisplayName("reads the custom status of a route and of a link")
+    void readsCustomRouteAndLinkStatus() {
+        var routeStatus = Generators.integers(201, 299).next();
+        var linkStatus = Generators.integers(201, 299).next();
+        var json = """
+                {
+                  "format_version": 1,
+                  "name": "custom-status",
+                  "start": "initial",
+                  "routes": { "GET /api/v1/ping": { "status": %1$d, "representation": { "pong": true } } },
+                  "states": {
+                    "initial": {
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "links": [
+                          { "id": "go", "rel": "submit", "method": "POST",
+                            "href": "/api/v1/go", "params": {} }
+                        ]
+                      },
+                      "links": {
+                        "go": { "method": "POST", "href": "/api/v1/go", "next": "initial", "status": %2$d }
+                      }
+                    }
+                  }
+                }
+                """.formatted(routeStatus, linkStatus);
+
+        var scenario = ScenarioLoader.load(json, "custom-status.json");
+
+        var route = scenario.route("GET", "/api/v1/ping");
+        assertNotNull(route);
+        assertEquals(routeStatus, route.status());
+        var initial = scenario.state("initial");
+        assertNotNull(initial);
+        var link = initial.links().get("go");
+        assertNotNull(link);
+        assertEquals(linkStatus, link.status());
+    }
+
+    @Test
+    @DisplayName("names no state for a file-level violation and the state for a state-level one")
+    void namesStateOnlyForStateLevelViolation() {
+        var fileLevel = """
+                {"format_version":1,"name":"file-level","start":"absent",
+                 "states":{"initial":{"representation":{}}}}
+                """;
+        var stateLevel = """
+                {"format_version":1,"name":"state-level","start":"a",
+                 "states":{"a":{"representation":{},"retry":true}}}
+                """;
+
+        var fileEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(fileLevel, "file-level.json"));
+        var stateEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(stateLevel, "state-level.json"));
+
+        assertNull(fileEx.state());
+        assertEquals("start", fileEx.field());
+        assertEquals("a", stateEx.state());
+        assertEquals("retry", stateEx.field());
+    }
+
+    @Test
     @DisplayName("rejects dangling next in links")
     void rejectsDanglingLinkNext() {
         var json = """
