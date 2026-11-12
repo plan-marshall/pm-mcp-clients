@@ -86,7 +86,9 @@
   --color-danger-subtle: #FDECEA;
   --color-success: #1E7A4E;
   --color-neutral: #7A808B;
-  --color-epic: #7A3FD1;
+  --color-kind-project: #606700;
+  --color-kind-epic: #BB2D8C;
+  --color-kind-plan: #007785;
   --color-on-brand: #FFFFFF;
   --color-overlay: rgb(15 23 42 / 0.5);
 
@@ -132,8 +134,6 @@
   --color-danger-border: var(--color-danger);
   --color-danger-text: var(--color-danger);
   --color-danger-contrast: var(--color-on-brand);
-  --color-epic-subtle: var(--color-bg-subtle);
-  --color-epic-text: var(--color-epic);
   --color-star: var(--color-attention-text);
   --shadow-sm: var(--shadow-1);
   --shadow-md: var(--shadow-2);
@@ -164,7 +164,9 @@
     --color-danger-subtle: #2C1517;
     --color-success: #3FB37F;
     --color-neutral: #8B95A7;
-    --color-epic: #B58CFF;
+    --color-kind-project: #ADCD4A;
+  --color-kind-epic: #EF8BC5;
+  --color-kind-plan: #3BCDDC;
     --color-on-brand: #0E1116;
     --color-overlay: rgb(0 0 0 / 0.7);
 
@@ -200,7 +202,9 @@
   --color-danger-subtle: #FDECEA;
   --color-success: #1E7A4E;
   --color-neutral: #7A808B;
-  --color-epic: #7A3FD1;
+  --color-kind-project: #606700;
+  --color-kind-epic: #BB2D8C;
+  --color-kind-plan: #007785;
   --color-on-brand: #FFFFFF;
   --color-overlay: rgb(15 23 42 / 0.5);
 
@@ -235,7 +239,9 @@
   --color-danger-subtle: #2C1517;
   --color-success: #3FB37F;
   --color-neutral: #8B95A7;
-  --color-epic: #B58CFF;
+  --color-kind-project: #ADCD4A;
+  --color-kind-epic: #EF8BC5;
+  --color-kind-plan: #3BCDDC;
   --color-on-brand: #0E1116;
   --color-overlay: rgb(0 0 0 / 0.7);
 
