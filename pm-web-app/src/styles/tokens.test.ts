@@ -220,17 +220,11 @@ const STATE_DOTS = [
 /** The tints of the three tinted kinds (`components-tags.adoc`, The Three Kind Tints). */
 const KIND_TINTS = ['--color-kind-project', '--color-kind-epic', '--color-kind-plan'];
 
-/** The colours a kind tint must keep clear of: the state tones, the brand and the mascot's orange and gold. */
-const TINT_NEIGHBOURS = [
-  '--color-running',
-  '--color-attention',
-  '--color-danger',
-  '--color-success',
-  '--color-neutral',
-  '--color-brand',
-  '--color-mascot-fur',
-  '--color-mascot-gold',
-];
+/**
+ * The colours a kind tint must keep clear of: the state tones, the brand and the mascot's orange and
+ * gold. The state tones are `STATE_DOTS` itself, so a state token added there is checked here too.
+ */
+const TINT_NEIGHBOURS = [...STATE_DOTS, '--color-brand', '--color-mascot-fur', '--color-mascot-gold'];
 
 /** Every ground a kind icon stands on, the selected row's brand-subtle among them. */
 const TINT_GROUNDS = [...SURFACES, '--color-brand-subtle'];
@@ -239,6 +233,15 @@ const TINT_GROUNDS = [...SURFACES, '--color-brand-subtle'];
 const DOT_PAIRS: Array<[string, string]> = SURFACES.flatMap((surface) =>
   STATE_DOTS.map((dot): [string, string] => [dot, surface]),
 );
+
+/**
+ * @param rows measurements, each with its raw `value`
+ * @param minimum the least value that passes
+ * @returns the rows whose raw value is below the minimum, with the value rounded for the report only
+ */
+function belowMinimum<T extends { value: number }>(rows: readonly T[], minimum: number): T[] {
+  return rows.filter((row) => row.value < minimum).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
+}
 
 /**
  * @param css the stylesheet
@@ -491,20 +494,28 @@ describe('tokens.css: the design system v2 contract', () => {
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
     it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = TEXT_PAIRS.map(([foreground, background]) => {
-        const ratio = contrastRatio(palette[foreground], palette[background]);
-        return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
-      }).filter((pair) => pair.ratio < 4.5);
+      const failures = belowMinimum(
+        TEXT_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        4.5,
+      );
 
       expect(failures).toEqual([]);
     });
 
     it.each(['light', 'dark'] as const)('keeps every state dot at or above 3:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = DOT_PAIRS.map(([foreground, background]) => {
-        const ratio = contrastRatio(palette[foreground], palette[background]);
-        return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
-      }).filter((pair) => pair.ratio < 3);
+      const failures = belowMinimum(
+        DOT_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        3,
+      );
 
       expect(failures).toEqual([]);
     });
@@ -515,7 +526,6 @@ describe('tokens.css: the design system v2 contract', () => {
       light: resolveAliases({ ...themes.root, ...themes.light }),
       dark: resolveAliases({ ...themes.root, ...themes.dark }),
     };
-    const round = (value: number): number => Math.round(value * 100) / 100;
     const tintPairs = KIND_TINTS.flatMap((tint, index) =>
       KIND_TINTS.slice(index + 1).map((other): [string, string] => [tint, other]),
     );
@@ -524,9 +534,12 @@ describe('tokens.css: the design system v2 contract', () => {
       'keeps a ΔE00 of at least 20 to each state, brand and mascot colour in the %s theme',
       (theme) => {
         const palette = palettes[theme];
-        const failures = KIND_TINTS.flatMap((tint) =>
-          TINT_NEIGHBOURS.map((other) => ({ tint, other, deltaE: round(deltaE00(palette[tint], palette[other])) })),
-        ).filter((pair) => pair.deltaE < 20);
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            TINT_NEIGHBOURS.map((other) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+          ),
+          20,
+        );
 
         expect(failures).toEqual([]);
       },
@@ -537,13 +550,16 @@ describe('tokens.css: the design system v2 contract', () => {
       (theme) => {
         const palette = palettes[theme];
         const hued = TINT_NEIGHBOURS.filter((other) => toOklch(palette[other]).c > 0.06);
-        const failures = KIND_TINTS.flatMap((tint) =>
-          hued.map((other) => ({
-            tint,
-            other,
-            distance: round(hueDistance(toOklch(palette[tint]).h, toOklch(palette[other]).h)),
-          })),
-        ).filter((pair) => pair.distance < 30);
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            hued.map((other) => ({
+              tint,
+              other,
+              value: hueDistance(toOklch(palette[tint]).h, toOklch(palette[other]).h),
+            })),
+          ),
+          30,
+        );
 
         expect(hued).not.toContain('--color-neutral');
         expect(failures).toEqual([]);
@@ -552,18 +568,22 @@ describe('tokens.css: the design system v2 contract', () => {
 
     it.each(['light', 'dark'] as const)('keeps a ΔE00 of at least 30 between the tints in the %s theme', (theme) => {
       const palette = palettes[theme];
-      const failures = tintPairs
-        .map(([tint, other]) => ({ tint, other, deltaE: round(deltaE00(palette[tint], palette[other])) }))
-        .filter((pair) => pair.deltaE < 30);
+      const failures = belowMinimum(
+        tintPairs.map(([tint, other]) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+        30,
+      );
 
       expect(failures).toEqual([]);
     });
 
     it.each(['light', 'dark'] as const)('keeps every tint at or above 3:1 on every ground in the %s theme', (theme) => {
       const palette = palettes[theme];
-      const failures = KIND_TINTS.flatMap((tint) =>
-        TINT_GROUNDS.map((ground) => ({ tint, ground, ratio: round(contrastRatio(palette[tint], palette[ground])) })),
-      ).filter((pair) => pair.ratio < 3);
+      const failures = belowMinimum(
+        KIND_TINTS.flatMap((tint) =>
+          TINT_GROUNDS.map((ground) => ({ tint, ground, value: contrastRatio(palette[tint], palette[ground]) })),
+        ),
+        3,
+      );
 
       expect(failures).toEqual([]);
     });

@@ -40,7 +40,7 @@ const DEGREES = 180 / Math.PI;
 export function parseHex(colour: string): Rgb {
   const match = /^#([0-9a-fA-F]{6})$/.exec(colour.trim());
   if (!match) throw new Error(`Not a six-digit hex colour: ${colour}`);
-  const channel = (offset: number): number => parseInt(match[1].slice(offset, offset + 2), 16) / 255;
+  const channel = (offset: number): number => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255;
   return { r: channel(0), g: channel(2), b: channel(4) };
 }
 

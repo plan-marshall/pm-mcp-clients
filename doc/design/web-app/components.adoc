@@ -237,7 +237,7 @@ The modals that are still drawn by hand on layers of their own (`50`, `60`, `110
 
 image::../../resources/diagrams/web-component-link.svg[An in-app link, a link in a sentence, and an external link with its glyph,360,align=center]
 
-An `<a href>` to a place of the app; every place has a URL. A link names its destination as a noun (_Completion report_, _Settings_, _Process designer_). It has three looks and stays a link in each. The `text` look, the default, is underlined in a sentence in the colour of the text around it; standing alone (a head link) it has no underline at rest and gains it on hover. The `button` look is the secondary `Button` look, as the chat's _Open it_ draws it; the `chip` look is that of the chat's reference chips. A link is never brand-coloured in any look, and every look keeps the focus ring.
+An `<a href>` to a place of the app; every place has a URL. A link names its destination as a noun (_Completion report_, _Settings_, _Process designer_). It has three looks and stays a link in each. The `text` look, the default, is underlined in a sentence in the colour of the text around it; standing alone (a head link) it has no underline at rest and gains it on hover. The `button` look is the secondary `Button` look, as the chat's _Open it_ draws it; the `chip` look is that of the chat's reference chips. A link is never brand-coloured in any look, and every look keeps the focus ring. Only a path of the app (it starts with `/` and stays on the app's own origin) becomes an anchor; an address with another scheme, such as `javascript:`, or another host is drawn as its label without an anchor, and a place outside the app is an <<external-link,`ExternalLink`>>.
 
 Source and surface: `pm-web-app/src/lib/components/Link.svelte`, tests beside it; the props are `href`, `label` and `look` (`text`, `button` or `chip`), plus the `icon` snippet before the label.
 
@@ -346,7 +346,7 @@ Every component draws these itself, so every use has them:
 * *Disabled*: always with its reason (`disabledReason`), never only greyed out.
 * *Busy*: `Button` `loading`, never a changed label.
 * *Pressed, chosen, current, selected*: `aria-pressed` for a `Toggle`, `aria-checked` for an option of a `SegmentedControl`, `aria-current="true"` for the selected row of a list, `aria-selected` for a tab.
-* *Targets*: at least `24 × 24 px`, and `44 × 44 px` below `768 px`, for every control — icon buttons, a favourite star and the row menu included.
+* *Targets*: at least `24 × 24 px`, and `44 × 44 px` below `768 px`, for every control — icon buttons, a favourite star and the row menu included. Every look of a `Link` and of an `ExternalLink` is such a control; the one exception is the text look in running text (directly inside a paragraph, a list item, a definition, a table cell, a figure caption or a block quote), which takes the size of its line and is exempt from the target size (the inline-link exception of WCAG 2.5.8).
 
 [#clickable]
 == Clickable Objects

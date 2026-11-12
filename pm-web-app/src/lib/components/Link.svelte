@@ -1,6 +1,27 @@
 <script lang="ts" module>
   /** How a link is drawn: text, the secondary Button look, or the chip look. */
   export type LinkLook = 'text' | 'button' | 'chip';
+
+  /** A stand-in origin the path of the app is resolved against; it is never rendered. */
+  const APP_ORIGIN = 'http://app.invalid';
+
+  /**
+   * @param href the address a caller hands in
+   * @returns whether it is a path of the app: it starts with `/` and, resolved the way a browser
+   *   resolves it, stays on the origin of the app. A `javascript:` or `data:` address, a host
+   *   written `//host` or `/\host`, and one hidden behind a tab or a line break are all refused.
+   */
+  export function isAppPath(href: string): boolean {
+    const address = href.trim();
+    if (!address.startsWith('/')) {
+      return false;
+    }
+    try {
+      return new URL(address, APP_ORIGIN).origin === APP_ORIGIN;
+    } catch {
+      return false;
+    }
+  }
 </script>
 
 <script lang="ts">
@@ -11,8 +32,10 @@
    *
    * The text look takes the colour of the text around it: underlined in a sentence, and standing
    * alone underlined only on hover. The button look is the secondary `Button`'s, the chip look that
-   * of a reference chip; navigation stays a link in every look. A link whose URL is not known is
-   * drawn as its label without an anchor, never as `href="#"`.
+   * of a reference chip; navigation stays a link in every look. Only a path of the app (`/…`) becomes
+   * an anchor: a link whose URL is not known, and any address that is not a path of the app (another
+   * scheme such as `javascript:`, or another host), is drawn as its label without an anchor, never
+   * as `href="#"`; a place outside the app is an `ExternalLink`.
    */
   interface Props {
     /** The place the link goes to. */
@@ -27,11 +50,13 @@
 
   let { href, label, look = 'text', icon }: Props = $props();
 
-  const known = $derived(href.trim() !== '' && href.trim() !== '#');
+  /** The address that was checked and is rendered: the one without the white space around it. */
+  const address = $derived(href.trim());
+  const known = $derived(isAppPath(address));
 </script>
 
 {#if known}
-  <a {href} class="link link--{look}">
+  <a href={address} class="link link--{look}">
     {#if icon}<span class="link__icon">{@render icon()}</span>{/if}
     <span class="link__label">{label}</span>
   </a>
@@ -40,10 +65,13 @@
 {/if}
 
 <style>
+  /* Every look is a target of at least 24 px, in both directions (components.adoc, States). */
   .link {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+    min-width: 24px;
+    min-height: 24px;
     border-radius: var(--radius-sm);
     cursor: pointer;
   }
@@ -66,9 +94,15 @@
     text-decoration: underline;
   }
 
-  /* In running text a link is underlined at rest, so it is found without a hover. */
+  /*
+   * In running text a link is underlined at rest, so it is found without a hover. The text look in
+   * running text (directly inside a p, li, dd, td, figcaption or blockquote) takes the size of its
+   * line and is exempt from the target size (components.adoc, States).
+   */
   :global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text {
     text-decoration: underline;
+    min-width: 0;
+    min-height: 0;
   }
 
   .link--button {
@@ -105,10 +139,16 @@
     color: var(--color-text-primary);
   }
 
-  /* A phone gets the 44 px target. */
+  /* A phone gets the 44 px target, except for the text look in running text. */
   @media (max-width: 767px) {
-    .link--button {
+    .link {
+      min-width: 44px;
       min-height: 44px;
+    }
+
+    :global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text {
+      min-width: 0;
+      min-height: 0;
     }
   }
 </style>

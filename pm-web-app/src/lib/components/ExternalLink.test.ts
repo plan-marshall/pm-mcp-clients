@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/svelte';
 import ExternalLink from './ExternalLink.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import { ruleOf, styleOf } from '../../test/templateStyle';
+import { ruleOf, rulesOf, styleOf } from '../../test/templateStyle';
 
 /**
  * `ExternalLink` (components.adoc, ExternalLink): a link to a place outside the app that opens in a
@@ -84,5 +84,32 @@ describe('ExternalLink', () => {
 
   it('keeps the focus ring', () => {
     expect(ruleOf(STYLE, '.link:focus-visible')).toContain('box-shadow: var(--focus-ring)');
+  });
+
+  it('gives the text and the chip look a target of at least 24 px, and 44 px on a phone', () => {
+    const [desktop, phone] = rulesOf(STYLE, '.link');
+
+    expect(desktop).toContain('min-width: 24px');
+    expect(desktop).toContain('min-height: 24px');
+    expect(phone).toContain('min-width: 44px');
+    expect(phone).toContain('min-height: 44px');
+  });
+
+  it('exempts only the inline text link of a sentence from the target size', () => {
+    const [desktop, phone] = rulesOf(STYLE, ':global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text');
+
+    for (const rule of [desktop, phone]) {
+      expect(rule).toContain('min-width: 0');
+      expect(rule).toContain('min-height: 0');
+    }
+    expect(STYLE.match(/min-width: 0/g)).toHaveLength(2);
+  });
+
+  it('keeps the text drawn without an address free of the target size', () => {
+    useCatalogue('en');
+    const { container } = render(ExternalLink, { props: { href: '', label: 'Pull request', chip: true } });
+    const text = container.querySelector('.external-link__text') as HTMLElement;
+
+    expect(text).not.toHaveClass('link');
   });
 });

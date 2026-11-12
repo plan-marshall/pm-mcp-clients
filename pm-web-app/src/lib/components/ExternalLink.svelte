@@ -52,10 +52,13 @@
 {/if}
 
 <style>
+  /* Every look is a target of at least 24 px, in both directions (components.adoc, States). */
   .link {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+    min-width: 24px;
+    min-height: 24px;
     border-radius: var(--radius-sm);
     cursor: pointer;
   }
@@ -74,8 +77,14 @@
     text-decoration: underline;
   }
 
+  /*
+   * The text look in running text (directly inside a p, li, dd, td, figcaption or blockquote) takes
+   * the size of its line and is exempt from the target size (components.adoc, States).
+   */
   :global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text {
     text-decoration: underline;
+    min-width: 0;
+    min-height: 0;
   }
 
   .link--chip {
@@ -94,5 +103,18 @@
 
   .link--chip:hover {
     color: var(--color-text-primary);
+  }
+
+  /* A phone gets the 44 px target, except for the text look in running text. */
+  @media (max-width: 767px) {
+    .link {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    :global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text {
+      min-width: 0;
+      min-height: 0;
+    }
   }
 </style>

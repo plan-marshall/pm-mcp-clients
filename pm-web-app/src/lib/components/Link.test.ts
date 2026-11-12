@@ -3,11 +3,12 @@ import path from 'node:path';
 import { createRawSnippet } from 'svelte';
 import { render, screen } from '@testing-library/svelte';
 import Link from './Link.svelte';
-import { ruleOf, styleOf } from '../../test/templateStyle';
+import { ruleOf, rulesOf, styleOf } from '../../test/templateStyle';
 
 /**
  * `Link` (components.adoc, Link): an `<a href>` to a place of the app in one of three looks — text,
- * the secondary button look, or the chip look — never brand-coloured and never `href="#"`.
+ * the secondary button look, or the chip look — never brand-coloured and never `href="#"`. Only a
+ * path of the app becomes an anchor.
  */
 
 const STYLE = styleOf(path.resolve(__dirname, 'Link.svelte'));
@@ -44,6 +45,33 @@ describe('Link', () => {
     expect(container).toHaveTextContent('Settings');
   });
 
+  it.each([
+    'javascript:alert(1)',
+    ' JaVaScRiPt:alert(1)',
+    'data:text/html,<b>x</b>',
+    'https://evil.example/login',
+    '//evil.example/login',
+    '/\\evil.example/login',
+    '/\t/evil.example/login',
+    '/\n/evil.example/login',
+    'plans/relay',
+  ])('draws %j, which is no path of the app, as text and never as an anchor', (href) => {
+    const { container } = render(Link, { props: { href, label: 'Settings' } });
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container).toHaveTextContent('Settings');
+  });
+
+  it.each(['/settings', '/plans/fix-relay/report?tab=open#summary', ' /projects '])(
+    'draws the path of the app %j as an anchor',
+    (href) => {
+      render(Link, { props: { href, label: 'Place' } });
+
+      // The anchor carries the address that was checked, without the white space around it.
+      expect(screen.getByRole('link', { name: 'Place' })).toHaveAttribute('href', href.trim());
+    },
+  );
+
   it('puts the icon snippet before the label', () => {
     render(Link, { props: { href: '/designer', label: 'Process designer', icon: ICON } });
     const link = screen.getByRole('link');
@@ -77,6 +105,26 @@ describe('Link', () => {
     expect(rule).toContain('color: var(--color-text-primary)');
     expect(rule).toContain('border-radius: var(--radius-md)');
     expect(ruleOf(STYLE, '.link--button:hover')).toContain('background-color: var(--color-bg-subtle)');
+  });
+
+  it('gives every look a target of at least 24 px, and 44 px on a phone', () => {
+    const [desktop, phone] = rulesOf(STYLE, '.link');
+
+    expect(desktop).toContain('min-width: 24px');
+    expect(desktop).toContain('min-height: 24px');
+    expect(phone).toContain('min-width: 44px');
+    expect(phone).toContain('min-height: 44px');
+  });
+
+  it('exempts only the inline text link of a sentence from the target size', () => {
+    const running = ':global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text';
+    const [desktop, phone] = rulesOf(STYLE, running);
+
+    for (const rule of [desktop, phone]) {
+      expect(rule).toContain('min-width: 0');
+      expect(rule).toContain('min-height: 0');
+    }
+    expect(STYLE.match(/min-width: 0/g)).toHaveLength(2);
   });
 
   it('draws the chip look on the subtle ground with the small radius', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import { render } from '@testing-library/svelte';
-import KindMark, { type Kind } from './KindMark.svelte';
+import KindMark, { KIND_ICONS, type Kind } from './KindMark.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { ruleOf, styleOf } from '../../test/templateStyle';
@@ -17,16 +17,33 @@ function useCatalogue(locale: 'de' | 'en'): void {
   messagesStore.set(loadMessages(locale));
 }
 
-/** Each kind with its icon, its words and the class that colours its icon; the expectation of the design. */
-const KINDS: Array<{ kind: Kind; icon: string; en: string; de: string; tone: string }> = [
-  { kind: 'project', icon: 'kind.project', en: 'project', de: 'Projekt', tone: 'kind-mark__icon--project' },
-  { kind: 'epic', icon: 'kind.epic', en: 'epic', de: 'Epic', tone: 'kind-mark__icon--epic' },
-  { kind: 'plan', icon: 'kind.plan', en: 'plan', de: 'Plan', tone: 'kind-mark__icon--plan' },
-  { kind: 'side_job', icon: 'kind.side-job', en: 'side job', de: 'Nebenarbeit', tone: 'kind-mark__icon--neutral' },
-  { kind: 'decision', icon: 'kind.decision', en: 'decision', de: 'Entscheidung', tone: 'kind-mark__icon--neutral' },
-  { kind: 'report', icon: 'kind.report', en: 'report', de: 'Bericht', tone: 'kind-mark__icon--neutral' },
-  { kind: 'machine', icon: 'kind.machine', en: 'machine', de: 'Maschine', tone: 'kind-mark__icon--neutral' },
-];
+/** What the design expects of one kind: its icon, its words and the class that colours its icon. */
+interface KindExpectation {
+  icon: string;
+  en: string;
+  de: string;
+  tone: string;
+}
+
+/**
+ * The expectation of the design for every kind. It is a `Record<Kind, …>`, so a kind that is added
+ * to the `Kind` domain without an expectation here does not compile.
+ */
+const EXPECTED: Readonly<Record<Kind, KindExpectation>> = {
+  project: { icon: 'kind.project', en: 'project', de: 'Projekt', tone: 'kind-mark__icon--project' },
+  epic: { icon: 'kind.epic', en: 'epic', de: 'Epic', tone: 'kind-mark__icon--epic' },
+  plan: { icon: 'kind.plan', en: 'plan', de: 'Plan', tone: 'kind-mark__icon--plan' },
+  side_job: { icon: 'kind.side-job', en: 'side job', de: 'Nebenarbeit', tone: 'kind-mark__icon--neutral' },
+  decision: { icon: 'kind.decision', en: 'decision', de: 'Entscheidung', tone: 'kind-mark__icon--neutral' },
+  report: { icon: 'kind.report', en: 'report', de: 'Bericht', tone: 'kind-mark__icon--neutral' },
+  machine: { icon: 'kind.machine', en: 'machine', de: 'Maschine', tone: 'kind-mark__icon--neutral' },
+};
+
+/** Every kind of `KIND_ICONS`, the authoritative mapping, with its expectation. */
+const KINDS: Array<KindExpectation & { kind: Kind }> = (Object.keys(KIND_ICONS) as Kind[]).map((kind) => ({
+  kind,
+  ...EXPECTED[kind],
+}));
 
 /** The classes that colour a kind's icon; exactly one of them sits on every icon. */
 const TONES = [
@@ -37,6 +54,11 @@ const TONES = [
 ];
 
 describe('KindMark', () => {
+  it('has an expectation for every kind of the authoritative mapping and for none beyond it', () => {
+    expect(Object.keys(EXPECTED).sort()).toEqual(Object.keys(KIND_ICONS).sort());
+    expect(KINDS.every((entry) => entry.icon !== undefined)).toBe(true);
+  });
+
   it.each(KINDS)('draws the $kind icon $icon in its tone', ({ kind, icon, tone }) => {
     useCatalogue('en');
     const { container } = render(KindMark, { props: { kind } });

@@ -29,21 +29,21 @@
    *
    * It owns no draft, no counter and no reference list: the frame that uses it brings those, the
    * counter and the dictation hint through `footer`, a microphone through `tools`.
+   *
+   * The field always has a name: the props require a `label`, an `ariaLabel` or both. While sending
+   * is held back, the reason is also the field's description, so a keyboard user, who cannot focus
+   * the held-back act, hears it in the field.
    */
-  interface Props {
+  interface ComposeProps {
     /** The text of the field; bindable, so the frame can fill or clear it. */
     value?: string;
-    /** The visible label of the field; without it, `ariaLabel` names the field. */
-    label?: string;
-    /** The accessible name of the field where the frame names it visually. */
-    ariaLabel?: string;
     /** An example value, never the label. */
     placeholder?: string;
     /** The visually hidden label of the send act. */
     sendLabel: string;
     /** Holds the send act back; the field stays editable. */
     disabled?: boolean;
-    /** Why sending is held back; it becomes the act's description. */
+    /** Why sending is held back; it becomes the description of the act and of the field. */
     disabledReason?: string;
     /** The lines the field grows to before it scrolls. */
     maxLines?: number;
@@ -56,6 +56,26 @@
     /** A line under the field, such as a counter or a hint. */
     footer?: Snippet;
   }
+
+  /**
+   * The name of the field: its visible `label` (which, where given, names it) or the `ariaLabel`
+   * where the frame names the field visually; at least one of the two.
+   */
+  type ComposeName =
+    | {
+        /** The visible label of the field. */
+        label: string;
+        /** The accessible name where the frame names the field visually; the label wins. */
+        ariaLabel?: string;
+      }
+    | {
+        /** The visible label of the field; without it, `ariaLabel` names the field. */
+        label?: string;
+        /** The accessible name of the field where the frame names it visually. */
+        ariaLabel: string;
+      };
+
+  type Props = ComposeProps & ComposeName;
 
   let {
     value = $bindable(''),
@@ -76,6 +96,10 @@
   const IME_KEY_CODE = 229;
 
   const fieldId = uniqueId('compose-field');
+  const reasonId = uniqueId('compose-reason');
+
+  /** Why sending is held back, while it is; empty while the act is ready or is the stop act. */
+  const reason = $derived(!stop && disabled && disabledReason ? disabledReason : '');
 
   let field: HTMLTextAreaElement | undefined = $state();
   /** Whether the text holds more lines than the field shows, so the field scrolls. */
@@ -128,17 +152,27 @@
       return;
     }
     event.preventDefault();
+    // A held key repeats `Enter`; the first press sent the text, so a repeat adds no line and sends nothing.
+    if (event.repeat) {
+      return;
+    }
     send();
   }
 
-  /** The act beside the field: send, or stop while an answer runs; the focus stays in the field. */
+  /**
+   * The act beside the field: send, or stop while an answer runs. The focus goes back to the field
+   * even where the callback throws.
+   */
   function act(): void {
-    if (stop) {
-      stop.onstop();
-    } else {
-      send();
+    try {
+      if (stop) {
+        stop.onstop();
+      } else {
+        send();
+      }
+    } finally {
+      field?.focus();
     }
-    field?.focus();
   }
 
   /** Moves the focus into the field, as the chat does when it opens. */
@@ -160,6 +194,7 @@
       class:compose__field--scrolls={overflowing}
       rows="1"
       aria-label={label ? undefined : ariaLabel}
+      aria-describedby={reason ? reasonId : undefined}
       {placeholder}
       {onkeydown}
       oncompositionstart={() => (composing = true)}
@@ -178,6 +213,9 @@
       <span class="sr-only">{stop ? stop.label : sendLabel}</span>
     </Button>
   </div>
+  {#if reason}
+    <span class="sr-only" id={reasonId}>{reason}</span>
+  {/if}
   {#if footer}
     <div class="compose__footer">{@render footer()}</div>
   {/if}

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
+import { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
 
@@ -135,7 +136,10 @@ describe('/dev/components page fixture', () => {
         expect(grounds.map((ground) => ground.dataset.ground)).toEqual(GROUNDS);
 
         for (const ground of grounds) {
-          for (const [kind, word] of Object.entries(COPY[locale].kinds)) {
+          // Every kind of the authoritative mapping needs a localized expectation; a new kind fails here.
+          for (const kind of Object.keys(KIND_ICONS) as Kind[]) {
+            const word = COPY[locale].kinds[kind];
+            expect(word, `a ${locale} expectation for ${kind}`).toBeTypeOf('string');
             const marks = ground.querySelectorAll(`.kind-mark[data-kind="${kind}"]`);
             expect(marks, `${kind} on ${ground.dataset.ground}`).toHaveLength(2);
             expect(marks[0]).toHaveTextContent(word);

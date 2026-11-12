@@ -88,6 +88,26 @@ describe('Compose', () => {
       expect(notPrevented).toBe(true);
     });
 
+    it('sends the text once for a held Enter, and adds no line for its repeats', async () => {
+      const { field, onsend } = renderCompose({ value: 'Held key' });
+
+      await fireEvent.keyDown(field, { key: 'Enter', repeat: false });
+      const notPrevented = await fireEvent.keyDown(field, { key: 'Enter', repeat: true });
+      await fireEvent.keyDown(field, { key: 'Enter', repeat: true });
+
+      expect(onsend).toHaveBeenCalledExactlyOnceWith('Held key');
+      expect(notPrevented).toBe(false);
+    });
+
+    it('still adds a line for a held Shift+Enter', async () => {
+      const { field, onsend } = renderCompose({ value: 'Lines' });
+
+      const notPrevented = await fireEvent.keyDown(field, { key: 'Enter', shiftKey: true, repeat: true });
+
+      expect(onsend).not.toHaveBeenCalled();
+      expect(notPrevented).toBe(true);
+    });
+
     it('sends the typed text through the send act', async () => {
       const { field, onsend } = renderCompose();
 
@@ -126,6 +146,24 @@ describe('Compose', () => {
       expect(act).toHaveAccessibleDescription('Type a message.');
       expect(field).toBeEnabled();
     });
+
+    it('carries the same reason as the description of the field, so a keyboard user hears it there', () => {
+      const { field } = renderCompose({ disabled: true, disabledReason: 'Type a message.' });
+
+      expect(field).toHaveAccessibleDescription('Type a message.');
+    });
+
+    it('describes the field only while sending is held back', async () => {
+      const { field, rerender } = renderCompose({ disabled: true, disabledReason: 'Type a message.' });
+      expect(field).toHaveAttribute('aria-describedby');
+
+      await rerender({ disabled: false });
+      expect(field).not.toHaveAttribute('aria-describedby');
+      expect(field).toHaveAccessibleDescription('');
+
+      await rerender({ disabled: true, disabledReason: '' });
+      expect(field).not.toHaveAttribute('aria-describedby');
+    });
   });
 
   describe('the stop act', () => {
@@ -149,6 +187,40 @@ describe('Compose', () => {
       expect(onstop).toHaveBeenCalledOnce();
       expect(onsend).not.toHaveBeenCalled();
       expect(field).toHaveFocus();
+    });
+
+    it('hands the focus back to the field even where the stop callback throws', async () => {
+      const failure = new Error('stop failed');
+      const onstop = vi.fn(() => {
+        throw failure;
+      });
+      const { field } = renderCompose({ value: 'Question', stop: { label: 'Stop the answer', onstop } });
+      const act = screen.getByRole('button', { name: 'Stop the answer' });
+      // jsdom reports an error of an event handler on the window; a listener keeps it from failing the run.
+      const reported: unknown[] = [];
+      const collect = (event: ErrorEvent): void => {
+        event.preventDefault();
+        reported.push(event.error);
+      };
+      window.addEventListener('error', collect);
+
+      act.focus();
+      await fireEvent.click(act);
+      window.removeEventListener('error', collect);
+
+      expect(onstop).toHaveBeenCalledOnce();
+      expect(reported).toContain(failure);
+      expect(field).toHaveFocus();
+    });
+
+    it('does not describe the field with the reason of a send act that is not shown', () => {
+      const { field } = renderCompose({
+        disabled: true,
+        disabledReason: 'Type a message.',
+        stop: { label: 'Stop', onstop: vi.fn() },
+      });
+
+      expect(field).not.toHaveAttribute('aria-describedby');
     });
 
     it('stays active even where sending is held back', () => {
@@ -215,6 +287,19 @@ describe('Compose', () => {
       render(Compose, { props: { label: 'Instruction', sendLabel: 'Send', onsend: vi.fn() } });
 
       expect(screen.getByRole('textbox', { name: 'Instruction' })).not.toHaveAttribute('aria-label');
+    });
+
+    it.each([
+      ['a label alone', { label: 'Instruction' }, 'Instruction', false],
+      ['an aria label alone', { ariaLabel: 'Message' }, 'Message', true],
+      ['both, where the label wins', { label: 'Instruction', ariaLabel: 'Message' }, 'Instruction', false],
+      ['an empty label and an aria label', { label: '', ariaLabel: 'Message' }, 'Message', true],
+    ] as const)('gives the field an accessible name from %s', (_case, name, accessibleName, viaAriaLabel) => {
+      render(Compose, { props: { ...name, sendLabel: 'Send', onsend: vi.fn() } });
+      const field = screen.getByRole('textbox', { name: accessibleName });
+
+      expect(field).toHaveAccessibleName(accessibleName);
+      expect(field.hasAttribute('aria-label')).toBe(viaAriaLabel);
     });
 
     it('renders the tools before the send act and the footer under the field', () => {
