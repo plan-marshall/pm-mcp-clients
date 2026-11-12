@@ -161,14 +161,14 @@ class ConfigRoutesTest {
     void aLaterRunRecordsItsAnswer() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"reconfigure:language\"}"), runtime));
+                    "{\"link\":\"reconfigure:language\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"set\",\"interface\":\"de\",\"model\":\"same\"}"), runtime));
+                    "{\"link\":\"set\",\"interface\":\"de\",\"model\":\"same\"}"), runtime));
             var language = values(runtime).get("language.interface");
 
             assertAll(
-                                () -> assertEquals("de", language.get(VALUE), language.toString()),
-                                () -> assertEquals("machine", language.get(ORIGIN), language.toString()));
+                    () -> assertEquals("de", language.get(VALUE), language.toString()),
+                    () -> assertEquals("machine", language.get(ORIGIN), language.toString()));
         }
     }
 
@@ -177,26 +177,26 @@ class ConfigRoutesTest {
     void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"reconfigure:credentials\"}"), runtime));
+                    "{\"link\":\"reconfigure:credentials\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
+                    "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
+                    "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"set\",\"landing\":\"landing.files\"}"), runtime));
+                    "{\"link\":\"set\",\"landing\":\"landing.files\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"reconfigure:providers\"}"), runtime));
+                    "{\"link\":\"reconfigure:providers\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                                "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+                    "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
             var values = values(runtime);
 
             assertAll(
-                                () -> assertEquals("file", values.get("credentials.store").get(VALUE),
-                                                    values.toString()),
-                                () -> assertEquals("landing.files", values.get("plan_defaults.landing").get(VALUE),
-                                                    values.toString()),
-                                () -> assertTrue(String.valueOf(values.get("providers.enabled").get(VALUE))
-                                                    .contains("verified"), values.toString()));
+                    () -> assertEquals("file", values.get("credentials.store").get(VALUE),
+                            values.toString()),
+                    () -> assertEquals("landing.files", values.get("plan_defaults.landing").get(VALUE),
+                            values.toString()),
+                    () -> assertTrue(String.valueOf(values.get("providers.enabled").get(VALUE))
+                            .contains("verified"), values.toString()));
         }
     }
 
