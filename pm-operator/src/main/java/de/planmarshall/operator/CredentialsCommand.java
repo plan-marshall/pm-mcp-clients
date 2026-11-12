@@ -213,21 +213,13 @@ public final class CredentialsCommand implements Callable<Integer> {
     }
 
     /**
-     * Checks the providers that use the key, and says so only when the check actually ran: a
-     * stored token is not reported as verified on the strength of the store alone.
+     * Names the verb that checks the providers which use the key. The check is the providers'
+     * later run ({@code config providers --verify}, {@code 01-commands.adoc#direct-verbs}); the
+     * client no longer calls an aspect route itself, so it never reports a check it did not run.
      */
-    private void verifyProviders(PrintWriter out, String locale, String key) throws IOException {
-        var response = context.runtime(true).send(
-                            HttpRequest.json("POST", "/api/v1/config/providers", "{\"verify\":true}"));
-        if (response.status() == 200) {
-            out.println(MessageCatalogue.format(locale, "operator.credentials.verify_title", Map.of("key", key)));
-            out.println(MessageCatalogue.format(locale, "operator.credentials.verified", Map.of("key", key)));
-            out.flush();
-        } else {
-            out.println(MessageCatalogue.format(locale, "operator.credentials.verify_failed",
-                                Map.of("key", key, STATUS, response.status())));
-            out.flush();
-        }
+    private void verifyProviders(PrintWriter out, String locale, String key) {
+        out.println(MessageCatalogue.format(locale, "operator.credentials.verify_with", Map.of("key", key)));
+        out.flush();
     }
 
     private boolean confirm(Terminal terminal) {

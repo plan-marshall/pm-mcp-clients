@@ -113,6 +113,9 @@ public final class StandardScenarios {
      */
     public static final String ONBOARDING_SETTINGS_CONFLICT = "onboarding-settings-conflict";
 
+    /** The machine settings' own operator wait ({@code settings.choose}), for a later run's tests. */
+    public static final String ONBOARDING_SETTINGS = "onboarding-settings";
+
     /**
      * Browser pairing flow demonstrating pairing code exchange and subsequent authenticated web
      * client requests.
@@ -475,7 +478,7 @@ public final class StandardScenarios {
                     ONBOARDING_HARNESS_TOKENS_COMPLETE, ONBOARDING_HARNESS_TOKENS_PARTIAL,
                     ONBOARDING_HARNESS_TOKENS_NOT_REPORTED, ONBOARDING_HARNESS_ALL_FAILED,
                     ONBOARDING_REFUSALS, ONBOARDING_UNKNOWN_HARNESS, ONBOARDING_SETTINGS_CONFLICT,
-                    WEB_PAIRING, ENTRY),
+                    ONBOARDING_SETTINGS, WEB_PAIRING, ENTRY),
             ENTRY_CASES,
             List.of(PAIRED_DEVICES, RUNNING_WORK, REPORTS, DECISIONS, SYSTEM, PROJECTS, PLAN_VIEW, CONTROL,
                     CONTROL_PAUSE, CONTROL_HOLDS, CONTROL_SETTINGS, CONTROL_EPIC, CONTROL_DECOMPOSITION,

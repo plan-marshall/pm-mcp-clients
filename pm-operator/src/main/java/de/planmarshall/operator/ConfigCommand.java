@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,9 @@ import java.util.concurrent.Callable;
 import org.jline.reader.LineReaderBuilder;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.config.AspectOwnedKeys;
+import de.planmarshall.api.config.ConfigOrigin;
+import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -28,6 +32,7 @@ import de.planmarshall.api.onboarding.MachineCredentialStatus;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -60,10 +65,24 @@ public final class ConfigCommand implements Callable<Integer> {
 
     static final String CONFIG_PATH = "/api/v1/config";
     static final String MACHINE_SETTINGS_PATH = "/api/v1/machine/settings";
+    private static final String LANGUAGE = "language";
+    private static final String HARNESSES = "harnesses";
+    private static final String MODELS = "models";
     private static final String ROLES = "roles";
+    private static final String PROVIDERS = "providers";
+    private static final String PLAN_DEFAULTS = "plan-defaults";
+    private static final String HARNESS_PREFIX = "harness.";
+    private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
+    private static final String DOCUMENTS_MODE_KEY = "sources.documents_mode";
+    private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
+    private static final String ONE_LEVEL = "operator.config.one_level";
     private static final String CONFIG_VERB = "config";
     private static final String DOCUMENTS = "documents";
     private static final String CREDENTIALS = "credentials";
+    private static final String CONSENTS = "consents";
+    private static final String CLEANUP = "cleanup";
+    private static final String SHOW = "show";
+    private static final String ROTATE = "rotate";
     private static final String STATUS = "status";
     private static final String VALUE = "value";
     private static final String INDEX = "index";
@@ -71,14 +90,38 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
-    private static final String ONBOARD_SETTINGS = "onboard.settings.";
-    private static final List<String> ASPECT_COMMANDS = List.of(
-                        "language", "harnesses", "models", ROLES, CREDENTIALS, "providers", "plan-defaults");
 
-    static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        "language.", "credentials.store", "providers.", "plan_defaults.",
-                        "sources.documents_mode", "roles.", ROLES
-    );
+    /**
+     * @param aspect an aspect of the machine onboarding
+     * @return the {@code config <aspect>} verb that runs it again
+     */
+    static String verbOf(OnboardingAspect aspect) {
+        return switch (aspect) {
+            case LANGUAGE -> LANGUAGE;
+            case HARNESSES -> HARNESSES;
+            case MODELS -> MODELS;
+            case ROLES -> ROLES;
+            case CREDENTIALS -> CREDENTIALS;
+            case PROVIDERS -> PROVIDERS;
+            case PLANS -> PLAN_DEFAULTS;
+        };
+    }
+
+    /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
+    private static final Map<String, String> ASPECT_PREFIXES = Map.of(
+                        LANGUAGE, LANGUAGE + ".",
+                        HARNESSES, HARNESS_PREFIX,
+                        MODELS, MODELS + ".",
+                        ROLES, ROLES + ".",
+                        CREDENTIALS, CREDENTIALS + ".",
+                        PROVIDERS, PROVIDERS + ".",
+                        PLAN_DEFAULTS, PLAN_DEFAULTS_PREFIX);
+
+    /** The catalogue prefixes a configuration value's text is looked up in, in this order. */
+    private static final List<String> VALUE_TEXT_KEYS = List.of(
+                        "onboard.value.",
+                        "unit.",
+                        DOCUMENTS_TEXT_PREFIX);
 
     private final OperatorContext context;
 
@@ -94,18 +137,58 @@ public final class ConfigCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
         var settings = readSettingsQuiet();
-        if (settings == null) {
-            var code = printLegacyConfig(out, locale);
+        List<Item> items;
+        try {
+            items = settings != null ? itemsOf(locale, settings) : itemsOfValues(locale);
+        } catch (ReadFailedException failure) {
+            out.println(failure.status() > 0
+                                ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
+                                : MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
             out.flush();
-            return code;
+            return PmOperator.EXIT_FAILURE;
         }
-        printSettings(out, locale, settings);
-        if (context.isInteractiveTerminal()) {
-            openAspect(out, locale, settings);
+        printSettings(out, locale, settings, items);
+        if (context.isInteractiveTerminal() && !items.isEmpty()) {
+            out.flush();
+            openItem(out, items);
         }
         out.flush();
         return 0;
     }
+
+    /** A settings read the runtime refused: the status it answered with, or a body it could not read. */
+    private static final class ReadFailedException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+        private final int status;
+
+        ReadFailedException(int status) {
+            super("HTTP " + status);
+            this.status = status;
+        }
+
+        int status() {
+            return status;
+        }
+    }
+
+    /** The marker {@link ReadFailedException} carries for a 200 body that is not a value list. */
+    private static final int UNREADABLE = -1;
+
+    /**
+     * One row of the settings overview: the group it belongs to, the label, the value, and the
+     * command the number runs.
+     *
+     * @param group   the catalogue key of the group's title, or {@code null} for a row without one
+     * @param label   the row's label as the catalogue names it
+     * @param value   the row's value as the screen shows it
+     * @param command the verb with its arguments, without the program name
+     */
+    private record Item(@Nullable String group, String label, String value, List<String> command) {
+    }
+
+    /** The widest label column: a longer label is shortened, so the value column stays narrow. */
+    private static final int LABEL_COLUMN = 24;
 
     private @Nullable MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
@@ -119,81 +202,278 @@ public final class ConfigCommand implements Callable<Integer> {
         }
     }
 
-    private int printLegacyConfig(PrintWriter out, String locale) throws IOException {
+    /**
+     * @param locale the interface locale
+     * @param settings the machine's settings
+     * @return the overview's rows, in the order the prompt offers them
+     */
+    private static List<Item> itemsOf(String locale, MachineSettingsRecord settings) {
+        var items = new ArrayList<Item>();
+        for (int index = 0; index < settings.aspects().size(); index++) {
+            var aspect = settings.aspects().get(index);
+            var verb = verbOf(aspect.aspect());
+            items.add(new Item("operator.settings.aspects.title",
+                                MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of()),
+                                TerminalSanitizer.sanitizeLine(aspect.summary()),
+                                List.of(CONFIG_VERB, verb)));
+        }
+        for (var credential : settings.credentials()) {
+            items.add(new Item("operator.settings.tokens.title", credential.key(),
+                                providerLine(locale, credential),
+                                List.of(CREDENTIALS, ROTATE, credential.key())));
+        }
+        for (var consent : settings.consents()) {
+            items.add(new Item("operator.settings.consents.title",
+                                MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
+                                consent.kind().wireValue(), List.of(CONFIG_VERB, CONSENTS)));
+        }
+        items.add(new Item("operator.settings.documents.title", MessageCatalogue.format(locale,
+                                                DOCUMENTS_TEXT_PREFIX + settings.documentsMode().wireValue(), Map.of()),
+                            settings.documentsMode().wireValue(), List.of(CONFIG_VERB, DOCUMENTS)));
+        items.add(new Item(null,
+                            MessageCatalogue.format(locale, "operator.settings.cleanup.title", Map.of()),
+                            MessageCatalogue.format(locale, "operator.settings.cleanup.value", Map.of(
+                                                "days", settings.cleanupDurations().plansAfterDays(),
+                                                "remind", settings.cleanupDurations().remindAfterDays())),
+                            List.of(CLEANUP)));
+        return List.copyOf(items);
+    }
+
+    /**
+     * The overview of a runtime that reports no machine settings: the effective values it serves
+     * through {@code GET /api/v1/config} ({@code 02-levels.adoc#origins}).
+     *
+     * @param locale the interface locale
+     * @return the overview's rows
+     * @throws ReadFailedException when the runtime refuses the read
+     * @throws IOException         on transport failure
+     */
+    private List<Item> itemsOfValues(String locale) throws IOException {
+        var values = readValues();
+        var items = new ArrayList<Item>();
+        for (var value : values) {
+            items.add(new Item(null, value.key(), renderedValue(locale, value),
+                                List.of(CONFIG_VERB, SHOW, value.key())));
+        }
+        return List.copyOf(items);
+    }
+
+    private static String providerLine(String locale, MachineCredentialStatus credential) {
+        return credential.provider() + " \u00b7 " + credential.kind() + " \u00b7 " + expiryText(locale, credential);
+    }
+
+    /**
+     * Renders the overview with the values in one column and the prompt on a line of its own
+     * ({@code CLI-UC-F-05}): the index is right-aligned and the label padded to the widest one, so a
+     * value starts in the same column on every row.
+     */
+    private static void printSettings(PrintWriter out, String locale, @Nullable MachineSettingsRecord settings,
+                        List<Item> items) {
+        out.println(MessageCatalogue.format(locale, "onboard.settings.title", Map.of()));
+        if (settings != null) {
+            out.println("  " + MessageCatalogue.format(locale, "operator.settings.revision_short",
+                                Map.of("revision", settings.revision())));
+        }
+        printItems(out, locale, items);
+        if (!items.isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "operator.settings.open_prompt",
+                                Map.of(RANGE, "1-" + items.size()))
+                                + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
+                                + "   ?   \u203a ");
+        } else {
+            out.println(MessageCatalogue.format(locale, "operator.settings.none", Map.of()));
+        }
+    }
+
+    private static void printItems(PrintWriter out, String locale, List<Item> items) {
+        int indexWidth = String.valueOf(Math.max(items.size(), 1)).length();
+        int labelWidth = 0;
+        for (var item : items) {
+            var length = item.label().length();
+            labelWidth = Math.max(labelWidth, length > LABEL_COLUMN ? LABEL_COLUMN : length);
+        }
+        int number = 1;
+        @Nullable String group = null;
+        for (var item : items) {
+            if (item.group() != null && !item.group().equals(group)) {
+                group = item.group();
+                out.println(MessageCatalogue.format(locale, group, Map.of()));
+            }
+            out.println(MessageCatalogue.format(locale, "operator.settings.row", Map.of(
+                                INDEX, rightAligned(String.valueOf(number++), indexWidth),
+                                "name", pad(shortened(item.label()), labelWidth),
+                                VALUE, item.value())));
+        }
+    }
+
+    /**
+     * @param label a row's label
+     * @return the label, shortened to the label column so a long one never pushes the value column
+     *         past the screen's width
+     */
+    private static String shortened(String label) {
+        if (label.length() <= LABEL_COLUMN) {
+            return label;
+        }
+        return label.substring(0, LABEL_COLUMN - 1) + "\u2026";
+    }
+
+    private static String rightAligned(String text, int width) {
+        var padded = new StringBuilder();
+        for (int index = text.length(); index < width; index++) {
+            padded.append(' ');
+        }
+        return padded + text;
+    }
+
+    private static String pad(String text, int width) {
+        var padded = new StringBuilder(text);
+        for (int index = text.length(); index < width; index++) {
+            padded.append(' ');
+        }
+        return padded.toString();
+    }
+
+    /**
+     * @return the effective values the runtime serves through {@code GET /api/v1/config}
+     * @throws IOException when the runtime refuses the read or serves none
+     */
+    private List<ConfigValueResource> readValues() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(CONFIG_PATH));
         if (response.status() != 200) {
-            out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
-                                Map.of(STATUS, response.status())));
-            return PmOperator.EXIT_FAILURE;
-        }
-        out.println(MessageCatalogue.format(locale, "operator.config.machine_settings", Map.of()));
-        var json = JsonTree.parse(response.body());
-        if (json instanceof Map<?, ?> map) {
-            for (var entry : map.entrySet()) {
-                out.println(MessageCatalogue.format(locale, "operator.config.machine_settings_row",
-                                    Map.of("key", entry.getKey(), VALUE, entry.getValue())));
-            }
-        } else {
-            out.println(response.bodyText());
-        }
-        return 0;
-    }
-
-    private @Nullable MachineSettingsRecord readSettings(PrintWriter out, String locale) throws IOException {
-        var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
-        if (response.status() != 200) {
-            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                Map.of(STATUS, response.status())));
-            out.flush();
-            return null;
+            throw new ReadFailedException(response.status());
         }
         try {
-            return MachineSettingsRecord.fromJson(response.bodyText());
+            return parseValues(response.bodyText());
         } catch (IOException _) {
-            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                Map.of(STATUS, response.status())));
-            out.flush();
-            return null;
+            throw new ReadFailedException(UNREADABLE);
         }
     }
 
-    private void printSettings(PrintWriter out, String locale, MachineSettingsRecord settings) {
-        out.println(MessageCatalogue.format(locale, "onboard.settings.title", Map.of()));
-        out.println("  " + MessageCatalogue.format(locale, "operator.settings.revision_short",
-                            Map.of("revision", settings.revision())));
-        int index = 1;
-        out.println(MessageCatalogue.format(locale, "operator.settings.aspects.title", Map.of()));
-        for (var aspect : settings.aspects()) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.aspects.row", Map.of(
-                                INDEX, index++,
-                                "name", MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of()),
-                                "summary", TerminalSanitizer.sanitizeLine(aspect.summary()))));
+    /**
+     * @param body the {@code GET /api/v1/config} body
+     * @return the values it carries
+     * @throws IOException when the body is neither a list of values nor one value
+     */
+    private static List<ConfigValueResource> parseValues(String body) throws IOException {
+        var parsed = JsonTree.parse(body);
+        var elements = JsonTree.asArray(parsed);
+        if (elements != null) {
+            var values = new ArrayList<ConfigValueResource>();
+            for (var element : elements) {
+                var map = JsonTree.asObject(element);
+                if (map == null) {
+                    throw new IOException("the configuration carried no value object");
+                }
+                values.add(ConfigValueResource.fromMap(map));
+            }
+            return List.copyOf(values);
         }
-        if (!settings.credentials().isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.tokens.title", Map.of()));
-            for (var credential : settings.credentials()) {
-                out.println(MessageCatalogue.format(locale, "operator.settings.tokens.row", Map.of(
-                                    INDEX, index++, "key", credential.key(), "provider", credential.provider(),
-                                    "kind", credential.kind(), "expiry", expiryText(locale, credential))));
+        var single = JsonTree.asObject(parsed);
+        if (single == null) {
+            throw new IOException("the configuration carried no value");
+        }
+        return List.of(ConfigValueResource.fromMap(single));
+    }
+
+    /**
+     * @param values the effective values
+     * @param key    a key, a key prefix or an aspect name, or {@code null} for all
+     * @return the values the argument selects
+     */
+    private static List<ConfigValueResource> select(List<ConfigValueResource> values, @Nullable String key) {
+        if (key == null || key.isBlank()) {
+            return values;
+        }
+        var aspectPrefix = ASPECT_PREFIXES.get(key);
+        var selected = new ArrayList<ConfigValueResource>();
+        for (var value : values) {
+            if (value.key().equals(key) || value.key().startsWith(key + ".")
+                                || (aspectPrefix != null && value.key().startsWith(aspectPrefix))) {
+                selected.add(value);
             }
         }
-        if (!settings.consents().isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.consents.title", Map.of()));
-            for (var consent : settings.consents()) {
-                out.println(MessageCatalogue.format(locale, "operator.settings.consents.row", Map.of(
-                                    INDEX, index++,
-                                    TITLE, MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
-                                    "kind", consent.kind().wireValue())));
+        return List.copyOf(selected);
+    }
+
+    /**
+     * Renders the effective values: the key in one column, the value in the next, and the origin in a
+     * column of its own so it survives a copy into an issue ({@code 02-levels.adoc#origins}).
+     */
+    private static void printValues(PrintWriter out, String locale, List<ConfigValueResource> values) {
+        out.println(MessageCatalogue.format(locale, "operator.config.show.title", Map.of()));
+        int keyWidth = 0;
+        int valueWidth = 0;
+        for (var value : values) {
+            keyWidth = Math.max(keyWidth, value.key().length());
+            valueWidth = Math.max(valueWidth, renderedValue(locale, value).length());
+        }
+        for (var value : values) {
+            var line = MessageCatalogue.format(locale, "operator.config.show.row", Map.of(
+                                "key", pad(value.key(), keyWidth),
+                                VALUE, pad(renderedValue(locale, value), valueWidth),
+                                "origin", levelText(locale, value.origin())));
+            if (value.overrides() != null) {
+                line += "   " + MessageCatalogue.format(locale, "operator.config.show.overrides",
+                                    Map.of("overridden", levelText(locale, value.overrides())));
+            }
+            out.println(line);
+        }
+    }
+
+    /**
+     * @param project the project level's id, or {@code null}
+     * @param plan    the plan level's id, or {@code null}
+     * @return the level a write addresses
+     */
+    private static ConfigOrigin writeLevel(@Nullable String project, @Nullable String plan) {
+        if (plan != null) {
+            return ConfigOrigin.PLAN;
+        }
+        if (project != null) {
+            return ConfigOrigin.PROJECT;
+        }
+        return ConfigOrigin.MACHINE;
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param origin a level, or {@code null}
+     * @return the level's own word in the interface language
+     */
+    private static String levelText(String locale, @Nullable ConfigOrigin origin) {
+        if (origin == null) {
+            return "";
+        }
+        var key = "operator.config.origin." + origin.wire();
+        if (MessageCatalogue.hasKey(locale, key)) {
+            return MessageCatalogue.format(locale, key, Map.of());
+        }
+        return origin.wire();
+    }
+
+    private static String renderedValue(String locale, ConfigValueResource value) {
+        if (value.value() == null) {
+            return "";
+        }
+        var text = value.value() instanceof String string ? string : JsonTree.write(value.value());
+        return TerminalSanitizer.sanitizeLine(renderedText(locale, text));
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param text   a value's wire text
+     * @return the catalogue's text for the value, or the value itself where the catalogue names none,
+     *         so no raw wire token reaches the screen
+     */
+    private static String renderedText(String locale, String text) {
+        for (var prefix : VALUE_TEXT_KEYS) {
+            var key = prefix + text;
+            if (MessageCatalogue.hasKey(locale, key)) {
+                return MessageCatalogue.format(locale, key, Map.of());
             }
         }
-        out.println(MessageCatalogue.format(locale, "operator.settings.documents.title", Map.of()));
-        out.println(MessageCatalogue.format(locale, "operator.settings.documents.row", Map.of(
-                            INDEX, index++, "name", MessageCatalogue.format(locale,
-                                                ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(),
-                                                Map.of()),
-                            VALUE, settings.documentsMode().wireValue())));
-        out.println(MessageCatalogue.format(locale, "operator.settings.open_prompt",
-                            Map.of(RANGE, "1-" + (index - 1))));
+        return text;
     }
 
     private static String expiryText(String locale, MachineCredentialStatus credential) {
@@ -213,18 +493,14 @@ public final class ConfigCommand implements Callable<Integer> {
         return text;
     }
 
-    private void openAspect(PrintWriter out, String locale, MachineSettingsRecord settings) throws IOException {
-        int aspectCount = settings.aspects().size();
-        int credentialCount = settings.credentials().size();
-        boolean consentsListed = !settings.consents().isEmpty();
-        int consentsIndex = aspectCount + credentialCount + 1;
-        int documentsIndex = consentsIndex + (consentsListed ? 1 : 0);
+    /**
+     * Reads the number the prompt offers and runs the act it names. The prompt lists every number it
+     * offers, so a number outside the list opens nothing.
+     */
+    private void openItem(PrintWriter out, List<Item> items) throws IOException {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-            var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.open_prompt",
-                                Map.of(RANGE, "1-" + documentsIndex))
-                                + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
-                                + "   ?   \u203a ");
+            var line = reader.readLine("");
             if (line == null || "q".equalsIgnoreCase(line.trim()) || line.isBlank()) {
                 return;
             }
@@ -234,39 +510,28 @@ public final class ConfigCommand implements Callable<Integer> {
             } catch (NumberFormatException _) {
                 return;
             }
-            if (choice >= 1 && choice <= aspectCount) {
-                PmOperator.execute(context, out, out, CONFIG_VERB, ASPECT_COMMANDS.get(choice - 1));
-            } else if (choice > aspectCount && choice <= aspectCount + credentialCount) {
-                var credential = settings.credentials().get(choice - aspectCount - 1);
-                PmOperator.execute(context, out, out, CREDENTIALS, "rotate", credential.key());
-            } else if (consentsListed && choice == consentsIndex) {
-                PmOperator.execute(context, out, out, CONFIG_VERB, "consents");
-            } else if (choice == documentsIndex) {
-                PmOperator.execute(context, out, out, CONFIG_VERB, DOCUMENTS);
+            if (choice < 1 || choice > items.size()) {
+                return;
             }
-            // Any other number opens nothing: the prompt lists what exists.
+            var item = items.get(choice - 1);
+            var command = item.command().toArray(new String[0]);
+            PmOperator.execute(context, out, out, command);
         }
     }
 
     static boolean isAspectOwned(@Nullable String key) {
-        if (key == null) {
-            return false;
-        }
-        for (var prefix : ASPECT_OWNED_KEYS) {
-            if (key.startsWith(prefix) || key.equals(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return AspectOwnedKeys.isAspectOwned(key);
     }
 
     static String getOwningAspect(@Nullable String key) {
         if (key == null) return CONFIG_VERB;
-        if (key.startsWith("language.")) return "language";
-        if (key.startsWith("credentials.")) return CREDENTIALS;
-        if (key.startsWith("providers.")) return "providers";
-        if (key.startsWith("plan_defaults.")) return "plan-defaults";
-        if (key.startsWith("sources.documents_mode")) return DOCUMENTS;
+        if (key.startsWith(LANGUAGE + ".")) return LANGUAGE;
+        if (key.startsWith(HARNESS_PREFIX)) return HARNESSES;
+        if (key.startsWith(MODELS + ".")) return MODELS;
+        if (key.startsWith(CREDENTIALS + ".")) return CREDENTIALS;
+        if (key.startsWith(PROVIDERS + ".")) return PROVIDERS;
+        if (key.startsWith(PLAN_DEFAULTS_PREFIX)) return PLAN_DEFAULTS;
+        if (key.startsWith(DOCUMENTS_MODE_KEY)) return DOCUMENTS;
         if (key.startsWith(ROLES)) return ROLES;
         return CONFIG_VERB;
     }
@@ -297,20 +562,31 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             var locale = context.clientEnvironment().locale();
-            var path = CONFIG_PATH;
-            if (key != null && !key.isBlank()) {
-                path += "/" + OperatorUrlUtil.encodePathSegment(key);
-            }
-            path = OperatorUrlUtil.appendScope(path, project, plan);
-            var response = context.runtime(true).send(HttpRequest.get(path));
             var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed", Map.of(STATUS, response.status())));
+            var path = OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan);
+            var response = context.runtime(true).send(HttpRequest.get(path));
+            if (response.status() != 200) {
+                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
+                                    Map.of(STATUS, response.status())));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
+            List<ConfigValueResource> values;
+            try {
+                values = ConfigCommand.parseValues(response.bodyText());
+            } catch (IOException _) {
+                out.println(MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            var selected = ConfigCommand.select(values, key);
+            if (selected.isEmpty()) {
+                out.println(MessageCatalogue.format(locale, "operator.config.show.unknown",
+                                    Map.of("key", Objects.toString(key, ""))));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            ConfigCommand.printValues(out, locale, selected);
             out.flush();
             return 0;
         }
@@ -329,11 +605,14 @@ public final class ConfigCommand implements Callable<Integer> {
         @Parameters(index = "1", description = "Value to set")
         String value = "";
 
-        @Option(names = "--project", description = "Project scope")
+        @Option(names = "--machine", description = "Write at the machine level (the default)")
+        boolean machine;
+
+        @Option(names = "--project", description = "Write at this project's level")
         @Nullable
         String project;
 
-        @Option(names = "--plan", description = "Plan scope")
+        @Option(names = "--plan", description = "Write at this plan's level")
         @Nullable
         String plan;
 
@@ -345,6 +624,7 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
+            var out = spec.commandLine().getOut();
             if (isAspectOwned(key)) {
                 var aspect = getOwningAspect(key);
                 var err = spec.commandLine().getErr();
@@ -353,14 +633,20 @@ public final class ConfigCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
+            if (project != null && plan != null) {
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            if (machine && (project != null || plan != null)) {
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             var body = new LinkedHashMap<String, Object>();
-            body.put("key", key);
             body.put(VALUE, value);
-            if (project != null) body.put("project", project);
-            if (plan != null) body.put("plan", plan);
-
-            var response = context.runtime(true).send(HttpRequest.json("PUT", CONFIG_PATH, JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
+            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
+            var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.config.set_done", Map.of("key", key, VALUE, value)));
                 out.flush();
@@ -370,6 +656,10 @@ public final class ConfigCommand implements Callable<Integer> {
             err.println(MessageCatalogue.format(locale, "operator.config.set_failed", Map.of("key", key, STATUS, response.status())));
             err.flush();
             return 1;
+        }
+
+        private String levelPath() {
+            return CONFIG_PATH + "/" + writeLevel(project, plan).wire() + "/" + OperatorUrlUtil.encodePathSegment(key);
         }
     }
 
@@ -383,9 +673,16 @@ public final class ConfigCommand implements Callable<Integer> {
         @Parameters(index = "0", description = "Configuration key")
         String key = "";
 
-        @Option(names = "--project", description = "Project scope")
+        @Option(names = "--machine", description = "Remove the machine level's value (the default)")
+        boolean machine;
+
+        @Option(names = "--project", description = "Remove this project's value")
         @Nullable
         String project;
+
+        @Option(names = "--plan", description = "Remove this plan's value")
+        @Nullable
+        String plan;
 
         UnsetCommand(OperatorContext context) {
             this.context = context;
@@ -395,10 +692,26 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
-            var path = CONFIG_PATH + "/" + OperatorUrlUtil.encodePathSegment(key);
-            path = OperatorUrlUtil.appendScope(path, project, null);
-            var response = context.runtime(true).send(new HttpRequest("DELETE", path, Map.of(), null));
             var out = spec.commandLine().getOut();
+            if (isAspectOwned(key)) {
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
+                                    Map.of("key", key, ASPECT, getOwningAspect(key))));
+                err.flush();
+                return 1;
+            }
+            if (project != null && plan != null) {
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            if (machine && (project != null || plan != null)) {
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
+            var response = context.runtime(true).send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key)));
                 out.flush();
@@ -408,6 +721,10 @@ public final class ConfigCommand implements Callable<Integer> {
             err.println(MessageCatalogue.format(locale, "operator.config.unset_failed", Map.of("key", key, STATUS, response.status())));
             err.flush();
             return 1;
+        }
+
+        private String levelPath() {
+            return CONFIG_PATH + "/" + writeLevel(project, plan).wire() + "/" + OperatorUrlUtil.encodePathSegment(key);
         }
     }
 
@@ -433,21 +750,11 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            if (interfaceLocale != null) body.put("interface", interfaceLocale);
-            if (modelLocale != null) body.put("model", modelLocale);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/language", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.language_done", Map.of()));
-                out.flush();
-                return 0;
-            }
-            var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.language_failed", Map.of(STATUS, response.status())));
-            err.flush();
-            return 1;
+            var facts = new LinkedHashMap<String, String>();
+            if (interfaceLocale != null) facts.put("interface", interfaceLocale);
+            if (modelLocale != null) facts.put("model", modelLocale);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), LANGUAGE,
+                                ConfigAspectRun.Answers.of(facts));
         }
     }
 
@@ -487,32 +794,18 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
-            if (noInput && (consent == null || !consent.contains("scan_harnesses"))) {
-                var out = spec.commandLine().getOut();
-                out.println(MessageCatalogue.format(locale, "operator.config.harnesses_title", Map.of()));
-                out.println(MessageCatalogue.format(locale, "operator.config.needs_choice",
-                                    Map.of("option", "--consent scan_harnesses")));
-                out.flush();
-                return 3;
+            var facts = new LinkedHashMap<String, String>();
+            if (add != null && !add.isEmpty()) {
+                facts.put("add", String.join(",", add));
             }
-            var body = new LinkedHashMap<String, Object>();
-            if (add != null) body.put("add", add);
-            if (remove != null) body.put("remove", remove);
-            if (defaultHarness != null) body.put("default", defaultHarness);
-            body.put("no_icons", noIcons);
-
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/harnesses", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.harnesses_done", Map.of()));
-                out.flush();
-                return 0;
+            if (remove != null && !remove.isEmpty()) {
+                facts.put("remove", String.join(",", remove));
             }
-            var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.update_failed", Map.of(ASPECT, "harnesses", STATUS, response.status())));
-            err.flush();
-            return 1;
+            if (defaultHarness != null) facts.put("default", defaultHarness);
+            var answers = new ConfigAspectRun.Answers(facts,
+                                consent != null ? consent : List.of(), noIcons, false, false, noInput);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), HARNESSES,
+                                answers);
         }
     }
 
@@ -537,18 +830,13 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            if (allow != null) body.put("allow", allow);
-            body.put("no_advice", noAdvice);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/models", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.models_done", Map.of()));
-                out.flush();
-                return 0;
+            var facts = new LinkedHashMap<String, String>();
+            if (allow != null && !allow.isEmpty()) {
+                facts.put("allow", String.join(",", allow));
             }
-            return 1;
+            var answers = new ConfigAspectRun.Answers(facts, List.of(), false, noAdvice, false, false);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), MODELS,
+                                answers);
         }
     }
 
@@ -594,19 +882,13 @@ public final class ConfigCommand implements Callable<Integer> {
                 }
                 return PlanSettingsDialogue.run(context, out, plan, "roles", false);
             }
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            body.put("defaults", defaults);
-            if (set != null) body.put("set", set);
-            if (reset != null) body.put("reset", reset);
-            body.put("reset_all", resetAll);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/roles", JsonTree.write(body)));
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.roles_done", Map.of()));
-                out.flush();
-                return 0;
-            }
-            return 1;
+            var facts = new LinkedHashMap<String, String>();
+            if (defaults) facts.put("defaults", "true");
+            if (set != null && !set.isEmpty()) facts.put("set", String.join(",", set));
+            if (reset != null) facts.put("reset", reset);
+            if (resetAll) facts.put("reset_all", "true");
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "roles",
+                                ConfigAspectRun.Answers.of(facts));
         }
     }
 
@@ -628,17 +910,10 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            if (store != null) body.put("store", store);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/credentials", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.credential_store_done", Map.of("store", store != null ? store : "default")));
-                out.flush();
-                return 0;
-            }
-            return 1;
+            var facts = new LinkedHashMap<String, String>();
+            if (store != null) facts.put("current", store);
+            return ConfigAspectRun.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(), CREDENTIALS,
+                                ConfigAspectRun.Answers.of(facts));
         }
     }
 
@@ -679,20 +954,14 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (use != null || without != null || verify) {
                     return exclusive(context, out);
                 }
-                return PlanSettingsDialogue.run(context, out, plan, "providers", false);
+                return PlanSettingsDialogue.run(context, out, plan, PROVIDERS, false);
             }
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            if (use != null) body.put("use", use);
-            if (without != null) body.put("without", without);
-            body.put("verify", verify);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/providers", JsonTree.write(body)));
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.providers_done", Map.of()));
-                out.flush();
-                return 0;
-            }
-            return 1;
+            var facts = new LinkedHashMap<String, String>();
+            if (use != null && !use.isEmpty()) facts.put("use", String.join(",", use));
+            if (without != null && !without.isEmpty()) facts.put("without", String.join(",", without));
+            if (verify) facts.put("verify", "true");
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), PROVIDERS,
+                                ConfigAspectRun.Answers.of(facts));
         }
     }
 
@@ -741,37 +1010,15 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (landing != null || method != null || asking != null || posture != null || yes) {
                     return exclusive(context, out);
                 }
-                return PlanSettingsDialogue.run(context, out, plan, "plan-defaults", false);
+                return PlanSettingsDialogue.run(context, out, plan, PLAN_DEFAULTS, false);
             }
-            var locale = context.clientEnvironment().locale();
-            var body = new LinkedHashMap<String, Object>();
-            if (landing != null) body.put("landing", landing);
-            if (method != null) body.put("method", method);
-            if (asking != null) body.put("asking", asking);
-            if (posture != null) body.put("posture", posture);
-            body.put("confirmed", yes);
-
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/plan-defaults", JsonTree.write(body)));
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults_title", Map.of()));
-                if (landing != null) {
-                    out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.landing_row",
-                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.landing", Map.of()),
-                                                            VALUE, landing)));
-                }
-                if (method != null) {
-                    out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.method_row",
-                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.method", Map.of()), VALUE, method)));
-                }
-                if (asking != null) {
-                    out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.asking_row",
-                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.asking", Map.of()), VALUE, asking)));
-                }
-                out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults_recorded", Map.of()));
-                out.flush();
-                return 0;
-            }
-            return 1;
+            var facts = new LinkedHashMap<String, String>();
+            if (landing != null) facts.put("landing", landing);
+            if (method != null) facts.put("method", method);
+            if (asking != null) facts.put("asking", asking);
+            if (posture != null) facts.put("posture", posture);
+            var answers = new ConfigAspectRun.Answers(facts, List.of(), false, false, yes, false);
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), PLAN_DEFAULTS, answers);
         }
     }
 
@@ -801,7 +1048,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var owner = new ConfigCommand(context);
             var settings = owner.readSettingsQuiet();
             if (settings == null) {
-                return legacyConsents(out, locale);
+                out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                    Map.of(STATUS, "unreachable")));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
             }
             var consents = settings.consents();
             if (consents.isEmpty()) {
@@ -817,26 +1067,6 @@ public final class ConfigCommand implements Callable<Integer> {
             }
             if (context.isInteractiveTerminal()) {
                 interact(out, locale, settings);
-            }
-            out.flush();
-            return 0;
-        }
-
-        private int legacyConsents(PrintWriter out, String locale) throws IOException {
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/config/consents"));
-            if (response.status() != 200) {
-                return PmOperator.EXIT_FAILURE;
-            }
-            var json = JsonTree.parse(response.body());
-            if (json instanceof List<?> list && !list.isEmpty()) {
-                out.println(MessageCatalogue.format(locale, "operator.config.consents_title", Map.of()));
-                int idx = 1;
-                for (var c : list) {
-                    out.println(MessageCatalogue.format(locale, "operator.config.consents_row",
-                                        Map.of(INDEX, idx++, TITLE, TerminalSanitizer.sanitizeLine(String.valueOf(c)))));
-                }
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.config.consents_none", Map.of()));
             }
             out.flush();
             return 0;
@@ -956,7 +1186,9 @@ public final class ConfigCommand implements Callable<Integer> {
             var owner = new ConfigCommand(context);
             var settings = owner.readSettingsQuiet();
             if (settings == null) {
-                return legacyDocuments(out, locale);
+                out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
             }
             var chosen = mode;
             printChoice(out, locale, settings.documentsMode());
@@ -971,28 +1203,14 @@ public final class ConfigCommand implements Callable<Integer> {
             return apply(out, locale, settings, chosen);
         }
 
-        private int legacyDocuments(PrintWriter out, String locale) throws IOException {
-            var body = new LinkedHashMap<String, Object>();
-            if (mode != null) body.put("mode", mode);
-            var response = context.runtime(true).send(
-                                HttpRequest.json("POST", "/api/v1/config/documents", JsonTree.write(body)));
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.documents_done",
-                                    Map.of("mode", mode != null ? mode : "ask")));
-                out.flush();
-                return 0;
-            }
-            return PmOperator.EXIT_FAILURE;
-        }
-
         private void printChoice(PrintWriter out, String locale, DocumentsMode current) {
             out.println(MessageCatalogue.format(locale, "onboard.settings.documents.title", Map.of()));
             int idx = 1;
             for (var candidate : DocumentsMode.values()) {
                 var name = MessageCatalogue.format(locale,
-                                    "onboard.settings.documents." + candidate.wireValue(), Map.of());
+                                    DOCUMENTS_TEXT_PREFIX + candidate.wireValue(), Map.of());
                 var text = MessageCatalogue.format(locale,
-                                    "onboard.settings.documents." + candidate.wireValue() + "_text", Map.of());
+                                    DOCUMENTS_TEXT_PREFIX + candidate.wireValue() + "_text", Map.of());
                 out.println("  " + idx++ + ") " + name + "            " + text
                                     + (candidate == current ? " ←" : ""));
             }

@@ -523,7 +523,8 @@ class MockRuntimeEngineTest {
                 "/api/v1/enrol",
                 "/api/v1/credentials/github",
                 "/api/v1/machine/decisions",
-                "/api/v1/machine/settings");
+                "/api/v1/machine/settings",
+                "/api/v1/config");
         for (var path : representatives) {
             assertTrue(MockRuntimeEngine.isLiveDomainPath(path), path + " must be a live domain path");
         }
