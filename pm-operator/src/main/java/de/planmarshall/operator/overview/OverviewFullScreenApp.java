@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -225,6 +226,12 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
     private final AtomicReference<ReportsLevel> currentReports = new AtomicReference<>();
     private final AtomicReference<SystemLevel> currentSystem = new AtomicReference<>();
+    // The model of every project, ended work, plan and epic level the stack holds, by the level's
+    // id: Esc returns to a level whose model the level above replaced in the fields above.
+    private final Map<String, ProjectDetailResponse> projectDetails = new ConcurrentHashMap<>();
+    private final Map<String, EndedWorkLevel> endedLevels = new ConcurrentHashMap<>();
+    private final Map<String, PlanViewLevel> planViews = new ConcurrentHashMap<>();
+    private final Map<String, EpicViewLevel> epicViews = new ConcurrentHashMap<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
     private volatile @Nullable String pendingAnswerPlanId;
     private @Nullable ActionsMenu actionsMenu;
@@ -701,6 +708,7 @@ public final class OverviewFullScreenApp {
             if (response.status() == 200) {
                 var detail = ProjectDetailResponse.fromJson(response.bodyText());
                 currentProjectDetail.set(detail);
+                projectDetails.put(detail.projectId(), detail);
                 currentByEpic.set(byEpic);
                 var levelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
                 var rows = levelModel.rows(locale, clock, false);
@@ -724,6 +732,7 @@ public final class OverviewFullScreenApp {
                 var endedResponse = EndedWorkPage.fromJson(response.bodyText());
                 var endedLevel = new EndedWorkLevel(endedResponse);
                 currentEndedLevel.set(endedLevel);
+                endedLevels.put(endedLevel.projectId(), endedLevel);
                 stack.push(endedLevel.level(locale), endedLevel.rows(locale, clock, false), null);
             }
         } catch (IOException _) {
@@ -743,6 +752,7 @@ public final class OverviewFullScreenApp {
             var resource = new WorkActionsClient(context).epic(epicId);
             var view = new EpicViewLevel(clock, resource);
             currentEpicView.set(view);
+            epicViews.put(view.epicId(), view);
             stack.push(view.level(locale), view.rows(locale), view.initialRowId());
             return true;
         } catch (IOException _) {
@@ -763,6 +773,7 @@ public final class OverviewFullScreenApp {
                             OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock));
         var view = EpicViewLevel.ended(clock, item.id(), projectId, item.title(), note);
         currentEpicView.set(view);
+        epicViews.put(view.epicId(), view);
         stack.push(view.level(locale), view.rows(locale), view.initialRowId());
     }
 
@@ -794,6 +805,7 @@ public final class OverviewFullScreenApp {
             var tree = ProcessTree.fromJson(response.bodyText());
             var view = new PlanViewLevel(tree, ended);
             currentPlanView.set(view);
+            planViews.put(planId, view);
             var level = TuiLevel.of(TuiLevel.Kind.PLAN, planId,
                                 view.breadcrumb(locale, null));
             stack.push(level, view.rows(locale), view.initialRowId());
@@ -1742,6 +1754,7 @@ public final class OverviewFullScreenApp {
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
             if (fetchedDetail != null) {
                 currentProjectDetail.set(fetchedDetail);
+                projectDetails.put(fetchedDetail.projectId(), fetchedDetail);
                 var levelModel = new ProjectWorkLevel(fetchedDetail, currentByEpic.get(), isCurrentProjectSetupNeedingOperator());
                 stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
             }
@@ -3126,6 +3139,7 @@ public final class OverviewFullScreenApp {
             if (lvl == null) {
                 return;
             }
+            restoreModel(lvl);
             if (lvl.kind() == TuiLevel.Kind.REPORTS) {
                 var level = currentReports.get();
                 if (level != null) {
@@ -3136,6 +3150,36 @@ public final class OverviewFullScreenApp {
                 var level = currentSystem.get();
                 if (level != null) {
                     stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
+                }
+            }
+        }
+
+        /**
+         * Makes the model of the level Esc returned to the one the keys and the header read: a
+         * level above it may have opened another project, plan or epic of the same kind and
+         * replaced the model while the level kept its own rows.
+         *
+         * @param lvl the level the view returned to
+         */
+        private void restoreModel(TuiLevel lvl) {
+            var id = lvl.id();
+            if (id == null) {
+                // A root has no id, and no model a level above it could have replaced.
+                return;
+            }
+            switch (lvl.kind()) {
+                case PROJECT_BY_PLAN, PROJECT_BY_EPIC -> {
+                    var detail = projectDetails.get(id);
+                    if (detail != null) {
+                        currentProjectDetail.set(detail);
+                        currentByEpic.set(lvl.kind() == TuiLevel.Kind.PROJECT_BY_EPIC);
+                    }
+                }
+                case ENDED -> Optional.ofNullable(endedLevels.get(id)).ifPresent(currentEndedLevel::set);
+                case PLAN -> Optional.ofNullable(planViews.get(id)).ifPresent(currentPlanView::set);
+                case EPIC -> Optional.ofNullable(epicViews.get(id)).ifPresent(currentEpicView::set);
+                default -> {
+                    // The other levels keep one model each, or none.
                 }
             }
         }
