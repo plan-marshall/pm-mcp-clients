@@ -2046,11 +2046,13 @@
                 {
                   "subject_id": "codeberg-issues",
                   "subject_kind": "plan",
+                  "outcome": "cancelled",
                   "description": "Add the Codeberg issue provider on top of relay-v2. follows codeberg-issues, cancelled: replaced by relay-v2"
                 },
                 {
                   "subject_id": "relay-hardening",
                   "subject_kind": "epic",
+                  "outcome": "completed",
                   "description": "Harden the relay after the epic ended. follows relay-hardening, completed"
                 }
               ],

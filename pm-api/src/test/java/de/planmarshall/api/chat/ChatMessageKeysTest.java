@@ -35,9 +35,10 @@ class ChatMessageKeysTest {
     private static final String LINE_PREFIX = "control.chat.line.";
     private static final String NO_DEVICE = "control.chat.line.decision_answered_no_device";
 
-    /** The runtime keys the goldens and test values of the chat package send on the wire. */
+    /** The runtime keys the goldens, the test values of the chat package and the mock runtime send on the wire. */
     static Stream<String> wireKeys() {
-        return Stream.of("chat.knows.decision", "chat.knows.phase", "chat.step.read", "chat.step.check",
+        return Stream.of("chat.knows.decision", "chat.knows.phase", "chat.knows.description", "chat.knows.other",
+                "chat.step.read", "chat.step.check",
                 "chat.reason.lost", "chat.reason.too_long", "chat.reason.infeasible", "chat.line.task_ended",
                 "chat.line.phase_changed", "chat.line.decision_answered", "chat.finding.check_failed",
                 "chat.finding.changed_since", "chat.finding.lapsed", "chat.finding.already_queued",
@@ -118,6 +119,48 @@ class ChatMessageKeysTest {
                 () -> assertEquals(count + " Tasks", MessageCatalogue.format("de", rendered.key(), rendered.args())));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"description", "tasks", "phase", "version", "sources", "rows", "items", "decision"})
+    @DisplayName("every item the select of control.chat.knows.item names is mapped and never renders as an archive")
+    void everyKnowsItemIsMapped(String item) {
+        var key = "chat.knows." + item;
+        var value = name();
+        var args = Map.<String, Object>of("count", value, "phase", value, "version", value, "id", value);
+        var rendered = ChatMessageKeys.render(new MessageText(key, args));
+
+        assertAll(key,
+                () -> assertTrue(ChatMessageKeys.maps(key)),
+                () -> assertEquals("control.chat.knows.item", rendered.key()),
+                () -> assertEquals(item, rendered.args().get(ChatMessageKeys.ARG_ITEM)),
+                () -> assertFalse(MessageCatalogue.format("en", rendered.key(), rendered.args())
+                        .startsWith("its archived record")));
+    }
+
+    @Test
+    @DisplayName("the archived record of ended work is the select's other branch with its outcome")
+    void knowsArchivedRecord() {
+        var outcome = name();
+        var rendered = ChatMessageKeys.render(new MessageText("chat.knows.other", Map.of("outcome", outcome)));
+
+        assertAll(
+                () -> assertEquals("control.chat.knows.item", rendered.key()),
+                () -> assertEquals("its archived record, " + outcome,
+                        MessageCatalogue.format("en", rendered.key(), rendered.args())),
+                () -> assertEquals("the description",
+                        MessageCatalogue.format("en", "control.chat.knows.item",
+                                Map.of(ChatMessageKeys.ARG_ITEM, "description"))));
+    }
+
+    @Test
+    @DisplayName("a knows item the select does not name, a typo among them, is refused")
+    void unknownKnowsItemIsRefused() {
+        var key = "chat.knows.zz_" + name();
+
+        assertAll(
+                () -> assertFalse(ChatMessageKeys.maps(key)),
+                () -> assertThrows(IllegalArgumentException.class, () -> ChatMessageKeys.render(MessageText.of(key))));
+    }
+
     @Test
     @DisplayName("the point a revision waits for renders as control.chat.revision_queued with applies")
     void appliesPoint() {
@@ -151,7 +194,8 @@ class ChatMessageKeysTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"control.chat.line.task_ended", "chat.knows", "chat.line.task_ended.extra",
+    @ValueSource(strings = {"control.chat.line.task_ended", "chat.knows", "chat.knows.plan", "chat.knows.archive",
+            "chat.line.task_ended.extra",
             "chat.step.reading", "chat.reason.too_long_reply", "chat.finding.refused", "chat.applies.never",
             "chat.proposal.refused", "plan.chat.line"})
     @DisplayName("a key outside the mapped families or without a rendering key is refused")

@@ -24,7 +24,9 @@ import java.util.Set;
  * {@code chat.line.decision_answered} whose arguments carry no {@code device} as
  * {@code control.chat.line.decision_answered_no_device};</li>
  * <li>an entry {@code chat.knows.<item>} of what the role knows renders as {@code control.chat.knows.item}
- * with that {@code item};</li>
+ * with that {@code item}, one the key's select holds: {@code description}, {@code tasks}, {@code phase},
+ * {@code version}, {@code sources}, {@code rows}, {@code items}, {@code decision}, or {@code other}, the
+ * archived record of ended work with its {@code outcome};</li>
  * <li>the point a queued revision waits for, {@code chat.applies.after_task} or {@code chat.applies.on_start},
  * renders as {@code control.chat.revision_queued} with {@code applies} {@code after_task} or
  * {@code on_start};</li>
@@ -65,6 +67,8 @@ public final class ChatMessageKeys {
             "plan_started", "version_changed", "pr_opened", "pr_merged", "pr_closed", "row_started", "row_landed",
             "row_failed", "auto_changed", "source_added", "source_removed", "source_flagged", "waiver_granted",
             "waiver_revoked", "replan_triggered", "register_added", "row_staged", "row_cancelled", "item_disposed");
+    private static final Set<String> KNOWS_ITEMS = Set.of("description", "tasks", "phase", "version", "sources",
+            "rows", "items", "decision", "other");
     private static final Set<String> APPLIES_POINTS = Set.of("after_task", "on_start");
     private static final Set<String> STEPS = Set.of("read", "search", "check");
     private static final Map<String, String> REASONS = Map.of(
@@ -133,7 +137,7 @@ public final class ChatMessageKeys {
         var name = parts.name();
         return switch (parts.family()) {
             case LINE -> LINES.contains(name);
-            case KNOWS -> true;
+            case KNOWS -> KNOWS_ITEMS.contains(name);
             case APPLIES -> APPLIES_POINTS.contains(name);
             case STEP -> STEPS.contains(name);
             case REASON -> REASONS.containsKey(name);

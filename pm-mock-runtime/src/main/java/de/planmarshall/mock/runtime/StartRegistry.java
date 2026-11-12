@@ -108,6 +108,7 @@ final class StartRegistry {
     private static final String KEY_ADOPTION_FAILURE = "adoption_failure";
     private static final String KEY_ADD_OUTCOMES = "add_outcomes";
     private static final String KEY_ENDED_WORK = "ended_work";
+    private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_NEED = "need";
     private static final String KEY_REASON = "reason";
     private static final String KEY_AVAILABLE = "available";
@@ -260,8 +261,9 @@ final class StartRegistry {
      * @param subjectId the ended plan or epic
      * @param kind      whether it is a plan or an epic
      * @param projectId the project it ran in, where its follow-up plan starts
+     * @param outcome   the wire value of the outcome it ended with, {@code null} where the fixture names none
      */
-    private record EndedWork(String subjectId, EntryKind kind, String projectId) {
+    private record EndedWork(String subjectId, EntryKind kind, String projectId, @Nullable String outcome) {
     }
 
     /**
@@ -405,7 +407,8 @@ final class StartRegistry {
                 .forEach(object -> {
                     var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
                     endedWork.put(subjectId, new EndedWork(subjectId,
-                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)), projectId));
+                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)), projectId,
+                            JsonTree.string(object, KEY_OUTCOME)));
                 });
     }
 
@@ -634,12 +637,14 @@ final class StartRegistry {
     }
 
     /**
-     * @return the ended plans and epics of the active state, as the subjects of their chats
+     * @return the ended plans and epics of the active state, as the subjects of their chats, each with the
+     *         wire value of the outcome it ended with, {@code null} where the fixture names none
      */
-    synchronized Set<ChatSubject> endedSubjects() {
-        var subjects = new LinkedHashSet<ChatSubject>();
-        endedWork.values().forEach(ended -> subjects.add(new ChatSubject(
-                ended.kind().epic() ? ChatSubjectKind.EPIC : ChatSubjectKind.PLAN, ended.subjectId())));
+    synchronized Map<ChatSubject, @Nullable String> endedSubjects() {
+        var subjects = new LinkedHashMap<ChatSubject, @Nullable String>();
+        endedWork.values().forEach(ended -> subjects.put(new ChatSubject(
+                ended.kind().epic() ? ChatSubjectKind.EPIC : ChatSubjectKind.PLAN, ended.subjectId()),
+                ended.outcome()));
         return subjects;
     }
 

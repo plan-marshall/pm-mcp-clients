@@ -2282,7 +2282,7 @@
                   "context": {
                     "knows": [
                       {
-                        "key": "chat.knows.plan"
+                        "key": "chat.knows.description"
                       }
                     ],
                     "as_of": "2026-10-14T10:00:00Z"
@@ -2293,7 +2293,10 @@
                     "kind": "revision",
                     "summary": "a test per transport",
                     "applies": {
-                      "key": "chat.applies.after_task"
+                      "key": "chat.applies.after_task",
+                      "args": {
+                        "task_id": "TASK-3"
+                      }
                     },
                     "before": "TASK-4  cursor write order: a test for the websocket transport",
                     "after": "TASK-4  cursor write order: a test per transport, websocket and SSE",
@@ -2359,7 +2362,7 @@
                   "context": {
                     "knows": [
                       {
-                        "key": "chat.knows.epic"
+                        "key": "chat.knows.description"
                       }
                     ],
                     "as_of": "2026-10-14T10:00:00Z"
@@ -2411,7 +2414,10 @@
                   "context": {
                     "knows": [
                       {
-                        "key": "chat.knows.archive"
+                        "key": "chat.knows.other",
+                        "args": {
+                          "outcome": "cancelled"
+                        }
                       }
                     ],
                     "as_of": "2026-10-14T10:00:00Z"
@@ -2463,7 +2469,7 @@
                   "context": {
                     "knows": [
                       {
-                        "key": "chat.knows.entry"
+                        "key": "chat.knows.description"
                       }
                     ],
                     "as_of": "2026-10-19T10:00:05Z"

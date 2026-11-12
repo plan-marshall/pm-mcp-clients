@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -141,7 +142,11 @@ final class ChatRegistry {
     private static final String DEFAULT_MODEL = "sonnet";
     private static final String MACHINE_SCOPE_ID = "machine";
     private static final String KNOWS_PREFIX = "chat.knows.";
-    private static final String KNOWS_ARCHIVE = "archive";
+    /** The item of {@code control.chat.knows.item} whose branch is the archived record of ended work. */
+    private static final String KNOWS_ARCHIVE = "other";
+    private static final String KNOWS_DECISION = "decision";
+    private static final String KNOWS_DESCRIPTION = "description";
+    private static final String ARG_OUTCOME = "outcome";
     private static final String CHAT_ID_PREFIX = "chat-";
     private static final String TURN_ID_PREFIX = "turn-";
     private static final String MESSAGE_NO_CHAT = "No chat is open about ";
@@ -182,7 +187,8 @@ final class ChatRegistry {
     private final Consumer<AppliedProposal> applied;
 
     private final Map<ChatSubject, Chat> chats = new LinkedHashMap<>();
-    private final Set<ChatSubject> endedWork = new HashSet<>();
+    /** The ended plans and epics with the outcome each ended with, {@code null} where none was named. */
+    private final Map<ChatSubject, @Nullable String> endedWork = new LinkedHashMap<>();
     private final Set<String> usedChatIds = new HashSet<>();
     private final Set<String> usedTurnIds = new HashSet<>();
     /** The armed failures the next chat requests play, oldest first. */
@@ -235,9 +241,10 @@ final class ChatRegistry {
      *
      * @param chats     the chats of the state, one per subject, as {@code GET …/chat} reads them with their
      *                  whole transcript
-     * @param endedWork the ended plans and epics, whose chats are about the archived record
+     * @param endedWork the ended plans and epics, whose chats are about the archived record, each with the
+     *                  wire value of the outcome it ended with, {@code null} where none is named
      */
-    record Seed(List<ChatResource> chats, Set<ChatSubject> endedWork) {
+    record Seed(List<ChatResource> chats, Map<ChatSubject, @Nullable String> endedWork) {
 
         /**
          * @param chats     the chats, {@code null} read as none
@@ -245,7 +252,7 @@ final class ChatRegistry {
          */
         Seed {
             chats = chats == null ? List.of() : List.copyOf(chats);
-            endedWork = endedWork == null ? Set.of() : Set.copyOf(endedWork);
+            endedWork = endedWork == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(endedWork));
         }
     }
 
@@ -265,7 +272,7 @@ final class ChatRegistry {
         replyFailures.clear();
         chatCounter = 0;
         turnCounter = 0;
-        endedWork.addAll(seed.endedWork());
+        endedWork.putAll(seed.endedWork());
         for (var resource : seed.chats()) {
             var chat = new Chat(resource.id(), resource.subject(), resource.role(), resource.scope(),
                     resource.state(), resource.context(), resource.proposal(), resource.turns());
@@ -658,8 +665,9 @@ final class ChatRegistry {
                 }
             }
             case EVENT_SCOPE_ENDED -> {
-                endWork(ChatSubjectKind.PLAN, JsonTree.string(payload, KEY_PLAN_ID));
-                endWork(ChatSubjectKind.EPIC, JsonTree.string(payload, KEY_EPIC_ID));
+                var outcome = JsonTree.string(payload, ARG_OUTCOME);
+                endWork(ChatSubjectKind.PLAN, JsonTree.string(payload, KEY_PLAN_ID), outcome);
+                endWork(ChatSubjectKind.EPIC, JsonTree.string(payload, KEY_EPIC_ID), outcome);
             }
             case EVENT_ENTRY_ABANDONED, EVENT_PLAN_STARTED, EVENT_EPIC_STARTED -> {
                 var entryId = JsonTree.string(payload, KEY_ENTRY_ID);
@@ -674,13 +682,13 @@ final class ChatRegistry {
         }
     }
 
-    private void endWork(ChatSubjectKind kind, @Nullable String id) {
+    private void endWork(ChatSubjectKind kind, @Nullable String id, @Nullable String outcome) {
         if (id == null) {
             return;
         }
         var subject = new ChatSubject(kind, id);
         synchronized (this) {
-            endedWork.add(subject);
+            endedWork.put(subject, outcome);
         }
         endWhere(subject::equals, ChatEndedEvent.EndedBy.SUBJECT_ENDED);
     }
@@ -945,9 +953,26 @@ final class ChatRegistry {
         return kind == ProposalKind.REVISION ? ProposalState.ACCEPTED : ProposalState.APPLIED;
     }
 
-    private ChatContext context(Address address) {
-        var item = address.scope() == ChatScopeKind.ARCHIVE ? KNOWS_ARCHIVE : address.subject().kind().wireValue();
-        return new ChatContext(List.of(MessageText.of(KNOWS_PREFIX + item)), Instant.now().toString());
+    /**
+     * What the role of a newly opened chat knows, as items of {@code control.chat.knows.item}: ended work
+     * its archived record with the outcome it ended with (nothing where the end named no outcome), a
+     * decision the decision by its id, and a running plan, an epic or an entry its description.
+     */
+    private synchronized ChatContext context(Address address) {
+        var subject = address.subject();
+        List<MessageText> knows;
+        if (address.scope() == ChatScopeKind.ARCHIVE) {
+            var outcome = endedWork.get(subject);
+            knows = outcome == null ? List.of()
+                    : List.of(new MessageText(KNOWS_PREFIX + KNOWS_ARCHIVE, Map.of(ARG_OUTCOME, outcome)));
+        } else if (subject.kind() == ChatSubjectKind.DECISION) {
+            var id = subject.id();
+            knows = List.of(new MessageText(KNOWS_PREFIX + KNOWS_DECISION,
+                    Map.of(KEY_ID, id.substring(id.indexOf('/') + 1))));
+        } else {
+            knows = List.of(MessageText.of(KNOWS_PREFIX + KNOWS_DESCRIPTION));
+        }
+        return new ChatContext(knows, Instant.now().toString());
     }
 
     private static ChatEvent event(Address address, String name, Map<String, Object> data) {
@@ -1090,7 +1115,7 @@ final class ChatRegistry {
     }
 
     private synchronized boolean isEnded(ChatSubject subject) {
-        return endedWork.contains(subject);
+        return endedWork.containsKey(subject);
     }
 
     private static Address workspaceDecision(String projectId, String questionId) {

@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -145,6 +146,11 @@ class ChatScenarioTest {
                         () -> assertEquals(subject.scope(), chat.scope()),
                         () -> assertEquals(ChatStatus.TURN, chat.state()),
                         () -> assertFalse(chat.context().knows().isEmpty()),
+                        () -> assertTrue(chat.context().knows().stream()
+                                .allMatch(known -> ChatMessageKeys.maps(known.key())), chat.context().toJson()),
+                        () -> assertEquals(subject.scope() == ChatScopeKind.ARCHIVE,
+                                "chat.knows.other".equals(chat.context().knows().getFirst().key()),
+                                "only ended work knows its archived record: " + chat.context().toJson()),
                         () -> assertTrue(chat.turns().isEmpty()),
                         () -> assertNull(chat.proposal()));
 

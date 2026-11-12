@@ -34,10 +34,6 @@ import org.junit.jupiter.api.Test;
  * The terminal starting dialogue against the contract's mock runtime: the direct verbs with their
  * arguments and with {@code --no-input}, the interactive source list, the ready step, a recipe,
  * an epic with its decomposition, and the start chat announced as unavailable before a source is stored.
- *
- * <p>The start chat itself is no longer driven here: the mock serves every chat from its chat
- * registry in the chat's own shape, which the old entry chat of this dialogue does not read. The
- * dialogue's chat against that shape is covered by the terminal client's chat packages D4 and D5.
  */
 @DisplayName("starting dialogue")
 class StartDialogueTest {
