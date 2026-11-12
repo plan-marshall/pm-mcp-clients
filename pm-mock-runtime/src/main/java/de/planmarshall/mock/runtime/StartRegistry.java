@@ -182,7 +182,6 @@ final class StartRegistry {
     private static final String DEFAULT_PULL_REQUEST = "https://github.com/plan-marshall/pm-mcp-clients/pull/214";
     private static final String DEFAULT_WORK = "started-work";
     private static final String DEFAULT_PROJECT = "pm-mcp-clients";
-    private static final String FOLLOWS = "follows ";
 
     /** The callback a start uses to tell its clients of an event. */
     private final Consumer<StartEvent> broadcaster;
@@ -610,22 +609,23 @@ final class StartRegistry {
      *
      * @param subjectId the ended plan or epic
      * @param text      the accepted description, {@code null} or blank read as none
-     * @return {@code true} if the subject is ended work of a known project and the entry was opened
+     * @return {@code true} if the subject is ended work and the entry was opened
      */
     synchronized boolean openFollowUp(String subjectId, @Nullable String text) {
         var ended = endedWork.get(subjectId);
-        if (ended == null || !projectLandings.containsKey(ended.projectId())) {
+        if (ended == null) {
             return false;
         }
+        var projectId = ended.projectId();
         var description = text == null ? "" : text.strip();
         if (!description.contains(subjectId)) {
-            description = (description + " " + FOLLOWS + subjectId).strip();
+            description = (description + " follows " + subjectId).strip();
         }
-        var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, ended.projectId(), STATE_SOURCES);
-        entry.landing = projectLandings.get(ended.projectId());
+        var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, projectId, STATE_SOURCES);
+        entry.landing = projectLandings.get(projectId);
         entry.lessonsAvailable = true;
         entry.localChanges = true;
-        entry.recipes = projectRecipes.getOrDefault(ended.projectId(), List.of());
+        entry.recipes = projectRecipes.getOrDefault(projectId, List.of());
         entry.chatAvailable = true;
         storeDescription(entry, description);
         refresh(entry);
