@@ -726,6 +726,28 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("the overview survives a status it cannot read")
+    void overviewSurvivesAMalformedStatus() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, DEVICES);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "not a json object");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Paired devices"), out.toString()));
+    }
+
+    @Test
     @DisplayName("the overview collapses the remembered consents into one row with their count")
     void overviewCollapsesTheConsents() throws Exception {
         fixture.start(sensibleSettings());

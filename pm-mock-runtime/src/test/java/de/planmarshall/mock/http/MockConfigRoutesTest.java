@@ -168,6 +168,22 @@ class MockConfigRoutesTest {
     }
 
     @Test
+    @DisplayName("a change made before a deletion stays stale")
+    void aDeletedValueKeepsItsRevision() throws Exception {
+        var routes = new MockConfigRoutes();
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"" + value + "\"}", Map.of());
+        var deleted = query(routes, "DELETE", PATH + "/machine/custom.timeout", "{\"revision\":1}", Map.of());
+        var stale = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"" + value + "\",\"revision\":1}", Map.of());
+
+        assertAll(
+                () -> assertEquals(204, deleted.status(), deleted.body()),
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()));
+    }
+
+    @Test
     @DisplayName("a change against an older revision answers 409 with the current value")
     void aStaleRevisionIsRefusedWithTheCurrentValue() throws Exception {
         var routes = new MockConfigRoutes();

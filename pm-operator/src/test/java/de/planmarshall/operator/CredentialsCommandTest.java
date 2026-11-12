@@ -209,6 +209,19 @@ class CredentialsCommandTest {
     }
 
     @Test
+    @DisplayName("set on a project stores without the machine check")
+    void setOnAProjectStoresWithoutTheMachineCheck() throws Exception {
+        present();
+
+        var code = run(context("s3cret\n"), "credentials", "set", "github", "--project", "fix-relay", "--yes");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Token github stored"), out.toString()),
+                            () -> assertTrue(steps.isEmpty(), steps.toString()));
+    }
+
+    @Test
     @DisplayName("set writes another kind under the same key")
     void set() throws Exception {
         present();

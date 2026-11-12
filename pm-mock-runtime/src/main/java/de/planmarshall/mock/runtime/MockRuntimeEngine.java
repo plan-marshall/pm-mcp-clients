@@ -2694,8 +2694,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param path    the credential path
      * @throws IOException on a malformed body
      */
-    private void recordRotatedCredential(MockHttpRequest request, String path) throws IOException {
-        var key = path.substring(PATH_CREDENTIALS.length());
+    private void recordRotatedCredential(MockHttpRequest request, String path) {        var key = path.substring(PATH_CREDENTIALS.length());
         var body = readBodyMap(request);
         var kind = JsonTree.string(body, KEY_KIND);
         synchronized (onboardingLock) {

@@ -63,6 +63,25 @@ class ConfigRoutesTest {
     }
 
     @Test
+    @DisplayName("a credential PUT refreshes the entry a GET serves")
+    void aCredentialPutRefreshesTheEntry() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+            var read = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/github"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("PUT", "/api/v1/credentials/github",
+                    "{\"mode\":\"rotate\",\"secret\":\"s3cret\",\"kind\":\"classic\"}"), runtime));
+            var rotated = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/github"), runtime));
+            var unknown = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/nope"), runtime));
+
+            assertAll(
+                    () -> assertEquals(200, read.status(), read.bodyText()),
+                    () -> assertTrue(read.bodyText().contains("\"status\":\"present\""), read.bodyText()),
+                    () -> assertTrue(rotated.bodyText().contains("\"kind\":\"classic\""), rotated.bodyText()),
+                    () -> assertTrue(rotated.bodyText().contains("\"expired\":false"), rotated.bodyText()),
+                    () -> assertEquals(404, unknown.status(), unknown.bodyText()));
+        }
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/config/{level}/{key} records a value that GET serves back")
     void putRecordsAValue() throws Exception {
         var value = Generators.letterStrings(2, 6).next();
