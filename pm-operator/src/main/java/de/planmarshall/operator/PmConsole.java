@@ -1006,7 +1006,9 @@ public final class PmConsole {
     /**
      * Splits a typed console line into arguments. Quoted text stays one argument, and a
      * backslash escapes the next character inside a quote only: text typed outside quotes, such as
-     * a path or a label, keeps its backslashes.
+     * a path or a label, keeps its backslashes. As in a shell, a quoted empty text is an argument
+     * of its own ({@code config set key ""} gives the verb an empty value), while whitespace alone
+     * separates and gives none.
      *
      * @param line the typed line
      * @return the arguments
@@ -1019,6 +1021,7 @@ public final class PmConsole {
         var sb = new StringBuilder();
         boolean inQuotes = false;
         boolean escaped = false;
+        boolean quoted = false;
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
             if (escaped) {
@@ -1028,8 +1031,10 @@ public final class PmConsole {
                 escaped = true;
             } else if (c == '"') {
                 inQuotes = !inQuotes;
+                quoted = true;
             } else if (Character.isWhitespace(c) && !inQuotes) {
-                flushToken(args, sb);
+                flushToken(args, sb, quoted);
+                quoted = false;
             } else {
                 sb.append(c);
             }
@@ -1037,7 +1042,7 @@ public final class PmConsole {
         if (escaped) {
             sb.append('\\');
         }
-        flushToken(args, sb);
+        flushToken(args, sb, quoted);
         return args;
     }
 
@@ -1055,11 +1060,12 @@ public final class PmConsole {
     }
 
     /**
-     * @param args the arguments read so far
-     * @param sb   the argument being built
+     * @param args   the arguments read so far
+     * @param sb     the argument being built
+     * @param quoted whether the argument had a quote, which makes even an empty one an argument
      */
-    private static void flushToken(List<String> args, StringBuilder sb) {
-        if (sb.length() > 0) {
+    private static void flushToken(List<String> args, StringBuilder sb, boolean quoted) {
+        if (quoted || !sb.isEmpty()) {
             args.add(sb.toString());
             sb.setLength(0);
         }

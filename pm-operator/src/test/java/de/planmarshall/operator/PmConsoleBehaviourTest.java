@@ -651,6 +651,18 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("a quoted empty text is an argument, as in a shell, and whitespace alone is none")
+    void typedQuotedEmptyTextIsAnArgument() {
+        var key = Generators.letterStrings(4, 12).next();
+        assertAll(
+                            () -> assertEquals(List.of("config", "set", key, ""),
+                                                PmConsole.parseArgs("config set " + key + " \"\"")),
+                            () -> assertEquals(List.of("config", "set", key, "", "--project"),
+                                                PmConsole.parseArgs("config set " + key + "  \"\"  --project")),
+                            () -> assertEquals(List.of(), PmConsole.parseArgs("  \t  ")));
+    }
+
+    @Test
     @DisplayName("a stalled runtime lets the prompt return within the bound")
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         var release = new CountDownLatch(1);
