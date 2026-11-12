@@ -90,24 +90,26 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a decrease raises no notice and no bell")
     void decreaseRaisesNoNotice() {
+        var key = Generators.letterStrings(4, 12).next();
+        var credentialNotice = "Credential " + key + " needs attention";
         var console = console();
         // The first summary of a place is the baseline: what already waited is badged, not announced.
         console.applyConsoleEvent("needs_operator.changed", machineEvent("none", 0), reader);
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 2,
-                            item("credential", "/api/v1/credentials/github"),
+                            item("credential", "/api/v1/credentials/" + key),
                             item("cleanup_due", "/api/v1/system/cleanup")), reader);
         var afterArrival = output();
 
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 1,
-                            item("credential", "/api/v1/credentials/github")), reader);
+                            item("credential", "/api/v1/credentials/" + key)), reader);
         var afterDecrease = output();
 
         assertAll(
-                            () -> assertEquals(1, count(afterArrival, "Credential github needs attention"), afterArrival),
+                            () -> assertEquals(1, count(afterArrival, credentialNotice), afterArrival),
                             () -> assertEquals(1, count(afterArrival, "Cleanup is due"), afterArrival),
                             () -> assertEquals(2, count(afterArrival, DISPLAY_MARK), afterArrival),
                             () -> assertEquals(2, count(afterArrival, NOTIFICATION), afterArrival),
-                            () -> assertEquals(1, count(afterDecrease, "Credential github needs attention"), afterDecrease),
+                            () -> assertEquals(1, count(afterDecrease, credentialNotice), afterDecrease),
                             () -> assertEquals(1, count(afterDecrease, "Cleanup is due"), afterDecrease),
                             () -> assertEquals(2, count(afterDecrease, DISPLAY_MARK), afterDecrease),
                             () -> assertEquals(2, count(afterDecrease, NOTIFICATION), afterDecrease)
@@ -117,17 +119,19 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a plan-level decision change after decision.opened yields exactly one notice")
     void decisionChangeAfterDecisionOpenedYieldsOneNotice() {
+        var decision = "Q-" + Generators.integers(100, 999).next();
+        var plan = Generators.letterStrings(4, 12).next();
         var console = console();
         console.applyConsoleEvent("decision.opened", Map.of(
                             "event", "decision.opened",
                             "data", Map.of("decision", Map.of(
-                                                "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan"))), reader);
+                                                "id", decision, "subject", "plan " + plan, "blocks", "plan"))), reader);
         console.applyConsoleEvent("needs_operator.changed", Map.of(
-                            "plan_id", "fix-relay", "kind", "decision", "count", 1), reader);
+                            "plan_id", plan, "kind", "decision", "count", 1), reader);
 
         var text = output();
         assertAll(
-                            () -> assertEquals(1, count(text, "Question Q-007"), text),
+                            () -> assertEquals(1, count(text, "Question " + decision), text),
                             () -> assertEquals(1, count(text, DISPLAY_MARK), text),
                             () -> assertEquals(1, count(text, NOTIFICATION), text)
         );
@@ -136,15 +140,18 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a machine summary that adds a credential yields one notice naming the sanitized key")
     void addedCredentialYieldsOneNotice() {
+        var head = Generators.letterStrings(2, 8).next();
+        var tail = Generators.letterStrings(2, 8).next();
         var console = console();
         console.applyConsoleEvent("needs_operator.changed", machineEvent("none", 0), reader);
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 1,
-                            item("credential", "/api/v1/credentials/git\u0007hub")), reader);
+                            item("credential", "/api/v1/credentials/" + head + "\u0007" + tail)), reader);
 
         var text = output();
         assertAll(
-                            () -> assertTrue(text.contains("Credential github needs attention"), text),
-                            () -> assertFalse(text.contains("git\u0007hub"), "no control character may reach the screen"),
+                            () -> assertTrue(text.contains("Credential " + head + tail + " needs attention"), text),
+                            () -> assertFalse(text.contains(head + "\u0007" + tail),
+                                                "no control character may reach the screen"),
                             () -> assertEquals(1, count(text, DISPLAY_MARK), text),
                             () -> assertEquals(1, count(text, NOTIFICATION), text)
         );

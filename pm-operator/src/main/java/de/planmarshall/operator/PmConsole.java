@@ -905,7 +905,6 @@ public final class PmConsole {
         terminal.writer().flush();
     }
 
-
     /**
      * Asks for a fresh pairing code after a redemption and reports it above the prompt, so the
      * first device to pair never uses the code up for the other ways in

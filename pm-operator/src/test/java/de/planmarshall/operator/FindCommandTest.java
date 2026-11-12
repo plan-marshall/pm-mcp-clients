@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -290,6 +291,34 @@ class FindCommandTest {
                                     context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true, "q\n"),
                                     new PrintWriter(out), new PrintWriter(new StringWriter()), "find", "relay");
                 assertEquals(3, code, "q leaves before the done state: " + out + "\n" + consoleOutput());
+            }
+        }
+
+        @Test
+        @DisplayName("the chosen match opens on the terminal the choice holds, never on a second one")
+        void openedMatchUsesTheLeasedTerminal() throws Exception {
+            try (var runtime = runningWork()) {
+                var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
+                var opened = new AtomicInteger();
+                var terminal = dumbTerminal("2\n");
+                var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                                    () -> {
+                                        opened.incrementAndGet();
+                                        return terminal;
+                                    }, null);
+                var out = new StringWriter();
+
+                PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()), "find",
+                                    "relay");
+
+                var output = out.toString();
+                assertAll(
+                                    () -> assertFalse(output.contains("is not offered here"),
+                                                        "the chosen number reaches the reader: " + output),
+                                    () -> assertTrue(output.contains(RUNNING_TITLE), output),
+                                    () -> assertEquals(1, opened.get(),
+                                                        "the opened view draws on the lent terminal: " + output)
+                );
             }
         }
     }

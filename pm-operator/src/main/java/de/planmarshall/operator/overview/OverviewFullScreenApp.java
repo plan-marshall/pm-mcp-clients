@@ -171,6 +171,32 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    /**
+     * The refusals of the overview's own reads at one moment, replaced as a whole so that a reader on
+     * another thread never sees a half-written set.
+     *
+     * @param projects the refusal of the projects read, or {@code null}
+     * @param needs    the refusal of the needs read, or {@code null}
+     * @param explorer the refusal of the explorer read, or {@code null}
+     */
+    private record Refusals(@Nullable LoadRefusal projects, @Nullable LoadRefusal needs,
+    @Nullable LoadRefusal explorer) {
+
+        static final Refusals NONE = new Refusals(null, null, null);
+
+        Refusals withProjects(@Nullable LoadRefusal refusal) {
+            return new Refusals(refusal, needs, explorer);
+        }
+
+        Refusals withNeeds(@Nullable LoadRefusal refusal) {
+            return new Refusals(projects, refusal, explorer);
+        }
+
+        Refusals withExplorer(@Nullable LoadRefusal refusal) {
+            return new Refusals(projects, needs, refusal);
+        }
+    }
+
     private final OperatorContext context;
     private final Terminal terminal;
     private final String locale;
@@ -213,9 +239,11 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuLandingUnit;
     private @Nullable String menuDecision;
     private @Nullable String statusMessage;
-    private @Nullable LoadRefusal projectsRefusal;
-    private @Nullable LoadRefusal needsRefusal;
-    private @Nullable LoadRefusal explorerRefusal;
+    /**
+     * The refusals of the overview's own reads: the refresh thread writes them and the render thread
+     * reads them, so they live in one immutable holder that is replaced as a whole.
+     */
+    private final AtomicReference<Refusals> refusals = new AtomicReference<>(Refusals.NONE);
     private @Nullable String systemBanner;
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
@@ -411,9 +439,10 @@ public final class OverviewFullScreenApp {
             fetchExplorer(runtime);
             fetchUnreadReports(runtime);
             var level = explorerLevel.get();
-            if (level == null && explorerRefusal != null) {
+            var refusal = refusals.get().explorer();
+            if (level == null && refusal != null) {
                 level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(), List.of(), List.of(), List.of()),
-                                    false, explorerRefusal);
+                                    false, refusal);
             }
             if (level != null) {
                 var rows = level.rows(locale, clock);
@@ -429,7 +458,7 @@ public final class OverviewFullScreenApp {
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
+        var rootLevel = overviewLevel(projects);
         currentOverviewLevel.set(rootLevel);
         var rootRows = rootLevel.rows(locale, clock);
 
@@ -510,15 +539,36 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
             if (response.status() == 200) {
                 cachedNeedsOperator.set(NeedsOperatorPage.fromJson(response.bodyText()));
-                needsRefusal = null;
+                refuseNeeds(null);
                 return;
             }
-            needsRefusal = LoadRefusal.of(locale, response, NEEDS_LEVEL);
-        } catch (IOException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure, NEEDS_LEVEL);
+            refuseNeeds(LoadRefusal.of(locale, response, NEEDS_LEVEL));
+        } catch (IOException _) {
+            refuseNeeds(LoadRefusal.unreachable(locale, NEEDS_LEVEL));
         } catch (IllegalArgumentException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL);
+            refuseNeeds(LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL));
         }
+    }
+
+    private void refuseNeeds(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withNeeds(refusal));
+    }
+
+    private void refuseProjects(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withProjects(refusal));
+    }
+
+    private void refuseExplorer(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withExplorer(refusal));
+    }
+
+    /**
+     * @param projects the projects the overview shows
+     * @return the overview's root level with the refusals of its reads as they are now
+     */
+    private ProjectsOverviewLevel overviewLevel(List<ProjectSummary> projects) {
+        var current = refusals.get();
+        return new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), current.projects(), current.needs());
     }
 
     void fetchProjects(RuntimeClient runtime) {
@@ -526,14 +576,14 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
                 cachedProjects.set(ProjectOverviewResponse.fromJson(response.bodyText()));
-                projectsRefusal = null;
+                refuseProjects(null);
                 return;
             }
-            projectsRefusal = LoadRefusal.of(locale, response, PROJECTS_LEVEL);
-        } catch (IOException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure, PROJECTS_LEVEL);
+            refuseProjects(LoadRefusal.of(locale, response, PROJECTS_LEVEL));
+        } catch (IOException _) {
+            refuseProjects(LoadRefusal.unreachable(locale, PROJECTS_LEVEL));
         } catch (IllegalArgumentException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL);
+            refuseProjects(LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL));
         }
     }
 
@@ -541,34 +591,34 @@ public final class OverviewFullScreenApp {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                explorerRefusal = LoadRefusal.of(locale, response, EXPLORER_LEVEL);
-                keepExplorerRefusal();
+                keepExplorerRefusal(LoadRefusal.of(locale, response, EXPLORER_LEVEL));
                 return;
             }
             var explorer = ProjectExplorer.fromJson(response.bodyText());
             var current = explorerLevel.get();
             boolean byMostUsed = current != null && current.byMostUsed();
-            explorerRefusal = null;
+            refuseExplorer(null);
             explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
-        } catch (IOException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure, EXPLORER_LEVEL);
-            keepExplorerRefusal();
+        } catch (IOException _) {
+            keepExplorerRefusal(LoadRefusal.unreachable(locale, EXPLORER_LEVEL));
         } catch (IllegalArgumentException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL);
-            keepExplorerRefusal();
+            keepExplorerRefusal(LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL));
         }
     }
 
     /**
-     * Keeps the refusal on the level the sort toggle and a favourite reorder rebuild from: the row
-     * must not vanish while the read still fails.
+     * Records the refusal and keeps it on the level the sort toggle and a favourite reorder rebuild
+     * from: the row must not vanish while the read still fails.
+     *
+     * @param refusal the refusal of the explorer read
      */
-    private void keepExplorerRefusal() {
+    private void keepExplorerRefusal(LoadRefusal refusal) {
+        refuseExplorer(refusal);
         var current = explorerLevel.get();
         var explorer = current != null ? current.explorer()
                             : new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
         explorerLevel.set(new ProjectsExplorerLevel(explorer, current != null && current.byMostUsed(),
-                            explorerRefusal));
+                            refusal));
     }
 
     void fetchUnreadReports(RuntimeClient runtime) {
@@ -1688,7 +1738,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
+            var levelModel = overviewLevel(projects);
             currentOverviewLevel.set(levelModel);
             stack.refresh(levelModel.rows(locale, clock));
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
@@ -1718,7 +1768,7 @@ public final class OverviewFullScreenApp {
         }
         var level = explorerLevel.get();
         if (level != null) {
-            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), explorerRefusal);
+            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), refusals.get().explorer());
         }
         if (level != null) {
             var refreshed = level;
@@ -3002,8 +3052,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(),
-                                projectsRefusal, needsRefusal);
+            var levelModel = overviewLevel(projects);
             currentOverviewLevel.set(levelModel);
             stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
         }

@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,7 +20,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Attributes;
 import org.jline.terminal.impl.DumbTerminal;
 
 import org.junit.jupiter.api.DisplayName;
@@ -76,6 +79,46 @@ class SecretReaderTest {
         try (var terminal = terminal("abc\u0003")) {
             var writer = new PrintWriter(rendered, true);
             assertThrows(UserInterruptException.class, () -> SecretReader.read(terminal, writer, "en"));
+        }
+    }
+
+    @Test
+    @DisplayName("Ctrl+C on a terminal that turns it into a signal is read as a key and the echo comes back")
+    void ctrlCWithSignalsRestoresTheAttributes() throws Exception {
+        // Every set of attributes the reader gives the terminal, in order.
+        var applied = new ArrayList<Attributes>();
+        var input = new ByteArrayInputStream("abc\u0003".getBytes(StandardCharsets.UTF_8));
+        try (var terminal = new DumbTerminal(input, rendered) {
+            @Override
+            public void setAttributes(Attributes attributes) {
+                applied.add(new Attributes(attributes));
+                super.setAttributes(attributes);
+            }
+        }) {
+            // A real tty: the echo is on and Ctrl+C is the interrupt character that ISIG turns
+            // into a signal, which would end the JVM before the attributes are restored.
+            var tty = terminal.getAttributes();
+            tty.setLocalFlag(Attributes.LocalFlag.ISIG, true);
+            tty.setLocalFlag(Attributes.LocalFlag.ECHO, true);
+            tty.setLocalFlag(Attributes.LocalFlag.ICANON, true);
+            tty.setControlChar(Attributes.ControlChar.VINTR, 3);
+            terminal.setAttributes(tty);
+            var before = new Attributes(terminal.getAttributes());
+            applied.clear();
+            var writer = new PrintWriter(rendered, true);
+
+            assertThrows(UserInterruptException.class, () -> SecretReader.read(terminal, writer, "en"));
+
+            var after = terminal.getAttributes();
+            assertAll(
+                                () -> assertTrue(applied.stream().anyMatch(set -> !set.getLocalFlag(Attributes.LocalFlag.ECHO)
+                                                    && !set.getLocalFlag(Attributes.LocalFlag.ISIG)),
+                                                    "the secret is read with the echo and the signals off, so Ctrl+C is a key"),
+                                () -> assertEquals(before.getLocalFlags(), after.getLocalFlags(),
+                                                    "the echo and the signals are restored"),
+                                () -> assertEquals(before.getInputFlags(), after.getInputFlags()),
+                                () -> assertTrue(after.getLocalFlag(Attributes.LocalFlag.ECHO), "the echo is back")
+            );
         }
     }
 

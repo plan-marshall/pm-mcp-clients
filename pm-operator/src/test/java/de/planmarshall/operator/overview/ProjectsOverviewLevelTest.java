@@ -11,6 +11,7 @@ package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -58,6 +59,25 @@ class ProjectsOverviewLevelTest {
 
         var deLevel = ProjectsOverviewLevel.level("de");
         assertTrue(deLevel.title().contains("Laufende Arbeit"));
+    }
+
+    @Test
+    @DisplayName("two items of one kind and one link that belong to different work get distinct row ids")
+    void itemsOfOneKindAndLinkGetDistinctRowIds() {
+        var link = "/api/v1/plans/shared";
+        var first = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, link, null, null,
+                            new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
+        var second = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, link, null, null,
+                            new WorkLocation("plan-2", "Plan Two"), baseInstant.minusSeconds(30), "plan");
+        var level = new ProjectsOverviewLevel(List.of(),
+                            new NeedsOperatorPage(1, 1, false, false, 2, List.of(first, second)));
+
+        var firstId = ProjectsOverviewLevel.rowIdOf(first);
+        var secondId = ProjectsOverviewLevel.rowIdOf(second);
+
+        assertNotEquals(firstId, secondId, "two rows must never share an id");
+        assertEquals(first, level.needsItemOf(firstId));
+        assertEquals(second, level.needsItemOf(secondId));
     }
 
     @Test

@@ -779,8 +779,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** Whether the providers' later run verified them. */
     private boolean machineProvidersVerified;
 
-    /** The wire name of the operator channel, in the fixtures that report it. */
+    /** How many items of what waits one page of {@code GET /api/v1/machine/needs-operator} serves. */
     private static final int NEEDS_PAGE_SIZE = 20;
+
+    /** The wire name of the operator channel, in the fixtures that report it. */
     private static final String OPERATOR_FIELD = "operator";
 
     /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */

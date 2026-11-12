@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator.overview;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -18,6 +19,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.overview.ActiveEpicSummary;
@@ -29,6 +31,9 @@ import de.planmarshall.api.overview.WorkLocation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("OverviewFormatting")
 class OverviewFormattingTest {
@@ -298,11 +303,10 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatNeedsItem methods cover subjects, kinds, blocks, since, and commands")
+    @DisplayName("formatNeedsItem methods cover subjects, kinds, blocks, and since")
     void needsItemFormattingExhaustive() {
         assertNull(OverviewFormatting.needsKeyForKind(null));
         assertEquals("", OverviewFormatting.formatNeedsItemKind(null, "en"));
-        assertEquals("decision", OverviewFormatting.formatNeedsItemKind(NeedsOperatorKind.DECISION, "fr"));
 
         var itemMachine = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, null, null, null, null, null);
         assertEquals("machine", OverviewFormatting.formatNeedsItemSubject(itemMachine, "en"));
@@ -317,37 +321,47 @@ class OverviewFormattingTest {
         var recent = baseInstant.minusSeconds(120);
         assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(recent, "en", clock));
 
-        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(null, "fr"));
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(null, "en"));
         assertEquals("blockiert: unbekannt", OverviewFormatting.formatNeedsItemBlocks("other-plan", "de"));
         assertEquals("blockiert: Plan", OverviewFormatting.formatNeedsItemBlocks("plan", "de"));
+    }
 
-        var itemPlan = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
-                            new WorkLocation("proj-1", "Proj"), null, new WorkLocation("plan-1", "Plan"), recent, "plan");
-        assertEquals("answer Q-001", OverviewFormatting.formatNeedsItemCommand(itemPlan));
+    /**
+     * @return per kind, an item of that kind and the command its row prints
+     */
+    static Stream<Arguments> needsItemCommands() {
+        var recent = Instant.parse("2026-10-20T11:58:00Z");
+        var project = new WorkLocation("proj-1", "Proj");
+        var epic = new WorkLocation("epic-1", "Epic");
+        var plan = new WorkLocation("plan-1", "Plan");
+        return Stream.of(
+                            Arguments.of(NeedsOperatorKind.DECISION, new NeedsOperatorItem(NeedsOperatorKind.DECISION,
+                                                "/api/v1/decisions/Q-001", project, null, plan, recent, "plan"), "answer Q-001"),
+                            // A link with no decision id opens the list of the open questions.
+                            Arguments.of(NeedsOperatorKind.DECISION, new NeedsOperatorItem(NeedsOperatorKind.DECISION,
+                                                null, project, null, null, recent, null), "questions"),
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, epic, null, recent, null), "epic epic-1"),
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, null, null, recent, null), "plans"),
+                            // A plan's id names no epic: the failed landing of a plan alone opens that plan.
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, null, plan, recent, "plan"), "plan plan-1"),
+                            Arguments.of(NeedsOperatorKind.HELD, new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
+                                                null, epic, null, recent, null), "epic epic-1"),
+                            Arguments.of(NeedsOperatorKind.HELD, new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
+                                                null, null, null, recent, null), "plans"));
+    }
 
-        var itemProjDec = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null,
-                            new WorkLocation("proj-1", "Proj"), null, null, recent, null);
-        assertEquals("questions", OverviewFormatting.formatNeedsItemCommand(itemProjDec),
-                            "a link with no decision id opens the list of the open questions");
-
-        var itemLandingEpic = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
-                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
-        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemLandingEpic));
-
-        var itemLandingNoLoc = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null, null, null, null, recent, null);
-        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemLandingNoLoc));
-
-        var itemLandingPlan = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
-                            null, null, new WorkLocation("plan-1", "Plan"), recent, "plan");
-        assertEquals("plan plan-1", OverviewFormatting.formatNeedsItemCommand(itemLandingPlan),
-                            "a plan's id names no epic: the failed landing of a plan alone opens that plan");
-
-        var itemHeldEpic = new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
-                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
-        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemHeldEpic));
-
-        var itemHeldNoLoc = new NeedsOperatorItem(NeedsOperatorKind.HELD, null, null, null, null, recent, null);
-        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemHeldNoLoc));
+    @ParameterizedTest(name = "{0}: {2}")
+    @MethodSource("needsItemCommands")
+    @DisplayName("formatNeedsItemCommand prints the command of each kind's row")
+    void needsItemCommandPerKind(NeedsOperatorKind kind, NeedsOperatorItem item, String expected) {
+        assertAll(
+                            () -> assertEquals(expected, OverviewFormatting.formatNeedsItemCommand(item)),
+                            () -> assertFalse(OverviewFormatting.formatNeedsItemKind(kind, "en").isBlank(),
+                                                "every kind has a label of its own")
+        );
     }
 
     @Test

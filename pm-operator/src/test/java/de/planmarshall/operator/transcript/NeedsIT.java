@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.time.Duration;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.mock.StandardScenarios;
 
@@ -25,7 +24,8 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 /**
- * PTY tests for PLAN-36 D2: {@code !} on a waiting row opens its decision in {@code running-work}.
+ * PTY tests for PLAN-36 D2: {@code !} on a waiting row opens its decision in {@code running-work},
+ * from a project's level and from the overview's own group of what waits.
  */
 @DisplayName("pm-operator ! on waiting row opens decision on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -39,7 +39,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectByTitle(session, "Drop the legacy endpoints", null);
+            selectByTitle(session, "Drop the legacy endpoints");
 
             // Type ! on the waiting row: it must open the decision dialogue directly
             DialogueHarness.type(session, "!");
@@ -58,7 +58,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectByTitle(session, "Fix Relay Transport", null);
+            selectByTitle(session, "Fix Relay Transport");
 
             // Fix Relay Transport has no wait; pressing ! must jump to the next waiting row
             DialogueHarness.type(session, "!");
@@ -70,10 +70,29 @@ class NeedsIT {
         }
     }
 
-    private static void selectByTitle(PtySession session, String title, @Nullable String marker) throws Exception {
+    @Test
+    @DisplayName("! on an item of the overview's Needs you group runs what its row prints")
+    void exclamationOnTheOverviewOpensTheItem() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
+             var session = harness.open("plans")) {
+            // The overview itself, not a project's level: the group of what waits leads it.
+            awaitText(session, "Needs you");
+            selectByTitle(session, "Drop the legacy endpoints");
+
+            // ! on an item of the group runs the item's own command: the decision opens.
+            DialogueHarness.type(session, "!");
+            awaitText(session, "Delete the published v1 endpoints");
+
+            DialogueHarness.type(session, "q\n");
+            DialogueHarness.type(session, "q");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+        }
+    }
+
+    private static void selectByTitle(PtySession session, String title) throws Exception {
         for (int step = 0; step < 40; step++) {
             var line = selected(session);
-            if (line.contains(title) && (marker == null || line.contains(marker))) {
+            if (line.contains(title)) {
                 return;
             }
             var before = line;

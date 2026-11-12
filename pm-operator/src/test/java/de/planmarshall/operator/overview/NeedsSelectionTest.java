@@ -12,6 +12,7 @@ package de.planmarshall.operator.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,22 +49,14 @@ import org.junit.jupiter.api.io.TempDir;
 @DisplayName("What waits: the selection follows the item")
 class NeedsSelectionTest {
 
-    private static final String FIRST_PAGE = """
-                        {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
-                          {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
-                           "since":"2026-10-16T15:05:00Z","blocks":"plan"},
-                          {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
-                           "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
-                        """;
+    private static final String DECISIONS = "/api/v1/decisions/";
 
-    private static final String SECOND_PAGE = """
-                        {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[
-                          {"kind":"condition","link":"/api/v1/plans/plan-x","plan":{"id":"plan-x","title":"Plan X"},
-                           "since":"2026-10-16T15:00:00Z","blocks":"plan"},
-                          {"kind":"decision","link":"/api/v1/decisions/Q-001","plan":{"id":"plan-a","title":"Plan A"},
-                           "since":"2026-10-16T15:05:00Z","blocks":"plan"},
-                          {"kind":"decision","link":"/api/v1/decisions/Q-002","plan":{"id":"plan-b","title":"Plan B"},
-                           "since":"2026-10-16T15:06:00Z","blocks":"plan"}]}
+    private static final String ITEM = """
+                          {"kind":"%s","link":"%s","plan":{"id":"%s","title":"%s"},
+                           "since":"%s","blocks":"plan"}""";
+
+    private static final String PAGE = """
+                        {"page":1,"total_pages":2,"has_newer":false,"has_older":true,"total":3,"items":[%s]}
                         """;
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-16T16:00:00Z"), ZoneOffset.UTC);
@@ -74,10 +67,33 @@ class NeedsSelectionTest {
     private RuntimeFixture fixture;
     private DumbTerminal terminal;
 
+    /** The link of the first decision, served on both pages. */
+    private String firstLink;
+    /** The link of the decision the operator selects, served on both pages. */
+    private String chosenLink;
+    /** The title of the plan whose decision the operator selects. */
+    private String chosenTitle;
+    /** The page before an item arrives above the selection. */
+    private String firstPage;
+    /** The page after it arrived. */
+    private String secondPage;
+
     @BeforeEach
     void setUp() throws Exception {
         fixture = RuntimeFixture.create();
         writeLiveRecord();
+        var numbers = Generators.integers(100, 499);
+        firstLink = DECISIONS + "Q-" + numbers.next();
+        chosenLink = DECISIONS + "Q-" + (500 + numbers.next());
+        var firstTitle = "Plan " + Generators.letterStrings(4, 10).next();
+        chosenTitle = "Chosen " + Generators.letterStrings(4, 10).next();
+        var arrivedPlan = Generators.letterStrings(4, 10).next();
+        var first = ITEM.formatted("decision", firstLink, "plan-a", firstTitle, "2026-10-16T15:05:00Z");
+        var chosen = ITEM.formatted("decision", chosenLink, "plan-b", chosenTitle, "2026-10-16T15:06:00Z");
+        var arrived = ITEM.formatted("condition", "/api/v1/plans/" + arrivedPlan, arrivedPlan,
+                            "Arrived " + arrivedPlan, "2026-10-16T15:00:00Z");
+        firstPage = PAGE.formatted(first + "," + chosen);
+        secondPage = PAGE.formatted(arrived + "," + first + "," + chosen);
     }
 
     @AfterEach
@@ -93,7 +109,7 @@ class NeedsSelectionTest {
         var reads = new AtomicInteger();
         fixture.start((request, response) -> {
             if ("/api/v1/machine/needs-operator".equals(request.target())) {
-                response.json(200, reads.getAndIncrement() == 0 ? FIRST_PAGE : SECOND_PAGE);
+                response.json(200, reads.getAndIncrement() == 0 ? firstPage : secondPage);
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
                                     {"status":"ready","onboarded":true,"version":"0.9.0","needs_operator":{}}
@@ -112,7 +128,7 @@ class NeedsSelectionTest {
                             CLOCK, new OverviewStateStore(context.stateDirectory()), new ConsoleNoticeBuffer());
         app.loadInitialData(context.runtime(true));
 
-        var chosen = rowOf(app, "Plan B");
+        var chosen = rowOf(app, chosenTitle);
         app.stack().select(chosen);
         assertEquals(chosen, app.stack().selected().id());
 
@@ -124,17 +140,17 @@ class NeedsSelectionTest {
         assertEquals(chosen, selected.id(), "the selection follows the item, not its row");
         var item = app.selectedNeedsItem();
         assertNotNull(item, "! must still find what waits in the selected row");
-        assertEquals("/api/v1/decisions/Q-002", item.link());
+        assertEquals(chosenLink, item.link());
     }
 
     @Test
     @DisplayName("the row id is the item's identity, not its position")
     void rowIdIsTheIdentity() throws Exception {
-        var page = NeedsOperatorPage.fromJson(FIRST_PAGE);
+        var page = NeedsOperatorPage.fromJson(firstPage);
         var level = new ProjectsOverviewLevel(List.of(), page);
         var rows = level.rows("en", CLOCK);
-        assertEquals("/api/v1/decisions/Q-001", level.needsItemOf(rows.get(1).id()).link());
-        assertEquals("/api/v1/decisions/Q-002", level.needsItemOf(rows.get(2).id()).link());
+        assertEquals(firstLink, level.needsItemOf(rows.get(1).id()).link());
+        assertEquals(chosenLink, level.needsItemOf(rows.get(2).id()).link());
     }
 
     /**

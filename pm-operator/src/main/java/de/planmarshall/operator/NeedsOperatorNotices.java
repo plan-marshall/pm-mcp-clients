@@ -54,7 +54,8 @@ public final class NeedsOperatorNotices {
      *
      * @param kind  the kind the notice names
      * @param text  the rendered notice
-     * @param place the scope the notice names, empty for a due cleanup
+     * @param place the scope the notice names; for a due cleanup, which belongs to no place, the
+     *              catalogue's word for the machine ({@code common.kind.machine})
      */
     public record Notice(String kind, String text, String place) {
     }

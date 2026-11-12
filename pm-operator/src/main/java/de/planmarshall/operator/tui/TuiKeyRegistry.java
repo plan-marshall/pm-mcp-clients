@@ -372,6 +372,8 @@ public final class TuiKeyRegistry {
      * @param cells the cells, in the order they are kept
      * @param width the columns the footer may use
      * @param help  the help cell, which is always kept and never counted as a kept cell here
+     * @param more  the cell that stands for the keys left out, whose width is reserved beside the
+     *              help cell
      * @return the cells that fit before the help cell, in their order
      */
     private static List<String> keepCells(List<String> cells, int width, String help, String more) {
