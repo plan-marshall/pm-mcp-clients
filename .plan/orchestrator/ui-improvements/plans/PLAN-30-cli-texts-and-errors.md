@@ -49,6 +49,19 @@ Source of this plan (read before scoping):
      - `ExitCodesTest` checks success, refusal and usage error of every verb (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+5. **What the display layer left (from the landing of PLAN-123, folded 2026-11-11 on the operator's decision)**
+   - What: read `landings/PLAN-123.md` of the epic; lines are as read at `1bdfede6`.
+     - `QuestionsCommand`: the English literals `Waiver Requests · %d pending` (`:77`), `No open questions.` (`:86`), `waiver request:` (`:116`), the fallback `gate` (`:115`) and `waiting since` (`:172`) go into the catalogue; `printDecision` (`:133-139`) builds `decision.blocks.<wire>` / `decision.reversibility.<wire>` and reads them with `MessageCatalogue.get` in the default locale, which prints the raw key when one is missing: use the session's locale and the display rule for an unknown value.
+     - Unknown state words: `StatusCommand:469-473`, `ProjectWorkLevel:300-303` and `EpicCommand:387-396` each fall back to the raw landing state, and `PlanViewFormatting:162-168` to the raw task/job status; `Display.word` still throws on an unknown key (`Display.java:80-89`). One rule in `Display` for an unknown value (the `common.unknown` word, as `Display.title` does), used by all four sites; no raw token.
+     - `Display.gate`: `gateScope` (`Display.java:144-146`) turns `-` into a space, so `coverage:pm-api` shows `pm api`; keep a module name as written. An unknown gate kind prints the humanised wire token (`:132-136`): show it through the unknown rule.
+     - The lane's residue: the completion screen prints `terminalReason`/`outcome` and `deliverable.state()` raw (`PlanCompletionLevel:74,99,124`); the printed `plan report` is English (`PlanCommand:483-485`); `RolesCommand` reads the catalogue without a locale (`:173,251,279,409`). All through the catalogue in en and de.
+     - Tests: the German `d. MMM` of `WebCommand.formatPairedDate` (`:612-615`) and `CleanupCommand:342` has no test that fails on a revert: add one each.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A test per item fails before the change (evidence order: `test-first`); `git grep -n "MessageCatalogue.get(" -- pm-operator/src/main` names no call without a locale on a screen this plan touches (evidence order: `none`).
+
+Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
 
 ## Standing Constraints
 
@@ -118,6 +131,18 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/14-transcripts-decisions.adoc` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/QuestionsCommand.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/QuestionsCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/display/Display.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/display/DisplayTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/ProjectWorkLevel.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewFormatting.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanCompletionLevel.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/planview/PlanCompletionLevelTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RolesCommand.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WebDevicesCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
 
 ## Dependencies and Sequencing
 

@@ -271,6 +271,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   after D1–D3/D4): 41, 52, 55, 58, 59, 71, 75; PLAN-83 is folded into the D2 engine. Unparked by the merge of the named session
   and its implementation package, by the orchestrator, with a re-grounding of the spec.
 
+- Spec-authoring rules (operator 2026-11-11, from PLAN-130's lessons 002-005; apply to every spec staged or amended from now):
+  (1) when a spec says "file X stays unchanged" but the change invalidates an assertion in X, name the case that may be
+  replaced in the spec; (2) when a deliverable replaces existing tests by design, list them under "Tests to remove" so the
+  test-integrity check accepts them without an operator stop; (3) a criterion about how a mark or screen looks is evidenced
+  only by a rendered comparison (screenshot or rendered sheet), never by reading the source — plan the render; (4) never write a
+  deliverable criterion whose evidence exists only after the PR (Sonar count, CI result, review outcome): state it as a landing
+  obligation of the finalize steps instead. (5) (PLAN-132 lesson 014) never declare a design table read-only when a test
+  compares the message packs to it: a change of wording then has to change the table.
+
 ## Decisions
 
 - 2026-10-25 — Parallelization scope 3, stated by the operator in the invocation.
@@ -584,7 +593,41 @@ plan spec names the plan, proposal and finding documents it comes from.
   clause the finding's own evidence passes (the frame is German), so V-04 reads `pass` once #402 is in; PLAN-33's result
   file keeps its `fail` row as the record of the old wording.
 
+- 2026-11-11 — Operator (AskUserQuestion, four answers): #402 queued and merged (`5fc36ebf`); #405 merges once CodeRabbit
+  has reviewed one head (re-triggered once, 2026-11-11); the three open #408 threads replied (routed to PLAN-154 D5) and
+  resolved by the orchestrator; the D6 session is closed and its worktree and local branch removed; the D6 spec amendments
+  are done now: PLAN-52, 55, 58, 62, 135..137, 142..146 amended in the epic tree, the contract + mock step staged as
+  PLAN-159 (`contract-intent-delta`, WS-01, runbook) ahead of PLAN-145, and `doc/plans/plan-changes.adoc` reworded by
+  direct PR #413 (`skip-bot-review`).
+
+- 2026-11-11 — PLAN-130 landed (#414, `078b2ec5`; `landings/PLAN-130.md`): no blocker or major. Operator (AskUserQuestion):
+  the BrandMark size type, the `favicon.ts` comment, the S12 screenshot spec and the waiting mark's start-frame dot → PLAN-131
+  deliverable 6; the phone onboarding header without the icon → PLAN-64 (Done-when added); PLAN-147's S12 clause settled from
+  the PR body; the eight candidate lessons adopted and archived (spec-authoring rules in Queue annotations; Open Defects for the
+  plan-marshall-side three; the pm-web-app inventory mapping a direct-PR candidate). PLAN-159 took the freed slot.
+
+- 2026-11-11 — PLAN-132 landed (#409, `572dc739`; `landings/PLAN-132.md`): one MAJOR (the wire form of the chat's message
+  keys: the design says `chat.*`, the pm-api goldens send `control.chat.*`, 11 of them in no catalogue). Operator
+  (AskUserQuestion): PLAN-133 amended before it initialised — deliverable 0 settles the key form first, deliverable 6 the pm-api
+  and mock minors; `DecisionView`'s absent channel/device → PLAN-136; lessons adopted (rule 5) and archived. PLAN-133 was
+  emitted on the operator's word as a fifth plan beside N=4.
+
 ## Open Defects
+
+- PLAN-132 (2026-11-11): (a) runtime spec, owner plan-marshall-documentation: a machine-scope decision chat has a route
+  (`ChatRoutes.machineDecision`) but no event stream (`06-event-catalogue.adoc#chat-events` lists P, E, W, N only).
+  (b) owner plan-marshall, lessons 001-009: the pre-commit gate's whole-tree import rewrite swept unrelated files into the PR and
+  over the review bots' size cap (split out as #410); `kind=change` ledger rows keep pre-rebase SHAs and block 5-execute → 6-finalize
+  (`execute_commits_unrecorded`); the test-integrity audit counts a test split as `weakened_test`; Sonar new-code issues in new
+  tests surface only after the first push (two extra cycles); a quota refusal on a later head still escalates although one review
+  of the PR exists; `review_completeness trigger-bot` called with `--pr-number`; the build-server wait poll writes hundreds of
+  identical work-log lines (4775 entries), hiding the `architecture` and `manage-findings` script failures.
+
+- PLAN-130 lessons 006-008 (2026-11-11, owner plan-marshall): (a) an edit of a bot's walkthrough comment that was already
+  triaged is picked up again as a pending finding and held the #414 merge — key triage by comment id, treat an edit of a
+  summary as non-actionable; (b) `automatic-review:review_completeness` and (c) `manage-findings` calls exited non-zero on
+  argparse shapes copied from workflow prose (e.g. `qgate list` needs `--phase`) — the prose must quote the canonical
+  invocation. Also: `ci pr comments` reports `unresolved: 6` on #414 where GraphQL shows 3 of 3 threads resolved.
 
 - A lane merges with NO bot review (2026-11-10, PLAN-36 #391): CodeRabbit refused every trigger on quota and the
   runbook lane merged under its "standing review authorization", reporting "all review surfaces clear" — true only
@@ -650,10 +693,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-10: `rb-45-web-error-loading-pattern-001.md` (PLAN-45, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-10: `rb-84-cli-find-001.md` (PLAN-84) and `rb-123-cli-display-layer-residue-001.md` (PLAN-123), both
   opencode, `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-10: `rb-33-verify-cli-acts-005.md` (PLAN-33, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-11: `rb-129-web-reports-fifth-residue-001.md` (PLAN-129, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-11: `rb-123-cli-display-layer-residue-002.md` (PLAN-123, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-11: `rb-158-web-error-pattern-residue-001.md` (PLAN-158, opencode), `total_tokens` and `plugin_version` missing.
+- A lane writes `unresolved_review_threads=0` for a count its gate could not read (found at the PLAN-158 landing, 2026-11-11):
+  `runbook_lane review-gate` answered `undecidable_read` on #408 (it cannot parse CodeRabbit's informational "Files with no
+  reviewable changes" block), the operator merged despite it, and the landing claimed 0 unresolved threads while 3
+  CodeRabbit threads of a second review stood unanswered (`landings/PLAN-158.md`; the findings went to PLAN-154 D5). Owner:
+  plan-marshall (runbook lane: parse the block; write `unknown`, never `0`, for an unread count). Until fixed the orchestrator
+  counts open inline threads from `ci pr comments` at every landing.
 - The runbook lane cannot read its own mailbox (found at the PLAN-45 landing, 2026-11-10): `orchestrator inbox read --plan-id
   45-web-error-loading-pattern` is refused `invalid_target_plan` (the shared validator rejects a plan id that starts with a digit),
   and every lane plan id of this epic starts with its number. Delivery to a running lane plan is therefore unreadable by it. Owner:
-  plan-marshall (`plan-orchestrator` inbox id validation, or the lane's id form).
+  plan-marshall (`plan-orchestrator` inbox id validation, or the lane's id form). Recurrence 2026-11-11: PLAN-129's lane read with the `rb-` id on the operator's word; PLAN-158's lane read
+  `no_mailbox` while `inbox/to/rb-158-web-error-pattern-residue/` held a delivered advisory — the operator re-sent the exact
+  read command. Until fixed, a delivery to a lane plan is followed by a paste naming the `rb-` id.
 - `runbook_lane sonar-facts` refuses `--rules none` beside a confirmed zero (`confirmed_zero_with_rules`), although the skill says
   `--rules` is `none` at a measured `0` (found by PLAN-45, 2026-11-10). Owner: plan-marshall (runbook lane).
 - Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
@@ -690,6 +745,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   (4) 2026-11-10 `rb-33-verify-cli-acts-004` (`CLI-UC-V-04` German clause): operator ruled "exempt runtime text"; the clause
   and `CLI-CC-V-01` reworded by direct PR #402 (see Decisions); V-04 passes under the new wording. Retire this watch at the
   PLAN-33 landing once #402 is merged. PLAN-33's PR is #398 (open).
+  → PLAN-33 LANDED 2026-11-10 (#398, `344515f9`): see `landings/PLAN-33.md`. The verdict corrections (V-06 stale check,
+  UC-ONB-2 not verified, four `conforms` → `partial`, Totals 4/19/0/0/14) ride PR #402 (operator); the accept-edit gap is
+  folded into PLAN-127. Retire this watch when #402 is merged.
+  → RETIRED 2026-11-11: #402 merged `5fc36ebf` (operator's word).
 - PLAN-45 landed (PR #399, `9fb2e7fa`, analysed 2026-11-10); see `landings/PLAN-45.md`. Error pattern on every load path,
   15 s / 30 s client limit, closed client code set, ReportsView refresh keeps the list; Sonar 0 (gate OK, coverage 100 %);
   merge rule met (CodeRabbit reviewed `6c1c634e`, 6/6 handled). Browser clauses of D1–D3 unmet (reduced matrix). Three-layer:
@@ -703,12 +762,38 @@ plan spec names the plan, proposal and finding documents it comes from.
   of some head (re-trigger once; quota refusal = ask the operator), then the operator's merge word; then the full landing
   analysis (three-layer leaf) on the merge commit. Residue named by the lane: printed `plan report` hard-coded English;
   `RolesCommand` English-only; mailbox unreadable (Open Defect). PLAN-126 and PLAN-32 still wait for this merge.
+  → PLAN-123 LANDED 2026-11-11 (#404, `1bdfede6`): see `landings/PLAN-123.md`; residue folded into PLAN-30 D5 and PLAN-126 D2.
 - PLAN-84 landed (PR #397, `1b938f37`, analysed 2026-11-10); see `landings/PLAN-84.md`. `find` verb and console `/`; Sonar 0
   (gate OK, 92.4 %); merge rule met (CodeRabbit reviewed a head). The lane's self-review ran AFTER the merge; its fixes are in
   FOLLOW-UP PR #405 (`fix/84-find-kind-words`, open, no CodeRabbit review: 3 rate-limit refusals) — owed: one CodeRabbit
   review, then the operator's merge word. Three-layer: likely-major shell-path terminal (view opened without the lease;
   needs a PTY run) + minors → operator: folded into PLAN-126 as deliverable 5 (surface +5). Retire this watch when #405 is
   merged.
+- PLAN-141 (D6) DECISIONS TAKEN, PR #403 OPEN AT DRAFT (`plan-141-001.md`, 2026-11-10, drained as observed; row stays
+  `running`): head `207b62f0`, 13 design documents, CI green, links clean. Q1 plan tabs Process/Intent/Changes; Q2 epic tabs
+  Plans/Intent/Landings/Reviews/Events; Q3 `plan-view-interaction.adoc` rewritten (`file=` with Changes replaces #400's
+  `changes=open`); Q4 verdicts as `StatusLabel` `state.criterion.*`/`state.check.*`, new `intent-and-outline-texts.adoc`,
+  chart on the project setup tab, the client contract GROWS (pm-mcp-core's intent record carries ADR relation, evidence,
+  `NG-n`, `role`, `not_run` reason — the spec's hypothesis was refuted); Q5 no interim side slot, `side` on TriagePage and
+  WizardPage only; Q6 remembered place without the mode, fill only on unmarked load / rail click; Q7 PLAN-85's decision
+  stands (This browser holds theme, language, dictation). Operator 2026-11-10: the orchestrator reviewed #403 (one
+  read-only leaf: 3 blockers, 6 majors, minors, all re-read) and, on the operator's word, fixed them on the branch
+  (`e4109c2e`: README plan-tree and fill rules, Changes text per client, area `intent` registered, head counts from the
+  verdict words, German `Deliverable`, chart read-only on the project's setup tab by its resource, the terminal shows no
+  chart; 75 intent/state keys) and set the 12 documents AGREED (`721afd68`), pushed. CodeRabbit then REVIEWED `721afd68`
+  (merge rule met): 5 minor inline findings fixed in `87288908` (glossary Outline/Role, "can flag", What waits as
+  `/?lens=waits` on the operator's choice, a task address's `chat=open` is the plan's chat, selecting a part ends follow
+  mode), threads replied and resolved; the additional comment (absent proposal in `OverSizeDistributionResource`) fixed in
+  `cc00f135` and answered on the PR. Merge waits for the operator's word (branch behind main; the queue updates it). Not changed (reported): the plan ids PLAN-142..144/135..137 in `navigation.adoc:393`. OWED AT THE D6 LANDING (orchestrator, spec
+  amendments): `doc/plans/plan-changes.adoc` address `?tab=changes&file=` (repo doc: a direct change); PLAN-55 (tab set),
+  PLAN-58 (tab set), PLAN-62 (`node=` with Process only), PLAN-52 (rail rule holds), PLAN-135..137 (no interim slot; wait
+  for 142, 143), PLAN-142 (side props on TriagePage/WizardPage), PLAN-143 (history.state mark, two entry points), PLAN-144
+  (lens segment and Up push the unfilled list), PLAN-145 (verdict tag, texts, `NG-n`, `role`; a contract + mock step
+  before it — stage or fold), PLAN-146 (chart on PLAN-59's setup tab).
+  → DONE 2026-11-11 (see Decisions): amendments made, PLAN-159 staged, #413 open. Open questions recorded in the
+  specs as HYPOTHESES: the engine allows 0 non-goals on the light lane while the client and design ask one or more
+  (PLAN-159); the over_size route carries one role and no role parameter, the design one chart per role (PLAN-146,
+  PLAN-159); the builder reason's wire name `reason` and an omitted `proposed_multiple` (no daemon route spec yet).
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE

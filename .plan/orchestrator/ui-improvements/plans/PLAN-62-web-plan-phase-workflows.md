@@ -116,7 +116,7 @@ sole sanctioned write mechanism are stated in
 
 Source: `doc/design/shared/plan-view.adoc` (#levels, #states, #kinds, #leaf, #position, #tokens), `doc/design/web-app/navigation.adoc` (#levels, #url, #keys), `doc/design/web-app/components.adoc#fixed-places`, `doc/design/web-app/components-tags.adoc#phase-label`, `doc/design/shared/intent-and-outline.adoc#web`. HEAD 1cc0e10e. Deliverable 3 is done or dropped and deliverable 2 loses its Intent part, so two deliverables remain.
 
-1. **The phase tree as the plan's list column.** Rows: icon, name without the kind, state word, time (a node shows "init" with the phase icon, `PhaseLabel`/`StatusLabel`); an expander only for a node with children; a phase expands to its steps taken, not taken (muted, with the reason) and sub-workflows from the instance diagram the server draws; a node is selected by `node={path}` (a replace) and a task opens as its own level; "Jump to now" is an `IconButton` in the tree head (today a text button, `PlanView.svelte:683-687`); plain arrows move within the tree, `Ctrl+←/→` between columns.
+1. **The phase tree in the Process tab and as the plan's list column** (D6: the tree stands in the _Process_ tab of the plan's object column and is the plan's list column only while a task is open; see `## D6 Merged 2026-11-11 (Amendment)`). Rows: icon, name without the kind, state word, time (a node shows "init" with the phase icon, `PhaseLabel`/`StatusLabel`); an expander only for a node with children; a phase expands to its steps taken, not taken (muted, with the reason) and sub-workflows from the instance diagram the server draws; a node is selected by `node={path}` (a replace) and a task opens as its own level; "Jump to now" is an `IconButton` in the tree head (today a text button, `PlanView.svelte:683-687`); plain arrows move within the tree, `Ctrl+←/→` between columns.
    - Done when: `plan-view.spec.js` on `process.phase.*`: taken and not-taken steps, a leaf has no expander, tree rows without the kind in the name, "Jump to now" scrolls to the running node, the address carries `node=` (evidence order: `test-first`); the browser check on `running-work` → `process.phase.*`, `process.pruned-lane` (evidence order: `none`).
 2. **Phase narrative.** A phase without task activity shows outcome, duration, loop count, and for outline and refine a link to the Intent tab. (The Intent tab content is the web intent and outline package's.)
    - Done when: a `NodeNarrative` test shows the three facts; the link opens the Intent tab (evidence order: `test-first`); the open-issue read at the head (evidence order: `none`).
@@ -130,3 +130,32 @@ Dependencies: `PLAN-55` (same view; runs after it), D1 foundation (PhaseLabel, S
 New claim bullets:
 
 New claims of this re-grounding are in `## Claim Labels`.
+
+## D6 Merged 2026-11-11 (Amendment)
+
+Source: the D6 design session `PLAN-141`, merged as #403 (`8568b56e`, 2026-11-10); answers Q1 and Q3 of
+`landings/PLAN-141-findings.md` § Answers. Documents read on `main` at `4a84f727`: `doc/design/web-app/plan-view-interaction.adoc`
+(#layout :14-40, #selection :42-68, #defaults :70-75, #node-narrative :77-87, #addresses :122-129),
+`doc/design/web-app/navigation.adoc` (#url :178-222, the row "A node of the plan's phase tree"; #rely, the row of `PLAN-62`),
+`doc/design/shared/plan-view.adoc#tabs`. The D6 wait is over; these supersede any text above that differs.
+
+- **Where the tree stands.** The tree and the selected node's narrative stand inside the plan's _Process_ tab (the tab, its layout —
+  side by side from an object column of `720 px`, tree `280`–`360 px` — and the tab switch are `PLAN-55`'s). While a task of the plan is
+  open as the next level, the plan is a list column whose list is this tree. This plan's rows, expanders, narrative and "Jump to now"
+  serve both forms.
+- **`node=` only with Process.** `node={path}` is written by a replace only while the Process tab is shown, never with Intent or
+  Changes and never on a task's address; the follow mode writes no node.
+- **A tab switch drops the key, the selection stays in memory.** Switching away from Process replaces the address without `node=`;
+  the view keeps the selected node in memory while the plan stays open, so going back to Process shows it again and writes `node=`
+  again. (The switch itself is `PLAN-55`'s; this plan keeps the tree's selection in a state that survives it.)
+- **Selecting a part in the list column closes the task**: a push of the plan's address with the part's `node=` and without
+  `follow=on` (the selection ends the follow mode); the task's level unsubscribes from `subscribeTaskActivity`
+  (`plan-view-interaction.adoc#selection` :67).
+- **The narrative's link to the Intent tab**: for `refine` and `outline` the link is _Intent_ (`intent.tab.title`, area `intent`), a
+  replace to `tab=intent` that drops `node=` (deliverable 2).
+- Done when (added to deliverable 1): `PlanView.test.ts` or `processNode.test.ts`: `node=` absent from the address on Intent and
+  Changes and restored on the return to Process; a part selected in the list column pushes `node=` without `follow=on` and closes the
+  task (evidence order: `test-first`).
+
+Dependencies added: `PLAN-143` (the one address writer, `node=`), `PLAN-145` (the catalogue area `intent` for `intent.tab.title`).
+Expected Surface: unchanged.

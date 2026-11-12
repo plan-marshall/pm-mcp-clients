@@ -128,6 +128,30 @@ final class IntentJson {
     }
 
     /**
+     * Reads an optional string member that keeps its value as it stands. A member absent or
+     * {@code null} yields {@code null}; a member of another type is refused. Unlike
+     * {@link #optionalText(Map, String, String)} a blank value is returned as it is, so the
+     * record's own rule decides whether a blank is a value it refuses.
+     *
+     * @param object the object
+     * @param key    the member name
+     * @param type   the record's type name for the refusal
+     * @return the value, or {@code null}
+     * @throws IOException if the member is present and not a string
+     */
+    static @Nullable String optionalRawText(Map<String, Object> object, String key, String type)
+            throws IOException {
+        var value = object.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String text)) {
+            throw new JsonFormatException("Not a string for " + key + " in " + type);
+        }
+        return text;
+    }
+
+    /**
      * Reads a required integral number within the given bounds.
      *
      * @param object  the object
@@ -195,6 +219,39 @@ final class IntentJson {
             throw new JsonFormatException("Not a finite number for " + key + " in " + type);
         }
         return number;
+    }
+
+    /**
+     * Reads an optional finite floating-point number. A member absent or {@code null} yields
+     * {@code null}; a member that is not a finite number is refused.
+     *
+     * @param object the object
+     * @param key    the member name
+     * @param type   the record's type name for the refusal
+     * @return the value, or {@code null}
+     * @throws IOException if the member is present and not a finite number
+     */
+    static @Nullable Double optionalDouble(Map<String, Object> object, String key, String type)
+            throws IOException {
+        if (!object.containsKey(key) || object.get(key) == null) {
+            return null;
+        }
+        return requireDouble(object, key, type);
+    }
+
+    /**
+     * Reads an optional object member. A member absent or {@code null} yields {@code null}; a
+     * member of another type is refused.
+     *
+     * @param object the object
+     * @param key    the member name
+     * @param type   the record's type name for the refusal
+     * @return the object map, or {@code null}
+     * @throws IOException if the member is present and not an object
+     */
+    static @Nullable Map<String, Object> optionalObject(Map<String, Object> object, String key, String type)
+            throws IOException {
+        return JsonTree.objectOrNull(object, key, type);
     }
 
     /**

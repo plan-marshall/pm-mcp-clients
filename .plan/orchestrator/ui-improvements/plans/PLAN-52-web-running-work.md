@@ -120,7 +120,7 @@ sole sanctioned write mechanism are stated in
 
 Source: `doc/design/shared/plan-overview.adoc` (#levels, #project-row, #item-rows, #ended, #persistence), `doc/design/web-app/navigation.adoc` (#levels, #url, #kinds), `doc/design/web-app/components.adoc` (#row-link, #row-menu), `doc/design/web-app/components-tags.adoc#tag-places`, `doc/design/web-app/chat.adoc#everywhere`. HEAD 1cc0e10e.
 
-1. **Running work as the lens.** `OverviewView.svelte` becomes the Running work lens on the column engine: the projects with running work as the list column, then the project's work; by plan / by epic, running / ended and follow are modes of the address (`group=epic`, `mode=ended`, `follow=on`, `?project={id}`); a bare `/overview` is filled from the remembered place by the engine. Each row is a `RowLink` in the slots of every row (`KindMark`, title, `StatusLabel`, `PhaseLabel`, `ReasonBadge`, since, progress) with its acts in a `RowMenu`.
+1. **Running work as the lens.** `OverviewView.svelte` becomes the Running work lens on the column engine: the projects with running work as the list column, then the project's work; by plan / by epic, running / ended and follow are modes of the address (`group=epic`, `mode=ended`, `follow=on`, `?project={id}`); a bare `/overview` is filled from the remembered place by the engine only at the two entry points D6 settled (a load without the app's mark in `history.state`, and a click on Running work), never the mode (see `## D6 Merged 2026-11-11 (Amendment)`). Each row is a `RowLink` in the slots of every row (`KindMark`, title, `StatusLabel`, `PhaseLabel`, `ReasonBadge`, since, progress) with its acts in a `RowMenu`.
    - Done when: `overview.spec.js` on `running-work` → `overview.running`: the columns align at 1440 px, the row menu is an icon button, by plan and by epic hold the same plans (evidence order: `test-first`); the browser check on `fully-onboarded` and `running-work` (evidence order: `none`).
 2. **One list, one count.** Unchanged: by plan and by epic render from one list; head counts are `$derived` from the rendered rows or say "showing n of m".
    - Done when: a unit test asserts both groupings hold the same plans and the epic head count equals its rows (evidence order: `test-first`).
@@ -129,7 +129,7 @@ Source: `doc/design/shared/plan-overview.adoc` (#levels, #project-row, #item-row
 4. **Chat about ended work.** The row's _Chat_ and the ended plan's chat open the D4 `Chat` side column, read-only, with a working composer; its one proposal is a follow-up plan.
    - Done when: `overview.spec.js` opens it from a row (evidence order: `test-first`).
 
-Removed or replaced: the filter chip row (the project list column replaces the sidebar); the sortable `DataTable` tab of ended work; the background-jobs block in the page head; "the rail item always opens running work" (conflicts with `plan-overview.adoc#persistence`; the operator decides, default: dropped); the start-page toggle (never reintroduced, `PLAN-110`).
+Removed or replaced: the filter chip row (the project list column replaces the sidebar); the sortable `DataTable` tab of ended work; the background-jobs block in the page head; the start-page toggle (never reintroduced, `PLAN-110`). Not removed: "the rail item always opens running work" — this re-grounding had dropped it as conflicting with `plan-overview.adoc#persistence`; D6 (Q6) changed that document so the clause holds (see `## D6 Merged 2026-11-11 (Amendment)`).
 
 Implements: `doc/design/shared/plan-overview.adoc` § Two Levels, A Project, Ended Work, Where the Operator Left It; `doc/design/web-app/navigation.adoc` § Levels as Columns, Addresses and History.
 
@@ -143,5 +143,33 @@ New claims of this re-grounding are in `## Claim Labels`.
 
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
-- **Rail item (G7):** the design wins: a bare `/overview` is filled from the remembered place (`navigation.adoc#url`, `plan-overview.adoc#persistence`); the clause "the rail item opens running work after ended work was open" is dropped.
+- **Rail item (G7):** the design wins: a bare `/overview` is filled from the remembered place (`navigation.adoc#url`, `plan-overview.adoc#persistence`); the clause "the rail item opens running work after ended work was open" is dropped. *Superseded 2026-11-11 by D6 (Q6, merged #403, `8568b56e`):* the design now says the remembered place never holds the mode, so the rail opens running work — the clause holds again; see the amendment below.
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## D6 Merged 2026-11-11 (Amendment)
+
+Source: the D6 design session `PLAN-141`, merged as #403 (`8568b56e`, 2026-11-10); answer Q6 of
+`landings/PLAN-141-findings.md` § Answers. Documents read on `main` at `4a84f727`: `doc/design/shared/plan-overview.adoc#persistence`
+(:161-171), `doc/design/web-app/navigation.adoc` (#up :169-176, #url :178-222, #rely: the row of `PLAN-52`),
+`doc/design/web-app/README.adoc` (the `/overview` route row, :449). These supersede any text above that differs, including the G7
+bullet of `## Operator Decisions 2026-11-10`.
+
+- **The rail opens running work.** The remembered place holds the project, the grouping (by plan, by epic) and the selected plan or
+  epic — never the mode (running or ended) and never the follow mode. A click on Running work (the rail's, or the bottom bar's on a
+  phone) therefore always opens running work, also after ended work was open. The clause of the original deliverable 3 holds.
+- **The ended section is not restored.** `OverviewView.svelte` restores the ended section from `pm_overview_show_ended` and
+  `pm_overview_ended_page` (`:216-218`, written `:352-353,363-364` at `4a84f727`): that is the mode, which the place never holds. With
+  `mode=ended` in the address (deliverable 3) those two keys go; `pm_overview_selected_project` and `pm_overview_view_mode` stay the
+  place's, read and written through `PLAN-143`'s `rememberedPlace` store.
+- **Where the place fills, and where it does not.** The fill is `PLAN-143`'s and applies only at a load without the app's mark in
+  `history.state` (a typed address, a bookmark, a new tab) at `/` or the bare `/overview`, by a replace, and at a click on Running work,
+  by a push of the filled address. Up and the breadcrumb's lens segment push the lens's own list with nothing selected (`PLAN-144`),
+  and a reload of that entry stays unfilled. This view renders what the address names and never fills a bare `/overview` itself.
+- **Fall-backs.** A remembered plan that has ended falls back to its project; a project that no longer has running work falls back to
+  the list of projects.
+- Done when (added to deliverable 1 and 3): `overview.spec.js`: after ended work was open, the rail item opens running work; a reload
+  of the unfilled `/overview` stays unfilled; `OverviewView.test.ts`: no read or write of `pm_overview_show_ended` or
+  `pm_overview_ended_page` remains (evidence order: `test-first`).
+
+Dependencies added: `PLAN-143` (the remembered place, its entry points, the app's mark), `PLAN-144` (Up and the lens segment).
+Expected Surface: unchanged.

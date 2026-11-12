@@ -133,3 +133,13 @@ sole sanctioned write mechanism are stated in
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **`entry.lan-open`:** no web screen; every `entry.*` state lands on the missing-screen fallback with the terminal command (deliverable 2). Former deliverable 3 stays removed.
+
+## PLAN-130 Landing Residue (Amendment 2026-11-11)
+
+Routed here by the operator (AskUserQuestion, 2026-11-11) from `landings/PLAN-130.md`. `onboarding.adoc:43` asks for the brand icon at
+`28` px beside the wordmark in the onboarding header. At `078b2ec5` the only header carrying it is the rail head
+(`NavRail.svelte:91,98`), and the rail is hidden below `768` px (`NavRail.svelte:440`); no top bar or view draws `BrandMark`, so a
+phone shows the onboarding without the icon.
+
+- Done when (added): the onboarding header shows `BrandMark` (colour, `28` px) beside the wordmark below `768` px as well, with one
+  mark per screen; a component or e2e test at a phone width fails when the mark is missing.

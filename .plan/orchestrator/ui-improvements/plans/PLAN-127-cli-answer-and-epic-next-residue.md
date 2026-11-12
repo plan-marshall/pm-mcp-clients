@@ -55,6 +55,9 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
      `AnswerRefusalTest`, `AnswerSanitizationTest`, `AnswerDialogueIT`.
    - `AnswerDialogueIT.waiverAnswers` (`:102-118`, PLAN-33 finding 3, CLI-CC-V-06) covers only `y`: add `q` first (nothing sent) and an
      unknown input (re-asked, nothing sent) on `WR-2`.
+   - `AcceptEditDialogueIT` (2 tests, PLAN-33 result for CLI-CC-V-06, `verify-cli-acts.adoc` at `344515f9`) has no `q`-first case:
+     add `q` first (nothing sent, `/mock/acts` empty) and an unknown input (re-asked, nothing sent), so every dialogue that acts
+     has the three PTY cases.
    - The mock README (`pm-mock-runtime/README.adoc:137`) documents the `recordActBodies` flag PLAN-124 added.
  - Persona: plan-marshall:persona-module-tester
  - Skills: pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing, pm-dev-java:java-security
@@ -154,6 +157,7 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/EpicCommandTest.java` — present at `1cc0e10e`
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java` — present at `1cc0e10e`
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/AnswerDialogueIT.java` — present at `1cc0e10e`
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/AcceptEditDialogueIT.java` — present at `344515f9` (accept-edit gap of CLI-CC-V-06, folded 2026-11-10)
 - OBSERVED: `pm-mock-runtime/README.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/19-actions.adoc` — present at `1cc0e10e` (only if OPEN DECISION 6 softens the sentence)
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-127.txt` — absent; created by this plan
