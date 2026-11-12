@@ -1213,7 +1213,7 @@ public final class ConfigCommand implements Callable<Integer> {
             int idx = 1;
             for (var candidate : DocumentsMode.values()) {
                 var name = MessageCatalogue.format(locale,
-                                    "onboard.settings.documents." + candidate.wireValue(), Map.of());
+                                    DOCUMENTS_TEXT_PREFIX + candidate.wireValue(), Map.of());
                 var text = MessageCatalogue.format(locale,
                                     "onboard.settings.documents." + candidate.wireValue() + "_text", Map.of());
                 out.println("  " + idx++ + ") " + name + "            " + text

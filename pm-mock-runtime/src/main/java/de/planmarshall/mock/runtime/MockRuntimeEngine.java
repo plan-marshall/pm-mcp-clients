@@ -2780,7 +2780,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var currentDigest = existing.levels().getFirst().digest();
             if (currentDigest != null && !currentDigest.isBlank() && !currentDigest.equals(bodyDigest)) {
                 response.json(409, Map.of(KEY_ERROR, ERR_CONFLICT, KEY_MESSAGE,
-                        unit + " changed since the comparison", "current", existing.toMap()));
+                        unit + " changed since the comparison", KEY_CURRENT, existing.toMap()));
                 return;
             }
         }
