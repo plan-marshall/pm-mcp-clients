@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -427,6 +428,27 @@ class ScenarioLoaderTest {
         assertEquals("chat_failures[0]", ex.field());
     }
 
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(StateDefinition.ChatFailure.Kind.class)
+    @DisplayName("refuses a chat failure whose code is present but not a string, for every kind, naming the entry")
+    void rejectsNonStringChatFailureCode(StateDefinition.ChatFailure.Kind kind) {
+        var status = kind == StateDefinition.ChatFailure.Kind.HTTP_ERROR
+                ? ",\"status\":" + Generators.integers(400, 599).next()
+                : "";
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":[
+                  {"failure":"%s"%s,"code":%d}]}}}
+                """.formatted(kind.wireValue(), status, Generators.integers(1, 999).next());
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "non-string-code.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+        assertTrue(ex.getMessage().contains("code is a string"), ex.getMessage());
+    }
+
     @Test
     @DisplayName("refuses chat_failures that are not an array")
     void rejectsChatFailuresNotAnArray() {
@@ -486,6 +508,20 @@ class ScenarioLoaderTest {
                 """.formatted(chatId, turnId, target));
 
         var events = Objects.requireNonNull(ScenarioLoader.load(json, "chat-event.json").state("a")).events();
+
+        assertEquals(1, events.size());
+        assertEquals("chat.turn.progress", events.getFirst().event());
+    }
+
+    @Test
+    @DisplayName("loads a chat event whose message key takes an argument object with a member named key")
+    void loadsChatEventWithKeyNamedArgument() {
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"chat.step.read","args":{"detail":{"key":"%s"}}}
+                """.formatted(lowerLetters(), lowerLetters(), lowerLetters()));
+
+        var events = Objects.requireNonNull(ScenarioLoader.load(json, "key-named-argument.json").state("a"))
+                .events();
 
         assertEquals(1, events.size());
         assertEquals("chat.turn.progress", events.getFirst().event());

@@ -75,11 +75,14 @@ public class ScenarioLoader {
     /** Default classpath directory for scenario files. */
     public static final String SCENARIOS_RESOURCE_DIR = "scenarios/";
 
+    /** The member of a state and of a route that holds its representation. */
+    private static final String FIELD_REPRESENTATION = "representation";
+
     private static final Set<String> ROOT_FIELDS = Set.of(
             "format_version", "name", "description", "start", "pairing_code", "routes", "states");
     private static final Set<String> STATE_FIELDS = Set.of(
-            "representation", "links", "events", "auto", "chat_failures");
-    private static final Set<String> ROUTE_FIELDS = Set.of("status", "representation", "headers");
+            FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
+    private static final Set<String> ROUTE_FIELDS = Set.of("status", FIELD_REPRESENTATION, "headers");
     private static final Set<String> LINK_FIELDS = Set.of(
             "method", "href", "status", "next", "delay_ms", "error");
     private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
@@ -264,9 +267,9 @@ public class ScenarioLoader {
             @SuppressWarnings("unchecked")
             var typedRoute = (Map<String, Object>) routeMap;
             rejectUnknownFields(typedRoute, ROUTE_FIELDS, scenario, null, "routes." + routeKey);
-            var rep = routeMap.get("representation");
+            var rep = routeMap.get(FIELD_REPRESENTATION);
             if (!(rep instanceof Map<?, ?>) && !(rep instanceof List<?>)) {
-                throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
+                throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                         "route representation must be a JSON object or a list");
             }
             var status = asInt(routeMap.get("status"), 200);
@@ -291,9 +294,9 @@ public class ScenarioLoader {
             rejectUnknownFields(stateMap, STATE_FIELDS, scenario, stateId, "");
 
             // representation
-            var representation = stateMap.get("representation");
+            var representation = stateMap.get(FIELD_REPRESENTATION);
             if (!(representation instanceof Map<?, ?>)) {
-                throw new ScenarioValidationException(scenario, stateId, "representation",
+                throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
                         "state representation must be a JSON object");
             }
 
@@ -366,7 +369,7 @@ public class ScenarioLoader {
             List<EventDefinition> events, String scenario, String stateId) {
         var representationMap = JsonTree.asObject(representation);
         if (representationMap == null) {
-            throw new ScenarioValidationException(scenario, stateId, "representation",
+            throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
                     "the representation must be an operator state object");
         }
         var stateMap = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_STATE));
@@ -379,7 +382,7 @@ public class ScenarioLoader {
         try {
             state = OperatorStateResource.fromMap(representationMap);
         } catch (IOException e) {
-            throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
+            throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION, e.getMessage());
         }
 
         var facts = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_FACTS));
@@ -493,14 +496,21 @@ public class ScenarioLoader {
     }
 
     /**
-     * Collects every message key of a payload, a {@code key} member of any object in it, that
-     * {@link ChatMessageKeys} does not map.
+     * Collects every message key of a payload, the {@code key} member of a message text anywhere in it,
+     * that {@link ChatMessageKeys} does not map. The arguments of a message text are values, not message
+     * texts: an object among them with a member named {@code key} is not read as another message key.
      */
     private static void collectUnmappedKeys(@Nullable Object value, List<String> unmapped) {
-        if (value instanceof Map<?, ?> map) {
-            if (map.get(MessageText.FIELD_KEY) instanceof String key && !ChatMessageKeys.maps(key)) {
+        if (value instanceof Map<?, ?> map && map.get(MessageText.FIELD_KEY) instanceof String key) {
+            if (!ChatMessageKeys.maps(key)) {
                 unmapped.add(key);
             }
+            map.forEach((name, member) -> {
+                if (!MessageText.FIELD_ARGS.equals(name)) {
+                    collectUnmappedKeys(member, unmapped);
+                }
+            });
+        } else if (value instanceof Map<?, ?> map) {
             map.values().forEach(member -> collectUnmappedKeys(member, unmapped));
         } else if (value instanceof List<?> list) {
             list.forEach(member -> collectUnmappedKeys(member, unmapped));
@@ -678,7 +688,7 @@ public class ScenarioLoader {
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException e) {
-            throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
+            throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                     "representation does not decode with the pm-api codec: " + e.getMessage());
         }
     }

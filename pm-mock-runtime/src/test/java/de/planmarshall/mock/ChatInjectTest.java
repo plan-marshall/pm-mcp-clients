@@ -260,6 +260,25 @@ class ChatInjectTest {
             }
         }
 
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(ChatFailure.Kind.class)
+        @DisplayName("refuses a failure whose code is present but not a string, for every kind, arming nothing")
+        void refusesNonStringCode(ChatFailure.Kind kind) throws Exception {
+            var status = kind == ChatFailure.Kind.HTTP_ERROR
+                    ? ",\"status\":" + Generators.integers(400, 599).next()
+                    : "";
+            try (var runtime = start()) {
+                var refused = inject(runtime, "{\"failure\":\"" + kind.wireValue() + "\"" + status + ",\"code\":"
+                        + Generators.integers(1, 999).next() + "}");
+
+                assertEquals(400, refused.status(), refused.bodyText());
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS.wire(), JsonTree.string(body(refused), KEY_ERROR));
+                assertTrue(String.valueOf(JsonTree.string(body(refused), "message")).contains("code is a string"),
+                        refused.bodyText());
+                assertEquals(List.of("lost"), pending(inject(runtime, "{\"failure\":\"lost\"}")));
+            }
+        }
+
         @Test
         @DisplayName("lists every failure still armed, oldest first")
         void listsPending() throws Exception {

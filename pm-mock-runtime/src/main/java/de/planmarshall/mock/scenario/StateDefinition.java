@@ -214,7 +214,21 @@ List<ChatFailure> chatFailures) {
             }
             var status = status(number(map.get(FIELD_STATUS), 0));
             var delayMs = number(map.get(FIELD_DELAY_MS), kind == Kind.SLOW ? DEFAULT_DELAY_MS : 0);
-            return new ChatFailure(kind, status, JsonTree.string(map, FIELD_CODE), delayMs);
+            return new ChatFailure(kind, status, code(map.get(FIELD_CODE)), delayMs);
+        }
+
+        /**
+         * Reads the code as the member is given: a present code that is not a string is refused, so it is
+         * never read as an absent one.
+         */
+        private static @Nullable String code(@Nullable Object value) {
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof String code) {
+                return code;
+            }
+            throw new IllegalArgumentException("a chat failure's code is a string");
         }
 
         /**
