@@ -119,9 +119,14 @@ public record ReportsPage(
         return List.of();
     }
 
-    private static int parseCount(@Nullable Object obj, int defaultValue) {
+    private static int parseCount(@Nullable Object obj, int defaultValue) throws IOException {
         if (obj instanceof JsonNumber jn) {
-            return (int) jn.longValue();
+            // a count with a fraction is malformed and refused as such, never an unchecked parse failure
+            try {
+                return (int) jn.longValue();
+            } catch (NumberFormatException e) {
+                throw new JsonFormatException("Not an integral count in ReportsPage: " + jn.text(), e);
+            }
         } else if (obj instanceof Number n) {
             return n.intValue();
         }

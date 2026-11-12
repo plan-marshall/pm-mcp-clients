@@ -16,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
@@ -29,6 +31,7 @@ import de.planmarshall.api.chat.ChatSubjectKind;
 import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ChangeSize;
 
 @DisplayName("ProcessTreeTest")
@@ -244,6 +247,125 @@ class ProcessTreeTest {
 
         assertEquals(revision, parsed.queuedRevision());
         assertThrows(JsonFormatException.class, () -> ProcessTree.fromMap(malformed));
+    }
+
+    @Nested
+    @DisplayName("Reading a sparse tree")
+    class SparseTree {
+
+        private static final ProcessTokens NONE_YET = new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
+
+        @Test
+        @DisplayName("should fill every absent member of a tree that carries only its plan id with the defaults")
+        void shouldDefaultEveryAbsentMember() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+
+            var parsed = ProcessTree.fromMap(Map.of("plan_id", planId));
+
+            assertEquals(planId, parsed.title());
+            assertEquals(new ProcessProjectRef("project", "project", null), parsed.project());
+            assertNull(parsed.epic());
+            assertEquals("execute", parsed.currentPhase());
+            assertEquals("running", parsed.phaseState());
+            assertNull(parsed.activity());
+            assertFalse(parsed.needsOperator());
+            assertEquals(1, parsed.instanceVersion());
+            assertEquals(NONE_YET, parsed.tokensSoFar());
+            assertTrue(parsed.nodes().isEmpty());
+            assertTrue(parsed.currentPositionPath().isEmpty());
+            assertNull(parsed.pullRequestNumber());
+            assertNull(parsed.pullRequestUrl());
+            assertEquals(0L, parsed.durationSeconds());
+        }
+
+        @Test
+        @DisplayName("should take the plan id from the member id when plan_id is absent")
+        void shouldReadPlanIdFromId() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+
+            assertEquals(planId, ProcessTree.fromMap(Map.of("id", planId)).planId());
+        }
+
+        @Test
+        @DisplayName("should refuse a tree without plan_id and without id")
+        void shouldRefuseTreeWithoutPlanId() {
+            var title = Generators.nonBlankStrings().next();
+
+            var map = Map.<String, Object>of("title", title);
+
+            assertThrows(JsonFormatException.class, () -> ProcessTree.fromMap(map));
+        }
+
+        @Test
+        @DisplayName("should refuse JSON that is no object")
+        void shouldRefuseJsonThatIsNoObject() {
+            var planId = Generators.nonBlankStrings().next();
+
+            var json = JsonTree.write(List.of(planId));
+
+            assertThrows(JsonFormatException.class, () -> ProcessTree.fromJson(json));
+        }
+
+        @Test
+        @DisplayName("should build project and epic from the flat members when their objects are absent")
+        void shouldReadFlatProjectAndEpic() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+            var projectId = Generators.nonBlankStrings().next();
+            var projectName = Generators.nonBlankStrings().next();
+            var epicId = Generators.nonBlankStrings().next();
+            var epicTitle = Generators.nonBlankStrings().next();
+
+            var named = ProcessTree.fromMap(Map.of("plan_id", planId, "project_id", projectId,
+                    "project_name", projectName, "epic_id", epicId, "epic_title", epicTitle));
+            var bare = ProcessTree.fromMap(Map.of("plan_id", planId, "project_id", projectId, "epic_id", epicId));
+
+            assertEquals(new ProcessProjectRef(projectId, projectName, null), named.project());
+            assertEquals(new ProcessEpicRef(epicId, epicTitle, null), named.epic());
+            // the flat project without a name takes its id as name, as the project object does
+            assertEquals(projectId, bare.project().displayName());
+            assertEquals(new ProcessEpicRef(epicId, epicId, null), bare.epic());
+        }
+
+        @Test
+        @DisplayName("should skip a node that is no object and a null entry of the position path")
+        void shouldSkipUnusableListEntries() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+            var step = Generators.nonBlankStrings().next();
+            var path = new ArrayList<Object>();
+            path.add(null);
+            path.add(step);
+
+            var parsed = ProcessTree.fromMap(Map.of("plan_id", planId, "nodes", List.of(step),
+                    "current_position_path", path));
+            var notLists = ProcessTree.fromMap(Map.of("plan_id", planId, "nodes", step,
+                    "current_position_path", step));
+
+            assertTrue(parsed.nodes().isEmpty());
+            assertEquals(List.of(step), parsed.currentPositionPath());
+            assertTrue(notLists.nodes().isEmpty());
+            assertTrue(notLists.currentPositionPath().isEmpty());
+        }
+
+        @Test
+        @DisplayName("should write needs_operator only for a tree that needs the operator and read it back")
+        void shouldRoundTripNeedsOperator() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+            var project = new ProcessProjectRef(planId, planId, null);
+            var needing = new ProcessTree(planId, null, project, null, null, null, null, true, 1, null, null,
+                    null, null, null, 0L, null, null);
+            var quiet = new ProcessTree(planId, null, project, null, null, null, null, false, 1, null, null,
+                    null, null, null, 0L, null, null);
+
+            var parsed = ProcessTree.fromJson(needing.toJson());
+
+            assertEquals(Boolean.TRUE, needing.toMap().get("needs_operator"));
+            assertFalse(quiet.toMap().containsKey("needs_operator"));
+            assertTrue(parsed.needsOperator());
+            assertEquals(planId, needing.title());
+            assertEquals(NONE_YET, needing.tokensSoFar());
+            assertTrue(needing.nodes().isEmpty());
+            assertTrue(needing.currentPositionPath().isEmpty());
+        }
     }
 
     @Test

@@ -140,9 +140,10 @@ public record ProcessTree(
         if (projObj != null) {
             project = ProcessProjectRef.fromMap(projObj);
         } else {
+            // the flat members follow the reference's own rule: an absent name is the project id
             var projId = JsonTree.string(map, "project_id");
-            var projName = JsonTree.string(map, "project_name");
-            project = new ProcessProjectRef(projId != null ? projId : "project", projName != null ? projName : "Project", null);
+            project = new ProcessProjectRef(projId != null ? projId : "project",
+                    JsonTree.string(map, "project_name"), null);
         }
 
         ProcessEpicRef epic = null;
@@ -152,8 +153,7 @@ public record ProcessTree(
         } else {
             var epicId = JsonTree.string(map, "epic_id");
             if (epicId != null) {
-                var epicTitle = JsonTree.string(map, "epic_title");
-                epic = new ProcessEpicRef(epicId, epicTitle != null ? epicTitle : epicId, null);
+                epic = new ProcessEpicRef(epicId, JsonTree.string(map, "epic_title"), null);
             }
         }
 
@@ -165,13 +165,9 @@ public record ProcessTree(
         var verNum = JsonTree.number(map, "instance_version");
         int instanceVersion = verNum != null ? verNum.intValue() : 1;
 
-        ProcessTokens tokensSoFar = null;
+        // an absent member stays null here: the canonical constructor supplies the defaults
         var tokensObj = JsonTree.asObject(map.get("tokens_so_far"));
-        if (tokensObj != null) {
-            tokensSoFar = ProcessTokens.fromMap(tokensObj);
-        } else {
-            tokensSoFar = new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
-        }
+        var tokensSoFar = tokensObj != null ? ProcessTokens.fromMap(tokensObj) : null;
 
         var nodes = new ArrayList<ProcessNode>();
         if (map.get("nodes") instanceof List<?> list) {
@@ -205,11 +201,11 @@ public record ProcessTree(
 
         return new ProcessTree(
                 planId,
-                title != null ? title : planId,
+                title,
                 project,
                 epic,
-                currentPhase != null ? currentPhase : "execute",
-                phaseState != null ? phaseState : "running",
+                currentPhase,
+                phaseState,
                 activity,
                 needsOperator,
                 instanceVersion,

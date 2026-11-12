@@ -21,17 +21,110 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 
 @DisplayName("Decision Records and Codecs (UC-PLN-2)")
 @EnableGeneratorController
 class DecisionRecordsTest {
+
+    @Nested
+    @DisplayName("DecisionEnvelope read leniently")
+    class EnvelopeReading {
+
+        @Test
+        @DisplayName("should keep an unreadable delivery time unknown instead of inventing the moment of reading")
+        void shouldKeepUnreadableDeliveryTimeUnknown() {
+            var id = "Q-" + Generators.integers(1, 999).next();
+
+            var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "delivered_at", "yesterday"));
+
+            assertAll(
+                    () -> assertNull(envelope.deliveredAt()),
+                    () -> assertFalse(envelope.toMap().containsKey("delivered_at")));
+        }
+
+        @Test
+        @DisplayName("should fill every absent member of an envelope that names only its plan")
+        void shouldDefaultAbsentMembers() {
+            var plan = Generators.nonBlankStrings().next();
+
+            var envelope = DecisionEnvelope.fromMap(Map.of("plan", plan));
+
+            assertAll(
+                    () -> assertEquals("", envelope.id()),
+                    () -> assertEquals(1, envelope.revision()),
+                    () -> assertEquals("", envelope.title()),
+                    () -> assertEquals("plan " + plan, envelope.subject()),
+                    () -> assertEquals(DecisionScope.PLAN, envelope.scope()),
+                    () -> assertEquals("plan", envelope.blocks()),
+                    () -> assertEquals(Reversibility.REVERSIBLE, envelope.reversibility()),
+                    () -> assertNull(envelope.askingPhase()),
+                    () -> assertNull(envelope.askingRole()),
+                    () -> assertNull(envelope.evidence()),
+                    () -> assertTrue(envelope.parts().isEmpty()),
+                    () -> assertFalse(envelope.isWaiver()),
+                    () -> assertFalse(envelope.toMap().containsKey("asking_phase")),
+                    () -> assertFalse(envelope.toMap().containsKey("asking_role")));
+        }
+
+        @Test
+        @DisplayName("should take the subject from the id and the asking members from their short names")
+        void shouldReadShortMemberNames() {
+            var id = "Q-" + Generators.integers(1, 999).next();
+            var phase = Generators.nonBlankStrings().next();
+            var role = Generators.nonBlankStrings().next();
+            var gate = Generators.nonBlankStrings().next();
+            var result = Generators.nonBlankStrings().next();
+            var reason = Generators.nonBlankStrings().next();
+
+            var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "phase", phase, "role", role, "kind", "waiver",
+                    "gate", gate, "result", result, "reason", reason, "parts", List.of(id)));
+
+            assertAll(
+                    () -> assertEquals(id, envelope.subject()),
+                    () -> assertEquals(phase, envelope.askingPhase()),
+                    () -> assertEquals(role, envelope.askingRole()),
+                    () -> assertTrue(envelope.isWaiver()),
+                    () -> assertEquals(gate, envelope.waiverGate()),
+                    () -> assertEquals(result, envelope.waiverResult()),
+                    () -> assertEquals(reason, envelope.waiverReason()),
+                    () -> assertTrue(envelope.parts().isEmpty()));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"WR-", "Q-"})
+        @DisplayName("should take a waiver request from the id prefix WR- alone")
+        void shouldTakeWaiverFromIdPrefix(String prefix) {
+            var id = prefix + Generators.integers(1, 999).next();
+
+            var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "parts", "none"));
+
+            assertEquals("WR-".equals(prefix), envelope.isWaiver());
+        }
+
+        @Test
+        @DisplayName("should refuse JSON that is no object and replace absent parts of a constructed envelope")
+        void shouldRefuseNoObjectAndReplaceAbsentParts() {
+            var id = Generators.nonBlankStrings().next();
+            var json = JsonTree.write(List.of(id));
+
+            var envelope = new DecisionEnvelope(id, 1, id, null, id, DecisionScope.PLAN, null, null, "plan",
+                    Reversibility.REVERSIBLE, null, null, null, null, false, null, null, null, null, null);
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class, () -> DecisionEnvelope.fromJson(json)),
+                    () -> assertTrue(envelope.parts().isEmpty()));
+        }
+    }
 
     @Test
     @DisplayName("DecisionScope resolves wire values and handles case-insensitivity")

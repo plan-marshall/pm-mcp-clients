@@ -165,11 +165,12 @@ public record ProcessNode(
             }
         }
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new ProcessNode(
                 nodeId,
-                title != null ? title : nodeId,
-                kind != null ? kind : "state",
-                state != null ? state : "planned",
+                title,
+                kind,
+                state,
                 runCount,
                 currentRun,
                 durationSeconds,

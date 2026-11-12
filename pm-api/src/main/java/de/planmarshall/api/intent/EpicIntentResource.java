@@ -83,7 +83,8 @@ public record EpicIntentResource(
             if (doneWhen.isEmpty()) {
                 throw new IllegalArgumentException("done_when must not be empty");
             }
-            if (doneWhen.stream().anyMatch(value -> value == null || value.isBlank())) {
+            // List.copyOf has refused a null entry already
+            if (doneWhen.stream().anyMatch(String::isBlank)) {
                 throw new IllegalArgumentException("done_when must not carry a blank entry");
             }
         }
@@ -152,8 +153,9 @@ public record EpicIntentResource(
     }
 
     private static List<String> copyTexts(List<String> value, String name) {
+        // List.copyOf refuses a null entry, so only a blank one is left to refuse
         var texts = value == null ? List.<String>of() : List.copyOf(value);
-        if (texts.stream().anyMatch(text -> text == null || text.isBlank())) {
+        if (texts.stream().anyMatch(String::isBlank)) {
             throw new IllegalArgumentException(name + " must not carry a blank entry");
         }
         return texts;
@@ -181,7 +183,8 @@ public record EpicIntentResource(
      * @return {@code true} if every check is met
      */
     public boolean allMet() {
-        return !doneWhen.isEmpty() && doneWhen.stream().allMatch(DoneWhenCheck::met);
+        // the constructor holds three to six checks, so an empty list never reaches here
+        return doneWhen.stream().allMatch(DoneWhenCheck::met);
     }
 
     /**

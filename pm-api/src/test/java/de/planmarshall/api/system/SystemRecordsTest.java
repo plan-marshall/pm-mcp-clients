@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.system;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,17 +17,73 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
+import de.planmarshall.api.json.JsonTree;
 
 @EnableGeneratorController
 class SystemRecordsTest {
+
+    @Nested
+    @DisplayName("WorkMetrics read leniently")
+    class WorkMetricsReading {
+
+        @Test
+        @DisplayName("should take the counts of numbers and numeric texts and skip every other count")
+        void shouldReadCountsAndSkipUnusableOnes() throws Exception {
+            var running = Generators.integers(0, 1000).next();
+            var held = Generators.integers(0, 1000).next();
+            var counts = Map.<String, Object>of("running", (long) running, "held", String.valueOf(held),
+                    "named", "many", "fraction", 1.5, "flag", true);
+            var project = Generators.nonBlankStrings().next();
+            var recovering = new ArrayList<Object>();
+            recovering.add(null);
+            recovering.add(project);
+            var json = JsonTree.write(Map.of("plans_by_state", counts, "epics_by_state", counts,
+                    "recovering_projects", recovering));
+
+            var metrics = WorkMetrics.fromJson(json);
+
+            assertAll(
+                    () -> assertEquals(Map.of("running", running, "held", held), metrics.plansByState()),
+                    () -> assertEquals(Map.of("running", running, "held", held), metrics.epicsByState()),
+                    () -> assertEquals(0, metrics.tasksRunning()),
+                    () -> assertEquals(0, metrics.tasksQueued()),
+                    () -> assertEquals(0, metrics.activeProjectsCount()),
+                    () -> assertEquals(List.of(project), metrics.recoveringProjects()));
+        }
+
+        @Test
+        @DisplayName("should take the counts of a map built in memory, the absent ones as empty")
+        void shouldReadCountsOfAMapInMemory() throws Exception {
+            var queued = Generators.integers(0, 1000).next();
+            var source = new WorkMetrics(Map.of("running", queued), null, queued, queued, queued, null);
+
+            var metrics = WorkMetrics.fromMap(source.toMap());
+
+            assertAll(
+                    () -> assertEquals(source, metrics),
+                    () -> assertTrue(metrics.epicsByState().isEmpty()),
+                    () -> assertTrue(metrics.recoveringProjects().isEmpty()));
+        }
+
+        @Test
+        @DisplayName("should refuse JSON that is no object")
+        void shouldRefuseJsonThatIsNoObject() {
+            var json = JsonTree.write(List.of(Generators.nonBlankStrings().next()));
+
+            assertThrows(JsonFormatException.class, () -> WorkMetrics.fromJson(json));
+        }
+    }
 
     @Test
     void systemEnums() {

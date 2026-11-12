@@ -22,12 +22,17 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatTurnPointer;
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 
 @EnableGeneratorController
 class ReportRecordsTest {
@@ -619,6 +624,287 @@ class ReportRecordsTest {
         assertEquals(3, tokenRecord.wasteRecords().size());
         assertEquals(3000L, tokenRecord.totalWasteTokens());
         assertEquals(6, tokenRecord.wasteSharePercent());
+    }
+
+    @Nested
+    @DisplayName("TokenUsageRecord read leniently")
+    class TokenUsageReading {
+
+        @Test
+        @DisplayName("should read an empty usage as zero figures, not floor, without reason and without rows")
+        void shouldReadEmptyUsage() {
+            var usage = TokenUsageRecord.fromMap(Map.of());
+
+            assertAll(
+                    () -> assertEquals(0L, usage.totalTokens()),
+                    () -> assertEquals(0L, usage.durationSeconds()),
+                    () -> assertEquals(0, usage.tasksMeasured()),
+                    () -> assertEquals(0, usage.tasksTotal()),
+                    () -> assertFalse(usage.isFloor()),
+                    () -> assertNull(usage.unmeasuredReason()),
+                    () -> assertFalse(usage.toMap().containsKey("unmeasured_reason")),
+                    () -> assertTrue(usage.byPhase().isEmpty()),
+                    () -> assertTrue(usage.wasteRecords().isEmpty()),
+                    () -> assertEquals(0L, usage.totalWasteTokens()));
+        }
+
+        @Test
+        @DisplayName("should replace absent row lists of a constructed usage by empty lists")
+        void shouldReplaceAbsentListsByEmptyLists() {
+            var total = (long) Generators.integers(1, 1_000_000).next();
+
+            var usage = new TokenUsageRecord(total, total, 0L, 0L, 0, 0, 0, 0, false, null, null, null, null, null,
+                    0L, 0);
+
+            assertAll(
+                    () -> assertTrue(usage.byPhase().isEmpty()),
+                    () -> assertTrue(usage.byRole().isEmpty()),
+                    () -> assertTrue(usage.byModel().isEmpty()),
+                    () -> assertTrue(usage.wasteRecords().isEmpty()),
+                    () -> assertEquals(List.of(), usage.toMap().get("by_model")));
+        }
+
+        @Test
+        @DisplayName("should prefer the members of the current schema over coverage and legacy waste")
+        void shouldPreferCurrentMembers() {
+            var workers = Generators.integers(1, 9).next();
+            var models = Generators.integers(1, 9).next();
+            var tasksTotal = Generators.integers(2, 50).next();
+            var measured = Generators.integers(1, tasksTotal).next();
+            var reason = Generators.nonBlankStrings().next();
+            var wasteTotal = (long) Generators.integers(1, 1_000_000).next();
+            var record = new TokenWasteRecord("retries", wasteTotal, 3, 1, null);
+            var row = new TokenBreakdownItem("execute", 10, 8, 2, 0, false, null, null);
+            var map = new LinkedHashMap<String, Object>();
+            map.put("workers_count", (long) workers);
+            map.put("models_count", (long) models);
+            map.put("tasks_total", (long) tasksTotal);
+            map.put("tasks_measured", (long) measured);
+            map.put("unmeasured_reason", reason);
+            map.put("coverage", Map.of("workers", 99L, "models", 99L, "total_tasks", 99L, "unmeasured", 1L,
+                    "reason", "other"));
+            map.put("waste_records", List.of(record.toMap(), "not-an-object"));
+            map.put("total_waste_tokens", wasteTotal);
+            map.put("waste_share_percent", 3L);
+            map.put("waste", Map.of("total", 99L, "share_percent", 99L, "retries_tokens", 99L));
+            map.put("by_phase", List.of(row.toMap(), "not-an-object"));
+
+            var usage = TokenUsageRecord.fromMap(map);
+
+            assertAll(
+                    () -> assertEquals(workers, usage.workersCount()),
+                    () -> assertEquals(models, usage.modelsCount()),
+                    () -> assertEquals(tasksTotal, usage.tasksTotal()),
+                    () -> assertEquals(measured, usage.tasksMeasured()),
+                    () -> assertEquals(reason, usage.unmeasuredReason()),
+                    () -> assertEquals(List.of(record), usage.wasteRecords()),
+                    () -> assertEquals(wasteTotal, usage.totalWasteTokens()),
+                    () -> assertEquals(3, usage.wasteSharePercent()),
+                    () -> assertEquals(List.of(row), usage.byPhase()));
+        }
+
+        @Test
+        @DisplayName("should derive legacy waste rows only for the classes that carry tokens or tasks")
+        void shouldDeriveLegacyWasteRowsSparingly() {
+            var noProductTasks = Generators.integers(1, 20).next();
+            var retriesTokens = (long) Generators.integers(1, 1_000_000).next();
+            var map = Map.<String, Object>of(
+                    "coverage", Map.of(),
+                    "waste", Map.of(
+                            "no_product_tasks", (long) noProductTasks,
+                            "retries_tokens", retriesTokens,
+                            "retries_causes", "not-a-list",
+                            "remediation_tokens", 0L));
+
+            var usage = TokenUsageRecord.fromMap(map);
+            var empty = TokenUsageRecord.fromMap(Map.of("waste", Map.of("no_product_tokens", 0L)));
+
+            assertAll(
+                    () -> assertEquals(0, usage.tasksMeasured()),
+                    () -> assertEquals(List.of(
+                            new TokenWasteRecord("no_product", 0L, 0, noProductTasks, null),
+                            new TokenWasteRecord("retries", retriesTokens, 0, 1, null)), usage.wasteRecords()),
+                    () -> assertTrue(empty.wasteRecords().isEmpty()));
+        }
+    }
+
+    @Nested
+    @DisplayName("ReportsPage read leniently")
+    class ReportsPageReading {
+
+        @Test
+        @DisplayName("should read the short member names, count the items, and skip an item that is no object")
+        void shouldReadShortMemberNames() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var older = Generators.integers(1, 50).next();
+            var json = JsonTree.write(Map.of("reports", List.of(Map.of("id", id), 1),
+                    "oldest_unread", "yesterday 18:40", "older_count", older));
+
+            var page = ReportsPage.fromJson(json);
+
+            assertAll(
+                    () -> assertEquals(List.of(id), page.items().stream().map(ReportItem::id).toList()),
+                    () -> assertEquals(1, page.unreadCount()),
+                    () -> assertNull(page.oldestUnreadTime()),
+                    () -> assertTrue(page.hasOlder()),
+                    () -> assertEquals(older, page.olderCount()));
+        }
+
+        @Test
+        @DisplayName("should read an empty page and write no absent oldest unread time")
+        void shouldReadEmptyPage() throws Exception {
+            var unread = Generators.integers(0, 50).next();
+
+            var empty = ReportsPage.fromMap(Map.of("items", Generators.nonBlankStrings().next()));
+            var constructed = new ReportsPage(null, unread, null, false, 0);
+
+            assertAll(
+                    () -> assertTrue(empty.items().isEmpty()),
+                    () -> assertEquals(0, empty.unreadCount()),
+                    () -> assertFalse(empty.hasOlder()),
+                    () -> assertTrue(constructed.items().isEmpty()),
+                    () -> assertFalse(constructed.toMap().containsKey("oldest_unread_time")),
+                    () -> assertEquals(constructed, ReportsPage.fromMap(constructed.toMap())));
+        }
+
+        @Test
+        @DisplayName("should refuse a count with a fraction, JSON that is neither page nor list, and skip a list's non-object")
+        void shouldRefuseMalformedShapes() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var fraction = JsonTree.write(Map.of("unread_count", 2.5));
+            var scalar = JsonTree.write(Generators.integers(0, 100).next());
+
+            var list = ReportsPage.fromJson(JsonTree.write(List.of("x", Map.of("id", id))));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class, () -> ReportsPage.fromJson(fraction)),
+                    () -> assertThrows(JsonFormatException.class, () -> ReportsPage.fromJson(scalar)),
+                    () -> assertEquals(1, list.unreadCount()));
+        }
+    }
+
+    @Test
+    @DisplayName("TokenComponentRecord should read an absent or non-numeric component as unreported and zero")
+    void shouldReadUnreportedTokenComponents() {
+        var components = TokenComponentRecord.fromMap(Map.of("input", Generators.nonBlankStrings().next()));
+
+        assertAll(
+                () -> assertNull(components.inputTokens()),
+                () -> assertEquals(0L, components.input()),
+                () -> assertEquals(0L, components.cacheRead()),
+                () -> assertEquals(0L, components.cacheWrite()),
+                () -> assertEquals(0L, components.output()),
+                () -> assertEquals(0L, components.reasoning()),
+                () -> assertTrue(components.toMap().isEmpty()));
+    }
+
+    @Nested
+    @DisplayName("ReportItem read leniently")
+    class ReportItemReading {
+
+        @Test
+        @DisplayName("should not mark a report sent later whose displayed sent time equals its created time")
+        void shouldNotMarkEqualDisplayedTimesSentLater() throws Exception {
+            var shown = "today " + Generators.integers(10, 23).next() + ":00";
+
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created", shown, "sent", shown));
+
+            assertAll(
+                    () -> assertFalse(item.isSentLater()),
+                    () -> assertEquals(shown, item.created()),
+                    () -> assertEquals(shown, item.sent()));
+        }
+
+        @Test
+        @DisplayName("should keep a sent time that is no instant as its text and invent no instant for it")
+        void shouldKeepAnUnparseableSentTimeAsText() throws Exception {
+            var created = Instant.ofEpochSecond(Generators.integers(0, 1_000_000_000).next());
+            var shown = "Tuesday " + Generators.integers(10, 23).next() + ":00";
+
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created_at", created.toString(), "sent_at", shown));
+
+            assertAll(
+                    () -> assertNull(item.sentAt()),
+                    () -> assertEquals(shown, item.sent()),
+                    () -> assertFalse(item.isSentLater()),
+                    () -> assertEquals(created, item.createdAt()),
+                    () -> assertEquals(ReportItem.formatTime(created), item.created()));
+        }
+
+        @Test
+        @DisplayName("should default every absent member of a report that carries only its id")
+        void shouldDefaultAbsentMembers() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var before = Instant.now();
+
+            var item = ReportItem.fromMap(Map.of("id", id, "read_at", "not-an-instant",
+                    "detail", "/api/v1/reports/" + id));
+            var after = Instant.now();
+
+            assertAll(
+                    () -> assertEquals(ReportKind.PLAN_ENDED, item.kind()),
+                    () -> assertEquals("", item.subject()),
+                    () -> assertEquals(new ReportFrom("", null, null), item.from()),
+                    () -> assertFalse(item.createdAt().isBefore(before)),
+                    () -> assertFalse(item.createdAt().isAfter(after)),
+                    () -> assertNull(item.sentAt()),
+                    () -> assertEquals(item.created(), item.sent()),
+                    () -> assertNull(item.readAt()),
+                    () -> assertFalse(item.isRead()),
+                    () -> assertNull(item.body()),
+                    () -> assertEquals("/api/v1/reports/" + id, item.detail()));
+        }
+
+        @ParameterizedTest(name = "{0} of kind {1}")
+        @CsvSource({
+                "proj, plan.ended, proj, , ",
+                "proj › epic › plan, plan.ended, proj, epic, plan",
+                "proj > epic, epic.ended, proj, epic, ",
+                "proj > plan, plan.started, proj, , plan"
+        })
+        @DisplayName("should read a from path by its parts and the kind of the report")
+        void shouldReadAFromPath(String path, String kind, String project, String epic, String plan)
+                throws Exception {
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "kind", kind,
+                    "from", path));
+
+            assertEquals(new ReportFrom(project, epic, plan), item.from());
+        }
+
+        @Test
+        @DisplayName("should refuse a from that is neither a path nor an object")
+        void shouldRefuseAFromOfAnotherType() {
+            var map = Map.<String, Object>of("id", Generators.nonBlankStrings().next(), "from", List.of());
+
+            assertThrows(JsonFormatException.class, () -> ReportItem.fromMap(map));
+        }
+
+        @Test
+        @DisplayName("should refuse a report or a list of reports in the wrong JSON shape and skip non-objects")
+        void shouldRefuseWrongShapes() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+
+            var list = ReportItem.parseList(JsonTree.write(List.of(1, Map.of("id", id))));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class, () -> ReportItem.fromJson("[]")),
+                    () -> assertThrows(JsonFormatException.class, () -> ReportItem.parseList("{}")),
+                    () -> assertEquals(List.of(id), list.stream().map(ReportItem::id).toList()));
+        }
+
+        @Test
+        @DisplayName("should replace absent subject parameters of a constructed report by an empty map")
+        void shouldReplaceAbsentSubjectParameters() {
+            var item = new ReportItem(Generators.nonBlankStrings().next(), new ReportFrom("p", null, null),
+                    ReportKind.PLAN_STARTED, Generators.nonBlankStrings().next(), null, null, Instant.EPOCH, null,
+                    null, null, null, null);
+
+            assertAll(
+                    () -> assertTrue(item.subjectParams().isEmpty()),
+                    () -> assertFalse(item.toMap().containsKey("subject_params")));
+        }
     }
 
     @Test

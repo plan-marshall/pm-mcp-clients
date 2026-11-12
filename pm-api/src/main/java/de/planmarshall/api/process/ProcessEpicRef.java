@@ -60,7 +60,8 @@ public record ProcessEpicRef(
         }
         var title = JsonTree.string(map, "title");
         var link = JsonTree.string(map, "link");
-        return new ProcessEpicRef(epicId, title != null ? title : epicId, link);
+        // an absent title stays null here: the canonical constructor supplies the default
+        return new ProcessEpicRef(epicId, title, link);
     }
 
     public static ProcessEpicRef fromJson(String json) throws IOException {

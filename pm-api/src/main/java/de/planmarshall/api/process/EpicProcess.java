@@ -138,11 +138,12 @@ public record EpicProcess(
 
         var reviewReady = Boolean.TRUE.equals(map.get("review_ready"));
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new EpicProcess(
                 epicId,
-                project != null ? project : "project",
-                title != null ? title : epicId,
-                state != null ? state : "running",
+                project,
+                title,
+                state,
                 runningPlans,
                 stagedPlans,
                 alongsideLandings,

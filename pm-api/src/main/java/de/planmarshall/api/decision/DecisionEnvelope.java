@@ -192,15 +192,7 @@ public record DecisionEnvelope(
             }
         }
 
-        Instant deliveredAt = null;
-        var delStr = JsonTree.string(map, "delivered_at");
-        if (delStr != null) {
-            try {
-                deliveredAt = Instant.parse(delStr);
-            } catch (DateTimeParseException _) {
-                deliveredAt = Instant.now();
-            }
-        }
+        var deliveredAt = deliveredAt(JsonTree.string(map, "delivered_at"));
 
         var isWaiver = Boolean.TRUE.equals(JsonTree.bool(map, "is_waiver")) || id.startsWith("WR-") || "waiver".equalsIgnoreCase(JsonTree.string(map, "kind"));
         var waiverGate = JsonTree.string(map, "waiver_gate");
@@ -216,5 +208,20 @@ public record DecisionEnvelope(
                 isWaiver, waiverGate, waiverResult, waiverReason,
                 JsonTree.string(map, "project"), JsonTree.string(map, "plan")
         );
+    }
+
+    /**
+     * An unreadable delivery time is unknown, never the moment of reading: that would invent how long the
+     * decision has waited.
+     */
+    private static @Nullable Instant deliveredAt(@Nullable String text) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Instant.parse(text);
+        } catch (DateTimeParseException _) {
+            return null;
+        }
     }
 }

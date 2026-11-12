@@ -128,11 +128,12 @@ public record TaskActivity(
         var gapNum = JsonTree.number(map, "gap_count");
         int gapCount = gapNum != null ? gapNum.intValue() : 0;
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new TaskActivity(
                 taskId,
-                role != null ? role : "implement",
-                harness != null ? harness : "agent",
-                model != null ? model : "default",
+                role,
+                harness,
+                model,
                 attempt,
                 durationSeconds,
                 tokensSoFar,
