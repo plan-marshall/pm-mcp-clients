@@ -468,6 +468,6 @@ public final class MockConfigRoutes {
             return false;
         }
         return !(key.startsWith(CLEANUP_KEY_PREFIX)
-                            && (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM));
+                && (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM));
     }
 }

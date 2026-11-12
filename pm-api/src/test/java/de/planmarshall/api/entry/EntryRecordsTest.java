@@ -259,20 +259,20 @@ class EntryRecordsTest {
     @DisplayName("OnboardingProgress refuses a steps value that is no exact integer rather than truncating it")
     void onboardingProgressRefusesATruncatingStepsValue() throws Exception {
         assertAll(
-                            () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
-                                                OnboardingProgress.fromJson(
-                                                                    "{\"state\":\"harness.choose\",\"step\":1,\"steps\":3.9}")
-                                                                    .steps()),
-                            () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
-                                                OnboardingProgress.fromJson(
-                                                                    "{\"state\":\"harness.choose\",\"step\":1,\"steps\":\"12\"}")
-                                                                    .steps()),
-                            () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
-                                                OnboardingProgress.fromJson(
-                                                                    "{\"state\":\"harness.choose\",\"step\":1,\"steps\":1e1}")
-                                                                    .steps()),
-                            () -> assertEquals(9, OnboardingProgress.fromJson(
-                                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":9}").steps()));
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":3.9}")
+                                .steps()),
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":\"12\"}")
+                                .steps()),
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":1e1}")
+                                .steps()),
+                () -> assertEquals(9, OnboardingProgress.fromJson(
+                        "{\"state\":\"harness.choose\",\"step\":1,\"steps\":9}").steps()));
     }
 
     @Test

@@ -14,15 +14,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Map;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -154,7 +154,7 @@ class EnrolCommandTest {
     @Test
     @DisplayName("enrol strips terminal control sequences from the path it reports")
     void enrolStripsControlSequences() throws Exception {
-        var directory = Generators.letterStrings(4, 12).next().toLowerCase(java.util.Locale.ROOT);
+        var directory = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
         runtime((request, response) -> response.json(409,
                             JsonTree.write(Map.of("error", "enrolment_root_conflict"))));
 

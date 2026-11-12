@@ -204,7 +204,8 @@ public final class ConfigCommand implements Callable<Integer> {
     /** The widest label column: a longer label is shortened, so the value column stays narrow. */
     private static final int LABEL_COLUMN = 24;
 
-    @Nullable MachineSettingsRecord readSettingsQuiet() throws IOException {
+    @Nullable
+    MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
         if (response.status() != 200) {
             return null;

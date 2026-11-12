@@ -507,6 +507,7 @@ public final class CleanupCommand implements Callable<Integer> {
         out.flush();
         return 3;
     }
+
     /**
      * Resolves every {@code --exclude} token to an item of the open job: a number as the job prints
      * it, an id, or {@code kind:id}. A token the job does not carry is reported

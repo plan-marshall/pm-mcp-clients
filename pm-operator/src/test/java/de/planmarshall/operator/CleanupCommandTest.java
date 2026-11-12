@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -27,14 +29,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupItemEntry;
@@ -831,7 +833,7 @@ class CleanupCommandTest {
 
     /** A job whose one project carries {@code count} plan items. */
     private static CleanupJob jobOf(int count) {
-        var items = new java.util.ArrayList<CleanupItemEntry>();
+        var items = new ArrayList<CleanupItemEntry>();
         long bytes = 0L;
         for (int i = 1; i <= count; i++) {
             var id = String.format("item-%02d", i);
@@ -847,7 +849,7 @@ class CleanupCommandTest {
         return new CleanupCommand(
                             new OperatorContext(fixture.environment(), tempDir, interactive),
                             (state, leave, writer) -> new ChoicePrompt(new BufferedReader(
-                                                new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                                    new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
                                                 new PrintWriter(out), "en", state).leaveLabel(leave),
                             (question, state, writer) -> freeText.poll());
     }
@@ -884,7 +886,7 @@ class CleanupCommandTest {
         PmOperatorTest.writeLiveRecord(fixture);
         var job = sampleJob();
         var deletes = new AtomicInteger();
-        var unknown = Generators.letterStrings(4, 12).next().toLowerCase(java.util.Locale.ROOT);
+        var unknown = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
         fixture.start((request, response) -> {
             if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, JsonTree.write(job.toMap()));
@@ -927,7 +929,7 @@ class CleanupCommandTest {
     void aPageOfTwentyNamesTheRestAndKeepsItAddressable() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var job = jobOf(25);
-        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var posted = new AtomicReference<String>("");
         fixture.start((request, response) -> {
             if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, JsonTree.write(job.toMap()));
@@ -958,7 +960,7 @@ class CleanupCommandTest {
     void remindFromTheDialoguePostsTheJobId() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var job = sampleJob();
-        var targets = new java.util.ArrayList<String>();
+        var targets = new ArrayList<String>();
         fixture.start((request, response) -> {
             targets.add(request.target());
             if (request.target().endsWith("/remind")) {
@@ -982,7 +984,7 @@ class CleanupCommandTest {
     void ignoreFromTheDialoguePostsTheJobId() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var job = sampleJob();
-        var targets = new java.util.ArrayList<String>();
+        var targets = new ArrayList<String>();
         fixture.start((request, response) -> {
             targets.add(request.target());
             if (request.target().endsWith("/ignore")) {
@@ -1005,7 +1007,7 @@ class CleanupCommandTest {
     @DisplayName("o on a plan and on an epic opens the work by its id")
     void dialogueOpensAPlanAndAnEpic() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        var targets = new java.util.ArrayList<String>();
+        var targets = new ArrayList<String>();
         fixture.start((request, response) -> {
             targets.add(request.target());
             response.json(200, "{\"plan_id\":\"x\",\"epic_id\":\"x\",\"nodes\":[]}");
@@ -1091,8 +1093,8 @@ class CleanupCommandTest {
             assertAll(
                                 () -> assertTrue(output.contains("✎"), output),
                                 () -> assertTrue(output.lines()
-                                                    .filter(line -> line.stripLeading().matches("(?s)[0-9✎…].*"))
-                                                    .allMatch(line -> line.length() <= 80),
+                                                                        .filter(line -> line.stripLeading().matches("(?s)[0-9✎…].*"))
+                                                                        .allMatch(line -> line.length() <= 80),
                                                     () -> "a line exceeds 80 columns: " + output),
                                 () -> assertFalse(output.contains("a-title-far-longer-than-eighteen"), output)
             );

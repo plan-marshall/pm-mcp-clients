@@ -25,7 +25,10 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
@@ -653,8 +656,8 @@ class ProjectCommandTest {
                                                 "The project setup needs"), out.toString()),
                             () -> assertTrue(out.toString().contains("Look at the checkout"), out.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .anyMatch(r -> "DELETE".equals(r.method())
-                                                                    && r.target().endsWith("/abandon")),
+                                                                    .anyMatch(r -> "DELETE".equals(r.method())
+                                                                                        && r.target().endsWith("/abandon")),
                                                 () -> "the entry is closed: " + server.requests())
         );
     }
@@ -662,7 +665,7 @@ class ProjectCommandTest {
     @Test
     @DisplayName("project add sends the contract's body: the absolute checkout path and the build environment")
     void projectAddSendsTheContractBody() throws Exception {
-        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var posted = new AtomicReference<String>("");
         fixture.start((request, response) -> {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 posted.set(request.bodyText());
@@ -679,7 +682,7 @@ class ProjectCommandTest {
                 response.send(404, null, "");
             }
         });
-        var checkout = Generators.letterStrings(4, 12).next().toLowerCase(java.util.Locale.ROOT);
+        var checkout = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
 
         int code = execute("project", "add", checkout, "--pilot", "--no-input");
 
@@ -700,7 +703,7 @@ class ProjectCommandTest {
     @Test
     @DisplayName("a release without --yes prints the block and asks again on anything but y or n")
     void releaseWithoutYesPrintsTheBlockAndReAsks() throws Exception {
-        var releases = new java.util.concurrent.atomic.AtomicInteger();
+        var releases = new AtomicInteger();
         fixture.start((request, response) -> {
             if ("/api/v1/projects/cui-parent".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
@@ -840,7 +843,7 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertTrue(server.requests().stream()
-                                                .noneMatch(request -> request.target().endsWith("/release")),
+                                                                    .noneMatch(request -> request.target().endsWith("/release")),
                                                 "no release is sent when declined: " + server.requests()),
                             () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
         );

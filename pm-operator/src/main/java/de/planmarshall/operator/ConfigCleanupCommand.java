@@ -236,7 +236,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         out.println(project == null
                             ? MessageCatalogue.format(locale, "operator.cleanup.durations.title", Map.of())
                             : MessageCatalogue.format(locale, "operator.cleanup.durations.title_project",
-                                                Map.of("project", OutputSafety.stripControlSequences(project))));
+                            Map.of("project", OutputSafety.stripControlSequences(project))));
         var kinds = project == null ? MACHINE_KINDS : PROJECT_KINDS;
         int index = 1;
         for (var kind : kinds) {

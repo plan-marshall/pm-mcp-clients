@@ -26,11 +26,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -698,7 +700,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config cleanup refuses a value under the minimum and writes nothing")
     void cleanupRefusesAValueUnderTheMinimum() throws Exception {
-        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        var writes = new AtomicInteger();
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, SETTINGS);
@@ -721,7 +723,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config cleanup --yes records the machine's durations")
     void cleanupRecordsTheMachinesDurations() throws Exception {
-        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var posted = new AtomicReference<String>("");
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, SETTINGS);
@@ -749,8 +751,8 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config cleanup --project . writes the project's own value")
     void cleanupWritesAProjectsOwnValue() throws Exception {
-        var written = new java.util.concurrent.atomic.AtomicReference<String>("");
-        var target = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var written = new AtomicReference<String>("");
+        var target = new AtomicReference<String>("");
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, SETTINGS);

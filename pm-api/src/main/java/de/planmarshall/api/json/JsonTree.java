@@ -40,7 +40,8 @@ public class JsonTree {
     private static final JsonFactory FACTORY = new JsonFactory();
 
     /** The source text of an integral JSON number: digits only, no sign, no decimal point, no exponent. */
-    private static final Pattern INTEGRAL_LITERAL = Pattern.compile("[0-9]+");    private static final JsonFactory ASCII_FACTORY = JsonFactory.builder()
+    private static final Pattern INTEGRAL_LITERAL = Pattern.compile("[0-9]+");
+    private static final JsonFactory ASCII_FACTORY = JsonFactory.builder()
             .enable(JsonWriteFeature.ESCAPE_NON_ASCII).build();
 
     /**

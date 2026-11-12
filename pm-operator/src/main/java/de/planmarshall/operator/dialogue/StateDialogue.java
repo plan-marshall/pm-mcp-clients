@@ -673,7 +673,8 @@ public final class StateDialogue {
      * @return the catalogue suffix of its step name, or {@code null} where the run's aspect list does
      *         not carry the state's aspect and the state is not the run's own last one
      */
-    @Nullable String machineStepOf(String stateId) {
+    @Nullable
+    String machineStepOf(String stateId) {
         for (var aspect : aspects) {
             if (stateId.startsWith(aspect.wireValue() + ".")) {
                 return aspect.stepNameKey().substring(STEP_KEY_PREFIX.length());
