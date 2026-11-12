@@ -11,10 +11,13 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -48,6 +52,7 @@ import de.planmarshall.api.chat.ProposalKind;
 import de.planmarshall.api.chat.ProposalState;
 import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnKind;
+import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
@@ -73,6 +78,9 @@ class ChatBroadcastTest {
     private static final String BROADCAST = "/mock/broadcast";
     private static final String CHAT_PREFIX = "chat.";
     private static final String ERROR = "error";
+    private static final String MESSAGE = "message";
+    /** The refusal of a broadcast {@code chat.*} name no chat event has, followed by the name. */
+    private static final String UNKNOWN_CHAT_EVENT = "No chat event is named ";
     private static final String INVALID_ARGUMENTS = "invalid_arguments";
     private static final String ACT_NOT_AVAILABLE = "act_not_available";
     private static final String CONFLICT = "conflict";
@@ -212,8 +220,35 @@ class ChatBroadcastTest {
                     Generators.letterStrings(4, 20).next());
 
             assertEquals(200, broadcast(runtime, ChatTurnDeltaEvent.EVENT_NAME, delta.toMap()).status());
-            assertRefused(broadcast(runtime, CHAT_PREFIX + Generators.letterStrings(6, 10).next().toLowerCase(),
-                    Map.of(ChatEndedEvent.FIELD_CHAT_ID, chat.id())), 400, INVALID_ARGUMENTS);
+            var unknown = CHAT_PREFIX + Generators.letterStrings(6, 10).next().toLowerCase();
+            var refused = broadcast(runtime, unknown, Map.of(ChatEndedEvent.FIELD_CHAT_ID, chat.id()));
+            assertRefused(refused, 400, INVALID_ARGUMENTS);
+            assertEquals(UNKNOWN_CHAT_EVENT + unknown,
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.body())), MESSAGE));
+        }
+    }
+
+    @Test
+    @DisplayName("reads every chat event of the catalogue through its record, none as a name no chat event has")
+    void readsEveryCatalogueChatEvent() throws Exception {
+        var chatEvents = Arrays.stream(EventName.values()).filter(name -> name.wire().startsWith(CHAT_PREFIX))
+                .toList();
+        assertFalse(chatEvents.isEmpty(), "the catalogue has chat events");
+        try (var runtime = ordered()) {
+            var chat = openChat(runtime, ChatRoutes.plan(id()));
+            var payload = Map.<String, Object>of(ChatEndedEvent.FIELD_CHAT_ID, chat.id());
+
+            var messages = new LinkedHashMap<EventName, String>();
+            for (var name : chatEvents) {
+                var response = broadcast(runtime, name.wire(), payload);
+                messages.put(name, String.valueOf(
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), MESSAGE)));
+            }
+
+            assertAll("every chat event of the catalogue has a parser",
+                    messages.entrySet().stream().map(entry -> (Executable) () -> assertNotEquals(
+                            UNKNOWN_CHAT_EVENT + entry.getKey().wire(), entry.getValue(),
+                            entry.getKey() + " is read as a name no chat event has")));
         }
     }
 

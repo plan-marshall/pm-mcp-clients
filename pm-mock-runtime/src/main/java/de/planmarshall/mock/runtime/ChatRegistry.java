@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +62,7 @@ import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.chat.TurnRef;
 import de.planmarshall.api.chat.TurnStatus;
+import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.event.EventScope;
 import de.planmarshall.api.event.EventScopeKind;
 import de.planmarshall.api.json.JsonTree;
@@ -150,6 +152,7 @@ final class ChatRegistry {
     private static final String CHAT_ID_PREFIX = "chat-";
     private static final String TURN_ID_PREFIX = "turn-";
     private static final String MESSAGE_NO_CHAT = "No chat is open about ";
+    private static final String MESSAGE_CHAT_ENDED = "The chat has ended";
     private static final String REASON_PREFIX = "chat.reason.";
     private static final String KEY_ARMED = "armed";
     private static final String KEY_PENDING = "pending";
@@ -176,6 +179,19 @@ final class ChatRegistry {
     private static final String KEY_PLAN_ID = "plan_id";
     private static final String KEY_EPIC_ID = "epic_id";
     private static final String KEY_ENTRY_ID = "entry_id";
+
+    /**
+     * The {@code pm-api} record each chat event of the catalogue is read through, keyed by its
+     * {@link EventName}; a broadcast {@code chat.*} name without an entry is refused.
+     */
+    private static final Map<EventName, ChatEventParser> CHAT_EVENT_PARSERS = Collections.unmodifiableMap(
+            new EnumMap<>(Map.<EventName, ChatEventParser>of(
+                    EventName.CHAT_TURN_STARTED, ChatTurnStartedEvent::fromMap,
+                    EventName.CHAT_TURN_PROGRESS, ChatTurnProgressEvent::fromMap,
+                    EventName.CHAT_TURN_DELTA, ChatTurnDeltaEvent::fromMap,
+                    EventName.CHAT_TURN_COMPLETED, ChatTurnCompletedEvent::fromMap,
+                    EventName.CHAT_PROPOSAL, ChatProposalEvent::fromMap,
+                    EventName.CHAT_ENDED, ChatEndedEvent::fromMap)));
 
     /** The callback a chat uses to tell its clients of an event. */
     private final Consumer<ChatEvent> broadcaster;
@@ -274,7 +290,7 @@ final class ChatRegistry {
         turnCounter = 0;
         endedWork.putAll(seed.endedWork());
         for (var resource : seed.chats()) {
-            var chat = new Chat(resource.id(), resource.subject(), resource.role(), resource.scope(),
+            var chat = new Chat(resource.id(), new Routing(resource.subject(), resource.role(), resource.scope()),
                     resource.state(), resource.context(), resource.proposal(), resource.turns());
             usedChatIds.add(chat.id);
             chat.turns.forEach(turn -> usedTurnIds.add(turn.turnId()));
@@ -356,8 +372,9 @@ final class ChatRegistry {
         if (existing != null && !existing.state.isEnded()) {
             return Outcome.of(200, existing.toResource(existing.turns.size()).toMap());
         }
-        var chat = new Chat(nextChatId(), address.subject(), new RoutedRole(address.role(), DEFAULT_MODEL),
-                address.scope(), ChatStatus.TURN, context(address), null, List.of());
+        var chat = new Chat(nextChatId(),
+                new Routing(address.subject(), new RoutedRole(address.role(), DEFAULT_MODEL), address.scope()),
+                ChatStatus.TURN, context(address), null, List.of());
         chat.stream = address.stream();
         chats.put(chat.subject, chat);
         return Outcome.of(201, chat.toResource(chat.turns.size()).toMap());
@@ -370,10 +387,10 @@ final class ChatRegistry {
         } catch (IOException e) {
             return refused(ApiErrorCode.INVALID_ARGUMENTS, e.getMessage());
         }
-        return record(address, message);
+        return recordTurn(address, message);
     }
 
-    private synchronized Outcome record(Address address, ChatTurnRequest message) {
+    private synchronized Outcome recordTurn(Address address, ChatTurnRequest message) {
         var chat = chats.get(address.subject());
         if (chat == null) {
             return refused(ApiErrorCode.TARGET_NOT_FOUND, MESSAGE_NO_CHAT + address.routes().subject());
@@ -383,15 +400,13 @@ final class ChatRegistry {
             return Outcome.of(ChatTurnAccepted.HTTP_STATUS, new ChatTurnAccepted(repeated).toMap());
         }
         if (chat.state.isEnded()) {
-            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
+            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, MESSAGE_CHAT_ENDED);
         }
         if (chat.state == ChatStatus.REPLY || chat.play != null) {
             return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "A reply is being written");
         }
         var at = Instant.now().toString();
-        var operatorTurn = new ChatTurn(nextTurnId(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
-                TurnStatus.COMPLETE, TurnFormat.PLAIN, false, null, message.text(), List.of(), List.of(), at, null,
-                List.of());
+        var operatorTurn = operatorTurn(nextTurnId(), false, message.text(), at);
         chat.turns.add(operatorTurn);
         chat.clientTurns.put(message.clientTurnId(), operatorTurn.turnId());
         var operatorStarted = event(address, ChatTurnStartedEvent.EVENT_NAME, new ChatTurnStartedEvent(chat.id,
@@ -739,10 +754,25 @@ final class ChatRegistry {
             case PLAN -> new EventScope(EventScopeKind.PLAN, id, null);
             case EPIC -> new EventScope(EventScopeKind.EPIC, id, null);
             case ENTRY -> new EventScope(EventScopeKind.ENTRY, id, null);
-            default -> id.startsWith(MACHINE_SCOPE_ID + "/")
-                    ? new EventScope(EventScopeKind.MACHINE, null, null)
-                    : new EventScope(EventScopeKind.RUNTIME, null, null);
+            default -> new EventScope(
+                    id.startsWith(MACHINE_SCOPE_ID + "/") ? EventScopeKind.MACHINE : EventScopeKind.RUNTIME, null,
+                    null);
         };
+    }
+
+    /**
+     * The operator's own message as a turn of the transcript: complete, plain, on no model and with no
+     * steps, references or reason.
+     *
+     * @param turnId    the turn's id
+     * @param untrusted whether the message came from outside the machine
+     * @param text      the message's text
+     * @param at        the instant of the message, ISO-8601
+     * @return the turn
+     */
+    private static ChatTurn operatorTurn(String turnId, boolean untrusted, String text, String at) {
+        return new ChatTurn(turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                TurnFormat.PLAIN, untrusted, null, text, List.of(), List.of(), at, null, List.of());
     }
 
     private static ChatTurn withText(ChatTurn turn, String text, TurnStatus status) {
@@ -903,42 +933,71 @@ final class ChatRegistry {
         if (chat == null) {
             return refused(ApiErrorCode.TARGET_NOT_FOUND, "No chat " + chatId);
         }
-        Runnable then = null;
         if (parsed instanceof ChatTurnStartedEvent started) {
-            if (started.isOperator()) {
-                if (chat.state.isEnded() || chat.state == ChatStatus.REPLY || chat.play != null) {
-                    return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat takes no message now");
-                }
-                if (!usedTurnIds.add(started.turnId())) {
-                    return refused(ApiErrorCode.CONFLICT, "The turn " + started.turnId() + " exists");
-                }
-                chat.turns.add(new ChatTurn(started.turnId(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
-                        TurnStatus.COMPLETE, TurnFormat.PLAIN, started.untrusted(), null,
-                        Objects.requireNonNullElse(started.text(), ""), List.of(),
-                        List.of(), Instant.now().toString(), null, List.of()));
-            }
-        } else if (parsed instanceof ChatProposalEvent answered) {
-            var proposal = chat.proposal;
-            if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
-                return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
-            }
-            if (!proposal.turnId().equals(answered.turnId())) {
-                return refused(ApiErrorCode.CONFLICT, "The proposal " + answered.turnId() + " is not the open one");
-            }
-            chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
-                    proposal.summary(), proposal.applies(), proposal.before(), proposal.after(), answered.state(),
-                    answered.finding());
-            if (!chat.proposal.isOpen() && chat.state == ChatStatus.READ_BACK) {
-                chat.state = ChatStatus.TURN;
-            }
-            then = applyHook(chat.subject, chat.proposal);
-        } else if (parsed instanceof ChatEndedEvent ended) {
-            if (chat.state.isEnded()) {
-                return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
-            }
-            endChat(chat, ended.endedBy() == ChatEndedEvent.EndedBy.PROPOSAL_CARRIED ? ChatStatus.CARRIED
-                    : ChatStatus.END, ended.endedBy());
+            return broadcastTurnStarted(chat, started, event, payload);
         }
+        if (parsed instanceof ChatProposalEvent answered) {
+            return broadcastProposal(chat, answered, event, payload);
+        }
+        if (parsed instanceof ChatEndedEvent ended) {
+            return broadcastEnded(chat, ended, event, payload);
+        }
+        return broadcasted(chat, event, payload, null);
+    }
+
+    /**
+     * Applies a broadcast {@code chat.turn.started}: an operator's message is recorded in the chat, a
+     * role's turn is sent as it is. Call under the lock.
+     */
+    private Outcome broadcastTurnStarted(Chat chat, ChatTurnStartedEvent started, String event,
+            Map<String, Object> payload) {
+        if (started.isOperator()) {
+            if (chat.state.isEnded() || chat.state == ChatStatus.REPLY || chat.play != null) {
+                return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat takes no message now");
+            }
+            if (!usedTurnIds.add(started.turnId())) {
+                return refused(ApiErrorCode.CONFLICT, "The turn " + started.turnId() + " exists");
+            }
+            chat.turns.add(operatorTurn(started.turnId(), started.untrusted(),
+                    Objects.requireNonNullElse(started.text(), ""), Instant.now().toString()));
+        }
+        return broadcasted(chat, event, payload, null);
+    }
+
+    /**
+     * Applies a broadcast {@code chat.proposal}: it answers the chat's open proposal, and an applied one
+     * changes its subject's resource. Call under the lock.
+     */
+    private Outcome broadcastProposal(Chat chat, ChatProposalEvent answered, String event,
+            Map<String, Object> payload) {
+        var proposal = chat.proposal;
+        if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
+            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
+        }
+        if (!proposal.turnId().equals(answered.turnId())) {
+            return refused(ApiErrorCode.CONFLICT, "The proposal " + answered.turnId() + " is not the open one");
+        }
+        chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
+                proposal.summary(), proposal.applies(), proposal.before(), proposal.after(), answered.state(),
+                answered.finding());
+        if (!chat.proposal.isOpen() && chat.state == ChatStatus.READ_BACK) {
+            chat.state = ChatStatus.TURN;
+        }
+        return broadcasted(chat, event, payload, applyHook(chat.subject, chat.proposal));
+    }
+
+    /** Applies a broadcast {@code chat.ended}: it ends the chat. Call under the lock. */
+    private Outcome broadcastEnded(Chat chat, ChatEndedEvent ended, String event, Map<String, Object> payload) {
+        if (chat.state.isEnded()) {
+            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, MESSAGE_CHAT_ENDED);
+        }
+        endChat(chat, ended.endedBy() == ChatEndedEvent.EndedBy.PROPOSAL_CARRIED ? ChatStatus.CARRIED
+                : ChatStatus.END, ended.endedBy());
+        return broadcasted(chat, event, payload, null);
+    }
+
+    /** The answer to a broadcast chat event that was applied: the event goes on the chat's stream. */
+    private static Outcome broadcasted(Chat chat, String event, Map<String, Object> payload, @Nullable Runnable then) {
         return new Outcome(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event),
                 List.of(new ChatEvent(event, streamOf(chat), payload)), then);
     }
@@ -950,25 +1009,24 @@ final class ChatRegistry {
      * @throws IOException if the name is no chat event's or the record refuses the payload
      */
     private static Object parseChatEvent(String event, Map<String, Object> payload) throws IOException {
-        if (ChatTurnStartedEvent.EVENT_NAME.equals(event)) {
-            return ChatTurnStartedEvent.fromMap(payload);
+        var name = EventName.fromWireOrNull(event);
+        var parser = name == null ? null : CHAT_EVENT_PARSERS.get(name);
+        if (parser == null) {
+            throw new IOException("No chat event is named " + event);
         }
-        if (ChatTurnProgressEvent.EVENT_NAME.equals(event)) {
-            return ChatTurnProgressEvent.fromMap(payload);
-        }
-        if (ChatTurnDeltaEvent.EVENT_NAME.equals(event)) {
-            return ChatTurnDeltaEvent.fromMap(payload);
-        }
-        if (ChatTurnCompletedEvent.EVENT_NAME.equals(event)) {
-            return ChatTurnCompletedEvent.fromMap(payload);
-        }
-        if (ChatProposalEvent.EVENT_NAME.equals(event)) {
-            return ChatProposalEvent.fromMap(payload);
-        }
-        if (ChatEndedEvent.EVENT_NAME.equals(event)) {
-            return ChatEndedEvent.fromMap(payload);
-        }
-        throw new IOException("No chat event is named " + event);
+        return parser.parse(payload);
+    }
+
+    /** Reads the payload of one chat event through its {@code pm-api} record. */
+    @FunctionalInterface
+    private interface ChatEventParser {
+
+        /**
+         * @param payload the event's payload
+         * @return the event's record
+         * @throws IOException if the record refuses the payload
+         */
+        Object parse(Map<String, Object> payload) throws IOException;
     }
 
     private synchronized Outcome end(Address address) {
@@ -977,7 +1035,7 @@ final class ChatRegistry {
             return refused(ApiErrorCode.TARGET_NOT_FOUND, MESSAGE_NO_CHAT + address.routes().subject());
         }
         if (chat.state.isEnded()) {
-            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
+            return refused(ApiErrorCode.ACT_NOT_AVAILABLE, MESSAGE_CHAT_ENDED);
         }
         var event = endChat(chat, ChatStatus.END, ChatEndedEvent.EndedBy.OPERATOR);
         return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(event), null);
@@ -1305,6 +1363,16 @@ final class ChatRegistry {
     }
 
     /**
+     * What a chat is about and where it is routed.
+     *
+     * @param subject what the chat is about
+     * @param role    the role the chat is routed to, with its model
+     * @param scope   the chat's scope
+     */
+    private record Routing(ChatSubject subject, RoutedRole role, ChatScopeKind scope) {
+    }
+
+    /**
      * The mutable state of one chat with its whole transcript.
      */
     private static final class Chat {
@@ -1362,12 +1430,12 @@ final class ChatRegistry {
             }
         }
 
-        Chat(String id, ChatSubject subject, RoutedRole role, ChatScopeKind scope, ChatStatus state,
-                ChatContext context, @Nullable ChatProposal proposal, List<ChatTurn> turns) {
+        Chat(String id, Routing routing, ChatStatus state, ChatContext context, @Nullable ChatProposal proposal,
+                List<ChatTurn> turns) {
             this.id = id;
-            this.subject = subject;
-            this.role = role;
-            this.scope = scope;
+            this.subject = routing.subject();
+            this.role = routing.role();
+            this.scope = routing.scope();
             this.state = state;
             this.context = context;
             this.proposal = proposal;
