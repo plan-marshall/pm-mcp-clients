@@ -538,6 +538,20 @@ class StartDialogueTest {
     }
 
     @Test
+    @DisplayName("an invalid answer at a proposal changes nothing")
+    void chatProposalInvalidAnswer() throws Exception {
+        var rendered = run(StandardScenarios.START_CHAT,
+                            "h\nWhat about comments?\nz\n?\nq\n\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
+        assertAll(
+                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
+                            () -> assertTrue(rendered.contains("z is not offered here: r, q, ?"), rendered),
+                            () -> assertTrue(rendered.contains("Nothing more is explained here"), rendered),
+                            () -> assertFalse(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
     @DisplayName("copy and move together are refused before the entry opens")
     void copyAndMoveConflict() throws Exception {
         var outcome = runWithCode(StandardScenarios.START_SOURCES, null,

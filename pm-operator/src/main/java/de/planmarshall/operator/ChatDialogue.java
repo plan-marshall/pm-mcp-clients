@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -24,6 +25,7 @@ import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The one chat dialogue of the terminal client (design <em>Starting Work</em>, chatting about the
@@ -132,12 +134,23 @@ final class ChatDialogue {
             prompt.raw(text("start.chat.after", Map.of("after",
                                 TerminalSanitizer.sanitizeLine(proposal.after()))));
         }
-        var answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), STATE_SOURCES,
-                            text(KEY_OPEN, Map.of()), entryId);
-        var accept = answer.isEmpty();
-        if (!accept && !"r".equalsIgnoreCase(answer)) {
-            return chat;
+        String answer;
+        while (true) {
+            answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), STATE_SOURCES,
+                                text(KEY_OPEN, Map.of()), entryId);
+            if (answer.isEmpty() || "r".equalsIgnoreCase(answer)) {
+                break;
+            }
+            if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                // Leaving the read-back answers nothing: the proposal stays open in the chat.
+                return chat;
+            }
+            // The prompt offers Enter, r and ?; anything else is answered with one line and asked again.
+            prompt.raw("?".equals(answer) ? text("operator.dialogue.no_explanation", Map.of())
+                                : text("operator.dialogue.not_offered", Map.of("input",
+                                TerminalSanitizer.sanitizeLine(answer), "offered", "r, " + leaveKey() + ", ?")));
         }
+        var accept = answer.isEmpty();
         try {
             var answered = api.answerEntryChatProposal(entryId, proposal.turnId(), accept);
             if (accept) {
@@ -208,6 +221,10 @@ final class ChatDialogue {
             prompt.raw(text("start.chat.role_line", Map.of(KEY_ROLE,
                                 TerminalSanitizer.sanitizeLine(turn.author()), KEY_TEXT, text)));
         }
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
     }
 
     private String text(String key, Map<String, ?> args) {
