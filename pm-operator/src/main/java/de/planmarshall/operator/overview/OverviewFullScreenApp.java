@@ -248,7 +248,6 @@ public final class OverviewFullScreenApp {
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
-    private @Nullable OverviewKeyHandler activeKeyHandler;
     private VerbRunner verbRunner;
 
     /**
@@ -314,14 +313,11 @@ public final class OverviewFullScreenApp {
             var driver = new TuiScreenDriver(terminal, locale);
             activeDriver = driver;
             consoleOut = out;
-            var keyHandler = new OverviewKeyHandler();
-            activeKeyHandler = keyHandler;
-            var result = driver.run(this::buildScreen, keyHandler);
+            var result = driver.run(this::buildScreen, new OverviewKeyHandler());
             openPendingDecision(out);
             return result;
         } finally {
             activeDriver = null;
-            activeKeyHandler = null;
             running.set(false);
             sseThread.interrupt();
             saveState();
@@ -688,9 +684,12 @@ public final class OverviewFullScreenApp {
                             .orElse(false);
     }
 
-    void openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
+    /**
+     * @return {@code true} when the runtime served the project and its level was opened
+     */
+    boolean openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
         if (projectId == null || projectId.isBlank()) {
-            return;
+            return false;
         }
         try {
             var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId);
@@ -702,10 +701,12 @@ public final class OverviewFullScreenApp {
                 var levelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
                 var rows = levelModel.rows(locale, clock, false);
                 stack.push(levelModel.level(locale), rows, selectedId);
+                return true;
             }
         } catch (IOException _) {
             // Fall back to staying at project list
         }
+        return false;
     }
 
     void openEnded(RuntimeClient runtime, @Nullable String projectId) {
@@ -1223,13 +1224,6 @@ public final class OverviewFullScreenApp {
     private boolean handleMenu(String trigger) {
         if (runtimeMenu != null) {
             handleRuntimeMenu(trigger);
-            return true;
-        }
-        if (projectMenu != null) {
-            var handler = activeKeyHandler;
-            if (handler != null) {
-                handler.handleProjectMenu(trigger);
-            }
             return true;
         }
         if (actionsMenu == null) {
@@ -2101,9 +2095,6 @@ public final class OverviewFullScreenApp {
      * @return {@code true} when the runtime accepted the read
      */
     boolean markReportsRead(List<String> reportIds) {
-        if (reportIds.isEmpty()) {
-            return false;
-        }
         try {
             context.gate().verifyAct();
             var request = new ReadReportsRequest(reportIds);
@@ -2115,6 +2106,18 @@ public final class OverviewFullScreenApp {
             return false;
         } catch (IOException _) {
             return false;
+        }
+    }
+
+    /**
+     * Says that an act failed, unless the operator gate refused it: the refusal already stands on
+     * the status line and names why, which the general failure would hide.
+     *
+     * @param key the catalogue key of the failure
+     */
+    private void failedUnlessRefused(String key) {
+        if (statusMessage == null) {
+            statusMessage = MessageCatalogue.format(locale, key, Map.of());
         }
     }
 
@@ -2170,6 +2173,11 @@ public final class OverviewFullScreenApp {
         public boolean menu(String trigger) {
             synchronized (OverviewFullScreenApp.this) {
                 statusMessage = null;
+                var openProjectMenu = projectMenu;
+                if (openProjectMenu != null) {
+                    handleProjectMenu(openProjectMenu, trigger);
+                    return true;
+                }
                 return handleMenu(trigger);
             }
         }
@@ -2425,7 +2433,7 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             if (kind == TuiLevel.Kind.REPORTS) {
-                return openSelectedReport();
+                return openSelectedReport(selectedId);
             }
             if (kind == TuiLevel.Kind.SYSTEM) {
                 systemOpenSelected();
@@ -2863,7 +2871,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if (!markReportRead(reportId)) {
-                statusMessage = MessageCatalogue.format(locale, "report.list.mark_read_failed", Map.of());
+                failedUnlessRefused("report.list.mark_read_failed");
                 return;
             }
             var neighbour = level.neighbourOf(reportId, locale);
@@ -2877,7 +2885,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if (!markReportsRead(ids)) {
-                statusMessage = MessageCatalogue.format(locale, "report.list.mark_all_failed", Map.of());
+                failedUnlessRefused("report.list.mark_all_failed");
                 return;
             }
             applyReports(level.withoutAll(ids), null);
@@ -2899,13 +2907,9 @@ public final class OverviewFullScreenApp {
          *
          * @return {@code true} to keep the view open
          */
-        private boolean openSelectedReport() {
+        private boolean openSelectedReport(String selectedId) {
             var level = currentReports.get();
-            var selected = stack.selected();
-            if (level == null || selected == null) {
-                return true;
-            }
-            var report = level.reportOf(selected.id());
+            var report = level != null ? level.reportOf(selectedId) : null;
             if (report == null) {
                 return true;
             }
@@ -2914,7 +2918,7 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             if (!markReportRead(report.id())) {
-                statusMessage = MessageCatalogue.format(locale, "report.list.mark_read_failed", Map.of());
+                failedUnlessRefused("report.list.mark_read_failed");
                 return true;
             }
             var updated = level.without(report.id());
@@ -2943,11 +2947,8 @@ public final class OverviewFullScreenApp {
             if (epicId != null && openEpicView(epicId)) {
                 return true;
             }
-            if (!report.from().isSystem()) {
-                openProject(runtime, report.from().projectId(), false, null);
-                return true;
-            }
-            return false;
+            // A project level the runtime did not serve shows nothing, so the report stays unread.
+            return !report.from().isSystem() && openProject(runtime, report.from().projectId(), false, null);
         }
 
         private void openReportProject() {
@@ -3211,13 +3212,9 @@ public final class OverviewFullScreenApp {
             }
         }
 
-        private void handleProjectMenu(String trigger) {
+        private void handleProjectMenu(TuiMenu menu, String trigger) {
             if (trigger.isEmpty()) {
                 closeProjectMenu();
-                return;
-            }
-            var menu = projectMenu;
-            if (menu == null) {
                 return;
             }
             var entry = menu.entry(trigger);
