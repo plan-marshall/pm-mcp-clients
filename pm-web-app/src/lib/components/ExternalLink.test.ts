@@ -75,11 +75,35 @@ describe('ExternalLink', () => {
     },
   );
 
+  it.each([
+    'https:example.org/pull/3',
+    'http:example.org',
+    'HTTPS:example.org',
+    '  https:example.org/pull/3',
+    'http:example.org  ',
+    '\thttps:example.org\n',
+    'https:/example.org',
+    ' http:/example.org ',
+  ])('draws the label as text for the scheme without its two slashes %j', (href) => {
+    useCatalogue('en');
+    const { container } = render(ExternalLink, { props: { href, label: 'Pull request' } });
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container).toHaveTextContent('Pull request');
+  });
+
   it.each(['http://example.org', 'HTTPS://EXAMPLE.ORG/A'])('accepts the web address %s', (href) => {
     useCatalogue('en');
     render(ExternalLink, { props: { href, label: 'Site' } });
 
     expect(screen.getByRole('link')).toHaveAttribute('href', href);
+  });
+
+  it('renders the address that was checked, without the white space around it', () => {
+    useCatalogue('en');
+    render(ExternalLink, { props: { href: '  https://example.org/docs\n', label: 'Documentation' } });
+
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.org/docs');
   });
 
   it('keeps the focus ring', () => {

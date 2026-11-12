@@ -4,11 +4,17 @@
 
   /**
    * @param href the address a caller hands in
-   * @returns whether it parses as an absolute http or https URL
+   * @returns whether, without the white space around it, it is an absolute http or https URL
+   *   written with the `//` right after the scheme: `https:example.org` and `https:/example.org`
+   *   parse as absolute, yet a browser resolves them against the page's own address
    */
   export function isWebAddress(href: string): boolean {
+    const address = href.trim();
+    if (!/^https?:\/\//i.test(address)) {
+      return false;
+    }
     try {
-      return WEB_SCHEMES.has(new URL(href).protocol);
+      return WEB_SCHEMES.has(new URL(address).protocol);
     } catch {
       return false;
     }
@@ -38,11 +44,13 @@
 
   let { href, label, chip = false }: Props = $props();
 
-  const safe = $derived(isWebAddress(href));
+  /** The address that was checked and is rendered: the one without the white space around it. */
+  const address = $derived(href.trim());
+  const safe = $derived(isWebAddress(address));
 </script>
 
 {#if safe}
-  <a {href} target="_blank" rel="noopener noreferrer" class="link external-link" class:link--text={!chip} class:link--chip={chip}>
+  <a href={address} target="_blank" rel="noopener noreferrer" class="link external-link" class:link--text={!chip} class:link--chip={chip}>
     <span class="external-link__label">{label}</span>
     <Icon name="act.external" size={16} />
     <span class="sr-only">({$t('common.link.new_tab')})</span>
