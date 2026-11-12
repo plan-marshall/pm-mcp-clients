@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
@@ -430,24 +431,23 @@ final class StartDialogue {
     }
 
     /**
-     * The keys a source that waits for the operator offers: a failed one tries again when its cause
-     * allows it, a flagged one is used anyway ({@code u}), an unscreened one accepted as untrusted
-     * ({@code a}), and every one can be removed.
+     * The keys a source that waits for the operator offers: a failed or unscreened one tries again
+     * ({@code t}) only where it names a cause that allows it, as the runtime retries no other, a
+     * flagged one is used anyway ({@code u}), an unscreened one accepted as untrusted ({@code a}),
+     * and every one can be removed.
      */
     private static List<String> pendingKeys(SourceResource source) {
         var keys = new ArrayList<String>();
-        var retryable = source.failure() == null || source.failure().retryable();
-        if (source.state() == SourceState.FAILED) {
-            if (retryable) {
-                keys.add("t");
-            }
-        } else if (source.state() == SourceState.FLAGGED) {
+        if (source.state() == SourceState.FLAGGED) {
             keys.add("u");
         } else {
-            if (retryable) {
+            var failure = source.failure();
+            if (failure != null && failure.retryable()) {
                 keys.add("t");
             }
-            keys.add("a");
+            if (source.state() == SourceState.UNSCREENED) {
+                keys.add("a");
+            }
         }
         keys.add("r");
         return keys;
@@ -583,13 +583,17 @@ final class StartDialogue {
         if (id != null && !id.isBlank()) {
             body.put(KEY_PLAN_ID, id);
         }
-        var created = api.act(entry().entryId(), "create", body);
-        var entry = created.entry();
-        var name = entry != null && entry.planId() != null ? entry.planId() : id;
-        var display = name != null ? name : "";
-        prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(display)));
+        var created = api.act(entry().entryId(), "create", body).entry();
+        // The runtime names the work it created, and only its id is the work's: the requested id
+        // may have been changed, so an answer that names none is a broken contract, never a start
+        // to announce under a guessed or an empty name.
+        var name = created != null ? created.planId() : null;
+        if (name == null) {
+            throw new JsonFormatException("The runtime's answer to create names no " + kind.wireValue() + " id");
+        }
+        prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(name)));
         prompt.line("start.started.follow", Map.of());
-        if (kind.epic() && name != null) {
+        if (kind.epic()) {
             new EpicDecompositionDialogue(api, prompt, project, name, answers.instruction).run();
         }
     }
@@ -598,7 +602,9 @@ final class StartDialogue {
     // Recipes
 
     private void recipeChoice() throws IOException {
-        var recipes = state.recipes().isEmpty() ? api.recipes() : state.recipes();
+        // The state carries the recipes the entry accepts; the machine's list holds recipes the
+        // project does not offer, which the entry would refuse to choose.
+        var recipes = state.recipes();
         if (recipes.isEmpty()) {
             prompt.line("start.recipe.empty", Map.of(KEY_PROJECT, project));
             throw new StartPrompt.StartLeftException();

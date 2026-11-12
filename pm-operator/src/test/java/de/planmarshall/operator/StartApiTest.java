@@ -28,6 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.decomposition.DecompositionInstructRequest;
 import de.planmarshall.api.decomposition.InstructAction;
+import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.project.EnrolledProject;
+import de.planmarshall.api.project.ProjectExplorer;
+import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
@@ -38,13 +42,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The start contract's error surface: every call reports a refusal of the runtime as the dialogue
  * expects it, and the endpoints that answer a benign absence return the documented value.
  */
-@DisplayName("start contract client")
 @EnableGeneratorController
+@DisplayName("start contract client")
 class StartApiTest {
 
     private static final String PROJECT = "/api/v1/projects/pm-mcp-clients";
@@ -248,12 +254,20 @@ class StartApiTest {
     }
 
     @Test
-    @DisplayName("projects and recipes treat a refusal as empty and failed")
-    void projectsAndRecipes() throws Exception {
+    @DisplayName("a refused projects read is no project")
+    void projectsRefused() throws Exception {
         serve(failure(500, "{}"));
-        assertAll(
-                            () -> assertTrue(api.projects().isEmpty()),
-                            () -> assertThrows(OperatorRefusedException.class, () -> api.recipes()));
+        assertTrue(api.projects().isEmpty());
+    }
+
+    @ParameterizedTest(name = "a refusal with the body {0} names its status")
+    @ValueSource(strings = {"{}", "[]", "{\"message\":null}", "not json"})
+    @DisplayName("a refused act without a message names the status instead")
+    void refusalWithoutAMessageNamesTheStatus(String body) throws Exception {
+        serve(failure(409, body));
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act("ent-1", "add_issue", Map.of()));
+        assertEquals("add_issue: HTTP 409", refused.getMessage());
     }
 
     @Test
@@ -291,10 +305,24 @@ class StartApiTest {
     }
 
     @Test
-    @DisplayName("the projects endpoint reads an object and a bare array")
-    void projectsReadsBothShapes() throws Exception {
-        serve((request, response) -> response.json(200,
-                            "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"},{\"project_id\":\"pm-api\"}]}"));
-        assertTrue(api.projects().containsAll(List.of("pm-mcp-clients", "pm-api")));
+    @DisplayName("the projects are every enrolled project the explorer reports, favourites included")
+    void projectsAreTheExplorersEnrolledProjects() throws Exception {
+        var favourite = project(Generators.letterStrings(4, 12).next());
+        var other = project(Generators.letterStrings(13, 20).next());
+        var explorer = new ProjectExplorer(List.of(favourite), List.of(), List.of(favourite, other), List.of());
+        serve((request, response) -> response.json(200, explorer.toJson()));
+        assertEquals(List.of(favourite.projectId(), other.projectId()), api.projects());
+    }
+
+    @Test
+    @DisplayName("an answer that is not the explorer's is refused, never read as no project")
+    void projectsAnswerThatIsNotTheExplorersIsRefused() throws Exception {
+        var id = Generators.letterStrings(4, 12).next();
+        serve((request, response) -> response.json(200, "[{\"project_id\":\"" + id + "\"}]"));
+        assertThrows(JsonFormatException.class, () -> api.projects());
+    }
+
+    private static EnrolledProject project(String id) {
+        return new EnrolledProject(id, id, null, ProjectReadiness.READY, null, 0, 0, 0, null, false, false);
     }
 }
