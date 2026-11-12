@@ -776,6 +776,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean machineProvidersVerified;
 
     /** The wire name of the operator channel, in the fixtures that report it. */
+    private static final int NEEDS_PAGE_SIZE = 20;
     private static final String OPERATOR_FIELD = "operator";
 
     /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
@@ -6066,7 +6067,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var path = request.path();
         if (MachineApiPaths.NEEDS_OPERATOR.equals(path)) {
-            serveNeedsOperatorPage(response);
+            serveNeedsOperatorPage(request, response);
             return true;
         }
         if (MachineApiPaths.FIND.equals(path)) {
@@ -6090,7 +6091,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * item id is absent as well: the contract's {@link NeedsOperatorItem} has none, and that was the
      * operator's decision (2026-11-05).
      */
-    private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
+    private void serveNeedsOperatorPage(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
         if (route == null) {
             response.json(200, new NeedsOperatorPage(1, 1, false, false, 0, List.of()).toMap());
@@ -6114,7 +6115,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             return sinceOf(a).compareTo(sinceOf(b));
         });
-        response.json(200, new NeedsOperatorPage(1, 1, false, false, items.size(), items).toMap());
+        response.json(200, pageOf(items, request).toMap());
+    }
+
+    /**
+     * The page the request asks for, out of the list the scenario declares: the runtime serves the
+     * list a page at a time and names the pages around it, so a client can step through it
+     * ({@code needs --page}, {@code Show more}).
+     *
+     * @param items   the whole list, in the runtime's order
+     * @param request the request, whose {@code page} parameter is 1-based
+     * @return the page
+     */
+    private static NeedsOperatorPage pageOf(List<NeedsOperatorItem> items, MockHttpRequest request) {
+        var page = 1;
+        try {
+            var requested = queryParameter(request, "page");
+            if (requested != null && !requested.isBlank()) {
+                page = Math.max(1, Integer.parseInt(requested.trim()));
+            }
+        } catch (IllegalArgumentException _) {
+            // A malformed page parameter asks for the first page, never for an error.
+        }
+        var total = items.size();
+        var totalPages = Math.max(1, (total + NEEDS_PAGE_SIZE - 1) / NEEDS_PAGE_SIZE);
+        var from = Math.min((page - 1) * NEEDS_PAGE_SIZE, total);
+        var to = Math.min(from + NEEDS_PAGE_SIZE, total);
+        return new NeedsOperatorPage(page, totalPages, page > 1, page < totalPages, total,
+                List.copyOf(items.subList(from, to)));
     }
 
     private static Instant sinceOf(NeedsOperatorItem item) {
