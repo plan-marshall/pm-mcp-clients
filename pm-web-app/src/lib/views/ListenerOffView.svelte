@@ -22,7 +22,8 @@
    * machine and connects again by itself once the listener is on (checked on a quiet timer, with
    * the button for an immediate try). The `searching` figure stands beside the text, drawn from the
    * object URL the app held since its start, never fetched from here; without it the text stands
-   * alone.
+   * alone. Where the page is too narrow to hold both, the figure is hidden, never stacked above the
+   * text, and the card takes the width.
    */
 
   /** The figure's height beside the text, within the design's 160–200 px. */
@@ -85,13 +86,29 @@
 </div>
 
 <style>
+  /*
+   * The page is the query container: it stretches across the view area, so its width is the page's
+   * and never the content's, and the narrow rule below follows the page, not the viewport the rail
+   * also takes from.
+   */
   .listener-off {
+    container: listener-off / inline-size;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-6);
     min-height: 60vh;
     padding: var(--space-4);
+  }
+
+  /*
+   * Where the page cannot hold the figure beside a card that keeps its text and its button, the
+   * figure is hidden, never stacked above the text.
+   */
+  @container listener-off (max-width: 36rem) {
+    .listener-off :global(.mascot-figure) {
+      display: none;
+    }
   }
 
   .listener-off__card {

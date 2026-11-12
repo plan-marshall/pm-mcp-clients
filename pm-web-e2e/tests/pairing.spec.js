@@ -10,6 +10,12 @@ const SHORT_DESKTOP = { width: 1280, height: 480 };
 /** The phone, where the page carries no hero. */
 const PHONE = { width: 390, height: 844 };
 
+/**
+ * A desktop wider than a phone whose page, beside the expanded rail, is too narrow for the hero
+ * and a whole card: the hero follows the page's width, not the viewport's.
+ */
+const MID_DESKTOP = { width: 900, height: 800 };
+
 test.describe('Web Client Pairing Flow', () => {
   test.beforeEach(async ({ page, request }) => {
     // A pairing code is single use, so each test starts from a fresh scenario.
@@ -103,6 +109,41 @@ test.describe('Web Client Pairing Flow', () => {
       await expect(page.getByTestId('pairing-mark-28').getByTestId('brand-mark')).toBeHidden();
     });
   }
+
+  test('hides the hero and keeps the command rows whole beside the expanded rail at 900 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize(MID_DESKTOP);
+    await page.goto('/pair');
+
+    // The rail is expanded, so the page is narrower than the viewport by the rail's width.
+    const rail = page.getByTestId('nav-rail');
+    await expect(rail).toBeVisible();
+    await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+
+    const card = page.getByTestId('pairing-view');
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId('pairing-hero')).toBeHidden();
+    await expect(page.getByTestId('pairing-mark-64').getByTestId('brand-mark')).toBeVisible();
+
+    // Every command row, its copy button included, lies inside the card: nothing is clipped.
+    const cardBox = await card.boundingBox();
+    const rows = card.locator('.cmd-row');
+    await expect(rows).toHaveCount(2);
+    for (const row of await rows.all()) {
+      const box = await row.boundingBox();
+      expect(box?.x).toBeGreaterThanOrEqual(cardBox?.x ?? 0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+        (cardBox?.x ?? 0) + (cardBox?.width ?? 0),
+      );
+      const copy = row.getByRole('button');
+      await expect(copy).toBeVisible();
+      const copyBox = await copy.boundingBox();
+      expect((copyBox?.x ?? 0) + (copyBox?.width ?? 0)).toBeLessThanOrEqual(
+        (cardBox?.x ?? 0) + (cardBox?.width ?? 0),
+      );
+    }
+  });
 
   test('enables pair button and pairs successfully with code', async ({ page }) => {
     await page.goto('/');

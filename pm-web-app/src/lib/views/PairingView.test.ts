@@ -1,72 +1,36 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import PairingView from './PairingView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
 
 /**
  * The pairing page (entry.adoc, The Pairing Page): the form, the revoked banner, and the `welcome`
- * hero beside the card, whose stylesheet hides it on a phone and below the free-height threshold
- * and switches the brand icon from 28 px to 64 px with it.
+ * hero beside the card, whose stylesheet hides it where the page is too narrow to hold both and
+ * below the free-height threshold, and switches the brand icon from 28 px to 64 px with it.
  */
 
 const COMPONENT_PATH = path.resolve(__dirname, 'PairingView.svelte');
 
-/** The media query under which the hero is hidden: a phone, or too little free height. */
-const HERO_HIDDEN_MEDIA = '@media (max-width: 768px), (max-height: 520px)';
-
 /**
- * @param css a stylesheet
- * @param opener the at-rule whose block is wanted
- * @returns the block's content, braces matched
+ * The container query under which the hero is hidden: a page too narrow for the hero beside a
+ * whole card. It reads the page's width, not the viewport's, which the rail also takes from.
  */
-function blockOf(css: string, opener: string): string {
-  const at = css.indexOf(opener);
-  if (at < 0) throw new Error(`no "${opener}" block`);
-  const open = css.indexOf('{', at + opener.length);
-  let depth = 0;
-  for (let i = open; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return css.slice(open + 1, i);
-    }
-  }
-  throw new Error(`unbalanced "${opener}" block`);
-}
+const HERO_HIDDEN_NARROW = '@container pairing-page (max-width: 50rem)';
 
-/**
- * @param css a stylesheet
- * @param selector the selector of the rule, as written
- * @returns the declarations of the first rule with exactly that selector
- */
-function ruleOf(css: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // The selector must open the rule, so it never matches the tail of a longer selector.
-  const match = new RegExp(`(^|[{}])\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-  if (!match) throw new Error(`no rule for "${selector}"`);
-  return match[2];
-}
+/** The media query under which the hero is hidden: too little free height. */
+const HERO_HIDDEN_SHORT = '@media (max-height: 520px)';
 
-/**
- * @param css a stylesheet
- * @param opener an at-rule
- * @returns the stylesheet without that at-rule's block, so a rule is read at the top level
- */
-function withoutBlock(css: string, opener: string): string {
-  const at = css.indexOf(opener);
-  if (at < 0) return css;
-  const inner = blockOf(css, opener);
-  const end = css.indexOf(inner, at) + inner.length + 1;
-  return css.slice(0, at) + css.slice(end);
-}
+/** Both conditions that hide the hero; each one carries the whole switch of the brand block. */
+const HERO_HIDDEN = [
+  ['the page is narrow', HERO_HIDDEN_NARROW],
+  ['the page is short', HERO_HIDDEN_SHORT],
+] as const;
 
 describe('PairingView component', () => {
-  const source = fs.readFileSync(COMPONENT_PATH, 'utf-8');
-  // Comments are dropped, so a rule is found by its selector alone.
-  const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const stylesheet = stylesheetOf(COMPONENT_PATH);
 
   beforeEach(() => {
     runtimeStore.set(
@@ -161,10 +125,38 @@ describe('PairingView component', () => {
       expect(container.querySelectorAll('[style]')).toHaveLength(0);
     });
 
-    it('is hidden on a phone and below the free-height threshold', () => {
-      const hidden = blockOf(stylesheet, HERO_HIDDEN_MEDIA);
+    it.each(HERO_HIDDEN)('is hidden where %s', (_case, opener) => {
+      const hidden = blockOf(stylesheet, opener);
 
       expect(ruleOf(hidden, '.pairing-page__hero')).toMatch(/display:\s*none\s*;/);
+    });
+
+    it('is hidden by the width of the page, never by the width of the viewport', () => {
+      const topLevel = withoutBlocks(stylesheet, HERO_HIDDEN_NARROW, HERO_HIDDEN_SHORT);
+
+      expect(ruleOf(topLevel, '.pairing-frame')).toMatch(
+        /container:\s*pairing-page\s*\/\s*inline-size\s*;/,
+      );
+      expect(ruleOf(topLevel, '.pairing-page__hero')).not.toMatch(/display:\s*none/);
+      // The phone rules of the viewport shape the card only; the hero follows the page.
+      expect(blockOf(stylesheet, '@media (max-width: 768px)')).not.toContain('.pairing-page__hero');
+      expect(blockOf(stylesheet, '@media (max-width: 768px)')).not.toContain('.pair-card__mark');
+    });
+
+    it('stands inside the query container, which the page itself is not', () => {
+      render(PairingView);
+      const hero = screen.getByTestId('pairing-hero');
+
+      expect(hero.closest('.pairing-frame')).not.toBeNull();
+      expect(hero.parentElement).toHaveClass('pairing-page');
+      expect(hero.parentElement?.parentElement).toHaveClass('pairing-frame');
+    });
+
+    it('drops the page margin where the page is narrow', () => {
+      const narrow = blockOf(stylesheet, HERO_HIDDEN_NARROW);
+
+      expect(ruleOf(narrow, '.pairing-page')).toMatch(/padding:\s*0\s*;/);
+      expect(ruleOf(narrow, '.pairing-page')).toMatch(/margin:\s*var\(--space-4\) auto\s*;/);
     });
   });
 
@@ -180,17 +172,17 @@ describe('PairingView component', () => {
     });
 
     it('shows the 28 px icon beside the wordmark while the hero shows', () => {
-      const topLevel = withoutBlock(stylesheet, HERO_HIDDEN_MEDIA);
+      const topLevel = withoutBlocks(stylesheet, HERO_HIDDEN_NARROW, HERO_HIDDEN_SHORT);
 
       expect(ruleOf(topLevel, '.pair-card__mark')).toMatch(/display:\s*inline-flex\s*;/);
       expect(ruleOf(topLevel, '.pair-card__mark--alone')).toMatch(/display:\s*none\s*;/);
-      // Only the media rule hides the 28 px icon; outside it, the icon keeps the shared display.
+      // Only the hero-hiding rules hide the 28 px icon; outside them, it keeps the shared display.
       expect(topLevel).not.toContain('.pair-card__mark--with-hero');
       expect(ruleOf(topLevel, '.pair-card__brand')).not.toMatch(/flex-direction:\s*column/);
     });
 
-    it('shows the 64 px icon above the wordmark where the hero is hidden', () => {
-      const hidden = blockOf(stylesheet, HERO_HIDDEN_MEDIA);
+    it.each(HERO_HIDDEN)('shows the 64 px icon above the wordmark where %s', (_case, opener) => {
+      const hidden = blockOf(stylesheet, opener);
 
       expect(ruleOf(hidden, '.pair-card__mark--with-hero')).toMatch(/display:\s*none\s*;/);
       expect(ruleOf(hidden, '.pair-card__mark--alone')).not.toMatch(/display:\s*none/);

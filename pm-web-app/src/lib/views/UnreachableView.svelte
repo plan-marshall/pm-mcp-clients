@@ -11,7 +11,8 @@
    *
    * It says what is wrong and the one command that starts the runtime, and connects again by
    * itself on a quiet timer. The `searching` figure stands beside the text, drawn from the object
-   * URL the app held since its start; without it the text stands alone and says everything.
+   * URL the app held since its start; without it the text stands alone and says everything. Where
+   * the page is too narrow to hold both, the figure is hidden, never stacked above the text.
    */
 
   /** The figure's height beside the text, within the design's 160–200 px. */
@@ -54,13 +55,29 @@
 </div>
 
 <style>
+  /*
+   * The page is the query container: it stretches across the view area, so its width is the page's
+   * and never the content's, and the narrow rule below follows the page, not the viewport the rail
+   * also takes from.
+   */
   .unreachable {
+    container: unreachable / inline-size;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-6);
     min-height: 60vh;
     padding: var(--space-4);
+  }
+
+  /*
+   * Where the page cannot hold the figure beside text that keeps its lines readable, the figure is
+   * hidden, never stacked above the text.
+   */
+  @container unreachable (max-width: 36rem) {
+    .unreachable :global(.mascot-figure) {
+      display: none;
+    }
   }
 
   .unreachable__text {

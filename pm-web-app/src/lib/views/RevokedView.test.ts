@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import RevokedView from './RevokedView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
+
+/** The container query under which the figure is hidden: a page too narrow for it beside the card. */
+const FIGURE_HIDDEN_NARROW = '@container revoked-view (max-width: 36rem)';
 
 describe('RevokedView component', () => {
   beforeEach(() => {
@@ -89,6 +94,32 @@ describe('RevokedView component', () => {
       const { container } = render(RevokedView);
 
       expect(container.querySelectorAll('[style]')).toHaveLength(0);
+    });
+  });
+
+  describe('the narrow page', () => {
+    const stylesheet = stylesheetOf(path.resolve(__dirname, 'RevokedView.svelte'));
+
+    it('makes the page, not the viewport, the width the figure follows', () => {
+      const topLevel = withoutBlocks(stylesheet, FIGURE_HIDDEN_NARROW);
+
+      expect(ruleOf(topLevel, '.revoked-view')).toMatch(
+        /container:\s*revoked-view\s*\/\s*inline-size\s*;/,
+      );
+      expect(stylesheet).not.toMatch(/@media[^{]*max-width/);
+    });
+
+    it('hides the figure where the page is narrow, and never stacks it', () => {
+      const narrow = blockOf(stylesheet, FIGURE_HIDDEN_NARROW);
+
+      expect(ruleOf(narrow, '.revoked-view :global(.mascot-figure)')).toMatch(
+        /display:\s*none\s*;/,
+      );
+      expect(stylesheet).not.toMatch(/flex-direction:\s*column/);
+    });
+
+    it('lets the card take the width the figure leaves', () => {
+      expect(ruleOf(stylesheet, '.revoked-card')).toMatch(/width:\s*100%\s*;/);
     });
   });
 

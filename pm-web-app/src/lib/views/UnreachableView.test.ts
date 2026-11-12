@@ -1,16 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'node:path';
 import { render, screen, within } from '@testing-library/svelte';
 import type { Writable } from 'svelte/store';
 import UnreachableView from './UnreachableView.svelte';
 import { heldFigure } from '../stores/heldFigure';
 import { currentLocale, messagesStore, type Locale } from '../i18n';
+import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
 import { loadMessages } from '../../test/catalogue-fixture';
 
 /**
  * The page of a runtime that is not reachable on this machine (entry.adoc, After Pairing): its two
  * texts come from the catalogue, and the `searching` figure stands beside them only when the app
- * holds its object URL.
+ * holds its object URL. Where the page is too narrow to hold both, the stylesheet hides the figure
+ * rather than stacking it.
  */
+
+/** The container query under which the figure is hidden: a page too narrow for it beside the text. */
+const FIGURE_HIDDEN_NARROW = '@container unreachable (max-width: 36rem)';
 
 // The held figure is a session store fetched once; the page only reads it, so the test sets it.
 vi.mock('../stores/heldFigure', async () => {
@@ -96,6 +102,28 @@ describe('UnreachableView', () => {
       held.set(objectUrl);
 
       expect(await screen.findByTestId('mascot-figure')).toHaveAttribute('src', objectUrl);
+    });
+  });
+
+  describe('the narrow page', () => {
+    const stylesheet = stylesheetOf(path.resolve(__dirname, 'UnreachableView.svelte'));
+
+    it('makes the page, not the viewport, the width the figure follows', () => {
+      const topLevel = withoutBlocks(stylesheet, FIGURE_HIDDEN_NARROW);
+
+      expect(ruleOf(topLevel, '.unreachable')).toMatch(
+        /container:\s*unreachable\s*\/\s*inline-size\s*;/,
+      );
+      expect(stylesheet).not.toMatch(/@media[^{]*max-width/);
+    });
+
+    it('hides the figure where the page is narrow, and never stacks it', () => {
+      const narrow = blockOf(stylesheet, FIGURE_HIDDEN_NARROW);
+
+      expect(ruleOf(narrow, '.unreachable :global(.mascot-figure)')).toMatch(
+        /display:\s*none\s*;/,
+      );
+      expect(stylesheet).not.toMatch(/flex-direction:\s*column/);
     });
   });
 });

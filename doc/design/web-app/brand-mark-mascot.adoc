@@ -21,7 +21,7 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 |Surface |How |Pose (<<poses>>) |Size
 
 |*Pairing page* (`PairingView`, link:entry.adoc#pairing[Entry, The Pairing Page]), and the same page with the reason of a revoked device (`RevokedView`, link:entry.adoc#revoked[Entry, A Revoked Device])
-|The hero: the full figure beside the pairing card on a wide screen, the first thing a new operator sees. Hidden on a phone and where the page's free height is below the figure's. With the reason of a revoked device, quieter: beside the text, never above it.
+|The hero: the full figure beside the pairing card on a wide page, the first thing a new operator sees. Hidden where the page is too narrow to hold it beside a whole card — the width of the page, not of the viewport, because the expanded rail takes `232` px of it; a phone is always too narrow — and where the page's free height is below the figure's. With the reason of a revoked device, quieter: beside the text, never above it, and hidden where the page is too narrow to hold both, the card then taking the width.
 |welcome; access ended with the reason
 |full figure, `280`–`360` px tall; `160`–`200` px with the reason
 
@@ -41,7 +41,7 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 |bust, `120`–`160` px
 
 |*Terminal states*: `ListenerOffView`, the runtime not reachable (link:entry.adoc#after-pairing[Entry])
-|The full figure, quieter: smaller, beside the text, never above it.
+|The full figure, quieter: smaller, beside the text, never above it. Hidden where the page is too narrow to hold both (the width of the page, not of the viewport), the text then taking the width.
 |searching
 |full figure, `160`–`200` px
 
@@ -225,4 +225,5 @@ The D3 brand assets package delivers the source files and the figure on its surf
 * `MascotFigure` draws one figure by pose and crop, from the accepted pose's files or the source's, so a surface never names a file (link:components-brand.adoc#mascot-figure[Brand Pieces, MascotFigure]).
 * `EmptyState` gains `mascot` (a pose id), which draws the bust above the title; it replaces the `brand` option of the earlier mark.
 * The pairing hero, the terminal states and the onboarding figures place a `MascotFigure`; the rail foot is a class of `NavRail` with the hiding rules of <<rail-foot>>.
-* A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface. For the rail foot and the pairing hero it also takes a desktop height below each one's free-height threshold (both hidden) and one with enough height (both shown), with the rail expanded and collapsed.
+* The pages that stand a figure beside text — the pairing page, the revoked device, the network listener turned off and the runtime not reachable — decide "too narrow" by a container query on the page, whose own width never depends on its content, not by a media query on the viewport.
+* A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface. For the rail foot and the pairing hero it also takes a desktop height below each one's free-height threshold (both hidden) and one with enough height (both shown), with the rail expanded and collapsed. For the pairing hero it also takes a desktop width whose page, beside the expanded rail, is too narrow for it (`900` px: the hero hidden, the command rows whole).
