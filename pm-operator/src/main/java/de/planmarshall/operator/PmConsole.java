@@ -882,15 +882,7 @@ public final class PmConsole {
 
     /**
      * Sends one desktop notification for an event that puts something in front of the operator: the
-     * payload names the scope and the localized label of the kind, never the text of the item
-     * (04-console.adoc#notifications). An event that only reports or withdraws something — a report,
-     * an answer given elsewhere, a pairing — notifies nothing.
-     *
-     * @param terminal the terminal to notify on
-     * @param kind     the notice kind, or {@code null}
-     * @param eventMap the event frame
-     */
-    /**
+         /**
      * Sends the desktop notification of one notice, where the terminal supports one, and the bell
      * everywhere else ({@code 04-console.adoc#notifications}): the scope and the kind, never the
      * text of a question, and never the item's own content.

@@ -7131,7 +7131,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (state != null && state.representation() instanceof Map<?, ?> rep) {
             copyOperatorFacts(rep, body);
             copyOperatorScope(rep, body);
-            body.put("operator", rep);
+            body.put(OPERATOR_CHANNEL, rep);
         }
         var links = onboardingLinkMap(state);
         if (!links.isEmpty()) {
@@ -9450,7 +9450,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "by", "operator",
+                    "by", OPERATOR_CHANNEL,
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
                     FIELD_FREED_BYTES, freedBytes
@@ -9502,7 +9502,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "by", "operator",
+                    "by", OPERATOR_CHANNEL,
                     "channel", isWeb ? "web" : "cli",
                     KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
@@ -9551,7 +9551,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "ignore",
-                    "by", "operator",
+                    "by", OPERATOR_CHANNEL,
                     "channel", isWeb ? "web" : "cli"
             ));
 
