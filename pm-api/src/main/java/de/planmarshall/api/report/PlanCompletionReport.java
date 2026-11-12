@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ChangeSize;
 
@@ -238,7 +237,7 @@ public record PlanCompletionReport(
 
         long duration = parseDuration(map);
         var rawRan = JsonTree.string(map, "ran");
-        long paused = getLong(map.get(FIELD_PAUSED_SECONDS));
+        long paused = getLong(map, FIELD_PAUSED_SECONDS);
         var pausedBy = JsonTree.string(map, FIELD_PAUSED_BY);
 
         var deliverables = parseDeliverables(map);
@@ -271,11 +270,11 @@ public record PlanCompletionReport(
         return new ReportFrom("project", null, planId);
     }
 
-    private static @Nullable Integer parsePrNumber(Map<String, Object> map) {
+    private static @Nullable Integer parsePrNumber(Map<String, Object> map) throws IOException {
         var prNumObj = map.get(FIELD_PR_NUMBER);
         if (prNumObj == null) prNumObj = map.get("pull_request");
-        if (prNumObj instanceof JsonNumber jn) return (int) jn.longValue();
-        if (prNumObj instanceof Number n) return n.intValue();
+        var number = ReportNumbers.wholeOrNull(prNumObj, FIELD_PR_NUMBER);
+        if (number != null) return number.intValue();
         if (prNumObj instanceof String s) {
             try {
                 return Integer.parseInt(s.replace("#", "").trim());
@@ -325,9 +324,9 @@ public record PlanCompletionReport(
         return new ParsedEnded(endedAt, rawEnded);
     }
 
-    private static long parseDuration(Map<String, Object> map) {
-        long duration = getLong(map.get(FIELD_DURATION_SECONDS));
-        if (duration == 0) duration = getLong(map.get("run_duration_seconds"));
+    private static long parseDuration(Map<String, Object> map) throws IOException {
+        long duration = getLong(map, FIELD_DURATION_SECONDS);
+        if (duration == 0) duration = getLong(map, "run_duration_seconds");
         return duration;
     }
 
@@ -399,13 +398,11 @@ public record PlanCompletionReport(
         return ChangeMapRecord.fromMap(changeMap);
     }
 
-    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) {
+    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) throws IOException {
         var tuObj = map.get(FIELD_TOKEN_USAGE);
         if (tuObj == null) tuObj = map.get("tokens");
-        if (tuObj != null && JsonTree.asObject(tuObj) != null) {
-            return TokenUsageRecord.fromMap(JsonTree.asObject(tuObj));
-        }
-        return null;
+        var tokenUsage = JsonTree.asObject(tuObj);
+        return tokenUsage == null ? null : TokenUsageRecord.fromMap(tokenUsage);
     }
 
     /**
@@ -423,9 +420,7 @@ public record PlanCompletionReport(
         return fromMap(obj);
     }
 
-    private static long getLong(Object obj) {
-        if (obj instanceof JsonNumber jn) return jn.longValue();
-        if (obj instanceof Number n) return n.longValue();
-        return 0L;
+    private static long getLong(Map<String, Object> map, String field) throws IOException {
+        return ReportNumbers.whole(map.get(field), field);
     }
 }

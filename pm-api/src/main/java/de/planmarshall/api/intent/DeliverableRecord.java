@@ -198,11 +198,12 @@ public record DeliverableRecord(
         }
         affectedFiles = affectedFiles == null ? List.of() : List.copyOf(affectedFiles);
         dependsOn = dependsOn == null ? List.of() : List.copyOf(dependsOn);
-        if (dependsOn.stream().anyMatch(value -> value == null || value < 1 || value > 99)) {
+        // List.copyOf above already refuses a null element
+        if (dependsOn.stream().anyMatch(value -> value < 1 || value > 99)) {
             throw new IllegalArgumentException("depends_on must name deliverables between 1 and 99");
         }
         satisfies = satisfies == null ? List.of() : List.copyOf(satisfies);
-        if (satisfies.stream().anyMatch(value -> value == null || value.isBlank())) {
+        if (satisfies.stream().anyMatch(String::isBlank)) {
             throw new IllegalArgumentException("satisfies must not carry a blank criterion id");
         }
     }

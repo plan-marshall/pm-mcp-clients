@@ -233,7 +233,8 @@ public record OperatorStateResource(
         ConfigOrigin level = null;
         if (stateMap.get(FIELD_LEVEL) != null) {
             level = ConfigOrigin.fromWireOrNull(JsonTree.string(stateMap, FIELD_LEVEL));
-            if (level == null || !CONFIG_LEVELS.contains(level)) {
+            // a level outside machine, project and plan is refused by the constructor below
+            if (level == null) {
                 throw new JsonFormatException(
                         "Invalid " + FIELD_LEVEL + " in OperatorStateResource: " + JsonTree.string(stateMap, FIELD_LEVEL));
             }

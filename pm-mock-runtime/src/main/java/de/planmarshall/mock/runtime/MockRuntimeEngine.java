@@ -3283,7 +3283,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             readChatSeeds(control);
         }
         for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
-            DecisionEnvelope.fromMap(entry);
+            readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
         }
         for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
             readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
@@ -7165,7 +7165,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (RuntimeException _) {
+            } catch (IOException | RuntimeException _) {
                 // a payload that is not a decision envelope opens nothing; the notice still goes out
             }
         } else {
@@ -9983,7 +9983,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             operatorCreatedDecisionIds.clear();
             var fixture = startRuntimeFixture();
             for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
-                var decision = DecisionEnvelope.fromMap(entry);
+                var decision = readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
                 openDecisions.put(decision.id(), decision);
             }
         }

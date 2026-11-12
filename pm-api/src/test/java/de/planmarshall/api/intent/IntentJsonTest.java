@@ -76,10 +76,12 @@ class IntentJsonTest {
                 Arguments.of("required number not finite", requireDouble, new JsonNumber("1e999")),
                 Arguments.of("required number NaN", requireDouble, Double.NaN),
                 Arguments.of("required boolean no boolean", requireBoolean, "true"),
+                Arguments.of("strings present null", readStrings, null),
                 Arguments.of("strings no array", readStrings, "a"),
                 Arguments.of("strings holding a number", readStrings, List.of(JsonNumber.of(1))),
                 Arguments.of("numbers no array", readInts, JsonNumber.of(1)),
                 Arguments.of("numbers out of range", readInts, List.of(JsonNumber.of(11))),
+                Arguments.of("objects present null", readObjects, null),
                 Arguments.of("objects no array", readObjects, Map.of()),
                 Arguments.of("objects holding a string", readObjects, List.of("a")));
     }
@@ -94,7 +96,7 @@ class IntentJsonTest {
     }
 
     @Test
-    @DisplayName("should yield nothing for an absent or null optional member and keep a blank raw text")
+    @DisplayName("should yield nothing for an absent optional member or list, a null optional member, and keep a blank raw text")
     void shouldYieldNothingForAbsentOptionalMembers() throws Exception {
         var blank = " ".repeat(Generators.integers(1, 5).next());
         var absent = Map.<String, Object>of();
@@ -106,9 +108,9 @@ class IntentJsonTest {
                 () -> assertNull(IntentJson.optionalRawText(nullMember, KEY, TYPE)),
                 () -> assertEquals(blank, IntentJson.optionalRawText(member(blank), KEY, TYPE)),
                 () -> assertNull(IntentJson.optionalDouble(nullMember, KEY, TYPE)),
-                () -> assertTrue(IntentJson.readStrings(nullMember, KEY).isEmpty()),
+                () -> assertTrue(IntentJson.readStrings(absent, KEY).isEmpty()),
                 () -> assertTrue(IntentJson.readInts(absent, KEY, 0, 1).isEmpty()),
-                () -> assertTrue(IntentJson.readObjects(nullMember, KEY).isEmpty()));
+                () -> assertTrue(IntentJson.readObjects(absent, KEY).isEmpty()));
     }
 
     @Test

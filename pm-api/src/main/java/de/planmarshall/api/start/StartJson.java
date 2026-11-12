@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 
@@ -59,31 +58,6 @@ final class StartJson {
     }
 
     /**
-     * Reads the named field as a list of strings. An absent field yields an empty list; a present
-     * {@code null}, a non-array value, or a structured element fails closed.
-     *
-     * @param object the record's map
-     * @param key    the field key
-     * @return the strings, never {@code null}
-     * @throws IOException if a present value is not a scalar array
-     */
-    static List<String> readStrings(Map<String, Object> object, String key) throws IOException {
-        if (!object.containsKey(key)) {
-            return List.of();
-        }
-        var raw = object.get(key);
-        var array = raw != null ? JsonTree.asArray(raw) : null;
-        if (array == null) {
-            throw new JsonFormatException("Expected an array for " + key);
-        }
-        var structured = array.stream().anyMatch(item -> item instanceof Map<?, ?> || item instanceof List<?>);
-        if (structured) {
-            throw new JsonFormatException("Expected scalars for " + key);
-        }
-        return array.stream().filter(Objects::nonNull).map(String::valueOf).toList();
-    }
-
-    /**
      * Reads the named field as a list of objects. An absent field yields an empty list; a present
      * {@code null}, a non-array value, or an element that is not an object fails closed.
      *
@@ -96,8 +70,7 @@ final class StartJson {
         if (!object.containsKey(key)) {
             return List.of();
         }
-        var raw = object.get(key);
-        var array = raw != null ? JsonTree.asArray(raw) : null;
+        var array = JsonTree.asArray(object.get(key));
         if (array == null) {
             throw new JsonFormatException("Expected an array for " + key);
         }
@@ -160,13 +133,5 @@ final class StartJson {
     static Long optLong(Map<String, Object> map, String key) {
         var value = JsonTree.number(map, key);
         return value != null ? value.longValue() : null;
-    }
-
-    /**
-     * @param value a string
-     * @return {@code true} if the value is neither {@code null} nor blank
-     */
-    static boolean present(String value) {
-        return value != null && !value.isBlank();
     }
 }

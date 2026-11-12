@@ -42,7 +42,7 @@ class DecisionRecordsTest {
 
         @Test
         @DisplayName("should keep an unreadable delivery time unknown instead of inventing the moment of reading")
-        void shouldKeepUnreadableDeliveryTimeUnknown() {
+        void shouldKeepUnreadableDeliveryTimeUnknown() throws Exception {
             var id = "Q-" + Generators.integers(1, 999).next();
 
             var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "delivered_at", "yesterday"));
@@ -53,14 +53,15 @@ class DecisionRecordsTest {
         }
 
         @Test
-        @DisplayName("should fill every absent member of an envelope that names only its plan")
-        void shouldDefaultAbsentMembers() {
+        @DisplayName("should fill every absent member of an envelope that names only its id and plan")
+        void shouldDefaultAbsentMembers() throws Exception {
+            var id = "Q-" + Generators.integers(1, 999).next();
             var plan = Generators.nonBlankStrings().next();
 
-            var envelope = DecisionEnvelope.fromMap(Map.of("plan", plan));
+            var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "plan", plan));
 
             assertAll(
-                    () -> assertEquals("", envelope.id()),
+                    () -> assertEquals(id, envelope.id()),
                     () -> assertEquals(1, envelope.revision()),
                     () -> assertEquals("", envelope.title()),
                     () -> assertEquals("plan " + plan, envelope.subject()),
@@ -77,8 +78,24 @@ class DecisionRecordsTest {
         }
 
         @Test
+        @DisplayName("should refuse an envelope without an id, or with a blank one, as a malformed message")
+        void shouldRefuseAnEnvelopeWithoutId() {
+            var plan = Generators.nonBlankStrings().next();
+            var blank = " ".repeat(Generators.integers(0, 3).next());
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> DecisionEnvelope.fromMap(Map.of("plan", plan))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> DecisionEnvelope.fromMap(Map.of("id", blank, "plan", plan))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> DecisionOpenedEvent.fromJson(JsonTree.write(Map.of("decision",
+                                    Map.of("plan", plan))))));
+        }
+
+        @Test
         @DisplayName("should take the subject from the id and the asking members from their short names")
-        void shouldReadShortMemberNames() {
+        void shouldReadShortMemberNames() throws Exception {
             var id = "Q-" + Generators.integers(1, 999).next();
             var phase = Generators.nonBlankStrings().next();
             var role = Generators.nonBlankStrings().next();
@@ -103,7 +120,7 @@ class DecisionRecordsTest {
         @ParameterizedTest
         @ValueSource(strings = {"WR-", "Q-"})
         @DisplayName("should take a waiver request from the id prefix WR- alone")
-        void shouldTakeWaiverFromIdPrefix(String prefix) {
+        void shouldTakeWaiverFromIdPrefix(String prefix) throws Exception {
             var id = prefix + Generators.integers(1, 999).next();
 
             var envelope = DecisionEnvelope.fromMap(Map.of("id", id, "parts", "none"));

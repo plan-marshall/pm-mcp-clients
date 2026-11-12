@@ -87,6 +87,19 @@ public record EpicProcess(
         return JsonTree.write(toMap());
     }
 
+    /**
+     * Reads an epic's process from a JSON object.
+     * <p>
+     * The reader is lenient by design: an entry of {@code running_plans} or {@code staged_plans} that is
+     * not an object, and a {@code null} entry of {@code alongside_landings}, are skipped, not refused.
+     * This is deliberate tolerance of shapes the reader does not know, so a newer runtime that adds a
+     * kind of entry still shows the rest of the epic; it is not an oversight to be closed. A missing
+     * {@code epic_id} is still refused.
+     *
+     * @param map the JSON object
+     * @return the epic's process
+     * @throws IOException if the object carries no epic id or a nested record is malformed
+     */
     public static EpicProcess fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var epicId = JsonTree.string(map, "epic_id");

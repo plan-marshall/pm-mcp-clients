@@ -123,6 +123,19 @@ public record ProcessTree(
         return JsonTree.write(toMap());
     }
 
+    /**
+     * Reads a process tree from a JSON object.
+     * <p>
+     * The reader is lenient by design: an entry of {@code nodes} that is not an object, and a
+     * {@code null} entry of {@code current_position_path}, are skipped, not refused. This is deliberate
+     * tolerance of shapes the reader does not know, so a newer runtime that adds a kind of entry still
+     * shows the rest of the tree; it is not an oversight to be closed. A missing {@code plan_id} is
+     * still refused.
+     *
+     * @param map the JSON object
+     * @return the process tree
+     * @throws IOException if the object carries no plan id or a nested record is malformed
+     */
     public static ProcessTree fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var planId = JsonTree.string(map, "plan_id");

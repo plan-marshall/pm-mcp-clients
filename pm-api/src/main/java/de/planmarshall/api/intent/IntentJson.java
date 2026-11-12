@@ -261,7 +261,7 @@ final class IntentJson {
      * @throws IOException if a present value is not a scalar array
      */
     static List<String> readStrings(Map<String, Object> object, String key) throws IOException {
-        if (object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));
@@ -315,7 +315,7 @@ final class IntentJson {
      * @throws IOException if a present value is not an object array
      */
     static List<Map<String, Object>> readObjects(Map<String, Object> object, String key) throws IOException {
-        if (object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));

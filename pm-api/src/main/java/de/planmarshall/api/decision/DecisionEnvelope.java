@@ -145,11 +145,14 @@ public record DecisionEnvelope(
      *
      * @param map tree map
      * @return parsed DecisionEnvelope
+     * @throws IOException if the message carries no id: a decision without an id cannot be answered
      */
-    public static DecisionEnvelope fromMap(Map<String, Object> map) {
+    public static DecisionEnvelope fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
-        if (id == null) id = "";
+        if (id == null || id.isBlank()) {
+            throw new JsonFormatException("Missing id in DecisionEnvelope");
+        }
         var rev = JsonTree.integer(map, "revision") != null ? JsonTree.integer(map, "revision") : 1;
         var title = JsonTree.string(map, "title");
         if (title == null) title = "";
