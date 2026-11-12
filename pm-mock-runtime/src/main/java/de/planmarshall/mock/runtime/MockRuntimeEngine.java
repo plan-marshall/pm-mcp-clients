@@ -3909,6 +3909,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (entryId.isEmpty() || entryId.contains("/")) {
             return false;
         }
+        if (handleProjectOnboardingEntry(request, response, entryId, act)) {
+            return true;
+        }
         if ("GET".equals(request.method()) && act == null) {
             var state = startRegistry.find(entryId);
             if (state == null) {
@@ -3923,6 +3926,66 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Serves a project onboarding's entry: the being-added run a {@code POST
+     * /api/v1/project-onboardings} opened, addressed at {@code /api/v1/entries/{entry_id}} with its
+     * link surface ({@code 01-processes-and-transport.adoc#event-streams}).
+     *
+     * @param request  the request
+     * @param response the response to write
+     * @param entryId  the entry the request addresses
+     * @param act      the link the request sends, or {@code null} for a read
+     * @return whether this request was one of a project onboarding's entry routes
+     * @throws IOException on write failure
+     */
+    private boolean handleProjectOnboardingEntry(MockHttpRequest request, MockHttpResponse response,
+                        String entryId, @Nullable String act) throws IOException {
+        synchronized (projectsLock) {
+            var being = beingAddedProjects.stream()
+                                .filter(candidate -> candidate.continueLink() != null
+                                                    && candidate.continueLink()
+                                                                        .contains(PATH_ENTRIES_PREFIX + entryId + "/"))
+                                .findFirst()
+                                .orElse(null);
+            if (being == null) {
+                return false;
+            }
+            if ("GET".equals(request.method()) && act == null) {
+                response.json(200, projectOnboardingEntryState(entryId, false));
+                return true;
+            }
+            if (METHOD_POST.equals(request.method()) && "set".equals(act)) {
+                beingAddedProjects.remove(being);
+                response.json(200, projectOnboardingEntryState(entryId, true));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param entryId   the onboarding's entry
+     * @param completed whether the run reached its last state
+     * @return the state the entry reports
+     */
+    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_STATE, completed ? "project.completed" : "project.identity");
+        body.put(KEY_STEP, completed ? 10 : 2);
+        body.put(KEY_TOTAL_STEPS, 10);
+        if (completed) {
+            body.put(FIXTURE_SUMMARY, "the project is ready");
+            body.put(KEY_LINKS, Map.of());
+            return body;
+        }
+        body.put("id", entryId);
+        body.put("name", entryId);
+        body.put("pilot", false);
+        body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                        PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
+        return body;
     }
 
     private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
