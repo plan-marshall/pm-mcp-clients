@@ -160,7 +160,19 @@ class ConfigRoutesTest {
             }
             var back = submit.links().get("set");
             assertNotNull(back, link.next());
-            assertEquals("settings.choose", back.next(), link.next());
+            var next = back.next();
+            for (int step = 0; step < 8 && !"settings.choose".equals(next); step++) {
+                var state = scenario.state(next);
+                assertNotNull(state, next);
+                var onward = state.links().values().stream()
+                                    .map(linkDefinition -> linkDefinition.next())
+                                    .filter(name -> name != null)
+                                    .findFirst()
+                                    .orElse(null);
+                assertNotNull(onward, next);
+                next = onward;
+            }
+            assertEquals("settings.choose", next, link.next());
         }
     }
 
@@ -185,10 +197,6 @@ class ConfigRoutesTest {
     void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                    "{\"link\":\"reconfigure:credentials\"}"), runtime));
-            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                    "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
-            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"set\",\"landing\":\"landing.files\"}"), runtime));
@@ -196,6 +204,10 @@ class ConfigRoutesTest {
                     "{\"link\":\"reconfigure:providers\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"reconfigure:credentials\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
             var values = values(runtime);
 
             assertAll(

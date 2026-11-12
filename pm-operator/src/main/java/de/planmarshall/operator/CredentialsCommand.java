@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -59,6 +60,7 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String STATUS = "status";
     private static final String MODE = "mode";
     private static final String ROTATE = "rotate";
+    private static final String CREDENTIALS = "credentials";
 
     private final OperatorContext context;
 
@@ -145,7 +147,8 @@ public final class CredentialsCommand implements Callable<Integer> {
         return path != null && !path.isBlank() ? path : "os";
     }
 
-    private int store(PrintWriter out, String key, String mode, boolean yes) throws IOException {
+    private int store(PrintWriter out, PrintWriter err, String key, String mode, boolean yes,
+                        @Nullable Map<String, Object> status) throws IOException {
         var locale = locale();
         char[] secret;
         try (var lease = context.openTerminal()) {
@@ -182,14 +185,15 @@ public final class CredentialsCommand implements Callable<Integer> {
                 }
                 var response = context.runtime(true).send(
                                     HttpRequest.json("PUT", path(key), JsonTree.write(body)));
-                return reportStored(out, key, response);
+                return reportStored(out, err, key, response, storeHint(status));
             } finally {
                 SecretReader.dispose(secret);
             }
         }
     }
 
-    private int reportStored(PrintWriter out, String key, HttpResponse response) throws IOException {
+    private int reportStored(PrintWriter out, PrintWriter err, String key, HttpResponse response, String store)
+                        throws IOException {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
             out.println(MessageCatalogue.format(locale, "operator.credentials.failed",
@@ -208,18 +212,54 @@ public final class CredentialsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, "operator.credentials.stored",
                             Map.of("key", key, "count", dropped)));
         out.flush();
-        verifyProviders(out, locale, key);
-        return 0;
+        return verifyProviders(out, err, key, store);
     }
 
     /**
-     * Names the verb that checks the providers which use the key. The check is the providers'
-     * later run ({@code config providers --verify}, {@code 01-commands.adoc#direct-verbs}); the
-     * client no longer calls an aspect route itself, so it never reports a check it did not run.
+     * Runs the provider check the design follows a stored token with
+     * ({@code 08-transcripts-later.adoc:262-273}) through the machine onboarding's later run: the
+     * providers that use the key report their lines, and the last line names the plans that go on.
+     * A check that fails prints the failure and leaves the hold as it is.
+     *
+     * @param out   the verb's output
+     * @param key   the credential key whose providers are checked
+     * @param store the store the secret was written to
+     * @return the exit code
+     * @throws IOException on transport failure
      */
-    private void verifyProviders(PrintWriter out, String locale, String key) {
-        out.println(MessageCatalogue.format(locale, "operator.credentials.verify_with", Map.of("key", key)));
+    private int verifyProviders(PrintWriter out, PrintWriter err, String key, String store) throws IOException {
+        var locale = locale();
+        out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
+                            Map.of("action", MessageCatalogue.format(locale,
+                                                "common.consent.kind.verify_providers", Map.of()))));
         out.flush();
+        var facts = new LinkedHashMap<String, String>();
+        facts.put("current", store);
+        var outcome = ConfigAspectRun.runFor(context, out, err, CREDENTIALS,
+                            new ConfigAspectRun.Answers(facts, List.of("verify_providers"), false, false, false,
+                                                false));
+        if (outcome.exitCode() != 0) {
+            return outcome.exitCode();
+        }
+        var reported = outcome.facts();
+        if (Boolean.TRUE.equals(reported.get("failed"))) {
+            out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
+                                Map.of("reason", TerminalSanitizer.sanitize(
+                                                    Objects.toString(reported.get("cause"), "")))));
+            out.flush();
+            return 0;
+        }
+        var plans = reported.get("plans") instanceof String text ? text : "";
+        var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
+                            "onboard.settings.credential.verified", Map.of("key", key)));
+        if (!plans.isBlank()) {
+            line.append(' ').append(MessageCatalogue.format(locale,
+                                "onboard.settings.credential.plans_go_on",
+                                Map.of("count", plans.split(",").length, "plans", plans)));
+        }
+        out.println(line);
+        out.flush();
+        return 0;
     }
 
     private boolean confirm(Terminal terminal) {
@@ -270,7 +310,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
             command.printHeader(out, key, ROTATE, status);
-            return command.store(out, key, ROTATE, yes);
+            return command.store(out, spec.commandLine().getErr(), key, ROTATE, yes, status);
         }
     }
 
@@ -313,7 +353,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                                     + "  " + TerminalSanitizer.sanitize(kind));
             }
             out.flush();
-            return command.store(out, key, "set", yes);
+            return command.store(out, spec.commandLine().getErr(), key, "set", yes, status);
         }
     }
 

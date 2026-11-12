@@ -83,6 +83,19 @@ final class ConfigAspectRun {
     }
 
     /**
+     * The outcome of one later run: its exit code, and the facts of the last state it reported.
+     *
+     * @param exitCode the verb's exit code
+     * @param facts    the facts of the last state before the run returned to the settings
+     */
+    record Outcome(int exitCode, Map<String, Object> facts) {
+
+        Outcome {
+            facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
+        }
+    }
+
+    /**
      * Runs one aspect of the machine's onboarding again.
      *
      * @param context the operator context
@@ -95,10 +108,27 @@ final class ConfigAspectRun {
      */
     static int run(OperatorContext context, PrintWriter out, PrintWriter err, String aspect, Answers answers)
                         throws IOException {
+        return runFor(context, out, err, aspect, answers).exitCode();
+    }
+
+    /**
+     * Runs one aspect of the machine's onboarding again and keeps what its last state reported, so a
+     * verb can print the outcome of the check the run performed ({@code credentials rotate}).
+     *
+     * @param context the operator context
+     * @param out     the verb's output
+     * @param err     the verb's error output
+     * @param aspect  the aspect's name as the verb spells it
+     * @param answers the answers the verb carries
+     * @return the outcome
+     * @throws IOException on transport failure
+     */
+    static Outcome runFor(OperatorContext context, PrintWriter out, PrintWriter err, String aspect,
+                        Answers answers) throws IOException {
         return new ConfigAspectRun(context, out, err, answers).execute(aspect);
     }
 
-    private int execute(String aspect) throws IOException {
+    private Outcome execute(String aspect) throws IOException {
         var source = new AspectRunSource(context.runtime(true), context.gate(),
                             AspectRunSource.reconfigureLink(aspect), answers.facts(), answers.consents(),
                             new AspectRunSource.Flags(answers.noIcons(), answers.noAdvice(), answers.yes(),
@@ -109,34 +139,38 @@ final class ConfigAspectRun {
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
         } catch (StartPrompt.InterruptException _) {
-            return StartPrompt.EXIT_INTERRUPTED;
+            return outcome(source, StartPrompt.EXIT_INTERRUPTED);
         } catch (StartPrompt.MissingInputException _) {
             reportUnused(source);
             out.println(MessageCatalogue.format(locale, "operator.config.aspect_stopped", Map.of()));
             out.flush();
-            return EXIT_MISSING_INPUT;
+            return outcome(source, EXIT_MISSING_INPUT);
         } catch (StartPrompt.StartLeftException _) {
             reportUnused(source);
             out.flush();
-            return 0;
+            return outcome(source, 0);
         } catch (OperatorRefusedException e) {
             out.println(e.getMessage());
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         } catch (AspectRunSource.RefusedException refused) {
             err.println(MessageCatalogue.format(locale, "operator.config.aspect_refused",
                                 Map.of(ASPECT, aspect, "status", refused.status())));
             err.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         } catch (IOException _) {
             err.println(MessageCatalogue.format(locale, "operator.config.aspect_failed", Map.of(ASPECT, aspect)));
             err.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         }
         reportUnused(source);
         out.println(MessageCatalogue.format(locale, "operator.config.aspect_done", Map.of(ASPECT, aspect)));
         out.flush();
-        return 0;
+        return outcome(source, 0);
+    }
+
+    private static Outcome outcome(AspectRunSource source, int exitCode) {
+        return new Outcome(exitCode, source.lastFacts());
     }
 
     private void reportUnused(AspectRunSource source) {
