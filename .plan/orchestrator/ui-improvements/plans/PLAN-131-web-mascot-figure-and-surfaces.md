@@ -162,10 +162,12 @@ Re-read every file above at the then-current HEAD; settle the HYPOTHESES; re-run
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-12 by the operator's size rule: 19 files, six deliverables of new components, derived images and
+browser evidence; it had been emitted on the runbook lane by mistake and not started). Overlap now running: PLAN-147
+(`routes/dev/components/+page.svelte`); whichever lands second rebases.
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-131-web-mascot-figure-and-surfaces.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-131-web-mascot-figure-and-surfaces.md"
 ```
 
 ## Write-Boundary
