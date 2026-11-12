@@ -39,6 +39,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
@@ -111,7 +112,6 @@ public final class OverviewFullScreenApp {
     private static final String VERB_ANSWER = "answer";
     private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
-    private static final String PLANS_VERB = "plans";
     private static final String NEEDS_LEVEL = "needs";
     private static final String PROJECTS_LEVEL = "projects";
     private static final String EXPLORER_LEVEL = "explorer";
@@ -221,6 +221,7 @@ public final class OverviewFullScreenApp {
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
     private @Nullable OverviewKeyHandler activeKeyHandler;
+    private VerbRunner verbRunner;
 
     /**
      * Creates the full-screen overview application with system clock and context defaults.
@@ -259,6 +260,7 @@ public final class OverviewFullScreenApp {
         this.stateStore = Objects.requireNonNull(stateStore, "stateStore");
         this.noticeBuffer = Objects.requireNonNull(noticeBuffer, "noticeBuffer");
         this.initialSelection = Objects.requireNonNull(initialSelection, "initialSelection");
+        this.verbRunner = args -> PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
     }
 
     /**
@@ -423,6 +425,7 @@ public final class OverviewFullScreenApp {
         fetchProjects(runtime);
         fetchNeedsOperator(runtime);
         fetchUnreadReports(runtime);
+        seedNeedsNotices();
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
@@ -484,6 +487,22 @@ public final class OverviewFullScreenApp {
                                 : ProjectsOverviewLevel.firstSelectableId(rootRows);
             stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, targetId);
         }
+    }
+
+    /**
+     * Seeds the view's own notice rule from the list of what waits it read at start: what that read
+     * showed is in the view already and is not counted again as arriving meanwhile, while anything
+     * beyond it is. A list the runtime did not serve showed nothing.
+     */
+    void seedNeedsNotices() {
+        var shown = new LinkedHashMap<NeedsOperatorKind, Integer>();
+        var page = cachedNeedsOperator.get();
+        if (page != null) {
+            for (var item : page.items()) {
+                shown.merge(item.kind(), 1, Integer::sum);
+            }
+        }
+        needsNotices.seed(shown);
     }
 
     void fetchNeedsOperator(RuntimeClient runtime) {
@@ -813,7 +832,7 @@ public final class OverviewFullScreenApp {
      */
     static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
         return switch (kind != null ? kind : "") {
-            case "question", "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "question", "decision", "waiver", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
             case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
@@ -881,6 +900,16 @@ public final class OverviewFullScreenApp {
     @FunctionalInterface
     private interface DialogueTask {
         int run() throws IOException;
+    }
+
+    /** What runs one verb the view hands off, by its words. */
+    @FunctionalInterface
+    public interface VerbRunner {
+        /**
+         * @param args the verb and its arguments
+         * @return the verb's exit code
+         */
+        int run(String... args);
     }
 
     private WorkActionsClient actionsClient() {
@@ -1365,9 +1394,19 @@ public final class OverviewFullScreenApp {
         openActions();
     }
 
+    /**
+     * Replaces what runs a verb the view hands off, so a test observes the exact words without a
+     * runtime behind every verb.
+     *
+     * @param runner the runner of a verb's words
+     */
+    public void verbRunner(VerbRunner runner) {
+        this.verbRunner = Objects.requireNonNull(runner, "runner");
+    }
+
     void runVerb(String... args) {
         runDialogue(() -> {
-            var code = PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
+            var code = verbRunner.run(args);
             // A start the view hands off is one of the view's other dialogues: its interrupt
             // leaves back to the view as q does (04-console.adoc#console-dialogue-handoff).
             var start = args.length > 1 && (("plan".equals(args[0]) || "epic".equals(args[0]))
@@ -1393,81 +1432,15 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void openNeedsItemAct(NeedsOperatorItem item) {
-        switch (item.kind()) {
-            case DECISION, WAIVER -> openDecisionAct(item);
-            case HELD, LANDING_FAILED -> openHoldAct(item);
-            case SETUP -> openSetupAct(item);
-            case CREDENTIAL -> runVerb("credentials");
-            case CLEANUP_DUE -> runVerb("cleanup");
-            case FINDINGS -> openFindingsAct(item);
-            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
-            case OTHER -> runVerb(PLANS_VERB);
-        }
-    }
-
-    private void openDecisionAct(NeedsOperatorItem item) {
-        String decisionId = null;
-        if (item.link() != null && item.link().contains("/decisions/")) {
-            decisionId = item.link().substring(item.link().lastIndexOf('/') + 1);
-        } else if (item.plan() != null) {
-            try {
-                decisionId = actionsClient().openDecision(item.plan().id());
-            } catch (IOException _) {
-                // best effort
-            }
-        }
-        if (decisionId != null) {
-            String finalDecisionId = decisionId;
-            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, finalDecisionId));
-        } else {
-            runVerb(VERB_ANSWER);
-        }
-    }
-
-    private void openHoldAct(NeedsOperatorItem item) {
-        var planId = item.plan() != null ? item.plan().id() : null;
-        if (planId != null) {
-            try {
-                var hold = actionsClient().hold(planId);
-                if (hold != null) {
-                    runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
-                    return;
-                }
-            } catch (IOException _) {
-                // best effort
-            }
-            runVerb("plan", planId);
-        } else if (item.epic() != null) {
-            runVerb("epic", item.epic().id());
-        }
-    }
-
-    private void openSetupAct(NeedsOperatorItem item) {
-        var projId = item.project() != null ? item.project().id() : null;
-        if (projId != null) {
-            runVerb(PROJECT_VERB, VERB_SETUP, projId);
-        } else {
-            runVerb(PROJECT_VERB, VERB_SETUP);
-        }
-    }
-
-    private void openFindingsAct(NeedsOperatorItem item) {
-        if (item.epic() != null) {
-            runVerb("epic", "findings", item.epic().id());
-        } else {
-            runVerb("reports");
-        }
-    }
-
-    private void openPlanAct(NeedsOperatorItem item) {
-        if (item.plan() != null) {
-            try {
-                openPlan(context.runtime(true), item.plan().id(), null);
-            } catch (IOException _) {
-                // best effort
-            }
-        }
+    /**
+     * Runs what waits in a row of the needs list: exactly the command the row prints
+     * ({@link OverviewFormatting#needsItemCommand(NeedsOperatorItem)}), so {@code !} never opens
+     * something other than what the operator reads.
+     *
+     * @param item the item of the selected row
+     */
+    public void openNeedsItemAct(NeedsOperatorItem item) {
+        runVerb(OverviewFormatting.needsItemCommand(item).toArray(String[]::new));
     }
 
     private Thread startEventListener() {

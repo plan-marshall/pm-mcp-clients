@@ -100,8 +100,8 @@ class ConsolePromptTest {
         @DisplayName("formats waiver request badges singular and plural")
         void waiverRequestBadges() {
             assertAll(
-                                () -> assertEquals("1 waiver request", ConsolePrompt.formatBadge("waiver_request", 1)),
-                                () -> assertEquals("4 waiver requests", ConsolePrompt.formatBadge("waiver_request", 4))
+                                () -> assertEquals("1 waiver request", ConsolePrompt.formatBadge("waiver", 1)),
+                                () -> assertEquals("4 waiver requests", ConsolePrompt.formatBadge("waiver", 4))
             );
         }
 
@@ -133,7 +133,18 @@ class ConsolePromptTest {
                                 () -> assertEquals("1 landing failed", ConsolePrompt.formatBadge("landing_failed", 1)),
                                 () -> assertEquals("3 new findings", ConsolePrompt.formatBadge("findings", 3)),
                                 () -> assertEquals("1 setup", ConsolePrompt.formatBadge("setup", 1)),
-                                () -> assertEquals("2 custom", ConsolePrompt.formatBadge("custom", 2))
+                                () -> assertEquals("2 another reason", ConsolePrompt.formatBadge("custom", 2))
+            );
+        }
+
+        @Test
+        @DisplayName("names a kind it has no badge for by the catalogue's word, never the wire word")
+        void unknownKindBadgeUsesTheCatalogueWord() {
+            var badge = ConsolePrompt.formatBadge("quota_exhausted", 1);
+
+            assertAll(
+                                () -> assertEquals("1 another reason", badge),
+                                () -> assertFalse(badge.contains("quota_exhausted"), badge)
             );
         }
 

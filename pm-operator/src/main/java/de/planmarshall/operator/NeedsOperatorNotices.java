@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorChangedEvent;
@@ -36,8 +37,15 @@ import de.planmarshall.api.overview.NeedsOperatorSummary;
  * <p>The added items are found by comparing the machine summary the event carries
  * ({@link NeedsOperatorChangedEvent#summary()}) with the one the previous event of the same place
  * carried: the contract's event names no item of its own, so the summary is the only place the
- * addition can be read. A scope seen for the first time has no previous summary: every item it
- * carries is an addition, and an empty summary seen first adds nothing.
+ * addition can be read.
+ *
+ * <p>A place seen for the first time has no previous summary of its own. Its baseline is what the
+ * status read at start already showed ({@link #seed(Map)}): an item of a kind that read counted is
+ * no addition, up to the count it showed, because it was badged before the console or the view
+ * opened. Every other item the first summary carries is an addition — the first credential that
+ * arrives after a start whose status read showed none is announced like any later one. Without a
+ * seed nothing was shown, so every item of a first summary is an addition; an empty summary seen
+ * first adds nothing.
  */
 public final class NeedsOperatorNotices {
 
@@ -65,6 +73,65 @@ public final class NeedsOperatorNotices {
     /** The last summary read per place, keyed by the place the event carries. */
     private final Map<String, Map<String, Integer>> lastSeen = new ConcurrentHashMap<>();
 
+    /** What the status read at start showed, per kind: the baseline of a place seen first. */
+    private final Map<NeedsOperatorKind, Integer> shownAtStart = new ConcurrentHashMap<>();
+
+    /**
+     * Seeds the baseline from the status read at start: the {@code needs_operator} counts per kind
+     * that read reported. A later seed replaces an earlier one.
+     *
+     * @param shown the count per kind the status read showed; a kind it did not name showed nothing
+     */
+    public void seed(Map<NeedsOperatorKind, Integer> shown) {
+        Objects.requireNonNull(shown, "shown");
+        shownAtStart.clear();
+        shown.forEach((kind, count) -> {
+            if (count != null && count > 0) {
+                shownAtStart.merge(kind, count, Integer::sum);
+            }
+        });
+    }
+
+    /**
+     * Seeds the baseline from the runtime's status ({@code GET /api/v1/status}), whose
+     * {@code needs_operator} member counts what waits per kind. A status that names no such member
+     * showed nothing.
+     *
+     * @param status the status the runtime reported
+     */
+    public void seedFromStatus(Map<String, Object> status) {
+        Objects.requireNonNull(status, "status");
+        var shown = new LinkedHashMap<NeedsOperatorKind, Integer>();
+        if (status.get("needs_operator") instanceof Map<?, ?> needs) {
+            for (var entry : needs.entrySet()) {
+                var count = countOf(entry.getValue());
+                if (count > 0) {
+                    shown.merge(NeedsOperatorKind.fromWireOrOther(String.valueOf(entry.getKey())), count,
+                                        Integer::sum);
+                }
+            }
+        }
+        seed(shown);
+    }
+
+    /**
+     * @param value the count the status reports for one kind
+     * @return the count, or {@code 0} when the value is no whole number
+     */
+    private static int countOf(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, jsonNumber.longValue()));
+            } catch (NumberFormatException _) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
     /**
      * Reads the notices one event raises: one per item it adds of a kind no other event announces.
      *
@@ -90,9 +157,9 @@ public final class NeedsOperatorNotices {
         }
         var previous = lastSeen.put(place, current);
         if (previous == null) {
-            // The first summary of a place is the baseline, never an addition: what already waited
-            // when the console started was badged before, so it is announced once only.
-            return List.of();
+            // A place seen first: what the status read at start already showed was badged before,
+            // so it is announced once only; anything beyond it arrived since and is an addition.
+            previous = baselineOf(summary);
         }
         var seen = new LinkedHashMap<String, Integer>();
         for (var item : summary.items()) {
@@ -148,6 +215,24 @@ public final class NeedsOperatorNotices {
             }
         }
         return MACHINE;
+    }
+
+    /**
+     * @param summary the first summary of a place
+     * @return the items of it the status read at start already showed, counted per identity: of each
+     *         kind, the first as many as that read counted, in the summary's order
+     */
+    private Map<String, Integer> baselineOf(NeedsOperatorSummary summary) {
+        var baseline = new LinkedHashMap<String, Integer>();
+        var takenPerKind = new LinkedHashMap<NeedsOperatorKind, Integer>();
+        for (var item : summary.items()) {
+            var taken = takenPerKind.getOrDefault(item.kind(), 0);
+            if (taken < shownAtStart.getOrDefault(item.kind(), 0)) {
+                takenPerKind.put(item.kind(), taken + 1);
+                baseline.merge(identityOf(item), 1, Integer::sum);
+            }
+        }
+        return baseline;
     }
 
     private static String identityOf(NeedsOperatorItemRef item) {

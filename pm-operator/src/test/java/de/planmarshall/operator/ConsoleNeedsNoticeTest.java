@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -146,6 +147,55 @@ class ConsoleNeedsNoticeTest {
                             () -> assertFalse(text.contains("git\u0007hub"), "no control character may reach the screen"),
                             () -> assertEquals(1, count(text, DISPLAY_MARK), text),
                             () -> assertEquals(1, count(text, NOTIFICATION), text)
+        );
+    }
+
+    @Test
+    @DisplayName("a credential arriving as the first event after a start whose status read showed none raises one notice")
+    void firstCredentialAfterAnEmptyStartIsAnnounced() {
+        var key = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of()));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertAll(
+                            () -> assertEquals(1, raised.size(), raised.toString()),
+                            () -> assertEquals("credential", raised.getFirst().kind()),
+                            () -> assertTrue(raised.getFirst().text().contains("Credential " + key + " needs attention"),
+                                                raised.getFirst().text())
+        );
+    }
+
+    @Test
+    @DisplayName("an item the status read at start already showed raises no notice")
+    void itemTheStartShowedIsNotAnnouncedAgain() {
+        var key = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertTrue(raised.isEmpty(), raised.toString());
+    }
+
+    @Test
+    @DisplayName("an item beyond what the status read showed is announced, one notice for the one added")
+    void itemBeyondTheStartIsAnnounced() {
+        var shown = Generators.letterStrings(4, 12).next();
+        var added = shown + "-" + Generators.letterStrings(2, 6).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 2,
+                            item("credential", "/api/v1/credentials/" + shown),
+                            item("credential", "/api/v1/credentials/" + added)));
+
+        assertAll(
+                            () -> assertEquals(1, raised.size(), raised.toString()),
+                            () -> assertEquals(added, raised.getFirst().place())
         );
     }
 

@@ -32,7 +32,7 @@ public final class ConsolePrompt {
     static final String PROMPT_SEPARATOR = " \u00b7 ";
     private static final String DEFAULT_LOCALE = "en";
     private static final String BADGE_QUESTIONS = "operator.console.badge.questions";
-    private static final String BADGE_WAIVER_REQUESTS = "operator.console.badge.waiver_requests";
+    private static final String BADGE_WAIVERS = "operator.console.badge.waivers";
     private static final String COUNT = "count";
 
     private ConsolePrompt() {
@@ -104,7 +104,7 @@ public final class ConsolePrompt {
         }
         var key = switch (kind) {
             case "decision", "question" -> BADGE_QUESTIONS;
-            case "waiver_request", "waiver" -> BADGE_WAIVER_REQUESTS;
+            case "waiver" -> BADGE_WAIVERS;
             case "operator_wait" -> "operator.console.badge.operator_waits";
             case "integrity_pause" -> "operator.console.badge.integrity_pauses";
             case "stalled" -> "operator.console.badge.stalled";
@@ -117,7 +117,19 @@ public final class ConsolePrompt {
             case "cleanup_due" -> "operator.console.badge.cleanup_due";
             default -> "operator.console.badge.fallback";
         };
-        return MessageCatalogue.format(locale, key, Map.of(COUNT, count, "kind", kind));
+        return MessageCatalogue.format(locale, key, Map.of(COUNT, count, "kind", kindWord(locale, kind)));
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param kind   the item kind
+     * @return the shared word of the kind ({@code overview.needs.<kind>}), or the word of a reason
+     *         this version does not know ({@code overview.needs.other}) — never the wire word
+     */
+    private static String kindWord(String locale, String kind) {
+        var key = "overview.needs." + kind;
+        return MessageCatalogue.format(locale, MessageCatalogue.hasKey(locale, key) ? key : "overview.needs.other",
+                            Map.of());
     }
 
     /**

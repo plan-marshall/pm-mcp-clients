@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.event.EventKind;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -118,8 +120,19 @@ class ConsoleNoticeTest {
                                                     ConsoleNotice.formatHoldNotice("findings", "storage-v2", "3 new findings")),
                                 () -> assertEquals("◆ Project plan-marshall: the setup needs you: token needed",
                                                     ConsoleNotice.formatHoldNotice("setup", "plan-marshall", "token needed")),
-                                () -> assertEquals("◆ custom · plan-x: detail",
+                                () -> assertEquals("◆ another reason · plan-x: detail",
                                                     ConsoleNotice.formatHoldNotice("custom", "plan-x", "detail"))
+            );
+        }
+
+        @Test
+        @DisplayName("names a kind it has no notice for by the catalogue's word of the other kind, never the wire word")
+        void otherKindNamedByTheCatalogue() {
+            var notice = ConsoleNotice.formatHoldNotice("quota_exhausted", "plan-x", "detail");
+
+            assertAll(
+                                () -> assertEquals("◆ another reason · plan-x: detail", notice),
+                                () -> assertTrue(!notice.contains("quota_exhausted"), notice)
             );
         }
 
@@ -176,9 +189,21 @@ class ConsoleNoticeTest {
                                 "gate", "sonar"
             );
 
+            var wrNotice = ConsoleNotice.fromEventMap(wrEvent);
+
             assertAll(
                                 () -> assertNotNull(ConsoleNotice.fromEventMap(qEvent)),
-                                () -> assertNotNull(ConsoleNotice.fromEventMap(wrEvent))
+                                () -> assertNotNull(wrNotice),
+                                () -> assertTrue(wrNotice.contains("◆ Waiver request WR-1 · plan fix-relay"), wrNotice)
+            );
+        }
+
+        @Test
+        @DisplayName("reads the legacy type waiver_request as the waiver kind")
+        void legacyWaiverTypeIsTheWaiverKind() {
+            assertAll(
+                                () -> assertEquals(EventKind.WAIVER, EventKind.fromType("waiver_request")),
+                                () -> assertEquals("waiver", EventKind.WAIVER.notice())
             );
         }
 

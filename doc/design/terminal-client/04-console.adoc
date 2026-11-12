@@ -44,17 +44,17 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`decision`
 |`◆ Question Q-007 · plan fix-relay · blocks the plan` (an epic's: `· epic storage-v2`), its text, the recommendation (`operator.console.question.notice`)
 |`1 question` (`operator.console.badge.questions`)
-|`answer <id>`, `questions`
+|`answer <id>`; `questions` where the item's link names no decision
 
-|`waiver_request`
-|`◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests` (`operator.console.notice.waiver_request`)
-|`1 waiver request` (`operator.console.badge.waiver_requests`)
-|`answer <id>`, `questions`
+|`waiver`
+|`◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests` (`operator.console.notice.waiver`)
+|`1 waiver request` (`operator.console.badge.waivers`)
+|`answer <id>`; `questions` where the item's link names no decision
 
 |`operator_wait`
 |`◆ Plan fix-relay waits for you: <what>` (`operator.console.notice.operator_wait`)
 |`1 waits for you` (`operator.console.badge.operator_waits`)
-|`plan <id>`, `epic <id>`
+|`plan <id>`; `epic <id>` for an epic's
 
 |`integrity_hold`
 |`◆ Integrity hold · plan fix-relay: <reason>` (`operator.console.notice.integrity_hold`)
@@ -64,32 +64,32 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`stalled`
 |`◆ Plan fix-relay stalled: <reason>` (`operator.console.notice.stalled`)
 |`1 stalled` (`operator.console.badge.stalled`)
-|`plan <id>`
+|`plan <id>`; `epic <id>` for an epic's
 
 |`condition`
 |`◆ Plan fix-relay needs a fix: <condition>` (`operator.console.notice.condition`); its acts are those of the hold, never a command as text
 |`1 needs a fix` (`operator.console.badge.conditions`)
-|`plan <id>`, with the acts of the hold (xref:19-actions.adoc#holds[What Holds a Plan])
+|`plan <id>`, with the acts of the hold (xref:19-actions.adoc#holds[What Holds a Plan]); `epic <id>` for an epic's
 
 |`held`
 |`◆ Epic storage-v2: 1 held for you` (`operator.console.notice.held`)
 |`1 held` (`operator.console.badge.held`)
-|`epic <id>`
+|`epic <id>`; `plan <id>` for an item that names a plan and no epic
 
 |`landing_failed`
 |`◆ Epic storage-v2: the landing failed: <reason>` (`operator.console.notice.landing_failed`)
 |`1 landing failed` (`operator.console.badge.landing_failed`)
-|`epic <id>`
+|`epic <id>`; `plan <id>` for an item that names a plan and no epic — a plan's id names no epic, so `epic <planId>` would open nothing
 
 |`findings`
 |`◆ Epic storage-v2: 3 new findings` (`operator.console.notice.findings`)
 |`3 new findings` (`operator.console.badge.findings`)
-|`epic findings <id>`
+|`epic findings <id>`; `reports` for findings no epic owns
 
 |`setup`
 |`◆ Project plan-marshall: the setup needs you: <what>` (`operator.console.notice.setup`)
 |`1 setup` (`operator.console.badge.setup_needs`)
-|`project setup <id>`
+|`project setup <id>`; `project setup` for a setup that names no project
 
 |`credential`
 |`◆ Credential <key> needs attention` (`operator.console.notice.credential`)
@@ -100,7 +100,16 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`◆ Cleanup is due` (`operator.console.notice.cleanup_due`)
 |`1 cleanup due` (`operator.console.badge.cleanup_due`)
 |`cleanup`
+
+|`other`
+|`◆ another reason · <scope>: <detail>` (`operator.console.notice.generic`, its kind word the shared `overview.needs.other`, never the wire word a newer runtime sent)
+|`1 another reason` (`operator.console.badge.fallback`)
+|`plans`
 |===
+
+The command in the last column is one derivation: `needs` prints it beside each item, and `!` in the overview runs exactly the command the row prints, never a second reading of the item. The runtime's `needs_operator` summaries name the waiver by the contract's kind `waiver`; the specification's spelling `waiver_request` is read as `waiver` where a runtime still sends it, and no client renders it under a name of its own.
+
+A notice is raised for an item a change adds. What the console's status read at start already showed was badged before and is no addition; an item beyond it — the first credential that arrives after a start whose status read showed none — raises its notice like any later one.
 
 The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
 
@@ -343,7 +352,7 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |setup {project} {done}/{total}
 |Einrichtung {project} {done}/{total}
 
-|`operator.console.badge.waiver_requests`
+|`operator.console.badge.waivers`
 |{count, plural, one {# waiver request} other {# waiver requests}}
 |{count, plural, one {# Waiver-Anfrage} other {# Waiver-Anfragen}}
 
@@ -431,9 +440,13 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |console
 |Konsole
 
-|`operator.console.notice.waiver_request`
+|`operator.console.notice.waiver`
 |Waiver request {id} · plan {plan} · gate {gate}
 |Waiver-Anfrage {id} · Plan {plan} · Gate {gate}
+
+|`operator.console.notice.waiver_plain`
+|Waiver request {id} · {scope}
+|Waiver-Anfrage {id} · {scope}
 
 |`operator.console.notice.operator_wait`
 |{scope, select, epic {Epic} other {Plan}} {name} waits for you: {what}
@@ -466,6 +479,14 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |`operator.console.notice.setup`
 |Project {project}: the setup needs you: {what}
 |Projekt {project}: die Einrichtung braucht dich: {what}
+
+|`operator.console.notice.generic`
+|{kind} · {scope}: {detail} — the notice of a kind with no text of its own (`other`); `{kind}` is the shared `overview.needs.other` ("another reason" / "anderer Grund"), never the wire word
+|{kind} · {scope}: {detail}
+
+|`operator.console.badge.fallback`
+|{count} {kind} — `{kind}` is the shared `overview.needs.<kind>`, `overview.needs.other` for a kind this version does not know
+|{count} {kind}
 
 |`operator.console.questions.none`
 |No open questions.

@@ -148,6 +148,8 @@ public final class PmConsole {
         activePairingCode = entryResult.activeCode();
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
+        // What the start's status read showed was badged before: only items beyond it are announced.
+        needsNotices.seedFromStatus(entryResult.status());
         List<ConsoleBadge> initialBadges = entryResult.consoleBadges();
         if (initialBadges.isEmpty() && !entryResult.initialBadges().isEmpty()) {
             initialBadges = entryResult.initialBadges().stream()
@@ -806,11 +808,7 @@ public final class PmConsole {
      * @return the catalogue key of the label a desktop notification names the kind by
      */
     private static String notificationLabelKey(String kind) {
-        return switch (kind) {
-            case KIND_QUESTION -> "overview.needs.decision";
-            case "waiver_request" -> "overview.needs.waiver_request";
-            default -> "overview.needs." + kind;
-        };
+        return KIND_QUESTION.equals(kind) ? "overview.needs.decision" : "overview.needs." + kind;
     }
 
     /**
@@ -845,7 +843,7 @@ public final class PmConsole {
 
     private static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
         return switch (kind != null ? kind : "") {
-            case KIND_QUESTION, "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case KIND_QUESTION, "decision", "waiver", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
             case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };

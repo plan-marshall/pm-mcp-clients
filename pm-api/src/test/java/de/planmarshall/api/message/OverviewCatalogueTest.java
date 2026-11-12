@@ -38,6 +38,19 @@ class OverviewCatalogueTest {
     }
 
     @Test
+    @DisplayName("the waiver has one word, under the contract's kind: overview.needs.waiver_request is gone from both packs")
+    void shouldNotCarryTheWaiverRequestKey() {
+        for (var locale : new String[] {"en", "de"}) {
+            var messages = MessageCatalogue.getMessages(locale, "overview");
+
+            assertFalse(messages.containsKey("overview.needs.waiver_request"),
+                    "overview.needs.waiver_request must not come back in the " + locale + " pack");
+            assertTrue(messages.containsKey("overview.needs.waiver"), locale);
+            assertTrue(messages.containsKey("overview.needs.other"), locale);
+        }
+    }
+
+    @Test
     @DisplayName("should contain all specification keys from plan-overview.adoc and 15-overview.adoc")
     void shouldContainAllSpecificationKeys() {
         var en = MessageCatalogue.getMessages("en", "overview");
@@ -55,7 +68,8 @@ class OverviewCatalogueTest {
                 "overview.group.without_epic",
                 "overview.needs.count",
                 "overview.needs.decision",
-                "overview.needs.waiver_request",
+                "overview.needs.waiver",
+                "overview.needs.other",
                 "overview.needs.operator_wait",
                 "overview.needs.integrity_pause",
                 "overview.needs.stalled",

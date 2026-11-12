@@ -18,6 +18,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 
 /**
  * Formats notice blocks printed above the prompt (via {@code LineReader.printAbove(...)}) when
@@ -140,10 +141,10 @@ public final class ConsoleNotice {
         Objects.requireNonNull(scope, SCOPE);
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
-            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
+            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver",
                                 Map.of(ID, id, SCOPE, scope, "gate", Display.gate(locale, TerminalSanitizer.sanitize(gate)))));
         } else {
-            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
+            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_plain",
                                 Map.of(ID, id, SCOPE, scope)));
         }
         sb.append('\n');
@@ -197,9 +198,21 @@ public final class ConsoleNotice {
             case "cleanup_due" -> MessageCatalogue.format(locale, "operator.console.notice.cleanup_due",
                                 Map.of());
             default -> MessageCatalogue.format(locale, "operator.console.notice.generic",
-                                Map.of("kind", TerminalSanitizer.sanitizeLine(kind), SCOPE, safeScope, DETAIL, safeDetail));
+                                Map.of("kind", otherKindLabel(locale), SCOPE, safeScope, DETAIL, safeDetail));
         };
         return BULLET + text;
+    }
+
+    /**
+     * The word a notice names a kind by that has no notice of its own: {@code other}, the client's
+     * fallback for a reason this version does not know. The catalogue's text, never the wire word,
+     * which a newer runtime chose and no operator reads.
+     *
+     * @param locale the interface locale
+     * @return the catalogue's text of the fallback kind
+     */
+    private static String otherKindLabel(String locale) {
+        return MessageCatalogue.format(locale, "overview.needs." + NeedsOperatorKind.OTHER.value(), Map.of());
     }
 
     /**
@@ -347,7 +360,7 @@ public final class ConsoleNotice {
         }
         return switch (kind) {
             case QUESTION -> questionNotice(locale, payload);
-            case WAIVER_REQUEST -> waiverNotice(locale, payload);
+            case WAIVER -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
             case PAIRED -> formatPairedNotice(locale,
                                 String.valueOf(payload.getOrDefault(LABEL, "unknown")));
@@ -393,11 +406,11 @@ public final class ConsoleNotice {
             return EventKind.fromType(stringOf(payload, "kind"));
         }
         if (byName != null) {
-            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
+            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER : byName;
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
         if (byType == EventKind.QUESTION && isWaiver(payload)) {
-            return EventKind.WAIVER_REQUEST;
+            return EventKind.WAIVER;
         }
         return byType == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byType;
     }

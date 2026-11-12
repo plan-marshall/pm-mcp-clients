@@ -22,6 +22,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
@@ -218,6 +219,44 @@ class NeedsCommandTest {
         var withoutMore = new StringWriter();
         assertEquals(0, new NeedsCommand(context).executeNeeds(single, new PrintWriter(withoutMore), "en"));
         assertFalse(withoutMore.toString().contains("Show more"), withoutMore.toString());
+    }
+
+    @Test
+    @DisplayName("a page past the last one names the page and what waits, never that nothing waits")
+    void needsPageBeyondTheEnd() throws Exception {
+        var context = new OperatorContext(
+                            Map.of(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(Map.of()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null
+        );
+        var json = ("{\"page\":5,\"total_pages\":1,\"has_newer\":true,\"has_older\":false,\"total\":7,"
+                            + "\"items\":[]}").getBytes(StandardCharsets.UTF_8);
+        var requested = new AtomicReference<String>();
+        NeedsCommand.RuntimeSender sender = req -> {
+            requested.set(req.target());
+            return new HttpResponse(200, "application/json", json);
+        };
+        var command = new NeedsCommand(context);
+        command.page = 5;
+
+        var english = new StringWriter();
+        var german = new StringWriter();
+        assertEquals(0, command.executeNeeds(sender, new PrintWriter(english), "en"));
+        assertEquals(0, command.executeNeeds(sender, new PrintWriter(german), "de"));
+
+        assertAll(
+                            () -> assertEquals("Page 5 is past the end: 7 items wait on 1 page; needs shows the first.",
+                                                english.toString().strip()),
+                            () -> assertEquals("Seite 5 liegt hinter dem Ende: 7 Einträge warten auf 1 Seite; needs zeigt die erste.",
+                                                german.toString().strip()),
+                            () -> assertFalse(english.toString().contains(
+                                                MessageCatalogue.format("en", "operator.needs.empty", Map.of())),
+                                                english.toString()),
+                            () -> assertTrue(requested.get().endsWith("?page=5"), requested.get())
+        );
     }
 
     @Test

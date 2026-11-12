@@ -62,7 +62,8 @@ class ConsoleBadgeTest {
         var count = Generators.integers(1, 9).next();
         var qBadge = ConsoleBadge.waiting("question", count, count + " questions");
         var dBadge = ConsoleBadge.waiting("decision", 1, "1 decision");
-        var wBadge = ConsoleBadge.waiting("waiver_request", 2, "2 waiver requests");
+        var wBadge = ConsoleBadge.waiting("waiver", 2, "2 waiver requests");
+        var legacyBadge = ConsoleBadge.waiting("waiver_request", 1, "1 waiver request");
         var oBadge = ConsoleBadge.waiting("integrity_pause", 1, "1 integrity pause");
 
         assertAll(
@@ -74,6 +75,9 @@ class ConsoleBadgeTest {
                             () -> assertTrue(qBadge.isQuestion()),
                             () -> assertTrue(dBadge.isQuestion()),
                             () -> assertTrue(wBadge.isQuestion()),
+                            // The badge counts the contract's kind only: the specification's spelling
+                            // is mapped to waiver where the wire is read, never carried as a kind here.
+                            () -> assertFalse(legacyBadge.isQuestion()),
                             () -> assertFalse(oBadge.isQuestion())
         );
     }

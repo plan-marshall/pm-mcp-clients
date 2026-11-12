@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -118,7 +119,7 @@ class ConsoleTextsTest {
     @Test
     @DisplayName("every badge kind renders in both languages, and the zero count yields none")
     void badges() {
-        for (var kind : List.of("question", "decision", "waiver_request", "operator_wait", "integrity_pause",
+        for (var kind : List.of("question", "decision", "waiver", "operator_wait", "integrity_pause",
                             "stalled", "condition", "held", "landing_failed", "findings", "setup", "custom")) {
             assertNotNull(ConsolePrompt.formatBadge("en", kind, 1), kind);
             assertNotNull(ConsolePrompt.formatBadge("de", kind, 2), kind);
@@ -128,6 +129,21 @@ class ConsoleTextsTest {
         assertEquals("3 stehen", ConsolePrompt.formatBadge("de", "stalled", 3));
         assertNotEquals(ConsolePrompt.formatBadge("de", "stalled", 3), ConsolePrompt.formatBadge("en", "stalled", 3));
         assertEquals("1 Landen fehlgeschlagen", ConsolePrompt.formatBadge("de", "landing_failed", 1));
+        assertEquals("1 Waiver-Anfrage", ConsolePrompt.formatBadge("de", "waiver", 1));
+        assertEquals("2 waiver requests", ConsolePrompt.formatBadge("en", "waiver", 2));
+    }
+
+    @Test
+    @DisplayName("the waiver keys follow the contract's kind: the old waiver_request keys are gone from both packs")
+    void waiverKeysFollowTheKind() {
+        for (var locale : List.of("en", "de")) {
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.badge.waivers"), locale);
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver"), locale);
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_plain"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.badge.waiver_requests"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_request"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_request_plain"), locale);
+        }
     }
 
     @Test

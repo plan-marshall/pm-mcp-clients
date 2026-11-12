@@ -40,9 +40,11 @@ public final class OverviewFormatting {
     public static final String EPIC_GLYPH = "\u25c7";
 
     private static final String KIND_PAUSED = "paused";
-    private static final String ANSWER_PREFIX = "answer ";
+    private static final String CMD_ANSWER = "answer";
     private static final String CMD_PLANS = "plans";
-    private static final String CMD_EPIC = "epic ";
+    private static final String CMD_PLAN = "plan";
+    private static final String CMD_EPIC = "epic";
+    private static final String CMD_PROJECT = "project";
     private static final String NEEDS_BADGE_KEY = "overview.needs.badge";
     private static final String STATE_UNKNOWN_KEY = "state.unknown";
     private static final String COMMON_KIND_PREFIX = "common.kind.";
@@ -160,9 +162,12 @@ public final class OverviewFormatting {
         if (kind == null) {
             return null;
         }
+        if (NeedsOperatorKind.fromValue(kind) == NeedsOperatorKind.WAIVER) {
+            // The contract's kind, or the specification's spelling a runtime may still send: one word.
+            return "overview.needs.waiver";
+        }
         return switch (kind) {
             case "question", "decision" -> "overview.needs.decision";
-            case "waiver", "waiver_request" -> "overview.needs.waiver";
             case "waits_for_you", "operator_wait" -> "overview.needs.waits_for_you";
             case "integrity_pause" -> "overview.needs.integrity_pause";
             case "stalled" -> "overview.needs.stalled";
@@ -342,7 +347,8 @@ public final class OverviewFormatting {
 
     /**
      * Formats the subject of a {@link NeedsOperatorItem}: the title of the place it belongs to, and
-     * its id only where the store carries no title.
+     * where the store carries no title, what {@link Display#title(String, String, String)} names in
+     * its place — never a bare id the operator cannot read.
      *
      * @param item   the needs-operator item
      * @param locale the target locale
@@ -351,7 +357,7 @@ public final class OverviewFormatting {
     public static String formatNeedsItemSubject(NeedsOperatorItem item, String locale) {
         var place = firstPlaceOf(item);
         if (place != null) {
-            return nameOf(place);
+            return clean(Display.title(locale, place.title(), place.id()));
         }
         if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
             return MessageCatalogue.format(locale, "overview.needs.subject.cleanup", Map.of());
@@ -386,15 +392,6 @@ public final class OverviewFormatting {
      */
     private static String kindKey(String kind) {
         return String.format("%s%s", COMMON_KIND_PREFIX, kind);
-    }
-
-    /**
-     * @param place the place an item belongs to
-     * @return its title, or its id where the store carries none
-     */
-    private static String nameOf(WorkLocation place) {
-        var title = place.title();
-        return clean(title != null && !title.isBlank() ? title : place.id());
     }
 
     /**
@@ -439,66 +436,84 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the resolving command for a {@link NeedsOperatorItem}. Every command it can print is a
-     * registered verb, and none of them joins a store of its own: the decision id comes from the
-     * item's own link, which the runtime fills
-     * ({@code doc/design/shared/needs-and-find.adoc#terminal}).
+     * Formats the resolving command for a {@link NeedsOperatorItem}: the words of
+     * {@link #needsItemCommand(NeedsOperatorItem)}, the one derivation the printed line and the
+     * overview's {@code !} share.
      *
      * @param item the needs-operator item
      * @return resolving command string
      */
     public static String formatNeedsItemCommand(NeedsOperatorItem item) {
-        var kind = item.kind();
-        var planId = item.plan() != null ? item.plan().id() : null;
-        var epicId = item.epic() != null ? item.epic().id() : null;
-        var projId = item.project() != null ? item.project().id() : null;
-
-        return switch (kind) {
-            case DECISION, WAIVER -> decisionCommand(item.link());
-            case FINDINGS -> epicId != null ? "epic findings " + epicId : "reports";
-            case SETUP -> projId != null ? "project setup " + projId : "project setup";
-            case CREDENTIAL -> "credentials";
-            case CLEANUP_DUE -> "cleanup";
-            case LANDING_FAILED -> landingFailedCommand(planId, epicId);
-            case HELD, CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> planOrEpicCommand(planId, epicId);
-            case OTHER -> CMD_PLANS;
-        };
-    }
-
-    private static String decisionCommand(@Nullable String link) {
-        if (link != null && link.contains("/decisions/")) {
-            return ANSWER_PREFIX + link.substring(link.lastIndexOf('/') + 1);
-        }
-        // A link to the place the decision belongs to names no decision id: the list of the open
-        // questions is the command that opens it, never a bare `answer` the verb refuses.
-        return "questions";
+        return String.join(" ", needsItemCommand(item));
     }
 
     /**
-     * A failed landing opens the epic that owns it ({@code 04-console.adoc:76-80}), never a hold
-     * verb: the design gives {@code epic <id>} for {@code held} and {@code landing_failed} alike.
+     * Derives the command that opens a {@link NeedsOperatorItem}, as the kind table of
+     * {@code doc/design/terminal-client/04-console.adoc#pushed} names it, word by word. The list
+     * printed by {@code needs} and the act {@code !} runs in the overview are both this command, so
+     * what the operator reads is what {@code !} runs. Every command it can give is a registered verb
+     * that resolves, and none of them joins a store of its own: the decision id comes from the
+     * item's own link, which the runtime fills ({@code doc/design/shared/needs-and-find.adoc#terminal}).
      *
-     * @param planId  the plan whose landing failed, or {@code null}
-     * @param epicId  the epic that owns it, or {@code null}
-     * @return the command that opens the place
+     * @param item the needs-operator item
+     * @return the verb and its arguments, never empty
      */
-    private static String landingFailedCommand(@Nullable String planId, @Nullable String epicId) {
-        if (epicId != null) {
-            return CMD_EPIC + epicId;
-        }
-        if (planId != null) {
-            return CMD_EPIC + planId;
-        }
-        return CMD_PLANS;
+    public static List<String> needsItemCommand(NeedsOperatorItem item) {
+        var planId = idOf(item.plan());
+        var epicId = idOf(item.epic());
+        var projId = idOf(item.project());
+
+        return switch (item.kind()) {
+            case DECISION, WAIVER -> decisionCommand(item.link());
+            case FINDINGS -> epicId != null ? List.of(CMD_EPIC, "findings", epicId) : List.of("reports");
+            case SETUP -> projId != null ? List.of(CMD_PROJECT, "setup", projId) : List.of(CMD_PROJECT, "setup");
+            case CREDENTIAL -> List.of("credentials");
+            case CLEANUP_DUE -> List.of("cleanup");
+            case HELD, LANDING_FAILED -> epicOrPlanCommand(planId, epicId);
+            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> planOrEpicCommand(planId, epicId);
+            case OTHER -> List.of(CMD_PLANS);
+        };
     }
 
-    private static String planOrEpicCommand(@Nullable String planId, @Nullable String epicId) {
+    private static @Nullable String idOf(@Nullable WorkLocation place) {
+        return place != null && !place.id().isBlank() ? place.id() : null;
+    }
+
+    private static List<String> decisionCommand(@Nullable String link) {
+        if (link != null && link.contains("/decisions/")) {
+            return List.of(CMD_ANSWER, link.substring(link.lastIndexOf('/') + 1));
+        }
+        // A link to the place the decision belongs to names no decision id: the list of the open
+        // questions is the command that opens it, never a bare `answer` the verb refuses.
+        return List.of("questions");
+    }
+
+    /**
+     * A hold of an epic — {@code held}, or a {@code landing_failed} — opens the epic that owns it
+     * ({@code 04-console.adoc#pushed}). An item that names only a plan opens that plan: a plan's id
+     * names no epic, so {@code epic <planId>} would resolve nothing.
+     *
+     * @param planId the plan the item names, or {@code null}
+     * @param epicId the epic that owns it, or {@code null}
+     * @return the command that opens the place
+     */
+    private static List<String> epicOrPlanCommand(@Nullable String planId, @Nullable String epicId) {
+        if (epicId != null) {
+            return List.of(CMD_EPIC, epicId);
+        }
         if (planId != null) {
-            return "plan " + planId;
+            return List.of(CMD_PLAN, planId);
+        }
+        return List.of(CMD_PLANS);
+    }
+
+    private static List<String> planOrEpicCommand(@Nullable String planId, @Nullable String epicId) {
+        if (planId != null) {
+            return List.of(CMD_PLAN, planId);
         }
         if (epicId != null) {
-            return CMD_EPIC + epicId;
+            return List.of(CMD_EPIC, epicId);
         }
-        return CMD_PLANS;
+        return List.of(CMD_PLANS);
     }
 }
