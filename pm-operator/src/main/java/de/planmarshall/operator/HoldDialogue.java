@@ -14,7 +14,9 @@ import java.io.PrintWriter;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -23,6 +25,7 @@ import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.HoldActs;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * What holds a plan, and its acts ({@code hold.show}, {@code hold.resolve}, {@code hold.apply},
@@ -103,7 +106,10 @@ final class HoldDialogue {
             return 0;
         }
         var hold = select(holds, holdId);
-        String chosen = preselectedAct;
+        // The menu's act belongs to the hold it named: once that hold is gone, or the hold that holds
+        // now does not offer the act, the act is asked, never sent to another hold unseen.
+        String chosen = preselectedAct != null && (holdId == null || hold.holdId().equals(holdId))
+                            && hold.offers(preselectedAct) ? preselectedAct : null;
         while (true) {
             show(hold);
             var act = chosen != null ? chosen : askAct(hold);
@@ -177,32 +183,41 @@ final class HoldDialogue {
         }
     }
 
+    /**
+     * Asks the act by its key. An empty line or the leave key ({@code q}, German {@code v}) leaves;
+     * any other input the hold does not offer is answered with one line and the same prompt, and
+     * nothing is sent ({@code 03-dialogues.adoc#keys}).
+     */
     private @Nullable String askAct(HoldRecord hold) {
         var options = new StringBuilder();
+        var keys = new ArrayList<String>();
         for (var act : hold.acts()) {
-            options.append(MessageCatalogue.format(prompt.locale(), "operator.actions.key."
-                                + keyName(act), Map.of()))
-                                .append(") ").append(actLabel(act)).append("   ");
+            var key = actKey(act);
+            keys.add(key);
+            options.append(key).append(") ").append(actLabel(act)).append("   ");
         }
+        // The catalogue's prompt mark is the mark the line ends with; the shared suffix would draw it twice.
         options.append(MessageCatalogue.format(prompt.locale(), "operator.actions.hold.prompt", Map.of()))
-                            .append(StartPrompt.SUFFIX);
-        var answer = prompt.askInline(options.toString(), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.hold.resolve", Map.of()), planId);
-        if (answer.isEmpty() || "q".equalsIgnoreCase(answer)) {
-            return null;
-        }
-        for (var act : hold.acts()) {
-            var key = MessageCatalogue.format(prompt.locale(), "operator.actions.key." + keyName(act), Map.of());
-            if (key.equalsIgnoreCase(answer)) {
-                return act;
+                            .append(' ');
+        keys.add(prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q");
+        while (true) {
+            var answer = prompt.askInline(options.toString(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "control.hold.resolve", Map.of()), planId);
+            if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                return null;
             }
-        }
-        for (var act : hold.acts()) {
-            if (act.equalsIgnoreCase(answer)) {
-                return act;
+            for (var act : hold.acts()) {
+                if (actKey(act).equalsIgnoreCase(answer)) {
+                    return act;
+                }
             }
+            prompt.line("operator.dialogue.not_offered", Map.of("input",
+                                OutputSafety.stripControlSequences(answer), "offered", String.join(", ", keys)));
         }
-        return null;
+    }
+
+    private String actKey(String act) {
+        return MessageCatalogue.format(prompt.locale(), "operator.actions.key." + keyName(act), Map.of());
     }
 
     /**
@@ -229,13 +244,16 @@ final class HoldDialogue {
                 return null;
             }
         }
-        if ("end_plan".equals(act) || "abort".equals(act) || "cancel_epic".equals(act)) {
-            reason = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.end.reason", Map.of()) + StartPrompt.SUFFIX,
-                                STATE_ID, MessageCatalogue.format(prompt.locale(),
-                                                    "operator.actions.end.reason", Map.of()), planId);
+        if (ends(act)) {
+            // An act that ends the work takes its reason as every end does: a blank one is refused
+            // and nothing is sent.
+            reason = ActionSupport.askEndReason(prompt, STATE_ID, actLabel(act), planId);
         }
         return reason;
+    }
+
+    private static boolean ends(String act) {
+        return HoldActs.END_PLAN.equals(act) || HoldActs.ABORT.equals(act) || HoldActs.CANCEL_EPIC.equals(act);
     }
 
     private void showPullRequest(HoldRecord hold) {
@@ -256,9 +274,12 @@ final class HoldDialogue {
         return HoldActs.keyName(act);
     }
 
+    /**
+     * @return whether the act is confirmed by the plain yes or no; {@code accept} has a confirmation of
+     *         its own and is asked before this is
+     */
     private static boolean irreversible(String act) {
-        return ACT_ACCEPT.equals(act) || "end_plan".equals(act) || "abort".equals(act)
-                            || "cancel_epic".equals(act) || "give_up_removal".equals(act);
+        return ends(act) || HoldActs.GIVE_UP_REMOVAL.equals(act);
     }
 
     private static HoldRecord select(List<HoldRecord> holds, @Nullable String holdId) {

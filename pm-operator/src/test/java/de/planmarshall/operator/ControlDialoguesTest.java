@@ -44,12 +44,18 @@ import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.epicview.EpicViewLevel;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * The control contract as the dialogues and the client read and write it: every dialogue's
@@ -1236,6 +1242,244 @@ class ControlDialoguesTest {
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                             "config", "roles", "--plan", "p");
         assertEquals(0, code, out.toString());
+    }
+
+    /**
+     * Types the keys and ends the script, so a dialogue that asks once more than the test expects
+     * meets the end of the input at once instead of waiting for keys.
+     */
+    private void script(String keys) {
+        virtual.type(keys);
+        virtual.endOfInput();
+    }
+
+    /** Serves the holds read by read in order (the last one repeats) and records every request. */
+    private FakeRuntimeServer serveHolds(HoldResolutionResult result, String... holds) throws IOException {
+        var reads = new AtomicInteger();
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/holds")) {
+                response.json(200, holds[Math.min(reads.getAndIncrement(), holds.length - 1)]);
+            } else if (path.endsWith("/resolve")) {
+                response.json(200, result.toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static boolean resolved(FakeRuntimeServer server) {
+        return server.requests().stream().anyMatch(request -> request.target().endsWith("/resolve"));
+    }
+
+    private static String resolveBody(FakeRuntimeServer server) {
+        return server.requests().stream().filter(request -> request.target().endsWith("/resolve"))
+                            .map(FakeRuntimeServer.Request::bodyText).findFirst().orElse("");
+    }
+
+    @Nested
+    @DisplayName("the hold dialogue")
+    @EnableGeneratorController
+    class HoldDialogueBehaviour {
+
+        private static final String END_HOLD = """
+                            [{"hold_id":"H-3","subject_id":"p","subject_kind":"plan","kind":"stalled",
+                              "cause":"the worker stopped","attempts":0,"acts":["retry","end_plan"]}]
+                            """;
+
+        private final HoldResolutionResult released = new HoldResolutionResult("H-1", true, null, "p");
+
+        @Test
+        @DisplayName("an input the hold does not offer is answered with one line and asked again")
+        void notOfferedAskedAgain() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\nr\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("x) End the plan…   › "), text);
+            assertFalse(text.contains("›  ›"), text);
+            assertTrue(text.contains(input + " is not offered here: r, w, x, q"), text);
+            assertTrue(resolveBody(server).contains("\"act\":\"retry\""), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the wire name of an act is not a key: it is not offered and nothing is sent")
+        void wireNameNotOffered() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("recycle\nq\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("recycle is not offered here"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("German v leaves the hold and sends nothing")
+        void germanLeave() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            var env = new HashMap<>(fixture.environment());
+            env.put("LANG", "de_DE.UTF-8");
+            var german = new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                                virtual::terminal, null);
+            script("v\n");
+
+            assertEquals(0, HoldDialogue.run(german, new PrintWriter(out), "p", null, false));
+
+            assertFalse(out.toString().contains("nicht angeboten"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the act a menu chose for a hold that is gone is asked, not sent to the hold that holds now")
+        void preselectedActOfGoneHoldIsAsked() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("q\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", "H-9", "retry", false));
+
+            assertTrue(out.toString().contains("the worker stopped"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("an act the hold does not offer is asked, not sent")
+        void preselectedActNotOfferedIsAsked() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("q\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, "accept", false));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the act a menu chose for the hold it names is sent to that hold")
+        void preselectedActOfNamedHold() throws Exception {
+            var two = STALLED_HOLD.replace("]", ",{\"hold_id\":\"H-2\",\"subject_id\":\"p\",\"kind\":\"stalled\","
+                                + "\"cause\":\"the second\",\"attempts\":0,\"acts\":[\"retry\"]}]");
+            var server = serveHolds(released, two);
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", "H-2", "retry", false));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/holds/H-2/resolve")),
+                                server.requests().toString());
+            assertTrue(out.toString().contains("the second"), out.toString());
+        }
+
+        @Test
+        @DisplayName("ending the plan confirms, then sends the reason")
+        void endPlanSendsReason() throws Exception {
+            var server = serveHolds(released, END_HOLD);
+            var reason = Generators.letterStrings(5, 20).next();
+            script("x\ny\n" + reason + "\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(resolveBody(server).contains("\"reason\":\"" + reason + "\""), resolveBody(server));
+            assertTrue(out.toString().contains("p goes on"), out.toString());
+            assertFalse(out.toString().contains("goes on with the change"), out.toString());
+        }
+
+        @Test
+        @DisplayName("ending the plan without a reason is refused and sends nothing")
+        void endPlanBlankReasonRefused() throws Exception {
+            var server = serveHolds(released, END_HOLD);
+            script("x\ny\n\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("The reason is required."), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @ParameterizedTest(name = "{0} declined")
+        @CsvSource({"x,n", "c,n", "x,later"})
+        @DisplayName("a declined confirmation sends nothing")
+        void declinedSendsNothing(String key, String answer) throws Exception {
+            var server = serveHolds(released, "x".equals(key) ? END_HOLD : INTEGRITY_HOLD);
+            script(key + "\n" + answer + "\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a refused act names the runtime's reason and fails")
+        void refusedAct() throws Exception {
+            var server = fixture.start((request, response) -> {
+                if (request.target().endsWith("/holds")) {
+                    response.json(200, STALLED_HOLD);
+                } else {
+                    response.json(409, "{\"error\":\"conflict\",\"reason\":\"the hold moved on\"}");
+                }
+            });
+            script("r\n");
+
+            assertEquals(1, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("✗"), out.toString());
+            assertTrue(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a hold that is still held but no longer listed lets the plan go on")
+        void stillHeldThenGone() throws Exception {
+            serveHolds(new HoldResolutionResult("H-1", false, null, "p"), STALLED_HOLD, "[]");
+            script("r\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("Still held: "), text);
+            assertTrue(text.contains("p goes on"), text);
+        }
+
+        @Test
+        @DisplayName("a plan that is not held says so")
+        void notHeld() throws Exception {
+            serveHolds(released, "[]");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("p is not held."), out.toString());
+        }
+
+        @Test
+        @DisplayName("without input the act it needs stops the dialogue")
+        void noInputStops() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                HoldDialogue.run(context, new PrintWriter(out), "p", null, true));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a failed landing shows its pull request and asks again")
+        void showPullRequest() throws Exception {
+            var number = Generators.integers(1, 9999).next();
+            var landing = """
+                                [{"hold_id":"H-4","subject_id":"p","kind":"landing_failed","cause":"checks failed",
+                                  "attempts":3,"last_tried_at":"2026-10-20T11:00:00Z",
+                                  "pull_request_url":"https://example.org/o/r/pull/%d",
+                                  "acts":["show_pr","end_plan"]}]
+                                """.formatted(number);
+            var server = serveHolds(released, landing);
+            script("p\nq\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("#" + number + " https://example.org/o/r/pull/" + number + " is open"), text);
+            assertTrue(text.contains("Tried 3 times, last "), text);
+            assertFalse(resolved(server), server.requests().toString());
+        }
     }
 
     @Test
