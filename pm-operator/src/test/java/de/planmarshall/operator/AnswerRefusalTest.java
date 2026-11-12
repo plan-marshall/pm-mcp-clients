@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -143,6 +145,75 @@ class AnswerRefusalTest {
         assertGerman("du hast den Start in pm-mcp-clients gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "x");
     }
 
+    @Test
+    @DisplayName("the dissent names the voter whose reason is the summary, not the first voter")
+    void dissentByMatchingSummary() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target())) {
+                response.json(200, dissentEnvelope());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
+
+        assertEquals(3, code);
+        assertTrue(out.toString().contains("Against it (reviewer-b): history gets noisy"), out.toString());
+        assertFalse(out.toString().contains("Against it (reviewer-a)"), out.toString());
+    }
+
+    @Test
+    @DisplayName("with --plan a 404 on the answer sends nothing to the unscoped path")
+    void scopedNotFoundStaysScoped() throws Exception {
+        var targets = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            var target = request.target();
+            targets.add(request.method() + " " + target);
+            if ("/api/v1/plans/storage-v2/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", "storage-v2");
+
+        assertNotEquals(0, code);
+        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(targets.stream().noneMatch(t -> t.contains("/api/v1/questions/")), targets.toString());
+    }
+
+    @Test
+    @DisplayName("a 500 on the first read is a failed read, not a decision")
+    void serverErrorOnFirstReadIsFailedRead() throws Exception {
+        fixture.start((request, response) -> response.json(500, "{\"error\":\"store unavailable\"}"));
+
+        var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
+
+        assertNotEquals(0, code);
+        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+    }
+
+    @Test
+    @DisplayName("an option key of ten digits is shown, never parsed into an exception")
+    void tenDigitOptionKey() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target())) {
+                response.json(200, envelope("Q-001", "plan", "plan", "plan storage-v2", "pm-mcp-clients")
+                                    .replace("{\"key\": \"1\", \"label\": \"Yes\"}",
+                                                        "{\"key\": \"9999999999\", \"label\": \"Yes\"}, {\"key\": \"2\", \"label\": \"No\"}"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
+
+        assertEquals(3, code, err.toString());
+        assertTrue(out.toString().contains("Choose: 9999999999, 2"), out.toString());
+    }
+
     private void assertGerman(String expected, String... args) {
         out = new StringWriter();
         err = new StringWriter();
@@ -160,6 +231,29 @@ class AnswerRefusalTest {
         var context = new OperatorContext(environment, tempDir, true,
                             ClientEnvironment.capture(environment), termProvider, null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private static String dissentEnvelope() {
+        return """
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
+                              "scope": "plan", "blocks": "plan", "reversibility": "reversible",
+                              "parts": [{
+                                "part_id": "1", "question": "Which strategy?", "recommendation": "1",
+                                "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
+                                "options": [
+                                  {"key": "1", "label": "Rebase",
+                                   "quorum_support": {"band": "clear_majority", "votes_count": 2, "total_votes": 4,
+                                     "models_count": 2, "dissent_summary": "history gets noisy"}},
+                                  {"key": "2", "label": "Merge",
+                                   "quorum_support": {"band": "clear_majority", "votes_count": 2, "total_votes": 4,
+                                     "models_count": 2,
+                                     "votes": [{"role": "reviewer-a", "model": "gpt-4o", "reason": "keeps merge commits"},
+                                               {"role": "reviewer-b", "model": "gpt-4o", "reason": "history gets noisy"}]}}
+                                ]
+                              }]
+                            }
+                            """;
     }
 
     private static String planEnvelope() {

@@ -150,6 +150,10 @@ public final class AnswerCommand implements Callable<Integer> {
             out.flush();
             return 1;
         }
+        if (qResponse.status() != 200) {
+            // Any other first read is a failed read: its body is no decision to show or answer.
+            throw new OperatorRefusedException("answer " + questionId, qResponse);
+        }
         var envelope = DecisionEnvelope.fromJson(qResponse.bodyText());
         if (noInput) {
             printNoInput(out, envelope, locale);
@@ -376,11 +380,14 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int submitAnswerPayload(RuntimeClient runtime, PrintWriter out, String safeQid,
                         @Nullable String effectiveAction, String locale) throws IOException {
-        var envelope = fetchEnvelopeSafe(runtime, safeQid);
-        var refusal = multiPartRefusal(out, envelope, locale);
-        if (refusal != null) {
-            return refusal;
+        var read = readEnvelope(runtime, safeQid);
+        if (!isWaiveOrDecline(effectiveAction)) {
+            var refusal = multiPartRefusal(out, read, locale);
+            if (refusal != null) {
+                return refusal;
+            }
         }
+        var envelope = read.envelope();
         var response = sendAnswer(runtime, safeQid, directPayload(effectiveAction));
         if (isAccepted(response.status())) {
             printAnswerSuccess(out, envelope, effectiveAction, locale);
@@ -389,9 +396,22 @@ public final class AnswerCommand implements Callable<Integer> {
         throw new OperatorRefusedException("answer " + questionId, response);
     }
 
-    private @Nullable Integer multiPartRefusal(PrintWriter out, @Nullable DecisionEnvelope envelope, String locale) {
-        if (envelope == null || envelope.parts().size() <= 1
-                            || (option == null && (words == null || words.isBlank()))) {
+    /**
+     * The guard of a direct key: a decision of several parts is answered one part at a time in the
+     * dialogue. It fails closed — when the decision could not be read, whether it has parts is not
+     * known, so nothing is sent.
+     */
+    private @Nullable Integer multiPartRefusal(PrintWriter out, EnvelopeRead read, String locale) {
+        if (option == null && (words == null || words.isBlank())) {
+            return null;
+        }
+        if (read.failed()) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
+            out.flush();
+            return 1;
+        }
+        var envelope = read.envelope();
+        if (envelope == null || envelope.parts().size() <= 1) {
             return null;
         }
         out.println(MessageCatalogue.format(locale, "operator.decision.parts_direct_refused", Map.of(
@@ -429,7 +449,8 @@ public final class AnswerCommand implements Callable<Integer> {
                         throws IOException {
         var body = JsonTree.write(payload);
         var response = runtime.send(HttpRequest.json("POST", resolveDecisionPath(safeQid) + PATH_ANSWER, body));
-        if (response.status() == 404) {
+        if (response.status() == 404 && plan == null) {
+            // With --plan the operator named the scope: an unscoped answer would leave it.
             response = runtime.send(HttpRequest.json("POST", API_V1_QUESTIONS + safeQid + PATH_ANSWERS, body));
         }
         return response;
@@ -442,17 +463,31 @@ public final class AnswerCommand implements Callable<Integer> {
         return API_V1_DECISIONS + safeQid;
     }
 
-    private @Nullable DecisionEnvelope fetchEnvelopeSafe(RuntimeClient runtime, String safeQid) {
-        var qPath = resolveDecisionPath(safeQid);
+    /**
+     * The read of a decision before an answer is sent.
+     *
+     * @param envelope the decision, or {@code null} when it was not found or not read
+     * @param failed   {@code true} when the read failed (an I/O error or a status other than 200 and
+     *                 404), so nothing is known about the decision
+     */
+    private record EnvelopeRead(@Nullable DecisionEnvelope envelope, boolean failed) {
+    }
+
+    private EnvelopeRead readEnvelope(RuntimeClient runtime, String safeQid) {
         try {
-            var qResponse = runtime.send(HttpRequest.get(qPath));
+            var qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
             if (qResponse.status() == 200) {
-                return DecisionEnvelope.fromJson(qResponse.bodyText());
+                return new EnvelopeRead(DecisionEnvelope.fromJson(qResponse.bodyText()), false);
             }
+            return new EnvelopeRead(null, qResponse.status() != 404);
         } catch (IOException _) {
-            // best-effort envelope
+            return new EnvelopeRead(null, true);
         }
-        return null;
+    }
+
+    private @Nullable DecisionEnvelope fetchEnvelopeSafe(RuntimeClient runtime, String safeQid) {
+        // The nouns of the later and withdraw lines only: a failed read falls back to their defaults.
+        return readEnvelope(runtime, safeQid).envelope();
     }
 
     private void printAnswerSuccess(PrintWriter out, @Nullable DecisionEnvelope envelope,
@@ -503,14 +538,18 @@ public final class AnswerCommand implements Callable<Integer> {
         )));
     }
 
-    private static @Nullable String readLineSafe(LineReader reader, String prompt) {
+    /**
+     * Reads one answer line. The end of the input at any prompt leaves the dialogue as {@code q}
+     * does: {@code handleInteractive} prints the {@code Left} line and exits 0.
+     */
+    private static String readLineSafe(LineReader reader, String prompt) {
         try {
-            return reader.readLine(TerminalSanitizer.sanitizeLine(prompt));
+            return Objects.requireNonNullElse(reader.readLine(TerminalSanitizer.sanitizeLine(prompt)), "");
         } catch (UserInterruptException _) {
             // The interrupt is the exit-code table's 130, never an unanswered question.
             throw new StartPrompt.InterruptException();
         } catch (EndOfFileException _) {
-            return null;
+            throw new StartPrompt.StartLeftException();
         }
     }
 
@@ -562,6 +601,10 @@ public final class AnswerCommand implements Callable<Integer> {
             return runInteractiveDecision(session, envelope);
         } catch (StartPrompt.InterruptException interrupt) {
             throw interrupt;
+        } catch (StartPrompt.StartLeftException _) {
+            // The input ended at a prompt: nothing more was sent, the decision stays open.
+            printLeftDialogue(out, envelope.id(), locale);
+            return 0;
         } catch (OperatorRefusedException refused) {
             // An answer the runtime refused is the design's refusal, never an input error.
             throw refused;
@@ -589,9 +632,6 @@ public final class AnswerCommand implements Callable<Integer> {
         var prompt = getMessage(session.locale(), "operator.decision.waiver_prompt_full");
         while (true) {
             var choice = readLineSafe(session.reader(), prompt);
-            if (choice == null) {
-                return 0;
-            }
             if (choice.isBlank()) {
                 printWaiverNeedsAnswer(session.out(), session.locale());
                 continue;
@@ -656,21 +696,15 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int executeWaiverAct(DialogueSession session, DecisionEnvelope envelope, String choice) throws IOException {
         String reqReason = promptWaiverReason(session.reader(), session.out(), session.locale());
-        if (reqReason == null) {
-            return 0;
-        }
         var act = "d".equalsIgnoreCase(choice) || ACTION_DECLINE.equalsIgnoreCase(choice) || "a".equalsIgnoreCase(choice)
                             ? ACTION_DECLINE : ACTION_WAIVE;
         return sendWaiverAnswer(session.runtime(), session.out(), envelope, act, reqReason, session.locale());
     }
 
-    private static @Nullable String promptWaiverReason(LineReader reader, PrintWriter out, String locale) {
+    private static String promptWaiverReason(LineReader reader, PrintWriter out, String locale) {
         String reqReason = "";
         while (reqReason.isBlank()) {
             var line = readLineSafe(reader, getMessage(locale, "operator.decision.reason_prompt") + " › ");
-            if (line == null) {
-                return null;
-            }
             if (line.isBlank()) {
                 out.println(getMessage(locale, "operator.decision.reason_required"));
                 out.flush();
@@ -780,11 +814,7 @@ public final class AnswerCommand implements Callable<Integer> {
         while (true) {
             var prompt = buildPartPrompt(context.part(), context.stake(), context.recommended(),
                                 context.index(), context.currentNote(), session.locale());
-            var line = readLineSafe(session.reader(), prompt);
-            if (line == null) {
-                return done(context.currentNote());
-            }
-            var choice = line.trim();
+            var choice = readLineSafe(session.reader(), prompt).trim();
             if (handleInfo(session, envelope, context, choice)) {
                 continue;
             }
@@ -981,22 +1011,21 @@ public final class AnswerCommand implements Callable<Integer> {
         return carried != null ? carried : dissentFromVoteReason(part, recommendedOpt);
     }
 
+    /**
+     * The voter of a dissent summary: the vote whose reason is the summary names it; only when no
+     * reason matches does the first disagreeing vote with a reason stand in.
+     */
     private static @Nullable Dissent dissentForSummary(DecisionPart part, DecisionOption recommendedOpt,
                         String summary) {
-        var disagreeing = part.options().stream()
-                            .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
-                            .filter(opt -> opt.quorumSupport() != null)
-                            .flatMap(opt -> opt.quorumSupport().votes().stream())
-                            .filter(vote -> vote.reason() != null && !vote.reason().isBlank())
-                            .map(QuorumVote::role)
-                            .findFirst();
-        if (disagreeing.isPresent()) {
-            return new Dissent(disagreeing.get(), summary);
-        }
-        return allVotes(part).stream()
+        var matched = allVotes(part).stream()
                             .filter(vote -> vote.reason() != null && vote.reason().trim().equalsIgnoreCase(summary.trim()))
                             .map(vote -> new Dissent(vote.role(), summary))
-                            .findFirst().orElse(null);
+                            .findFirst();
+        if (matched.isPresent()) {
+            return matched.get();
+        }
+        var fallback = dissentFromVoteReason(part, recommendedOpt);
+        return fallback == null ? null : new Dissent(fallback.role(), summary);
     }
 
     private static @Nullable Dissent dissentFromAnotherOption(DecisionPart part, DecisionOption recommendedOpt) {
@@ -1128,7 +1157,8 @@ public final class AnswerCommand implements Callable<Integer> {
         if (keys.isEmpty()) {
             return "";
         }
-        var allNumeric = keys.stream().allMatch(key -> key.matches("\\d+"));
+        // Bounded as the confirmation's part number is: ten digits and more are no int, so no range.
+        var allNumeric = keys.stream().allMatch(key -> key.matches("\\d{1,9}"));
         if (!allNumeric) {
             return String.join(", ", keys);
         }
@@ -1191,7 +1221,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static @Nullable String promptNote(LineReader reader, String locale, @Nullable String currentNote) {
         var noteInput = readLineSafe(reader, getMessage(locale, "operator.decision.note_prompt") + " › ");
-        if (noteInput != null && !noteInput.isBlank()) {
+        if (!noteInput.isBlank()) {
             return noteInput.trim();
         }
         return currentNote;
@@ -1226,9 +1256,6 @@ public final class AnswerCommand implements Callable<Integer> {
                                 Map.of(RANGE_KEY, "1-" + parts.size()))
                                 : getMessage(locale, "operator.decision.confirm_single_prompt");
             var line = readLineSafe(session.reader(), prompt);
-            if (line == null) {
-                return new ConfirmOutcome(false, null, 0);
-            }
             var result = confirmChoice(line.trim(), parts, out, envelope, locale);
             if (result != null) {
                 return result;
@@ -1263,7 +1290,7 @@ public final class AnswerCommand implements Callable<Integer> {
     private static void printDecisionConfirmation(PrintWriter out, DecisionEnvelope envelope,
                         List<DecisionPart> parts, Map<Integer, PartAnswer> answers, String locale) {
         if (parts.size() > 1) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.confirm_title_parts", Map.of(ID_KEY, envelope.id())));
+            out.println(MessageCatalogue.format(locale, confirmTitleKey(envelope), Map.of(ID_KEY, envelope.id())));
             for (int i = 0; i < parts.size(); i++) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.part_answer_line", Map.of(
                                     "n", i + 1,
@@ -1361,7 +1388,6 @@ public final class AnswerCommand implements Callable<Integer> {
                             PROJECT_KEY, projectNoun(envelope, locale)
         )) + " [Enter]   " + getMessage(locale, "operator.decision.prompt.back") + "   › ";
         var confirm = readLineSafe(reader, confirmPrompt);
-        if (confirm == null) return true;
         if (confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim())) {
             var withPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_WITHDRAW;
             var withResponse = runtime.send(HttpRequest.json("POST", withPath, "{}"));
@@ -1389,7 +1415,6 @@ public final class AnswerCommand implements Callable<Integer> {
             out.println("  " + MessageCatalogue.format(locale, "operator.decision.follows", Map.of("consequence", OutputSafety.stripControlSequences(picked.consequences()))));
         }
         var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.confirm_prompt"));
-        if (confirm == null) return false;
         return confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim());
     }
 
@@ -1400,66 +1425,78 @@ public final class AnswerCommand implements Callable<Integer> {
                         String locale) throws IOException {
         var wordsPrompt = getMessage(locale, "operator.decision.own_words_prompt") + " › ";
         while (true) {
-            var wordsInput = readLineSafe(session.reader(), wordsPrompt);
-            if (wordsInput == null || wordsInput.isBlank()) {
+            var wordsInput = readLineSafe(session.reader(), wordsPrompt).trim();
+            if (wordsInput.isEmpty()) {
                 return null;
             }
-            var interp = clarified(session, envelope, wordsInput.trim(), locale);
-            if (interp == null) {
-                return null;
+            var interp = interpret(session, envelope, wordsInput);
+            if (interp.interpretationType() == InterpretationType.UNCLEAR) {
+                var question = interp.clarificationQuestion();
+                if (question == null) {
+                    // Unclear words with nothing to ask are never posted as understood: ask again.
+                    printUnclear(session, locale);
+                    continue;
+                }
+                var clarifiedInterp = clarified(session, envelope, wordsInput, question, locale);
+                if (clarifiedInterp == null) {
+                    return null;
+                }
+                interp = clarifiedInterp;
             }
-            var readBack = readBack(session, interp, wordsInput.trim(), locale);
+            var readBack = readBack(session, envelope, interp, wordsInput, locale);
             if (!readBack.repeat()) {
                 return readBack.answer();
             }
         }
     }
 
-    private static ReadBack readBack(DialogueSession session, DecisionInterpretation interp,
-                        String wordsInput, String locale) {
+    private static ReadBack readBack(DialogueSession session, DecisionEnvelope envelope,
+                        DecisionInterpretation interp, String wordsInput, String locale) {
         var out = session.out();
         out.println();
         var reading = Objects.requireNonNullElse(interp.readBackText(), wordsInput);
         out.println(MessageCatalogue.format(locale, "decision.readback.understood",
                             Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
-        var answer = readBackDecision(session, locale);
-        if (answer == null) {
-            return new ReadBack(false, null);
+        while (true) {
+            var answer = readLineSafe(session.reader(), getMessage(locale, "operator.decision.readback_confirm")).trim();
+            if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
+                return new ReadBack(false, new PartAnswer(reading, true));
+            }
+            if ("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale))) {
+                return new ReadBack(true, null);
+            }
+            if ("o".equalsIgnoreCase(answer)) {
+                return new ReadBack(false, null);
+            }
+            if ("?".equals(answer)) {
+                printEvidenceDetails(out, envelope.evidence(), locale);
+                continue;
+            }
+            // An unknown input neither keeps nor drops the reading: it is asked again.
+            out.println(getMessage(locale, INVALID_CHOICE_KEY));
+            out.flush();
         }
-        if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
-            return new ReadBack(false, new PartAnswer(Objects.requireNonNull(reading), true));
-        }
-        if ("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale))) {
-            return new ReadBack(true, null);
-        }
-        return new ReadBack(false, null);
     }
 
     private @Nullable DecisionInterpretation clarified(DialogueSession session, DecisionEnvelope envelope,
-                        String words, String locale) throws IOException {
-        var interp = interpret(session, envelope, words);
-        if (interp.interpretationType() != InterpretationType.UNCLEAR || interp.clarificationQuestion() == null) {
-            return interp;
-        }
+                        String words, String question, String locale) throws IOException {
         session.out().println(MessageCatalogue.format(locale, "decision.clarify.asks", Map.of(
                             ROLE_KEY, "interpret",
-                            "question", TerminalSanitizer.sanitizeLine(interp.clarificationQuestion())
+                            "question", TerminalSanitizer.sanitizeLine(question)
         )));
         var reply = readLineSafe(session.reader(), getMessage(locale, "operator.decision.reply_prompt") + " › ");
-        var combinedWords = words + ". " + (reply != null ? reply.trim() : "");
-        var clarifiedInterp = interpret(session, envelope, combinedWords);
+        var clarifiedInterp = interpret(session, envelope, words + ". " + reply.trim());
         if (clarifiedInterp.interpretationType() != InterpretationType.UNCLEAR) {
             return clarifiedInterp;
         }
-        session.out().println(MessageCatalogue.format(locale, "decision.interpret.unclear_bound", Map.of(
-                            REASON_KEY, getMessage(locale, "decision.interpret.unclear_reason"))));
-        session.out().flush();
+        printUnclear(session, locale);
         return null;
     }
 
-    private static @Nullable String readBackDecision(DialogueSession session, String locale) {
-        var confirm = readLineSafe(session.reader(), getMessage(locale, "operator.decision.readback_confirm"));
-        return confirm == null ? null : confirm.trim();
+    private static void printUnclear(DialogueSession session, String locale) {
+        session.out().println(MessageCatalogue.format(locale, "decision.interpret.unclear_bound", Map.of(
+                            REASON_KEY, getMessage(locale, "decision.interpret.unclear_reason"))));
+        session.out().flush();
     }
 
     private DecisionInterpretation interpret(DialogueSession session, DecisionEnvelope envelope,
@@ -1568,10 +1605,18 @@ public final class AnswerCommand implements Callable<Integer> {
         return status == 200 || status == 202 || status == 204;
     }
 
+    /**
+     * The title of the confirmation names the stake: costly, cannot be undone, or — only a
+     * reversible decision of several parts is confirmed at all — no stake.
+     */
     private static String confirmTitleKey(DecisionEnvelope envelope) {
-        return envelope.reversibility() == Reversibility.COSTLY
-                            ? "operator.decision.confirm_title_costly"
-                            : "operator.decision.confirm_title";
+        if (envelope.reversibility() == Reversibility.COSTLY) {
+            return "operator.decision.confirm_title_costly";
+        }
+        if (envelope.reversibility() == Reversibility.REVERSIBLE) {
+            return "operator.decision.confirm_title_parts";
+        }
+        return "operator.decision.confirm_title";
     }
 
     private static String getMessage(String locale, String key) {

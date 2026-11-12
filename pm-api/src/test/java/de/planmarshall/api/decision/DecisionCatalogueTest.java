@@ -14,9 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.planmarshall.api.message.MessageCatalogue;
 
@@ -46,7 +51,8 @@ class DecisionCatalogueTest {
                 () -> assertTrue(en.containsKey("decision.waiver.waive")),
                 () -> assertTrue(en.containsKey("decision.waiver.decline")),
                 () -> assertTrue(en.containsKey("operator.decision.own_words_prompt")),
-                () -> assertTrue(en.containsKey("operator.decision.waiver_prompt"))
+                () -> assertTrue(en.containsKey("operator.decision.waiver_prompt")),
+                () -> assertTrue(en.containsKey("operator.decision.parts_unreadable"))
         );
     }
 
@@ -64,5 +70,45 @@ class DecisionCatalogueTest {
 
         var deRec = MessageCatalogue.format("de", "decision.recommendation.by", Map.of("role", "implement", "option", "Rebase"));
         assertEquals("Empfohlen von implement: Rebase", deRec);
+    }
+
+    @Test
+    @DisplayName("the German project fallback is the dative that follows von and in")
+    void germanProjectFallback() {
+        assertEquals("dem Projekt", MessageCatalogue.format("de", "decision.project.fallback", Map.of()));
+    }
+
+    /**
+     * Every German template that puts {@code {project}} after "von" or "in", formatted with the
+     * project fallback as an envelope without a project gets it, reads as a whole German sentence.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("germanProjectTemplates")
+    @DisplayName("a German template without a project reads right with the fallback")
+    void germanTemplatesWithoutProject(String key, Map<String, Object> params, String expected) {
+        var withFallback = new HashMap<String, Object>(params);
+        withFallback.put("project", MessageCatalogue.format("de", "decision.project.fallback", Map.of()));
+
+        var sentence = MessageCatalogue.format("de", key, withFallback);
+
+        assertEquals(expected, sentence);
+    }
+
+    static Stream<Arguments> germanProjectTemplates() {
+        return Stream.of(
+                Arguments.of("decision.waiting", Map.of("subject", "setup", "time", "10:00"),
+                        "das Setup von dem Projekt wartet seit 10:00 auf deine Antwort"),
+                Arguments.of("decision.outcome.rethink", Map.of("subject", "entry"),
+                        "du hast den Start in dem Projekt gebeten, neu zu überlegen"),
+                Arguments.of("decision.notify.title", Map.of("subject", "setup", "kind", "decision", "name", "-"),
+                        "Das Setup von dem Projekt braucht eine Entscheidung"),
+                Arguments.of("operator.decision.later_done", Map.of("id", "Q-007", "scope", "setup"),
+                        "Q-007 bleibt offen; das Setup von dem Projekt wartet darauf. questions listet sie."),
+                Arguments.of("operator.decision.none_fits_confirm", Map.of("scope", "entry"),
+                        "Nichts passt: der Start in dem Projekt überlegt neu und fragt noch einmal. Senden?"),
+                Arguments.of("operator.decision.goes_on", Map.of("scope", "setup"),
+                        "Das Setup von dem Projekt läuft weiter."),
+                Arguments.of("operator.decision.none_fits_done", Map.of("id", "Q-007", "scope", "entry"),
+                        "✓ Q-007: du hast den Start in dem Projekt gebeten, neu zu überlegen."));
     }
 }

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
@@ -196,6 +197,103 @@ class AnswerMultipartTest {
         assertFalse(terminalText.toString().contains("h) chat"), terminalText.toString());
         assertTrue(out.toString().contains("Please choose a valid option"), out.toString());
         assertTrue(out.toString().contains("Q-001 answered"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a direct key on a decision that could not be read is refused and nothing is sent")
+    void directAnswerOnUnreadableDecisionRefuses() throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(500, "{\"error\":\"store unavailable\"}");
+            } else {
+                postedBodies.add(request.bodyText());
+                response.json(200, "{\"ok\":true}");
+            }
+        });
+
+        var code = run(new byte[0], "answer", "Q-012", "2");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains(
+                            "Q-012 could not be read, so it is not known whether it has parts; nothing was sent."),
+                            out.toString());
+        assertTrue(postedBodies.isEmpty(), postedBodies.toString());
+    }
+
+    @Test
+    @DisplayName("the confirmation of a costly decision of several parts names the stake")
+    void costlyMultipartConfirmationTitle() throws Exception {
+        serve("Q-012", threePartEnvelope().replace("\"reversibility\": \"reversible\"", "\"reversibility\": \"costly\""), true);
+
+        var code = run("1\n2\n1\n\n", "answer", "Q-012", "-i");
+
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Your decision · Q-012 · costly to undo"), out.toString());
+        assertEquals(1, postedBodies.size(), postedBodies.toString());
+    }
+
+    @Test
+    @DisplayName("unclear own words with no question are asked again, never posted")
+    void unclearWithoutQuestionAsksAgain() throws Exception {
+        var interpreted = new ArrayList<String>();
+        serveOwnWords(interpreted, words -> words.contains("first")
+                            ? "{\"interpretation_type\":\"unclear\"}"
+                            : "{\"interpretation_type\":\"own_option\",\"read_back_text\":\"squash the branch\"}");
+
+        var code = run("w\nfirst try\nsquash it\n\n", "answer", "Q-001", "-i");
+
+        assertEquals(0, code);
+        assertEquals(2, interpreted.size(), interpreted.toString());
+        assertTrue(out.toString().contains("could not be read clearly enough"), out.toString());
+        assertEquals(1, postedBodies.size(), postedBodies.toString());
+        var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
+        assertEquals("squash the branch", body.get("words"), postedBodies.get(0));
+    }
+
+    @Test
+    @DisplayName("an unknown input at the read-back is asked again, the reading kept")
+    void readBackTypoAsksAgain() throws Exception {
+        var interpreted = new ArrayList<String>();
+        serveOwnWords(interpreted, words -> "{\"interpretation_type\":\"own_option\",\"read_back_text\":\"squash the branch\"}");
+
+        var code = run("w\nsquash it\nzz\n\n", "answer", "Q-001", "-i");
+
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Please choose a valid option or action."), out.toString());
+        assertEquals(1, postedBodies.size(), postedBodies.toString());
+        var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
+        assertEquals("squash the branch", body.get("words"), postedBodies.get(0));
+    }
+
+    @Test
+    @DisplayName("the end of the input at a prompt prints the Left line and exits 0")
+    void endOfInputLeaves() throws Exception {
+        serve("Q-012", threePartEnvelope(), true);
+
+        var code = run("1\n", "answer", "Q-012", "-i");
+
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Left Q-012. Nothing was sent."), out.toString());
+        assertTrue(postedBodies.isEmpty(), postedBodies.toString());
+    }
+
+    private void serveOwnWords(List<String> interpreted, UnaryOperator<String> interpretation)
+                        throws IOException {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, plainEnvelope(true, false));
+            } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
+                var words = String.valueOf(JsonTree.asObject(JsonTree.parse(request.bodyText())).get("words"));
+                interpreted.add(words);
+                response.json(200, interpretation.apply(words));
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                postedBodies.add(request.bodyText());
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
     }
 
     private void serve(String id, String envelope, boolean recordAnswer) throws IOException {
