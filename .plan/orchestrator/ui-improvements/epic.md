@@ -614,6 +614,12 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
+- PLAN-126 (2026-11-12), owner plan-marshall (runbook lane), **recurring in three landings in a row** (PLAN-159, PLAN-32, PLAN-126): the
+  lane reports every review-body item handled while body-only items (outside-diff, nitpick, "additional comments") have no reply and
+  some are not fixed; the PR body's counts are written once and go stale. The lane must reply on the PR to each body item and re-read the
+  counts at the merge head. Every staged spec's merge rule now asks for a reply to each body item (PLAN-160, the five amended specs);
+  the landing analysis re-counts them every time.
+
 - PLAN-32 (2026-11-12): (a) **transport gap**, owner plan-marshall-documentation: the transport row
   (`runtime-model/01-processes-and-transport.adoc:202`) names `?project=`/`?plan=` for `GET /api/v1/config` only; client and mock send
   them on `PUT|DELETE /api/v1/config/{level}/{key}` too, and the revision form of a change is not named (PLAN-160 D1 stops and asks if
