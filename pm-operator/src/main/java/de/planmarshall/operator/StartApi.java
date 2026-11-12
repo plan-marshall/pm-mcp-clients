@@ -55,7 +55,7 @@ final class StartApi {
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
     /** How long the terminal waits for the role's reply: a minute, read ten times a second. */
-    static final ReplyWait REPLY_WAIT = new ReplyWait(600, Duration.ofMillis(100));
+    private static final ReplyWait REPLY_WAIT = new ReplyWait(600, Duration.ofMillis(100));
 
     private final OperatorContext context;
     private final ReplyWait replyWait;
