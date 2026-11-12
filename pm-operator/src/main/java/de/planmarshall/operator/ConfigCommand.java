@@ -1466,8 +1466,8 @@ public final class ConfigCommand implements Callable<Integer> {
         private boolean confirmRetry(String locale) throws IOException {
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
-                return line == null || !"k".equalsIgnoreCase(line.trim());
+                var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
+                return line == null || !KEEP.equalsIgnoreCase(line.trim());
             }
         }
     }

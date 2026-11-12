@@ -177,7 +177,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             try {
                 if (secret.length == 0) {
                     out.println(MessageCatalogue.format(locale, READ_FAILED,
-                                        Map.of("reason", "empty")));
+                                        Map.of(REASON, "empty")));
                     out.flush();
                     return PmOperator.EXIT_FAILURE;
                 }
@@ -267,7 +267,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         if (!plans.isBlank()) {
             line.append(' ').append(MessageCatalogue.format(locale,
                                 "onboard.settings.credential.plans_go_on",
-                                Map.of("count", plans.split(",").length, "plans", plans)));
+                                Map.of(COUNT, plans.split(",").length, "plans", plans)));
         }
         out.println(line);
         out.flush();
@@ -427,7 +427,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return 0;
             }
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                "operator.credentials.failed", Map.of(KEY, key, STATUS, response.status())));
+                                FAILED, Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }

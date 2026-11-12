@@ -10277,7 +10277,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summary.put("state", "running");
             return summary;
         }
-        var listRoute = activeRoute("GET", "/api/v1/plans");
+        var listRoute = activeRoute("GET", PATH_PLANS);
         if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
                 && list.get("plans") instanceof List<?> plans) {
             for (var element : plans) {
