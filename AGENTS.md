@@ -6,6 +6,9 @@ Guidance for AI coding agents working in this repository.
 packages and git workflow. OpenCode V2 does not load it automatically — **read it before starting work** and follow
 it. This file holds only what is specific to OpenCode and not covered there.
 
+Merging: a run of `/plan-marshall` or of the runbook lane merges its own pull request once the process's gates hold;
+it does not ask the user for a further word (`CLAUDE.md`, Git Workflow).
+
 ## Ports
 
 Each plan uses the block its spec names in Standing Constraints:
