@@ -90,7 +90,7 @@ To stop the background server:
 
 | `--timing`
 | `<realistic\|ordered>`
-| How scenario events and a chat's reply are played. `realistic` (the default) plays each event after its delay and a reply's pieces at a reading pace; `ordered` sends them at once and in order, without a timer. `@EnableMockRuntime` defaults to `ordered`, so a test asserts a sequence without waiting on time.
+| How scenario events and a chat's reply are played. `realistic` (the default) plays each event after its delay and a reply's pieces at a reading pace; `ordered` sends them at once and in order, without a timer. `@EnableMockRuntime`, `MockRuntime.start()` and `MockRuntime.start(String)` default to `ordered`, so a test asserts a sequence without waiting on time; a `MockRuntimeConfig` built without a timing keeps `realistic`.
 
 | `-h, --help`
 | _none_

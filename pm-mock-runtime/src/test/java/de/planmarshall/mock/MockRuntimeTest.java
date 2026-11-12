@@ -511,6 +511,22 @@ class MockRuntimeTest {
     }
 
     @Test
+    @DisplayName("the scenario entry point starts ordered while a config without a timing keeps realistic")
+    void scenarioEntryPointStartsOrdered() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
+            assertEquals(MockTiming.ORDERED, runtime.timing());
+        }
+
+        var config = MockRuntimeConfig.builder()
+                .scenario(StandardScenarios.STATUS_ONLY)
+                .build();
+        assertEquals(MockTiming.REALISTIC, config.getTiming());
+        try (var runtime = MockRuntime.start(config)) {
+            assertEquals(MockTiming.REALISTIC, runtime.timing());
+        }
+    }
+
+    @Test
     @DisplayName("an ephemeral web port is reported truthfully across all engine endpoints")
     void ephemeralWebPortReportedTruthfully() throws Exception {
         var config = MockRuntimeConfig.builder()

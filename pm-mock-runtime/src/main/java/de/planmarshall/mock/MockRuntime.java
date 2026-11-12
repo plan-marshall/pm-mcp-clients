@@ -113,24 +113,35 @@ public final class MockRuntime implements AutoCloseable {
     }
 
     /**
-     * Starts a mock runtime instance with the default configuration and default scenario.
+     * Starts a mock runtime instance with the default scenario and {@link MockTiming#ORDERED} timing.
+     * <p>
+     * This entry point serves tests: scenario events and a chat's reply are played at once and in
+     * order, so a test asserts a sequence without waiting on time. A {@link MockRuntimeConfig} built
+     * without a timing keeps {@link MockTiming#REALISTIC}; start with such a config for realistic
+     * timing.
      *
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
     public static MockRuntime start() throws IOException {
-        return start(MockRuntimeConfig.builder().build());
+        return start(MockRuntimeConfig.builder().timing(MockTiming.ORDERED).build());
     }
 
     /**
-     * Starts a mock runtime instance for the given scenario name.
+     * Starts a mock runtime instance for the given scenario name with {@link MockTiming#ORDERED}
+     * timing.
+     * <p>
+     * This entry point serves tests: scenario events and a chat's reply are played at once and in
+     * order, so a test asserts a sequence without waiting on time. A {@link MockRuntimeConfig} built
+     * without a timing keeps {@link MockTiming#REALISTIC}; start with such a config for realistic
+     * timing.
      *
      * @param scenario the initial scenario name or path
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
     public static MockRuntime start(String scenario) throws IOException {
-        return start(MockRuntimeConfig.builder().scenario(scenario).build());
+        return start(MockRuntimeConfig.builder().scenario(scenario).timing(MockTiming.ORDERED).build());
     }
 
     @SuppressWarnings({"java:S5443", "java:S7467"})
