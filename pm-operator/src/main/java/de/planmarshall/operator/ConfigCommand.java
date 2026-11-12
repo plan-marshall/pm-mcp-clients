@@ -73,7 +73,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String PLAN_DEFAULTS = "plan-defaults";
     private static final String HARNESS_PREFIX = "harness.";
     private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
-    private static final String CREDENTIAL_STORE_KEY = "credentials.store";
     private static final String DOCUMENTS_MODE_KEY = "sources.documents_mode";
     private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
     private static final String ONE_LEVEL = "operator.config.one_level";
