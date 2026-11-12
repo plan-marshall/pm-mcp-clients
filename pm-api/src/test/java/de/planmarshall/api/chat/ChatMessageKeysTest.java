@@ -251,7 +251,7 @@ class ChatMessageKeysTest {
         void lines() {
             var pack = packLines().map(key -> key.substring(LINE_PREFIX.length())).collect(Collectors.toSet());
 
-            assertEquals(pack, ChatMessageKeys.LINES);
+            assertEquals(ChatMessageKeys.LINES, pack);
         }
 
         @Test
@@ -260,7 +260,7 @@ class ChatMessageKeysTest {
             var pack = controlPack().keySet().stream().filter(key -> key.startsWith(STEP_PREFIX))
                     .map(key -> key.substring(STEP_PREFIX.length())).collect(Collectors.toSet());
 
-            assertEquals(pack, ChatMessageKeys.STEPS);
+            assertEquals(ChatMessageKeys.STEPS, pack);
         }
 
         @Test
@@ -268,7 +268,7 @@ class ChatMessageKeysTest {
         void knowsItemsAreTheSelectBranches() {
             var branches = selectBranches(controlPack().get(KNOWS_ITEM), ChatMessageKeys.ARG_ITEM);
 
-            assertEquals(Set.copyOf(branches), ChatMessageKeys.KNOWS_ITEMS);
+            assertEquals(ChatMessageKeys.KNOWS_ITEMS, Set.copyOf(branches));
         }
 
         @Test

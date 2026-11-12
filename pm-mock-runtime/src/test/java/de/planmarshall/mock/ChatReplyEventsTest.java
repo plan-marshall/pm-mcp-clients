@@ -125,8 +125,8 @@ class ChatReplyEventsTest {
             assertFalse(middle.isEmpty(), "the reply's text comes in pieces");
             assertTrue(middle.stream().allMatch(ChatTurnDeltaEvent.EVENT_NAME::equals), names::toString);
             assertTrue(played.sequence().stream()
-                    .allMatch(seen -> "plan".equals(JsonTree.string(seen.scope(), KIND))
-                            && played.planId().equals(JsonTree.string(seen.scope(), ID))),
+                            .allMatch(seen -> "plan".equals(JsonTree.string(seen.scope(), KIND))
+                                    && played.planId().equals(JsonTree.string(seen.scope(), ID))),
                     "every event is on the plan's stream");
             assertEquals(names, played.everywhere().stream().map(Seen::name).toList(),
                     "/api/v1/events carries the same sequence");
@@ -196,7 +196,7 @@ class ChatReplyEventsTest {
      * @param written        the chat after the reply
      */
     private record Played(String planId, ChatResource chat, ChatTurnRequest message, String operatorTurnId,
-            List<Seen> sequence, List<Seen> everywhere, ChatResource written) {
+    List<Seen> sequence, List<Seen> everywhere, ChatResource written) {
     }
 
     @Nested

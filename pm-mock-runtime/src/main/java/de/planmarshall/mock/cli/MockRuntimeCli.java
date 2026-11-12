@@ -86,9 +86,9 @@ public final class MockRuntimeCli {
      */
     enum ValuedOption {
         SCENARIO((value, opts, err) -> {
-            opts.scenario = value;
-            return null;
-        }, "--scenario", "-s"),
+        opts.scenario = value;
+        return null;
+    }, "--scenario", "-s"),
         BASE((value, opts, err) -> {
             opts.base = Path.of(value);
             return null;

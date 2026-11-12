@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -21,8 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
