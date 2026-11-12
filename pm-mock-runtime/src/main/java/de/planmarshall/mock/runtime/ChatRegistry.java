@@ -958,8 +958,9 @@ final class ChatRegistry {
             if (!usedTurnIds.add(started.turnId())) {
                 return refused(ApiErrorCode.CONFLICT, "The turn " + started.turnId() + " exists");
             }
-            chat.turns.add(operatorTurn(started.turnId(), started.untrusted(),
-                    Objects.requireNonNullElse(started.text(), ""), Instant.now().toString()));
+            var startedText = started.text();
+            var text = startedText != null ? startedText : "";
+            chat.turns.add(operatorTurn(started.turnId(), started.untrusted(), text, Instant.now().toString()));
         }
         return broadcasted(chat, event, payload, null);
     }

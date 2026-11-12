@@ -129,6 +129,20 @@ public final class MockRuntimeCli {
             }
             return null;
         }
+
+        private static @Nullable Integer parsePortArg(String portStr, PrintStream err) {
+            try {
+                int port = Integer.parseInt(portStr);
+                if (port < -1 || port > 65535) {
+                    err.println("Error: invalid port: " + portStr);
+                    return null;
+                }
+                return port;
+            } catch (NumberFormatException _) {
+                err.println("Error: invalid port: " + portStr);
+                return null;
+            }
+        }
     }
 
     /**
@@ -322,20 +336,6 @@ public final class MockRuntimeCli {
             // A machine without a resolvable name still has the loopback coordinate.
         }
         return "localhost";
-    }
-
-    private static @Nullable Integer parsePortArg(String portStr, PrintStream err) {
-        try {
-            int port = Integer.parseInt(portStr);
-            if (port < -1 || port > 65535) {
-                err.println("Error: invalid port: " + portStr);
-                return null;
-            }
-            return port;
-        } catch (NumberFormatException _) {
-            err.println("Error: invalid port: " + portStr);
-            return null;
-        }
     }
 
     private static @Nullable Integer resolveFallbackWebPort(@Nullable Map<String, String> env, PrintStream err) {
