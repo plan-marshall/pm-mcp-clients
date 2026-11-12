@@ -427,8 +427,12 @@ final class WorkActionDialogue {
                             id);
         int count;
         try {
-            count = Integer.parseInt(answer.trim());
+            count = Integer.parseInt(answer);
         } catch (NumberFormatException _) {
+            count = -1;
+        }
+        // The count of files two plans may share is a number of files: a negative one is no answer.
+        if (count < 0) {
             prompt.line("operator.actions.common_files.invalid", Map.of());
             return 1;
         }

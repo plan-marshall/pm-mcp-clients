@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +24,7 @@ import de.planmarshall.api.decomposition.InstructAction;
 import de.planmarshall.api.decomposition.StagedPlanRecord;
 import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The third step of starting an epic: its decomposition (design <em>Terminal Client: Starting
@@ -115,20 +117,33 @@ final class EpicDecompositionDialogue {
                     return 0;
                 }
                 current = checked;
-            } else if ("q".equalsIgnoreCase(answer)) {
+            } else if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
             } else if ("r".equalsIgnoreCase(answer)) {
                 current = rewrite(current);
-            } else if ("+".equalsIgnoreCase(answer)) {
+            } else if ("+".equals(answer)) {
                 current = add(current);
+            } else if ("?".equals(answer)) {
+                prompt.raw(text("operator.dialogue.no_explanation", Map.of()));
             } else {
                 var target = planAt(current, answer);
                 if (target != null) {
                     current = openPlan(current, target);
+                } else {
+                    // An input the state does not offer is answered with one line (03-dialogues.adoc#keys).
+                    prompt.raw(text("operator.dialogue.not_offered",
+                                        Map.of("input", clean(answer), "offered", offered(current))));
                 }
             }
         }
+    }
+
+    private String offered(EpicDecomposition cut) {
+        var count = cut.stagedPlanCount();
+        var leave = prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+        var plans = count == 0 ? "" : count == 1 ? "1, " : "1-" + count + ", ";
+        return plans + "+, r, " + leave + ", ?";
     }
 
     private @Nullable EpicDecomposition agree() throws IOException {

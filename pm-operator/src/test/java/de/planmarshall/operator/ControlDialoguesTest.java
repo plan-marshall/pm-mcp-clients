@@ -375,7 +375,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("d\nnot relevant\ny\n");
+        script("d\nnot relevant\nq\n");
         assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
         assertTrue(out.toString().contains("F-1 dropped"), out.toString());
     }
@@ -1055,7 +1055,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("y\n");
+        script("q\n");
         ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false);
         assertTrue(out.toString().contains("\"Reconnect loses the last event\""), out.toString());
     }
@@ -1627,6 +1627,440 @@ class ControlDialoguesTest {
             assertTrue(text.contains("from the machine"), text);
             assertFalse(text.contains("integration.github"), text);
             assertFalse(text.contains("provider.speech"), text);
+        }
+    }
+
+    /** Serves the review, answers each disposition with the decided review, and records every request. */
+    private FakeRuntimeServer serveReview(String review) throws IOException {
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.contains("/disposition")) {
+                response.json(200, REVIEW_KEPT);
+            } else if (path.endsWith("/review/commit")) {
+                response.json(200, REVIEW_COMMITTED);
+            } else if (path.contains("/review")) {
+                response.json(200, review);
+            } else if (path.endsWith("/chat")) {
+                response.json(200, CHAT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static List<String> sent(FakeRuntimeServer server, String suffix) {
+        return server.requests().stream().filter(request -> request.target().contains(suffix))
+                            .map(FakeRuntimeServer.Request::bodyText).toList();
+    }
+
+    @Nested
+    @DisplayName("the review dialogue")
+    @EnableGeneratorController
+    class ReviewBehaviour {
+
+        @Test
+        @DisplayName("a key the item does not offer is answered and asked again")
+        void decisionNotOffered() throws Exception {
+            var server = serveReview(REVIEW);
+            script("r\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(out.toString().contains("r is not offered here: k, d, h, f, q"), out.toString());
+            assertEquals(List.of(), sent(server, "/disposition"));
+        }
+
+        @ParameterizedTest(name = "{0}: answered \"{1}\" -> {2}")
+        @CsvSource({"findings,1,kept", "findings,2,watch", "findings,'',kept", "watches,1,watch",
+            "watches,2,kept"})
+        @DisplayName("keeping an item keeps it in its register or moves it to the other")
+        void keepOrMove(String register, String answer, String disposition) throws Exception {
+            var server = serveReview(REVIEW.replace("\"register\":\"findings\"", "\"register\":\"" + register + "\""));
+            script("k\n" + answer + "\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", register, false));
+
+            var bodies = sent(server, "/disposition");
+            assertEquals(1, bodies.size(), out.toString());
+            assertTrue(bodies.getFirst().contains("\"" + disposition + "\""), bodies.getFirst());
+        }
+
+        @ParameterizedTest(name = "q at the {0} question sends nothing")
+        @CsvSource({"k", "d"})
+        @DisplayName("leaving at the keep or the drop question sends nothing")
+        void leaveSendsNothing(String key) throws Exception {
+            var server = serveReview(REVIEW);
+            script(key + "\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertEquals(List.of(), sent(server, "/disposition"));
+        }
+
+        @Test
+        @DisplayName("a register answer that is not offered is answered and asked again")
+        void registerNotOffered() throws Exception {
+            var server = serveReview(REVIEW);
+            script("k\n3\n1\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(out.toString().contains("3 is not offered here: 1-2, q"), out.toString());
+            assertEquals(1, sent(server, "/disposition").size(), out.toString());
+        }
+
+        @Test
+        @DisplayName("an item with a drafted plan shows the plan")
+        void draftedPlanShown() throws Exception {
+            var objective = Generators.letterStrings(8, 20).next();
+            var drafted = REVIEW.replace("\"items\":[", "\"drafted_plan\":{\"plan_id\":\"relay-fix\","
+                                + "\"objective\":\"" + objective + "\",\"deliverables\":[\"one\",\"two\"],"
+                                + "\"surface\":[\"a.java\",\"b.java\"]},\"items\":[");
+            serveReview(drafted);
+            script("q\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            var text = out.toString();
+            assertTrue(text.contains("Plan relay-fix"), text);
+            assertTrue(text.contains(objective), text);
+            assertTrue(text.contains("one; two"), text);
+            assertTrue(text.contains("a.java, b.java"), text);
+            assertTrue(text.contains("p) Promote to a plan"), text);
+        }
+
+        @Test
+        @DisplayName("the chat about the review reads the review again afterwards")
+        void chatThenReadAgain() throws Exception {
+            var server = serveReview(REVIEW);
+            script("h\n\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/epics/e/chat")),
+                                server.requests().toString());
+            assertEquals(2, server.requests().stream().filter(request -> request.target().contains("/review")).count(),
+                                server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a declined finish writes nothing to the ledger")
+        void finishDeclined() throws Exception {
+            var server = serveReview(REVIEW_KEPT);
+            script("n\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertEquals(List.of(), sent(server, "/review/commit"));
+        }
+
+        @ParameterizedTest(name = "without input over {0}")
+        @CsvSource({"an open item", "a decided review"})
+        @DisplayName("without input the review stops where it would ask")
+        void noInputStops(String state) throws Exception {
+            var server = serveReview("an open item".equals(state) ? REVIEW : REVIEW_KEPT);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", true));
+
+            assertEquals(List.of(), sent(server, "/disposition"));
+            assertEquals(List.of(), sent(server, "/review/commit"));
+        }
+    }
+
+    private static final String CUT = """
+                        {"epic_id":"e","status":"check","revision":3,
+                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                           "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
+                             "expected_surface":["pm-relay/src/cursor"],"dependencies":[],"status":"staged"}]},
+                         {"id":"WS-2","name":"Authentication","order":2,
+                           "staged_plans":[{"plan_id":"relay-auth-v2","title":"relay-auth-v2",
+                             "objective":"a token exchange","expected_surface":["pm-api/src/cursor"],
+                             "dependencies":["relay-cursor-order"],"status":"staged"}]}],
+                         "findings":[{"severity":"error","rule":"surface_overlap",
+                           "affected_plans":["relay-cursor-order","relay-auth-v2"],
+                           "message":"surface overlaps relay-auth-v2 (pm-api/src/cursor)"}]}
+                        """;
+
+    private static final String CUT_PASSING = """
+                        {"epic_id":"e","status":"review","revision":4,
+                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                           "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
+                             "expected_surface":["pm-relay/src/cursor"],"dependencies":[],"status":"staged"}]}],
+                         "findings":[]}
+                        """;
+
+    /** Serves the epic's decompose action and its decomposition; the check answers with the given cut. */
+    private FakeRuntimeServer serveDecomposition(String checked) throws IOException {
+        var base = "/projects/pr/epics/e/decomposition";
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/epics/e/actions")) {
+                response.json(200, EPIC_ACTIONS.replace("{\"action\":\"next\",\"available\":true},",
+                                    "{\"action\":\"decompose\",\"available\":true},"));
+            } else if (path.endsWith(base + "/check")) {
+                response.json(200, checked);
+            } else if (path.endsWith(base + "/commit")) {
+                response.json(200, "{\"status\":\"committed\",\"ledger_revision\":4,\"launchable_plan_count\":1}");
+            } else if (path.endsWith(base + "/instruct")) {
+                response.json(200, CUT_PASSING);
+            } else if (path.endsWith(base)) {
+                response.json(200, CUT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private int decompose(OperatorContext on) throws IOException {
+        return WorkActionDialogue.run(on, new PrintWriter(out), "epic", "e", "decompose", false,
+                            EpicResource.fromJson(EPIC), null);
+    }
+
+    @Nested
+    @DisplayName("the decomposition dialogue")
+    @EnableGeneratorController
+    class DecompositionBehaviour {
+
+        @Test
+        @DisplayName("an input the cut does not offer is answered with one line, and q leaves keeping the draft")
+        void notOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(input + " is not offered here: 1-2, +, r, q, ?"), text);
+            assertTrue(text.contains("Left [3/3] Decomposition of e. The draft is kept."), text);
+            assertEquals(List.of(), sent(server, "/check"));
+        }
+
+        @Test
+        @DisplayName("? says that nothing more is explained")
+        void questionMark() throws Exception {
+            serveDecomposition(CUT);
+            script("?\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertTrue(out.toString().contains("Nothing more is explained here; choose one of the keys."),
+                                out.toString());
+        }
+
+        @Test
+        @DisplayName("German v leaves and keeps the draft")
+        void germanLeave() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("v\n");
+
+            assertEquals(0, decompose(german()));
+
+            assertTrue(out.toString().contains("Dekomposition von e verlassen"), out.toString());
+            assertEquals(List.of(), sent(server, "/check"));
+        }
+
+        @Test
+        @DisplayName("a plan opens with its detail and is edited by the operator's words")
+        void openAndEdit() throws Exception {
+            var server = serveDecomposition(CUT);
+            var words = Generators.letterStrings(8, 30).next();
+            script("2\ne\n" + words + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("a token exchange"), text);
+            assertTrue(text.contains("WS-2 Authentication"), text);
+            var instructs = sent(server, "/instruct");
+            assertEquals(1, instructs.size(), text);
+            assertTrue(instructs.getFirst().contains("\"edit\"") && instructs.getFirst().contains("relay-auth-v2")
+                                && instructs.getFirst().contains(words), instructs.getFirst());
+        }
+
+        @Test
+        @DisplayName("Enter agrees: a cut whose checks pass is committed")
+        void agreeCommits() throws Exception {
+            var server = serveDecomposition(CUT_PASSING);
+            script("\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(1, sent(server, "/commit").size(), out.toString());
+        }
+
+        @Test
+        @DisplayName("Enter over a cut whose checks fail commits nothing and shows the cut again")
+        void agreeRefusedByChecks() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(1, sent(server, "/check").size(), out.toString());
+            assertEquals(List.of(), sent(server, "/commit"));
+        }
+    }
+
+    /** Serves the given actions for every subject and answers every act with them. */
+    private FakeRuntimeServer serveActions(String actions) throws IOException {
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/actions") || path.contains("/actions/")) {
+                response.json(200, actions);
+            } else if (path.endsWith("/epics/e")) {
+                response.json(200, EPIC);
+            } else if (path.endsWith("/archive-check")) {
+                response.json(200, ARCHIVE_CHECK.replace("\"lines\":[",
+                                    "\"lines\":[{\"label\":\"the ledger is behind\",\"passed\":true,\"note\":\"3 rows\"},"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static List<String> performed(FakeRuntimeServer server) {
+        return server.requests().stream().map(FakeRuntimeServer.Request::target)
+                            .filter(target -> target.contains("/actions/")).toList();
+    }
+
+    @Nested
+    @DisplayName("the work action dialogue")
+    @EnableGeneratorController
+    class WorkActionBehaviour {
+
+        @Test
+        @DisplayName("a negative common-files count is refused and nothing is sent")
+        void commonFilesNegative() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+            script("-" + Generators.integers(1, 50).next() + "\n");
+
+            assertEquals(1, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
+                                false, EpicResource.fromJson(EPIC), null));
+
+            assertTrue(out.toString().contains("Give the number"), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an action the state does not offer is refused with the actions it allows")
+        void actionNotInState() throws Exception {
+            var server = serveActions(PAUSED_ACTIONS);
+
+            assertEquals(1, dialogue("plan", "p", "pause"));
+
+            assertTrue(out.toString().contains("start, abandon"), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an action that cannot run now is refused with the runtime's reason")
+        void actionDisabled() throws Exception {
+            var reason = Generators.letterStrings(8, 20).next();
+            var server = serveActions(PLAN_ACTIONS.replace("{\"action\":\"pause\",\"available\":true}",
+                                "{\"action\":\"pause\",\"available\":false,\"reason\":\"" + reason + "\"}"));
+
+            assertEquals(1, dialogue("plan", "p", "pause"));
+
+            assertTrue(out.toString().contains("pause is not available: " + reason), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an offered action the dialogue has no form for is refused")
+        void offeredWithoutDialogue() throws Exception {
+            var server = serveActions(PLAN_ACTIONS.replace("{\"action\":\"pause\",\"available\":true}",
+                                "{\"action\":\"decide\",\"available\":true}"));
+
+            assertEquals(1, dialogue("plan", "p", "decide"));
+
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("abandoning a paused plan without an epic asks the reason and confirms")
+        void abandonWithoutEpic() throws Exception {
+            var server = serveActions(PAUSED_ACTIONS);
+            script("given up\n1\ny\n");
+
+            assertEquals(0, dialogue("plan", "p", "abandon"));
+
+            var text = out.toString();
+            assertTrue(text.contains("abandoned"), text);
+            assertFalse(text.contains(" told"), text);
+            assertEquals(List.of("/api/v1/plans/p/actions/abandon"), performed(server));
+        }
+
+        @Test
+        @DisplayName("ending without a reason is refused and sends nothing")
+        void endWithoutReason() throws Exception {
+            var server = serveActions(PLAN_ACTIONS);
+            script("\n");
+
+            assertEquals(0, dialogue("plan", "p", "cancel"));
+
+            assertTrue(out.toString().contains("The reason is required."), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("a plan held by an integrity pause is aborted, not cancelled")
+        void integrityPausedAborts() throws Exception {
+            serveActions(PLAN_ACTIONS.replace("\"state\":\"running\"",
+                                "\"state\":\"held\",\"hold_kind\":\"integrity_pause\""));
+            script("the file changed\n1\ny\n");
+
+            assertEquals(0, dialogue("plan", "p", "cancel"));
+
+            assertTrue(out.toString().contains("aborted"), out.toString());
+        }
+
+        @Test
+        @DisplayName("a hold act of an epic is sent as the epic's act")
+        void epicHoldAct() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+
+            assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "retry", false,
+                                null, null));
+
+            assertEquals(List.of("/api/v1/epics/e/actions/retry"), performed(server));
+        }
+
+        @Test
+        @DisplayName("an archive check line that names no catalogue text is shown as the runtime wrote it")
+        void archiveUncataloguedLine() throws Exception {
+            serveActions(EPIC_ACTIONS);
+            script("n\n");
+
+            assertEquals(0, dialogue("epic", "e", "archive"));
+
+            assertTrue(out.toString().contains("the ledger is behind"), out.toString());
+            assertTrue(out.toString().contains("3 rows"), out.toString());
+        }
+
+        @Test
+        @DisplayName("automatic mode without the epic resource reads the epic first")
+        void autoReadsEpic() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+
+            assertEquals(0, dialogue("epic", "e", "auto"));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/epics/e")),
+                                server.requests().toString());
+            assertTrue(out.toString().contains("starts its plans by itself"), out.toString());
+        }
+
+        @Test
+        @DisplayName("without input the action stops and says so")
+        void noInputStops() throws Exception {
+            var server = serveActions(PLAN_ACTIONS);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                WorkActionDialogue.run(context, new PrintWriter(out), "plan", "p", "pause", true, null,
+                                                    null));
+
+            assertEquals(List.of(), performed(server));
         }
     }
 
