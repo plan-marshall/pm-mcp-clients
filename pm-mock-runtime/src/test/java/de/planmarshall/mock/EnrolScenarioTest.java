@@ -379,7 +379,7 @@ class EnrolScenarioTest {
         var withNumber = brokenTamperedScenario(registry, "[ \"" + TAMPERED_PROJECT + "\", "
                 + Generators.integers(1, 999).next() + " ]");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().registry(registry).scenario(TAMPERED)
-                .timing(MockTiming.ORDERED).build())) {
+                     .timing(MockTiming.ORDERED).build())) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var engine = runtime.engine();

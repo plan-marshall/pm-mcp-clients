@@ -205,7 +205,7 @@ class StartDialogueTest {
 
     private static String renderEntry(String scenario, String entryId) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
-                .timing(MockTiming.ORDERED).build())) {
+                                 .timing(MockTiming.ORDERED).build())) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());
             environment.put("LANG", "en_US.UTF-8");
@@ -445,7 +445,7 @@ class StartDialogueTest {
 
     private static Outcome runWithCode(String scenario, String input, String... args) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
-                .timing(MockTiming.ORDERED).build());
+                                 .timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());

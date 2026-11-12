@@ -108,7 +108,7 @@ class StartCommandTest {
 
     private static Outcome run(String scenario, String... args) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
-                .timing(MockTiming.ORDERED).build());
+                                 .timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());

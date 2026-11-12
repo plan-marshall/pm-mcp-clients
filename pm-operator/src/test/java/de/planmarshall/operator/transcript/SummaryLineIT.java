@@ -26,8 +26,8 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
-import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.Assumptions;
