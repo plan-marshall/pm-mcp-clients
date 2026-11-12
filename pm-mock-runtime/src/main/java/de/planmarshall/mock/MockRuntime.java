@@ -33,6 +33,7 @@ import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpServer;
 import de.planmarshall.mock.runtime.MockRuntimeEngine;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 
@@ -204,7 +205,8 @@ public final class MockRuntime implements AutoCloseable {
         }
 
         // 3. Initialize engine
-        var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret, config.isRecordActBodies());
+        var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret, config.isRecordActBodies(),
+                config.getTiming());
 
         // 4. Start Unix domain socket listener
         MockHttpServer unixServer;
@@ -382,6 +384,13 @@ public final class MockRuntime implements AutoCloseable {
      */
     public Scenario currentScenario() {
         return engine.currentScenario();
+    }
+
+    /**
+     * @return how scenario events and a chat's reply are played
+     */
+    public MockTiming timing() {
+        return engine.timing();
     }
 
     /**

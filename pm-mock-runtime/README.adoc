@@ -88,6 +88,10 @@ To stop the background server:
 | `<token>`
 | Fixed runtime token for authentication on the Unix domain socket. Defaults to a generated token.
 
+| `--timing`
+| `<realistic\|ordered>`
+| How scenario events and a chat's reply are played. `realistic` (the default) plays each event after its delay and a reply's pieces at a reading pace; `ordered` sends them at once and in order, without a timer. `@EnableMockRuntime` defaults to `ordered`, so a test asserts a sequence without waiting on time.
+
 | `-h, --help`
 | _none_
 | Prints usage instructions and exits.
@@ -105,6 +109,7 @@ Mock runtime started successfully:
   Loopback Web Port:  8088 (http://127.0.0.1:8088)
   Scenario:           onboarding-happy
   Initial State:      onboard.mode
+  Timing:             realistic
   Runtime Token:      mock-token-abcde-12345
   Pairing Code:       MOCKMOCK
   Web App URL:        http://mbp-oliver.local:5173/pair#code=MOCKMOCK
@@ -135,6 +140,19 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 * `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
 * `POST /mock/pairing`: Returns the currently open pairing code, or issues a fresh one when the previous code was consumed. The development loop has no terminal client to ask for a replacement; the single-use rule is unchanged, so a consumed code never becomes valid again.
 * `GET /mock/acts`: Returns every operator act recorded since the last reset, oldest first, as `{"count": n, "acts": [{"method", "path", "state"}, ...]}`. An act is an authenticated request that is not a read and not a call to the relay's `/mcp` endpoint; one the runtime refuses is recorded as well, so a dialogue test proves what was sent rather than only what the screen says. `POST /mock/reset` and a scenario switch empty the list.
+
+=== Chats
+
+Every chat of the mock is served on the routes `ChatRoutes` of `pm-api` builds, below its subject: a plan (`/api/v1/plans/{plan_id}`), an epic (`/api/v1/epics/{epic_id}`), an entry (`/api/v1/entries/{entry_id}`), a decision below each of its scopes (`…/decisions/{question_id}` below a plan, an epic, an entry, `/api/v1/projects/{project_id}/workspace` and `/api/v1/machine`), and ended work, addressed like the running plan or epic and answered with the `archive` scope.
+
+* `GET …/chat`: the chat with its newest page of 50 turns; `?before=<turn_id>` reads the page before.
+* `POST …/chat`: opens the chat (`201`), or answers with the open one; a subject has one chat at a time.
+* `POST …/chat/turns`: records the operator's message (`{"text", "client_turn_id"}`) and answers `202` before the role answers; a repeated `client_turn_id` answers with the same turn, and a message while a reply is written is refused `act_not_available`.
+* `POST …/chat/turns/{turn_id}/stop`: stops the reply being written; it keeps its text so far.
+* `POST …/chat/proposal/accept` and `…/reject`: answer the open proposal named by its `turn_id`.
+* `POST …/chat/end`: ends the chat.
+
+The reply plays as `chat.turn.started` (with the model), `chat.turn.progress` per step, `chat.turn.delta` pieces and `chat.turn.completed` on the stream of the chat's subject and on `/api/v1/events`, timed by `--timing`. `chat.ended` names what ended the chat: the operator, a decision chat's carried proposal, the decision answered elsewhere, the subject's end, or the entry's close. The chats of a state are seeded from `facts.runtime.control.chats`, each in the shape `GET …/chat` reads.
 
 === Testing Usage
 

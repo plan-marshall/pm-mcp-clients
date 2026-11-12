@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
@@ -49,6 +50,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.mock.runtime.MockTiming;
 
 /**
  * Every chat of the mock runtime on the routes {@link ChatRoutes} builds, one route test per subject
@@ -129,7 +131,7 @@ class ChatScenarioTest {
         void opensReadsTurnsAndEnds(Subject subject) throws Exception {
             var id = Generators.letterStrings(4, 10).next().toLowerCase();
             var routes = subject.routes().apply(id);
-            try (var runtime = MockRuntime.start(subject.state())) {
+            try (var runtime = ordered(subject.state())) {
                 assertError(get(runtime, routes.chat()), 404, TARGET_NOT_FOUND);
 
                 var opened = post(runtime, routes.chat(), "");
@@ -198,7 +200,7 @@ class ChatScenarioTest {
         @DisplayName("reads a long transcript a page of 50 turns at a time, oldest first")
         void pages() throws Exception {
             var routes = ChatRoutes.plan(Generators.letterStrings(4, 10).next().toLowerCase());
-            try (var runtime = MockRuntime.start(CHAT_STATE)) {
+            try (var runtime = ordered(CHAT_STATE)) {
                 assertEquals(201, post(runtime, routes.chat(), "").status());
                 var messages = 26;
                 for (var index = 0; index < messages; index++) {
@@ -229,7 +231,7 @@ class ChatScenarioTest {
         @Test
         @DisplayName("refuses a message outside the limits of its text")
         void turnLimits() throws Exception {
-            try (var runtime = MockRuntime.start(CHAT_STATE)) {
+            try (var runtime = ordered(CHAT_STATE)) {
                 var routes = ChatRoutes.plan("fix-relay");
                 var tooLong = JsonTree.write(Map.of(ChatTurnRequest.FIELD_TEXT,
                         Generators.letterStrings(ChatTurnRequest.MAX_TEXT_LENGTH + 1,
@@ -255,7 +257,7 @@ class ChatScenarioTest {
         @Test
         @DisplayName("refuses a message while the reply is written and takes one after it is stopped")
         void refusedWhileWriting() throws Exception {
-            try (var runtime = MockRuntime.start(CHAT_STATE)) {
+            try (var runtime = ordered(CHAT_STATE)) {
                 var chat = read(runtime, routes);
                 assertEquals(ChatStatus.REPLY, chat.state());
                 assertEquals(TurnStatus.STREAMING, chat.turns().getLast().status());
@@ -290,7 +292,7 @@ class ChatScenarioTest {
         @Test
         @DisplayName("accepts a plan's revision for its next task boundary, once")
         void acceptRevision() throws Exception {
-            try (var runtime = MockRuntime.start(CHAT_STATE)) {
+            try (var runtime = ordered(CHAT_STATE)) {
                 var chat = read(runtime, plan);
                 assertEquals(ChatStatus.READ_BACK, chat.state());
                 assertTrue(chat.hasProposal());
@@ -311,7 +313,7 @@ class ChatScenarioTest {
         @Test
         @DisplayName("applies an entry's description at once")
         void acceptDescription() throws Exception {
-            try (var runtime = MockRuntime.start(START_CHAT_STATE)) {
+            try (var runtime = ordered(START_CHAT_STATE)) {
                 var entry = ChatRoutes.entry("ent-3f9a2c41");
                 var chat = read(runtime, entry);
                 assertEquals(REFINE, chat.role().name());
@@ -328,7 +330,7 @@ class ChatScenarioTest {
         @Test
         @DisplayName("rejects the open proposal and refuses an answer naming another one")
         void reject() throws Exception {
-            try (var runtime = MockRuntime.start(CHAT_STATE)) {
+            try (var runtime = ordered(CHAT_STATE)) {
                 var proposalTurnId = Objects.requireNonNull(read(runtime, plan).proposal()).turnId();
                 var other = new ProposalAnswerRequest("T-" + Generators.letterStrings(4, 8).next()).toJson();
 
@@ -343,6 +345,14 @@ class ChatScenarioTest {
                 assertEquals(ProposalState.REJECTED, Objects.requireNonNull(afterReject.proposal()).state());
             }
         }
+    }
+
+    /**
+     * Starts the runtime in a state with ordered timing, so a reply has been played to its end when
+     * the message's {@code 202} arrives.
+     */
+    private static MockRuntime ordered(String state) throws IOException {
+        return MockRuntime.start(MockRuntimeConfig.builder().scenario(state).timing(MockTiming.ORDERED).build());
     }
 
     private static ChatTurnRequest message() {

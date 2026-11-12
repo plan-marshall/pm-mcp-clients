@@ -46,6 +46,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatSubject;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.DecompositionCheck;
@@ -791,6 +792,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** Every chat of the mock, on the routes {@link de.planmarshall.api.chat.ChatRoutes} builds. */
     private final ChatRegistry chatRegistry;
 
+    /** The one timing seam scenario events and a chat's reply are played through. */
+    private final EventTiming eventTiming;
+
     /**
      * Creates an engine that keeps no decision body in its act log.
      *
@@ -812,18 +816,50 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
             boolean recordActBodies) {
+        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC);
+    }
+
+    /**
+     * @param registry        the scenario registry
+     * @param scenario        the initial scenario
+     * @param runtimeToken    the accepted runtime token on the Unix domain socket
+     * @param deviceSecret    the accepted device secret on the web port
+     * @param recordActBodies whether {@code /mock/acts} records decision request bodies
+     * @param timing          how scenario events and a chat's reply are played
+     */
+    public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
+            boolean recordActBodies, MockTiming timing) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.recordActBodies = recordActBodies;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
+        this.eventTiming = new EventTiming(timing, scheduler);
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
             broadcastEvent(event.name(), event.data());
         });
         this.chatRegistry = new ChatRegistry(event -> broadcastEvent(event.name(), scopedPayload(event)),
-                startRegistry::isEpicEntry);
+                startRegistry::isEpicEntry, eventTiming);
         setScenario(scenario);
+    }
+
+    /**
+     * @return how scenario events and a chat's reply are played
+     */
+    public MockTiming timing() {
+        return eventTiming.timing();
+    }
+
+    /**
+     * Replaces the worker writing the reply of a chat: the reply is announced again and restarts from
+     * the working line. The seam {@code /mock/inject} plays a replaced worker through.
+     *
+     * @param subject what the chat is about
+     * @return {@code true} if a reply was being written and restarts
+     */
+    public boolean replaceChatWorker(ChatSubject subject) {
+        return chatRegistry.replaceWorker(subject);
     }
 
     /**
@@ -1404,12 +1440,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
-        // Schedule events; a drain event belongs to the drain running when it was scheduled.
+        // Play events through the timing seam; a drain event belongs to the drain running when it was
+        // played.
         for (var eventDef : stateDef.events()) {
             var drain = drainGeneration.get();
-            var task = scheduler.schedule(() -> broadcastScheduledEvent(eventDef.event(), eventDef.data(), drain),
-                    eventDef.afterMs(), TimeUnit.MILLISECONDS);
-            pendingTasks.add(task);
+            var task = eventTiming.play(() -> broadcastScheduledEvent(eventDef.event(), eventDef.data(), drain),
+                    eventDef.afterMs());
+            if (task != null) {
+                pendingTasks.add(task);
+            }
         }
 
         // Schedule auto transition
@@ -1549,6 +1588,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         deliverEvent(event, data);
+        chatRegistry.observe(event, payloadOf(data));
     }
 
     /**

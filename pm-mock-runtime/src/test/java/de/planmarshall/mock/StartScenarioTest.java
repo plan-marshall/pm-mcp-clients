@@ -68,6 +68,7 @@ import de.planmarshall.api.start.StartPlanRequest;
 import de.planmarshall.api.start.StartRefusalReason;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
@@ -788,7 +789,9 @@ class StartScenarioTest {
         @Test
         @DisplayName("a chat turn is answered by the routed role, and the chat ends before the entry is created")
         void chatTurnAndCreate() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.chat"))) {
+            // Ordered timing plays the reply to its end before the message's 202 arrives.
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
+                    .timing(MockTiming.ORDERED).build())) {
                 var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
                         Generators.letterStrings(8, 12).next());
                 var turn = post(runtime, ENTRY_CHAT.turns(), message.toJson());

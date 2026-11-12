@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.Value;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 
@@ -61,6 +62,14 @@ public class MockRuntimeConfig {
      */
     @Builder.Default
     boolean recordActBodies = false;
+
+    /**
+     * How scenario events and a chat's reply are played: {@link MockTiming#REALISTIC} (the default)
+     * each after its delay, {@link MockTiming#ORDERED} at once and in order, for a test that asserts a
+     * sequence without waiting on time.
+     */
+    @Builder.Default
+    MockTiming timing = MockTiming.REALISTIC;
 
     /** An optional preconfigured scenario registry. If {@code null}, a new registry is instantiated. */
     @Nullable

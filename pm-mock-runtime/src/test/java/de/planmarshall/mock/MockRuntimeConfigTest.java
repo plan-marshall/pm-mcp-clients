@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -22,10 +23,14 @@ import java.util.Map;
 
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -45,6 +50,7 @@ class MockRuntimeConfigTest {
         assertNull(config.getRuntimeToken());
         assertNull(config.getDeviceSecret());
         assertNull(config.getCleanupBaseOnClose());
+        assertEquals(MockTiming.REALISTIC, config.getTiming(), "a runtime plays events in realistic time");
 
         assertNotNull(config.effectiveRuntimeToken());
         assertFalse(config.effectiveRuntimeToken().isBlank());
@@ -75,6 +81,7 @@ class MockRuntimeConfigTest {
                 .cleanupBaseOnClose(false)
                 .registry(registry)
                 .initialScenario(scenario)
+                .timing(MockTiming.ORDERED)
                 .build();
 
         assertEquals(configName, config.getScenario());
@@ -87,6 +94,35 @@ class MockRuntimeConfigTest {
         assertFalse(config.getCleanupBaseOnClose());
         assertSame(registry, config.getRegistry());
         assertSame(scenario, config.getInitialScenario());
+        assertEquals(MockTiming.ORDERED, config.getTiming());
+    }
+
+    @Nested
+    @DisplayName("The timing")
+    class Timing {
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(MockTiming.class)
+        @DisplayName("reads back from the value of --timing")
+        void roundTrips(MockTiming timing) {
+            assertEquals(timing, MockTiming.fromWire(timing.wireValue()));
+        }
+
+        @Test
+        @DisplayName("names its values as --timing takes them, in declaration order")
+        void wireValues() {
+            assertEquals(List.of("realistic", "ordered"), MockTiming.wireValues());
+        }
+
+        @Test
+        @DisplayName("refuses a value that names no timing")
+        void refusesUnknown() {
+            var unknown = "t" + Generators.letterStrings(4, 10).next().toLowerCase();
+
+            var failure = assertThrows(IllegalArgumentException.class, () -> MockTiming.fromWire(unknown));
+
+            assertTrue(failure.getMessage().contains(unknown));
+        }
     }
 
     @Test

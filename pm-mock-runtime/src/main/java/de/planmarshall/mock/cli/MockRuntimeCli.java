@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 
 /**
  * Command-line entrypoint for starting a standalone mock runtime process.
@@ -32,6 +33,7 @@ import de.planmarshall.mock.StandardScenarios;
 public final class MockRuntimeCli {
 
     private static final String ERR_MISSING_ARG = "Error: missing argument for ";
+    private static final String OPTION_TIMING = "--timing";
 
     private MockRuntimeCli() {
     }
@@ -66,7 +68,7 @@ public final class MockRuntimeCli {
     private static boolean isValuedOption(String arg) {
         return switch (arg) {
             case "--scenario", "-s", "--base", "-b", "--web-port", "-p", "--token", "-t",
-                "--device-secret", "-d" -> true;
+                "--device-secret", "-d", OPTION_TIMING -> true;
             default -> false;
         };
     }
@@ -89,6 +91,7 @@ public final class MockRuntimeCli {
         private @Nullable Integer webPort;
         private @Nullable String token;
         private @Nullable String deviceSecret;
+        private MockTiming timing = MockTiming.REALISTIC;
     }
 
     /**
@@ -115,7 +118,8 @@ public final class MockRuntimeCli {
         var configBuilder = MockRuntimeConfig.builder()
                 .scenario(opts.scenario)
                 .base(opts.base)
-                .webPort(webPort);
+                .webPort(webPort)
+                .timing(opts.timing);
 
         if (opts.token != null) {
             configBuilder.runtimeToken(opts.token);
@@ -157,6 +161,16 @@ public final class MockRuntimeCli {
             case "--web-port", "-p" -> {
                 opts.webPort = parsePortArg(args[index[0]++], err);
                 if (opts.webPort == null) {
+                    return 2;
+                }
+            }
+            case OPTION_TIMING -> {
+                var value = args[index[0]++];
+                try {
+                    opts.timing = MockTiming.fromWire(value);
+                } catch (IllegalArgumentException _) {
+                    err.println("Error: invalid timing: " + value + " (one of " + String.join(", ",
+                            MockTiming.wireValues()) + ")");
                     return 2;
                 }
             }
@@ -220,6 +234,7 @@ public final class MockRuntimeCli {
         }
         out.println("  Scenario:           " + runtime.currentScenarioName());
         out.println("  Initial State:      " + runtime.currentStateName());
+        out.println("  Timing:             " + runtime.timing().wireValue());
         out.println("  Runtime Token:      " + runtime.token());
         var pairingCode = runtime.pairingCode();
         if (pairingCode != null && !pairingCode.isBlank() && runtime.webPort() >= 0) {
@@ -301,6 +316,7 @@ public final class MockRuntimeCli {
         out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: 7420 or PM_MOCK_WEB_PORT)");
         out.println("  -t, --token <token>         Fixed runtime token for authentication");
         out.println("  -d, --device-secret <secret> Fixed web device secret, bypassing the persisted one");
+        out.println("      --timing <realistic|ordered> How events and chat replies are played (default: realistic)");
         out.println("  -h, --help                  Print this help message");
     }
 }

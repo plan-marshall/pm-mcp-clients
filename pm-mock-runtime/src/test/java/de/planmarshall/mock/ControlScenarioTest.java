@@ -50,6 +50,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.mock.runtime.MockTiming;
 
 @DisplayName("ControlScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -365,7 +366,9 @@ class ControlScenarioTest {
         @Test
         @DisplayName("accepts a proposal once, refuses a second, and carries the chat on with a turn")
         void proposalAndTurn() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
+            // Ordered timing plays the reply to its end before the message's 202 arrives.
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                    .scenario(StandardScenarios.RUNNING_WORK + "#control.chat").timing(MockTiming.ORDERED).build())) {
                 var accepted = ChatResource.fromJson(post(runtime,
                         "/api/v1/plans/fix-relay/chat/proposal/accept", PROPOSAL_ANSWER).bodyText());
                 assertEquals(ChatStatus.TURN, accepted.state());
