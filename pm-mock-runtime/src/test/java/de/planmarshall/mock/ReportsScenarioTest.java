@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
 import java.util.List;
 
 
@@ -226,6 +227,9 @@ class ReportsScenarioTest {
             assertEquals(3, report.deliverables().size());
             assertEquals(1, report.replanningRecords().size());
             assertEquals(2, report.decisionRecords().size());
+            // The mock serves the plan's own start and end times, which the client reads as they are.
+            assertEquals(Instant.parse("2026-10-16T08:40:00Z"), report.startedAt());
+            assertEquals(Instant.parse("2026-10-16T11:20:00Z"), report.endedAt());
 
             assertNotNull(report.tokenUsage());
             assertEquals(412000L, report.tokenUsage().totalTokens());

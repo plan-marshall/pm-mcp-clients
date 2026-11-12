@@ -100,9 +100,10 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         if (report.pullRequestNumber() != null) {
             parts.add("#" + report.pullRequestNumber());
         }
-        if (report.ended() != null && !report.ended().isBlank()) {
-            parts.add(PlanViewFormatting.clean(report.ended()));
-        }
+        var ended = report.ended();
+        parts.add(ended != null && !ended.isBlank()
+                            ? PlanViewFormatting.clean(ended)
+                            : MessageCatalogue.format(locale, "common.unknown", Map.of()));
         return String.join(PlanViewFormatting.DOT_SEPARATOR, parts);
     }
 

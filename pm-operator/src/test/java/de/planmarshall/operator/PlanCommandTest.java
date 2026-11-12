@@ -609,6 +609,25 @@ class PlanCommandTest {
     }
 
     @Test
+    @DisplayName("plan report says the end is unknown when the report carries no end time")
+    void planReportWithoutEndTime() throws Exception {
+        var planId = "plan-" + Generators.integers(1, 9999).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + planId + "/completion").equals(request.target())) {
+                response.json(200, "{\"plan_id\":\"" + planId + "\",\"outcome\":\"no_change\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "report", planId);
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains(planId + " · completion report · no_change · unknown"), output));
+    }
+
+    @Test
     @DisplayName("plan report renders the structured completion report")
     void planReportStructured() throws Exception {
         startCompletionReportFixture();

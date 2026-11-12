@@ -889,6 +889,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         private void printCompletionReport(PrintWriter out, String body, boolean showTokens, boolean showComponents) throws IOException {
             var report = PlanCompletionReport.fromJson(body);
+            var locale = context.clientEnvironment().locale();
 
             var headParts = new ArrayList<String>();
             headParts.add(ConsoleNotice.stripControlSequences(report.planId()));
@@ -897,9 +898,10 @@ public final class PlanCommand implements Callable<Integer> {
             if (report.pullRequestNumber() != null) {
                 headParts.add("#" + report.pullRequestNumber());
             }
-            if (report.ended() != null) {
-                headParts.add(report.ended());
-            }
+            var ended = report.ended();
+            headParts.add(ended != null && !ended.isBlank()
+                                ? ended
+                                : MessageCatalogue.format(locale, "common.unknown", Map.of()));
             out.println(String.join(" · ", headParts));
 
             var from = report.from();
@@ -917,7 +919,6 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf(FMT_14S, "", ConsoleNotice.stripControlSequences(report.pullRequestUrl()));
             }
 
-            var locale = context.clientEnvironment().locale();
             var reason = report.reason() != null && !report.reason().isBlank()
                                 ? report.reason()
                                 : MessageCatalogue.format(locale, "common.none", Map.of());

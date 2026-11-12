@@ -1068,6 +1068,74 @@ class ReportRecordsTest {
                     () -> assertNull(report.tokenUsage()));
         }
 
+        static Stream<Arguments> startTimesNotGiven() {
+            var text = Generators.letterStrings(3, 12).next();
+            return Stream.of(
+                    Arguments.of("absent", Map.of()),
+                    Arguments.of("started_at no instant", Map.of("started_at", text)),
+                    Arguments.of("started no instant", Map.of("started", text)));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("startTimesNotGiven")
+        @DisplayName("should keep a start time the runtime did not give as an instant absent, never stand in the present")
+        void shouldKeepAnAbsentOrUnreadableStartTimeAbsent(String variant, Map<String, Object> startMember)
+                throws Exception {
+            var member = new LinkedHashMap<String, Object>(startMember);
+            member.put("plan_id", Generators.nonBlankStrings().next());
+
+            var report = PlanCompletionReport.fromMap(member);
+
+            assertAll(
+                    () -> assertNull(report.startedAt(), variant),
+                    () -> assertFalse(report.toMap().containsKey("started_at"), variant));
+        }
+
+        @Test
+        @DisplayName("should keep an absent end time absent, with no end text to display")
+        void shouldKeepAnAbsentEndTimeAbsent() throws Exception {
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", Generators.nonBlankStrings().next()));
+
+            assertAll(
+                    () -> assertNull(report.endedAt()),
+                    () -> assertNull(report.rawEnded()),
+                    () -> assertNull(report.ended()),
+                    () -> assertFalse(report.toMap().containsKey("ended_at")));
+        }
+
+        @Test
+        @DisplayName("should keep an end text that is no instant as text and leave the end instant absent")
+        void shouldKeepAnUnreadableEndInstantAbsent() throws Exception {
+            var shown = Generators.letterStrings(3, 12).next();
+
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", Generators.nonBlankStrings().next(),
+                    "ended_at", shown));
+
+            assertAll(
+                    () -> assertNull(report.endedAt()),
+                    () -> assertEquals(shown, report.rawEnded()),
+                    () -> assertEquals(shown, report.ended()));
+        }
+
+        @Test
+        @DisplayName("should keep the absence of both times across the wire round trip")
+        void shouldKeepAbsentTimesAcrossTheRoundTrip() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+            var report = new PlanCompletionReport(planId, planId, new ReportFrom("p", null, planId), "merged", null,
+                    null, null, null, null, null, 0, 0, null, null, null, null, null, null, null);
+
+            var json = report.toJson();
+            var read = PlanCompletionReport.fromJson(json);
+
+            assertAll(
+                    () -> assertFalse(json.contains("started_at")),
+                    () -> assertFalse(json.contains("ended_at")),
+                    () -> assertNull(read.startedAt()),
+                    () -> assertNull(read.endedAt()),
+                    () -> assertNull(read.ended()),
+                    () -> assertEquals(report, read));
+        }
+
         @Test
         @DisplayName("should replace absent lists of a constructed report by empty lists")
         void shouldReplaceAbsentLists() {
