@@ -95,17 +95,13 @@ final class ReviewDialogue {
             }
             var item = open.getFirst();
             show(review, item);
-            var decision = askDecision(item, review);
+            var decision = askDecision(review);
             if (decision == null) {
                 return 0;
             }
             review = switch (decision) {
                 case KEEP -> keep(item);
                 case DROP -> drop(item);
-                case PROMOTE, EDIT -> {
-                    prompt.line("operator.actions.review.no_draft", Map.of());
-                    yield review;
-                }
                 case CHAT -> {
                     WorkChatDialogue.run(context, out, "epic", epicId, false, !prompt.asks());
                     yield client.review(epicId, register);
@@ -120,7 +116,7 @@ final class ReviewDialogue {
     }
 
     private enum Decision {
-        KEEP, DROP, PROMOTE, EDIT, CHAT, REMAINING, FINISH
+        KEEP, DROP, CHAT, REMAINING, FINISH
     }
 
     private void show(ReviewResource review, ReviewItemResource item) {
@@ -171,16 +167,16 @@ final class ReviewDialogue {
      * Asks the decision by its key. Only the keys the prompt draws are taken; an empty line or the
      * leave key leaves, and any other input is answered with one line and the same prompt
      * ({@code 03-dialogues.adoc#keys}).
+     * <p>
+     * Promoting an item to a plan and editing it are not offered: the client has no call that stages
+     * the drafted plan or edits the item, so the keys would lead nowhere. The drafted plan is shown
+     * with the item all the same.
      */
-    private @Nullable Decision askDecision(ReviewItemResource item, ReviewResource review) {
+    private @Nullable Decision askDecision(ReviewResource review) {
         var offered = new LinkedHashMap<String, Decision>();
         var options = new StringBuilder();
         offer(offered, options, key("keep"), Decision.KEEP, text("control.review.keep_finding"));
         offer(offered, options, key("drop"), Decision.DROP, text("control.review.drop"));
-        if (item.proposal() != null && !item.proposal().isBlank() && review.draftedPlan() != null) {
-            offer(offered, options, key("promote"), Decision.PROMOTE, text("control.review.promote"));
-            offer(offered, options, "e", Decision.EDIT, text("control.review.edit"));
-        }
         offer(offered, options, key("chat"), Decision.CHAT, text("control.review.chat"));
         if (review.openItems().size() > 1) {
             offer(offered, options, key("accept_remaining"), Decision.REMAINING,

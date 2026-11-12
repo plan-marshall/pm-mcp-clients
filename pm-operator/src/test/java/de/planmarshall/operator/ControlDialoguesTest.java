@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.control.ArchiveCheck;
@@ -1726,7 +1727,27 @@ class ControlDialoguesTest {
             assertTrue(text.contains(objective), text);
             assertTrue(text.contains("one; two"), text);
             assertTrue(text.contains("a.java, b.java"), text);
-            assertTrue(text.contains("p) Promote to a plan"), text);
+            assertFalse(text.contains("p) Promote to a plan"), text);
+            assertFalse(text.contains("e) Edit"), text);
+        }
+
+        @ParameterizedTest(name = "{0} over a drafted plan")
+        @CsvSource({"p", "e"})
+        @DisplayName("promote and edit are not offered: the key is answered and the same prompt asked again")
+        void promoteAndEditNotOffered(String key) throws Exception {
+            var drafted = REVIEW.replace("\"items\":[", "\"drafted_plan\":{\"plan_id\":\"relay-fix\","
+                                + "\"objective\":\"" + Generators.letterStrings(8, 20).next() + "\","
+                                + "\"deliverables\":[],\"surface\":[]},\"items\":[");
+            var server = serveReview(drafted);
+            script(key + "\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            var text = out.toString();
+            assertTrue(text.contains(key + " is not offered here: k, d, h, f, q"), text);
+            assertEquals(2, text.split("f\\) finish", -1).length - 1, text);
+            assertFalse(text.contains("The runtime offers no drafted plan for this item."), text);
+            assertEquals(List.of(), sent(server, "/disposition"));
         }
 
         @Test
@@ -1792,6 +1813,12 @@ class ControlDialoguesTest {
 
     /** Serves the epic's decompose action and its decomposition; the check answers with the given cut. */
     private FakeRuntimeServer serveDecomposition(String checked) throws IOException {
+        return serveDecomposition(CUT, checked);
+    }
+
+    /** Serves the given cut, or answers 404 for it when it is {@code null}; the check answers {@code checked}. */
+    private FakeRuntimeServer serveDecomposition(@Nullable String cut, String checked)
+                        throws IOException {
         var base = "/projects/pr/epics/e/decomposition";
         return fixture.start((request, response) -> {
             var path = request.target();
@@ -1804,8 +1831,8 @@ class ControlDialoguesTest {
                 response.json(200, "{\"status\":\"committed\",\"ledger_revision\":4,\"launchable_plan_count\":1}");
             } else if (path.endsWith(base + "/instruct")) {
                 response.json(200, CUT_PASSING);
-            } else if (path.endsWith(base)) {
-                response.json(200, CUT);
+            } else if (path.endsWith(base) && cut != null) {
+                response.json(200, cut);
             } else {
                 response.send(404, null, "");
             }
@@ -1900,6 +1927,139 @@ class ControlDialoguesTest {
 
             assertEquals(1, sent(server, "/check").size(), out.toString());
             assertEquals(List.of(), sent(server, "/commit"));
+        }
+
+        @Test
+        @DisplayName("an open plan offers no drop: d is answered and the same prompt asked again")
+        void dropNotOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("1\nd\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertFalse(text.contains("d) drop"), text);
+            assertTrue(text.contains("d is not offered here: k, e, b, q, ?"), text);
+            assertEquals(2, text.split("k\\) keep   e\\) edit   b\\) back   \\?", -1).length - 1, text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("? at an open plan says that nothing more is explained and asks again")
+        void planQuestionMark() throws Exception {
+            serveDecomposition(CUT);
+            script("1\n?\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("Nothing more is explained here; choose one of the keys."), text);
+            assertEquals(2, text.split("k\\) keep   e\\) edit   b\\) back   \\?", -1).length - 1, text);
+        }
+
+        @ParameterizedTest(name = "\"{0}\" at an open plan")
+        @CsvSource({"k", "b", "''", "q"})
+        @DisplayName("keep, back, Enter and q at an open plan return to the cut and send nothing")
+        void planBackToCut(String answer) throws Exception {
+            var server = serveDecomposition(CUT);
+            script("1\n" + answer + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            // the cut shown twice, before and after the plan, and once more in the line that leaves it
+            assertEquals(3, text.split("\\[3/3\\]", -1).length - 1, text);
+            assertTrue(text.contains("Left [3/3] Decomposition of e. The draft is kept."), text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("German v at an open plan returns to the cut and the plan prompt names v")
+        void germanPlanPrompt() throws Exception {
+            var server = serveDecomposition(CUT);
+            var input = Generators.letterStrings(8, 12).next();
+            script("1\n" + input + "\nv\nv\n");
+
+            assertEquals(0, decompose(german()));
+
+            var text = out.toString();
+            assertTrue(text.contains("k) behalten   e) bearbeiten   b) zur\u00fcck   ?"), text);
+            assertFalse(text.contains("d) verwerfen"), text);
+            assertTrue(text.contains(input + " wird hier nicht angeboten: k, e, b, v, ?"), text);
+            assertTrue(text.contains("Dekomposition von e verlassen"), text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("the read-back answers an input it does not offer, and ?, then accepts on Enter")
+        void readBackNotOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            var words = Generators.letterStrings(8, 30).next();
+            var input = Generators.letterStrings(8, 12).next();
+            script("2\ne\n" + words + "\n?\n" + input + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("Nothing more is explained here; choose one of the keys."), text);
+            assertTrue(text.contains(input + " is not offered here: i, x, q, ?"), text);
+            assertEquals(3, text.split("Accept\\? \\[Enter\\]", -1).length - 1, text);
+            assertEquals(1, sent(server, "/instruct").size(), text);
+        }
+
+        @ParameterizedTest(name = "empty words after {0}")
+        @CsvSource({"r", "+", "2 e"})
+        @DisplayName("empty words send no instruction, read nothing back and keep the cut")
+        void emptyWordsSendNothing(String keys) throws Exception {
+            var server = serveDecomposition(CUT);
+            script(keys.replace(' ', '\n') + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(List.of(), sent(server, "/instruct"));
+            assertFalse(out.toString().contains("Accept? [Enter]"), out.toString());
+            assertTrue(out.toString().contains("Left [3/3] Decomposition of e. The draft is kept."), out.toString());
+        }
+
+        @Test
+        @DisplayName("a number beyond the cut's plans is not offered and opens nothing")
+        void numberBeyondPlans() throws Exception {
+            serveDecomposition(CUT);
+            var number = Generators.integers(3, 999).next();
+            script(number + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(number + " is not offered here: 1-2, +, r, q, ?"), text);
+            assertFalse(text.contains("k) keep   e) edit"), text);
+        }
+
+        @Test
+        @DisplayName("a cut of one plan offers 1, and a plan without an objective shows none")
+        void onePlanCut() throws Exception {
+            serveDecomposition(CUT_PASSING, CUT_PASSING);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\n1\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(input + " is not offered here: 1, +, r, q, ?"), text);
+            assertTrue(text.contains("Objective     \u2014"), text);
+            assertTrue(text.contains("Workstream    WS-1 Reconnect"), text);
+        }
+
+        @Test
+        @DisplayName("an epic without a drafted decomposition says so and asks nothing")
+        void noDecomposition() throws Exception {
+            var server = serveDecomposition(null, CUT);
+            script("");
+
+            assertEquals(0, decompose(context));
+
+            assertTrue(out.toString().contains("No decomposition is drafted for e yet."), out.toString());
+            assertEquals(List.of(), sent(server, "/check"));
         }
     }
 

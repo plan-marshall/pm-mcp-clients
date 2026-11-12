@@ -524,7 +524,7 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("a staged plan can be kept or dropped without changing the cut")
+    @DisplayName("a staged plan is kept without changing the cut, and d is not offered: the contract has no drop")
     void decompositionKeepAndDrop() throws Exception {
         var kept = run(StandardScenarios.START_EPIC,
                             String.join("\n", "d", "Harden the relay", "", "", "", "3", "k", "q"),
@@ -534,7 +534,9 @@ class StartDialogueTest {
                             "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
         assertAll(
                             () -> assertTrue(kept.contains("relay-auth-v2"), kept),
-                            () -> assertTrue(dropped.contains("relay-auth-v2"), dropped));
+                            () -> assertTrue(dropped.contains("relay-auth-v2"), dropped),
+                            () -> assertFalse(dropped.contains("d) drop"), dropped),
+                            () -> assertTrue(dropped.contains("d is not offered here: k, e, b, q, ?"), dropped));
     }
 
     @Test
