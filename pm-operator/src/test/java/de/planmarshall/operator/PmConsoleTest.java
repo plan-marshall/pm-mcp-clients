@@ -275,7 +275,7 @@ class PmConsoleTest {
                             Map.of("device_id", "dev-1", "label", "Firefox on mbp-oliver"), reader);
 
         var output = outStream.toString(StandardCharsets.UTF_8);
-        assertTrue(output.contains("Paired: Firefox on mbp-oliver"), "output: " + output);
+        assertTrue(output.contains("✓ Paired: Firefox on mbp-oliver"), "output: " + output);
         assertTrue(output.contains("FRESH-CODE"), "output: " + output);
     }
 

@@ -195,10 +195,8 @@ public final class EntryFlow {
         }
         var prompt = MessageCatalogue.format(locale, promptKey, Map.of());
 
-        String choice;
-        try {
-            choice = reader.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException _) {
+        var choice = readWhere(reader, out, locale, prompt, isSsh);
+        if (choice == null) {
             // Leaving the entry prompt keeps the block list and takes every badge the runtime
             // offers, the open project setups included.
             var cBadges = consoleBadges(locale, status,
@@ -206,18 +204,13 @@ public final class EntryFlow {
             var strBadges = cBadges.stream().map(ConsoleBadge::text).toList();
             return new EntryResult(status, strBadges, null, null, cBadges);
         }
-        if (choice == null || choice.isBlank()) {
-            choice = isSsh ? "h" : "w";
-        } else {
-            choice = choice.trim().toLowerCase(Locale.ROOT);
-        }
 
         var cBadges = new ArrayList<ConsoleBadge>();
         cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, totalSteps)));
         cBadges.addAll(readProjectSetupConsoleBadgesQuiet(locale, runtime));
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
-        if (choice.startsWith("w") && context.gate().permits()) {
+        if ("w".equals(choice) && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
             var pairing = issuePairingCode(runtime, webPort);
             if (!isSsh) {
@@ -229,7 +222,7 @@ public final class EntryFlow {
             out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url(), cBadges);
         }
-        if (choice.startsWith("w")) {
+        if ("w".equals(choice)) {
             // The web app is offered by opening the listener and issuing a pairing code, both acts:
             // where the gate refuses an act the setup continues here instead, and the refusal
             // appears when one is typed.
@@ -240,6 +233,43 @@ public final class EntryFlow {
         out.flush();
         runOnboardingDialogue(runtime, out, reader, locale);
         return refreshedAfterDialogue(runtime, status, cBadges);
+    }
+
+    /**
+     * Reads the answer to {@code entry.where-to-onboard}: {@code Enter} takes the preselection
+     * ({@code h} in an SSH session, {@code w} on a desktop), {@code w} and {@code h} choose, and
+     * {@code q}, {@code Ctrl+C} or the end of input leave to the console prompt. Any other input is
+     * answered with one line and asked again (design <em>Dialogues</em>, links as keys).
+     *
+     * @return {@code "w"} or {@code "h"}, or {@code null} when the operator leaves
+     */
+    private static @Nullable String readWhere(LineReader reader, PrintWriter out, String locale, String prompt,
+                        boolean isSsh) {
+        while (true) {
+            String line;
+            try {
+                line = reader.readLine(prompt);
+            } catch (EndOfFileException | UserInterruptException _) {
+                return null;
+            }
+            var answer = line == null ? "" : line.trim().toLowerCase(Locale.ROOT);
+            if (answer.isEmpty()) {
+                return isSsh ? "h" : "w";
+            }
+            if ("w".equals(answer) || "h".equals(answer)) {
+                return answer;
+            }
+            if (ChoicePrompt.isLeave(locale, answer)) {
+                return null;
+            }
+            out.println("?".equals(answer)
+                                ? MessageCatalogue.format(locale, "operator.dialogue.no_explanation", Map.of())
+                                : MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
+                                "input", TerminalSanitizer.sanitizeLine(line),
+                                "offered", (isSsh ? "h, w, " : "w, h, ")
+                                                    + (locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q") + ", ?")));
+            out.flush();
+        }
     }
 
     /**

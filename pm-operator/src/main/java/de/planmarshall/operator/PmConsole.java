@@ -286,8 +286,10 @@ public final class PmConsole {
                 continueOnboarding(out, reader, locale, terminal);
                 return;
             }
+            // A run without an address (its contract carries no continue link) offers no
+            // continuation; EntryFlow.entryId never answers an empty address.
             var pid = b.projectId();
-            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && pid != null && !pid.isEmpty()) {
+            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && pid != null) {
                 continueProjectOnboarding(pid, out, reader, terminal);
                 return;
             }
@@ -721,13 +723,13 @@ public final class PmConsole {
         var name = eventName != null ? eventName : "";
         var payload = ConsoleNotice.payloadOf(eventMap);
         var type = notices.isEmpty() ? "" : notices.getFirst().kind();
-        if ("device.paired".equals(name) || "paired".equals(type)) {
-            var label = JsonTree.string(payload, "label");
-            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
-                                Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
-            if ("device.paired".equals(name)) {
-                issueFreshCodeAbove(reader);
+        if ("device.paired".equals(name)) {
+            // A legacy paired notice above already named the device; the line is printed once.
+            if (!"paired".equals(type)) {
+                var label = JsonTree.string(payload, "label");
+                printAboveOrHold(reader, ConsoleNotice.formatPairedNotice(locale, label != null ? label : "local"));
             }
+            issueFreshCodeAbove(reader);
         } else if ("fresh_code".equals(type)) {
             activePairingCode = JsonTree.string(payload, "code");
             activePairingUrl = JsonTree.string(payload, "url");

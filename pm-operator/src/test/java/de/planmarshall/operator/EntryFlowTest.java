@@ -444,6 +444,74 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("the entry prompt answers an input it does not offer, and q leaves without setting up")
+        void unonboardedPromptKeys() throws Exception {
+            var onboardingRead = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if (request.target().startsWith("/api/v1/onboarding")
+                                    || request.target().startsWith("/api/v1/web")) {
+                    onboardingRead.incrementAndGet();
+                    response.send(404, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var input = Generators.letterStrings(8, 12).next();
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader(input + "\nhere\n?\nq\n"));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(input + " is not offered here: w, h, q, ?"), text),
+                                () -> assertTrue(text.contains("here is not offered here: w, h, q, ?"), text),
+                                () -> assertTrue(text.contains("Nothing more is explained here"), text),
+                                () -> assertEquals(0, onboardingRead.get(), "nothing is set up and no web access opened"),
+                                () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
+            );
+        }
+
+        @Test
+        @DisplayName("over SSH the entry prompt names here first, and w shows the ways in with this host")
+        void unonboardedSshPromptAndWaysIn() throws Exception {
+            var host = Generators.letterStrings(4, 12).next();
+            var user = Generators.letterStrings(4, 12).next();
+            var env = new HashMap<>(fixture.environment());
+            env.put("SSH_CONNECTION", "192.168.1.1 50000 192.168.1.2 22");
+            env.put("HOSTNAME", host);
+            env.put("USER", user);
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if ("/api/v1/web/pairings".equals(request.target())) {
+                    response.json(201, "{\"code\":\"SSH-CODE2\",\"url\":\"http://127.0.0.1:7420/pair#code=SSH-CODE2\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var input = Generators.letterStrings(8, 12).next();
+            var context = new OperatorContext(env, tempDir, true);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader(input + "\nw\n"));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(input + " is not offered here: h, w, q, ?"), text),
+                                () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420 " + user + "@" + host), text),
+                                () -> assertTrue(text.contains("The web app opens at the setup of this machine."), text),
+                                () -> assertEquals("SSH-CODE2", result.activeCode())
+            );
+        }
+
+        @Test
         @DisplayName("partially onboarded step 2 prints stopped step notice")
         void partiallyOnboardedStep2() throws Exception {
             fixture.start((request, response) -> {
