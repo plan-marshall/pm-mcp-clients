@@ -1120,4 +1120,33 @@ describe('the recovery of a failed start', () => {
 
     expect(isRuntimeRecovering()).toBe(false);
   });
+
+  it('starts no retry for a start that fails after the shell is gone', async () => {
+    let fail!: (err: Error) => void;
+    const answer = new Promise<StatusResponse>((_resolve, reject) => {
+      fail = reject;
+    });
+    // The catalogue's read of the status fails at once, so the shell goes on to its start; the
+    // start's own read waits for the answer.
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockReturnValue(answer);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    // The start registers its stream handler first, so a status read after it is the start's own.
+    const started = vi.spyOn(apiClient, 'setOnStreamState');
+
+    const { unmount } = render(Layout, { props: { children: openView } });
+    await waitFor(() => {
+      expect(started).toHaveBeenCalled();
+      const startedAt = started.mock.invocationCallOrder[0];
+      expect(status.mock.invocationCallOrder.some((order) => order > startedAt)).toBe(true);
+    });
+    // The shell goes while its start still waits for the status.
+    unmount();
+    fail(new ClientError('network_offline'));
+
+    await waitFor(() => expect(get(runtimeStore).isOffline).toBe(true));
+    expect(isRuntimeRecovering()).toBe(false);
+  });
 });

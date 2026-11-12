@@ -1,13 +1,15 @@
 <script lang="ts" module>
   import { writable, type Readable } from 'svelte/store';
 
-  const drawnFigures = writable(0);
+  const shownFigures = writable(0);
 
   /**
-   * The number of mascot figures drawn right now. The rail-foot bear hides while it is above zero,
-   * so a screen never shows two (brand-mark-mascot.adoc, The Rail-Foot Bear).
+   * The number of mascot figures shown right now: drawn, and with a box on the page. A figure a
+   * container query or a hidden ancestor sets to `display: none` keeps no box and does not count.
+   * The rail-foot bear hides while the number is above zero, so a screen never shows two
+   * (brand-mark-mascot.adoc, The Rail-Foot Bear).
    */
-  export const mascotFiguresOnScreen: Readable<number> = { subscribe: drawnFigures.subscribe };
+  export const mascotFiguresOnScreen: Readable<number> = { subscribe: shownFigures.subscribe };
 </script>
 
 <script lang="ts">
@@ -46,15 +48,37 @@
   const width = $derived(Math.round((height * files.width) / files.height));
   const drawn = $derived(src !== '');
 
+  /** The drawn image, while there is one. */
+  let figure: HTMLImageElement | null = $state(null);
+
+  /**
+   * Counts the figure while it has a box on the page. The page's container and media queries hide a
+   * figure with `display: none` as the page narrows or loses height, and a view kept open behind
+   * another sits in a hidden wrapper; the image then has no box. The observer reports each change of
+   * the box, so the count follows the page as it narrows, widens, or shows the view again.
+   */
   $effect(() => {
-    if (!drawn) return;
-    drawnFigures.update((count) => count + 1);
-    return () => drawnFigures.update((count) => count - 1);
+    const element = figure;
+    if (element === null) return;
+    let shown = false;
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[entries.length - 1].contentRect;
+      const hasBox = box.width > 0 && box.height > 0;
+      if (hasBox === shown) return;
+      shown = hasBox;
+      shownFigures.update((count) => count + (shown ? 1 : -1));
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      if (shown) shownFigures.update((count) => count - 1);
+    };
   });
 </script>
 
 {#if drawn}
   <img
+    bind:this={figure}
     class="mascot-figure"
     class:mascot-figure--entrance={entrance}
     src={src ?? files.src1x}

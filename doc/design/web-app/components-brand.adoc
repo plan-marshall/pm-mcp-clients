@@ -40,7 +40,7 @@ _New._ Draws one figure of the mascot on a calm surface (link:brand-mark-mascot.
 * *Themes*: in the dark theme it stands on a soft radial halo of `--color-bg-subtle`, drawn by a class of its own stylesheet; no filter recolours the figure.
 * *Motion*: with `entrance`, one fade and rise of at most `300 ms`, and none where reduced motion is asked for.
 * *Disconnected states*: the two states shown after the origin is lost draw the figure from the object URL the app holds (`src`), never from a request of their own (link:brand-mark-mascot.adoc#assets[The Mascot, Asset Rules]). Without it the piece draws nothing and keeps no space.
-* *One per screen*: a view places at most one figure; the rail-foot bear is a class of `NavRail`, not this piece, and hides while a figure shows (link:brand-mark-mascot.adoc#rail-foot[The Mascot, The Rail-Foot Bear]).
+* *One per screen*: a view places at most one figure; the rail-foot bear is a class of `NavRail`, not this piece, and hides while a figure shows (link:brand-mark-mascot.adoc#rail-foot[The Mascot, The Rail-Foot Bear]). A figure shows while it has a box on the page: one its page hides with `display: none`, by a container or media query or inside a hidden view, does not count, and the count follows the page as it narrows, widens or shows the view again.
 
 Source and surface: `pm-web-app/src/lib/components/MascotFigure.svelte` (new), tests in `MascotFigure.test.ts`; the props are `pose` (`welcome`, `done`, `all-clear`, `start-here`, `searching`, `access-ended`), `crop` (`full` or `bust`), `height`, `eager`, `entrance` and `src`.
 

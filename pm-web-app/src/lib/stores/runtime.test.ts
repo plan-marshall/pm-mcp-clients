@@ -14,6 +14,7 @@ import {
   pairBrowser,
   RECONNECT_INTERVAL_MS,
   replaceDesignerProject,
+  retryRuntime,
   routeParamsOf,
   runtimeStore,
   stopRuntimeRecovery,
@@ -594,10 +595,12 @@ describe('the recovery of a failed start', () => {
   it('keeps a navigation made while a successful initialization awaited', async () => {
     runtimeStore.set(makeRuntimeState({ isInitialized: true, currentRoute: 'plan' }));
     const answer = deferredStatus();
-    vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+    const status = vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
     stubLoadedRuntime();
 
     const pending = initRuntime();
+    // The start has read the address and asked for the status; the person moves before the answer.
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(1));
     navigateTo('reports');
     answer.resolve(PAIRED_STATUS);
     await pending;
@@ -610,14 +613,101 @@ describe('the recovery of a failed start', () => {
   it('keeps a navigation made while a failed initialization awaited', async () => {
     runtimeStore.set(makeRuntimeState({ isInitialized: true, currentRoute: 'plan' }));
     const answer = deferredStatus();
-    vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+    const status = vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
 
     const pending = initRuntime();
+    // The start has read the address and asked for the status; the person moves before the answer.
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(1));
     navigateTo('reports');
     answer.reject(new ClientError('network_offline'));
     await pending;
 
     expect(get(runtimeStore).currentRoute).toBe('reports');
     expect(get(runtimeStore).isOffline).toBe(true);
+  });
+
+  it('runs one retry at a time', async () => {
+    const answer = deferredStatus();
+    const status = vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+    stubLoadedRuntime();
+
+    const first = retryRuntime();
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(1));
+    // The page of the unreachable runtime retries while the store's own retry still waits.
+    const second = retryRuntime();
+    answer.resolve(PAIRED_STATUS);
+    await Promise.all([first, second]);
+
+    expect(status).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries again once the retry in flight has finished', async () => {
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockResolvedValue(PAIRED_STATUS);
+    stubLoadedRuntime();
+
+    await retryRuntime();
+    await retryRuntime();
+
+    expect(status).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops retrying when the runtime refuses the stored pairing', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockRejectedValue(new Error('unauthorized'));
+    await initRuntime();
+    expect(isRuntimeRecovering()).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(2));
+
+    await vi.waitFor(() => expect(isRuntimeRecovering()).toBe(false));
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 2);
+    expect(status).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops retrying when the browser no longer holds a pairing', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValue(new ClientError('network_offline'));
+    await initRuntime();
+    expect(isRuntimeRecovering()).toBe(true);
+
+    vi.spyOn(apiClient, 'isPaired').mockReturnValue(false);
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('pair'));
+    expect(isRuntimeRecovering()).toBe(false);
+    expect(status).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts no retry for a start that fails after the teardown', async () => {
+    const answer = deferredStatus();
+    const status = vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+
+    const pending = initRuntime();
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(1));
+    // The shell is torn down while the start still waits for its answer.
+    stopRuntimeRecovery();
+    answer.reject(new ClientError('network_offline'));
+    await pending;
+
+    expect(get(runtimeStore).isOffline).toBe(true);
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('starts the retry again for a start that began after the teardown', async () => {
+    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(new ClientError('network_offline'));
+    stopRuntimeRecovery();
+
+    await initRuntime();
+
+    expect(isRuntimeRecovering()).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { vi, beforeEach } from 'vitest';
 import { messagesStore } from './lib/i18n';
 import { loadMessages } from './test/catalogue-fixture';
+import { installFakeResizeObserver } from './lib/test/resizeObserver';
 
 class LocalStorageMock implements Storage {
   private store: Record<string, string> = {};
@@ -38,6 +39,9 @@ Object.defineProperty(globalThis, 'localStorage', {
   writable: true,
   configurable: true,
 });
+
+// jsdom has no ResizeObserver; the fake reports the boxes a test hands it.
+installFakeResizeObserver();
 
 const defaultTestMessages: Record<string, string> = loadMessages('en');
 

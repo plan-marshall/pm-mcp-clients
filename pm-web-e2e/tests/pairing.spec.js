@@ -145,6 +145,41 @@ test.describe('Web Client Pairing Flow', () => {
     }
   });
 
+  for (const [where, viewport, shows] of [
+    ['the bear beside the hidden hero at 900 px', MID_DESKTOP, 'bear'],
+    ['the hero and no bear at 1280 px', TALL_DESKTOP, 'hero'],
+  ]) {
+    test(`shows exactly one mascot beside the expanded rail: ${where}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/pair');
+
+      const rail = page.getByTestId('nav-rail');
+      await expect(rail).toBeVisible();
+      await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+      await expect(page.getByTestId('pairing-view')).toBeVisible();
+
+      // A mounted hero the page hides keeps no box and does not hide the bear; a shown one does.
+      const hero = page.getByTestId('pairing-hero').getByTestId('mascot-figure');
+      await expect(hero).toHaveCount(1);
+      if (shows === 'hero') {
+        await expect(hero).toBeVisible();
+        await expect(rail).not.toHaveClass(/nav-rail--bear/);
+      } else {
+        await expect(hero).toBeHidden();
+        await expect(rail).toHaveClass(/nav-rail--bear/);
+      }
+
+      // Exactly one mascot is drawn: the figures with a box, and the bear where it draws its bust.
+      const figures = await page
+        .getByTestId('mascot-figure')
+        .evaluateAll((all) => all.filter((figure) => figure.getClientRects().length > 0).length);
+      const bear = await rail
+        .locator('.nav-rail__bear')
+        .evaluate((element) => getComputedStyle(element).backgroundImage !== 'none');
+      expect(figures + (bear ? 1 : 0)).toBe(1);
+    });
+  }
+
   test('enables pair button and pairs successfully with code', async ({ page }) => {
     await page.goto('/');
 

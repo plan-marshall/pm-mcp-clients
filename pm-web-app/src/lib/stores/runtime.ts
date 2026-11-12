@@ -196,6 +196,12 @@ export const RECONNECT_INTERVAL_MS = 15_000;
 let recovery: ReturnType<typeof setInterval> | null = null;
 /** Whether a retry of the initialization is in flight, so a second one is not started beside it. */
 let retryInFlight = false;
+/**
+ * Counts the stops of the retry. An initialization notes the count at its start, and its failure
+ * starts no retry once a stop came after that start: the shell was torn down meanwhile, or another
+ * initialization succeeded.
+ */
+let recoveryStops = 0;
 
 /**
  * Starts retrying the initialization after one failed.
@@ -204,14 +210,18 @@ let retryInFlight = false;
  * clears the offline state and removes that page, but only a successful initialization loads the
  * runtime's state and opens the event stream. The retry therefore runs until one initialization has
  * succeeded, whatever clears the offline state in the meantime.
+ *
+ * @param stopsAtStart the count of stops the failed initialization noted at its start; a stop
+ *   since then wins over the late failure, so no timer outlives the shell that ended the retry
  */
-function startRecovery(): void {
-  if (recovery !== null || typeof window === 'undefined') return;
+function startRecovery(stopsAtStart: number): void {
+  if (recovery !== null || stopsAtStart !== recoveryStops || typeof window === 'undefined') return;
   recovery = setInterval(() => void retryRuntime(), RECONNECT_INTERVAL_MS);
 }
 
 /** Stops retrying the initialization: one succeeded, or the app is torn down. */
 export function stopRuntimeRecovery(): void {
+  recoveryStops += 1;
   if (recovery !== null) {
     clearInterval(recovery);
     recovery = null;
@@ -461,6 +471,7 @@ function drainInfoOf(
 }
 
 export async function initRuntime(): Promise<void> {
+  const stopsAtStart = recoveryStops;
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
       void checkUrlHashForCode();
@@ -597,8 +608,9 @@ export async function initRuntime(): Promise<void> {
       // retry already connected one, whose state then stands.
       streamState: s.streamState === 'connected' ? 'connected' : 'offline',
     }));
-    // The runtime's state was not loaded: retry until an initialization succeeds.
-    startRecovery();
+    // The runtime's state was not loaded: retry until an initialization succeeds, unless the
+    // retry was stopped while this one waited.
+    startRecovery(stopsAtStart);
   }
 }
 

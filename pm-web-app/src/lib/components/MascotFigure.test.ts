@@ -9,6 +9,8 @@ import bust1xUrl from '../assets/mascot/mascot-bust-1x.webp?url';
 import bust2xUrl from '../assets/mascot/mascot-bust-2x.webp?url';
 import full1xUrl from '../assets/mascot/mascot-full-1x.webp?url';
 import full2xUrl from '../assets/mascot/mascot-full-2x.webp?url';
+import { blockOf, ruleOf, stylesheetOf } from '../test/stylesheet';
+import { reportBox } from '../test/resizeObserver';
 
 /**
  * `MascotFigure` (components-brand.adoc, MascotFigure): one decorative figure of the mascot by pose
@@ -37,43 +39,9 @@ function generatedObjectUrl(): string {
   return `blob:http://localhost/${crypto.randomUUID()}`;
 }
 
-/**
- * @param css a stylesheet
- * @param opener the at-rule whose block is wanted
- * @returns the block's content, braces matched
- */
-function blockOf(css: string, opener: string): string {
-  const at = css.indexOf(opener);
-  if (at < 0) throw new Error(`no "${opener}" block`);
-  const open = css.indexOf('{', at + opener.length);
-  let depth = 0;
-  for (let i = open; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return css.slice(open + 1, i);
-    }
-  }
-  throw new Error(`unbalanced "${opener}" block`);
-}
-
-/**
- * @param css a stylesheet without nested blocks
- * @param selector the selector of the rule, as written
- * @returns the declarations of the first rule with exactly that selector
- */
-function ruleOf(css: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // The selector must open the rule, so it never matches the tail of a longer selector.
-  const match = new RegExp(`(^|[{}])\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-  if (!match) throw new Error(`no rule for "${selector}"`);
-  return match[2];
-}
-
 describe('MascotFigure', () => {
   const source = fs.readFileSync(COMPONENT_PATH, 'utf-8');
-  // Comments are dropped, so a rule is found by its selector alone.
-  const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const stylesheet = stylesheetOf(COMPONENT_PATH);
 
   describe('the files', () => {
     it.each(MASCOT_POSES.flatMap((pose) => MASCOT_CROPS.map((crop) => [pose, crop] as const)))(
@@ -225,14 +193,65 @@ describe('MascotFigure', () => {
   });
 
   describe('the figures on screen', () => {
-    it('counts a drawn figure up on mount and down on destroy', () => {
+    it('counts a figure while it has a box, and no longer once it is destroyed', () => {
       const before = get(mascotFiguresOnScreen);
-
       const { unmount } = render(MascotFigure, { props: { pose: 'welcome', height: 320 } });
+
+      reportBox(screen.getByTestId('mascot-figure'), 257, 320);
       expect(get(mascotFiguresOnScreen)).toBe(before + 1);
 
       unmount();
       expect(get(mascotFiguresOnScreen)).toBe(before);
+    });
+
+    it('does not count a mounted figure that has no box, as under display: none', () => {
+      const before = get(mascotFiguresOnScreen);
+
+      render(MascotFigure, { props: { pose: 'welcome', height: 320 } });
+
+      // A hidden figure is reported by no observer, as a browser reports none for it.
+      expect(screen.getByTestId('mascot-figure')).toBeInTheDocument();
+      expect(get(mascotFiguresOnScreen)).toBe(before);
+    });
+
+    it('stops counting a figure that loses its box and counts it again once it is shown', () => {
+      const before = get(mascotFiguresOnScreen);
+      render(MascotFigure, { props: { pose: 'all-clear', crop: 'bust', height: 160 } });
+      const figure = screen.getByTestId('mascot-figure');
+      reportBox(figure, 124, 160);
+
+      // The page narrows below its container query, or the figure's ancestor is hidden.
+      reportBox(figure, 0, 0);
+      expect(get(mascotFiguresOnScreen)).toBe(before);
+
+      // The page widens again, or the ancestor is shown.
+      reportBox(figure, 124, 160);
+      expect(get(mascotFiguresOnScreen)).toBe(before + 1);
+    });
+
+    it('counts a figure once however often its box changes size', () => {
+      const before = get(mascotFiguresOnScreen);
+      render(MascotFigure, { props: { pose: 'all-clear', crop: 'bust', height: 160 } });
+      const figure = screen.getByTestId('mascot-figure');
+
+      reportBox(figure, 124, 160);
+      reportBox(figure, 100, 129);
+
+      expect(get(mascotFiguresOnScreen)).toBe(before + 1);
+    });
+
+    it('does not count down a figure destroyed while it had no box', () => {
+      const before = get(mascotFiguresOnScreen);
+      const { unmount } = render(MascotFigure, { props: { pose: 'welcome', height: 320 } });
+      const figure = screen.getByTestId('mascot-figure');
+      reportBox(figure, 257, 320);
+      reportBox(figure, 0, 0);
+
+      unmount();
+
+      expect(get(mascotFiguresOnScreen)).toBe(before);
+      // The destroyed figure's observer is disconnected and reports nothing any longer.
+      expect(reportBox(figure, 257, 320)).toBe(0);
     });
 
     it('does not count a figure that draws nothing', () => {

@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
+import { flushSync } from 'svelte';
 import { render, screen } from '@testing-library/svelte';
 import NavRail from './NavRail.svelte';
 import MascotFigure from '../components/MascotFigure.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
+import { blockOf, ruleOf, stylesheetOf } from '../test/stylesheet';
+import { reportBox } from '../test/resizeObserver';
 
 const COMPONENT_PATH = path.resolve(__dirname, 'NavRail.svelte');
 
@@ -16,39 +18,6 @@ const BEAR_CONTAINER = '@container rail-free (min-height: 260px)';
 function useCatalogue(locale: 'de' | 'en'): void {
   currentLocale.set(locale);
   messagesStore.set(loadMessages(locale));
-}
-
-/**
- * @param css a stylesheet
- * @param opener the at-rule whose block is wanted
- * @returns the block's content, braces matched
- */
-function blockOf(css: string, opener: string): string {
-  const at = css.indexOf(opener);
-  if (at < 0) throw new Error(`no "${opener}" block`);
-  const open = css.indexOf('{', at + opener.length);
-  let depth = 0;
-  for (let i = open; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return css.slice(open + 1, i);
-    }
-  }
-  throw new Error(`unbalanced "${opener}" block`);
-}
-
-/**
- * @param css a stylesheet
- * @param selector the selector of the rule, as written
- * @returns the declarations of the first rule with exactly that selector
- */
-function ruleOf(css: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // The selector must open the rule, so it never matches the tail of a longer selector.
-  const match = new RegExp(`(^|[{}])\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-  if (!match) throw new Error(`no rule for "${selector}"`);
-  return match[2];
 }
 
 /**
@@ -147,12 +116,7 @@ describe('NavRail component', () => {
   });
 
   describe('the rail-foot bear', () => {
-    const source = fs.readFileSync(COMPONENT_PATH, 'utf-8');
-    // Comments are dropped, so a rule is found by its selector alone.
-    const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(
-      /\/\*[\s\S]*?\*\//g,
-      '',
-    );
+    const stylesheet = stylesheetOf(COMPONENT_PATH);
 
     beforeEach(() => useCatalogue('en'));
 
@@ -174,9 +138,41 @@ describe('NavRail component', () => {
 
     it('drops the bear class while a mascot figure is on screen', () => {
       render(MascotFigure, { props: { pose: 'all-clear', crop: 'bust', height: 140 } });
+      reportBox(screen.getByTestId('mascot-figure'), 108, 140);
 
       const rail = renderRail(false);
 
+      expect(rail).not.toHaveClass('nav-rail--bear');
+    });
+
+    it('keeps the bear beside a mounted figure the page hides', () => {
+      // The pairing page between 768 and 1032 px with the expanded rail: its container query sets
+      // the hero to display: none, so the figure is mounted but has no box.
+      render(MascotFigure, { props: { pose: 'welcome', height: 320, eager: true } });
+
+      const rail = renderRail(false);
+
+      expect(screen.getByTestId('mascot-figure')).toBeInTheDocument();
+      expect(rail).toHaveClass('nav-rail--bear');
+    });
+
+    it('follows the figure as the page hides and shows it again', () => {
+      render(MascotFigure, { props: { pose: 'welcome', height: 320, eager: true } });
+      const figure = screen.getByTestId('mascot-figure');
+      const rail = renderRail(false);
+
+      reportBox(figure, 257, 320);
+      flushSync();
+      expect(rail).not.toHaveClass('nav-rail--bear');
+
+      // The page narrows below the figure's container query.
+      reportBox(figure, 0, 0);
+      flushSync();
+      expect(rail).toHaveClass('nav-rail--bear');
+
+      // The page widens again.
+      reportBox(figure, 257, 320);
+      flushSync();
       expect(rail).not.toHaveClass('nav-rail--bear');
     });
 

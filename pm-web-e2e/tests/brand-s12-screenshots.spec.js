@@ -495,6 +495,37 @@ async function expectFigure(surface, pose) {
 }
 
 /**
+ * Asserts the one mascot figure of a surface is mounted with its pose but hidden: on a phone the
+ * page is too narrow to hold it beside the text, so its narrow rule hides it and never stacks it
+ * above the text (brand-mark-mascot.adoc).
+ *
+ * @param {import('@playwright/test').Locator} surface the surface that carries the figure
+ * @param {string} pose the pose the surface names
+ * @returns {Promise<import('@playwright/test').Locator>} the figure
+ */
+async function expectFigureHidden(surface, pose) {
+  await expect(surface).toBeVisible();
+  const figure = surface.getByTestId('mascot-figure');
+  await expect(figure).toHaveCount(1);
+  await expect(figure).toHaveAttribute('data-pose', pose);
+  await expect(figure).toBeHidden();
+  return figure;
+}
+
+/**
+ * Asserts the figure of a terminal surface as the design draws it at the width: shown beside the
+ * text at the desktop width, hidden on the phone.
+ *
+ * @param {import('@playwright/test').Locator} surface the surface that carries the figure
+ * @param {string} pose the pose the surface names
+ * @param {boolean} desktop whether the page has the desktop width
+ * @returns {Promise<import('@playwright/test').Locator>} the figure
+ */
+async function expectFigureAtWidth(surface, pose, desktop) {
+  return desktop ? expectFigure(surface, pose) : expectFigureHidden(surface, pose);
+}
+
+/**
  * Writes one evidence screenshot of a mascot surface and asserts it was written.
  *
  * @param {import('@playwright/test').Page} page the page that shows the surface
@@ -602,7 +633,8 @@ test.describe('S12 mascot evidence', () => {
           await page.getByTestId('confirm-dialog-confirm').click();
 
           await page.setViewportSize({ width, height });
-          await expectFigure(page.getByTestId('revoked-view'), 'access-ended');
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          await expectFigureAtWidth(page.getByTestId('revoked-view'), 'access-ended', desktop);
           await captureEvidence(page, 'revoked', shot);
         });
 
@@ -619,7 +651,12 @@ test.describe('S12 mascot evidence', () => {
           });
 
           await page.setViewportSize({ width, height });
-          const figure = await expectFigure(page.getByTestId('listener-off-view'), 'searching');
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          const figure = await expectFigureAtWidth(
+            page.getByTestId('listener-off-view'),
+            'searching',
+            desktop,
+          );
           await expect(figure).toHaveAttribute('src', /^blob:/);
           await captureEvidence(page, 'listener-off', shot);
         });
@@ -630,7 +667,12 @@ test.describe('S12 mascot evidence', () => {
           await makeRuntimeUnreachable(page);
 
           await page.setViewportSize({ width, height });
-          const figure = await expectFigure(page.getByTestId('unreachable-view'), 'searching');
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          const figure = await expectFigureAtWidth(
+            page.getByTestId('unreachable-view'),
+            'searching',
+            desktop,
+          );
           await expect(figure).toHaveAttribute('src', /^blob:/);
           await captureEvidence(page, 'unreachable', shot);
         });

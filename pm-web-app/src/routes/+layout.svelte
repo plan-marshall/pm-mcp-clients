@@ -223,11 +223,17 @@
     // A start that fails leaves the store retrying the initialization until one succeeds; the
     // shell owns that retry for its whole life and ends it with itself, never the page of the
     // lost connection, which the first successful request removes.
-    onDestroy(stopRuntimeRecovery);
+    let shellGone = false;
+    onDestroy(() => {
+      shellGone = true;
+      stopRuntimeRecovery();
+    });
 
     // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
     // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.
     await Promise.race([initI18n(), new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
+    // A shell torn down while the catalogue loaded starts no runtime: nothing would end its retry.
+    if (shellGone) return;
     await initRuntime();
   });
 
