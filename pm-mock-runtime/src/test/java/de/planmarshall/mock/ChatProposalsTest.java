@@ -12,6 +12,7 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -31,6 +33,9 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatProposalEvent;
 import de.planmarshall.api.chat.ChatResource;
@@ -38,6 +43,7 @@ import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatStatus;
 import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnCompletedEvent;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
@@ -47,6 +53,7 @@ import de.planmarshall.api.chat.RefKind;
 import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.chat.TurnRef;
+import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
@@ -58,18 +65,22 @@ import de.planmarshall.api.start.SourceKind;
 import de.planmarshall.api.start.SourceResource;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.mock.junit5.MockRuntimeLogMessages;
 import de.planmarshall.mock.runtime.MockTiming;
 
 /**
  * The scripted conversations of the mock's chats and the proposals that act: per proposal kind, the
  * role's second reply proposes it, accept changes what the design says it changes and a second answer is
  * refused, and reject changes nothing. In an epic's chat the third reply proposes a change to the draft,
- * which replaces the rows proposal still open.
+ * which replaces the rows proposal still open. A follow-up plan opens a start for work that ended while
+ * the runtime ran too, an applied proposal its subject cannot take is logged, and an answer while a reply
+ * is written keeps the chat in {@code chat.reply}.
  */
 @DisplayName("ChatProposals")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 @EnableGeneratorController
+@EnableTestLogger
 class ChatProposalsTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -88,6 +99,15 @@ class ChatProposalsTest {
     private static final String ERROR = "error";
     private static final String ACT_NOT_AVAILABLE = "act_not_available";
     private static final String APPLIED_DESCRIPTION = "Fix the relay's reconnect: keep the cursor across a restart.";
+    private static final String PROJECT = "pm-mcp-clients";
+    /** The plan whose seeded chat holds an open proposal. */
+    private static final String SEEDED_PROPOSAL_PLAN = "fix-relay";
+    private static final String KEY_PLAN_ID = "plan_id";
+    private static final String KEY_OUTCOME = "outcome";
+    private static final String KEY_SCOPE = "scope";
+    private static final String KEY_KIND = "kind";
+    private static final String KEY_ID = "id";
+    private static final String KEY_PROJECT_ID = "project_id";
 
     @Nested
     @DisplayName("The scripted conversation")
@@ -274,7 +294,7 @@ class ChatProposalsTest {
                 var started = startState(runtime, FOLLOW_UP_ENTRY).entry();
                 assertAll("the new plan's start",
                         () -> assertEquals(EntryKind.PLAN, started.kind()),
-                        () -> assertEquals("pm-mcp-clients", started.projectId()),
+                        () -> assertEquals(PROJECT, started.projectId()),
                         () -> assertEquals(StartState.SOURCES, started.state()),
                         () -> assertEquals(List.of(proposal.after() + " follows " + ENDED_PLAN),
                                 started.sources().stream().filter(source -> source.kind() == SourceKind.DESCRIPTION)
@@ -282,6 +302,80 @@ class ChatProposalsTest {
                 assertRefusedTwice(runtime, routes, proposal);
                 assertEquals(404, get(runtime, ENTRIES + SECOND_FOLLOW_UP_ENTRY).status(),
                         "a second accept opens no second start");
+            }
+        }
+
+        @Test
+        @DisplayName("applies a follow-up plan of work that ended while the runtime ran")
+        void followUpOfWorkEndedAtRunTime() throws Exception {
+            var planId = id();
+            var routes = ChatRoutes.endedPlan(planId);
+            try (var runtime = ordered(FOLLOW_UP_STATE)) {
+                endAtRunTime(runtime, Map.of(KEY_PLAN_ID, planId, KEY_OUTCOME, "merged", KEY_SCOPE,
+                        Map.of(KEY_KIND, "plan", KEY_ID, planId, KEY_PROJECT_ID, PROJECT)));
+                assertEquals(ChatScopeKind.ARCHIVE, openChat(runtime, routes).scope());
+                var proposal = proposeAt(runtime, routes, 2, ProposalKind.FOLLOW_UP);
+
+                var accepted = answer(runtime, routes.accept(), proposal);
+
+                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
+                var started = startState(runtime, FOLLOW_UP_ENTRY).entry();
+                assertAll("the new plan's start",
+                        () -> assertEquals(EntryKind.PLAN, started.kind()),
+                        () -> assertEquals(PROJECT, started.projectId()),
+                        () -> assertEquals(StartState.SOURCES, started.state()),
+                        () -> assertTrue(started.sources().stream()
+                                .anyMatch(source -> source.kind() == SourceKind.DESCRIPTION
+                                        && String.valueOf(source.reference()).contains(planId)),
+                                "the start follows the plan"));
+            }
+        }
+
+        @Test
+        @DisplayName("logs a follow-up plan it cannot open because the end of the work named no project")
+        void followUpWithoutProject() throws Exception {
+            var planId = id();
+            var routes = ChatRoutes.endedPlan(planId);
+            try (var runtime = ordered(FOLLOW_UP_STATE)) {
+                endAtRunTime(runtime, Map.of(KEY_PLAN_ID, planId, KEY_OUTCOME, "merged"));
+                openChat(runtime, routes);
+                var proposal = proposeAt(runtime, routes, 2, ProposalKind.FOLLOW_UP);
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(404, get(runtime, ENTRIES + FOLLOW_UP_ENTRY).status(), "no start was opened");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("While a reply is written")
+    class WhileReplying {
+
+        @Test
+        @DisplayName("an answer keeps the chat in chat.reply, so no message cuts the reply short")
+        void answerKeepsTheReply() throws Exception {
+            var routes = ChatRoutes.plan(SEEDED_PROPOSAL_PLAN);
+            try (var runtime = realistic(CHAT_STATE);
+                 var stream = open(runtime, "/api/v1/plans/" + SEEDED_PROPOSAL_PLAN + "/events")) {
+                var chat = read(runtime, routes);
+                var proposal = Objects.requireNonNull(chat.proposal());
+                send(runtime, routes);
+
+                var accepted = answer(runtime, routes.accept(), proposal);
+
+                assertEquals(ChatStatus.REPLY, accepted.state(), "the reply is still being written");
+                assertRefused(post(runtime, routes.turns(), message().toJson()), 409, ACT_NOT_AVAILABLE);
+                awaitCompleted(stream.events(), chat.id());
+                var replied = read(runtime, routes);
+                assertAll("the reply has ended",
+                        () -> assertNotEquals(ChatStatus.REPLY, replied.state()),
+                        () -> assertTrue(replied.turns().stream()
+                                .noneMatch(turn -> turn.status() == TurnStatus.STREAMING),
+                                String.valueOf(replied.turns())));
+                send(runtime, routes);
             }
         }
     }
@@ -415,8 +509,43 @@ class ChatProposalsTest {
         }
     }
 
+    /**
+     * Plays {@code scope.ended} as an event of the running runtime, through {@code POST /mock/broadcast}.
+     */
+    private static void endAtRunTime(MockRuntime runtime, Map<String, Object> data) throws IOException {
+        var response = new UnixSocketHttpClient(runtime.socketPath()).send(HttpRequest.json("POST",
+                "/mock/broadcast", JsonTree.write(Map.of("event", "scope.ended", "data", data))));
+        assertEquals(200, response.status(), response.bodyText());
+    }
+
+    /**
+     * Reads the chat's events until a reply's {@code chat.turn.completed}.
+     */
+    private static void awaitCompleted(SseReader events, String chatId) throws IOException {
+        while (true) {
+            var event = events.next();
+            assertNotNull(event, "the stream ended");
+            if (ChatTurnCompletedEvent.EVENT_NAME.equals(event.event())
+                    && chatId.equals(JsonTree.string(JsonTree.asObject(JsonTree.parse(event.data())), "chat_id"))) {
+                return;
+            }
+        }
+    }
+
+    private static ChatTurnRequest message() {
+        return new ChatTurnRequest(Generators.letterStrings(4, 40).next(), Generators.letterStrings(12, 16).next());
+    }
+
     private static MockRuntime ordered(String state) throws IOException {
         return MockRuntime.start(MockRuntimeConfig.builder().scenario(state).timing(MockTiming.ORDERED).build());
+    }
+
+    /**
+     * Starts the runtime with realistic timing, so a reply is still being written when its message's
+     * {@code 202} arrives.
+     */
+    private static MockRuntime realistic(String state) throws IOException {
+        return MockRuntime.start(MockRuntimeConfig.builder().scenario(state).timing(MockTiming.REALISTIC).build());
     }
 
     private static String id() {
@@ -430,9 +559,7 @@ class ChatProposalsTest {
     }
 
     private static void send(MockRuntime runtime, ChatRoutes routes) throws Exception {
-        var message = new ChatTurnRequest(Generators.letterStrings(4, 40).next(),
-                Generators.letterStrings(12, 16).next());
-        var accepted = post(runtime, routes.turns(), message.toJson());
+        var accepted = post(runtime, routes.turns(), message().toJson());
         assertEquals(ChatTurnAccepted.HTTP_STATUS, accepted.status(), accepted.bodyText());
     }
 

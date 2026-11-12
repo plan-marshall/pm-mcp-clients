@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -35,6 +38,9 @@ import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatStatus;
 import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnCompletedEvent;
+import de.planmarshall.api.chat.ChatTurnDeltaEvent;
+import de.planmarshall.api.chat.ChatTurnProgressEvent;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.ChatTurnStartedEvent;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
@@ -53,7 +59,8 @@ import de.planmarshall.mock.runtime.MockTiming;
 /**
  * A second device played through {@code POST /mock/broadcast}: a chat event names its chat by
  * {@code chat_id}, is applied to the chat and reaches the stream of the chat's subject — an operator's
- * message, an accepted proposal and the chat's end.
+ * message, an accepted proposal and the chat's end — and every payload, a name no chat event has and an
+ * act the chat no longer offers is refused.
  */
 @DisplayName("ChatBroadcast")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -66,6 +73,13 @@ class ChatBroadcastTest {
     private static final String BROADCAST = "/mock/broadcast";
     private static final String CHAT_PREFIX = "chat.";
     private static final String ERROR = "error";
+    private static final String INVALID_ARGUMENTS = "invalid_arguments";
+    private static final String ACT_NOT_AVAILABLE = "act_not_available";
+    private static final String CONFLICT = "conflict";
+    /** The seeded chat of {@code relay-docs}, whose reply is being written. */
+    private static final String SEEDED_REPLY_CHAT = "C-0004";
+    /** The plan whose seeded chat holds an open proposal. */
+    private static final String SEEDED_PROPOSAL_PLAN = "fix-relay";
 
     /**
      * One chat event as the plan's stream delivered it.
@@ -168,8 +182,98 @@ class ChatBroadcastTest {
             assertRefused(broadcast(runtime, ChatEndedEvent.EVENT_NAME, unknown.toMap()), 404, "target_not_found");
             assertRefused(broadcast(runtime, ChatEndedEvent.EVENT_NAME,
                     Map.of(ChatEndedEvent.FIELD_CHAT_ID, chat.id(), ChatEndedEvent.FIELD_ENDED_BY,
-                            Generators.letterStrings(6, 10).next())), 400, "invalid_arguments");
+                            Generators.letterStrings(6, 10).next())), 400, INVALID_ARGUMENTS);
         }
+    }
+
+    static Stream<String> relayedEvents() {
+        return Stream.of(ChatTurnProgressEvent.EVENT_NAME, ChatTurnDeltaEvent.EVENT_NAME,
+                ChatTurnCompletedEvent.EVENT_NAME);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("relayedEvents")
+    @DisplayName("refuses a relayed chat event whose payload its record refuses")
+    void refusesInvalidRelayedEvent(String event) throws Exception {
+        try (var runtime = ordered()) {
+            var chat = openChat(runtime, ChatRoutes.plan(id()));
+
+            assertRefused(broadcast(runtime, event, Map.of(ChatEndedEvent.FIELD_CHAT_ID, chat.id())), 400,
+                    INVALID_ARGUMENTS);
+        }
+    }
+
+    @Test
+    @DisplayName("relays a valid chat.turn.delta and refuses a chat event name the catalogue does not have")
+    void refusesUnknownChatEvent() throws Exception {
+        try (var runtime = ordered()) {
+            var chat = openChat(runtime, ChatRoutes.plan(id()));
+            var delta = new ChatTurnDeltaEvent(chat.id(), "T-" + Generators.letterStrings(6, 10).next(),
+                    Generators.letterStrings(4, 20).next());
+
+            assertEquals(200, broadcast(runtime, ChatTurnDeltaEvent.EVENT_NAME, delta.toMap()).status());
+            assertRefused(broadcast(runtime, CHAT_PREFIX + Generators.letterStrings(6, 10).next().toLowerCase(),
+                    Map.of(ChatEndedEvent.FIELD_CHAT_ID, chat.id())), 400, INVALID_ARGUMENTS);
+        }
+    }
+
+    @Test
+    @DisplayName("refuses a message while the chat has ended or a reply is written, and a turn id that exists")
+    void refusesMessage() throws Exception {
+        try (var runtime = ordered()) {
+            var routes = ChatRoutes.plan(id());
+            var chat = openChat(runtime, routes);
+            var started = operatorMessage(chat.id());
+            assertEquals(200, broadcast(runtime, ChatTurnStartedEvent.EVENT_NAME, started.toMap()).status());
+
+            assertRefused(broadcast(runtime, ChatTurnStartedEvent.EVENT_NAME, started.toMap()), 409, CONFLICT);
+            assertRefused(broadcast(runtime, ChatTurnStartedEvent.EVENT_NAME,
+                    operatorMessage(SEEDED_REPLY_CHAT).toMap()), 409, ACT_NOT_AVAILABLE);
+            assertEquals(200, post(runtime, routes.end(), "").status());
+            assertRefused(broadcast(runtime, ChatTurnStartedEvent.EVENT_NAME, operatorMessage(chat.id()).toMap()),
+                    409, ACT_NOT_AVAILABLE);
+            assertEquals(1, read(runtime, routes).turns().size(), "a refused message records nothing");
+        }
+    }
+
+    @Test
+    @DisplayName("refuses an answer without an open proposal or naming another proposal")
+    void refusesAnswer() throws Exception {
+        try (var runtime = ordered()) {
+            var chat = openChat(runtime, ChatRoutes.plan(id()));
+            var seeded = read(runtime, ChatRoutes.plan(SEEDED_PROPOSAL_PLAN));
+            var open = Objects.requireNonNull(seeded.proposal());
+
+            assertRefused(broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(chat.id(),
+                    "T-" + Generators.letterStrings(6, 10).next(), "T-" + Generators.letterStrings(6, 10).next(),
+                    ProposalKind.REVISION,
+                    ProposalState.ACCEPTED, null).toMap()), 409, ACT_NOT_AVAILABLE);
+            assertRefused(broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(seeded.id(),
+                    "T-" + Generators.letterStrings(6, 10).next(), open.replyTurnId(), open.kind(),
+                    ProposalState.ACCEPTED, null).toMap()), 409, CONFLICT);
+            assertEquals(ProposalState.OPEN,
+                    Objects.requireNonNull(read(runtime, ChatRoutes.plan(SEEDED_PROPOSAL_PLAN)).proposal()).state());
+        }
+    }
+
+    @Test
+    @DisplayName("refuses the end of a chat that has ended")
+    void refusesSecondEnd() throws Exception {
+        try (var runtime = ordered()) {
+            var routes = ChatRoutes.plan(id());
+            var chat = openChat(runtime, routes);
+            assertEquals(200, post(runtime, routes.end(), "").status());
+
+            assertRefused(broadcast(runtime, ChatEndedEvent.EVENT_NAME,
+                    new ChatEndedEvent(chat.id(), ChatEndedEvent.EndedBy.OPERATOR, null, null).toMap()), 409,
+                    ACT_NOT_AVAILABLE);
+        }
+    }
+
+    private static ChatTurnStartedEvent operatorMessage(String chatId) {
+        return new ChatTurnStartedEvent(chatId, "T-" + Generators.letterStrings(6, 10).next(), TurnKind.MESSAGE,
+                ChatTurn.AUTHOR_OPERATOR, TurnFormat.PLAIN, false, null, null,
+                Generators.letterStrings(4, 40).next());
     }
 
     private static void assertOnPlanStream(Seen seen, String planId, String name) {

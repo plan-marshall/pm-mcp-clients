@@ -637,6 +637,22 @@ final class StartRegistry {
     }
 
     /**
+     * Records a plan or an epic that ended while the runtime runs, so a follow-up plan its chat proposes
+     * opens a start like the follow-up of seeded ended work.
+     *
+     * @param kind      a plan or an epic
+     * @param subjectId the plan's or the epic's id
+     * @param projectId the project the work ran in, {@code null} if the end named none
+     * @param outcome   the wire value of the outcome it ended with, {@code null} if none was named
+     */
+    synchronized void endWork(EntryKind kind, String subjectId, @Nullable String projectId,
+            @Nullable String outcome) {
+        if (projectId != null) {
+            endedWork.put(subjectId, new EndedWork(subjectId, kind, projectId, outcome));
+        }
+    }
+
+    /**
      * @return the ended plans and epics of the active state, as the subjects of their chats, each with the
      *         wire value of the outcome it ended with, {@code null} where the fixture names none
      */

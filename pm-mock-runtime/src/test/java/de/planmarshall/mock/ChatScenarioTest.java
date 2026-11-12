@@ -288,6 +288,26 @@ class ChatScenarioTest {
                         .status());
             }
         }
+
+        @Test
+        @DisplayName("an ended chat stops the reply being written and stays ended")
+        void endStopsTheReply() throws Exception {
+            try (var runtime = ordered(CHAT_STATE)) {
+                var written = read(runtime, routes).turns().getLast();
+
+                var ended = post(runtime, routes.end(), "");
+
+                assertEquals(200, ended.status(), ended.bodyText());
+                var afterEnd = ChatResource.fromJson(ended.bodyText());
+                assertAll("the ended chat's reply keeps its text so far",
+                        () -> assertEquals(ChatStatus.END, afterEnd.state()),
+                        () -> assertEquals(TurnStatus.STOPPED, afterEnd.turns().getLast().status()),
+                        () -> assertEquals(written.text(), afterEnd.turns().getLast().text()));
+                assertError(post(runtime, routes.stop(written.turnId()), ""), 409, ACT_NOT_AVAILABLE);
+                assertEquals(ChatStatus.END, read(runtime, routes).state(), "a stop does not reopen the chat");
+                assertError(post(runtime, routes.turns(), message().toJson()), 409, ACT_NOT_AVAILABLE);
+            }
+        }
     }
 
     @Nested

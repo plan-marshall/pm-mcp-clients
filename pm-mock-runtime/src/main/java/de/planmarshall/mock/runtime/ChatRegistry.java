@@ -385,7 +385,7 @@ final class ChatRegistry {
         if (chat.state.isEnded()) {
             return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
         }
-        if (chat.state == ChatStatus.REPLY) {
+        if (chat.state == ChatStatus.REPLY || chat.play != null) {
             return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "A reply is being written");
         }
         var at = Instant.now().toString();
@@ -602,7 +602,7 @@ final class ChatRegistry {
 
     /**
      * Plays a request failure: an {@code http_error} answers with its status and code, a {@code slow}
-     * request is answered after its delay.
+     * request is answered no earlier than its delay.
      *
      * @return {@code true} if the failure answered the request
      */
@@ -612,7 +612,11 @@ final class ChatRegistry {
                     "Injected failure: " + failure.code()));
             return true;
         }
-        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(failure.delayMs()));
+        // parkNanos may return early, so the wait runs to its deadline.
+        var deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(failure.delayMs());
+        for (var left = deadline - System.nanoTime(); left > 0; left = deadline - System.nanoTime()) {
+            LockSupport.parkNanos(left);
+        }
         return false;
     }
 
@@ -706,16 +710,16 @@ final class ChatRegistry {
     }
 
     /**
-     * Ends a chat: a reply being played stops where it is, and {@code chat.ended} names what ended it.
+     * Ends a chat: a reply being written, played or seeded, stops where it is, and {@code chat.ended}
+     * names what ended it.
      *
      * @return the chat's {@code chat.ended} event
      */
     private ChatEvent endChat(Chat chat, ChatStatus state, ChatEndedEvent.EndedBy endedBy) {
-        var play = chat.play;
-        if (play != null) {
-            chat.cancelPlay();
-            chat.updateReply(play.turnId(), turn -> withText(turn, turn.text(), TurnStatus.STOPPED));
-        }
+        chat.cancelPlay();
+        chat.turns.replaceAll(turn -> turn.status() == TurnStatus.STREAMING
+                ? withText(turn, turn.text(), TurnStatus.STOPPED)
+                : turn);
         chat.state = state;
         return new ChatEvent(ChatEndedEvent.EVENT_NAME, streamOf(chat),
                 new ChatEndedEvent(chat.id, endedBy, null, null).toMap());
@@ -794,7 +798,10 @@ final class ChatRegistry {
         }
         var stopped = withText(turn, turn.text(), TurnStatus.STOPPED);
         chat.turns.set(index, stopped);
-        chat.state = chat.idleState();
+        // An ended chat stays ended, and a reply still being played keeps the chat in chat.reply.
+        if (!chat.state.isEnded() && chat.play == null) {
+            chat.state = chat.idleState();
+        }
         var event = event(address, ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
                 stopped.turnId(), stopped.kind(), TurnStatus.STOPPED, stopped.untrusted(), stopped.text(),
                 stopped.refs(), null, List.of()).toMap());
@@ -831,7 +838,10 @@ final class ChatRegistry {
             var ended = endChat(chat, ChatStatus.CARRIED, ChatEndedEvent.EndedBy.PROPOSAL_CARRIED);
             return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(answered, ended), null);
         }
-        chat.state = ChatStatus.TURN;
+        // A reply still being written keeps the chat in chat.reply; it takes the turn when the reply ends.
+        if (chat.state != ChatStatus.REPLY) {
+            chat.state = ChatStatus.TURN;
+        }
         return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(answered),
                 applyHook(chat.subject, chat.proposal));
     }
@@ -853,9 +863,11 @@ final class ChatRegistry {
      * event's {@code chat_id} names the chat, the event is applied to it and sent on the stream of its
      * subject. {@code chat.turn.started} of the operator records the message, {@code chat.proposal}
      * answers the chat's proposal (an applied one changes its subject's resource), and {@code chat.ended}
-     * ends the chat; every other chat event is sent as it is. A chat nobody opened is refused
-     * {@code target_not_found}, a payload its event's record refuses {@code invalid_arguments}, and an
-     * act the chat no longer offers {@code act_not_available}.
+     * ends the chat; {@code chat.turn.progress}, {@code chat.turn.delta} and {@code chat.turn.completed}
+     * are sent as they are. Every payload is read through its event's {@code pm-api} record first: a
+     * payload the record refuses, or a {@code chat.*} name no chat event has, is refused
+     * {@code invalid_arguments}, a chat nobody opened {@code target_not_found}, and an act the chat no
+     * longer offers {@code act_not_available}.
      *
      * @param event    the event's name
      * @param data     the event's payload
@@ -885,16 +897,16 @@ final class ChatRegistry {
     }
 
     private synchronized Outcome playBroadcast(String event, Map<String, Object> payload) throws IOException {
+        var parsed = parseChatEvent(event, payload);
         var chatId = JsonTree.string(payload, ChatEndedEvent.FIELD_CHAT_ID);
         var chat = chats.values().stream().filter(candidate -> candidate.id.equals(chatId)).findFirst().orElse(null);
         if (chat == null) {
             return refused(ApiErrorCode.TARGET_NOT_FOUND, "No chat " + chatId);
         }
         Runnable then = null;
-        if (ChatTurnStartedEvent.EVENT_NAME.equals(event)) {
-            var started = ChatTurnStartedEvent.fromMap(payload);
+        if (parsed instanceof ChatTurnStartedEvent started) {
             if (started.isOperator()) {
-                if (chat.state.isEnded() || chat.state == ChatStatus.REPLY) {
+                if (chat.state.isEnded() || chat.state == ChatStatus.REPLY || chat.play != null) {
                     return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat takes no message now");
                 }
                 if (!usedTurnIds.add(started.turnId())) {
@@ -905,8 +917,7 @@ final class ChatRegistry {
                         Objects.requireNonNullElse(started.text(), ""), List.of(),
                         List.of(), Instant.now().toString(), null, List.of()));
             }
-        } else if (ChatProposalEvent.EVENT_NAME.equals(event)) {
-            var answered = ChatProposalEvent.fromMap(payload);
+        } else if (parsed instanceof ChatProposalEvent answered) {
             var proposal = chat.proposal;
             if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
                 return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
@@ -921,8 +932,7 @@ final class ChatRegistry {
                 chat.state = ChatStatus.TURN;
             }
             then = applyHook(chat.subject, chat.proposal);
-        } else if (ChatEndedEvent.EVENT_NAME.equals(event)) {
-            var ended = ChatEndedEvent.fromMap(payload);
+        } else if (parsed instanceof ChatEndedEvent ended) {
             if (chat.state.isEnded()) {
                 return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
             }
@@ -931,6 +941,34 @@ final class ChatRegistry {
         }
         return new Outcome(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event),
                 List.of(new ChatEvent(event, streamOf(chat), payload)), then);
+    }
+
+    /**
+     * Reads a broadcast chat event through its {@code pm-api} record.
+     *
+     * @return the event's record
+     * @throws IOException if the name is no chat event's or the record refuses the payload
+     */
+    private static Object parseChatEvent(String event, Map<String, Object> payload) throws IOException {
+        if (ChatTurnStartedEvent.EVENT_NAME.equals(event)) {
+            return ChatTurnStartedEvent.fromMap(payload);
+        }
+        if (ChatTurnProgressEvent.EVENT_NAME.equals(event)) {
+            return ChatTurnProgressEvent.fromMap(payload);
+        }
+        if (ChatTurnDeltaEvent.EVENT_NAME.equals(event)) {
+            return ChatTurnDeltaEvent.fromMap(payload);
+        }
+        if (ChatTurnCompletedEvent.EVENT_NAME.equals(event)) {
+            return ChatTurnCompletedEvent.fromMap(payload);
+        }
+        if (ChatProposalEvent.EVENT_NAME.equals(event)) {
+            return ChatProposalEvent.fromMap(payload);
+        }
+        if (ChatEndedEvent.EVENT_NAME.equals(event)) {
+            return ChatEndedEvent.fromMap(payload);
+        }
+        throw new IOException("No chat event is named " + event);
     }
 
     private synchronized Outcome end(Address address) {

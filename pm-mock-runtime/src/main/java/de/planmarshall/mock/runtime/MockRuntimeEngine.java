@@ -44,6 +44,7 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatSubject;
@@ -179,6 +180,7 @@ import de.planmarshall.api.source.lesson.LessonRetirementNotice;
 import de.planmarshall.api.source.lesson.PremiseEvidenceKind;
 import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
 import de.planmarshall.api.start.ConfinedRoot;
+import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.IntakeDraft;
 import de.planmarshall.api.start.PlanStartResult;
@@ -209,6 +211,7 @@ import de.planmarshall.mock.http.MockConfigRoutes;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
+import de.planmarshall.mock.junit5.MockRuntimeLogMessages;
 import de.planmarshall.mock.scenario.LinkDefinition;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
@@ -220,6 +223,8 @@ import de.planmarshall.mock.scenario.StateDefinition;
  */
 @SuppressWarnings("java:S1075")
 public final class MockRuntimeEngine implements AutoCloseable {
+
+    private static final CuiLogger LOGGER = new CuiLogger(MockRuntimeEngine.class);
 
     private static final String KEY_ERROR = "error";
     private static final String KEY_MESSAGE = "message";
@@ -851,22 +856,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * description replaces the entry's description, and a change to an epic's staged rows or to its
      * decomposition draft moves the epic's decomposition on by one revision, and a follow-up plan of
      * ended work opens the start of a new plan in the ended work's project with that description stored.
-     * A plan's revision is accepted and queued, never applied here.
+     * A plan's revision is accepted and queued, never applied here. A proposal its subject's resource
+     * cannot take (an entry no longer open, no ended work, no decomposition of the epic) changes nothing
+     * and is logged as {@link MockRuntimeLogMessages.WARN#CHAT_PROPOSAL_NOT_APPLIED}.
      *
      * @param applied the applied proposal
      */
     private void applyChatProposal(ChatRegistry.AppliedProposal applied) {
         var subject = applied.subject();
+        var changed = true;
         if (subject.kind() == ChatSubjectKind.ENTRY && applied.kind() == ProposalKind.DESCRIPTION) {
-            startRegistry.applyDescription(subject.id(), applied.after());
+            changed = startRegistry.applyDescription(subject.id(), applied.after());
         } else if (applied.kind() == ProposalKind.FOLLOW_UP) {
-            startRegistry.openFollowUp(subject.id(), applied.after());
+            changed = startRegistry.openFollowUp(subject.id(), applied.after());
         } else if (subject.kind() == ChatSubjectKind.EPIC
                 && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
             synchronized (decompositionLock) {
-                decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(cut.epicId(),
-                        cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings()));
+                changed = decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(
+                        cut.epicId(), cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings())) != null;
             }
+        }
+        if (!changed) {
+            LOGGER.warn(MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED, applied.kind().wireValue(),
+                    subject.kind().wireValue(), subject.id());
         }
     }
 
@@ -1617,7 +1629,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         deliverEvent(event, data);
-        chatRegistry.observe(event, payloadOf(data));
+        var payload = payloadOf(data);
+        recordEndedWork(event, payload);
+        chatRegistry.observe(event, payload);
+    }
+
+    /**
+     * Tells the start of a plan or an epic that ended while the runtime runs, with the project its scope
+     * names, so the follow-up plan its chat proposes opens a start as for seeded ended work.
+     *
+     * @param event   the event name
+     * @param payload the event payload
+     */
+    private void recordEndedWork(String event, Map<String, Object> payload) {
+        if (!EventName.SCOPE_ENDED.wire().equals(event)) {
+            return;
+        }
+        var projectId = scopeOf(event, payload).projectId();
+        var outcome = stringMember(payload, KEY_OUTCOME);
+        var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId != null) {
+            startRegistry.endWork(EntryKind.PLAN, planId, projectId, outcome);
+        }
+        var epicId = stringMember(payload, KEY_EPIC_ID);
+        if (epicId != null) {
+            startRegistry.endWork(EntryKind.EPIC, epicId, projectId, outcome);
+        }
     }
 
     /**

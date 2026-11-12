@@ -157,7 +157,7 @@ Every chat of the mock is served on the routes `ChatRoutes` of `pm-api` builds, 
 * `GET …/chat`: the chat with its newest page of 50 turns; `?before=<turn_id>` reads the page before.
 * `POST …/chat`: opens the chat (`201`), or answers with the open one; a subject has one chat at a time.
 * `POST …/chat/turns`: records the operator's message (`{"text", "client_turn_id"}`) and answers `202` before the role answers; a repeated `client_turn_id` answers with the same turn, and a message while a reply is written is refused `act_not_available`.
-* `POST …/chat/turns/{turn_id}/stop`: stops the reply being written; it keeps its text so far.
+* `POST …/chat/turns/{turn_id}/stop`: stops the reply being written; it keeps its text so far. Ending a chat stops its reply the same way, so an ended chat has no reply to stop.
 * `POST …/chat/proposal/accept` and `…/reject`: answer the open proposal named by its `turn_id`.
 * `POST …/chat/end`: ends the chat.
 
@@ -172,7 +172,7 @@ The role answers every chat from one scripted conversation per subject kind, by 
 . The third reply is an untrusted turn, plain as every turn from outside the machine; in an epic's chat it proposes a change to the decomposition draft, and the rows proposal still open is `replaced`.
 . Every later reply is a short answer without a proposal.
 
-Accept and reject act, each announced by `chat.proposal`. A revision of a plan is `accepted` and queued for the plan's next task boundary; the queued revision itself and its refusals are not played by the mock. Every other kind is `applied`: an entry's description replaces the entry's description source, a change to an epic's staged rows or draft moves the epic's decomposition on by one revision, and an answer is carried to the decision, which ends the chat (`proposal_carried`). A rejected proposal changes nothing, and a proposal answered once is refused a second answer (`act_not_available`).
+Accept and reject act, each announced by `chat.proposal`. A revision of a plan is `accepted` and queued for the plan's next task boundary; the queued revision itself and its refusals are not played by the mock. Every other kind is `applied`: an entry's description replaces the entry's description source, a change to an epic's staged rows or draft moves the epic's decomposition on by one revision, a follow-up plan of ended work opens the start of a new plan in the ended work's project (for seeded ended work and for work a `scope.ended` naming its project ended while the runtime runs), and an answer is carried to the decision, which ends the chat (`proposal_carried`). An applied proposal its subject cannot take changes nothing and is logged (`MOCK-100`). A rejected proposal changes nothing, and a proposal answered once is refused a second answer (`act_not_available`).
 
 ==== A Second Device
 
@@ -181,7 +181,9 @@ Accept and reject act, each announced by `chat.proposal`. A revision of a plan i
 * `chat.turn.started` of the operator records the message as the chat's next turn;
 * `chat.proposal` answers the chat's open proposal with the state it names, and an applied one changes its subject as above;
 * `chat.ended` ends the chat with the cause it names;
-* every other chat event is sent as it is.
+* `chat.turn.progress`, `chat.turn.delta` and `chat.turn.completed` are sent as they are.
+
+Every payload is read through its event's record of `pm-api` first: a payload the record refuses, or a `chat.*` name no chat event has, is refused `invalid_arguments`; a chat nobody opened is refused `target_not_found`, and an act the chat no longer offers (a message while the chat has ended or a reply is written, an answer without an open proposal, the end of an ended chat) `act_not_available`, or `conflict` for a turn id that exists or a proposal that is not the open one.
 
 === Testing Usage
 
@@ -557,6 +559,14 @@ If any invariant is violated, a `ScenarioValidationException` is thrown, naming 
 == Log Messages
 
 The production log messages of the module are declared in `de.planmarshall.mock.junit5.MockRuntimeLogMessages` and carry the component prefix `MOCK`. `DEBUG` messages are not listed: they carry no `LogRecord` and no identifier. All messages follow the format `[Component]-[identifier]: [message]`.
+
+=== WARN Level (100-199)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|MOCK-100 |MOCK |The applied %s proposal of the chat about %s %s changed nothing |Logged when a proposal accepted in a chat is applied but its subject's resource cannot take it: the entry is no longer open, the work is not known to have ended (a `scope.ended` without a project), or the epic has no decomposition; the placeholders carry the proposal's kind and the chat subject's kind and id
+|===
 
 === ERROR Level (200-299)
 
