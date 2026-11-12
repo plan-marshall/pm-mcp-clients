@@ -31,6 +31,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
+import de.planmarshall.api.system.CleanupDecidedEvent;
 import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupKeptItem;
@@ -59,6 +60,18 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private static final String DECISION_STATE = "cleanup.job";
     private static final String CONFIRM_STATE = "cleanup.confirm";
+
+    /** The items one project group prints before the rest is left to the project's own command. */
+    private static final int PAGE_SIZE = 20;
+
+    /** The width a printed item line may not exceed. */
+    private static final int MAX_LINE = 80;
+
+    /** The column the title starts in, where a wrapped mark is aligned. */
+    private static final int TITLE_COLUMN = 8;
+
+    /** The width of the title column; a longer title is cut rather than shifting the columns. */
+    private static final int TITLE_WIDTH = 18;
 
     /** The word an item's end carries in front of the runtime's date. */
     private static final String ENDED_PREFIX = "ended ";
@@ -164,6 +177,15 @@ public final class CleanupCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var err = spec.commandLine().getErr();
 
+        if (exclude != null && !exclude.isEmpty() && !delete) {
+            // --exclude belongs to --delete alone (26-cleanup.adoc#commands): a usage error, whose
+            // text the catalogue owns like every other refusal of the verb.
+            err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.exclude_delete_only", Map.of()));
+            err.flush();
+            return 2;
+        }
+
         try {
             if (kept) {
                 return showKept(out);
@@ -175,7 +197,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 return executeRemind(out);
             }
             if (ignore) {
-                return executeIgnore(out, err);
+                return executeIgnore(out);
             }
             if (delete) {
                 return executeDelete(out, err);
@@ -368,8 +390,8 @@ public final class CleanupCommand implements Callable<Integer> {
         return locale.toLowerCase(Locale.ROOT).startsWith("de") ? "d. MMM" : "d MMM";
     }
 
-    private int executeIgnore(PrintWriter out, PrintWriter err) throws IOException {
-        return executeIgnore(out, err, null);
+    private int executeIgnore(PrintWriter out) throws IOException {
+        return executeIgnore(out, null);
     }
 
     /**
@@ -377,17 +399,11 @@ public final class CleanupCommand implements Callable<Integer> {
      * runtime reports.
      *
      * @param out       the verb's writer
-     * @param err       the verb's error writer
      * @param displayed the job the operator saw, or {@code null} to read the open one
      * @return the exit code
      * @throws IOException on transport failure
      */
-    private int executeIgnore(PrintWriter out, PrintWriter err, @Nullable CleanupJob displayed) throws IOException {
-        if (exclude != null && !exclude.isEmpty()) {
-            err.println("--exclude is for --delete only");
-            err.flush();
-            return 1;
-        }
+    private int executeIgnore(PrintWriter out, @Nullable CleanupJob displayed) throws IOException {
         var job = displayed != null ? displayed : openJob(out);
         if (job == null) {
             return 0;
@@ -455,34 +471,69 @@ public final class CleanupCommand implements Callable<Integer> {
         }
 
         var job = CleanupJob.fromJson(jobRes.bodyText());
-        var uncheckedIds = new ArrayList<String>();
-        if (exclude != null) {
-            for (var exc : exclude) {
-                var stripped = exc.contains(":") ? exc.substring(exc.indexOf(':') + 1) : exc;
-                uncheckedIds.add(stripped);
-            }
+        var uncheckedIds = resolveExclude(out, job);
+        if (uncheckedIds == null) {
+            return 1;
         }
 
         var preview = deletePreview(job, uncheckedIds);
         if (!yes) {
-            if (noInput) {
-                out.println(previewText(preview, uncheckedIds.size()));
-                printWholeJobNote(out);
-                out.println("Needs a choice: --yes");
-                out.flush();
-                return 3;
+            if (noInput || !context.isInteractiveTerminal()) {
+                // A delete that nothing can answer sends nothing (01-commands.adoc#direct-verbs):
+                // the preview is printed, and the verb stops at the confirmation with exit code 3.
+                return previewThenStop(out, preview, uncheckedIds.size());
             }
-            if (context.isInteractiveTerminal()) {
-                // The consent prompt prints the preview itself, after it opened the reader: a
-                // preview printed before JLine takes the terminal is erased by its first draw.
-                return askDeleteConsent(out, preview, uncheckedIds.size())
-                                    ? sendDelete(out, job, uncheckedIds, preview) : 0;
-            }
-            out.println(previewText(preview, uncheckedIds.size()));
-            printWholeJobNote(out);
-            out.flush();
+            // The consent prompt prints the preview itself, after it opened the reader: a
+            // preview printed before JLine takes the terminal is erased by its first draw.
+            return askDeleteConsent(out, preview, uncheckedIds.size())
+                                ? sendDelete(out, job, uncheckedIds, preview) : 0;
         }
         return sendDelete(out, job, uncheckedIds, preview);
+    }
+
+    /**
+     * Prints the delete's preview and stops at its confirmation, for a run that has neither a
+     * terminal to answer it nor {@code --yes}.
+     *
+     * @param out      the verb's writer
+     * @param preview  the counts the delete would remove
+     * @param unchecked how many items are kept for good
+     * @return the exit code of a run stopped at a choice it was not given
+     */
+    int previewThenStop(PrintWriter out, DeletePreview preview, int unchecked) {
+        out.println(previewText(preview, unchecked));
+        printWholeJobNote(out);
+        out.println("Needs a choice: --yes");
+        out.flush();
+        return 3;
+    }
+    /**
+     * Resolves every {@code --exclude} token to an item of the open job: a number as the job prints
+     * it, an id, or {@code kind:id}. A token the job does not carry is reported
+     * ({@code operator.cleanup.not_in_job}) and stops the delete.
+     *
+     * @param out the verb's writer
+     * @param job the open cleanup job
+     * @return the ids the delete leaves out, or {@code null} when a token names no item
+     */
+    private @Nullable List<String> resolveExclude(PrintWriter out, CleanupJob job) {
+        if (exclude == null || exclude.isEmpty()) {
+            return List.of();
+        }
+        var items = allItems(job);
+        var ids = new ArrayList<String>();
+        for (var token : exclude) {
+            var raw = OutputSafety.stripControlSequences(token);
+            var item = findItem(items, raw);
+            if (item == null) {
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.cleanup.not_in_job", Map.of("item", raw)));
+                out.flush();
+                return null;
+            }
+            ids.add(item.id());
+        }
+        return ids;
     }
 
     private void printWholeJobNote(PrintWriter out) {
@@ -556,7 +607,7 @@ public final class CleanupCommand implements Callable<Integer> {
             var code = switch (Decision.of(chosen.key())) {
                 case DELETE -> deleteFromDialogue(out, job, leftOut);
                 case REMIND -> executeRemind(out, job);
-                case IGNORE -> executeIgnore(out, err, job);
+                case IGNORE -> executeIgnore(out, job);
                 case LEAVE_OUT -> {
                     leaveOut(out, items, leftOut);
                     yield ASK_AGAIN;
@@ -646,9 +697,17 @@ public final class CleanupCommand implements Callable<Integer> {
             var isUnenrolled = isUnenrolled(prj.projectId());
             out.println(isUnenrolled ? "Unenrolled projects"
                                 : OutputSafety.stripControlSequences(prj.projectId()));
+            int shown = 0;
             for (var item : prj.items()) {
                 items.add(item);
-                itemIndex = printItem(out, item, leftOut, isUnenrolled, itemIndex);
+                if (shown < PAGE_SIZE) {
+                    printItem(out, item, leftOut, isUnenrolled, itemIndex);
+                    shown++;
+                }
+                itemIndex++;
+            }
+            if (prj.items().size() > PAGE_SIZE) {
+                printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }
 
@@ -660,6 +719,20 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private static boolean isUnenrolled(String projectId) {
         return "unenrolled".equalsIgnoreCase(projectId) || "Unenrolled projects".equalsIgnoreCase(projectId);
+    }
+
+    /**
+     * Names what a project group holds beyond the page it printed, and the command that prints it
+     * ({@code operator.cleanup.more}, {@code 26-cleanup.adoc#t-job}).
+     *
+     * @param out       the verb's writer
+     * @param remaining the items the page did not print
+     * @param projectId the project group they belong to
+     */
+    private void printMore(PrintWriter out, int remaining, String projectId) {
+        var command = "cleanup --project " + OutputSafety.stripControlSequences(projectId);
+        out.println("   …  " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.cleanup.more", Map.of("count", remaining, "command", command)));
     }
 
     /**
@@ -675,7 +748,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private int printItem(PrintWriter out, CleanupItemEntry item, Set<String> leftOut, boolean isUnenrolled,
                         int index) {
         var glyph = glyphForKind(item.kind());
-        var title = OutputSafety.stripControlSequences(item.title());
+        var title = titleText(item.title());
         var outcome = item.outcome() != null ? OutputSafety.stripControlSequences(item.outcome()) : "";
         var endedAt = item.endedAt();
         var ended = endedAt != null ? endedText(endedAt) : "";
@@ -683,21 +756,65 @@ public final class CleanupCommand implements Callable<Integer> {
         var logs = item.logsCount() > 0 ? item.logsCount() + (item.logsCount() == 1 ? " log" : " logs") : "";
         var note = item.keptUntil() != null ? OutputSafety.stripControlSequences(item.keptUntil()) : "";
         var mark = leftOut.contains(item.id())
-                            ? " " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                            ? MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.cleanup.choose.kept_for_good", Map.of())
                             : "";
 
         var kind = CleanupKind.fromValue(item.kind());
+        final String line;
         if (kind == CleanupKind.READ_REPORTS) {
-            out.printf("   %2d)   %-18s %s%s%n", index, title, note, mark);
+            line = String.format("   %2d)   %-18s %s", index, title, note);
         } else if (kind == CleanupKind.LOGS) {
-            out.printf("   %2d)   %-18s %-32s %6s %8s%s%n", index, title, note, size, logs, mark);
+            line = String.format("   %2d)   %-18s %-32s %6s %8s", index, title, note, size, logs);
         } else if (isUnenrolled) {
-            out.printf("  %3d) %s %-18s %-36s %s%s%n", index, glyph, title, note, size, mark);
+            line = String.format("  %3d) %s %-18s %-36s %s", index, glyph, title, note, size);
         } else {
-            out.printf("   %2d) %s %-18s %-17s %-14s %6s %8s%s%n", index, glyph, title, outcome, ended, size, logs, mark);
+            line = String.format("   %2d) %s %-18s %-17s %-14s %6s %8s", index, glyph, title, outcome, ended,
+                                size, logs);
         }
+        printWithMark(out, stripTrailing(line), mark);
         return index + 1;
+    }
+
+    /**
+     * Prints an item line with its leave-out mark: on the line where both fit, and on a continuation
+     * line aligned with the title where the mark would push it past the dialogue width.
+     *
+     * @param out   the verb's writer
+     * @param line  the item line, without its mark
+     * @param mark  the rendered mark, or the empty string
+     */
+    private static void printWithMark(PrintWriter out, String line, String mark) {
+        if (mark.isEmpty()) {
+            out.println(line);
+            return;
+        }
+        if (line.length() + 1 + mark.length() <= MAX_LINE) {
+            out.println(line + " " + mark);
+            return;
+        }
+        out.println(line);
+        out.println(" ".repeat(TITLE_COLUMN) + mark);
+    }
+
+    /**
+     * Cuts a title to its column, so a long title shifts no other column: the last character it
+     * keeps becomes the ellipsis that marks the cut.
+     *
+     * @param title the item's title
+     * @return the title as the column carries it
+     */
+    private static String titleText(String title) {
+        var text = OutputSafety.stripControlSequences(title);
+        return text.length() > TITLE_WIDTH ? text.substring(0, TITLE_WIDTH - 1) + "…" : text;
+    }
+
+    private static String stripTrailing(String text) {
+        var end = text.length();
+        while (end > 0 && text.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return text.substring(0, end);
     }
 
     /**
@@ -779,9 +896,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var res = context.runtime(true).send(
                             HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/delete").withBody(deleteBody));
         if (res.status() == 409) {
-            out.println("The runtime is stopping; nothing new starts.");
-            out.flush();
-            return 1;
+            return deleteRefused(out, res.bodyText());
         }
         if (res.status() == 200) {
             out.printf("✓ Deleted %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project; %s freed.%n",
@@ -791,6 +906,47 @@ public final class CleanupCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("cleanup --delete", res);
+    }
+
+    /**
+     * Reports a delete the runtime refused with {@code 409}: a job another client already decided
+     * prints the decision taken and who took it ({@code 26-cleanup.adoc#t-none}), and a runtime that
+     * is stopping says what it does with every new act.
+     *
+     * @param out  the verb's writer
+     * @param body the refusal's body
+     * @return the exit code of the refusal
+     */
+    private int deleteRefused(PrintWriter out, String body) {
+        var decided = decidedElsewhere(body);
+        if (decided != null) {
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "system.cleanup.decided_elsewhere",
+                                Map.of("who", OutputSafety.stripControlSequences(decided.who()),
+                                                    "decision", decided.decision())));
+            out.flush();
+            return 1;
+        }
+        out.println("The runtime is stopping; nothing new starts.");
+        out.flush();
+        return 1;
+    }
+
+    /**
+     * @param body a refusal's body
+     * @return the decision another client took, or {@code null} when the body names none
+     */
+    private static @Nullable CleanupDecidedEvent decidedElsewhere(String body) {
+        try {
+            var parsed = JsonTree.asObject(JsonTree.parse(body));
+            if (parsed == null || JsonTree.string(parsed, "decision") == null
+                                || JsonTree.string(parsed, "who") == null) {
+                return null;
+            }
+            return CleanupDecidedEvent.fromMap(parsed);
+        } catch (IOException _) {
+            return null;
+        }
     }
 
     /**
@@ -989,7 +1145,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private static String glyphForKind(String kind) {
         if ("plan".equalsIgnoreCase(kind)) return "▸";
         if ("epic".equalsIgnoreCase(kind)) return "◇";
-        if ("project".equalsIgnoreCase(kind)) return "▪";
+        if ("project".equalsIgnoreCase(kind) || "unenrolled_project".equalsIgnoreCase(kind)) return "▪";
         return " ";
     }
 }
