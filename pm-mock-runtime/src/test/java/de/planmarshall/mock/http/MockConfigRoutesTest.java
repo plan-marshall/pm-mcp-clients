@@ -161,8 +161,8 @@ class MockConfigRoutesTest {
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
-                            () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()),
-                            () -> assertTrue(read.body().contains("\"value\":null"), read.body()));
+                () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()),
+                () -> assertTrue(read.body().contains("\"value\":null"), read.body()));
     }
 
     @Test
