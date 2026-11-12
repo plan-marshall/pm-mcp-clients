@@ -50,6 +50,7 @@ public final class ConsoleNotice {
     private static final String CHANNEL = "channel";
     private static final String KEY_PROJECT = "project";
     private static final String DETAIL = "detail";
+    private static final String EPIC = "epic";
 
     /** The channel of an answer this console posted itself (02-operator-channel.adoc). */
     private static final String CHANNEL_CLI = "cli";
@@ -387,11 +388,42 @@ public final class ConsoleNotice {
                                 TerminalSanitizer.sanitizeLine(String.valueOf(payload.get("code"))),
                                 TerminalSanitizer.sanitizeLine(String.valueOf(payload.getOrDefault("valid_until", ""))),
                                 String.valueOf(payload.getOrDefault("url", "")));
-            case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
+            case OPERATOR_WAIT -> formatOperatorWait(locale, scopeOf(event), detailOf(payload),
+                                isEpicScope(event, payload));
+            case INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
                 formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
             case REPORT -> formatReportNotice(locale, reportOf(payload));
             case HOLD -> null;
         };
+    }
+
+    /**
+     * Formats the notice of an operator wait, which names its level: an epic's wait reads
+     * {@code Epic <id> waits for you}, a plan's {@code Plan <id> waits for you} (design <em>Console</em>,
+     * {@code operator.console.notice.operator_wait}).
+     *
+     * @param locale the interface locale
+     * @param scope  the plan or epic that waits
+     * @param detail what it waits for
+     * @param epic   whether the wait is an epic's
+     * @return the notice line
+     */
+    static String formatOperatorWait(String locale, String scope, @Nullable String detail, boolean epic) {
+        return BULLET + MessageCatalogue.format(locale, epic ? "operator.console.notice.operator_wait.epic"
+                            : "operator.console.notice.operator_wait",
+                            Map.of("name", TerminalSanitizer.sanitizeLine(scope), "what", TerminalSanitizer.sanitize(detail)));
+    }
+
+    /**
+     * @return {@code true} when the event's subject is an epic: the hold names it as its
+     *         {@code subject_kind}, or the runtime's envelope declares an epic scope
+     */
+    private static boolean isEpicScope(Map<String, Object> event, Map<String, Object> payload) {
+        if (EPIC.equals(stringOf(payload, "subject_kind"))) {
+            return true;
+        }
+        var declared = JsonTree.object(event, SCOPE);
+        return declared != null && EPIC.equals(stringOf(declared, "kind"));
     }
 
     /**
