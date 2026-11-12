@@ -30,6 +30,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,7 @@ class NeedsCommandTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK)
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(
@@ -108,6 +110,7 @@ class NeedsCommandTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK)
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(
@@ -136,6 +139,7 @@ class NeedsCommandTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK)
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var inStream = new ByteArrayInputStream("!\nexit\n".getBytes(StandardCharsets.UTF_8));
@@ -165,6 +169,7 @@ class NeedsCommandTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK + "#overview.empty")
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(

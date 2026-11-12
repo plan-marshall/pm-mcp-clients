@@ -32,6 +32,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 import de.planmarshall.operator.StartPrompt;
 import de.planmarshall.operator.tui.AnsiScreen;
@@ -126,7 +127,7 @@ class ScreenCaptureIT {
     private void capture(Capture capture, Path output) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
-                                 .scenario(capture.scenario()).build())) {
+                                 .scenario(capture.scenario()).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
             for (var state : capture.states()) {
                 runtime.goToState(state);

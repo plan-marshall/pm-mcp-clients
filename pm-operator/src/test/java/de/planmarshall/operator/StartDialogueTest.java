@@ -24,6 +24,7 @@ import java.util.HashMap;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +33,11 @@ import org.junit.jupiter.api.Test;
 /**
  * The terminal starting dialogue against the contract's mock runtime: the direct verbs with their
  * arguments and with {@code --no-input}, the interactive source list, the ready step, a recipe,
- * an epic with its decomposition, and the start chat.
+ * an epic with its decomposition, and the start chat announced as unavailable before a source is stored.
+ *
+ * <p>The start chat itself is no longer driven here: the mock serves every chat from its chat
+ * registry in the chat's own shape, which the old entry chat of this dialogue does not read. The
+ * dialogue's chat against that shape is covered by the terminal client's chat packages D4 and D5.
  */
 @DisplayName("starting dialogue")
 class StartDialogueTest {
@@ -93,19 +98,6 @@ class StartDialogueTest {
         assertAll(
                             () -> assertTrue(rendered.contains("relay-hardening has started"), rendered),
                             () -> assertTrue(rendered.toLowerCase().contains("decomposition"), rendered));
-    }
-
-    @Test
-    @DisplayName("h opens the start chat, an empty line ends it, and the plan starts")
-    void chatThenStart() throws Exception {
-        var rendered = run(StandardScenarios.START_SOURCES,
-                            "d\nAdd a Codeberg provider\n\nh\nWhat did you understand?\n\n\n\n",
-                            "plan", "add", "--project", PROJECT);
-        assertAll(
-                            () -> assertTrue(rendered.contains("Chat"), rendered),
-                            () -> assertTrue(rendered.contains("Understood:"), rendered),
-                            () -> assertTrue(rendered.contains("The chat has ended"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
     @Test
@@ -212,7 +204,8 @@ class StartDialogueTest {
     }
 
     private static String renderEntry(String scenario, String entryId) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build())) {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                .timing(MockTiming.ORDERED).build())) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());
             environment.put("LANG", "en_US.UTF-8");
@@ -236,19 +229,6 @@ class StartDialogueTest {
                             () -> assertTrue(rendered.contains("relay-hardening has started"), rendered),
                             () -> assertTrue(rendered.contains("Decomposition"), rendered),
                             () -> assertTrue(rendered.contains("committed"), rendered));
-    }
-
-    @Test
-    @DisplayName("a proposed addition is read back, accepted, and stored")
-    void chatProposalAccepted() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\n\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("Comments are read with the issue"), rendered),
-                            () -> assertTrue(rendered.contains("description stored"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
     @Test
@@ -351,18 +331,6 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("a rejected chat proposal is not stored")
-    void chatProposalRejected() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\nr\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("The chat has ended"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
-    }
-
-    @Test
     @DisplayName("the decomposition can be drafted again and left")
     void decompositionDraftAgain() throws Exception {
         var rendered = run(StandardScenarios.START_EPIC,
@@ -459,17 +427,6 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("an invalid answer at a proposal changes nothing")
-    void chatProposalInvalidAnswer() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\nz\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
-    }
-
-    @Test
     @DisplayName("copy and move together are refused before the entry opens")
     void copyAndMoveConflict() throws Exception {
         var outcome = runWithCode(StandardScenarios.START_SOURCES, null,
@@ -487,7 +444,8 @@ class StartDialogueTest {
     }
 
     private static Outcome runWithCode(String scenario, String input, String... args) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                .timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());

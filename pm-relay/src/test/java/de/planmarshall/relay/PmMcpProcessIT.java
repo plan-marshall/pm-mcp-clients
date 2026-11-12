@@ -46,6 +46,7 @@ import de.planmarshall.api.testsupport.StagedDaemon;
 import de.planmarshall.api.testsupport.VerificationResults;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.StandardScenarios;
 
 import de.cuioss.test.generator.Generators;
@@ -101,6 +102,7 @@ class PmMcpProcessIT {
     private MockRuntime startMock() throws IOException {
         mock = MockRuntime.start(MockRuntimeConfig.builder()
                 .scenario(StandardScenarios.STATUS_ONLY)
+                .timing(MockTiming.ORDERED)
                 .build());
         return mock;
     }

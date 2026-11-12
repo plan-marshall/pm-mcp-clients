@@ -26,6 +26,7 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.operator.PmOperator;
 
@@ -135,7 +136,7 @@ class SummaryLineIT {
 
     private static MockRuntime start(String scenario) throws IOException {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
-        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).timing(MockTiming.ORDERED).build());
         MockMachine.recordLiveRuntime(runtime);
         return runtime;
     }

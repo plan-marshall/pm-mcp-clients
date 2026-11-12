@@ -28,6 +28,7 @@ import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.DisplayName;
@@ -111,7 +112,7 @@ class ProjectSelectorTest {
     @DisplayName("a selector that runs on a borrowed terminal leaves it open")
     void borrowedTerminalStaysOpen() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.FULLY_ONBOARDED).build());
+                                 .scenario(StandardScenarios.FULLY_ONBOARDED).timing(MockTiming.ORDERED).build());
              var borrowed = VirtualScreenTerminal.create(120, 30)) {
             var self = ProcessHandle.current();
             Files.writeString(runtime.paths().runtimeRecord(), "{\"pid\":" + self.pid()

@@ -30,6 +30,7 @@ import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 import de.planmarshall.operator.tui.AnsiScreen;
 
@@ -80,7 +81,7 @@ class ConsoleBadgeStallIT {
     void stalledReadThenRecoveredRead() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
-                                 .scenario(StandardScenarios.FULLY_ONBOARDED).build())) {
+                                 .scenario(StandardScenarios.FULLY_ONBOARDED).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
             var machineRoot = StallingSocketProxy.copyMachineRoot(runtime.base(), temp.resolve("machine"));
             try (var proxy = StallingSocketProxy.start(runtime.paths().socket(),

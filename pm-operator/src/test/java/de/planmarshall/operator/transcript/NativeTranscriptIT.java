@@ -21,6 +21,7 @@ import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.Assumptions;
@@ -55,7 +56,7 @@ class NativeTranscriptIT {
     void statusMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.RUNNING_WORK).build())) {
+                                 .scenario(StandardScenarios.RUNNING_WORK).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
 
             var rendered = PseudoTerminal.run(binary.with("status"), environment(runtime),
@@ -71,7 +72,7 @@ class NativeTranscriptIT {
     void planViewMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.PLAN_VIEW).build())) {
+                                 .scenario(StandardScenarios.PLAN_VIEW).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
 
             var rendered = PseudoTerminal.run(binary.with("plan", "fix-relay", "--all"),
@@ -87,7 +88,7 @@ class NativeTranscriptIT {
     void webPairMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.WEB_PAIRING).build())) {
+                                 .scenario(StandardScenarios.WEB_PAIRING).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
 
             var rendered = PseudoTerminal.run(binary.with("web", "pair"), environment(runtime),
@@ -103,7 +104,7 @@ class NativeTranscriptIT {
     void controlEpicMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.RUNNING_WORK).build())) {
+                                 .scenario(StandardScenarios.RUNNING_WORK).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
 
             var rendered = PseudoTerminal.run(binary.with("epic", "relay-hardening"),
@@ -119,7 +120,7 @@ class NativeTranscriptIT {
     void startPlanMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.START_SOURCES).build())) {
+                                 .scenario(StandardScenarios.START_SOURCES).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
 
             var rendered = PseudoTerminal.run(binary.with("plan", "add", "--project", "pm-mcp-clients",

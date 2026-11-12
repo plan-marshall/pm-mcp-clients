@@ -37,6 +37,7 @@ import de.planmarshall.api.resource.EnrolRequest;
 import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.resource.StoreDigestComparison;
 import de.planmarshall.api.resource.UnenrolResult;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 
@@ -377,7 +378,8 @@ class EnrolScenarioTest {
         var asString = brokenTamperedScenario(registry, "\"" + TAMPERED_PROJECT + "\"");
         var withNumber = brokenTamperedScenario(registry, "[ \"" + TAMPERED_PROJECT + "\", "
                 + Generators.integers(1, 999).next() + " ]");
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().registry(registry).scenario(TAMPERED).build())) {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().registry(registry).scenario(TAMPERED)
+                .timing(MockTiming.ORDERED).build())) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var engine = runtime.engine();

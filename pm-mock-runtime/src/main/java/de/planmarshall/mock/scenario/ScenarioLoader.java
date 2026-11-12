@@ -26,6 +26,14 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.ChatEndedEvent;
+import de.planmarshall.api.chat.ChatMessageKeys;
+import de.planmarshall.api.chat.ChatProposalEvent;
+import de.planmarshall.api.chat.ChatTurnCompletedEvent;
+import de.planmarshall.api.chat.ChatTurnDeltaEvent;
+import de.planmarshall.api.chat.ChatTurnProgressEvent;
+import de.planmarshall.api.chat.ChatTurnStartedEvent;
+import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.designer.WorkflowCatalogue;
 import de.planmarshall.api.designer.WorkflowUnit;
@@ -57,7 +65,9 @@ import de.planmarshall.api.system.SystemSnapshot;
  * refused with the file, the state or route, and the offending field. Every state's
  * {@code representation} must be a valid {@link OperatorStateResource}: a scenario cannot declare a
  * state the operator contract does not allow, and every member the specification names is validated
- * against the {@code pm-api} codecs.
+ * against the {@code pm-api} codecs. A chat event a state plays is checked against the closed
+ * catalogue: its name is one of the {@code chat.*} events, its payload reads through the event's
+ * {@code pm-api} record, and every message key it carries maps to a rendering key.
  */
 @UtilityClass
 public class ScenarioLoader {
@@ -77,6 +87,8 @@ public class ScenarioLoader {
 
     /** The engine-only fixture object a state's facts may carry. */
     private static final String RUNTIME_FIXTURE = "runtime";
+    /** The prefix of every chat event's name. */
+    private static final String CHAT_EVENT_PREFIX = "chat.";
 
     /**
      * Loads a scenario from a classpath resource or file system.
@@ -419,11 +431,85 @@ public class ScenarioLoader {
         envelope.put(EventEnvelope.FIELD_EVENT, name);
         envelope.put(EventEnvelope.FIELD_ID, index + 1);
         envelope.put(EventEnvelope.FIELD_DATA, event.data());
+        EventEnvelope read;
         try {
-            EventEnvelope.fromMap(envelope);
+            read = EventEnvelope.fromMap(envelope);
         } catch (IOException e) {
             throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
                     "the event is no envelope: " + e.getMessage());
+        }
+        if (name.startsWith(CHAT_EVENT_PREFIX)) {
+            validateChatEvent(name, read.payload(), index, scenario, stateId);
+        }
+    }
+
+    /**
+     * Validates a chat event against the closed catalogue: the name is one of the {@code chat.*} names of
+     * {@link EventName}, the payload reads through the event's {@code pm-api} record, and every message
+     * key the payload carries is one {@link ChatMessageKeys} maps.
+     *
+     * @param name     the event's name
+     * @param payload  the event's payload, the members of its data beside the envelope's own
+     * @param index    the event's position in the state's events
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void validateChatEvent(String name, Map<String, Object> payload, int index, String scenario,
+            String stateId) {
+        var field = "events[" + index + "].data";
+        Map<String, Object> read;
+        try {
+            read = readChatEvent(name, payload);
+        } catch (IOException e) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the payload does not read as " + name + ": " + e.getMessage());
+        }
+        if (read == null) {
+            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].event",
+                    "not a chat event of the catalogue: " + name);
+        }
+        var unmapped = new ArrayList<String>();
+        collectUnmappedKeys(read, unmapped);
+        if (!unmapped.isEmpty()) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "message keys that map to no rendering key: " + unmapped);
+        }
+    }
+
+    /**
+     * @return the payload as the event's record writes it, or {@code null} when the name is no chat event
+     *         of the catalogue
+     * @throws IOException if the payload does not read through the record
+     */
+    private static @Nullable Map<String, Object> readChatEvent(String name, Map<String, Object> payload)
+            throws IOException {
+        var eventName = EventName.fromWireOrNull(name);
+        if (eventName == null) {
+            return null;
+        }
+        return switch (eventName) {
+            case CHAT_TURN_STARTED -> ChatTurnStartedEvent.fromMap(payload).toMap();
+            case CHAT_TURN_DELTA -> ChatTurnDeltaEvent.fromMap(payload).toMap();
+            case CHAT_TURN_PROGRESS -> ChatTurnProgressEvent.fromMap(payload).toMap();
+            case CHAT_TURN_COMPLETED -> ChatTurnCompletedEvent.fromMap(payload).toMap();
+            case CHAT_PROPOSAL -> ChatProposalEvent.fromMap(payload).toMap();
+            case CHAT_ENDED -> ChatEndedEvent.fromMap(payload).toMap();
+            default -> null;
+        };
+    }
+
+    /**
+     * Collects every message key of a payload, a {@code key} member of any object in it, that
+     * {@link ChatMessageKeys} does not map.
+     */
+    private static void collectUnmappedKeys(@Nullable Object value, List<String> unmapped) {
+        if (value instanceof Map<?, ?> map) {
+            if (map.get(MessageText.FIELD_KEY) instanceof String key && !ChatMessageKeys.maps(key)) {
+                unmapped.add(key);
+            }
+            map.values().forEach(member -> collectUnmappedKeys(member, unmapped));
+        } else if (value instanceof List<?> list) {
+            list.forEach(member -> collectUnmappedKeys(member, unmapped));
         }
     }
 

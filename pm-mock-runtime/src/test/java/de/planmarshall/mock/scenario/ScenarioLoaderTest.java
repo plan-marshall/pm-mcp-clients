@@ -439,6 +439,84 @@ class ScenarioLoaderTest {
         assertEquals("chat_failures", ex.field());
     }
 
+    /**
+     * A scenario whose one state plays one event, its data the envelope's own members followed by the
+     * given payload members.
+     */
+    private static String stateWithEvent(String event, String payloadMembers) {
+        return """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]},
+                  "events":[{"after_ms":1,"event":"%1$s","data":{"event":"%1$s","at":"2026-11-10T18:00:00Z",
+                   "scope":{"kind":"machine"},%2$s}}]}}}
+                """.formatted(event, payloadMembers.strip());
+    }
+
+    private static String lowerLetters() {
+        return Generators.letterStrings(4, 10).next().toLowerCase();
+    }
+
+    @Test
+    @DisplayName("loads a state that plays a chat event of the catalogue with a mapped message key")
+    void loadsChatEvent() {
+        var chatId = lowerLetters();
+        var turnId = lowerLetters();
+        var target = lowerLetters();
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"chat.step.read","args":{"target":"%s"}}
+                """.formatted(chatId, turnId, target));
+
+        var events = Objects.requireNonNull(ScenarioLoader.load(json, "chat-event.json").state("a")).events();
+
+        assertEquals(1, events.size());
+        assertEquals("chat.turn.progress", events.getFirst().event());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event name the catalogue does not hold")
+    void rejectsUnknownChatEvent() {
+        var json = stateWithEvent("chat.turn." + lowerLetters(), """
+                "chat_id":"%s","turn_id":"%s","text":"%s"
+                """.formatted(lowerLetters(), lowerLetters(), lowerLetters()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "unknown-chat-event.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].event", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event whose payload does not read through its pm-api record")
+    void rejectsMalformedChatEventPayload() {
+        var json = stateWithEvent("chat.turn.delta", """
+                "chat_id":"%s","turn_id":"%s"
+                """.formatted(lowerLetters(), lowerLetters()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "malformed-chat-event.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].data", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event carrying a message key that maps to no rendering key")
+    void rejectsUnmappedChatMessageKey() {
+        var unmapped = "chat.step." + lowerLetters();
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"%s"}
+                """.formatted(lowerLetters(), lowerLetters(), unmapped));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "unmapped-chat-key.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].data", ex.field());
+        assertTrue(ex.getMessage().contains(unmapped), ex.getMessage());
+    }
+
     @Test
     @DisplayName("rejects a static route representation the pm-api codec refuses")
     void rejectsMalformedRouteRepresentation() {
