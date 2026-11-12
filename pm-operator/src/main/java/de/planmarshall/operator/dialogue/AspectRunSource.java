@@ -244,8 +244,17 @@ public final class AspectRunSource implements StateDialogue.Source {
         if (flags.confirm() && (frame.stateId().contains(CONFIRM_MARKER)
                             || frame.stateId().endsWith(RECONFIGURE_SUFFIX))) {
             usedAnswers.add("yes");
+            markAnsweredFacts(frame);
             return primary.id();
         }
+        return markAnsweredFacts(frame) ? primary.id() : null;
+    }
+
+    /**
+     * @param frame the state a link answers
+     * @return whether the verb's facts answer any field the frame reports
+     */
+    private boolean markAnsweredFacts(StateDialogue.Frame frame) {
         var answered = false;
         for (var field : facts.keySet()) {
             if (frame.facts().containsKey(field)) {
@@ -253,7 +262,7 @@ public final class AspectRunSource implements StateDialogue.Source {
                 answered = true;
             }
         }
-        return answered ? primary.id() : null;
+        return answered;
     }
 
     private @Nullable String answerForConsent(String consentKind) {

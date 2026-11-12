@@ -422,6 +422,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LANGUAGE_MODEL = "language_model";
     private static final String LANGUAGE_CODE_GERMAN = "de";
     private static final String LANGUAGE_CODE_ENGLISH = "en";
+    /** The model-language choice that follows the interface language. */
+    private static final String LANGUAGE_CODE_SAME = "same";
     private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
@@ -7310,9 +7312,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var chosenModel = JsonTree.string(body,
                 reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
-        if (isSupportedLanguage(chosenModel)) {
+        if (choiceSame(chosenModel)) {
+            machineLanguageModel = machineLanguageInterface;
+        } else if (isSupportedLanguage(chosenModel)) {
             machineLanguageModel = Objects.requireNonNull(chosenModel);
         }
+    }
+
+    /**
+     * @param code a model-language choice
+     * @return {@code true} for the choice that follows the interface language
+     */
+    private static boolean choiceSame(@Nullable String code) {
+        return LANGUAGE_CODE_SAME.equals(code);
     }
 
     /**
