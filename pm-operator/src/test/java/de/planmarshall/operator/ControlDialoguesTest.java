@@ -1482,6 +1482,154 @@ class ControlDialoguesTest {
         }
     }
 
+    private OperatorContext german() {
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "de_DE.UTF-8");
+        return new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                            virtual::terminal, null);
+    }
+
+    /** Serves the settings, answers every change with the given results in order, and records them. */
+    private FakeRuntimeServer serveSettings(String settings, PlanSettingsUpdateResult... results) throws IOException {
+        var writes = new AtomicInteger();
+        return fixture.start((request, response) -> {
+            if (!request.target().endsWith("/settings")) {
+                response.send(404, null, "");
+            } else if ("GET".equals(request.method())) {
+                response.json(200, settings);
+            } else {
+                var result = results[Math.min(writes.getAndIncrement(), results.length - 1)];
+                response.json(result.applied() ? 200 : 409, result.toJson());
+            }
+        });
+    }
+
+    private static List<String> settingsWrites(FakeRuntimeServer server) {
+        return server.requests().stream()
+                            .filter(request -> request.target().endsWith("/settings") && !"GET".equals(request.method()))
+                            .map(FakeRuntimeServer.Request::bodyText).toList();
+    }
+
+    @Nested
+    @DisplayName("the plan settings dialogue")
+    @EnableGeneratorController
+    class PlanSettingsBehaviour {
+
+        @Test
+        @DisplayName("a value outside the runtime's choices is not offered and never sent")
+        void valueOutsideChoices() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            var input = Generators.letterStrings(8, 12).next();
+            script("1\n" + input + "\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertTrue(out.toString().contains(input + " is not offered here: 0-2, q"), out.toString());
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("a value is typed where the runtime names no choices")
+        void typedValueWithoutChoices() throws Exception {
+            var budget = String.valueOf(Generators.integers(1, 500).next());
+            var server = serveSettings("""
+                                {"plan_id":"p","revision":7,"values":[
+                                  {"aspect":"budget","value":"10","origin":"plan"}]}
+                                """, PlanSettingsUpdateResult.applied(8));
+            script("1\n" + budget + "\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), server.requests().toString());
+            assertTrue(settingsWrites(server).getFirst().contains("\"" + budget + "\""), settingsWrites(server).toString());
+            assertTrue(out.toString().contains("version becomes 8"), out.toString());
+        }
+
+        @Test
+        @DisplayName("the German keep key keeps the current value and applies nothing again")
+        void germanKeepKey() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.conflict(8, "landing.main"),
+                                PlanSettingsUpdateResult.applied(9));
+            script("1\n2\nh\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(german(), new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), out.toString());
+        }
+
+        @ParameterizedTest(name = "the conflict answered with \"{0}\" applies nothing again")
+        @CsvSource({"q", "k", "zz"})
+        @DisplayName("a conflict applies the value again only on Enter")
+        void conflictAppliedOnlyOnEnter(String answer) throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.conflict(8, "landing.main"),
+                                PlanSettingsUpdateResult.applied(9));
+            script("1\n2\n" + answer + "\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), out.toString());
+            assertEquals("zz".equals(answer), out.toString().contains("zz is not offered here: k, q"), out.toString());
+        }
+
+        @Test
+        @DisplayName("an aspect that is not offered is answered and asked again")
+        void aspectNotOffered() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            script("landing\n9\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            var text = out.toString();
+            assertTrue(text.contains("landing is not offered here: 1, q"), text);
+            assertTrue(text.contains("9 is not offered here: 1, q"), text);
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("a group that is not offered is answered and asked again")
+        void groupNotOffered() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            script("5\nv\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(german(), new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("5 wird hier nicht angeboten: 1-4, v"), out.toString());
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("without input the dialogue stops where it would ask")
+        void noInputStops() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", true));
+
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("each group holds its own aspects, with where each value comes from")
+        void groupsAndOrigins() throws Exception {
+            serveSettings("""
+                                {"plan_id":"p","revision":7,"values":[
+                                  {"aspect":"landing","value":"landing.main","origin":"plan","choices":["landing.main"]},
+                                  {"aspect":"role.planning","origin":"machine","choices":["a"]},
+                                  {"aspect":"integration.github","value":"on","origin":"team","choices":["on"]},
+                                  {"aspect":"provider.speech","value":"off","origin":"project","choices":["off"]}]}
+                                """, PlanSettingsUpdateResult.applied(8));
+            script("2\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("role.planning"), text);
+            assertTrue(text.contains("from the machine"), text);
+            assertFalse(text.contains("integration.github"), text);
+            assertFalse(text.contains("provider.speech"), text);
+        }
+    }
+
     @Test
     @DisplayName("every client call is fail-closed on a refused response")
     void clientRefusals() throws Exception {
