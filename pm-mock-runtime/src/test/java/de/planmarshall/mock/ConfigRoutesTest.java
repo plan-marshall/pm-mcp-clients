@@ -172,11 +172,13 @@ class ConfigRoutesTest {
             for (int step = 0; step < 8 && !"settings.choose".equals(next); step++) {
                 var state = scenario.state(next);
                 assertNotNull(state, next);
-                var onward = state.links().entrySet().stream()
-                                    .filter(entry -> !"back".equals(entry.getKey()))
-                                    .map(entry -> entry.getValue().next())
-                                    .findFirst()
-                                    .orElse(null);
+                String onward = null;
+                for (var entry : state.links().entrySet()) {
+                    if (!"back".equals(entry.getKey())) {
+                        onward = entry.getValue().next();
+                        break;
+                    }
+                }
                 assertNotNull(onward, next);
                 next = onward;
             }

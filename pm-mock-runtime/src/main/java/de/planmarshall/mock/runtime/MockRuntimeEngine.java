@@ -1868,7 +1868,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static final List<String> LIVE_DOMAIN_PREFIXES = List.of(
             "/api/v1/reports",
-            "/api/v1/plans",
+            PATH_PLANS,
             PATH_EPICS,
             "/api/v1/entries",
             PATH_PROJECTS,
@@ -7116,12 +7116,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             @Nullable Integer expiresInDays, boolean expired) {
         var map = new LinkedHashMap<String, Object>();
         map.put("key", key);
-        map.put("provider", provider);
+        map.put(KEY_PROVIDER, provider);
         map.put("kind", kind);
         if (expiresInDays != null) {
-            map.put("expires_in_days", expiresInDays);
+            map.put(KEY_EXPIRES_IN_DAYS, expiresInDays);
         }
-        map.put("expired", expired);
+        map.put(KEY_EXPIRED, expired);
         return map;
     }
 
@@ -7614,8 +7614,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (value != null && !value.isBlank()) {
                     credential.put("kind", value);
                 }
-                credential.remove("expires_in_days");
-                credential.put("expired", false);
+                credential.remove(KEY_EXPIRES_IN_DAYS);
+                credential.put(KEY_EXPIRED, false);
                 credential.put("rotated", true);
                 return;
             }

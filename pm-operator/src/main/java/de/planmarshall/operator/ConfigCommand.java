@@ -540,7 +540,7 @@ public final class ConfigCommand implements Callable<Integer> {
         String text;
         if (credential.expired()) {
             text = MessageCatalogue.format(locale, "operator.settings.tokens.expired",
-                                Map.of("count", credential.heldPlan() != null ? 1 : 0));
+                                Map.of(COUNT, credential.heldPlan() != null ? 1 : 0));
         } else if (credential.expiresInDays() != null) {
             text = MessageCatalogue.format(locale, "operator.settings.tokens.expires",
                                 Map.of("days", credential.expiresInDays()));
@@ -1309,7 +1309,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("PUT", MACHINE_SETTINGS_PATH, request.toJson()));
             if (response.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.consents.withdrawn", Map.of("count", 1)));
+                out.println(MessageCatalogue.format(locale, "operator.consents.withdrawn", Map.of(COUNT, 1)));
                 out.flush();
                 return 0;
             }
@@ -1327,9 +1327,9 @@ public final class ConfigCommand implements Callable<Integer> {
         private boolean confirm(PrintWriter out, String locale) throws IOException {
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
+                var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
                 out.flush();
-                return line == null || !"k".equalsIgnoreCase(line.trim());
+                return line == null || !KEEP.equalsIgnoreCase(line.trim());
             }
         }
 
@@ -1447,7 +1447,7 @@ public final class ConfigCommand implements Callable<Integer> {
                     var retry = new MachineSettingsUpdateRequest("documents_mode", value, conflict.revision());
                     response = context.runtime(true).send(HttpRequest.json("PUT", MACHINE_SETTINGS_PATH, retry.toJson()));
                 } else {
-                    out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
+                    out.println(MessageCatalogue.format(locale, NO_SETTING, Map.of()));
                     out.flush();
                     return 0;
                 }

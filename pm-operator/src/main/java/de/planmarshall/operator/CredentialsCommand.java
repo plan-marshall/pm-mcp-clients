@@ -65,6 +65,8 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String STORED = "operator.credentials.stored";
     private static final String FAILED = "operator.credentials.failed";
     private static final String READ_FAILED = "operator.credentials.read_failed";
+    private static final String REASON = "reason";
+    private static final String COUNT = "count";
 
     private final OperatorContext context;
 
@@ -168,7 +170,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 throw new StartPrompt.InterruptException();
             } catch (IOException e) {
                 out.println(MessageCatalogue.format(locale, READ_FAILED,
-                                    Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
+                                    Map.of(REASON, TerminalSanitizer.sanitize(e.getMessage()))));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -204,7 +206,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                         Terminal terminal) throws IOException {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
-            out.println(MessageCatalogue.format(locale, "operator.credentials.failed",
+            out.println(MessageCatalogue.format(locale, FAILED,
                                 Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
@@ -218,7 +220,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             // a body-less 204 is fine
         }
         out.println(MessageCatalogue.format(locale, STORED,
-                            Map.of(KEY, key, "count", dropped)));
+                            Map.of(KEY, key, COUNT, dropped)));
         out.flush();
         return verifyProviders(out, err, key, store, terminal);
     }
@@ -420,7 +422,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             var response = context.runtime(true).send(new HttpRequest("DELETE", path(key), Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.credentials.stored", Map.of(KEY, key, "count", 0)));
+                                    STORED, Map.of(KEY, key, COUNT, 0)));
                 out.flush();
                 return 0;
             }
