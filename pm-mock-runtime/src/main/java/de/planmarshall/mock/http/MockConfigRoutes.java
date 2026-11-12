@@ -125,14 +125,11 @@ public final class MockConfigRoutes {
      * @return the scope that level's value is stored under, or {@code null} for the machine's store
      */
     private static @Nullable String scopeOf(@Nullable String query, ConfigOrigin level) {
-        @Nullable String name;
-        if (level == ConfigOrigin.PLAN) {
-            name = KEY_PLAN;
-        } else if (level == ConfigOrigin.PROJECT) {
-            name = KEY_PROJECT;
-        } else {
-            name = null;
-        }
+        @Nullable String name = switch (level) {
+            case PLAN -> KEY_PLAN;
+            case PROJECT -> KEY_PROJECT;
+            default -> null;
+        };
         if (name == null) {
             return null;
         }
