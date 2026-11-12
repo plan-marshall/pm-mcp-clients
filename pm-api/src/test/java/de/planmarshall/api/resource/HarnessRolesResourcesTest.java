@@ -21,10 +21,19 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -279,6 +288,140 @@ class HarnessRolesResourcesTest {
         assertNull(RoleQualificationState.fromWire("maybe"));
         assertThrows(IllegalArgumentException.class,
                 () -> RoleQualificationState.requireWire("maybe"));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
+    @DisplayName("a narrowed effort refuses a blank category")
+    void narrowedEffortRefusesBlankCategory(String category) {
+        assertThrows(IllegalArgumentException.class, () -> new RoleDetailResource.NarrowedEffort(category, null));
+    }
+
+    @Test
+    @DisplayName("a narrowed effort and a qualification drop a blank text and default absent criteria")
+    void blankTextsAreDropped() {
+        var category = Generators.nonBlankStrings().next();
+
+        var effort = new RoleDetailResource.NarrowedEffort(category, " ");
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.INVALID, " ", null);
+
+        assertAll(
+                () -> assertNull(effort.description()),
+                () -> assertEquals(Map.of("category", category), effort.toMap()),
+                () -> assertNull(qualification.reason()),
+                () -> assertTrue(qualification.criteria().isEmpty()),
+                () -> assertFalse(qualification.toMap().containsKey("reason")));
+    }
+
+    @Test
+    @DisplayName("RoleDetailResource defaults its display name to the role and an absent member to none")
+    void roleDetailDefaults() throws Exception {
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.UNQUALIFIED, null, null);
+
+        var detail = new RoleDetailResource("judge", " ", null, null, null, qualification, null);
+
+        assertAll(
+                () -> assertEquals("judge", detail.displayName()),
+                () -> assertEquals("", detail.description()),
+                () -> assertTrue(detail.advisoryToolSet().isEmpty()),
+                () -> assertTrue(detail.configurationParameters().isEmpty()),
+                () -> assertFalse(detail.toMap().containsKey("narrowed_effort")),
+                () -> assertEquals(detail, RoleDetailResource.fromJson(detail.toJson())));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("javaNumbers")
+    @DisplayName("a Java number given as a parameter becomes its JSON number and survives the wire")
+    void javaNumbersNormalize(String type, Object value, String expected) throws Exception {
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.QUALIFIED, null, null);
+
+        var detail = new RoleDetailResource("judge", null, null, List.of(), null, qualification,
+                Map.of("value", value));
+
+        assertEquals(new JsonNumber(expected), detail.configurationParameters().get("value"), type);
+        assertEquals(detail, RoleDetailResource.fromJson(detail.toJson()), type);
+    }
+
+    static Stream<Arguments> javaNumbers() {
+        var small = Generators.integers(1, 100).next();
+        return Stream.of(
+                Arguments.of("byte", (byte) (int) small, small.toString()),
+                Arguments.of("short", (short) (int) small, small.toString()),
+                Arguments.of("long", (long) small, small.toString()),
+                Arguments.of("float", (float) small, small + ".0"),
+                Arguments.of("double", (double) small, small + ".0"),
+                Arguments.of("big decimal", new BigDecimal(BigInteger.valueOf(small), -2), small + "00"),
+                Arguments.of("big integer", BigInteger.valueOf(small), small.toString()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    @DisplayName("a parameter that is no finite number is refused, as a double and as a float")
+    void nonFiniteNumbersRefused(double value) {
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.QUALIFIED, null, null);
+        var asDouble = Map.<String, Object>of("value", value);
+        var asFloat = Map.<String, Object>of("value", (float) value);
+
+        assertThrows(IllegalArgumentException.class, () -> new RoleDetailResource("judge", null, null,
+                List.of(), null, qualification, asDouble));
+        assertThrows(IllegalArgumentException.class, () -> new RoleDetailResource("judge", null, null,
+                List.of(), null, qualification, asFloat));
+    }
+
+    @Test
+    @DisplayName("nested parameters are normalized throughout and a null parameter stays JSON null")
+    void nestedParametersNormalize() throws Exception {
+        var count = Generators.integers(0, 100).next();
+        var parameters = new LinkedHashMap<String, Object>();
+        parameters.put("limits", Map.of("count", count));
+        parameters.put("sizes", List.of(count, (long) count));
+        parameters.put("enabled", Boolean.TRUE);
+        parameters.put("unset", null);
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.QUALIFIED, null, null);
+
+        var detail = new RoleDetailResource("judge", null, null, List.of(), null, qualification, parameters);
+
+        var number = JsonNumber.of(count);
+        assertAll(
+                () -> assertEquals(Map.of("count", number), detail.configurationParameters().get("limits")),
+                () -> assertEquals(List.of(number, number), detail.configurationParameters().get("sizes")),
+                () -> assertEquals(Boolean.TRUE, detail.configurationParameters().get("enabled")),
+                () -> assertTrue(detail.configurationParameters().containsKey("unset")),
+                () -> assertNull(detail.configurationParameters().get("unset")),
+                () -> assertTrue(detail.toJson().contains("\"unset\":null")));
+    }
+
+    @Test
+    @DisplayName("RoleDetailResource reads a narrowed effort object by its category or its effort alias")
+    void narrowedEffortObjectForms() throws Exception {
+        var description = Generators.nonBlankStrings().next();
+
+        var byCategory = RoleDetailResource.fromMap(Map.of("role", "judge",
+                "narrowed_effort", Map.of("category", "high", "description", description)));
+        var byAlias = RoleDetailResource.fromMap(Map.of("role", "judge",
+                "narrowed_effort", Map.of("effort", "low")));
+
+        assertAll(
+                () -> assertEquals(new RoleDetailResource.NarrowedEffort("high", description),
+                        byCategory.narrowedEffort()),
+                () -> assertEquals(new RoleDetailResource.NarrowedEffort("low", null), byAlias.narrowedEffort()));
+    }
+
+    @Test
+    @DisplayName("RoleDetailResource reads a blank qualification as unqualified and refuses malformed members")
+    void roleDetailWireForms() throws Exception {
+        var blank = RoleDetailResource.fromMap(Map.of("role", "judge", "qualification", ""));
+
+        assertEquals(RoleQualificationState.UNQUALIFIED, blank.qualification().state());
+        assertAll(
+                () -> assertThrows(JsonFormatException.class, () -> RoleDetailResource.fromMap(Map.of(
+                        "role", "judge", "narrowed_effort", Map.of("description", "x")))),
+                () -> assertThrows(JsonFormatException.class, () -> RoleDetailResource.fromMap(Map.of(
+                        "role", "judge", "narrowed_effort", 3))),
+                () -> assertThrows(JsonFormatException.class, () -> RoleDetailResource.fromMap(Map.of(
+                        "role", "judge", "qualification", 3))),
+                () -> assertThrows(JsonFormatException.class, () -> RoleDetailResource.fromMap(Map.of())));
     }
 
     private static <T> T readStreaming(String json, ParserReader<T> reader) throws IOException {
