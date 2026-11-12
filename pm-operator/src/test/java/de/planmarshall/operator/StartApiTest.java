@@ -93,15 +93,20 @@ class StartApiTest {
     }
 
     @Test
-    @DisplayName("chat turn, proposal, and end report a refusal")
+    @DisplayName("the entry chat's open, turn, proposal answer, and end report a refusal")
     void chatRefused() throws Exception {
         serve(failure(409, "{\"message\":\"no chat\"}"));
         assertAll(
                             () -> assertThrows(StartApi.StartActException.class,
-                                                () -> api.chatTurn("ent-1", "hello")),
+                                                () -> api.openEntryChat("ent-1")),
                             () -> assertThrows(StartApi.StartActException.class,
-                                                () -> api.chatProposal("ent-1", true)),
-                            () -> assertThrows(OperatorRefusedException.class, () -> api.endChat("ent-1")));
+                                                () -> api.entryChatTurn("ent-1", "hello")),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.answerEntryChatProposal("ent-1", "T-1", true)),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.answerEntryChatProposal("ent-1", "T-1", false)),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.endEntryChat("ent-1")));
     }
 
     @Test

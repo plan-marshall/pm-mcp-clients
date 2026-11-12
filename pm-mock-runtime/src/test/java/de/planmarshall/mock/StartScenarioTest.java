@@ -820,12 +820,17 @@ class StartScenarioTest {
         }
 
         @Test
-        @DisplayName("an abandoned entry answers without a chat member")
-        void abandonCarriesNoChat() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.chat"))) {
+        @DisplayName("abandoning the entry ends its routed chat, and the entry answers without a chat member")
+        void abandonEndsTheChat() throws Exception {
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
+                         .timing(MockTiming.ORDERED).build())) {
+                assertNotEquals(ChatStatus.END, entryChat(runtime).state(), "the chat is open before the act");
+
                 var abandoned = post(runtime, "/api/v1/entries/" + ENTRY_ID + "/links/abandon", "{}");
+
                 assertEquals(200, abandoned.status());
                 assertNull(StartStateResource.fromJson(abandoned.bodyText()).chat());
+                assertEquals(ChatStatus.END, entryChat(runtime).state());
             }
         }
 

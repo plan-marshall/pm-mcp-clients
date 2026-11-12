@@ -1360,13 +1360,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1408,10 +1401,6 @@
           "next": "start.chat"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.chat"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.chat"
         },
@@ -1580,13 +1569,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1640,10 +1622,6 @@
           "next": "start.documents"
         },
         "remove:src-docs-5": {
-          "method": "POST",
-          "next": "start.documents"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.documents"
         },
@@ -1746,13 +1724,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1794,10 +1765,6 @@
           "next": "start.entry-continue"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.entry-continue"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.entry-continue"
         },
@@ -2115,13 +2082,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -2163,10 +2123,6 @@
           "next": "start.follow-up"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.follow-up"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.follow-up"
         },
@@ -2463,13 +2419,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -2503,10 +2452,6 @@
           "next": "start.lesson"
         },
         "remove:src-lesson-3": {
-          "method": "POST",
-          "next": "start.lesson"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.lesson"
         },
@@ -3626,13 +3571,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -3662,10 +3600,6 @@
           "next": "start.unscreened"
         },
         "remove:src-pr-1": {
-          "method": "POST",
-          "next": "start.unscreened"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.unscreened"
         },

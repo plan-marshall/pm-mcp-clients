@@ -14,24 +14,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import de.planmarshall.api.control.ChatProposalResource;
-import de.planmarshall.api.control.ChatTurnResource;
+import de.planmarshall.api.chat.ChatProposal;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatTurn;
+import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
-import de.planmarshall.api.start.StartChatResource;
-import de.planmarshall.api.start.StartStateResource;
 
 /**
  * The one chat dialogue of the terminal client (design <em>Starting Work</em>, chatting about the
  * request): its scope is the entry, its role is routed by the kind, and its one change is the
- * description, read back against the old one and stored only on <em>Accept</em>. An empty line ends
- * the chat; the entry then goes on as before.
+ * description, read back against the old one and stored only on <em>Accept</em>. The chat is the
+ * entry's chat resource, opened and read through the entry's chat routes. An empty line ends the
+ * chat; the entry then goes on as before.
  */
 final class ChatDialogue {
 
     private static final String KEY_TEXT = "text";
     private static final String KEY_STORED = "start.chat.stored";
     private static final String KEY_ENDED = "start.chat.ended";
+    private static final String STATE_SOURCES = "start.sources";
+    private static final String KEY_OPEN = "start.chat.open";
 
     private final StartApi api;
     private final StartPrompt prompt;
@@ -55,45 +58,45 @@ final class ChatDialogue {
     /**
      * Runs the chat until the operator ends it.
      *
-     * @param state the entry's state after the chat was opened
-     * @return the entry's state after the chat ended
+     * @param entryId the entry the chat is about
+     * @param opened  the entry's chat as the open answered it
      * @throws IOException on transport failure
      */
-    StartStateResource run(StartStateResource state) throws IOException {
-        var entry = state.entry();
-        if (entry == null || state.chat() == null) {
-            return state;
-        }
-        var chat = Objects.requireNonNull(state.chat(), "chat");
+    void run(String entryId, ChatResource opened) throws IOException {
+        var chat = opened;
         prompt.raw(heading(chat));
         renderTurns(chat.turns());
-        StartStateResource current;
         while (true) {
-            var answer = prompt.askInline(text("start.chat.prompt", Map.of()), "start.sources",
-                                text("start.chat.open", Map.of()), entry.entryId());
+            var proposal = chat.proposal();
+            if (proposal != null && proposal.isOpen()) {
+                chat = readBack(entryId, chat, proposal);
+            }
+            var answer = prompt.askInline(text("start.chat.prompt", Map.of()), STATE_SOURCES,
+                                text(KEY_OPEN, Map.of()), entryId);
             if (answer.isEmpty()) {
-                current = api.endChat(entry.entryId());
+                endChat(entryId);
                 prompt.raw(text(KEY_ENDED, Map.of()));
-                return current;
+                return;
             }
             try {
-                current = api.chatTurn(entry.entryId(), answer);
+                chat = api.entryChatTurn(entryId, answer);
+                renderTurns(chat.turns());
             } catch (StartApi.StartActException e) {
                 prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
-                continue;
-            }
-            var updated = current.chat();
-            if (updated != null) {
-                renderTurns(updated.turns());
-                if (updated.proposal() != null) {
-                    readBack(current, Objects.requireNonNull(updated.proposal()));
-                }
             }
         }
     }
 
-    private void readBack(StartStateResource state, ChatProposalResource proposal)
-                        throws IOException {
+    /** Ends the chat; a chat the runtime has ended meanwhile is ended already. */
+    private void endChat(String entryId) throws IOException {
+        try {
+            api.endEntryChat(entryId);
+        } catch (StartApi.StartActException _) {
+            // The chat ended meanwhile, with the entry's create or another device's end.
+        }
+    }
+
+    private ChatResource readBack(String entryId, ChatResource chat, ChatProposal proposal) throws IOException {
         prompt.raw(text("start.chat.proposal", Map.of("summary",
                             TerminalSanitizer.sanitizeLine(proposal.summary()))));
         if (proposal.before() != null) {
@@ -104,41 +107,44 @@ final class ChatDialogue {
             prompt.raw(text("start.chat.after", Map.of("after",
                                 TerminalSanitizer.sanitizeLine(proposal.after()))));
         }
-        var answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), "start.sources",
-                            text("start.chat.open", Map.of()), state.entryId());
+        var answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), STATE_SOURCES,
+                            text(KEY_OPEN, Map.of()), entryId);
         var accept = answer.isEmpty();
         if (!accept && !"r".equalsIgnoreCase(answer)) {
-            return;
+            return chat;
         }
         try {
-            var updated = api.chatProposal(state.entryId(), accept);
+            var answered = api.answerEntryChatProposal(entryId, proposal.turnId(), accept);
             if (accept) {
                 prompt.raw(text(KEY_STORED, Map.of()));
             }
-            var chat = updated.chat();
-            if (chat != null) {
-                renderTurns(chat.turns());
-            }
+            renderTurns(answered.turns());
+            return answered;
         } catch (StartApi.StartActException e) {
             prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
+            return chat;
         }
     }
 
-    private String heading(StartChatResource chat) {
+    private String heading(ChatResource chat) {
         var subject = text("start.chat.subject_new", Map.of("kind", kind.wireValue(), "project", project));
         return text("start.chat.heading", Map.of("subject", subject,
-                            "role", TerminalSanitizer.sanitizeLine(chat.role().value())));
+                            "role", TerminalSanitizer.sanitizeLine(chat.role().name())));
     }
 
-    private void renderTurns(List<ChatTurnResource> turns) {
+    /** Renders the messages of the transcript not shown yet; a proposal is read back on its own. */
+    private void renderTurns(List<ChatTurn> turns) {
         for (int index = seenTurns; index < turns.size(); index++) {
             var turn = turns.get(index);
+            if (turn.kind() == TurnKind.PROPOSAL) {
+                continue;
+            }
             var text = TerminalSanitizer.sanitizeLine(turn.text());
             if (turn.isOperator()) {
                 prompt.raw(text("start.chat.you_line", Map.of(KEY_TEXT, text)));
             } else {
                 prompt.raw(text("start.chat.role_line", Map.of("role",
-                                    TerminalSanitizer.sanitizeLine(turn.role()), KEY_TEXT, text)));
+                                    TerminalSanitizer.sanitizeLine(turn.author()), KEY_TEXT, text)));
             }
         }
         seenTurns = turns.size();

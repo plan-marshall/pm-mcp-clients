@@ -637,11 +637,12 @@ final class StartRegistry {
      *
      * @param subjectId the ended plan or epic
      * @param text      the accepted description, {@code null} or blank read as none
-     * @return {@code true} if the subject is ended work and the entry was opened
+     * @return {@code true} if the subject is ended work of a seeded project and the entry was opened
      */
     synchronized boolean openFollowUp(String subjectId, @Nullable String text) {
         var ended = endedWork.get(subjectId);
-        if (ended == null) {
+        // A project the state does not seed has no landing; a start there is one open() refuses too.
+        if (ended == null || !projectLandings.containsKey(ended.projectId())) {
             return false;
         }
         var projectId = ended.projectId();

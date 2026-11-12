@@ -14,9 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.chat.ProposalAnswerRequest;
 import de.planmarshall.api.decomposition.DecompositionCommitResult;
 import de.planmarshall.api.decomposition.DecompositionInstructRequest;
 import de.planmarshall.api.decomposition.EpicDecomposition;
@@ -37,15 +43,11 @@ final class StartApi {
     private static final String PROJECTS = "/api/v1/projects/";
     private static final String ENTRIES = "/api/v1/entries/";
     private static final String LINKS = "/links/";
-    private static final String CHAT_TURNS = "/chat/turns";
-    private static final String CHAT_END = "/chat/end";
-    private static final String CHAT_PROPOSAL_ACCEPT = "/chat/proposal/accept";
-    private static final String CHAT_PROPOSAL_REJECT = "/chat/proposal/reject";
+    private static final String CHAT = "chat";
     private static final String RECIPES = "/api/v1/recipes";
     private static final String DECOMPOSITION = "/decomposition";
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_RECIPES = "recipes";
-    private static final String KEY_TEXT = "text";
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
     private final OperatorContext context;
@@ -105,53 +107,70 @@ final class StartApi {
     }
 
     /**
-     * Sends one chat turn.
+     * Opens the entry's chat through the entry's chat route; a chat already open is answered as it is.
      *
      * @param entryId the entry
-     * @param text    the operator's message
-     * @return the entry's new state
+     * @return the entry's chat
      * @throws IOException       on transport failure
-     * @throws StartActException if the runtime refuses the turn
+     * @throws StartActException if the runtime refuses the chat
      */
-    StartStateResource chatTurn(String entryId, String text) throws IOException {
-        var response = send(HttpRequest.json("POST",
-                            ENTRIES + OperatorUrlUtil.encodePathSegment(entryId) + CHAT_TURNS,
-                            JsonTree.write(Map.of(KEY_TEXT, text))));
-        if (response.status() == 200) {
-            return StartStateResource.fromJson(response.bodyText());
-        }
-        throw new StartActException("chat", messageOf(response));
+    ChatResource openEntryChat(String entryId) throws IOException {
+        return chat(send(HttpRequest.json("POST", ChatRoutes.entry(entryId).chat(), "")));
     }
 
     /**
-     * Accepts or rejects the one proposal of the chat.
+     * Sends one message of the operator; the runtime takes it at once and the role answers after it,
+     * so the chat is read again once the message is taken.
      *
      * @param entryId the entry
-     * @param accept  whether the proposal is accepted
-     * @return the entry's new state
+     * @param text    the operator's message
+     * @return the entry's chat after the message
      * @throws IOException       on transport failure
-     * @throws StartActException if the runtime refuses the act
+     * @throws StartActException if the runtime refuses the message
      */
-    StartStateResource chatProposal(String entryId, boolean accept) throws IOException {
-        var suffix = accept ? CHAT_PROPOSAL_ACCEPT : CHAT_PROPOSAL_REJECT;
-        var response = send(HttpRequest.json("POST",
-                            ENTRIES + OperatorUrlUtil.encodePathSegment(entryId) + suffix, "{}"));
-        if (response.status() == 200) {
-            return StartStateResource.fromJson(response.bodyText());
+    ChatResource entryChatTurn(String entryId, String text) throws IOException {
+        var routes = ChatRoutes.entry(entryId);
+        var request = new ChatTurnRequest(text, UUID.randomUUID().toString());
+        var response = send(HttpRequest.json("POST", routes.turns(), request.toJson()));
+        if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
+            throw new StartActException(CHAT, messageOf(response));
         }
-        throw new StartActException("chat", messageOf(response));
+        return chat(send(HttpRequest.get(routes.chat())));
+    }
+
+    /**
+     * Accepts or rejects the chat's open proposal.
+     *
+     * @param entryId the entry
+     * @param turnId  the proposal's turn
+     * @param accept  whether the proposal is accepted
+     * @return the entry's chat after the answer
+     * @throws IOException       on transport failure
+     * @throws StartActException if the runtime refuses the answer
+     */
+    ChatResource answerEntryChatProposal(String entryId, String turnId, boolean accept) throws IOException {
+        var routes = ChatRoutes.entry(entryId);
+        return chat(send(HttpRequest.json("POST", accept ? routes.accept() : routes.reject(),
+                            new ProposalAnswerRequest(turnId).toJson())));
     }
 
     /**
      * Ends the chat, keeping its transcript with the entry.
      *
      * @param entryId the entry
-     * @return the entry's new state
-     * @throws IOException on transport failure
+     * @return the ended chat
+     * @throws IOException       on transport failure
+     * @throws StartActException if the chat has ended already
      */
-    StartStateResource endChat(String entryId) throws IOException {
-        return state(send(HttpRequest.json("POST",
-                            ENTRIES + OperatorUrlUtil.encodePathSegment(entryId) + CHAT_END, "{}")), "chat");
+    ChatResource endEntryChat(String entryId) throws IOException {
+        return chat(send(HttpRequest.json("POST", ChatRoutes.entry(entryId).end(), "")));
+    }
+
+    private static ChatResource chat(HttpResponse response) throws IOException {
+        if (response.status() == 200 || response.status() == 201) {
+            return ChatResource.fromJson(response.bodyText());
+        }
+        throw new StartActException(CHAT, messageOf(response));
     }
 
     /**

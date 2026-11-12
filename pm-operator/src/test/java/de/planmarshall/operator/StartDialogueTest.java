@@ -21,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -36,9 +38,13 @@ import org.junit.jupiter.api.Test;
  * an epic with its decomposition, and the start chat announced as unavailable before a source is stored.
  */
 @DisplayName("starting dialogue")
+@EnableGeneratorController
 class StartDialogueTest {
 
     private static final String PROJECT = "pm-mcp-clients";
+    /** The state whose entry has a stored description and a seeded chat with an open proposal. */
+    private static final String START_CHAT = StandardScenarios.PROJECTS_AND_START + "#start.chat";
+    private static final String CHAT_ENTRY = "ent-3f9a2c41";
 
     @Test
     @DisplayName("plan add applies its arguments and starts without asking")
@@ -394,6 +400,33 @@ class StartDialogueTest {
                             "plan", "add", "--project", PROJECT);
         assertAll(
                             () -> assertTrue(rendered.contains("Chat is not available yet"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("h opens the entry's chat on its chat route and reads its transcript")
+    void chatOpensAndReads() throws Exception {
+        var rendered = run(START_CHAT, "h\nx\n\nq\n",
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        assertAll(
+                            () -> assertTrue(rendered.contains("What did you understand, and what is unclear?"),
+                                                rendered),
+                            () -> assertTrue(rendered.contains("A provider that reads Codeberg issues"), rendered),
+                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a message in the entry's chat is taken and the role's reply is read with it")
+    void chatSendsAMessage() throws Exception {
+        var message = Generators.letterStrings(8, 16).next();
+        var rendered = run(START_CHAT, String.join("\n", "h", "x", message, "x", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var echoed = rendered.indexOf(message);
+        assertAll(
+                            () -> assertTrue(echoed >= 0, rendered),
+                            () -> assertTrue(rendered.indexOf("refine", echoed) > echoed,
+                                                "the role answers after the message: " + rendered),
                             () -> assertTrue(rendered.contains("Left the start"), rendered));
     }
 

@@ -353,6 +353,25 @@ class ChatProposalsTest {
         }
 
         @Test
+        @DisplayName("logs a follow-up plan it cannot open because the ended work's project is not seeded")
+        void followUpInUnseededProject() throws Exception {
+            var planId = id();
+            var routes = ChatRoutes.endedPlan(planId);
+            try (var runtime = ordered(FOLLOW_UP_STATE)) {
+                endAtRunTime(runtime, Map.of(KEY_PLAN_ID, planId, KEY_OUTCOME, "merged", KEY_SCOPE,
+                        Map.of(KEY_KIND, "plan", KEY_ID, planId, KEY_PROJECT_ID, "p-" + id())));
+                openChat(runtime, routes);
+                var proposal = proposeAt(runtime, routes, 2, ProposalKind.FOLLOW_UP);
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(404, get(runtime, ENTRIES + FOLLOW_UP_ENTRY).status(), "no start was opened");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+
+        @Test
         @DisplayName("logs a change to the rows of an epic that has no decomposition")
         void rowsOfEpicWithoutDecomposition() throws Exception {
             var routes = ChatRoutes.epic(id());
