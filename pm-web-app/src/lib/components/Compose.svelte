@@ -72,6 +72,9 @@
     footer,
   }: Props = $props();
 
+  /** The legacy `keyCode` a browser reports for a key press that belongs to an input method. */
+  const IME_KEY_CODE = 229;
+
   const fieldId = uniqueId('compose-field');
 
   let field: HTMLTextAreaElement | undefined = $state();
@@ -119,7 +122,9 @@
 
   /** @param event a key press in the field */
   function onkeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || composing) {
+    // Safari delivers the confirming `Enter` after `compositionend` with `isComposing` already false;
+    // it still marks that keydown with the legacy key code 229.
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === IME_KEY_CODE || composing) {
       return;
     }
     event.preventDefault();

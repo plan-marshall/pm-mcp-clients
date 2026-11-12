@@ -65,16 +65,27 @@ describe('Compose', () => {
       expect(notPrevented).toBe(true);
     });
 
-    it('sends nothing while a composition is open, and sends again once it has ended', async () => {
+    it('sends nothing while a composition is open, and sends again on an ordinary Enter once it has ended', async () => {
       const { field, onsend } = renderCompose({ value: 'Diktat' });
 
       await fireEvent.compositionStart(field);
-      await fireEvent.keyDown(field, { key: 'Enter' });
+      await fireEvent.keyDown(field, { key: 'Enter', keyCode: 13 });
       expect(onsend).not.toHaveBeenCalled();
 
       await fireEvent.compositionEnd(field);
-      await fireEvent.keyDown(field, { key: 'Enter' });
+      await fireEvent.keyDown(field, { key: 'Enter', keyCode: 13, isComposing: false });
       expect(onsend).toHaveBeenCalledExactlyOnceWith('Diktat');
+    });
+
+    it('sends nothing on the Enter Safari delivers after the composition ended, marked by keyCode 229', async () => {
+      const { field, onsend } = renderCompose({ value: 'にほんご' });
+
+      await fireEvent.compositionStart(field);
+      await fireEvent.compositionEnd(field);
+      const notPrevented = await fireEvent.keyDown(field, { key: 'Enter', keyCode: 229, isComposing: false });
+
+      expect(onsend).not.toHaveBeenCalled();
+      expect(notPrevented).toBe(true);
     });
 
     it('sends the typed text through the send act', async () => {
