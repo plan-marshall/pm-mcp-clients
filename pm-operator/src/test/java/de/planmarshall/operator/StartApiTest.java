@@ -180,6 +180,28 @@ class StartApiTest {
     }
 
     @Test
+    @DisplayName("the page before a turn is read on the entry chat's page route, and a refusal is reported")
+    void entryChatPageReadsBeforeTheTurn() throws Exception {
+        var turnId = "T-" + Generators.integers(1, 9999).next();
+        var text = Generators.letterStrings(8, 24).next();
+        var read = new CopyOnWriteArrayList<String>();
+        serve((request, response) -> {
+            read.add(request.method() + " " + request.target());
+            if (read.size() == 1) {
+                response.json(200, chatJson(CHAT_TURN, "complete", text));
+            } else {
+                response.json(409, "{\"message\":\"no chat\"}");
+            }
+        });
+        var page = api.entryChatPage(ENTRY, turnId);
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.entryChatPage(ENTRY, turnId));
+        assertAll(
+                            () -> assertEquals("GET " + ChatRoutes.entry(ENTRY).page(turnId), read.getFirst()),
+                            () -> assertEquals(text, page.turns().getLast().text()),
+                            () -> assertTrue(refused.getMessage().contains("no chat"), refused.getMessage()));
+    }
+
+    @Test
     @DisplayName("a reply wait reads at least once and pauses no negative time")
     void replyWaitBounds() {
         var negative = Duration.ofMillis(-1);

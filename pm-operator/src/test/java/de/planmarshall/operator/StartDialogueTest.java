@@ -22,11 +22,17 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -34,7 +40,10 @@ import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -47,6 +56,8 @@ import org.junit.jupiter.api.Test;
 class StartDialogueTest {
 
     private static final String PROJECT = "pm-mcp-clients";
+    private static final String LANG = "LANG";
+    private static final String ENGLISH = "en_US.UTF-8";
     /** The state whose entry has a stored description and a seeded chat with an open proposal. */
     private static final String START_CHAT = StandardScenarios.PROJECTS_AND_START + "#start.chat";
     private static final String CHAT_ENTRY = "ent-3f9a2c41";
@@ -221,7 +232,7 @@ class StartDialogueTest {
                                  .timing(MockTiming.ORDERED).build())) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());
-            environment.put("LANG", "en_US.UTF-8");
+            environment.put(LANG, ENGLISH);
             var context = new OperatorContext(environment, runtime.base().getParent(), true);
             var state = new StartApi(context).fetch(entryId);
             var buffer = new StringWriter();
@@ -561,7 +572,7 @@ class StartDialogueTest {
                 assertEquals(200, runtime.client().send(HttpRequest.json("POST", "/mock/inject", failure)).status());
             }
             var environment = new HashMap<>(runtime.environment());
-            environment.put("LANG", "en_US.UTF-8");
+            environment.put(LANG, ENGLISH);
             environment.put("USER", "operator");
             driver.project(environment, runtime.base().getParent());
             if (input == null) {
@@ -581,6 +592,139 @@ class StartDialogueTest {
         Files.writeString(runtime.paths().runtimeRecord(),
                             "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}",
                             StandardCharsets.UTF_8);
+    }
+
+    /**
+     * The start chat dialogue against a runtime stub whose chat serves its transcript in pages of three
+     * turns, so a transcript longer than a page is reached with one message.
+     */
+    @Nested
+    @DisplayName("chat over a paged transcript")
+    class PagedChat {
+
+        private static final String ENTRY = "ent-1";
+        private static final int PAGE = 3;
+        private static final String CHAT_STATE_TURN = "chat.turn";
+
+        private final List<String> transcript = new CopyOnWriteArrayList<>();
+        private RuntimeFixture fixture;
+
+        @BeforeEach
+        void setUp() throws IOException {
+            fixture = RuntimeFixture.create();
+            PmOperatorTest.writeLiveRecord(fixture);
+        }
+
+        @AfterEach
+        void tearDown() throws IOException {
+            fixture.close();
+        }
+
+        @Test
+        @DisplayName("the newest reply is shown when the transcript outgrows a page, and no turn twice")
+        void newestReplyBeyondOnePage() throws Exception {
+            var opening = texts(PAGE);
+            var replies = texts(PAGE + 2);
+            transcript.addAll(opening);
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/turns")) {
+                    transcript.addAll(replies);
+                    response.json(202, "{\"turn_id\":\"T-" + transcript.size() + "\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO),
+                                Generators.letterStrings(8, 16).next() + "\n\n");
+
+            var shown = new ArrayList<>(opening);
+            shown.addAll(replies);
+            assertAll(
+                                () -> assertTrue(rendered.contains(replies.getLast()), "the newest reply: " + rendered),
+                                () -> assertEquals(List.of(), shown.stream()
+                                                    .filter(text -> occurrences(rendered, text) != 1).toList(),
+                                                    "every turn exactly once: " + rendered));
+        }
+
+        @Test
+        @DisplayName("a reply wait that runs out says the terminal stopped waiting and shows nothing written yet")
+        void exhaustedWaitIsSaid() throws Exception {
+            var opening = texts(1);
+            var streaming = texts(1);
+            transcript.addAll(opening);
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/turns")) {
+                    transcript.addAll(streaming);
+                    response.json(202, "{\"turn_id\":\"T-2\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), "chat.reply", true));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(2, Duration.ZERO),
+                                Generators.letterStrings(8, 16).next() + "\n\n");
+
+            assertAll(
+                                () -> assertTrue(rendered.contains("Stopped waiting: refine is still writing."), rendered),
+                                () -> assertFalse(rendered.contains(streaming.getFirst()), rendered),
+                                () -> assertTrue(rendered.contains("The chat has ended."), rendered));
+        }
+
+        private String chat(ChatResource opened, StartApi.ReplyWait wait, String input) throws Exception {
+            try (var driver = TerminalTestDriver.create()) {
+                var environment = new HashMap<>(fixture.environment());
+                environment.put(LANG, ENGLISH);
+                driver.project(environment, fixture.base().getParent());
+                driver.type(input);
+                var prompt = new StartPrompt(driver.context(), driver.writer(), "en", false);
+                new ChatDialogue(new StartApi(driver.context(), wait), prompt, EntryKind.PLAN, PROJECT)
+                                    .run(ENTRY, opened);
+                return driver.render();
+            }
+        }
+
+        private static List<String> texts(int count) {
+            var texts = new ArrayList<String>();
+            for (var i = 0; i < count; i++) {
+                texts.add(Generators.letterStrings(10, 20).next() + "x" + i);
+            }
+            return texts;
+        }
+
+        private static int occurrences(String rendered, String text) {
+            var count = 0;
+            for (var at = rendered.indexOf(text); at >= 0; at = rendered.indexOf(text, at + text.length())) {
+                count++;
+            }
+            return count;
+        }
+
+        /**
+         * The page the target asks for: the newest {@value #PAGE} turns, or with {@code ?before=T-n} the
+         * {@value #PAGE} turns before turn {@code n}; turn {@code n} is the n-th of the transcript.
+         */
+        private String pageOf(String target, String state, boolean lastStreaming) {
+            var marker = target.indexOf("?before=T-");
+            var end = marker < 0 ? transcript.size() : Integer.parseInt(target.substring(marker + 10)) - 1;
+            var start = Math.max(0, end - PAGE);
+            var turns = new ArrayList<String>();
+            for (var i = start; i < end; i++) {
+                var status = lastStreaming && i == transcript.size() - 1 ? "streaming" : "complete";
+                turns.add("""
+                                    {"turn_id":"T-%d","kind":"message","author":"refine","status":"%s",\
+                                    "format":"markdown","untrusted":false,"model":"sonnet","text":"%s","steps":[],\
+                                    "refs":[],"at":"2026-10-19T10:00:05Z"}""".formatted(i + 1, status, transcript.get(i)));
+            }
+            var before = start > 0 ? ",\"before\":\"T-" + (start + 1) + "\"" : "";
+            return """
+                                {"id":"C-1","subject":{"kind":"entry","id":"%s"},\
+                                "role":{"name":"refine","model":"sonnet"},"scope":"entry","state":"%s",\
+                                "context":{"knows":[{"key":"chat.knows.description"}],"as_of":"2026-10-19T10:00:05Z"},\
+                                "turns":[%s]%s}""".formatted(ENTRY, state, String.join(",", turns), before);
+        }
     }
 
     private record Outcome(int code, String rendered, List<MockHttpRequest> requests) {

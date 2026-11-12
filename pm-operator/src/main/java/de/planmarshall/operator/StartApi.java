@@ -163,6 +163,19 @@ final class StartApi {
     }
 
     /**
+     * Reads the page of the entry's chat before a turn ({@code GET …/chat?before=<turn_id>}).
+     *
+     * @param entryId      the entry
+     * @param beforeTurnId the turn the page ends before, as the newer page's {@code before} names it
+     * @return the chat with that page of turns
+     * @throws IOException       on transport failure
+     * @throws StartActException if the runtime refuses the read
+     */
+    ChatResource entryChatPage(String entryId, String beforeTurnId) throws IOException {
+        return chat(send(HttpRequest.get(ChatRoutes.entry(entryId).page(beforeTurnId))));
+    }
+
+    /**
      * @param chat the chat as last read
      * @return {@code true} while the role's reply is written: the chat is in {@code chat.reply} or a
      *         turn is still streaming

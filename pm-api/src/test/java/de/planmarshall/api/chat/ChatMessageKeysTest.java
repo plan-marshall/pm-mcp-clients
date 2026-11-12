@@ -272,7 +272,7 @@ class ChatMessageKeysTest {
         }
 
         @Test
-        @DisplayName("every named point of control.chat.revision_queued is mapped, and one point at most takes"
+        @DisplayName("every named point of control.chat.revision_queued is mapped, and exactly one point takes"
                 + " its other branch")
         void appliesPoints() {
             var branches = selectBranches(controlPack().get(REVISION_QUEUED), ChatMessageKeys.ARG_APPLIES);

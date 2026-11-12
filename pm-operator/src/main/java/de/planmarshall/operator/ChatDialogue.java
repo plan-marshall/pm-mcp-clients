@@ -10,9 +10,11 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatResource;
@@ -36,15 +38,16 @@ final class ChatDialogue {
     private static final String KEY_ENDED = "start.chat.ended";
     private static final String STATE_SOURCES = "start.sources";
     private static final String KEY_OPEN = "start.chat.open";
-    /** The line that says the role is still writing its reply when the wait for it ran out. */
-    private static final String KEY_WORKING = "control.chat.working";
+    /** The line that says the terminal stopped waiting while the role still writes its reply. */
+    private static final String KEY_WAIT_ENDED = "control.chat.wait_ended";
     private static final String KEY_ROLE = "role";
 
     private final StartApi api;
     private final StartPrompt prompt;
     private final EntryKind kind;
     private final String project;
-    private int seenTurns;
+    /** The turn shown last (a proposal counts, it is read back on its own), or {@code null} before any. */
+    private @Nullable String lastShown;
 
     /**
      * @param api     the start contract
@@ -69,7 +72,7 @@ final class ChatDialogue {
     void run(String entryId, ChatResource opened) throws IOException {
         var chat = opened;
         prompt.raw(heading(chat));
-        renderTurns(chat.turns());
+        renderTurns(entryId, chat);
         while (true) {
             var proposal = chat.proposal();
             if (proposal != null && proposal.isOpen()) {
@@ -84,10 +87,10 @@ final class ChatDialogue {
             }
             try {
                 chat = api.entryChatTurn(entryId, answer);
-                renderTurns(chat.turns());
+                renderTurns(entryId, chat);
                 if (StartApi.isWriting(chat)) {
-                    prompt.raw(text(KEY_WORKING, Map.of(KEY_ROLE,
-                                        TerminalSanitizer.sanitizeLine(chat.role().name()), "scope", "entry")));
+                    prompt.raw(text(KEY_WAIT_ENDED, Map.of(KEY_ROLE,
+                                        TerminalSanitizer.sanitizeLine(chat.role().name()))));
                 }
             } catch (StartApi.StartActException e) {
                 prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
@@ -126,7 +129,7 @@ final class ChatDialogue {
             if (accept) {
                 prompt.raw(text(KEY_STORED, Map.of()));
             }
-            renderTurns(answered.turns());
+            renderTurns(entryId, answered);
             return answered;
         } catch (StartApi.StartActException e) {
             prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
@@ -141,16 +144,46 @@ final class ChatDialogue {
     }
 
     /**
-     * Renders the messages of the transcript not shown yet, up to a reply still written: that one and
-     * what follows it are shown once it is written. A proposal is read back on its own.
+     * Renders the messages of the transcript after the turn shown last, up to a reply still written:
+     * that one and what follows it are shown once it is written. A proposal is read back on its own.
      */
-    private void renderTurns(List<ChatTurn> turns) {
-        while (seenTurns < turns.size() && turns.get(seenTurns).status() != TurnStatus.STREAMING) {
-            var turn = turns.get(seenTurns++);
+    private void renderTurns(String entryId, ChatResource chat) throws IOException {
+        for (var turn : unshown(entryId, chat)) {
+            if (turn.status() == TurnStatus.STREAMING) {
+                return;
+            }
+            lastShown = turn.turnId();
             if (turn.kind() != TurnKind.PROPOSAL) {
                 renderTurn(turn);
             }
         }
+    }
+
+    /**
+     * The turns after the turn shown last. The chat holds only the newest page of its transcript; when
+     * that turn has slid off it, the pages before are read back until it is found or the transcript's
+     * start is reached, so no turn is skipped and none is shown twice.
+     */
+    private List<ChatTurn> unshown(String entryId, ChatResource chat) throws IOException {
+        var turns = new ArrayList<>(chat.turns());
+        var before = chat.before();
+        var at = indexOfLastShown(turns);
+        while (at < 0 && lastShown != null && before != null) {
+            var page = api.entryChatPage(entryId, before);
+            turns.addAll(0, page.turns());
+            before = page.before();
+            at = indexOfLastShown(turns);
+        }
+        return turns.subList(at + 1, turns.size());
+    }
+
+    private int indexOfLastShown(List<ChatTurn> turns) {
+        for (var i = turns.size() - 1; i >= 0; i--) {
+            if (turns.get(i).turnId().equals(lastShown)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private void renderTurn(ChatTurn turn) {
