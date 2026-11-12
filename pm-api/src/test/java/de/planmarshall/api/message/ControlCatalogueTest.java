@@ -14,8 +14,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +31,9 @@ import de.planmarshall.api.control.PlanAction;
 
 @DisplayName("ControlCatalogueTest")
 class ControlCatalogueTest {
+
+    private static final Pattern KEY_CELL = Pattern.compile("^\\|`(control\\.[a-z0-9_.]+)`$");
+    private static final String TABLE_DELIMITER = "|===";
 
     @Test
     @DisplayName("should load the control area in English and German with identical key sets")
@@ -37,62 +47,61 @@ class ControlCatalogueTest {
                 "Keys in English and German control message packs must match exactly");
     }
 
-    @Test
-    @DisplayName("should contain all specification keys from work-actions texts")
-    void shouldContainAllSpecificationKeys() {
-        var en = MessageCatalogue.getMessages("en", "control");
-
-        String[] requiredKeys = {
-                "control.actions.title",
-                "control.plan.pause", "control.plan.start", "control.plan.cancel",
-                "control.plan.abandon", "control.plan.chat", "control.plan.settings",
-                "control.plan.state.paused", "control.plan.state.pausing",
-                "control.plan.epic_told", "control.plan.pull_request",
-                "control.pause.title", "control.pause.now", "control.pause.after_task",
-                "control.pause.after_phase", "control.pause.keep_running",
-                "control.end.title", "control.end.what_ends", "control.end.pr_open",
-                "control.end.pr_close", "control.end.pr_leave", "control.end.afterwards",
-                "control.end.keep", "control.end.action",
-                "control.settings.title", "control.settings.group", "control.settings.origin",
-                "control.settings.applies", "control.settings.refused", "control.settings.too_late",
-                "control.settings.epic_told", "control.settings.close", "control.settings.conflict",
-                "control.epic.next", "control.epic.next_none", "control.epic.next_raise",
-                "control.epic.next_leave", "control.epic.scope_full", "control.epic.scope_unknown",
-                "control.epic.next_invalid", "control.epic.auto",
-                "control.epic.auto_already", "control.epic.auto_started", "control.epic.auto_nothing",
-                "control.epic.auto_off_done", "control.epic.overlap", "control.epic.decompose_again",
-                "control.epic.findings_review", "control.epic.watches_review", "control.epic.chat",
-                "control.epic.archive", "control.epic.archive_landing", "control.epic.cancel",
-                "control.archive.title", "control.archive.no_plan_active", "control.archive.rows_ended",
-                "control.archive.open_findings", "control.archive.ledger_landed",
-                "control.archive.completion_reviewed", "control.archive.review_first",
-                "control.archive.carried", "control.archive.review_findings", "control.archive.not_yet",
-                "control.archive.action",
-                "control.cancel_epic.title", "control.cancel_epic.label.plans",
-                "control.cancel_epic.plans_too", "control.cancel_epic.plans_on",
-                "control.cancel_epic.afterwards", "control.cancel_epic.keep", "control.cancel_epic.action",
-                "control.review.title", "control.review.progress", "control.review.statement",
-                "control.review.rules", "control.review.origin", "control.review.proposal",
-                "control.review.untrusted", "control.review.keep_finding", "control.review.keep_watch",
-                "control.review.drop", "control.review.promote", "control.review.edit",
-                "control.review.chat", "control.review.accept_remaining", "control.review.stage",
-                "control.review.back", "control.review.finish",
-                "control.hold.title", "control.hold.cause", "control.hold.tried",
-                "control.hold.resolve", "control.hold.act.retry", "control.hold.act.recycle",
-                "control.hold.act.accept_change", "control.hold.act.end_plan",
-                "control.hold.act.abort_plan", "control.hold.act.cancel_epic",
-                "control.hold.released", "control.hold.still_held", "control.hold.cleared",
-                "common.conflict.changed", "common.conflict.apply_again", "common.conflict.keep"
-        };
-
-        for (String key : requiredKeys) {
-            assertTrue(MessageCatalogue.hasKey("en", key), "Key '" + key + "' must exist in the English pack");
-            assertTrue(MessageCatalogue.hasKey("de", key), "Key '" + key + "' must exist in the German pack");
-            if (key.startsWith("control.")) {
-                assertNotNull(en.get(key), "Value for '" + key + "' must not be null");
-                assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank");
+    /**
+     * The keys of the text table of {@code doc/design/shared/work-actions-texts.adoc#texts}, read from
+     * the repository: every key cell {@code |`control.…`} of the document's first table.
+     */
+    private static List<String> specificationKeys() throws IOException {
+        var basedir = System.getProperty("basedir");
+        var module = basedir != null ? Path.of(basedir) : Path.of("").toAbsolutePath();
+        var document = module.resolve("../doc/design/shared/work-actions-texts.adoc").normalize();
+        var keys = new ArrayList<String>();
+        var inTable = false;
+        for (var line : Files.readAllLines(document, StandardCharsets.UTF_8)) {
+            if (TABLE_DELIMITER.equals(line.strip())) {
+                if (inTable) {
+                    break;
+                }
+                inTable = true;
+            } else if (inTable) {
+                var matcher = KEY_CELL.matcher(line.strip());
+                if (matcher.matches()) {
+                    keys.add(matcher.group(1));
+                }
             }
         }
+        return keys;
+    }
+
+    @Test
+    @DisplayName("should contain every key of the work-actions text table in both packs")
+    void shouldContainAllSpecificationKeys() throws IOException {
+        var en = MessageCatalogue.getMessages("en", "control");
+        var keys = specificationKeys();
+
+        assertTrue(keys.size() > 50, "the text table of work-actions-texts.adoc must be read: " + keys);
+        assertTrue(keys.contains("control.epic.next_invalid"), keys.toString());
+        for (String key : keys) {
+            assertTrue(MessageCatalogue.hasKey("en", key), "Key '" + key + "' must exist in the English pack");
+            assertTrue(MessageCatalogue.hasKey("de", key), "Key '" + key + "' must exist in the German pack");
+            assertNotNull(en.get(key), "Value for '" + key + "' must not be null");
+            assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank");
+        }
+        for (String key : List.of("common.conflict.changed", "common.conflict.apply_again", "common.conflict.keep")) {
+            assertTrue(MessageCatalogue.hasKey("en", key), "Key '" + key + "' must exist in the English pack");
+            assertTrue(MessageCatalogue.hasKey("de", key), "Key '" + key + "' must exist in the German pack");
+        }
+    }
+
+    @Test
+    @DisplayName("should name both answers of the raise question in English and German")
+    void shouldPinTheInvalidRaiseAnswer() {
+        var params = Map.of("raise", "r", "leave", "n");
+
+        assertEquals("Type r to raise the scope or n to leave it.",
+                MessageCatalogue.format("en", "control.epic.next_invalid", params));
+        assertEquals("Tippe r, um den Umfang zu erhöhen, oder n, um es zu lassen.",
+                MessageCatalogue.format("de", "control.epic.next_invalid", params));
     }
 
     @Test
