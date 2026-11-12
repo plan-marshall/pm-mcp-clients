@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Declared inventory of the 22 view targets in `pm-web-app/src/lib/views/`
+ * Declared inventory of the 23 view targets in `pm-web-app/src/lib/views/`
  * (excluding the top-level dispatcher `AppRouter.svelte`).
  */
 export const DECLARED_VIEWS = [
@@ -46,11 +46,30 @@ export const DECLARED_VIEWS = [
   'PairingView',
   'RevokedView',
   'ListenerOffView',
+  'UnreachableView',
   'EpicDecompositionView',
   'DecompositionReviewView',
   'EpicAdoptView',
   'RecipeReadyView',
 ];
+
+/**
+ * Puts the runtime out of reach of a paired page: its status request fails and the app reads the
+ * runtime again, so it shows the page of a runtime that is not reachable.
+ *
+ * @param {import('@playwright/test').Page} page the paired page
+ */
+async function makeRuntimeUnreachable(page) {
+  await page.route(
+    (url) => url.pathname.endsWith('/status'),
+    (route) => route.abort('connectionrefused'),
+  );
+  await page.evaluate(async () => {
+    const { initRuntime } = await import('/src/lib/stores/runtime.ts');
+    await initRuntime();
+  });
+  await expect(page.getByTestId('unreachable-view')).toBeVisible();
+}
 
 /** Tracks views that have been audited during test execution. */
 const AUDIT_CACHE_FILE = path.resolve(__dirname, '../.audited-views.json');
@@ -527,6 +546,17 @@ const GUARD_JOURNEYS = [
     },
   },
   {
+    title: 'runtime not reachable',
+    views: ['UnreachableView'],
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'fully-onboarded', locale);
+    },
+    async walk(page, record) {
+      await makeRuntimeUnreachable(page);
+      await record('UnreachableView');
+    },
+  },
+  {
     title: 'epic decomposition',
     views: ['EpicDecompositionView'],
     async open(page, request, locale) {
@@ -988,6 +1018,15 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await auditView(page, testInfo, { view: 'ListenerOffView', theme, viewport: vp });
         });
 
+        test(`UnreachableView in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
+          await switchScenario(request, 'fully-onboarded');
+          await pair(page, request);
+          await setTheme(page, theme);
+
+          await makeRuntimeUnreachable(page);
+          await auditView(page, testInfo, { view: 'UnreachableView', theme, viewport: vp });
+        });
+
         test(`EpicDecompositionView in ${theme} (${vp.name})`, async ({
           page,
           request,
@@ -1156,9 +1195,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
                   console.log(`[a11y] ${formatA11yViolation(label, violation)}`);
                 }
               }
-              const failures = failing.map((violation) =>
-                formatA11yViolation(label, violation),
-              );
+              const failures = failing.map((violation) => formatA11yViolation(label, violation));
               expect(
                 failures,
                 `serious accessibility issues found:\n${failures.join('\n')}`,
@@ -1173,7 +1210,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
   });
 
   test.describe('Declared View Coverage Guard', () => {
-    test('all 22 declared views in src/lib/views/ are present and were audited', () => {
+    test('all 23 declared views in src/lib/views/ are present and were audited', () => {
       const viewsDir = path.resolve(__dirname, '../../pm-web-app/src/lib/views');
       const viewFiles = fs
         .readdirSync(viewsDir)

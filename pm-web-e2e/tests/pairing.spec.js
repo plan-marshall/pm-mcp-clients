@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
+/** A desktop with enough free height for the hero. */
+const TALL_DESKTOP = { width: 1280, height: 800 };
+
+/** A desktop below the hero's free-height threshold (520 px). */
+const SHORT_DESKTOP = { width: 1280, height: 480 };
+
+/** The phone, where the page carries no hero. */
+const PHONE = { width: 390, height: 844 };
+
 test.describe('Web Client Pairing Flow', () => {
   test.beforeEach(async ({ page, request }) => {
     // A pairing code is single use, so each test starts from a fresh scenario.
@@ -28,13 +37,14 @@ test.describe('Web Client Pairing Flow', () => {
   test('presents the mark, the wordmark, the code and the QR on the pairing page', async ({
     page,
   }) => {
+    await page.setViewportSize(TALL_DESKTOP);
     await page.goto('/pair');
 
-    // The page carries the colour mark at its pairing-page size, beside the visible wordmark.
+    // Beside the hero the page carries the colour mark at 28 px, beside the visible wordmark.
     const pairView = page.getByTestId('pairing-view');
-    const mark = pairView.getByTestId('brand-mark');
+    const mark = page.getByTestId('pairing-mark-28').getByTestId('brand-mark');
     await expect(mark).toBeVisible();
-    await expect(mark).toHaveAttribute('data-size', '64');
+    await expect(mark).toHaveAttribute('data-size', '28');
     await expect(mark).toHaveAttribute('data-rendering', 'colour');
     await expect(pairView.getByText('plan-marshall')).toBeVisible();
 
@@ -54,6 +64,45 @@ test.describe('Web Client Pairing Flow', () => {
     await expect(qr).toBeVisible();
     expect(await qr.locator('svg rect').count()).toBeGreaterThan(20);
   });
+
+  test('shows the welcome hero beside the card with the 28 px mark at 1280 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize(TALL_DESKTOP);
+    await page.goto('/pair');
+
+    const hero = page.getByTestId('pairing-hero').getByTestId('mascot-figure');
+    await expect(hero).toBeVisible();
+    await expect(hero).toHaveAttribute('data-pose', 'welcome');
+    await expect(hero).toHaveAttribute('loading', 'eager');
+    await expect(hero).toHaveAttribute('alt', '');
+    const box = await hero.boundingBox();
+    expect(box?.height).toBeCloseTo(320, 0);
+
+    // The hero stands beside the card, not above or below it.
+    const card = await page.getByTestId('pairing-view').boundingBox();
+    expect(box?.x).toBeGreaterThanOrEqual((card?.x ?? 0) + (card?.width ?? 0));
+
+    await expect(page.getByTestId('pairing-mark-28').getByTestId('brand-mark')).toBeVisible();
+    await expect(page.getByTestId('pairing-mark-64').getByTestId('brand-mark')).toBeHidden();
+  });
+
+  for (const [where, viewport] of [
+    ['on the phone', PHONE],
+    ['below the free-height threshold', SHORT_DESKTOP],
+  ]) {
+    test(`hides the hero and shows the 64 px mark ${where}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/pair');
+
+      await expect(page.getByTestId('pairing-view')).toBeVisible();
+      await expect(page.getByTestId('pairing-hero')).toBeHidden();
+      const large = page.getByTestId('pairing-mark-64').getByTestId('brand-mark');
+      await expect(large).toBeVisible();
+      await expect(large).toHaveAttribute('data-size', '64');
+      await expect(page.getByTestId('pairing-mark-28').getByTestId('brand-mark')).toBeHidden();
+    });
+  }
 
   test('enables pair button and pairs successfully with code', async ({ page }) => {
     await page.goto('/');

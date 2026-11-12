@@ -24,6 +24,9 @@
         <sonar.skip>true</sonar.skip>
         <pm.mock.webPort></pm.mock.webPort>
         <pm.web.port></pm.web.port>
+        <!-- Empty by default: the S12 brand screenshots and the mascot evidence run only on
+             request, with -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS in the Playwright run). -->
+        <pm.e2e.brandShots></pm.e2e.brandShots>
     </properties>
 
     <build>
@@ -124,6 +127,7 @@
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                                 <PM_MOCK_WEB_PORT>${pm.mock.webPort}</PM_MOCK_WEB_PORT>
                                 <PM_WEB_PORT>${pm.web.port}</PM_WEB_PORT>
+                                <PM_E2E_BRAND_SHOTS>${pm.e2e.brandShots}</PM_E2E_BRAND_SHOTS>
                             </environmentVariables>
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
@@ -154,6 +158,17 @@
             </activation>
             <properties>
                 <pm.web.port>${env.PM_WEB_PORT}</pm.web.port>
+            </properties>
+        </profile>
+        <profile>
+            <id>env-brand-shots</id>
+            <activation>
+                <property>
+                    <name>env.PM_E2E_BRAND_SHOTS</name>
+                </property>
+            </activation>
+            <properties>
+                <pm.e2e.brandShots>${env.PM_E2E_BRAND_SHOTS}</pm.e2e.brandShots>
             </properties>
         </profile>
         <profile>
