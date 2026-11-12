@@ -45,6 +45,9 @@ public final class NeedsCommand implements Callable<Integer> {
     @Option(names = "--json", description = "Prints the needs list as JSON.")
     boolean json;
 
+    @Option(names = "--page", description = "The page of the list to print, 1-based.")
+    int page = 1;
+
     NeedsCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
@@ -58,7 +61,7 @@ public final class NeedsCommand implements Callable<Integer> {
     }
 
     Integer executeNeeds(RuntimeSender sender, PrintWriter out, String locale) throws IOException {
-        var response = sender.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
+        var response = sender.send(HttpRequest.get(pagePath()));
         if (response.status() != 200) {
             throw new OperatorRefusedException("needs", response);
         }
@@ -100,8 +103,17 @@ public final class NeedsCommand implements Callable<Integer> {
      */
     private static void printShowMore(PrintWriter out, NeedsOperatorPage page, String locale) {
         if (page.hasOlder()) {
-            out.println(MessageCatalogue.format(locale, "overview.needs.more", Map.of()));
+            // The step is actionable: the next page is one option away, never a silent cut.
+            out.println(MessageCatalogue.format(locale, "overview.needs.more", Map.of())
+                                + "  needs --page " + (page.page() + 1));
         }
+    }
+
+    /**
+     * @return the path of the page this run prints, the base endpoint for page 1
+     */
+    private String pagePath() {
+        return page <= 1 ? MachineApiPaths.NEEDS_OPERATOR : MachineApiPaths.NEEDS_OPERATOR + "?page=" + page;
     }
 
     private void printItem(PrintWriter out, NeedsOperatorItem item, String locale) {

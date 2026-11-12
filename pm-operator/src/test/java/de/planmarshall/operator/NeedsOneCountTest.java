@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachineApiPaths;
@@ -45,7 +46,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Proves "One count" from {@code needs_operator} across the four surfaces (PLAN-36 D3):
@@ -181,13 +182,14 @@ class NeedsOneCountTest {
     }
 
     @ParameterizedTest(name = "{0} raises one notice for the item it adds")
-    @EnumSource(value = NeedsOperatorKind.class,
-                        names = {"CREDENTIAL", "CLEANUP_DUE", "SETUP", "FINDINGS"})
+    @MethodSource("unannouncedKinds")
     @DisplayName("every kind no other event announces is announced by the change")
     void everyUnannouncedKindRaisesOneNotice(NeedsOperatorKind kind) {
         var differ = new NeedsOperatorNotices();
         var link = "/api/v1/items/" + Generators.nonEmptyStrings().next();
-        differ.noticesOf("en", "needs_operator.changed", Map.of("kind", "none", "count", 0));
+        differ.noticesOf("en", "needs_operator.changed",
+                            Map.of("kind", "none", "count", 0,
+                                                "needs_operator", Map.of("count", 0, "items", List.of())));
         var notices = differ.noticesOf("en", "needs_operator.changed",
                             Map.of("kind", "none", "count", 1,
                                                 "needs_operator", Map.of("count", 1,
@@ -198,10 +200,22 @@ class NeedsOneCountTest {
         assertFalse(notices.getFirst().text().isBlank());
     }
 
+    /**
+     * @return the kinds the console announces by a change, taken from the rule's own set so a kind
+     *         added there is tested without editing this list
+     */
+    static Stream<NeedsOperatorKind> unannouncedKinds() {
+        return NeedsOperatorNotices.UNANNOUNCED.stream();
+    }
+
     @Test
     @DisplayName("pushed needs_operator.changed for the machine adds notices for the items it adds")
     void pushedNeedsOperatorChangedNotices() {
         var differ = new NeedsOperatorNotices();
+        // The first summary of a place is its baseline.
+        differ.noticesOf("en", "needs_operator.changed",
+                            Map.of("kind", "none", "count", 0,
+                                                "needs_operator", Map.of("count", 0, "items", List.of())));
         var addition = differ.noticesOf("en", "needs_operator.changed",
                             Map.of("kind", "credential", "count", 1,
                                                 "needs_operator", Map.of("count", 1, "items", List.of(
@@ -222,7 +236,11 @@ class NeedsOneCountTest {
         assertTrue(cleanup.getFirst().text().contains("Cleanup is due"), cleanup.getFirst().text());
 
         // A credential without a key names the catalogue's own word, never an English literal.
-        var noKey = new NeedsOperatorNotices().noticesOf("de", "needs_operator.changed",
+        var noKeyDiffer = new NeedsOperatorNotices();
+        noKeyDiffer.noticesOf("de", "needs_operator.changed",
+                            Map.of("kind", "none", "count", 0,
+                                                "needs_operator", Map.of("count", 0, "items", List.of())));
+        var noKey = noKeyDiffer.noticesOf("de", "needs_operator.changed",
                             Map.of("kind", "credential", "count", 1,
                                                 "needs_operator", Map.of("count", 1, "items", List.of(
                                                                     Map.of("kind", "credential")))));

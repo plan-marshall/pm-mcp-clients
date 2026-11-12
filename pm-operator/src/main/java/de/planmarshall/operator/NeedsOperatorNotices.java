@@ -52,11 +52,13 @@ public final class NeedsOperatorNotices {
     }
 
     /** The kinds no other event announces, so {@code needs_operator.changed} is their only notice. */
-    private static final Set<NeedsOperatorKind> UNANNOUNCED = Set.of(
+    static final Set<NeedsOperatorKind> UNANNOUNCED = Set.of(
                         NeedsOperatorKind.CREDENTIAL,
                         NeedsOperatorKind.CLEANUP_DUE,
                         NeedsOperatorKind.SETUP,
-                        NeedsOperatorKind.FINDINGS);
+                        NeedsOperatorKind.FINDINGS,
+                        // A kind this version does not know: the operator still has to see it wait.
+                        NeedsOperatorKind.OTHER);
 
     private static final String MACHINE = "machine";
 
@@ -88,7 +90,9 @@ public final class NeedsOperatorNotices {
         }
         var previous = lastSeen.put(place, current);
         if (previous == null) {
-            previous = Set.of();
+            // The first summary of a place is the baseline, never an addition: what already waited
+            // when the console started was badged before, so it is announced once only.
+            return List.of();
         }
         for (var item : summary.items()) {
             if (previous.contains(identityOf(item)) || !UNANNOUNCED.contains(item.kind())) {

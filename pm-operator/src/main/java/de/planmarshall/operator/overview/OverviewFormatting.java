@@ -458,7 +458,9 @@ public final class OverviewFormatting {
         if (link != null && link.contains("/decisions/")) {
             return ANSWER_PREFIX + link.substring(link.lastIndexOf('/') + 1);
         }
-        return "answer";
+        // A link to the place the decision belongs to names no decision id: the list of the open
+        // questions is the command that opens it, never a bare `answer` the verb refuses.
+        return "questions";
     }
 
     /**

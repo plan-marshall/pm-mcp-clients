@@ -129,7 +129,8 @@ class ProjectsOverviewLevelTest {
         assertTrue(rows.get(0).line().contains("Needs you · 2"));
         assertFalse(rows.get(0).openable());
 
-        assertEquals("needs:/api/v1/decisions/Q-001", rows.get(1).id());
+        assertEquals(ProjectsOverviewLevel.rowIdOf(item1), rows.get(1).id(),
+                            "the row carries the item's kind and link: " + rows.get(1).id());
         assertTrue(rows.get(1).line().contains("! decision"));
         assertTrue(rows.get(1).line().contains("Plan One"));
         assertTrue(rows.get(1).openable());

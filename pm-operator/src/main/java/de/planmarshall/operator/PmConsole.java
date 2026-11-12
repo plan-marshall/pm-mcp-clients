@@ -699,7 +699,8 @@ public final class PmConsole {
             }
             notifyOperator(reader.getTerminal(), notice.kind(), eventMap, notice.place());
         }
-        if (!notices.isEmpty() || changesWaitingItems(eventName)) {
+        if (!notices.isEmpty() || changesWaitingItems(eventName)
+                            || NeedsOperatorNotices.isNeedsOperatorChanged(eventName, eventMap)) {
             refreshBadges(reader.getTerminal());
         }
         var name = eventName != null ? eventName : "";

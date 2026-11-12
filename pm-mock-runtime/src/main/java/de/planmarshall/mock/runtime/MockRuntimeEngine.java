@@ -125,6 +125,7 @@ import de.planmarshall.api.overview.FindKind;
 import de.planmarshall.api.overview.FindMatch;
 import de.planmarshall.api.overview.FindPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.api.project.BeingAddedProject;
@@ -5762,7 +5763,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         for (var raw : rowsOf(rep, KEY_ITEMS)) {
             var item = JsonTree.asObject(raw);
             if (item != null && item.get(KEY_KIND) instanceof String kind) {
-                kinds.merge(kind, 1, Integer::sum);
+                kinds.merge(NeedsOperatorKind.fromWireOrOther(kind).value(), 1, Integer::sum);
             }
         }
         return new LinkedHashMap<>(kinds);

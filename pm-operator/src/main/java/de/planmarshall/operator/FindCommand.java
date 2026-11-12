@@ -35,6 +35,7 @@ import de.planmarshall.api.overview.FindMatch;
 import de.planmarshall.api.overview.FindPage;
 import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.tui.TuiLayout;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -506,7 +507,8 @@ public final class FindCommand implements Callable<Integer> {
      * search is sent.
      *
      * @param text the field's text
-     * @return the number of terminal cells the character occupied, {@code 0} for an empty text
+     * @return the number of terminal cells the character occupied (a supplementary character can
+     *         be narrower than its two UTF-16 units), {@code 0} for an empty text
      */
     static int removeLastCodePoint(StringBuilder text) {
         if (text.isEmpty()) {
@@ -515,7 +517,7 @@ public final class FindCommand implements Callable<Integer> {
         var codePoint = text.codePointBefore(text.length());
         var chars = Character.charCount(codePoint);
         text.delete(text.length() - chars, text.length());
-        return chars;
+        return TuiLayout.displayWidth(new String(Character.toChars(codePoint)));
     }
 
     private static void endField(Terminal terminal) {

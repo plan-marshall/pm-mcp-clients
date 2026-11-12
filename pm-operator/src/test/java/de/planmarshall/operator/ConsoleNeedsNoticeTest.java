@@ -90,6 +90,8 @@ class ConsoleNeedsNoticeTest {
     @DisplayName("a decrease raises no notice and no bell")
     void decreaseRaisesNoNotice() {
         var console = console();
+        // The first summary of a place is the baseline: what already waited is badged, not announced.
+        console.applyConsoleEvent("needs_operator.changed", machineEvent("none", 0), reader);
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 2,
                             item("credential", "/api/v1/credentials/github"),
                             item("cleanup_due", "/api/v1/system/cleanup")), reader);

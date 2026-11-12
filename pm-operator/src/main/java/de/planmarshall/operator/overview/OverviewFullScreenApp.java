@@ -523,18 +523,33 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
                 explorerRefusal = LoadRefusal.of(locale, response, EXPLORER_LEVEL);
+                keepExplorerRefusal();
                 return;
             }
             var explorer = ProjectExplorer.fromJson(response.bodyText());
             var current = explorerLevel.get();
             boolean byMostUsed = current != null && current.byMostUsed();
-            explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
             explorerRefusal = null;
+            explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
         } catch (IOException failure) {
             explorerRefusal = LoadRefusal.of(locale, failure, EXPLORER_LEVEL);
+            keepExplorerRefusal();
         } catch (IllegalArgumentException failure) {
             explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL);
+            keepExplorerRefusal();
         }
+    }
+
+    /**
+     * Keeps the refusal on the level the sort toggle and a favourite reorder rebuild from: the row
+     * must not vanish while the read still fails.
+     */
+    private void keepExplorerRefusal() {
+        var current = explorerLevel.get();
+        var explorer = current != null ? current.explorer()
+                            : new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
+        explorerLevel.set(new ProjectsExplorerLevel(explorer, current != null && current.byMostUsed(),
+                            explorerRefusal));
     }
 
     void fetchUnreadReports(RuntimeClient runtime) {

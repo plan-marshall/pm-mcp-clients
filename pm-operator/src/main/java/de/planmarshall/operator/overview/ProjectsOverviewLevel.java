@@ -188,7 +188,9 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
      */
     public static String rowIdOf(NeedsOperatorItem item) {
         if (item.link() != null && !item.link().isBlank()) {
-            return NEEDS_ITEM_PREFIX + item.link();
+            // The kind belongs to the identity: a decision and a failed landing can name the same
+            // plan, and two rows must never share an id.
+            return NEEDS_ITEM_PREFIX + item.kind().value() + "|" + item.link();
         }
         var id = new StringBuilder(NEEDS_ITEM_PREFIX).append(item.kind().value());
         if (item.project() != null) {

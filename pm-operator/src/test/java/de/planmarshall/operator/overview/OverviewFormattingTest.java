@@ -321,7 +321,8 @@ class OverviewFormattingTest {
 
         var itemProjDec = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null,
                             new WorkLocation("proj-1", "Proj"), null, null, recent, null);
-        assertEquals("answer", OverviewFormatting.formatNeedsItemCommand(itemProjDec));
+        assertEquals("questions", OverviewFormatting.formatNeedsItemCommand(itemProjDec),
+                            "a link with no decision id opens the list of the open questions");
 
         var itemLandingEpic = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
                             null, new WorkLocation("epic-1", "Epic"), null, recent, null);
