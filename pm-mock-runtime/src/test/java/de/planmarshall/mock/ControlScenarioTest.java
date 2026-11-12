@@ -368,7 +368,7 @@ class ControlScenarioTest {
         void proposalAndTurn() throws Exception {
             // Ordered timing plays the reply to its end before the message's 202 arrives.
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                    .scenario(StandardScenarios.RUNNING_WORK + "#control.chat").timing(MockTiming.ORDERED).build())) {
+                         .scenario(StandardScenarios.RUNNING_WORK + "#control.chat").timing(MockTiming.ORDERED).build())) {
                 var accepted = ChatResource.fromJson(post(runtime,
                         "/api/v1/plans/fix-relay/chat/proposal/accept", PROPOSAL_ANSWER).bodyText());
                 assertEquals(ChatStatus.TURN, accepted.state());
@@ -384,9 +384,10 @@ class ControlScenarioTest {
                 assertEquals(ChatTurnAccepted.HTTP_STATUS, turned.status());
                 var operatorTurnId = ChatTurnAccepted.fromJson(turned.bodyText()).turnId();
 
+                // The role's second reply of the scripted conversation makes a new proposal, a turn of its own.
                 var chat = ChatResource.fromJson(get(runtime, "/api/v1/plans/fix-relay/chat").bodyText());
-                assertEquals(ChatStatus.TURN, chat.state());
-                assertEquals(5, chat.turns().size());
+                assertEquals(ChatStatus.READ_BACK, chat.state());
+                assertEquals(6, chat.turns().size());
                 var operatorTurn = chat.turns().get(3);
                 assertEquals(operatorTurnId, operatorTurn.turnId());
                 assertTrue(operatorTurn.isOperator());

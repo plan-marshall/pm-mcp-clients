@@ -791,15 +791,18 @@ class StartScenarioTest {
         void chatTurnAndCreate() throws Exception {
             // Ordered timing plays the reply to its end before the message's 202 arrives.
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
-                    .timing(MockTiming.ORDERED).build())) {
+                         .timing(MockTiming.ORDERED).build())) {
                 var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
                         Generators.letterStrings(8, 12).next());
                 var turn = post(runtime, ENTRY_CHAT.turns(), message.toJson());
                 assertEquals(ChatTurnAccepted.HTTP_STATUS, turn.status(), turn.bodyText());
                 var chat = entryChat(runtime);
-                assertEquals(5, chat.turns().size());
+                // The role's second reply of the scripted conversation proposes a new description, a turn of
+                // its own that replaces the seeded proposal.
+                assertEquals(6, chat.turns().size());
                 assertEquals(message.text(), chat.turns().get(3).text());
                 assertEquals("refine", chat.turns().get(4).author());
+                assertEquals(chat.turns().get(5).turnId(), Objects.requireNonNull(chat.proposal()).turnId());
 
                 var proposalTurnId = Objects.requireNonNull(chat.proposal()).turnId();
                 var rejected = post(runtime, ENTRY_CHAT.reject(), new ProposalAnswerRequest(proposalTurnId).toJson());

@@ -331,7 +331,7 @@ class ChatReplyEventsTest {
             var question = "Q-" + Generators.letterStrings(4, 8).next();
             var routes = ChatRoutes.planDecision("fix-relay", question);
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                    .initialScenario(withDecisionChat(question)).timing(MockTiming.ORDERED).build());
+                         .initialScenario(withDecisionChat(question)).timing(MockTiming.ORDERED).build());
                  var stream = open(runtime, RUNTIME_EVENTS)) {
                 var chat = read(runtime, routes);
                 assertEquals(ChatStatus.READ_BACK, chat.state());

@@ -137,7 +137,7 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 * `POST /mock/reset`: Resets the active scenario back to its initial `start` state.
 * `POST /mock/scenario`: Switches the active scenario dynamically using a name-based lookup. Accepts a JSON body `{"scenario": "<name>"}` or query parameters `?name=<name>`.
 * `POST /mock/goto/{state}`: Jumps directly to any target state within the active scenario (useful for skipping directly to a specific review or error screen).
-* `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
+* `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients. The body is `{"event": <name>, "data": <payload>}`. A chat event (`chat.*`) plays another device: its `chat_id` names the chat, the event is applied to it and sent on the stream of the chat's subject (see <<chats>>); a chat nobody opened is refused `target_not_found`, a payload its event's `pm-api` record refuses `invalid_arguments`.
 * `POST /mock/pairing`: Returns the currently open pairing code, or issues a fresh one when the previous code was consumed. The development loop has no terminal client to ask for a replacement; the single-use rule is unchanged, so a consumed code never becomes valid again.
 * `GET /mock/acts`: Returns every operator act recorded since the last reset, oldest first, as `{"count": n, "acts": [{"method", "path", "state"}, ...]}`. An act is an authenticated request that is not a read and not a call to the relay's `/mcp` endpoint; one the runtime refuses is recorded as well, so a dialogue test proves what was sent rather than only what the screen says. `POST /mock/reset` and a scenario switch empty the list.
 * `POST /mock/inject`: Arms a chat failure, played once by the next chat request or reply it matches, then the chat is clean again. The body names it as `{"failure": <name>}`; the answer is `{"armed", "pending"}`, and an unknown name, or a member its failure does not take, is refused `invalid_arguments`. The failures:
@@ -149,6 +149,7 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 +
 A scenario state names the same failures under `chat_failures`, armed when the state is entered; an unknown name fails the scenario's load. A scenario switch or a reset disarms what was not played.
 
+[#chats]
 === Chats
 
 Every chat of the mock is served on the routes `ChatRoutes` of `pm-api` builds, below its subject: a plan (`/api/v1/plans/{plan_id}`), an epic (`/api/v1/epics/{epic_id}`), an entry (`/api/v1/entries/{entry_id}`), a decision below each of its scopes (`…/decisions/{question_id}` below a plan, an epic, an entry, `/api/v1/projects/{project_id}/workspace` and `/api/v1/machine`), and ended work, addressed like the running plan or epic and answered with the `archive` scope.
@@ -161,6 +162,26 @@ Every chat of the mock is served on the routes `ChatRoutes` of `pm-api` builds, 
 * `POST …/chat/end`: ends the chat.
 
 The reply plays as `chat.turn.started` (with the model), `chat.turn.progress` per step, `chat.turn.delta` pieces and `chat.turn.completed` on the stream of the chat's subject and on `/api/v1/events`, timed by `--timing`. `chat.ended` names what ended the chat: the operator, a decision chat's carried proposal, the decision answered elsewhere, the subject's end, or the entry's close. The chats of a state are seeded from `facts.runtime.control.chats`, each in the shape `GET …/chat` reads.
+
+==== Scripted Conversations
+
+The role answers every chat from one scripted conversation per subject kind, by how many replies it has written in the chat:
+
+. The first reply shows what a reply can hold after the step `chat.step.read`: a list, a code block, a table, a fenced Mermaid block, and references to a task, a file with its line, a decision and a plan.
+. The second reply reports the steps `chat.step.search` and `chat.step.check` and makes the subject's proposal, a turn of its own announced by `chat.proposal` (`open`): a change to the description in an entry's chat, a revision in a plan's chat (applies after `TASK-4`), a change to the staged rows in an epic's chat, an answer in a decision's chat, and a follow-up plan in the chat of ended work.
+. The third reply is an untrusted turn, plain as every turn from outside the machine; in an epic's chat it proposes a change to the decomposition draft, and the rows proposal still open is `replaced`.
+. Every later reply is a short answer without a proposal.
+
+Accept and reject act, each announced by `chat.proposal`. A revision of a plan is `accepted` and queued for the plan's next task boundary; the queued revision itself and its refusals are not played by the mock. Every other kind is `applied`: an entry's description replaces the entry's description source, a change to an epic's staged rows or draft moves the epic's decomposition on by one revision, and an answer is carried to the decision, which ends the chat (`proposal_carried`). A rejected proposal changes nothing, and a proposal answered once is refused a second answer (`act_not_available`).
+
+==== A Second Device
+
+`POST /mock/broadcast` with a chat event plays what another device did, on the stream of the chat's subject and on `/api/v1/events`:
+
+* `chat.turn.started` of the operator records the message as the chat's next turn;
+* `chat.proposal` answers the chat's open proposal with the state it names, and an applied one changes its subject as above;
+* `chat.ended` ends the chat with the cause it names;
+* every other chat event is sent as it is.
 
 === Testing Usage
 

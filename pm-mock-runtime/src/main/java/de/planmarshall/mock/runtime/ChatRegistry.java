@@ -37,6 +37,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.chat.ChatContext;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatProposal;
+import de.planmarshall.api.chat.ChatProposalEvent;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -57,6 +58,7 @@ import de.planmarshall.api.chat.ProposalState;
 import de.planmarshall.api.chat.RoutedRole;
 import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnKind;
+import de.planmarshall.api.chat.TurnRef;
 import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.event.EventScope;
 import de.planmarshall.api.event.EventScopeKind;
@@ -96,6 +98,16 @@ import de.planmarshall.mock.scenario.StateDefinition.ChatFailure;
  * {@code lost}, {@code too_long}), is stopped or restarted by a replaced worker after its first piece,
  * or the next request of a chat answers with an injected error ({@code http_error}) or late
  * ({@code slow}). A re-seed disarms what was not played.
+ * <p>
+ * The role's replies follow the scripted conversation of {@link ChatScripts}; a reply that makes a
+ * proposal adds the proposal's own turn and announces it by {@code chat.proposal} ({@code open}), and
+ * an older proposal still open is {@code replaced}. Accept and reject act: every answer is announced by
+ * {@code chat.proposal}, a revision of a plan is {@code accepted} (queued for the plan's next task
+ * boundary), every other kind is {@code applied} and, where it changes its subject, reaches the
+ * subject's resource through the hook the registry is built with; a rejected proposal changes nothing,
+ * and a proposal answered once is answered for good. {@code POST /mock/broadcast} of a chat event
+ * ({@link #handleBroadcast}) plays another device: an operator's message, an answered proposal or the
+ * chat's end is applied to the chat and sent on the stream of its subject.
  */
 final class ChatRegistry {
 
@@ -130,13 +142,14 @@ final class ChatRegistry {
     private static final String MACHINE_SCOPE_ID = "machine";
     private static final String KNOWS_PREFIX = "chat.knows.";
     private static final String KNOWS_ARCHIVE = "archive";
-    private static final String STEP_READ = "chat.step.read";
     private static final String CHAT_ID_PREFIX = "chat-";
     private static final String TURN_ID_PREFIX = "turn-";
     private static final String MESSAGE_NO_CHAT = "No chat is open about ";
     private static final String REASON_PREFIX = "chat.reason.";
     private static final String KEY_ARMED = "armed";
     private static final String KEY_PENDING = "pending";
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_EVENT = "event";
 
     /** The control route that arms a chat failure. */
     static final String PATH_INJECT = "/mock/inject";
@@ -165,6 +178,8 @@ final class ChatRegistry {
     private final Predicate<String> epicEntry;
     /** The timing seam a reply's events are played through. */
     private final EventTiming timing;
+    /** The hook through which an applied proposal changes its subject's resource. */
+    private final Consumer<AppliedProposal> applied;
 
     private final Map<ChatSubject, Chat> chats = new LinkedHashMap<>();
     private final Set<ChatSubject> endedWork = new HashSet<>();
@@ -181,11 +196,26 @@ final class ChatRegistry {
      * @param broadcaster the callback that broadcasts a chat event on its subject's stream
      * @param epicEntry   whether the entry of an id opens an epic
      * @param timing      the timing seam a reply's events are played through
+     * @param applied     the hook through which an applied proposal changes its subject's resource,
+     *                    called outside the registry's lock
      */
-    ChatRegistry(Consumer<ChatEvent> broadcaster, Predicate<String> epicEntry, EventTiming timing) {
+    ChatRegistry(Consumer<ChatEvent> broadcaster, Predicate<String> epicEntry, EventTiming timing,
+            Consumer<AppliedProposal> applied) {
         this.broadcaster = Objects.requireNonNull(broadcaster, "broadcaster");
         this.epicEntry = Objects.requireNonNull(epicEntry, "epicEntry");
         this.timing = Objects.requireNonNull(timing, "timing");
+        this.applied = Objects.requireNonNull(applied, "applied");
+    }
+
+    /**
+     * A proposal applied in a chat, handed to the hook that changes its subject's resource: an entry's
+     * description, an epic's staged rows or decomposition draft.
+     *
+     * @param subject what the chat is about
+     * @param kind    the kind of change
+     * @param after   the text after the change, or {@code null}
+     */
+    record AppliedProposal(ChatSubject subject, ProposalKind kind, @Nullable String after) {
     }
 
     /**
@@ -361,11 +391,13 @@ final class ChatRegistry {
                 null, message.text()).toMap());
 
         chat.context = new ChatContext(chat.context.knows(), at);
+        var script = ChatScripts.reply(chat.subject.kind(), chat.scope, chat.replyCount());
         var reply = new ChatTurn(nextTurnId(), TurnKind.MESSAGE, chat.role.name(), TurnStatus.STREAMING,
-                TurnFormat.MARKDOWN, false, chat.role.model(), "", List.of(), List.of(), at, null, List.of());
+                script.format(), script.untrusted(), chat.role.model(), "", List.of(), List.of(), at, null,
+                List.of());
         chat.turns.add(reply);
         chat.state = ChatStatus.REPLY;
-        var play = chat.startPlay(address, reply.turnId(), replyFailures.pollFirst());
+        var play = chat.startPlay(address, reply.turnId(), replyFailures.pollFirst(), script);
         return new Outcome(ChatTurnAccepted.HTTP_STATUS, new ChatTurnAccepted(operatorTurn.turnId()).toMap(),
                 List.of(operatorStarted), () -> playReply(chat, play));
     }
@@ -373,38 +405,39 @@ final class ChatRegistry {
     /**
      * Plays a reply through the timing seam: {@code chat.turn.started} with the model, a
      * {@code chat.turn.progress} per step, the text as {@code chat.turn.delta} pieces at a reading pace,
-     * and {@code chat.turn.completed} with the whole text and its references. Every step runs only while
-     * the play is the chat's current one, so a stop or a replaced worker leaves the rest of it unplayed.
+     * and {@code chat.turn.completed} with the whole text and its references, followed by
+     * {@code chat.proposal} when the reply makes a proposal. Every step runs only while the play is the
+     * chat's current one, so a stop or a replaced worker leaves the rest of it unplayed.
      *
      * @param chat the chat
      * @param play the play
      */
     private void playReply(Chat chat, Play play) {
-        var text = replyText(chat.subject.kind());
-        var steps = List.of(MessageText.of(STEP_READ));
+        var script = play.script();
+        var text = script.text();
         var failure = play.failure();
         var pieces = failure == null ? pieces(text) : pieces(text).subList(0, 1);
         var at = REPLY_START_MS;
         play.schedule(timing, at, () -> playStep(chat, play, () -> {
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
-            return event(play.address(), ChatTurnStartedEvent.EVENT_NAME, new ChatTurnStartedEvent(chat.id,
-                    turn.turnId(), turn.kind(), turn.author(), turn.format(), false, turn.model(), chat.context,
-                    null).toMap());
+            return List.of(event(play.address(), ChatTurnStartedEvent.EVENT_NAME, new ChatTurnStartedEvent(chat.id,
+                    turn.turnId(), turn.kind(), turn.author(), turn.format(), turn.untrusted(), turn.model(),
+                    chat.context, null).toMap()));
         }));
-        for (var step : steps) {
+        for (var step : script.steps()) {
             at += STEP_PACE_MS;
             play.schedule(timing, at, () -> playStep(chat, play, () -> {
                 chat.updateReply(play.turnId(), turn -> withProgress(turn, step));
-                return event(play.address(), ChatTurnProgressEvent.EVENT_NAME,
-                        new ChatTurnProgressEvent(chat.id, play.turnId(), step).toMap());
+                return List.of(event(play.address(), ChatTurnProgressEvent.EVENT_NAME,
+                        new ChatTurnProgressEvent(chat.id, play.turnId(), step).toMap()));
             }));
         }
         for (var piece : pieces) {
             at += READING_PACE_MS;
             play.schedule(timing, at, () -> playStep(chat, play, () -> {
                 chat.updateReply(play.turnId(), turn -> withText(turn, turn.text() + piece, turn.status()));
-                return event(play.address(), ChatTurnDeltaEvent.EVENT_NAME,
-                        new ChatTurnDeltaEvent(chat.id, play.turnId(), piece).toMap());
+                return List.of(event(play.address(), ChatTurnDeltaEvent.EVENT_NAME,
+                        new ChatTurnDeltaEvent(chat.id, play.turnId(), piece).toMap()));
             }));
         }
         if (failure != null) {
@@ -412,25 +445,64 @@ final class ChatRegistry {
             return;
         }
         play.schedule(timing, at + READING_PACE_MS, () -> playStep(chat, play, () -> {
-            chat.updateReply(play.turnId(), turn -> withText(turn, text, TurnStatus.COMPLETE));
+            chat.updateReply(play.turnId(), turn -> withCompletion(turn, text, script.refs()));
             chat.endPlay();
-            chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
-            return event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
-                    turn.turnId(), turn.kind(), TurnStatus.COMPLETE, false, turn.text(), turn.refs(), null,
-                    List.of()).toMap());
+            var events = new ArrayList<ChatEvent>();
+            events.add(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
+                    turn.turnId(), turn.kind(), TurnStatus.COMPLETE, turn.untrusted(), turn.text(), turn.refs(),
+                    null, List.of()).toMap()));
+            var proposal = script.proposal();
+            if (proposal != null) {
+                events.addAll(propose(chat, play.address(), turn, proposal));
+            }
+            chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
+            return events;
         }));
     }
 
     /**
-     * Runs one step of a play under the registry's lock and broadcasts its event, unless the play is no
+     * Records the proposal a reply makes as a turn of its own after the reply, open until it is
+     * answered; an older proposal still open is replaced.
+     *
+     * @return the {@code chat.proposal} events, the replaced one first
+     */
+    private List<ChatEvent> propose(Chat chat, Address address, ChatTurn reply, ChatScripts.Proposal scripted) {
+        var events = new ArrayList<ChatEvent>();
+        var open = chat.proposal;
+        if (open != null && open.isOpen()) {
+            chat.proposal = withState(open, ProposalState.REPLACED);
+            events.add(proposalEvent(chat, address.stream(), chat.proposal));
+        }
+        var proposalTurn = new ChatTurn(nextTurnId(), TurnKind.PROPOSAL, reply.author(), TurnStatus.COMPLETE,
+                TurnFormat.MARKDOWN, false, reply.model(), scripted.summary(), List.of(), List.of(),
+                Instant.now().toString(), null, List.of());
+        chat.turns.add(proposalTurn);
+        chat.proposal = new ChatProposal(proposalTurn.turnId(), reply.turnId(), scripted.kind(), scripted.summary(),
+                scripted.applies(), scripted.before(), scripted.after(), ProposalState.OPEN, null);
+        events.add(proposalEvent(chat, address.stream(), chat.proposal));
+        return events;
+    }
+
+    private static ChatProposal withState(ChatProposal proposal, ProposalState state) {
+        return new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(), proposal.summary(),
+                proposal.applies(), proposal.before(), proposal.after(), state, null);
+    }
+
+    private static ChatEvent proposalEvent(Chat chat, EventScope stream, ChatProposal proposal) {
+        return new ChatEvent(ChatProposalEvent.EVENT_NAME, stream, new ChatProposalEvent(chat.id, proposal.turnId(),
+                proposal.replyTurnId(), proposal.kind(), proposal.state(), null).toMap());
+    }
+
+    /**
+     * Runs one step of a play under the registry's lock and broadcasts its events, unless the play is no
      * longer the chat's current one.
      */
-    private synchronized void playStep(Chat chat, Play play, Supplier<ChatEvent> step) {
+    private synchronized void playStep(Chat chat, Play play, Supplier<List<ChatEvent>> step) {
         if (chat.play != play || chats.get(chat.subject) != chat) {
             return;
         }
-        broadcaster.accept(step.get());
+        step.get().forEach(broadcaster);
     }
 
     /**
@@ -457,9 +529,9 @@ final class ChatRegistry {
             chat.endPlay();
             chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
-            return event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
-                    turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
-                    List.of()).toMap());
+            return List.of(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(
+                    chat.id, turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
+                    List.of()).toMap()));
         });
     }
 
@@ -548,11 +620,12 @@ final class ChatRegistry {
             }
             var turnId = chat.play.turnId();
             var address = chat.play.address();
+            var script = chat.play.script();
             chat.cancelPlay();
             chat.updateReply(turnId, turn -> new ChatTurn(turn.turnId(), turn.kind(), turn.author(),
                     TurnStatus.STREAMING, turn.format(), turn.untrusted(), turn.model(), "", List.of(),
                     turn.refs(), turn.at(), null, turn.lines()));
-            play = chat.startPlay(address, turnId, null);
+            play = chat.startPlay(address, turnId, null, script);
         }
         playReply(chat, play);
         return true;
@@ -659,6 +732,11 @@ final class ChatRegistry {
                 turn.model(), text, turn.steps(), turn.refs(), turn.at(), null, turn.lines());
     }
 
+    private static ChatTurn withCompletion(ChatTurn turn, String text, List<TurnRef> refs) {
+        return new ChatTurn(turn.turnId(), turn.kind(), turn.author(), TurnStatus.COMPLETE, turn.format(),
+                turn.untrusted(), turn.model(), text, turn.steps(), refs, turn.at(), null, turn.lines());
+    }
+
     private static ChatTurn withProgress(ChatTurn turn, MessageText step) {
         var steps = new ArrayList<>(turn.steps());
         steps.add(step);
@@ -732,15 +810,113 @@ final class ChatRegistry {
             return refused(ApiErrorCode.CONFLICT, "The proposal " + answer.turnId() + " is not the open one");
         }
         var state = accept ? acceptedState(proposal.kind()) : ProposalState.REJECTED;
-        chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
-                proposal.summary(), proposal.applies(), proposal.before(), proposal.after(), state, null);
+        chat.proposal = withState(proposal, state);
+        var answered = proposalEvent(chat, address.stream(), chat.proposal);
         if (accept && chat.subject.kind() == ChatSubjectKind.DECISION) {
             // A decision's chat carries the accepted proposal to the decision and ends with it.
             var ended = endChat(chat, ChatStatus.CARRIED, ChatEndedEvent.EndedBy.PROPOSAL_CARRIED);
-            return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(ended), null);
+            return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(answered, ended), null);
         }
         chat.state = ChatStatus.TURN;
-        return Outcome.of(200, chat.toResource(chat.turns.size()).toMap());
+        return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(answered),
+                applyHook(chat.subject, chat.proposal));
+    }
+
+    /**
+     * @return the call of the hook that changes the subject's resource when the proposal is applied, or
+     *         {@code null} when it is not
+     */
+    private @Nullable Runnable applyHook(ChatSubject subject, ChatProposal proposal) {
+        if (proposal.state() != ProposalState.APPLIED || subject.kind() == ChatSubjectKind.DECISION) {
+            return null;
+        }
+        var change = new AppliedProposal(subject, proposal.kind(), proposal.after());
+        return () -> applied.accept(change);
+    }
+
+    /**
+     * Serves {@code POST /mock/broadcast} of a chat event, so a test plays what another device did: the
+     * event's {@code chat_id} names the chat, the event is applied to it and sent on the stream of its
+     * subject. {@code chat.turn.started} of the operator records the message, {@code chat.proposal}
+     * answers the chat's proposal (an applied one changes its subject's resource), and {@code chat.ended}
+     * ends the chat; every other chat event is sent as it is. A chat nobody opened is refused
+     * {@code target_not_found}, a payload its event's record refuses {@code invalid_arguments}, and an
+     * act the chat no longer offers {@code act_not_available}.
+     *
+     * @param event    the event's name
+     * @param data     the event's payload
+     * @param response the response
+     * @return {@code true} if the event was a chat's and has been answered
+     * @throws IOException if the answer cannot be written
+     */
+    boolean handleBroadcast(String event, Object data, MockHttpResponse response) throws IOException {
+        if (!event.startsWith(CHAT_EVENT_PREFIX)) {
+            return false;
+        }
+        var payload = JsonTree.asObject(data);
+        Outcome outcome;
+        try {
+            outcome = payload == null
+                    ? refused(ApiErrorCode.INVALID_ARGUMENTS, "The payload of " + event + " is not an object")
+                    : playBroadcast(event, payload);
+        } catch (IOException e) {
+            outcome = refused(ApiErrorCode.INVALID_ARGUMENTS, e.getMessage());
+        }
+        outcome.events().forEach(broadcaster);
+        if (outcome.then() != null) {
+            outcome.then().run();
+        }
+        response.json(outcome.status(), outcome.body());
+        return true;
+    }
+
+    private synchronized Outcome playBroadcast(String event, Map<String, Object> payload) throws IOException {
+        var chatId = JsonTree.string(payload, ChatEndedEvent.FIELD_CHAT_ID);
+        var chat = chats.values().stream().filter(candidate -> candidate.id.equals(chatId)).findFirst().orElse(null);
+        if (chat == null) {
+            return refused(ApiErrorCode.TARGET_NOT_FOUND, "No chat " + chatId);
+        }
+        Runnable then = null;
+        if (ChatTurnStartedEvent.EVENT_NAME.equals(event)) {
+            var started = ChatTurnStartedEvent.fromMap(payload);
+            if (started.isOperator()) {
+                if (chat.state.isEnded() || chat.state == ChatStatus.REPLY) {
+                    return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat takes no message now");
+                }
+                if (!usedTurnIds.add(started.turnId())) {
+                    return refused(ApiErrorCode.CONFLICT, "The turn " + started.turnId() + " exists");
+                }
+                chat.turns.add(new ChatTurn(started.turnId(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR,
+                        TurnStatus.COMPLETE, TurnFormat.PLAIN, started.untrusted(), null,
+                        Objects.requireNonNullElse(started.text(), ""), List.of(),
+                        List.of(), Instant.now().toString(), null, List.of()));
+            }
+        } else if (ChatProposalEvent.EVENT_NAME.equals(event)) {
+            var answered = ChatProposalEvent.fromMap(payload);
+            var proposal = chat.proposal;
+            if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
+                return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
+            }
+            if (!proposal.turnId().equals(answered.turnId())) {
+                return refused(ApiErrorCode.CONFLICT, "The proposal " + answered.turnId() + " is not the open one");
+            }
+            chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
+                    proposal.summary(), proposal.applies(), proposal.before(), proposal.after(), answered.state(),
+                    answered.finding());
+            if (!chat.proposal.isOpen() && chat.state == ChatStatus.READ_BACK) {
+                chat.state = ChatStatus.TURN;
+            }
+            then = applyHook(chat.subject, chat.proposal);
+        } else if (ChatEndedEvent.EVENT_NAME.equals(event)) {
+            var ended = ChatEndedEvent.fromMap(payload);
+            if (chat.state.isEnded()) {
+                return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "The chat has ended");
+            }
+            endChat(chat, ended.endedBy() == ChatEndedEvent.EndedBy.PROPOSAL_CARRIED ? ChatStatus.CARRIED
+                    : ChatStatus.END, ended.endedBy());
+        }
+        return new Outcome(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event),
+                List.of(new ChatEvent(event, streamOf(chat), payload)), then);
     }
 
     private synchronized Outcome end(Address address) {
@@ -766,10 +942,6 @@ final class ChatRegistry {
     private ChatContext context(Address address) {
         var item = address.scope() == ChatScopeKind.ARCHIVE ? KNOWS_ARCHIVE : address.subject().kind().wireValue();
         return new ChatContext(List.of(MessageText.of(KNOWS_PREFIX + item)), Instant.now().toString());
-    }
-
-    private static String replyText(ChatSubjectKind kind) {
-        return "I have read the " + kind.wireValue() + "; say what should change, or ask on.";
     }
 
     private static ChatEvent event(Address address, String name, Map<String, Object> data) {
@@ -1012,19 +1184,25 @@ final class ChatRegistry {
     }
 
     /**
-     * One play of a reply: the turn it writes, where its events go, and its scheduled steps. A play that
-     * is no longer its chat's current one plays nothing more.
+     * One play of a reply: the turn it writes, the scripted reply it plays, where its events go, and its
+     * scheduled steps. A play that is no longer its chat's current one plays nothing more.
      */
     private static final class Play {
         private final Address address;
         private final String turnId;
         private final @Nullable ChatFailure failure;
+        private final ChatScripts.Reply script;
         private final List<Future<?>> tasks = new ArrayList<>();
 
-        Play(Address address, String turnId, @Nullable ChatFailure failure) {
+        Play(Address address, String turnId, @Nullable ChatFailure failure, ChatScripts.Reply script) {
             this.address = address;
             this.turnId = turnId;
             this.failure = failure;
+            this.script = script;
+        }
+
+        ChatScripts.Reply script() {
+            return script;
         }
 
         @Nullable
@@ -1075,11 +1253,19 @@ final class ChatRegistry {
         /** The reply being played, or {@code null}. */
         private @Nullable Play play;
 
-        Play startPlay(Address address, String turnId, @Nullable ChatFailure failure) {
+        Play startPlay(Address address, String turnId, @Nullable ChatFailure failure, ChatScripts.Reply script) {
             cancelPlay();
             stream = address.stream();
-            play = new Play(address, turnId, failure);
+            play = new Play(address, turnId, failure, script);
             return play;
+        }
+
+        /**
+         * @return how many replies the role has written in the chat
+         */
+        int replyCount() {
+            return (int) turns.stream().filter(turn -> turn.kind() == TurnKind.MESSAGE
+                    && !ChatTurn.AUTHOR_OPERATOR.equals(turn.author())).count();
         }
 
         void cancelPlay() {

@@ -303,7 +303,7 @@ class ChatInjectTest {
             var routes = ChatRoutes.plan(planId);
             var scenario = withChatFailures(List.of(ChatFailure.of(ChatFailure.Kind.LOST)));
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                    .initialScenario(scenario).timing(MockTiming.ORDERED).build());
+                         .initialScenario(scenario).timing(MockTiming.ORDERED).build());
                  var stream = open(runtime, planId)) {
                 var chat = openChat(runtime, routes);
                 var events = stream.events();

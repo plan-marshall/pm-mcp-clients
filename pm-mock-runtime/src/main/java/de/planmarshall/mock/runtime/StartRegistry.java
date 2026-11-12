@@ -570,6 +570,25 @@ final class StartRegistry {
     }
 
     /**
+     * Applies a description an entry's chat proposed and the operator accepted: it replaces the entry's
+     * description, so the entry's state shows the new one as its description source.
+     *
+     * @param entryId the entry's id
+     * @param text    the description after the change; {@code null} or blank changes nothing
+     * @return {@code true} if the entry is open and its description changed
+     */
+    synchronized boolean applyDescription(String entryId, @Nullable String text) {
+        var entry = entries.get(entryId);
+        if (entry == null || text == null || text.isBlank()) {
+            return false;
+        }
+        entry.sources.removeIf(source -> source.kind() == SourceKind.DESCRIPTION);
+        storeDescription(entry, text);
+        refresh(entry);
+        return true;
+    }
+
+    /**
      * @return the ended plans and epics of the active state, as the subjects of their chats
      */
     synchronized Set<ChatSubject> endedSubjects() {

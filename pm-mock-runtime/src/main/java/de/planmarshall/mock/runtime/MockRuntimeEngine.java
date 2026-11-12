@@ -47,6 +47,8 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.ProposalKind;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.DecompositionCheck;
@@ -840,8 +842,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent(event.name(), event.data());
         });
         this.chatRegistry = new ChatRegistry(event -> broadcastEvent(event.name(), scopedPayload(event)),
-                startRegistry::isEpicEntry, eventTiming);
+                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal);
         setScenario(scenario);
+    }
+
+    /**
+     * The hook through which a proposal applied in a chat changes its subject's resource: an entry's
+     * description replaces the entry's description, and a change to an epic's staged rows or to its
+     * decomposition draft moves the epic's decomposition on by one revision. A plan's revision is
+     * accepted and queued, never applied here, and a follow-up plan of ended work changes no resource.
+     *
+     * @param applied the applied proposal
+     */
+    private void applyChatProposal(ChatRegistry.AppliedProposal applied) {
+        var subject = applied.subject();
+        if (subject.kind() == ChatSubjectKind.ENTRY && applied.kind() == ProposalKind.DESCRIPTION) {
+            startRegistry.applyDescription(subject.id(), applied.after());
+        } else if (subject.kind() == ChatSubjectKind.EPIC
+                && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
+            synchronized (decompositionLock) {
+                decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(cut.epicId(),
+                        cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings()));
+            }
+        }
     }
 
     /**
@@ -6840,6 +6863,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             } catch (IOException | RuntimeException _) {
                 // Ignore parse errors from broadcast body
             }
+        }
+        // A chat event plays another device: the chat registry applies it and sends it on the chat's stream.
+        if (chatRegistry.handleBroadcast(event, data, response)) {
+            return;
         }
         applyStateEffectOf(event, data);
         broadcastEvent(event, data);

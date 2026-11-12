@@ -213,13 +213,14 @@ class ChatScenarioTest {
                 var before = Objects.requireNonNull(newest.before());
                 assertEquals(newest.turns().getFirst().turnId(), before);
 
+                // Each message adds itself and the reply; the second reply adds its proposal's own turn.
                 var older = ChatResource.fromJson(get(runtime, routes.page(before)).bodyText());
-                assertEquals(2, older.turns().size());
+                assertEquals(3, older.turns().size());
                 assertNull(older.before(), "the oldest page names no page before it");
 
                 var all = new ArrayList<ChatTurn>(older.turns());
                 all.addAll(newest.turns());
-                assertEquals(2 * messages, all.stream().map(ChatTurn::turnId).distinct().count());
+                assertEquals(2 * messages + 1, all.stream().map(ChatTurn::turnId).distinct().count());
                 assertTrue(all.getFirst().isOperator());
                 assertFalse(all.getLast().isOperator());
 
