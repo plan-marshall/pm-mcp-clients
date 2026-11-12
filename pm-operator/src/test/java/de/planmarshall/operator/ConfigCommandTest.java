@@ -25,10 +25,12 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -37,6 +39,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import picocli.CommandLine.Command;
 
 @EnableGeneratorController
 @DisplayName("ConfigCommand")
@@ -665,6 +669,21 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(0, code, out.toString()),
                             () -> assertTrue(out.toString().contains("web.port"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("every aspect's verb is a registered config subcommand")
+    void everyAspectVerbIsRegistered() {
+        var declared = ConfigCommand.class.getAnnotation(Command.class);
+        var subcommands = new HashSet<String>();
+        for (var type : declared.subcommands()) {
+            subcommands.add(type.getAnnotation(Command.class).name());
+        }
+
+        for (var aspect : OnboardingAspect.values()) {
+            var verb = ConfigCommand.verbOf(aspect);
+            assertTrue(subcommands.contains(verb), aspect + " runs '" + verb + "', which is not a subcommand");
+        }
     }
 
     private static String manyAspects() {

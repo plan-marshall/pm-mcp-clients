@@ -91,20 +91,12 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
-    private static final Map<OnboardingAspect, String> ASPECT_VERBS = Map.of(
-                        OnboardingAspect.LANGUAGE, LANGUAGE,
-                        OnboardingAspect.HARNESSES, HARNESSES,
-                        OnboardingAspect.MODELS, MODELS,
-                        OnboardingAspect.ROLES, ROLES,
-                        OnboardingAspect.CREDENTIALS, CREDENTIALS,
-                        OnboardingAspect.PROVIDERS, PROVIDERS,
-                        OnboardingAspect.PLANS, PLAN_DEFAULTS);
 
     /**
      * @param aspect an aspect of the machine onboarding
      * @return the {@code config <aspect>} verb that runs it again
      */
-    private static String verbOf(OnboardingAspect aspect) {
+    static String verbOf(OnboardingAspect aspect) {
         return switch (aspect) {
             case LANGUAGE -> LANGUAGE;
             case HARNESSES -> HARNESSES;
