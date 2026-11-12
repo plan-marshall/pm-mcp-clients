@@ -343,6 +343,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
     private static final String KEY_KIND = "kind";
+    private static final String KEY_PROVIDER = "provider";
+    private static final String KEY_TOKEN_PATH = "token_path";
+    private static final String KEY_EXPIRES_IN_DAYS = "expires_in_days";
+    private static final String KEY_EXPIRED = "expired";
+    private static final String PATH_PLANS = "/api/v1/plans";
     private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_EPIC_TITLE = "epic_title";
@@ -1867,7 +1872,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static final List<String> LIVE_DOMAIN_PREFIXES = List.of(
             "/api/v1/reports",
-            "/api/v1/plans",
+            PATH_PLANS,
             PATH_EPICS,
             "/api/v1/entries",
             PATH_PROJECTS,
@@ -2485,6 +2490,45 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, WebCredentialResource.stored(key).toMap());
     }
 
+    /**
+     * Serves one recorded credential entry as the terminal reads it before a rotate or a status
+     * ({@code GET /api/v1/credentials/{key}}): its provider, its kind, its expiry, and the store it
+     * is written to, never the secret.
+     *
+     * @param response the response to write
+     * @param path     the request path
+     * @return whether the request addressed a recorded entry
+     * @throws IOException on write failure
+     */
+    private boolean handleCredentialGet(MockHttpResponse response, String path) throws IOException {
+        var key = path.substring(PATH_CREDENTIALS.length());
+        synchronized (onboardingLock) {
+            for (var credential : machineCredentials) {
+                if (!key.equals(credential.get("key"))) {
+                    continue;
+                }
+                var body = new LinkedHashMap<String, Object>();
+                body.put("key", key);
+                body.put(KEY_STATUS, "present");
+                if (credential.get(KEY_PROVIDER) != null) {
+                    body.put(KEY_PROVIDER, credential.get(KEY_PROVIDER));
+                }
+                if (credential.get(KEY_KIND) != null) {
+                    body.put(KEY_KIND, credential.get(KEY_KIND));
+                }
+                body.put(KEY_TOKEN_PATH, machineCredentialStore);
+                if (credential.get(KEY_EXPIRES_IN_DAYS) != null) {
+                    body.put(KEY_EXPIRES_IN_DAYS, credential.get(KEY_EXPIRES_IN_DAYS));
+                }
+                body.put(KEY_EXPIRED, Boolean.TRUE.equals(credential.get(KEY_EXPIRED)));
+                response.json(200, body);
+                return true;
+            }
+        }
+        response.json(404, Map.of(KEY_ERROR, "credential_unknown"));
+        return true;
+    }
+
     private void broadcastListenerChanged(ListenerState state) {
         var event = new ListenerChangedEvent(ListenerKind.LAN, state, lanListenerPort);
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
@@ -2534,7 +2578,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
         return switch (request.method()) {
-            case "GET" -> handleGetDeviceRoutes(path, response);
+            case "GET" -> handleGetDeviceRoutes(request, response, isWeb);
             case METHOD_POST -> handlePostDeviceRoutes(request, response, path, isWeb);
             case "PATCH", "PUT" -> handlePutDeviceRoutes(request, response, path, isWeb);
             case METHOD_DELETE -> handleDeleteDeviceRoutes(request, response, path, isWeb);
@@ -2542,10 +2586,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         };
     }
 
-    private boolean handleGetDeviceRoutes(String path, MockHttpResponse response) throws IOException {
+    private boolean handleGetDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
         if (PATH_DEVICES.equals(path)) {
             handleListDevices(response);
             return true;
+        }
+        if (path.startsWith(PATH_CREDENTIALS)) {
+            if (isWeb) {
+                response.json(403, Map.of(KEY_ERROR, "operator_only"));
+                return true;
+            }
+            return handleCredentialGet(response, path);
         }
         if (PATH_CONNECTION_STATUS.equals(path)) {
             handleConnectionStatus(response);
@@ -2635,8 +2688,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleRouteWithDynamicStatus(override, path, response);
             return true;
         }
+        recordRotatedCredential(request, path);
         handleStoreCredential(response, path);
         return true;
+    }
+
+    /**
+     * @param request the request
+     * @param path    the credential path
+     */
+    private void recordRotatedCredential(MockHttpRequest request, String path) {
+        var key = path.substring(PATH_CREDENTIALS.length());
+        var body = readBodyMap(request);
+        var kind = JsonTree.string(body, KEY_KIND);
+        synchronized (onboardingLock) {
+            for (var credential : machineCredentials) {
+                if (!key.equals(credential.get("key"))) {
+                    continue;
+                }
+                if (kind != null && !kind.isBlank()) {
+                    credential.put(KEY_KIND, kind);
+                }
+                credential.put(KEY_EXPIRED, false);
+                credential.remove(KEY_EXPIRES_IN_DAYS);
+                return;
+            }
+        }
     }
 
     private boolean handleDeleteDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {
@@ -7134,12 +7211,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             @Nullable Integer expiresInDays, boolean expired) {
         var map = new LinkedHashMap<String, Object>();
         map.put("key", key);
-        map.put("provider", provider);
+        map.put(KEY_PROVIDER, provider);
         map.put("kind", kind);
         if (expiresInDays != null) {
-            map.put("expires_in_days", expiresInDays);
+            map.put(KEY_EXPIRES_IN_DAYS, expiresInDays);
         }
-        map.put("expired", expired);
+        map.put(KEY_EXPIRED, expired);
         return map;
     }
 
@@ -7422,8 +7499,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         if (state.startsWith("providers.reconfigure")) {
-            machineProvidersVerified = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
+            var verify = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
+            machineProvidersVerified = verify && providerCheckSucceeds();
         }
+    }
+
+    /**
+     * @return whether the scenario declares its providers ready, so a verify that found no ready
+     *         provider records the failure instead of trusting the request's flag
+     */
+    private boolean providerCheckSucceeds() {
+        var route = currentScenario.get().route("GET", "/api/v1/status");
+        if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(map.get("providers_ready"));
     }
 
     /**
@@ -7456,7 +7546,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean handleConfigRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        return configRoutes.handle(request, response, machineConfigValues());
+        return configRoutes.handle(request, response, machineConfigValues(), planProjects());
+    }
+
+    /**
+     * @return the project each plan of the scenario belongs to, by plan id, so a plan-only
+     *         configuration read inherits that project's values
+     */
+    private Map<String, String> planProjects() {
+        var projects = new LinkedHashMap<String, String>();
+        var route = currentScenario.get().route("GET", PATH_PLANS);
+        if (route == null || !(route.representation() instanceof Map<?, ?> map)
+                || !(map.get("plans") instanceof List<?> plans)) {
+            return projects;
+        }
+        for (var item : plans) {
+            var plan = JsonTree.asObject(item);
+            if (plan == null) {
+                continue;
+            }
+            var id = JsonTree.string(plan, "id");
+            var project = JsonTree.string(plan, "project");
+            if (id != null && project != null) {
+                projects.put(id, project);
+            }
+        }
+        return projects;
     }
 
     /**
@@ -7594,8 +7709,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (value != null && !value.isBlank()) {
                     credential.put("kind", value);
                 }
-                credential.remove("expires_in_days");
-                credential.put("expired", false);
+                credential.remove(KEY_EXPIRES_IN_DAYS);
+                credential.put(KEY_EXPIRED, false);
                 credential.put("rotated", true);
                 return;
             }
@@ -10257,7 +10372,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summary.put("state", "running");
             return summary;
         }
-        var listRoute = activeRoute("GET", "/api/v1/plans");
+        var listRoute = activeRoute("GET", PATH_PLANS);
         if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
                 && list.get("plans") instanceof List<?> plans) {
             for (var element : plans) {

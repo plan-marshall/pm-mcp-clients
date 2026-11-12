@@ -22,6 +22,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.AspectOwnedKeys;
 import de.planmarshall.api.config.ConfigOrigin;
+import de.planmarshall.api.config.ConfigValueChange;
 import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.json.JsonTree;
 
@@ -34,6 +35,10 @@ import de.planmarshall.api.json.JsonTree;
  * shadows a farther level names it. The machine's own values are supplied per request by the engine,
  * so a change of the machine settings shows through; a value written through {@code PUT} at the
  * machine level is the nearer one and shadows it.
+ *
+ * <p>Every written value keeps the revision it was written at. A change carries the revision it was
+ * made against as a body member ({@link ConfigValueChange}); the first change wins and a change
+ * against an older revision is refused {@code 409 conflict} with the current value.
  */
 @SuppressWarnings({"java:S1075", "java:S135"})
 public final class MockConfigRoutes {
@@ -47,6 +52,8 @@ public final class MockConfigRoutes {
     private static final String KEY_PLAN = "plan";
     private static final String SLASH = "/";
     private static final int LEVEL_AND_KEY = 2;
+    private static final String CONFLICT = "conflict";
+    private static final String ASPECT_OWNED = "aspect_owned";
 
     /** The levels an operator may write, from the one catalogue that defines them. */
     private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
@@ -54,6 +61,7 @@ public final class MockConfigRoutes {
             .toList();
 
     private final Map<String, Map<String, Object>> written = new LinkedHashMap<>();
+    private final Map<String, Map<String, Long>> revisions = new LinkedHashMap<>();
     private long revision;
 
     /**
@@ -63,9 +71,22 @@ public final class MockConfigRoutes {
      * @return whether this request is one of the configuration routes
      * @throws IOException on write failure
      */
-    @SuppressWarnings({"java:S1075", "java:S135"})
     public boolean handle(MockHttpRequest request, MockHttpResponse response,
             Map<String, Object> machineValues) throws IOException {
+        return handle(request, response, machineValues, Map.of());
+    }
+
+    /**
+     * @param request       the request
+     * @param response      the response to write
+     * @param machineValues the machine's own values, by effective key
+     * @param planProjects  the project each plan of the scenario belongs to, by plan id
+     * @return whether this request is one of the configuration routes
+     * @throws IOException on write failure
+     */
+    @SuppressWarnings({"java:S1075", "java:S135"})
+    public boolean handle(MockHttpRequest request, MockHttpResponse response,
+            Map<String, Object> machineValues, Map<String, String> planProjects) throws IOException {
         var collection = PATH.equals(request.path());
         if (!collection && !request.path().startsWith(PATH + SLASH)) {
             return false;
@@ -74,7 +95,7 @@ public final class MockConfigRoutes {
             if (!collection) {
                 return false;
             }
-            response.json(200, effective(machineValues, request.query()));
+            response.json(200, effective(machineValues, request.query(), planProjects));
             return true;
         }
         var segments = segments(request.path());
@@ -90,11 +111,11 @@ public final class MockConfigRoutes {
         var key = segments.get(1);
         var scope = scopeOf(request.query(), level);
         if ("PUT".equals(request.method())) {
-            put(response, level, key, readValue(request), scope);
+            put(response, level, key, readChange(request), scope, machineValues, planProjects);
             return true;
         }
         if ("DELETE".equals(request.method())) {
-            delete(response, level, key, scope);
+            delete(response, level, key, readChange(request), scope, machineValues, planProjects);
             return true;
         }
         return false;
@@ -137,26 +158,103 @@ public final class MockConfigRoutes {
         return value == null ? null : name + "=" + value;
     }
 
-    private void put(MockHttpResponse response, ConfigOrigin level, String key, @Nullable Object value,
-            @Nullable String scope) throws IOException {
+    private synchronized void put(MockHttpResponse response, ConfigOrigin level, String key,
+            ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
+            Map<String, String> planProjects) throws IOException {
         if (isAspectOwned(key)) {
-            response.json(409, Map.of(KEY_ERROR, "aspect_owned"));
+            response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
         }
-        byLevel(level, scope).put(key, value);
-        revision++;
-        response.json(200, resource(key, level, value));
+        var served = served(key, level, scope, machineValues, planProjects);
+        if (change.revision() != revisionOf(served)) {
+            conflict(response, served);
+            return;
+        }
+        byLevel(level, scope).put(key, change.value());
+        var next = ++revision;
+        revisionsByLevel(level, scope).put(key, next);
+        response.json(200, resource(key, level, change.value(), null, next));
     }
 
-    private void delete(MockHttpResponse response, ConfigOrigin level, String key, @Nullable String scope)
-            throws IOException {
+    private synchronized void delete(MockHttpResponse response, ConfigOrigin level, String key,
+            ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
+            Map<String, String> planProjects) throws IOException {
+        if (isAspectOwned(key)) {
+            response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
+            return;
+        }
         var values = byLevel(level, scope);
         if (!values.containsKey(key)) {
             response.json(404, Map.of(KEY_ERROR, "config_key_unknown"));
             return;
         }
+        var served = served(key, level, scope, machineValues, planProjects);
+        if (change.revision() != revisionOf(served)) {
+            conflict(response, served);
+            return;
+        }
         values.remove(key);
+        // The revision stays: a later change made against the value the read served is still stale.
+        var next = ++revision;
+        revisionsByLevel(level, scope).put(key, next);
         response.send(204, null, "");
+    }
+
+    /**
+     * @param key           the key a change addresses
+     * @param level         the level the change addresses
+     * @param scope         that level's scope, or {@code null} for the machine's store
+     * @param machineValues the machine's own values, by effective key
+     * @param planProjects  the project each plan belongs to, by plan id
+     * @return the value the change is made against: the nearest value visible from the addressed
+     *         level down, so a machine write never compares itself with a project's value
+     */
+    private Map<String, Object> served(String key, ConfigOrigin level, @Nullable String scope,
+            Map<String, Object> machineValues, Map<String, String> planProjects) {
+        var project = scopePart(scope, KEY_PROJECT);
+        var plan = scopePart(scope, KEY_PLAN);
+        var candidate = effective(key, machineValues, project, plan, planProjects, level);
+        var levelProject = levelProject(project, plan, planProjects);
+        var levelScope = levelScope(level, levelProject, plan);
+        if (!byLevel(level, levelScope).containsKey(key) && revisionsByLevel(level, levelScope).containsKey(key)
+                && revisionOf(candidate) == 0) {
+            // A deleted value keeps its revision, so a change made before the deletion stays stale.
+            return resource(key, ConfigOrigin.DEFAULT, null, null, storedRevision(level, levelScope, key));
+        }
+        return candidate;
+    }
+
+    /**
+     * @param scope a scope as {@link #scopeOf} composes it, or {@code null}
+     * @param name  the parameter the scope carries
+     * @return the parameter's value, or {@code null} when the scope names it not
+     */
+    private static @Nullable String scopePart(@Nullable String scope, String name) {
+        if (scope == null) {
+            return null;
+        }
+        var prefix = name + "=";
+        return scope.startsWith(prefix) ? scope.substring(prefix.length()) : null;
+    }
+
+    private static long revisionOf(Map<String, Object> served) {
+        return served.get(ConfigValueResource.FIELD_REVISION) instanceof Number number ? number.longValue() : 0L;
+    }
+
+    /**
+     * @param level a level
+     * @param scope that level's scope, or {@code null} for the machine's store
+     * @param key   the key
+     * @return the revision the value at that level was last written at, {@code 0} when never written
+     */
+    private long storedRevision(ConfigOrigin level, @Nullable String scope, String key) {
+        return revisionsByLevel(level, scope).getOrDefault(key, 0L);
+    }
+
+    private void conflict(MockHttpResponse response, Map<String, Object> served) throws IOException {
+        var body = new LinkedHashMap<String, Object>(served);
+        body.put(KEY_ERROR, CONFLICT);
+        response.json(409, body);
     }
 
     /**
@@ -165,43 +263,60 @@ public final class MockConfigRoutes {
      */
     public void clear() {
         written.clear();
+        revisions.clear();
         revision = 0;
     }
 
     private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
-        return written.computeIfAbsent(level.wire() + "|" + Objects.toString(scope, ""),
-                _ -> new LinkedHashMap<>());
+        return written.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
+    }
+
+    private Map<String, Long> revisionsByLevel(ConfigOrigin level, @Nullable String scope) {
+        return revisions.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
+    }
+
+    private static String keyOf(ConfigOrigin level, @Nullable String scope) {
+        return level.wire() + "|" + Objects.toString(scope, "");
     }
 
     /**
      * @param request the request
-     * @return the value the body carries: the {@code value} field, or a body that is the value itself
+     * @return the change the body carries: a {@link ConfigValueChange}, a body that is the value
+     *         itself (made against revision {@code 0}), or an empty change
      * @throws IOException on a malformed body
      */
-    private static @Nullable Object readValue(MockHttpRequest request) throws IOException {
+    private static ConfigValueChange readChange(MockHttpRequest request) throws IOException {
         var body = request.bodyText();
         if (body.isBlank()) {
-            return null;
+            return ConfigValueChange.deletion(0);
         }
         var parsed = JsonTree.parse(body);
-        if (parsed instanceof Map<?, ?> map && map.containsKey(KEY_VALUE)) {
-            return map.get(KEY_VALUE);
+        var map = JsonTree.asObject(parsed);
+        if (map != null) {
+            if (map.containsKey(ConfigValueChange.FIELD_REVISION)) {
+                return ConfigValueChange.fromMap(map);
+            }
+            if (map.containsKey(KEY_VALUE)) {
+                return new ConfigValueChange(map.get(KEY_VALUE), 0);
+            }
         }
-        return parsed;
+        return new ConfigValueChange(parsed, 0);
     }
 
-    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query) {
+    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
+            Map<String, String> planProjects) {
         var project = scopeValue(query, KEY_PROJECT);
         var plan = scopeValue(query, KEY_PLAN);
+        var levelProject = levelProject(project, plan, planProjects);
         var keys = new TreeMap<String, Boolean>();
         machineValues.keySet().forEach(key -> keys.put(key, Boolean.TRUE));
         for (var level : OPERATOR_LEVELS) {
-            byLevel(level, levelScope(level, project, plan)).keySet()
+            byLevel(level, levelScope(level, levelProject, plan)).keySet()
                     .forEach(key -> keys.put(key, Boolean.TRUE));
         }
         var resources = new ArrayList<Map<String, Object>>();
         for (var key : keys.keySet()) {
-            resources.add(effective(key, machineValues, project, plan));
+            resources.add(effective(key, machineValues, project, plan, planProjects));
         }
         return resources;
     }
@@ -222,42 +337,97 @@ public final class MockConfigRoutes {
     }
 
     private Map<String, Object> effective(String key, Map<String, Object> machineValues,
-            @Nullable String project, @Nullable String plan) {
+            @Nullable String project, @Nullable String plan, Map<String, String> planProjects) {
+        return effective(key, machineValues, project, plan, planProjects, null);
+    }
+
+    /**
+     * @param key           the key
+     * @param machineValues the machine's own values
+     * @param project       the project the read names, or {@code null}
+     * @param plan          the plan the read names, or {@code null}
+     * @param planProjects  the project each plan belongs to, by plan id
+     * @param ceiling       the nearest level a change may be compared with, or {@code null} for the
+     *                      whole chain
+     * @return the effective value
+     */
+    private Map<String, Object> effective(String key, Map<String, Object> machineValues,
+            @Nullable String project, @Nullable String plan, Map<String, String> planProjects,
+            @Nullable ConfigOrigin ceiling) {
         ConfigOrigin origin = null;
         Object value = null;
         ConfigOrigin overridden = null;
+        long valueRevision = 0;
+        var levelProject = levelProject(project, plan, planProjects);
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
-            var values = byLevel(level, levelScope(level, project, plan));
-            var present = values.containsKey(key);
-            Object levelValue = present ? values.get(key) : null;
-            if (!present && level == ConfigOrigin.MACHINE) {
-                present = machineValues.containsKey(key);
-                levelValue = present ? machineValues.get(key) : null;
+            if (ceiling != null && level.rank() > ceiling.rank()) {
+                continue;
             }
-            if (!present) {
+            var scope = levelScope(level, levelProject, plan);
+            var atLevel = levelValue(level, scope, key, machineValues);
+            if (!atLevel.present()) {
                 continue;
             }
             if (origin == null) {
                 origin = level;
-                value = levelValue;
+                value = atLevel.value();
+                valueRevision = atLevel.fromMachine() ? 0 : storedRevision(level, scope, key);
             } else {
                 overridden = level;
                 break;
             }
         }
-        return resource(key, Objects.requireNonNullElse(origin, ConfigOrigin.DEFAULT), value, overridden);
+        return resource(key, Objects.requireNonNullElse(origin, ConfigOrigin.DEFAULT), value, overridden,
+                valueRevision);
     }
 
-    private Map<String, Object> resource(String key, ConfigOrigin origin, @Nullable Object value) {
-        return resource(key, origin, value, null);
+    /**
+     * @param project      the project the read names, or {@code null}
+     * @param plan         the plan the read names, or {@code null}
+     * @param planProjects the project each plan belongs to, by plan id
+     * @return the project whose level a plan-only read inherits
+     */
+    private static @Nullable String levelProject(@Nullable String project, @Nullable String plan,
+            Map<String, String> planProjects) {
+        if (project != null) {
+            return project;
+        }
+        return plan == null ? null : planProjects.get(plan);
+    }
+
+    /**
+     * @param level         a level
+     * @param scope         that level's scope, or {@code null} for the machine's store
+     * @param key           the key
+     * @param machineValues the machine's own values, by effective key
+     * @return the value the level holds, and whether it came from the machine's own values
+     */
+    private LevelValue levelValue(ConfigOrigin level, @Nullable String scope, String key,
+            Map<String, Object> machineValues) {
+        var values = byLevel(level, scope);
+        if (values.containsKey(key)) {
+            return new LevelValue(true, values.get(key), false);
+        }
+        if (level == ConfigOrigin.MACHINE && machineValues.containsKey(key)) {
+            return new LevelValue(true, machineValues.get(key), true);
+        }
+        return new LevelValue(false, null, false);
+    }
+
+    /**
+     * @param present     whether the level holds a value
+     * @param value       the value, or {@code null}
+     * @param fromMachine whether the value came from the machine's own values
+     */
+    private record LevelValue(boolean present, @Nullable Object value, boolean fromMachine) {
     }
 
     private Map<String, Object> resource(String key, ConfigOrigin origin, @Nullable Object value,
-            @Nullable ConfigOrigin overridden) {
+            @Nullable ConfigOrigin overridden, long revisionOfValue) {
         var overrides = overridden != null && origin.overrides(overridden) ? overridden : null;
-        return new ConfigValueResource(key, value, origin, overrides, revision).toMap();
+        return new ConfigValueResource(key, value, origin, overrides, revisionOfValue).toMap();
     }
 
     /**

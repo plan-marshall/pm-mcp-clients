@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -69,10 +68,14 @@ class ConfigCommandTest {
     }
 
     private int execute(String... args) {
-        var typed = new ByteArrayInputStream(TYPED.getBytes(StandardCharsets.UTF_8));
+        return executeWithTyped(TYPED, args);
+    }
+
+    private int executeWithTyped(String typed, String... args) {
+        var input = new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8));
         var context = new OperatorContext(fixture.environment(), tempDir, true,
                             ClientEnvironment.capture(fixture.environment()),
-                            () -> new DumbTerminal(typed, new ByteArrayOutputStream()), null);
+                            () -> new DumbTerminal(input, new ByteArrayOutputStream()), null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -198,7 +201,10 @@ class ConfigCommandTest {
         var requests = new ArrayList<String>();
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
-            if ("PUT".equals(request.method()) && "/api/v1/config/machine/custom.timeout".equals(request.target())) {
+            if ("GET".equals(request.method()) && "/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else if ("PUT".equals(request.method())
+                                && "/api/v1/config/machine/custom.timeout".equals(request.target())) {
                 response.json(200, "{\"key\":\"custom.timeout\",\"value\":\"60\",\"origin\":\"machine\"}");
             } else {
                 response.send(404, null, "");
@@ -215,12 +221,191 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config set sends the revision the value was read with")
+    void configSetSendsTheRevision() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                response.json(200, valueOf("custom.timeout", "60", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "set", "custom.timeout", "60");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertEquals(1, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(0).contains("\"revision\":4"), bodies.get(0)),
+                            () -> assertTrue(bodies.get(0).contains("\"value\":\"60\""), bodies.get(0)));
+    }
+
+    @Test
+    @DisplayName("config unset sends the revision the value was read with")
+    void configUnsetSendsTheRevision() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.flag", "on", 4) + "]");
+            } else if ("DELETE".equals(request.method())) {
+                bodies.add(request.bodyText());
+                response.send(204, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "unset", "custom.flag");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertEquals(1, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(0).contains("\"revision\":4"), bodies.get(0)),
+                            () -> assertFalse(bodies.get(0).contains("\"value\""), bodies.get(0)));
+    }
+
+    @Test
+    @DisplayName("a conflict prints the current value without the HTTP status and applies again")
+    void configSetConflictAppliesAgain() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, conflictOf("custom.timeout", "30", 5));
+                } else {
+                    response.json(200, valueOf("custom.timeout", "60", 6));
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n", "config", "set", "custom.timeout", "60");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains(
+                                                "Changed meanwhile: it is now 30. Yours was not applied."), text),
+                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertEquals(2, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(1).contains("\"revision\":5"), bodies.get(1)));
+    }
+
+    @Test
+    @DisplayName("a conflict kept with k leaves the current value")
+    void configSetConflictKeepsTheCurrentValue() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                response.json(409, conflictOf("custom.timeout", "30", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("k\n", "config", "set", "custom.timeout", "60");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("No setting changed."), text),
+                            () -> assertEquals(1, bodies.size(), bodies.toString()));
+    }
+
+    @Test
+    @DisplayName("a conflict with --no-input leaves with 3")
+    void configSetConflictWithNoInputLeavesWithThree() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                response.json(409, conflictOf("custom.timeout", "30", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "set", "custom.timeout", "60", "--no-input");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(3, code, text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30"), text),
+                            () -> assertTrue(text.contains("--no-input stops here."), text));
+    }
+
+    @Test
+    @DisplayName("config unset applies again against the revision the conflict named")
+    void configUnsetConflictAppliesAgain() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf("custom.flag", "on", 4) + "]");
+            } else if ("DELETE".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, conflictOf("custom.flag", "off", 5));
+                } else {
+                    response.send(204, null, "");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n", "config", "unset", "custom.flag");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertEquals(2, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(1).contains("\"revision\":5"), bodies.get(1)));
+    }
+
+    @Test
+    @DisplayName("config set names a refused revision read and writes nothing")
+    void configSetNamesARefusedRevisionRead() throws Exception {
+        var writes = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(500, "{\"error\":\"refused\"}");
+            } else if ("PUT".equals(request.method())) {
+                writes.add(request.target());
+                response.json(200, valueOf("custom.timeout", "60", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "set", "custom.timeout", "60");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
+                                                out.toString()),
+                            () -> assertTrue(writes.isEmpty(), writes.toString()));
+    }
+
+    @Test
     @DisplayName("config unset removes one key at one level")
     void configUnsetRemovesTheLevelRoute() throws Exception {
         var requests = new ArrayList<String>();
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
-            if ("DELETE".equals(request.method()) && "/api/v1/config/machine/custom.flag".equals(request.target())) {
+            if ("GET".equals(request.method()) && "/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + valueOf("custom.flag", "on", 4) + "]");
+            } else if ("DELETE".equals(request.method())
+                                && "/api/v1/config/machine/custom.flag".equals(request.target())) {
                 response.send(204, null, "");
             } else {
                 response.send(404, null, "");
@@ -238,10 +423,9 @@ class ConfigCommandTest {
     @Test
     @DisplayName("a refused settings read names the refusal and leaves with 1")
     void aRefusedSettingsReadLeavesWithOne() throws Exception {
-        var reason = Generators.letterStrings(6, 16).next();
         fixture.start((request, response) -> {
             if ("/api/v1/config".equals(request.target())) {
-                response.json(500, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
+                response.json(500, "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -255,6 +439,38 @@ class ConfigCommandTest {
         );
     }
 
+
+    @Test
+    @DisplayName("config set refuses only the keys the one table owns")
+    void configSetOwnsOnlyTheSpecifiedKeys() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("GET".equals(request.method())) {
+                response.json(200, "[]");
+            } else if ("PUT".equals(request.method())) {
+                response.json(200, "{\"key\":\"x\",\"value\":\"1\",\"origin\":\"machine\",\"revision\":1}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int store = execute("config", "set", "credentials.store", "file");
+        var refused = err.toString();
+        err.getBuffer().setLength(0);
+        int credential = execute("config", "set", "credentials.github", "anything");
+        int roleish = execute("config", "set", "roleset", "1");
+
+        assertAll(
+                            () -> assertEquals(1, store, refused),
+                            () -> assertTrue(refused.contains("pm-operator config credentials"), refused),
+                            () -> assertEquals(0, credential, out.toString()),
+                            () -> assertTrue(requests.contains("PUT /api/v1/config/machine/credentials.github"),
+                                                requests.toString()),
+                            () -> assertEquals(0, roleish, out.toString()),
+                            () -> assertTrue(requests.contains("PUT /api/v1/config/machine/roleset"),
+                                                requests.toString()));
+    }
 
     @Test
     @DisplayName("config <aspect> --plan refuses the verb's other options")
@@ -465,8 +681,8 @@ class ConfigCommandTest {
                             () -> assertTrue(column > 0, text),
                             () -> assertEquals("English, models English", valueAt(text, "Language", column), text),
                             () -> assertEquals("Claude Code 2.4.1", valueAt(text, "Harnesses", column), text),
-                            () -> assertEquals("scan_harnesses", valueAt(text, "look for harnesses", column), text),
-                            () -> assertEquals("ask", valueAt(text, "Ask each time", column), text)
+                            () -> assertEquals("2", valueAt(text, "Remembered consents", column), text),
+                            () -> assertEquals("Ask each time", valueAt(text, "Documents", column), text)
         );
     }
 
@@ -499,10 +715,109 @@ class ConfigCommandTest {
         return (request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target())) {
                 response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, DEVICES);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"web\":{\"lan\":false}}");
             } else {
                 response.send(404, null, "");
             }
         };
+    }
+
+    @Test
+    @DisplayName("the overview survives a status it cannot read")
+    void overviewSurvivesAMalformedStatus() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, DEVICES);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "not a json object");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Paired devices"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("the overview collapses the remembered consents into one row with their count")
+    void overviewCollapsesTheConsents() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var text = out.toString();
+        var consents = rowOfLabel(text, "Remembered consents");
+
+        assertAll(
+                            () -> assertNotNull(consents, text),
+                            () -> assertTrue(consents.stripTrailing().endsWith("2"), consents),
+                            () -> assertFalse(text.contains("look for harnesses"), text),
+                            () -> assertFalse(text.contains("fetch the icons"), text));
+    }
+
+    @Test
+    @DisplayName("the overview shows the documents mode as the catalogue names it")
+    void overviewShowsTheDocumentsModeText() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var documents = rowOfLabel(out.toString(), "Documents");
+
+        assertAll(
+                            () -> assertNotNull(documents, out.toString()),
+                            () -> assertTrue(documents.contains("Ask each time"), documents),
+                            () -> assertFalse(documents.stripTrailing().endsWith("ask"), documents));
+    }
+
+    @Test
+    @DisplayName("the overview names the paired devices and the listener")
+    void overviewNamesThePairedDevices() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var devices = rowOfLabel(out.toString(), "Paired devices");
+
+        assertAll(
+                            () -> assertNotNull(devices, out.toString()),
+                            () -> assertTrue(devices.contains("3 devices \u00b7 network listener off"), devices));
+    }
+
+    @Test
+    @DisplayName("the overview strips a control sequence from a runtime-served key")
+    void overviewStripsAControlSequence() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[{\"key\":\"custom.\\u001B[31mkey\",\"value\":\"v\","
+                                    + "\"origin\":\"machine\",\"revision\":0}]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertFalse(text.contains("\u001B"), text),
+                            () -> assertTrue(text.contains("custom.key"), text));
+    }
+
+    @Test
+    @DisplayName("the overview leaves the input on the prompt line")
+    void overviewLeavesTheInputOnThePromptLine() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+
+        assertFalse(out.toString().endsWith("\n"), out.toString());
     }
 
     @Test
@@ -555,7 +870,11 @@ class ConfigCommandTest {
         var requests = new ArrayList<String>();
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
-            response.json(200, "{\"key\":\"custom.timeout\",\"value\":\"60\",\"origin\":\"project\"}");
+            if ("GET".equals(request.method()) && request.target().startsWith("/api/v1/config")) {
+                response.json(200, "[" + valueOf("custom.timeout", "30", 4) + "]");
+            } else {
+                response.json(200, "{\"key\":\"custom.timeout\",\"value\":\"60\",\"origin\":\"project\"}");
+            }
         });
 
         execute("config", "set", "custom.timeout", "60", "--project", "fix-relay");
@@ -686,6 +1005,16 @@ class ConfigCommandTest {
         }
     }
 
+    private static String valueOf(String key, String value, int revision) {
+        return "{\"key\":\"" + key + "\",\"value\":\"" + value + "\",\"origin\":\"machine\",\"revision\":"
+                            + revision + "}";
+    }
+
+    private static String conflictOf(String key, String value, int revision) {
+        return "{\"key\":\"" + key + "\",\"value\":\"" + value + "\",\"origin\":\"machine\",\"revision\":"
+                            + revision + ",\"error\":\"conflict\"}";
+    }
+
     private static String manyAspects() {
         var aspects = new StringBuilder();
         for (int index = 1; index <= 10; index++) {
@@ -755,6 +1084,9 @@ class ConfigCommandTest {
 
     private static final String PORT_VALUE =
                         "{\"key\":\"web.port\",\"value\":7420,\"origin\":\"machine\",\"revision\":4}";
+    private static final String DEVICES = """
+                        [{"id":"d-1","label":"mbp-oliver"},{"id":"d-2","label":"iPad"},{"id":"d-3","label":"Firefox"}]
+                        """;
     private static final String FLAG_VALUE =
                         "{\"key\":\"console.full_screen\",\"value\":true,\"origin\":\"default\",\"revision\":0}";
     private static final String OVERRIDDEN_VALUE = "{\"key\":\"plan_defaults.landing\","

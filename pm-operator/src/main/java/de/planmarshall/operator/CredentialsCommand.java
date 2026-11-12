@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -59,6 +60,13 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String STATUS = "status";
     private static final String MODE = "mode";
     private static final String ROTATE = "rotate";
+    private static final String CREDENTIALS = "credentials";
+    private static final String KEY = "key";
+    private static final String STORED = "operator.credentials.stored";
+    private static final String FAILED = "operator.credentials.failed";
+    private static final String READ_FAILED = "operator.credentials.read_failed";
+    private static final String REASON = "reason";
+    private static final String COUNT = "count";
 
     private final OperatorContext context;
 
@@ -101,7 +109,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             return null;
         }
         out.println(MessageCatalogue.format(locale(), "operator.credentials.status_failed",
-                            Map.of("key", key, STATUS, response.status())));
+                            Map.of(KEY, key, STATUS, response.status())));
         out.flush();
         return null;
     }
@@ -121,7 +129,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                             Map.of("mode", mode, "key", key)));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.credentials.entry_value",
-                            Map.of("key", key, "providers", providerHint(status, locale))));
+                            Map.of(KEY, key, "providers", providerHint(status, locale))));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
                             ? "onboard.settings.credential.rotate" : "onboard.settings.credential.replace", Map.of()));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
@@ -134,6 +142,10 @@ public final class CredentialsCommand implements Callable<Integer> {
     }
 
     private static String providerHint(@Nullable Map<String, Object> status, String locale) {
+        var provider = status != null ? JsonTree.string(status, "provider") : null;
+        if (provider != null && !provider.isBlank()) {
+            return provider;
+        }
         var tokenPath = status != null ? JsonTree.string(status, "token_path") : null;
         return tokenPath != null && !tokenPath.isBlank()
                             ? tokenPath
@@ -145,26 +157,27 @@ public final class CredentialsCommand implements Callable<Integer> {
         return path != null && !path.isBlank() ? path : "os";
     }
 
-    private int store(PrintWriter out, String key, String mode, boolean yes) throws IOException {
+    private int store(PrintWriter out, PrintWriter err, String key, String mode, boolean yes,
+                        @Nullable Map<String, Object> status) throws IOException {
         var locale = locale();
-        char[] secret;
         try (var lease = context.openTerminal()) {
             var terminal = lease.terminal();
+            char[] secret;
             try {
                 secret = SecretReader.read(terminal, out, locale);
             } catch (UserInterruptException _) {
                 // The interrupt at the secret prompt is the exit-code table's 130 as well.
                 throw new StartPrompt.InterruptException();
             } catch (IOException e) {
-                out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
-                                    Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
+                out.println(MessageCatalogue.format(locale, READ_FAILED,
+                                    Map.of(REASON, TerminalSanitizer.sanitize(e.getMessage()))));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
             try {
                 if (secret.length == 0) {
-                    out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
-                                        Map.of("reason", "empty")));
+                    out.println(MessageCatalogue.format(locale, READ_FAILED,
+                                        Map.of(REASON, "empty")));
                     out.flush();
                     return PmOperator.EXIT_FAILURE;
                 }
@@ -182,18 +195,19 @@ public final class CredentialsCommand implements Callable<Integer> {
                 }
                 var response = context.runtime(true).send(
                                     HttpRequest.json("PUT", path(key), JsonTree.write(body)));
-                return reportStored(out, key, response);
+                return reportStored(out, err, key, response, storeHint(status), terminal);
             } finally {
                 SecretReader.dispose(secret);
             }
         }
     }
 
-    private int reportStored(PrintWriter out, String key, HttpResponse response) throws IOException {
+    private int reportStored(PrintWriter out, PrintWriter err, String key, HttpResponse response, String store,
+                        Terminal terminal) throws IOException {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
-            out.println(MessageCatalogue.format(locale, "operator.credentials.failed",
-                                Map.of("key", key, STATUS, response.status())));
+            out.println(MessageCatalogue.format(locale, FAILED,
+                                Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -205,21 +219,63 @@ public final class CredentialsCommand implements Callable<Integer> {
         } catch (IOException _) {
             // a body-less 204 is fine
         }
-        out.println(MessageCatalogue.format(locale, "operator.credentials.stored",
-                            Map.of("key", key, "count", dropped)));
+        out.println(MessageCatalogue.format(locale, STORED,
+                            Map.of(KEY, key, COUNT, dropped)));
         out.flush();
-        verifyProviders(out, locale, key);
-        return 0;
+        if (projectScope != null && !projectScope.isBlank()) {
+            // A project's token is checked where its project work runs; the machine check is not it.
+            return 0;
+        }
+        return verifyProviders(out, err, key, store, terminal);
     }
 
     /**
-     * Names the verb that checks the providers which use the key. The check is the providers'
-     * later run ({@code config providers --verify}, {@code 01-commands.adoc#direct-verbs}); the
-     * client no longer calls an aspect route itself, so it never reports a check it did not run.
+     * Runs the provider check the design follows a stored token with
+     * ({@code 08-transcripts-later.adoc:262-273}) through the machine onboarding's later run: the
+     * providers that use the key report their lines, and the last line names the plans that go on.
+     * A check that fails prints the failure and leaves the hold as it is.
+     *
+     * @param out   the verb's output
+     * @param key   the credential key whose providers are checked
+     * @param store the store the secret was written to
+     * @return the exit code
+     * @throws IOException on transport failure
      */
-    private void verifyProviders(PrintWriter out, String locale, String key) {
-        out.println(MessageCatalogue.format(locale, "operator.credentials.verify_with", Map.of("key", key)));
+    private int verifyProviders(PrintWriter out, PrintWriter err, String key, String store, Terminal terminal)
+                        throws IOException {
+        var locale = locale();
+        out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
+                            Map.of("action", MessageCatalogue.format(locale,
+                                                "common.consent.kind.verify_providers", Map.of()))));
         out.flush();
+        var facts = new LinkedHashMap<String, String>();
+        facts.put("current", store);
+        var outcome = ConfigAspectRun.runFor(context, out, err, CREDENTIALS,
+                            new ConfigAspectRun.Answers(facts, List.of("verify_providers"), false, false, false,
+                                                false),
+                            terminal);
+        if (outcome.exitCode() != 0) {
+            return outcome.exitCode();
+        }
+        var reported = outcome.facts();
+        if (Boolean.TRUE.equals(reported.get("failed"))) {
+            out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
+                                Map.of(REASON, TerminalSanitizer.sanitize(
+                                                    Objects.toString(reported.get("cause"), "")))));
+            out.flush();
+            return 0;
+        }
+        var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";
+        var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
+                            "onboard.settings.credential.verified", Map.of(KEY, key)));
+        if (!plans.isBlank()) {
+            line.append(' ').append(MessageCatalogue.format(locale,
+                                "onboard.settings.credential.plans_go_on",
+                                Map.of(COUNT, plans.split(",").length, "plans", plans)));
+        }
+        out.println(line);
+        out.flush();
+        return 0;
     }
 
     private boolean confirm(Terminal terminal) {
@@ -265,12 +321,12 @@ public final class CredentialsCommand implements Callable<Integer> {
             var status = command.readStatus(out, key);
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of("key", key)));
+                                    Map.of(KEY, key)));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
             command.printHeader(out, key, ROTATE, status);
-            return command.store(out, key, ROTATE, yes);
+            return command.store(out, spec.commandLine().getErr(), key, ROTATE, yes, status);
         }
     }
 
@@ -313,7 +369,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                                     + "  " + TerminalSanitizer.sanitize(kind));
             }
             out.flush();
-            return command.store(out, key, "set", yes);
+            return command.store(out, spec.commandLine().getErr(), key, "set", yes, status);
         }
     }
 
@@ -338,7 +394,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             var status = command.readStatus(out, key);
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of("key", key)));
+                                    Map.of(KEY, key)));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -370,12 +426,12 @@ public final class CredentialsCommand implements Callable<Integer> {
             var response = context.runtime(true).send(new HttpRequest("DELETE", path(key), Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.credentials.stored", Map.of("key", key, "count", 0)));
+                                    STORED, Map.of(KEY, key, COUNT, 0)));
                 out.flush();
                 return 0;
             }
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                "operator.credentials.failed", Map.of("key", key, STATUS, response.status())));
+                                FAILED, Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }

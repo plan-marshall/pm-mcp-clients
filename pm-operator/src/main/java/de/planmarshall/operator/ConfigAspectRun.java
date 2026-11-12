@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.dialogue.AspectRunSource;
@@ -83,6 +85,19 @@ final class ConfigAspectRun {
     }
 
     /**
+     * The outcome of one later run: its exit code, and the facts of the last state it reported.
+     *
+     * @param exitCode the verb's exit code
+     * @param facts    the facts of the last state before the run returned to the settings
+     */
+    record Outcome(int exitCode, Map<String, Object> facts) {
+
+        Outcome {
+            facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
+        }
+    }
+
+    /**
      * Runs one aspect of the machine's onboarding again.
      *
      * @param context the operator context
@@ -95,48 +110,96 @@ final class ConfigAspectRun {
      */
     static int run(OperatorContext context, PrintWriter out, PrintWriter err, String aspect, Answers answers)
                         throws IOException {
-        return new ConfigAspectRun(context, out, err, answers).execute(aspect);
+        return runFor(context, out, err, aspect, answers).exitCode();
     }
 
-    private int execute(String aspect) throws IOException {
+    /**
+     * Runs one aspect of the machine's onboarding again and keeps what its last state reported, so a
+     * verb can print the outcome of the check the run performed ({@code credentials rotate}).
+     *
+     * @param context the operator context
+     * @param out     the verb's output
+     * @param err     the verb's error output
+     * @param aspect  the aspect's name as the verb spells it
+     * @param answers the answers the verb carries
+     * @return the outcome
+     * @throws IOException on transport failure
+     */
+    static Outcome runFor(OperatorContext context, PrintWriter out, PrintWriter err, String aspect,
+                        Answers answers) throws IOException {
+        return runFor(context, out, err, aspect, answers, null);
+    }
+
+    /**
+     * Runs one aspect of the machine's onboarding again over a terminal the caller already holds, so
+     * a verb that read a secret on its own terminal does not open a second one for the check.
+     *
+     * @param context  the operator context
+     * @param out      the verb's output
+     * @param err      the verb's error output
+     * @param aspect   the aspect's name as the verb spells it
+     * @param answers  the answers the verb carries
+     * @param terminal the caller's terminal, or {@code null} to open one
+     * @return the outcome
+     * @throws IOException on transport failure
+     */
+    static Outcome runFor(OperatorContext context, PrintWriter out, PrintWriter err, String aspect,
+                        Answers answers, @Nullable Terminal terminal) throws IOException {
+        return new ConfigAspectRun(context, out, err, answers).execute(aspect, terminal);
+    }
+
+    private Outcome execute(String aspect, @Nullable Terminal terminal) throws IOException {
         var source = new AspectRunSource(context.runtime(true), context.gate(),
                             AspectRunSource.reconfigureLink(aspect), answers.facts(), answers.consents(),
                             new AspectRunSource.Flags(answers.noIcons(), answers.noAdvice(), answers.yes(),
                                                 answers.noInput()));
+        if (terminal != null) {
+            return runWith(source, aspect, terminal);
+        }
         try (var lease = context.openTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+            return runWith(source, aspect, lease.terminal());
+        }
+    }
+
+    private Outcome runWith(AspectRunSource source, String aspect, Terminal terminal) throws IOException {
+        try {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var dialogue = new StateDialogue(source, out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
         } catch (StartPrompt.InterruptException _) {
-            return StartPrompt.EXIT_INTERRUPTED;
+            return outcome(source, StartPrompt.EXIT_INTERRUPTED);
         } catch (StartPrompt.MissingInputException _) {
             reportUnused(source);
             out.println(MessageCatalogue.format(locale, "operator.config.aspect_stopped", Map.of()));
             out.flush();
-            return EXIT_MISSING_INPUT;
+            return outcome(source, EXIT_MISSING_INPUT);
         } catch (StartPrompt.StartLeftException _) {
             reportUnused(source);
             out.flush();
-            return 0;
+            return outcome(source, 0);
         } catch (OperatorRefusedException e) {
             out.println(e.getMessage());
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         } catch (AspectRunSource.RefusedException refused) {
             err.println(MessageCatalogue.format(locale, "operator.config.aspect_refused",
                                 Map.of(ASPECT, aspect, "status", refused.status())));
             err.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         } catch (IOException _) {
             err.println(MessageCatalogue.format(locale, "operator.config.aspect_failed", Map.of(ASPECT, aspect)));
             err.flush();
-            return PmOperator.EXIT_FAILURE;
+            return outcome(source, PmOperator.EXIT_FAILURE);
         }
         reportUnused(source);
         out.println(MessageCatalogue.format(locale, "operator.config.aspect_done", Map.of(ASPECT, aspect)));
         out.flush();
-        return 0;
+        return outcome(source, 0);
+    }
+
+    private static Outcome outcome(AspectRunSource source, int exitCode) {
+        return new Outcome(exitCode, source.lastFacts());
     }
 
     private void reportUnused(AspectRunSource source) {

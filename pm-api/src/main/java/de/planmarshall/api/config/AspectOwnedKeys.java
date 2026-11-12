@@ -9,43 +9,44 @@
  */
 package de.planmarshall.api.config;
 
-import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The configuration keys an onboarding aspect owns and the plain-key route therefore never writes
  * ({@code 01-commands.adoc:148}): the client refuses them with {@code 409 aspect_owned} and the
- * runtime refuses them the same way, so both read this one list.
+ * runtime refuses them the same way, so both read this one table.
  *
- * <p>A prefix owns a family of keys ({@code language.interface}); an exact key owns only itself
- * ({@code roles}, {@code sources.documents_mode}).
+ * <p>A key ending in {@code .} owns a family of keys ({@code language.interface}); any other key
+ * owns only itself ({@code roles}, {@code credentials.store}, {@code sources.documents_mode}), so a
+ * family an aspect does not own is never swept in by a prefix that merely starts the same way.
  */
 public final class AspectOwnedKeys {
 
-    /** The key prefixes an aspect owns. */
-    private static final List<String> PREFIXES = List.of(
-            "language.", "harness.", "models.", "credentials.", "providers.",
-            "plan_defaults.", "roles.");
+    /** The one table: an owned key or key prefix, and the aspect verb that owns it. */
+    private static final Map<String, String> OWNED = owned();
 
-    /** The keys an aspect owns as a whole. */
-    private static final List<String> EXACT = List.of("roles", "sources.documents_mode");
+    private static final String ROLES = "roles";
 
     private AspectOwnedKeys() {
     }
 
-    /**
-     * @return the key prefixes an aspect owns, in the order the catalogue lists them
-     */
-    public static List<String> prefixes() {
-        return PREFIXES;
-    }
-
-    /**
-     * @return the keys an aspect owns as a whole
-     */
-    public static List<String> exact() {
-        return EXACT;
+    private static Map<String, String> owned() {
+        var map = new LinkedHashMap<String, String>();
+        map.put("language.", "language");
+        map.put("harness.", "harnesses");
+        map.put("models.", "models");
+        map.put("credentials.store", "credentials");
+        map.put("providers.", "providers");
+        map.put("plan_defaults.", "plan-defaults");
+        map.put(ROLES, ROLES);
+        map.put(ROLES + ".", ROLES);
+        map.put("sources.documents_mode", "documents");
+        return Collections.unmodifiableMap(map);
     }
 
     /**
@@ -53,18 +54,26 @@ public final class AspectOwnedKeys {
      * @return {@code true} when an aspect owns the key and only its verb changes it
      */
     public static boolean isAspectOwned(@Nullable String key) {
+        return owningAspect(key).isPresent();
+    }
+
+    /**
+     * @param key a configuration key, or {@code null}
+     * @return the aspect verb that owns the key, or an empty optional when no aspect owns it
+     */
+    public static Optional<String> owningAspect(@Nullable String key) {
         if (key == null) {
-            return false;
+            return Optional.empty();
         }
-        if (EXACT.contains(key)) {
-            return true;
-        }
-        for (var prefix : PREFIXES) {
-            if (key.startsWith(prefix)) {
-                return true;
+        var trimmed = normalise(key);
+        for (var entry : OWNED.entrySet()) {
+            var owned = entry.getKey();
+            var matches = owned.endsWith(".") ? trimmed.startsWith(owned) : trimmed.equals(owned);
+            if (matches) {
+                return Optional.of(entry.getValue());
             }
         }
-        return false;
+        return Optional.empty();
     }
 
     /**

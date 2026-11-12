@@ -85,6 +85,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private final Set<String> usedAnswers = new LinkedHashSet<>();
     private boolean started;
     private boolean returned;
+    private Map<String, Object> lastFacts = Map.of();
 
     /**
      * The boolean answers a verb carries.
@@ -157,6 +158,14 @@ public final class AspectRunSource implements StateDialogue.Source {
         return returned;
     }
 
+    /**
+     * @return the facts of the last state the run reported before it returned to the settings, so a
+     *         caller can read what the check it ran reported (the plans a credential change released)
+     */
+    public Map<String, Object> lastFacts() {
+        return lastFacts;
+    }
+
     @Override
     public StateDialogue.Frame fetch() throws IOException {
         var frame = read();
@@ -180,6 +189,7 @@ public final class AspectRunSource implements StateDialogue.Source {
                 returned = true;
                 return asFinal(current);
             }
+            lastFacts = current.facts();
             if (current.isFinal()) {
                 return current;
             }

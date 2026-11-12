@@ -283,9 +283,9 @@ class ScreenCaptureIT {
      * @param session the running session
      * @param raw     the raw output so far
      * @param start   when the wait started, in {@link System#nanoTime()} terms
-     * @return whether what the capture waits for has happened: a line dialogue answered by its
-     *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
-     *         alternate screen
+     * @return whether what the capture waits for has happened: a line dialogue answered by a prompt
+     *         (the shared {@code ›} suffix, the secret prompt included) and past {@link #MIN_WAIT}, or
+     *         a full-screen view that entered the alternate screen
      */
     private static boolean settled(PtySession session, String raw, long start, boolean console, int expectedExit) {
         if (session.exitCode() != null) {
@@ -293,8 +293,8 @@ class ScreenCaptureIT {
             // is not a settled screen, so the capture fails instead of recording the crash.
             return session.exitCode() == expectedExit;
         }
-        if (raw.contains(StartPrompt.SUFFIX) || (console
-                            && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
+        if (raw.contains(StartPrompt.SUFFIX) || raw.contains("\u203a")
+                            || (console && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();
