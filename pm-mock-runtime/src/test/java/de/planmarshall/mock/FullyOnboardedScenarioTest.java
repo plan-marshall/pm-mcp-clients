@@ -31,8 +31,8 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.control.ArchiveCheck;
-import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicTokens;
@@ -258,7 +258,7 @@ class FullyOnboardedScenarioTest {
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/review",
                         body -> ReviewResource.fromJson(body)));
                 endpoints.add(new Endpoint("/api/v1/plans/fix-relay/chat",
-                        body -> ChatReadBackResource.fromJson(body)));
+                        body -> ChatResource.fromJson(body)));
 
                 for (var endpoint : endpoints) {
                     var response = get(runtime, endpoint.path());

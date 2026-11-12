@@ -21,18 +21,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
 import de.planmarshall.api.config.ConfigOrigin;
-import de.planmarshall.api.control.ChatProposalResource;
-import de.planmarshall.api.control.ChatRole;
-import de.planmarshall.api.control.ChatScope;
-import de.planmarshall.api.control.ChatState;
-import de.planmarshall.api.control.ChatTurnResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.DocumentsMode;
@@ -47,7 +45,6 @@ import de.planmarshall.api.start.ConfinedRoot;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.EntryResource;
-import de.planmarshall.api.start.FollowUpProposalResource;
 import de.planmarshall.api.start.RecipeParameter;
 import de.planmarshall.api.start.RecipePlanId;
 import de.planmarshall.api.start.RecipeRef;
@@ -60,20 +57,23 @@ import de.planmarshall.api.start.SourceKindOffer;
 import de.planmarshall.api.start.SourceResource;
 import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.SourceTrust;
-import de.planmarshall.api.start.StartChatResource;
 import de.planmarshall.api.start.StartReadyResource;
 import de.planmarshall.api.start.StartRefusal;
 import de.planmarshall.api.start.StartRefusalReason;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
-import de.planmarshall.api.start.StartTranscriptState;
 import de.planmarshall.api.start.UnscreenedDisposition;
 import de.planmarshall.mock.scenario.Scenario;
 
 /**
  * The live state of the starts of the mock runtime (UC-STA-1 to UC-STA-5, UC-STA-7 to UC-STA-9):
- * the open entries, their sources, their chats, the recipes offered in a project, the adoptable
- * epics, and the confined file listing of the picker.
+ * the open entries, their sources, the recipes offered in a project, the adoptable epics, the ended
+ * work, and the confined file listing of the picker.
+ * <p>
+ * An entry's chat is not held here: it is served by {@link ChatRegistry} on the entry's chat routes,
+ * and an entry's state carries no chat member. The registry only derives whether the entry offers its
+ * chat yet ({@code chat_available}), and names the ended work whose chats are about the archived record
+ * ({@link #endedSubjects()}).
  * <p>
  * The state is seeded from the active state's operator representation and the scenario's routes, and
  * then driven by the operator's acts: every act returns the entry's new {@link StartStateResource}, so
@@ -92,7 +92,6 @@ final class StartRegistry {
     private static final String KEY_STATE = "state";
     private static final String KEY_PROJECT_ID = "project_id";
     private static final String KEY_SOURCES = "sources";
-    private static final String KEY_CHAT = "chat";
     private static final String KEY_RECIPES = "recipes";
     private static final String KEY_TITLE = "title";
     private static final String KEY_LANDING = "landing";
@@ -110,15 +109,11 @@ final class StartRegistry {
     private static final String KEY_ENDED_WORK = "ended_work";
     private static final String KEY_NEED = "need";
     private static final String KEY_REASON = "reason";
-    private static final String KEY_ROLE = "role";
     private static final String KEY_AVAILABLE = "available";
-    private static final String KEY_TURNS = "turns";
-    private static final String KEY_PROPOSAL = "proposal";
     private static final String KEY_TEXT = "text";
     private static final String KEY_SUBJECT_ID = "subject_id";
     private static final String KEY_SUBJECT_KIND = "subject_kind";
     private static final String KEY_DESCRIPTION = "description";
-    private static final String KEY_DISABLED_REASON = "disabled_reason";
     private static final String KEY_FORGE = "forge";
     private static final String KEY_RESETS_AT = "resets_at";
     private static final String KEY_REFERENCE = "reference";
@@ -152,20 +147,12 @@ final class StartRegistry {
     private static final String STATE_RECIPE_PARAMETERS = StartState.RECIPE_PARAMETERS.wireValue();
     private static final String LANDING_FILES = "landing.files";
     private static final String LANDING_PULL_REQUEST = "landing.pull-request";
-    private static final String ROLE_REFINE = ChatRole.REFINE.value();
-    private static final String ROLE_DECOMPOSE = ChatRole.DECOMPOSE.value();
     private static final String PREFIX_ENTRY = "ent-";
-    private static final String CHAT_PREFIX = "chat-";
     private static final String ADD_PREFIX = "add_";
-    private static final String CHAT_DIRECTORY = "chat";
     private static final String PATH_SEPARATOR = "/";
-    private static final String PENDING_DIRECTORY = "pending/";
-    private static final String PLANS_DIRECTORY = "plans/";
-    private static final String EPICS_DIRECTORY = "epics/";
     private static final String EVENT_EPIC_STARTED = "epic.started";
     private static final String EVENT_PLAN_STARTED = "plan.started";
     private static final String EVENT_ENTRY_ABANDONED = "entry.abandoned";
-    private static final String KEY_AT = "at";
     private static final String KEY_UNTRUSTED = "untrusted";
     private static final String KEY_OPERATOR_AUTHORED = "operator_authored";
     private static final String KEY_ADDITIONS = "additions";
@@ -209,7 +196,6 @@ final class StartRegistry {
     private String documentsMode = DocumentsMode.ASK.wireValue();
     private int entryCounter;
     private int sourceCounter;
-    private int chatCounter;
 
     /**
      * @param broadcaster the callback that broadcasts a start event
@@ -247,7 +233,6 @@ final class StartRegistry {
         private boolean canContinue;
         private boolean chatAvailable;
         private @Nullable String chatDisabledReason;
-        private @Nullable StartChat chat;
         private @Nullable StartRefusal refusal;
         private @Nullable AdoptionFailure adoptionFailure;
         private @Nullable AdoptionFailure pendingAdoptionFailure;
@@ -268,27 +253,9 @@ final class StartRegistry {
     }
 
     /**
-     * The chat of an entry.
+     * One ended plan or epic, whose chat is about the archived record.
      */
-    private static final class StartChat {
-        private final String chatId;
-        private ChatRole role;
-        private ChatState state = ChatState.TURN;
-        private final List<ChatTurnResource> turns = new ArrayList<>();
-        private @Nullable ChatProposalResource proposal;
-        private StartTranscriptState transcript = StartTranscriptState.WITH_ENTRY;
-        private @Nullable String transcriptPath;
-
-        StartChat(String chatId, ChatRole role) {
-            this.chatId = chatId;
-            this.role = role;
-        }
-    }
-
-    /**
-     * One ended plan or epic offered a chat.
-     */
-    private record EndedWork(String subjectId, EntryKind kind, String description) {
+    private record EndedWork(String subjectId, EntryKind kind) {
     }
 
     /**
@@ -313,7 +280,6 @@ final class StartRegistry {
         adoptableEpics.clear();
         entryCounter = 0;
         sourceCounter = 0;
-        chatCounter = 0;
         documentsMode = DocumentsMode.ASK.wireValue();
         var fixture = startFixtureOf(scenario, stateId);
         if (fixture.isEmpty()) {
@@ -426,8 +392,7 @@ final class StartRegistry {
                 .forEach(object -> {
                     var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
                     endedWork.put(subjectId, new EndedWork(subjectId,
-                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)),
-                            JsonTree.string(object, KEY_DESCRIPTION)));
+                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND))));
                 });
     }
 
@@ -454,7 +419,6 @@ final class StartRegistry {
         seedEntryOutcomes(entry, fixture);
         entry.sources.addAll(objects(fixture.get(KEY_SOURCES)).stream()
                 .map(this::sourceFromQuietly).toList());
-        seedEntryChat(entry, fixture);
         refresh(entry);
         entries.put(entry.entryId, entry);
     }
@@ -492,58 +456,12 @@ final class StartRegistry {
         });
     }
 
-    private void seedEntryChat(StartEntry entry, Map<String, Object> fixture) {
-        var chat = JsonTree.object(fixture, KEY_CHAT);
-        if (chat != null) {
-            seedChat(entry, chat);
-            return;
-        }
-        entry.chatAvailable = false;
-        entry.chatDisabledReason = StartStateResource.CHAT_ROLE_UNQUALIFIED;
-    }
-
     private SourceResource sourceFromQuietly(Map<String, Object> map) {
         try {
             return sourceFrom(map);
         } catch (ActRefused e) {
             throw new IllegalStateException("Invalid start source fixture: " + e.detail(), e);
         }
-    }
-
-    private static ChatRole defaultRole(StartEntry entry, @Nullable ChatRole role) {
-        if (role != null) {
-            return role;
-        }
-        return entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
-    }
-
-    private static ChatTurnResource turnFrom(Map<String, Object> object) {
-        var role = JsonTree.string(object, KEY_ROLE);
-        var text = JsonTree.string(object, KEY_TEXT);
-        var at = JsonTree.string(object, KEY_AT);
-        return new ChatTurnResource(Objects.requireNonNull(role), Objects.requireNonNull(text),
-                at != null ? at : "", Boolean.TRUE.equals(JsonTree.bool(object, KEY_UNTRUSTED)));
-    }
-
-    private void seedChat(StartEntry entry, Map<String, Object> chat) {
-        var available = JsonTree.bool(chat, KEY_AVAILABLE);
-        entry.chatAvailable = available == null || available;
-        entry.chatDisabledReason = entry.chatAvailable ? null : JsonTree.string(chat, KEY_DISABLED_REASON);
-        var role = ChatRole.fromValue(JsonTree.string(chat, KEY_ROLE));
-        var chatState = new StartChat(CHAT_PREFIX + entry.entryId, defaultRole(entry, role));
-        chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
-        var turns = objects(chat.get(KEY_TURNS));
-        chatState.turns.addAll(turns.stream()
-                .filter(object -> JsonTree.string(object, KEY_ROLE) != null
-                        && JsonTree.string(object, KEY_TEXT) != null)
-                .map(StartRegistry::turnFrom)
-                .toList());
-        var proposal = JsonTree.object(chat, KEY_PROPOSAL);
-        if (proposal != null) {
-            chatState.proposal = proposalFrom(proposal);
-            chatState.state = ChatState.READ_BACK;
-        }
-        entry.chat = chatState;
     }
 
     /**
@@ -575,32 +493,6 @@ final class StartRegistry {
         if (request.kind().epic() && !entry.adoptable.isEmpty()) {
             entry.state = STATE_SOURCES;
         }
-        refresh(entry);
-        entries.put(entry.entryId, entry);
-        return representation(entry);
-    }
-
-    /**
-     * Opens a plan's entry from an accepted follow-up proposal.
-     *
-     * @param projectId   the project
-     * @param description the accepted description, naming the ended plan or epic
-     * @return the opened entry, or {@code null} for an unknown project
-     */
-    synchronized @Nullable StartStateResource openFollowUp(String projectId, String description) {
-        if (!projectLandings.containsKey(projectId)) {
-            return null;
-        }
-        var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, projectId, STATE_SOURCES);
-        entry.title = firstLine(description);
-        entry.objective = description;
-        entry.landing = projectLandings.getOrDefault(projectId, LANDING_PULL_REQUEST);
-        entry.lessonsAvailable = true;
-        entry.localChanges = true;
-        entry.recipes = projectRecipes.getOrDefault(projectId, List.of());
-        entry.chatAvailable = true;
-        entry.sources.add(new SourceResource("src-desc-1", SourceKind.DESCRIPTION, firstLine(description), null,
-                SourceState.STORED, SourceTrust.TRUSTED, null, null, List.of(), null, null, List.of(), null));
         refresh(entry);
         entries.put(entry.entryId, entry);
         return representation(entry);
@@ -652,7 +544,6 @@ final class StartRegistry {
                 case StartStateResource.LINK_SOURCES -> leaveRecipe(entry);
                 case StartStateResource.LINK_RECIPE ->
                     entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
-                case "chat" -> openChat(entry);
                 case StartStateResource.LINK_START -> continueToReady(entry);
                 case "back" -> leaveRecipe(entry);
                 case "create" -> create(entry, body);
@@ -670,102 +561,22 @@ final class StartRegistry {
     }
 
     /**
-     * Ends the chat of an entry.
-     *
      * @param entryId the entry's id
-     * @return the entry's representation, or {@code null} for an unknown entry
+     * @return {@code true} if the entry opens an epic, whose chat is routed to {@code decompose}
      */
-    synchronized @Nullable StartStateResource endChat(String entryId) {
+    synchronized boolean isEpicEntry(String entryId) {
         var entry = entries.get(entryId);
-        if (entry == null) {
-            return null;
-        }
-        if (entry.chat != null) {
-            entry.chat.state = ChatState.END;
-            entry.chat.proposal = null;
-        }
-        refresh(entry);
-        return representation(entry);
+        return entry != null && entry.kind.epic();
     }
 
     /**
-     * Adds the operator's message to the chat and the role's answer.
-     *
-     * @param entryId the entry's id
-     * @param text    the operator's message
-     * @return the entry's representation, or {@code null} for an unknown entry
-     * @throws ActRefused if no chat is open
+     * @return the ended plans and epics of the active state, as the subjects of their chats
      */
-    synchronized @Nullable StartStateResource chatTurn(String entryId, String text) throws ActRefused {
-        var entry = entries.get(entryId);
-        if (entry == null) {
-            return null;
-        }
-        if (entry.chat == null) {
-            throw new ActRefused("act_not_available", "No chat is open");
-        }
-        entry.chat.turns.add(new ChatTurnResource(ChatTurnResource.ROLE_OPERATOR, text, now(), false));
-        entry.chat.turns.add(new ChatTurnResource(entry.chat.role.value(), answer(entry, text), now(), false));
-        if (entry.chat.proposal != null) {
-            entry.chat.state = ChatState.READ_BACK;
-        } else {
-            entry.chat.state = ChatState.TURN;
-        }
-        refresh(entry);
-        return representation(entry);
-    }
-
-    /**
-     * Accepts or rejects the chat's proposal.
-     *
-     * @param entryId the entry's id
-     * @param accept  whether the proposal is accepted
-     * @return the entry's representation, or {@code null} for an unknown entry
-     * @throws ActRefused if the chat carries no proposal
-     */
-    synchronized @Nullable StartStateResource chatProposal(String entryId, boolean accept) throws ActRefused {
-        var entry = entries.get(entryId);
-        if (entry == null) {
-            return null;
-        }
-        if (entry.chat == null || entry.chat.proposal == null) {
-            throw new ActRefused("act_not_available", "The chat carries no proposal");
-        }
-        if (accept) {
-            storeDescription(entry, entry.chat.proposal.after());
-            entry.chat.state = ChatState.TURN;
-        }
-        entry.chat.proposal = null;
-        refresh(entry);
-        return representation(entry);
-    }
-
-    /**
-     * @param subjectId the ended plan or epic
-     * @return the follow-up chat of the ended work, or {@code null} for an unknown subject
-     */
-    synchronized @Nullable FollowUpProposalResource endedChat(String subjectId) {
-        var ended = endedWork.get(subjectId);
-        if (ended == null) {
-            return null;
-        }
-        return FollowUpProposalResource.proposed(subjectId, ended.kind(),
-                new ChatProposalResource("A follow-up plan", null, ended.description(), "a new plan"));
-    }
-
-    /**
-     * Opens the follow-up entry of an ended work's accepted proposal.
-     *
-     * @param projectId the project
-     * @param subjectId the ended plan or epic
-     * @return the opened entry, or {@code null} for an unknown subject or project
-     */
-    synchronized @Nullable StartStateResource acceptFollowUp(String projectId, String subjectId) {
-        var ended = endedWork.get(subjectId);
-        if (ended == null) {
-            return null;
-        }
-        return openFollowUp(projectId, ended.description());
+    synchronized Set<ChatSubject> endedSubjects() {
+        var subjects = new LinkedHashSet<ChatSubject>();
+        endedWork.values().forEach(ended -> subjects.add(new ChatSubject(
+                ended.kind().epic() ? ChatSubjectKind.EPIC : ChatSubjectKind.PLAN, ended.subjectId())));
+        return subjects;
     }
 
     /**
@@ -1046,18 +857,6 @@ final class StartRegistry {
         entry.state = STATE_SOURCES;
     }
 
-    private void openChat(StartEntry entry) {
-        if (entry.chat == null) {
-            var role = entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
-            entry.chat = new StartChat(CHAT_PREFIX + entry.entryId + "-" + (++chatCounter), role);
-            entry.chat.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
-            entry.chat.turns.add(new ChatTurnResource(ChatRole.REFINE == role ? ROLE_REFINE : ROLE_DECOMPOSE,
-                    "What did you understand, and what is unclear?", now(), false));
-        }
-        entry.chatAvailable = true;
-        entry.chatDisabledReason = null;
-    }
-
     private void chooseRecipe(StartEntry entry, String recipeKey) throws ActRefused {
         var recipe = entry.recipes.stream().filter(candidate -> candidate.key().equals(recipeKey)).findFirst()
                 .orElseThrow(() -> new ActRefused("act_not_available", "No recipe with the key " + recipeKey));
@@ -1088,13 +887,6 @@ final class StartRegistry {
             entry.title = title.strip();
         }
         entry.planId = createdId(entry, JsonTree.string(body, KEY_PLAN_ID));
-        if (entry.chat != null) {
-            entry.chat.state = ChatState.END;
-            entry.chat.proposal = null;
-            entry.chat.transcript = StartTranscriptState.MOVED;
-            entry.chat.transcriptPath = (entry.kind.epic() ? EPICS_DIRECTORY : PLANS_DIRECTORY)
-                    + entry.planId + PATH_SEPARATOR + CHAT_DIRECTORY;
-        }
         entry.created = true;
         entry.state = STATE_READY;
         var idKey = entry.kind.epic() ? KEY_EPIC_ID : KEY_PLAN_ID;
@@ -1119,12 +911,6 @@ final class StartRegistry {
     }
 
     private StartStateResource abandon(StartEntry entry) {
-        if (entry.chat != null) {
-            entry.chat.state = ChatState.END;
-            entry.chat.proposal = null;
-            entry.chat.transcript = StartTranscriptState.DELETED;
-            entry.chat.transcriptPath = null;
-        }
         broadcaster.accept(new StartEvent(EVENT_ENTRY_ABANDONED, Map.of(KEY_ENTRY_ID, entry.entryId,
                 KEY_PROJECT_ID, entry.projectId)));
         var representation = representation(entry);
@@ -1170,7 +956,7 @@ final class StartRegistry {
                 .filter(kind -> !entry.kind.epic() || kind.offeredToEpic())
                 .filter(kind -> kind == SourceKind.DESCRIPTION || !present.contains(kind))
                 .forEach(kind -> entry.offers.add(offerOf(entry, kind, offered)));
-        refreshChat(entry);
+        refreshChatAvailability(entry);
         if (entry.recipe == null && entry.recipeKey != null) {
             entry.recipe = entry.recipes.stream().filter(recipe -> recipe.key().equals(entry.recipeKey))
                     .findFirst().orElse(null);
@@ -1187,7 +973,12 @@ final class StartRegistry {
         return SourceKindOffer.refused(kind, refusalKey(entry, kind), refusalArgs(entry, kind));
     }
 
-    private static void refreshChat(StartEntry entry) {
+    /**
+     * Derives whether the entry offers its chat yet: a recipe's start offers none, every other start
+     * once a source is stored and every source from outside the machine is screened. The chat itself is
+     * {@link ChatRegistry}'s.
+     */
+    private static void refreshChatAvailability(StartEntry entry) {
         if (entry.recipe != null) {
             // a recipe's start offers no chat at all
             entry.chatAvailable = false;
@@ -1258,14 +1049,13 @@ final class StartRegistry {
     private StartStateResource representation(StartEntry entry) {
         var planId = planIdOf(entry);
         var ready = readyOf(entry, planId);
-        var chat = chatOf(entry);
         var effective = effectiveState(entry);
         var resource = new EntryResource(entry.entryId, entry.kind, entry.projectId,
                 StartState.fromWire(effective), entry.title,
                 planId, List.copyOf(entry.sources), List.copyOf(entry.offers), entry.canContinue,
                 entry.chatAvailable, entry.chatDisabledReason, entry.recipe,
                 entry.kind.epic() ? entry.adoptable : List.of(), entry.adoptionFailure);
-        return StartStateResource.of(resource, STATE_READY.equals(effective) ? ready : null, chat,
+        return StartStateResource.of(resource, STATE_READY.equals(effective) ? ready : null, null,
                 STATE_REFUSED.equals(effective) ? refusalOf(entry) : null,
                 STATE_EPIC_ADOPT_FAILED.equals(effective) ? entry.adoptionFailure : null,
                 entry.recipes);
@@ -1326,16 +1116,6 @@ final class StartRegistry {
         }
         var title = entry.title != null ? entry.title : DEFAULT_WORK;
         return slug(title);
-    }
-
-    private @Nullable StartChatResource chatOf(StartEntry entry) {
-        if (entry.chat == null) {
-            return null;
-        }
-        return new StartChatResource(entry.entryId, entry.chat.role,
-                ChatScope.REQUEST, entry.chatAvailable, entry.chatDisabledReason,
-                entry.chat.chatId, entry.chat.state, List.copyOf(entry.chat.turns), entry.chat.proposal,
-                entry.chat.transcript, entry.chat.transcriptPath);
     }
 
     private StartRefusal refusalOf(StartEntry entry) {
@@ -1439,12 +1219,6 @@ final class StartRegistry {
         return AdoptionFailure.invalid(id, detail);
     }
 
-    private ChatProposalResource proposalFrom(Map<String, Object> map) {
-        return new ChatProposalResource(JsonTree.string(map, "summary") != null ? JsonTree.string(map, "summary")
-                        : "An addition to the description", JsonTree.string(map, "before"), JsonTree.string(map, "after"),
-                JsonTree.string(map, "applies"));
-    }
-
     private Map<String, Object> confinedFixture() {
         return Map.of(
                 "", List.of(
@@ -1468,12 +1242,6 @@ final class StartRegistry {
                                 KEY_REFUSAL_FILE, Map.of(KEY_CAUSE, C_LINK_OUTSIDE))));
     }
 
-    private String answer(StartEntry entry, String text) {
-        var subject = entry.title != null ? entry.title : "the work";
-        return "Understood: " + subject + ". Unclear: how far the change reaches. (" + text.length()
-                + " characters read.)";
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Small helpers
 
@@ -1485,10 +1253,6 @@ final class StartRegistry {
     private String nextSourceId() {
         sourceCounter++;
         return "src-" + sourceCounter;
-    }
-
-    private static String now() {
-        return Instant.now().toString();
     }
 
     private static String firstLine(@Nullable String text) {

@@ -1228,28 +1228,84 @@
                   "state": "stored",
                   "trust": "trusted"
                 }
-              ],
-              "chat": {
-                "role": "refine",
-                "available": true,
-                "turns": [
-                  {
-                    "role": "operator",
-                    "text": "What did you understand, and what is unclear?",
-                    "at": "2026-10-19T10:00:00Z"
+              ]
+            },
+            "control": {
+              "chats": [
+                {
+                  "id": "C-0101",
+                  "subject": {
+                    "kind": "entry",
+                    "id": "ent-3f9a2c41"
                   },
-                  {
-                    "role": "refine",
-                    "text": "A provider that reads Codeberg issues. Unclear: comments too, and should pull requests of Codeberg follow?",
-                    "at": "2026-10-19T10:00:05Z"
-                  }
-                ],
-                "proposal": {
-                  "summary": "An addition to the description",
-                  "after": "Comments are read with the issue. Pull requests of Codeberg are out of scope for this plan.",
-                  "applies": "the description"
+                  "role": {
+                    "name": "refine",
+                    "model": "sonnet"
+                  },
+                  "scope": "entry",
+                  "state": "chat.read-back",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.entry"
+                      }
+                    ],
+                    "as_of": "2026-10-19T10:00:05Z"
+                  },
+                  "proposal": {
+                    "turn_id": "T-0103",
+                    "reply_turn_id": "T-0102",
+                    "kind": "description",
+                    "summary": "An addition to the description",
+                    "after": "Comments are read with the issue. Pull requests of Codeberg are out of scope for this plan.",
+                    "state": "open"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0101",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "What did you understand, and what is unclear?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0102",
+                      "kind": "message",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "A provider that reads Codeberg issues. Unclear: comments too, and should pull requests of Codeberg follow?",
+                      "steps": [
+                        {
+                          "key": "chat.step.read"
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
+                    },
+                    {
+                      "turn_id": "T-0103",
+                      "kind": "proposal",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "An addition to the description",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
+                    }
+                  ]
                 }
-              }
+              ]
             }
           }
         },

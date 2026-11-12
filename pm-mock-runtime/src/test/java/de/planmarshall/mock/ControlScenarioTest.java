@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +28,15 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatStatus;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.chat.ProposalAnswerRequest;
+import de.planmarshall.api.chat.ProposalState;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
-import de.planmarshall.api.control.ChatReadBackResource;
-import de.planmarshall.api.control.ChatState;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.HoldRecord;
@@ -52,6 +58,8 @@ class ControlScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String READY = StandardScenarios.RUNNING_WORK + "#control.ready";
+    /** The answer naming the open proposal of the plan fix-relay in the state control.chat. */
+    private static final String PROPOSAL_ANSWER = new ProposalAnswerRequest("T-0003").toJson();
 
     @Nested
     @DisplayName("The actions of a plan")
@@ -335,60 +343,65 @@ class ControlScenarioTest {
     class Chat {
 
         @Test
-        @DisplayName("serves a plan's read-back, an epic's chat, and a read-only chat about ended work")
+        @DisplayName("serves a plan's read-back, an epic's chat, and a chat about ended work")
         void chats() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
-                var chat = ChatReadBackResource.fromJson(
-                        get(runtime, "/api/v1/plans/fix-relay/chat").bodyText());
-                assertEquals("replan", chat.role());
-                assertEquals("plan", chat.scope());
-                assertEquals(ChatState.READ_BACK, chat.chatState());
+                var chat = ChatResource.fromJson(get(runtime, "/api/v1/plans/fix-relay/chat").bodyText());
+                assertEquals("replan", chat.role().name());
+                assertEquals(ChatScopeKind.PLAN, chat.scope());
+                assertEquals(ChatStatus.READ_BACK, chat.state());
                 assertTrue(chat.hasProposal());
-                assertEquals(2, chat.turns().size());
+                assertEquals(3, chat.turns().size());
 
-                assertEquals("decompose", ChatReadBackResource.fromJson(
-                        get(runtime, "/api/v1/epics/relay-hardening/chat").bodyText()).role());
+                assertEquals("decompose", ChatResource.fromJson(
+                        get(runtime, "/api/v1/epics/relay-hardening/chat").bodyText()).role().name());
 
-                var ended = ChatReadBackResource.fromJson(
-                        get(runtime, "/api/v1/plans/docs-typo/chat").bodyText());
-                assertEquals("archive", ended.scope());
+                var ended = ChatResource.fromJson(get(runtime, "/api/v1/plans/docs-typo/chat").bodyText());
+                assertEquals(ChatScopeKind.ARCHIVE, ended.scope());
                 assertFalse(ended.hasProposal());
             }
         }
 
         @Test
-        @DisplayName("applies a proposal once, refuses a second, and carries the chat on with a turn")
+        @DisplayName("accepts a proposal once, refuses a second, and carries the chat on with a turn")
         void proposalAndTurn() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
-                var accepted = ChatReadBackResource.fromJson(post(runtime,
-                        "/api/v1/plans/fix-relay/chat/proposal/accept", "{}").bodyText());
-                assertEquals(ChatState.APPLY, accepted.chatState());
+                var accepted = ChatResource.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/chat/proposal/accept", PROPOSAL_ANSWER).bodyText());
+                assertEquals(ChatStatus.TURN, accepted.state());
                 assertFalse(accepted.hasProposal());
+                assertEquals(ProposalState.ACCEPTED, Objects.requireNonNull(accepted.proposal()).state());
 
                 assertEquals(409, post(runtime, "/api/v1/plans/fix-relay/chat/proposal/accept",
-                        "{}").status());
+                        PROPOSAL_ANSWER).status());
 
-                var turnText = Generators.letterStrings(4, 12).next();
-                var turned = ChatReadBackResource.fromJson(post(runtime,
-                        "/api/v1/plans/fix-relay/chat/turns",
-                        JsonTree.write(Map.of("text", turnText)))
-                        .bodyText());
-                assertEquals(ChatState.TURN, turned.chatState());
-                assertEquals(4, turned.turns().size());
-                assertTrue(turned.turns().get(2).isOperator());
+                var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
+                        Generators.letterStrings(8, 12).next());
+                var turned = post(runtime, "/api/v1/plans/fix-relay/chat/turns", message.toJson());
+                assertEquals(ChatTurnAccepted.HTTP_STATUS, turned.status());
+                var operatorTurnId = ChatTurnAccepted.fromJson(turned.bodyText()).turnId();
+
+                var chat = ChatResource.fromJson(get(runtime, "/api/v1/plans/fix-relay/chat").bodyText());
+                assertEquals(ChatStatus.TURN, chat.state());
+                assertEquals(5, chat.turns().size());
+                var operatorTurn = chat.turns().get(3);
+                assertEquals(operatorTurnId, operatorTurn.turnId());
+                assertTrue(operatorTurn.isOperator());
+                assertEquals(message.text(), operatorTurn.text());
             }
         }
 
         @Test
-        @DisplayName("rejects a proposal and then has none left to apply")
+        @DisplayName("rejects a proposal and then has none left to accept")
         void reject() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
-                var rejected = ChatReadBackResource.fromJson(post(runtime,
-                        "/api/v1/plans/fix-relay/chat/proposal/reject", "{}").bodyText());
+                var rejected = ChatResource.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/chat/proposal/reject", PROPOSAL_ANSWER).bodyText());
                 assertFalse(rejected.hasProposal());
-                assertEquals(ChatState.TURN, rejected.chatState());
+                assertEquals(ProposalState.REJECTED, Objects.requireNonNull(rejected.proposal()).state());
+                assertEquals(ChatStatus.TURN, rejected.state());
                 assertEquals(409, post(runtime, "/api/v1/plans/fix-relay/chat/proposal/accept",
-                        "{}").status());
+                        PROPOSAL_ANSWER).status());
             }
         }
     }
@@ -451,12 +464,15 @@ class ControlScenarioTest {
                 assertEquals(entry.getValue(), JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())),
                         "error"), entry.getKey());
             }
-            for (var path : List.of(
-                    "/api/v1/plans/" + unknownPlan + "/actions/pause",
-                    "/api/v1/plans/" + unknownPlan + "/chat/turns")) {
-                assertEquals(404, post(runtime, path, "{}").status(), path);
-            }
-            var proposal = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/proposal/accept", "{}");
+            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/actions/pause", "{}").status());
+            var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
+                    Generators.letterStrings(8, 12).next());
+            var turn = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/turns", message.toJson());
+            assertEquals(404, turn.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(turn.body())), "error"));
+            var proposal = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/proposal/accept",
+                    PROPOSAL_ANSWER);
             assertEquals(404, proposal.status());
             assertEquals("target_not_found",
                     JsonTree.string(JsonTree.asObject(JsonTree.parse(proposal.body())), "error"));
