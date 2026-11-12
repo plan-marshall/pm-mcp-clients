@@ -218,7 +218,7 @@ class QuestionsCommandTest {
     void answerShowDetails() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
             } else {
                 response.send(404, null, "");
             }
@@ -244,7 +244,7 @@ class QuestionsCommandTest {
     void answerNoInputWithoutOption() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target())) {
-                response.json(200, "{\"title\":\"Question\"}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Question\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -253,6 +253,27 @@ class QuestionsCommandTest {
         int code = execute("answer", "Q-007", "--no-input");
         assertEquals(3, code);
         assertTrue(out.toString().contains("Choice or option required (--no-input specified)."));
+    }
+
+    @Test
+    @DisplayName("answer <id> reports a daemon answer that carries no decision id as malformed and shows nothing")
+    void answerRefusesADecisionWithoutId() throws Exception {
+        var title = "Question " + Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-007".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(Map.of("title", title)));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-007");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains("answer: Missing id in DecisionEnvelope"),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains(title), out.toString()));
     }
 
     @Test
