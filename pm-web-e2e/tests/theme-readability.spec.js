@@ -116,8 +116,10 @@ function writeGuardBaselineEntry(baseline, view, locale, violations) {
  *
  * @param {Record<string, Array<{ rule: string, word: string }>>} collected the violations per view
  * @param {string} locale the interface locale the views were read in
+ * @param {Record<string, Array<{ rule: string, word: string, context?: string }>>} [located] the
+ *   violations per view with the element they stand in, so a gained entry names its source
  */
-function verifyGuardViews(collected, locale) {
+function verifyGuardViews(collected, locale, located = {}) {
   const baseline = readGuardBaseline();
   const bootstrap = process.env.TEXT_GUARD_BOOTSTRAP === '1';
   const failures = [];
@@ -136,7 +138,10 @@ function verifyGuardViews(collected, locale) {
     }
     const { added, removed } = diffViolations(recorded, violations);
     for (const violation of added) {
-      failures.push(`${view} (${locale}) gained ${formatViolation(violation)}`);
+      const where = (located[view] ?? []).find(
+        (entry) => entry.rule === violation.rule && entry.word === violation.word,
+      );
+      failures.push(`${view} (${locale}) gained ${formatViolation(where ?? violation)}`);
     }
     for (const violation of removed) {
       failures.push(
@@ -1062,17 +1067,19 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
             await page.setViewportSize({ width: 1440, height: 900 });
             await journey.open(page, request, locale);
             const collected = {};
+            const located = {};
             await journey.walk(page, async (view) => {
-              const violations = normalizeViolations(
-                await collectTextGuardViolations(page, { locale }),
-              );
+              const found = await collectTextGuardViolations(page, { locale });
+              const violations = normalizeViolations(found);
               collected[view] = violations;
+              located[view] = found;
+              // The log names the element each word stands in, so a gained entry points at its source.
               const listed =
-                violations.map((violation) => formatViolation(violation)).join(', ') || 'none';
+                found.map((violation) => formatViolation(violation)).join(', ') || 'none';
               console.log(`[text-guard] ${view} (${locale}): ${violations.length} - ${listed}`);
             });
             expect(Object.keys(collected).sort()).toEqual(journey.views.slice().sort());
-            verifyGuardViews(collected, locale);
+            verifyGuardViews(collected, locale, located);
           });
         }
       });
