@@ -111,10 +111,10 @@ class ConfigRoutesTest {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             client(runtime).send(authorized(HttpRequest.json("PUT",
                     "/api/v1/config/machine/custom.flag", "{\"value\":\"on\"}"), runtime));
-            var deleted = client(runtime).send(authorized(new HttpRequest("DELETE",
-                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
-            var unknown = client(runtime).send(authorized(new HttpRequest("DELETE",
-                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
+            var deleted = client(runtime).send(authorized(HttpRequest.json("DELETE",
+                    "/api/v1/config/machine/custom.flag", "{\"revision\":1}"), runtime));
+            var unknown = client(runtime).send(authorized(HttpRequest.json("DELETE",
+                    "/api/v1/config/machine/custom.flag", "{\"revision\":1}"), runtime));
 
             assertAll(
                     () -> assertEquals(204, deleted.status(), deleted.bodyText()),

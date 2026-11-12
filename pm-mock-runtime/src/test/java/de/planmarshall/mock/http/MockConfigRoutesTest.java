@@ -131,14 +131,54 @@ class MockConfigRoutesTest {
     void deleteRemovesOneLevel() throws Exception {
         var routes = new MockConfigRoutes();
         query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"on\"}", Map.of());
-        var deleted = query(routes, "DELETE", PATH + "/machine/custom.flag", null, Map.of());
-        var unknown = query(routes, "DELETE", PATH + "/machine/custom.flag", null, Map.of());
+        var deleted = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":1}", Map.of());
+        var unknown = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
                 () -> assertEquals(204, deleted.status(), deleted.body()),
                 () -> assertEquals(404, unknown.status(), unknown.body()),
                 () -> assertFalse(read.body().contains("custom.flag"), read.body()));
+    }
+
+    @Test
+    @DisplayName("a change against an older revision answers 409 with the current value")
+    void aStaleRevisionIsRefusedWithTheCurrentValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"60\"}", Map.of());
+        var stale = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"70\",\"revision\":0}", Map.of());
+
+        assertAll(
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"value\":\"60\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"revision\":1"), stale.body()));
+    }
+
+    @Test
+    @DisplayName("a deletion against an older revision answers 409 with the current value")
+    void aStaleDeletionIsRefusedWithTheCurrentValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"on\"}", Map.of());
+        var stale = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":0}", Map.of());
+
+        assertAll(
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"value\":\"on\""), stale.body()));
+    }
+
+    @Test
+    @DisplayName("DELETE refuses an aspect-owned key with 409 aspect_owned")
+    void deleteRefusesAnAspectOwnedKey() throws Exception {
+        var routes = new MockConfigRoutes();
+        var refused = query(routes, "DELETE", PATH + "/machine/language.interface", "{\"revision\":0}",
+                Map.of());
+
+        assertAll(
+                () -> assertEquals(409, refused.status(), refused.body()),
+                () -> assertTrue(refused.body().contains("\"error\":\"aspect_owned\""), refused.body()));
     }
 
     @Test

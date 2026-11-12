@@ -22,8 +22,10 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.AspectOwnedKeys;
 import de.planmarshall.api.config.ConfigOrigin;
+import de.planmarshall.api.config.ConfigValueChange;
 import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.ConsentRecord;
@@ -90,6 +92,8 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
+    private static final String CONFLICT = "conflict";
+    private static final String ERROR = "error";
 
     /**
      * @param aspect an aspect of the machine onboarding
@@ -536,6 +540,139 @@ public final class ConfigCommand implements Callable<Integer> {
         return CONFIG_VERB;
     }
 
+    /**
+     * Sends one change against the revision the value was read with, and answers a {@code conflict}
+     * as the design says: the current value, then apply yours again or keep it
+     * ({@code work-actions.adoc#conflict}).
+     *
+     * @param out       the verb's output
+     * @param err       the verb's error output
+     * @param locale    the interface locale
+     * @param readPath  the scoped collection the revision is read from
+     * @param writePath the scoped value the change addresses
+     * @param deletion  whether the change removes the value
+     * @param value     the value to set, or {@code null} for a deletion
+     * @param noInput   whether the verb stops at a conflict instead of asking
+     * @param key       the key the change addresses
+     * @param doneLine  the line a written change prints
+     * @param failedKey the catalogue key that names a refused change
+     * @return the exit code
+     * @throws IOException on transport failure
+     */
+    private static int writeWithRevision(OperatorContext context, PrintWriter out, PrintWriter err, String locale,
+                        String readPath, String writePath, boolean deletion, @Nullable String value, boolean noInput,
+                        String key, String doneLine, String failedKey) throws IOException {
+        long revision;
+        try {
+            revision = revisionOf(context, readPath, key);
+        } catch (ReadFailedException failure) {
+            out.println(failure.status() > 0
+                                ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
+                                : MessageCatalogue.format(locale, "operator.config.show.unreadable", Map.of()));
+            out.flush();
+            return PmOperator.EXIT_FAILURE;
+        }
+        var response = sendChange(context, deletion, writePath, value, revision);
+        if (response.status() == 200 || response.status() == 204) {
+            out.println(doneLine);
+            out.flush();
+            return 0;
+        }
+        var conflict = response.status() == 409 ? conflictOf(response.bodyText()) : null;
+        if (conflict == null) {
+            return failed(err, locale, failedKey, key, response.status());
+        }
+        return resolveConflict(context, out, err, locale, writePath, deletion, value, noInput, key, doneLine,
+                            failedKey, conflict);
+    }
+
+    /**
+     * @param readPath the scoped collection the value is read from
+     * @param key      the key whose revision is read
+     * @return the revision the value was read with, {@code 0} when the runtime serves no such value
+     * @throws IOException when the read is refused or its body cannot be read
+     */
+    private static long revisionOf(OperatorContext context, String readPath, String key) throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(readPath));
+        if (response.status() != 200) {
+            throw new ReadFailedException(response.status());
+        }
+        List<ConfigValueResource> values;
+        try {
+            values = parseValues(response.bodyText());
+        } catch (IOException _) {
+            throw new ReadFailedException(UNREADABLE);
+        }
+        for (var value : values) {
+            if (value.key().equals(key)) {
+                return value.revision();
+            }
+        }
+        return 0;
+    }
+
+    private static HttpResponse sendChange(OperatorContext context, boolean deletion, String writePath,
+                        @Nullable String value, long revision) throws IOException {
+        var body = deletion ? ConfigValueChange.deletion(revision).toJson()
+                            : new ConfigValueChange(value, revision).toJson();
+        return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
+    }
+
+    private static int resolveConflict(OperatorContext context, PrintWriter out, PrintWriter err, String locale,
+                        String writePath, boolean deletion, @Nullable String value, boolean noInput, String key,
+                        String doneLine, String failedKey, ConfigValueResource current) throws IOException {
+        var rendered = renderedValue(locale, current);
+        if (noInput) {
+            out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(VALUE, rendered)));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
+        out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
+        out.flush();
+        if (!context.isInteractiveTerminal() || !applyAgain(context, locale)) {
+            out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
+            out.flush();
+            return 0;
+        }
+        var retry = sendChange(context, deletion, writePath, value, current.revision());
+        if (retry.status() == 200 || retry.status() == 204) {
+            out.println(doneLine);
+            out.flush();
+            return 0;
+        }
+        return failed(err, locale, failedKey, key, retry.status());
+    }
+
+    private static int failed(PrintWriter err, String locale, String failedKey, String key, int status) {
+        err.println(MessageCatalogue.format(locale, failedKey, Map.of("key", key, STATUS, status)));
+        err.flush();
+        return 1;
+    }
+
+    private static boolean applyAgain(OperatorContext context, String locale) throws IOException {
+        try (var lease = context.openTerminal()) {
+            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+            var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
+            return line == null || !"k".equalsIgnoreCase(line.trim());
+        }
+    }
+
+    /**
+     * @param body a {@code 409} answer
+     * @return the current value it names, or {@code null} when the refusal is not a conflict
+     */
+    private static @Nullable ConfigValueResource conflictOf(String body) {
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(body));
+            if (map == null || !CONFLICT.equals(JsonTree.string(map, ERROR))) {
+                return null;
+            }
+            return ConfigValueResource.fromMap(map);
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
     @Command(name = "show", description = "Shows effective configuration values.")
     @OperatorVerb
     static final class ShowCommand implements Callable<Integer> {
@@ -616,6 +753,9 @@ public final class ConfigCommand implements Callable<Integer> {
         @Nullable
         String plan;
 
+        @Option(names = "--no-input", description = "Stop at a conflict instead of asking")
+        boolean noInput;
+
         SetCommand(OperatorContext context) {
             this.context = context;
         }
@@ -643,19 +783,12 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            var body = new LinkedHashMap<String, Object>();
-            body.put(VALUE, value);
-            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
-            var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
-            if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.format(locale, "operator.config.set_done", Map.of("key", key, VALUE, value)));
-                out.flush();
-                return 0;
-            }
-            var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.set_failed", Map.of("key", key, STATUS, response.status())));
-            err.flush();
-            return 1;
+            var done = MessageCatalogue.format(locale, "operator.config.set_done",
+                                Map.of("key", key, VALUE, value));
+            return writeWithRevision(context, out, spec.commandLine().getErr(), locale,
+                                OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
+                                OperatorUrlUtil.appendScope(levelPath(), project, plan), false, value, noInput,
+                                key, done, "operator.config.set_failed");
         }
 
         private String levelPath() {
@@ -684,6 +817,9 @@ public final class ConfigCommand implements Callable<Integer> {
         @Nullable
         String plan;
 
+        @Option(names = "--no-input", description = "Stop at a conflict instead of asking")
+        boolean noInput;
+
         UnsetCommand(OperatorContext context) {
             this.context = context;
         }
@@ -710,17 +846,11 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            var path = OperatorUrlUtil.appendScope(levelPath(), project, plan);
-            var response = context.runtime(true).send(new HttpRequest("DELETE", path, Map.of(), null));
-            if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key)));
-                out.flush();
-                return 0;
-            }
-            var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.unset_failed", Map.of("key", key, STATUS, response.status())));
-            err.flush();
-            return 1;
+            var done = MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key));
+            return writeWithRevision(context, out, spec.commandLine().getErr(), locale,
+                                OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
+                                OperatorUrlUtil.appendScope(levelPath(), project, plan), true, null, noInput,
+                                key, done, "operator.config.unset_failed");
         }
 
         private String levelPath() {
