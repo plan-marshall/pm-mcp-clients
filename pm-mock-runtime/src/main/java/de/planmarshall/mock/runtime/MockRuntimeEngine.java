@@ -729,6 +729,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
     private CleanupDurations cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
     private final List<CleanupResidue> cleanupResidues = new ArrayList<>();
+
+    /** The build environment the terminal client last sent with a project onboarding. */
+    private Map<String, String> lastBuildEnvironment = Map.of();
     private final Object projectsLock = new Object();
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
@@ -8840,12 +8843,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleStartProjectOnboarding(MockHttpRequest request, MockHttpResponse response) throws IOException {
         String path = "~/git/new-project";
+        Map<String, String> buildEnvironment = Map.of();
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
                     if (parsed.get("path") instanceof String p) path = p;
                     else if (parsed.get("checkout_path") instanceof String cp) path = cp;
+                    if (parsed.get("build_environment") instanceof Map<?, ?> env) {
+                        var captured = new LinkedHashMap<String, String>();
+                        env.forEach((key, value) -> captured.put(String.valueOf(key), String.valueOf(value)));
+                        buildEnvironment = captured;
+                    }
                 }
             } catch (IOException _) {
                 // ignore malformed payload
@@ -8864,10 +8873,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "/api/v1/entries/ent-" + id + SUFFIX_ABANDON
             );
             beingAddedProjects.add(beingAdded);
+            lastBuildEnvironment = buildEnvironment;
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",
-                    KEY_PROJECT_ID, id,
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
                     "continue_link", beingAdded.continueLink(),
@@ -8875,6 +8884,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "step_number", 2,
                     KEY_TOTAL_STEPS, 10
             ));
+        }
+    }
+
+    /**
+     * @return the build environment the terminal client sent with the last project onboarding
+     */
+    public Map<String, String> lastBuildEnvironment() {
+        synchronized (projectsLock) {
+            return Map.copyOf(lastBuildEnvironment);
         }
     }
 

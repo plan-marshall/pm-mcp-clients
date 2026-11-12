@@ -21,6 +21,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -36,6 +39,7 @@ import org.junit.jupiter.api.io.TempDir;
  * project is enrolled by {@code project add [<path>] [--pilot]} and its enrolment removed by
  * {@code project unenrol <project_id>} (17-projects.adoc#commands).
  */
+@EnableGeneratorController
 @DisplayName("Enrolling through project add and unenrolling through project unenrol")
 class EnrolCommandTest {
 
@@ -77,11 +81,12 @@ class EnrolCommandTest {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-new-service","checkout_path":"/home/oliver/git/new-service",
-                                     "project_id":"new-service","current_step":"Identity","step_number":2,"total_steps":10}
+                                     "continue_link":"/api/v1/entries/ent-new-service/continue",
+                                     "current_step":"Identity","step_number":2,"total_steps":10}
                                     """);
-            } else if ("/api/v1/projects/new-service/setup".equals(request.target())) {
+            } else if ("/api/v1/entries/ent-new-service".equals(request.target())) {
                 response.json(200, """
-                                    {"project_id":"new-service","state":"project.completed","step":10,
+                                    {"state":"project.completed","step":10,
                                      "total_steps":10,"summary":"new-service is ready","links":{}}
                                     """);
             } else {
@@ -90,24 +95,25 @@ class EnrolCommandTest {
         });
 
         assertEquals(0, execute("project", "add", "/home/oliver/git/new-service", "--pilot"));
-        assertTrue(out.toString().contains("new-service is ready"), out.toString());
+        assertTrue(out.toString().contains("The project is ready"), out.toString());
 
         var posted = server.awaitRequest(Duration.ofSeconds(1));
         assertTrue(posted.bodyText().contains("/home/oliver/git/new-service"), posted.bodyText());
     }
 
     @Test
-    @DisplayName("project add --pilot marks the enrolment as pilot mode")
+    @DisplayName("project add --pilot answers the identity state and sends the contract's body")
     void enrolPilot() throws Exception {
         var server = runtime((request, response) -> {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-new-service","checkout_path":".",
-                                     "project_id":"new-service","current_step":"Identity","step_number":2,"total_steps":10}
+                                     "continue_link":"/api/v1/entries/ent-new-service/continue",
+                                     "current_step":"Identity","step_number":2,"total_steps":10}
                                     """);
-            } else if ("/api/v1/projects/new-service/setup".equals(request.target())) {
+            } else if ("/api/v1/entries/ent-new-service".equals(request.target())) {
                 response.json(200, """
-                                    {"project_id":"new-service","state":"project.completed","step":10,
+                                    {"state":"project.completed","step":10,
                                      "total_steps":10,"summary":"new-service is ready","links":{}}
                                     """);
             } else {
@@ -116,8 +122,12 @@ class EnrolCommandTest {
         });
 
         assertEquals(0, execute("project", "add", "--pilot", "."));
-        assertTrue(out.toString().contains("new-service is ready"), out.toString());
-        assertTrue(server.awaitRequest(Duration.ofSeconds(1)).bodyText().contains("\"pilot\":true"));
+        assertTrue(out.toString().contains("The project is ready"), out.toString());
+        var posted = server.awaitRequest(Duration.ofSeconds(1)).bodyText();
+        assertAll(
+                            () -> assertTrue(posted.contains("\"build_environment\""), posted),
+                            () -> assertFalse(posted.contains("\"pilot\""), posted)
+        );
     }
 
     @Test
@@ -144,24 +154,17 @@ class EnrolCommandTest {
     @Test
     @DisplayName("enrol strips terminal control sequences from the path it reports")
     void enrolStripsControlSequences() throws Exception {
-        runtime((request, response) -> {
-            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, """
-                                    {"status":"started","onboarding_id":"onb-x","checkout_path":"/x",
-                                     "project_id":"x","current_step":"Identity","step_number":2,"total_steps":10}
-                                    """);
-            } else if ("/api/v1/projects/x/setup".equals(request.target())) {
-                response.json(200, """
-                                    {"project_id":"x","state":"project.completed","step":10,
-                                     "total_steps":10,"summary":"x is ready","links":{}}
-                                    """);
-            } else {
-                response.send(404, null, "");
-            }
-        });
+        var directory = Generators.letterStrings(4, 12).next().toLowerCase(java.util.Locale.ROOT);
+        runtime((request, response) -> response.json(409,
+                            JsonTree.write(Map.of("error", "enrolment_root_conflict"))));
 
-        assertEquals(0, execute("project", "add", "\u001B[31m/x\u001B[0m", "--pilot"));
-        assertFalse(out.toString().contains("\u001B[31m"), out.toString());
+        int code = execute("project", "add", "\u001B[31m/git/" + directory + "\u001B[0m", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains(directory), out.toString()),
+                            () -> assertFalse(out.toString().contains("\u001B[31m"), out.toString())
+        );
     }
 
     @Test
