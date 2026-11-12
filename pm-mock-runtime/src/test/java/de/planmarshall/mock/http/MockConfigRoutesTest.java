@@ -273,7 +273,28 @@ class MockConfigRoutesTest {
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("language." + key)),
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("harness." + key)),
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("roles")),
+                () -> assertTrue(MockConfigRoutes.isAspectOwned("cleanup.plans_after_days")),
                 () -> assertFalse(MockConfigRoutes.isAspectOwned("custom." + key)));
+    }
+
+    @Test
+    @DisplayName("a cleanup duration has one source: the machine settings, a project's own value at its level")
+    void cleanupDurationsHaveOneSource() throws Exception {
+        var routes = new MockConfigRoutes();
+        var machine = Map.<String, Object>of("cleanup.plans_after_days", 30);
+
+        var machineWrite = query(routes, "PUT", PATH + "/machine/cleanup.plans_after_days",
+                "{\"value\":3}", machine);
+        var projectWrite = query(routes, "PUT", PATH + "/project/cleanup.plans_after_days?project=pm",
+                "{\"value\":60}", machine);
+        var projectRead = query(routes, "GET", PATH + "?project=pm", null, machine);
+
+        assertAll(
+                () -> assertEquals(409, machineWrite.status(), machineWrite.body()),
+                () -> assertTrue(machineWrite.body().contains("\"error\":\"aspect_owned\""), machineWrite.body()),
+                () -> assertEquals(200, projectWrite.status(), projectWrite.body()),
+                () -> assertTrue(projectRead.body().contains("\"value\":60"), projectRead.body()),
+                () -> assertTrue(projectRead.body().contains("\"origin\":\"project\""), projectRead.body()));
     }
 
     private record Answer(int status, String body) {

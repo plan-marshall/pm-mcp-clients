@@ -30,6 +30,8 @@ import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -669,6 +671,122 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("selecting the Cleanup row opens config cleanup")
+    void cleanupRowOpensTheDurations() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        execute("config");
+        var index = rowIndex(out.toString(), "Cleanup");
+        out.getBuffer().setLength(0);
+
+        int code = executeWithTyped(index + "\n", "config");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("How long should ended work be kept?"),
+                                                out.toString()),
+                            () -> assertTrue(out.toString().contains("Archived plans"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup refuses a value under the minimum and writes nothing")
+    void cleanupRefusesAValueUnderTheMinimum() throws Exception {
+        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target())) {
+                writes.incrementAndGet();
+                response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "cleanup", "--plans", "3", "--yes");
+
+        assertAll(
+                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("At least 7 days, or never."), err.toString()),
+                            () -> assertEquals(0, writes.get(), "no duration is written"));
+    }
+
+    @Test
+    @DisplayName("config cleanup --yes records the machine's durations")
+    void cleanupRecordsTheMachinesDurations() throws Exception {
+        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target())) {
+                posted.set(request.bodyText());
+                response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "cleanup", "--plans", "60", "--yes");
+
+        var body = JsonTree.asObject(JsonTree.parse(posted.get()));
+        var recorded = CleanupDurations.fromJson(
+                            body != null ? String.valueOf(body.get("value")) : "{}");
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Durations recorded"), out.toString()),
+                            () -> assertEquals(60, recorded.plansAfterDays()),
+                            () -> assertEquals(30, recorded.epicsAfterDays()),
+                            () -> assertEquals(3, recorded.remindAfterDays()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --project . writes the project's own value")
+    void cleanupWritesAProjectsOwnValue() throws Exception {
+        var written = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var target = new java.util.concurrent.atomic.AtomicReference<String>("");
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[]");
+            } else if (request.target().contains("/cleanup.plans_after_days")) {
+                target.set(request.target());
+                written.set(request.bodyText());
+                response.json(200, "{\"key\":\"cleanup.plans_after_days\",\"revision\":1}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "cleanup", "--project", ".", "--plans", "60", "--yes");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(target.get().contains("/project/cleanup.plans_after_days"),
+                                                target.get()),
+                            () -> assertTrue(written.get().contains("\"value\":\"60\""), written.get()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --project refuses a machine-only option")
+    void cleanupProjectRefusesAMachineOnlyOption() throws Exception {
+        fixture.start((request, response) -> response.json(200, SETTINGS));
+
+        int code = execute("config", "cleanup", "--project", ".", "--remind", "4");
+
+        assertAll(
+                            () -> assertEquals(2, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("is the machine's only"), err.toString()));
+    }
+
+    @Test
     @DisplayName("the overview aligns every value in one column")
     void overviewAlignsTheValues() throws Exception {
         fixture.start(sensibleSettings());
@@ -1049,6 +1167,21 @@ class ConfigCommandTest {
             }
         }
         return null;
+    }
+
+    /**
+     * @param text  the printed overview
+     * @param label the row's label
+     * @return the number the row is offered under, or {@code -1} when no row names the label
+     */
+    private static int rowIndex(String text, String label) {
+        for (var line : text.split("\n")) {
+            var stripped = line.stripLeading();
+            if (stripped.matches("\\d+\\) " + Pattern.quote(label) + "\\s+.*")) {
+                return Integer.parseInt(stripped.substring(0, stripped.indexOf(')')));
+            }
+        }
+        return -1;
     }
 
     private static String rowOf(String text, String key) {
