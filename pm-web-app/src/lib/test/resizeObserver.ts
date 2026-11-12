@@ -69,9 +69,6 @@ export function reportBox(target: Element, width: number, height: number): numbe
   const entry = {
     target,
     contentRect: { ...contentRect, toJSON: () => contentRect },
-    borderBoxSize: [{ inlineSize: width, blockSize: height }],
-    contentBoxSize: [{ inlineSize: width, blockSize: height }],
-    devicePixelContentBoxSize: [{ inlineSize: width, blockSize: height }],
   } as ResizeObserverEntry;
   const told = [...watching].filter((observer) => observer.observes(target));
   told.forEach((observer) => observer.report(entry));
