@@ -212,7 +212,13 @@ public final class EntryFlow {
 
         if ("w".equals(choice) && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
-            var pairing = issuePairingCode(runtime, webPort);
+            var pairing = issueOrReport(runtime, webPort, out);
+            if (pairing == null) {
+                // Without a code no device can pair: the console opens without one, and web pair
+                // asks for one again.
+                out.flush();
+                return new EntryResult(status, badges, null, null, cBadges);
+            }
             if (!isSsh) {
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
             } else {
@@ -374,7 +380,10 @@ public final class EntryFlow {
         if (isSsh) {
             out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                 Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
-            var pairing = issuePairingCode(runtime, webPort);
+            var pairing = issueOrReport(runtime, webPort, out);
+            if (pairing == null) {
+                return new EntryResult(status, badges, null, null, consoleBadges);
+            }
             printSshWaysIn(out, webPort, pairing.code());
             result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
         } else {
@@ -387,7 +396,10 @@ public final class EntryFlow {
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
-                var pairing = issuePairingCode(runtime, webPort);
+                var pairing = issueOrReport(runtime, webPort, out);
+                if (pairing == null) {
+                    return new EntryResult(status, badges, null, null, consoleBadges);
+                }
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
                 result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
             }
@@ -473,31 +485,48 @@ public final class EntryFlow {
     }
 
     /**
-     * Issues a pairing code via runtime {@code POST /api/v1/web/pairings}.
+     * Issues a pairing code via runtime {@code POST /api/v1/web/pairings}. Only the runtime issues
+     * a code: an answer that carries none is refused, never replaced by a code of the client's own,
+     * which no device could redeem.
      *
      * @param runtime the runtime client
      * @param port    the web port
      * @return the issued pairing code and url
-     * @throws IOException on transport failure
+     * @throws IOException on transport failure, or when the runtime issues no code
      */
     public PairingCode issuePairingCode(RuntimeClient runtime, int port) throws IOException {
-        try {
-            var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
-            if (response.status() == 200 || response.status() == 201) {
-                var json = JsonTree.asObject(JsonTree.parse(response.body()));
-                if (json != null && json.get("code") instanceof String code) {
-                    var url = (String) json.get("url");
-                    if (url == null || url.isBlank()) {
-                        url = LOOPBACK_URL_PREFIX + port + PAIR_CODE + code;
-                    }
-                    return new PairingCode(code, url);
-                }
+        var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
+        if (response.status() == 200 || response.status() == 201) {
+            var json = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (json != null && json.get("code") instanceof String code && !code.isBlank()) {
+                var url = json.get("url") instanceof String given && !given.isBlank()
+                                    ? given
+                                    : LOOPBACK_URL_PREFIX + port + PAIR_CODE + code;
+                return new PairingCode(code, url);
             }
-        } catch (IOException _) {
-            // fallback
         }
-        var fallbackCode = "KXQB-MRTN";
-        return new PairingCode(fallbackCode, LOOPBACK_URL_PREFIX + port + PAIR_CODE + fallbackCode);
+        throw new IOException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.entry.no_code", Map.of("status", response.status())));
+    }
+
+    /**
+     * Issues a pairing code for the entry, which opens the console with or without one: a code the
+     * runtime does not issue is reported with the console's own line, and the entry goes on without it.
+     *
+     * @param runtime the runtime client
+     * @param port    the web port
+     * @param out     the entry's writer
+     * @return the issued code, or {@code null} when the runtime issued none
+     */
+    private @Nullable PairingCode issueOrReport(RuntimeClient runtime, int port, PrintWriter out) {
+        try {
+            return issuePairingCode(runtime, port);
+        } catch (IOException e) {
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.console.code_failed",
+                                Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
+                                                    ? e.getMessage() : e.getClass().getSimpleName()))));
+            return null;
+        }
     }
 
     /**
@@ -509,18 +538,14 @@ public final class EntryFlow {
     public @Nullable String findPairedBrowser(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
-            if (response.status() == 200) {
-                var parsed = JsonTree.parse(response.body());
-                if (parsed instanceof List<?> list) {
-                    for (var item : list) {
-                        if (item instanceof Map<?, ?> dev) {
-                            var pairedFrom = (String) dev.get("paired_from");
-                            var pairedBy = (String) dev.get("paired_by");
-                            if ("loopback".equals(pairedFrom) || "open".equals(pairedBy)) {
-                                var label = dev.get("label");
-                                return label != null ? label.toString() : "local browser";
-                            }
-                        }
+            if (response.status() == 200 && JsonTree.parse(response.body()) instanceof List<?> list) {
+                for (var item : list) {
+                    if (item instanceof Map<?, ?> dev
+                                        && ("loopback".equals(dev.get("paired_from")) || "open".equals(dev.get("paired_by")))) {
+                        return dev.get("label") instanceof String label && !label.isBlank()
+                                            ? label
+                                            : MessageCatalogue.format(context.clientEnvironment().locale(),
+                                                                "operator.entry.local_browser", Map.of());
                     }
                 }
             }

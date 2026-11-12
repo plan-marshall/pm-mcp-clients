@@ -646,6 +646,8 @@ class PmOperatorTest {
                     response.json(200, STATUS);
                 } else if ("/api/v1/web/devices".equals(request.target())) {
                     response.json(200, "[{\"label\":\"dev\"}]");
+                } else if ("/api/v1/web/pairings".equals(request.target())) {
+                    response.json(201, "{\"code\":\"MANUAL-1\"}");
                 } else {
                     response.send(404, null, "");
                 }
@@ -653,7 +655,28 @@ class PmOperatorTest {
 
             assertEquals(0, run("web", "open"));
             assertTrue(out.toString().contains("– No browser opened: simulated browser failure"));
-            assertTrue(out.toString().contains("Open manually: http://127.0.0.1:7420"));
+            assertTrue(out.toString().contains("Open manually: http://127.0.0.1:7420/pair#code=MANUAL-1"), out.toString());
+        }
+
+        @Test
+        @DisplayName("web open opens no browser when the runtime issues no pairing code")
+        void openWithoutCode() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, STATUS);
+                } else if ("/api/v1/web/devices".equals(request.target())) {
+                    response.json(200, "[]");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var code = run("web", "open");
+
+            assertAll(
+                                () -> assertNotEquals(0, code, "a refused code fails the verb: " + out),
+                                () -> assertEquals(List.of(), openedUris, "no browser opens with a made-up code"),
+                                () -> assertFalse(out.toString().contains("pair#code="), out.toString()));
         }
 
         @Test

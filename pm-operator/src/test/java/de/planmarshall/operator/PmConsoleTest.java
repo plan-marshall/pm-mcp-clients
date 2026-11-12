@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -25,6 +26,7 @@ import java.util.Map;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 
@@ -277,6 +279,65 @@ class PmConsoleTest {
         var output = outStream.toString(StandardCharsets.UTF_8);
         assertTrue(output.contains("✓ Paired: Firefox on mbp-oliver"), "output: " + output);
         assertTrue(output.contains("FRESH-CODE"), "output: " + output);
+    }
+
+    @Test
+    @DisplayName("a device paired without a label and a fresh code the runtime refuses are both said as they are")
+    void unnamedDeviceAndRefusedFreshCode() throws Exception {
+        fixture.start((request, response) -> response.send(500, null, ""));
+        var outStream = new ByteArrayOutputStream();
+        var reader = LineReaderBuilder.builder()
+                            .terminal(new DumbTerminal(new ByteArrayInputStream(new byte[0]), outStream)).build();
+        var context = new OperatorContext(
+                            fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), outStream),
+                            null
+        );
+
+        new PmConsole(context).applyConsoleEvent("device.paired", Map.of("device_id", "dev-1"), reader);
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        var unknown = MessageCatalogue.format("en", "common.unknown", Map.of());
+        assertAll(
+                            () -> assertTrue(output.contains("✓ Paired: " + unknown), output),
+                            () -> assertFalse(output.contains("Paired: local"), output),
+                            () -> assertTrue(output.contains(
+                                                "✗ Failed to issue a fresh pairing code: the runtime issued no code (HTTP 500)"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("web pair at the prompt says the runtime issued no code instead of showing one of its own")
+    void webPairWithRefusedCode() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"label\":\"Firefox\",\"paired_by\":\"open\"}]");
+            } else {
+                response.send(500, null, "");
+            }
+        });
+        var inStream = new ByteArrayInputStream("web pair\nexit\n".getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var context = new OperatorContext(
+                            fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(inStream, outStream),
+                            null
+        );
+
+        new PmConsole(context).run();
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(output.contains(
+                                                "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 500)"), output),
+                            () -> assertFalse(output.contains("New code"), output)
+        );
     }
 
     @Test

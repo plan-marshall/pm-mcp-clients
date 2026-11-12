@@ -18,10 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.message.MessageCatalogue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -208,6 +210,9 @@ class ConsoleNoticeTest {
         void freshCodeNotice() {
             var notice = ConsoleNotice.formatFreshCodeNotice("KXQB-MRTN", "14:32", "http://127.0.0.1:7420/pair#code=KXQB-MRTN");
             assertAll(
+                                // One check mark: the catalogue line carries its own, and the notice adds none.
+                                () -> assertEquals("✓ New code: KXQB-MRTN, valid until 14:32. The previous code no longer works.",
+                                                    notice.lines().findFirst().orElseThrow()),
                                 () -> assertTrue(notice.contains("✓ New code: KXQB-MRTN, valid until 14:32")),
                                 () -> assertTrue(notice.contains("The previous code no longer works.")),
                                 () -> assertTrue(notice.contains("http://127.0.0.1:7420/pair#code=KXQB-MRTN"))
@@ -284,6 +289,30 @@ class ConsoleNoticeTest {
             assertAll(
                                 () -> assertTrue(ConsoleNotice.fromEventMap(pairedEvent).contains("✓ Paired: local browser")),
                                 () -> assertTrue(ConsoleNotice.fromEventMap(freshEvent).contains("✓ New code: NEWCODE1"))
+            );
+        }
+
+        @Test
+        @DisplayName("a paired event without a label names the device unknown, never null")
+        void pairedWithoutLabel() {
+            var withNull = new HashMap<String, Object>();
+            withNull.put("type", "paired");
+            withNull.put("label", null);
+            var unknown = MessageCatalogue.format("en", "common.unknown", Map.of());
+
+            assertAll(
+                                () -> assertEquals("✓ Paired: " + unknown, ConsoleNotice.fromEventMap(withNull)),
+                                () -> assertEquals("✓ Paired: " + unknown,
+                                                    ConsoleNotice.fromEventMap(Map.of("type", "paired", "label", "  ")))
+            );
+        }
+
+        @Test
+        @DisplayName("a fresh code event that names no code raises no notice instead of a code null")
+        void freshCodeWithoutCode() {
+            assertAll(
+                                () -> assertNull(ConsoleNotice.fromEventMap(Map.of("type", "fresh_code", "valid_until", "15:00"))),
+                                () -> assertNull(ConsoleNotice.fromEventMap(Map.of("type", "fresh_code", "code", " ")))
             );
         }
 

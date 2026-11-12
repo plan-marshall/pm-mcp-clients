@@ -295,7 +295,8 @@ public final class ConsoleNotice {
      * @return formatted notice
      */
     public static String formatFreshCodeNotice(String locale, String code, String validUntil, String url) {
-        return CHECK + MessageCatalogue.format(locale, "operator.console.new_code",
+        // The catalogue's line carries its own check mark.
+        return MessageCatalogue.format(locale, "operator.console.new_code",
                             Map.of("code", code, "time", validUntil))
                             + "\n" + MessageCatalogue.format(locale, "operator.console.url_indent",
                             Map.of("url", TerminalSanitizer.sanitizeLine(url)));
@@ -382,12 +383,8 @@ public final class ConsoleNotice {
             case QUESTION -> questionNotice(locale, payload);
             case WAIVER -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
-            case PAIRED -> formatPairedNotice(locale,
-                                String.valueOf(payload.getOrDefault(LABEL, "unknown")));
-            case FRESH_CODE -> formatFreshCodeNotice(locale,
-                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.get("code"))),
-                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.getOrDefault("valid_until", ""))),
-                                String.valueOf(payload.getOrDefault("url", "")));
+            case PAIRED -> formatPairedNotice(locale, pairedLabel(locale, payload));
+            case FRESH_CODE -> freshCodeNotice(locale, payload);
             case OPERATOR_WAIT -> formatOperatorWait(locale, scopeOf(event), detailOf(payload),
                                 isEpicScope(event, payload));
             case INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
@@ -395,6 +392,32 @@ public final class ConsoleNotice {
             case REPORT -> formatReportNotice(locale, reportOf(payload));
             case HOLD -> null;
         };
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param payload the event data
+     * @return the label the paired device carries, or the catalogue's own word when it names none
+     */
+    private static String pairedLabel(String locale, Map<String, Object> payload) {
+        var label = stringOf(payload, LABEL);
+        return label != null && !label.isBlank() ? label : MessageCatalogue.format(locale, "common.unknown", Map.of());
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param payload the event data
+     * @return the fresh code's notice, or {@code null} when the event names no code: a code the
+     *         event does not carry is no code to show
+     */
+    private static @Nullable String freshCodeNotice(String locale, Map<String, Object> payload) {
+        var code = stringOf(payload, "code");
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return formatFreshCodeNotice(locale, TerminalSanitizer.sanitize(code),
+                            TerminalSanitizer.sanitize(textOr(payload, "valid_until", "")),
+                            textOr(payload, "url", ""));
     }
 
     /**

@@ -176,16 +176,23 @@ class EntryFlowStaticsTest {
         assertEquals(0, EntryFlow.extractWaitingBadges(Map.of()).size());
     }
 
+    /**
+     * A code the runtime does not issue is refused: the client once answered such a request with a
+     * code of its own, which no device could redeem (operator decision, TASK-13).
+     */
     @Test
-    @DisplayName("the entry reports the pair to the runtime fixture helper")
+    @DisplayName("a pairing code the runtime does not issue is refused, never made up")
     void pairingFallback() throws Exception {
         try (var fixture = RuntimeFixture.create()) {
             PmOperatorTest.writeLiveRecord(fixture);
             fixture.start((request, response) -> response.send(500, null, ""));
             var context = new OperatorContext(fixture.environment(), fixture.base().getParent(), true);
-            var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), 7420);
-            assertEquals("KXQB-MRTN", pairing.code());
-            assertEquals("http://127.0.0.1:7420/pair#code=KXQB-MRTN", pairing.url());
+            var flow = new EntryFlow(context);
+            var runtime = context.runtime(true);
+
+            var refusal = assertThrows(IOException.class, () -> flow.issuePairingCode(runtime, 7420));
+
+            assertEquals("the runtime issued no code (HTTP 500)", refusal.getMessage());
         }
     }
 }

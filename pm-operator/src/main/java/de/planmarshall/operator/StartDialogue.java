@@ -68,11 +68,13 @@ final class StartDialogue {
     private static final String KEY_STATE_SOURCES = "start.sources";
     private static final String KEY_STATE_READY = "start.ready";
     private static final String KEY_STATE_RECIPE_PARAMETERS = "recipe.parameters";
+    private static final String KEY_STATE_PROJECT = "start.project";
     private static final String KEY_STATE_ADOPT = "start-epic.adopt";
     private static final String KEY_STATE_ADOPT_FAILED = "start-epic.adopt-failed";
     private static final String KEY_DOCUMENTS = "start.source.documents";
     private static final String KEY_ADOPT_PROMPT = "start.adopt.prompt";
 
+    private final OperatorContext context;
     private final EntryKind kind;
     private final Map<String, String> environment;
     private final StartAnswers answers;
@@ -92,6 +94,7 @@ final class StartDialogue {
     private @Nullable StartStateResource state;
 
     private StartDialogue(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers) {
+        this.context = Objects.requireNonNull(context, "context");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.environment = Map.copyOf(context.environment());
         this.answers = Objects.requireNonNull(answers, "answers");
@@ -135,7 +138,36 @@ final class StartDialogue {
     }
 
     private int execute() throws IOException {
-        project = resolveProject();
+        var resolved = resolveProject();
+        if (resolved == null) {
+            return chooseProject();
+        }
+        project = resolved;
+        return start();
+    }
+
+    /**
+     * Lists the projects as {@code --project ?} does when none can be resolved, and starts in the one
+     * the operator chooses. A run that may not ask stops with the state it needs; a project is never
+     * made up.
+     *
+     * @return the exit code
+     * @throws IOException on transport failure
+     */
+    private int chooseProject() throws IOException {
+        if (!prompt.asks()) {
+            StartPrompt.missing(KEY_STATE_PROJECT, text("operator.projects.select.title", Map.of()), null);
+        }
+        var selection = ProjectSelector.rewrite(context, prompt.out(), prompt.out(),
+                            new String[]{"--project", "?"}, prompt.reader());
+        if (!selection.proceed()) {
+            return selection.exitCode();
+        }
+        project = selection.args().get(1);
+        return start();
+    }
+
+    private int start() throws IOException {
         prepareAnswers();
         state = answers.entryId != null ? api.fetch(answers.entryId) : openEntry();
         if (kind == EntryKind.PLAN) {
@@ -825,7 +857,12 @@ final class StartDialogue {
         answers.parameters.forEach(parameterValues::put);
     }
 
-    private String resolveProject() throws IOException {
+    /**
+     * @return the project the verb names, the configured one, the one the working directory names, or
+     *         the only one enrolled; {@code null} when none of them resolves
+     * @throws IOException on transport failure
+     */
+    private @Nullable String resolveProject() throws IOException {
         if (answers.project != null && !answers.project.isBlank() && !".".equals(answers.project)) {
             return answers.project;
         }
@@ -850,7 +887,7 @@ final class StartDialogue {
         if (ids.size() == 1) {
             return ids.getFirst();
         }
-        return "default";
+        return null;
     }
 
     private StartStateResource act(String linkId, Map<String, Object> body) throws IOException {

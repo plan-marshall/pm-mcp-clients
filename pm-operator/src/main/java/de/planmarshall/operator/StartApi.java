@@ -33,6 +33,7 @@ import de.planmarshall.api.decomposition.EpicDecomposition;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.RecipeRef;
@@ -230,7 +231,11 @@ final class StartApi {
             return List.of();
         }
         var parsed = JsonTree.parse(response.bodyText());
-        var raw = JsonTree.asArray(parsed instanceof Map<?, ?> map ? map.get("projects") : parsed);
+        // The explorer names every enrolled project under all_projects; projects is its older name.
+        var raw = JsonTree.asArray(parsed instanceof Map<?, ?> map
+                            ? (map.get(ProjectExplorer.FIELD_ALL_PROJECTS) != null
+                                                ? map.get(ProjectExplorer.FIELD_ALL_PROJECTS) : map.get("projects"))
+                            : parsed);
         if (raw == null) {
             return List.of();
         }

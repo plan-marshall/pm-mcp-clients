@@ -727,7 +727,9 @@ public final class PmConsole {
             // A legacy paired notice above already named the device; the line is printed once.
             if (!"paired".equals(type)) {
                 var label = JsonTree.string(payload, "label");
-                printAboveOrHold(reader, ConsoleNotice.formatPairedNotice(locale, label != null ? label : "local"));
+                printAboveOrHold(reader, ConsoleNotice.formatPairedNotice(locale, label != null && !label.isBlank()
+                                    ? label
+                                    : MessageCatalogue.format(locale, "common.unknown", Map.of())));
             }
             issueFreshCodeAbove(reader);
         } else if ("fresh_code".equals(type)) {
