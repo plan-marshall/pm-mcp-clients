@@ -111,11 +111,11 @@ public final class MockConfigRoutes {
         var key = segments.get(1);
         var scope = scopeOf(request.query(), level);
         if ("PUT".equals(request.method())) {
-            put(response, level, key, readChange(request), scope, machineValues);
+            put(response, level, key, readChange(request), scope, machineValues, planProjects);
             return true;
         }
         if ("DELETE".equals(request.method())) {
-            delete(response, level, key, readChange(request), scope, machineValues);
+            delete(response, level, key, readChange(request), scope, machineValues, planProjects);
             return true;
         }
         return false;
@@ -159,14 +159,15 @@ public final class MockConfigRoutes {
     }
 
     private void put(MockHttpResponse response, ConfigOrigin level, String key, ConfigValueChange change,
-            @Nullable String scope, Map<String, Object> machineValues) throws IOException {
+            @Nullable String scope, Map<String, Object> machineValues, Map<String, String> planProjects)
+            throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
         }
-        var current = revisionOf(level, scope, key);
-        if (change.revision() != current) {
-            conflict(response, key, level, scope, current, machineValues);
+        var served = served(key, level, scope, machineValues, planProjects);
+        if (change.revision() != revisionOf(served)) {
+            conflict(response, served);
             return;
         }
         byLevel(level, scope).put(key, change.value());
@@ -176,7 +177,8 @@ public final class MockConfigRoutes {
     }
 
     private void delete(MockHttpResponse response, ConfigOrigin level, String key, ConfigValueChange change,
-            @Nullable String scope, Map<String, Object> machineValues) throws IOException {
+            @Nullable String scope, Map<String, Object> machineValues, Map<String, String> planProjects)
+            throws IOException {
         if (isAspectOwned(key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
@@ -186,9 +188,9 @@ public final class MockConfigRoutes {
             response.json(404, Map.of(KEY_ERROR, "config_key_unknown"));
             return;
         }
-        var current = revisionOf(level, scope, key);
-        if (change.revision() != current) {
-            conflict(response, key, level, scope, current, machineValues);
+        var served = served(key, level, scope, machineValues, planProjects);
+        if (change.revision() != revisionOf(served)) {
+            conflict(response, served);
             return;
         }
         values.remove(key);
@@ -197,26 +199,50 @@ public final class MockConfigRoutes {
     }
 
     /**
-     * @param level the level a change addresses
+     * @param key           the key a change addresses
+     * @param level         the level the change addresses
+     * @param scope         that level's scope, or {@code null} for the machine's store
+     * @param machineValues the machine's own values, by effective key
+     * @param planProjects  the project each plan belongs to, by plan id
+     * @return the value the change is made against: the nearest value visible from the addressed
+     *         level down, so a machine write never compares itself with a project's value
+     */
+    private Map<String, Object> served(String key, ConfigOrigin level, @Nullable String scope,
+            Map<String, Object> machineValues, Map<String, String> planProjects) {
+        var project = scopePart(scope, KEY_PROJECT);
+        var plan = scopePart(scope, KEY_PLAN);
+        return effective(key, machineValues, project, plan, planProjects, level);
+    }
+
+    /**
+     * @param scope a scope as {@link #scopeOf} composes it, or {@code null}
+     * @param name  the parameter the scope carries
+     * @return the parameter's value, or {@code null} when the scope names it not
+     */
+    private static @Nullable String scopePart(@Nullable String scope, String name) {
+        if (scope == null) {
+            return null;
+        }
+        var prefix = name + "=";
+        return scope.startsWith(prefix) ? scope.substring(prefix.length()) : null;
+    }
+
+    private static long revisionOf(Map<String, Object> served) {
+        return served.get(ConfigValueResource.FIELD_REVISION) instanceof Number number ? number.longValue() : 0L;
+    }
+
+    /**
+     * @param level a level
      * @param scope that level's scope, or {@code null} for the machine's store
-     * @param key   the key the change addresses
+     * @param key   the key
      * @return the revision the value at that level was last written at, {@code 0} when never written
      */
-    private long revisionOf(ConfigOrigin level, @Nullable String scope, String key) {
+    private long storedRevision(ConfigOrigin level, @Nullable String scope, String key) {
         return revisionsByLevel(level, scope).getOrDefault(key, 0L);
     }
 
-    private void conflict(MockHttpResponse response, String key, ConfigOrigin level, @Nullable String scope,
-            long current, Map<String, Object> machineValues) throws IOException {
-        var values = byLevel(level, scope);
-        var present = values.containsKey(key);
-        var origin = present ? level
-                : (level == ConfigOrigin.MACHINE && machineValues.containsKey(key)
-                ? ConfigOrigin.MACHINE : ConfigOrigin.DEFAULT);
-        var currentValue = present ? values.get(key)
-                : (level == ConfigOrigin.MACHINE ? machineValues.get(key) : null);
-        var body = new LinkedHashMap<String, Object>(
-                new ConfigValueResource(key, currentValue, origin, null, current).toMap());
+    private void conflict(MockHttpResponse response, Map<String, Object> served) throws IOException {
+        var body = new LinkedHashMap<String, Object>(served);
         body.put(KEY_ERROR, CONFLICT);
         response.json(409, body);
     }
@@ -302,6 +328,22 @@ public final class MockConfigRoutes {
 
     private Map<String, Object> effective(String key, Map<String, Object> machineValues,
             @Nullable String project, @Nullable String plan, Map<String, String> planProjects) {
+        return effective(key, machineValues, project, plan, planProjects, null);
+    }
+
+    /**
+     * @param key           the key
+     * @param machineValues the machine's own values
+     * @param project       the project the read names, or {@code null}
+     * @param plan          the plan the read names, or {@code null}
+     * @param planProjects  the project each plan belongs to, by plan id
+     * @param ceiling       the nearest level a change may be compared with, or {@code null} for the
+     *                      whole chain
+     * @return the effective value
+     */
+    private Map<String, Object> effective(String key, Map<String, Object> machineValues,
+            @Nullable String project, @Nullable String plan, Map<String, String> planProjects,
+            @Nullable ConfigOrigin ceiling) {
         ConfigOrigin origin = null;
         Object value = null;
         ConfigOrigin overridden = null;
@@ -310,6 +352,9 @@ public final class MockConfigRoutes {
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
+            if (ceiling != null && level.rank() > ceiling.rank()) {
+                continue;
+            }
             var scope = levelScope(level, levelProject, plan);
             var values = byLevel(level, scope);
             var present = values.containsKey(key);
@@ -326,7 +371,7 @@ public final class MockConfigRoutes {
             if (origin == null) {
                 origin = level;
                 value = levelValue;
-                valueRevision = fromMachine ? 0 : revisionOf(level, scope, key);
+                valueRevision = fromMachine ? 0 : storedRevision(level, scope, key);
             } else {
                 overridden = level;
                 break;

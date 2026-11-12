@@ -283,9 +283,9 @@ class ScreenCaptureIT {
      * @param session the running session
      * @param raw     the raw output so far
      * @param start   when the wait started, in {@link System#nanoTime()} terms
-     * @return whether what the capture waits for has happened: a line dialogue answered by its
-     *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
-     *         alternate screen
+     * @return whether what the capture waits for has happened: a line dialogue answered by a prompt
+     *         (the shared {@code ›} suffix, the secret prompt included) and past {@link #MIN_WAIT}, or
+     *         a full-screen view that entered the alternate screen
      */
     private static boolean settled(PtySession session, String raw, long start, boolean console, int expectedExit) {
         if (session.exitCode() != null) {

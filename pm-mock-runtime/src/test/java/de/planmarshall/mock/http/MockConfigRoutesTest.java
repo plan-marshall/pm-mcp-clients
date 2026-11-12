@@ -94,7 +94,8 @@ class MockConfigRoutesTest {
         var machineValue = Generators.letterStrings(2, 6).next();
         var nearerValue = Generators.letterStrings(2, 6).next();
         query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
-        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":\"" + nearerValue + "\"}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label",
+                "{\"value\":\"" + nearerValue + "\",\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
@@ -154,11 +155,15 @@ class MockConfigRoutesTest {
     @DisplayName("a plan-only read inherits the plan's project value")
     void aPlanOnlyReadInheritsTheProjectValue() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/project/custom.label?project=fix-relay", "{\"value\":\"local\"}", Map.of());
-        var read = query(routes, "GET", PATH + "?plan=p-1", null, Map.of(), Map.of("p-1", "fix-relay"));
+        var project = Generators.letterStrings(4, 8).next();
+        var plan = Generators.letterStrings(4, 8).next();
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/project/custom.label?project=" + project,
+                "{\"value\":\"" + value + "\"}", Map.of());
+        var read = query(routes, "GET", PATH + "?plan=" + plan, null, Map.of(), Map.of(plan, project));
 
         assertAll(
-                () -> assertTrue(read.body().contains("\"value\":\"local\""), read.body()),
+                () -> assertTrue(read.body().contains("\"value\":\"" + value + "\""), read.body()),
                 () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()));
     }
 
@@ -166,28 +171,44 @@ class MockConfigRoutesTest {
     @DisplayName("a change against an older revision answers 409 with the current value")
     void aStaleRevisionIsRefusedWithTheCurrentValue() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"60\"}", Map.of());
+        var current = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"" + current + "\"}", Map.of());
         var stale = query(routes, "PUT", PATH + "/machine/custom.timeout",
-                "{\"value\":\"70\",\"revision\":0}", Map.of());
+                "{\"value\":\"" + Generators.letterStrings(2, 6).next() + "\",\"revision\":0}", Map.of());
 
         assertAll(
                 () -> assertEquals(409, stale.status(), stale.body()),
                 () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
-                () -> assertTrue(stale.body().contains("\"value\":\"60\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"value\":\"" + current + "\""), stale.body()),
                 () -> assertTrue(stale.body().contains("\"revision\":1"), stale.body()));
+    }
+
+    @Test
+    @DisplayName("a change of a nearer level is made against the revision the read serves")
+    void aNearerChangeIsMadeAgainstTheServedRevision() throws Exception {
+        var routes = new MockConfigRoutes();
+        var value = Generators.letterStrings(2, 6).next();
+        // The machine's write is revision 1; a project read serves that same revision.
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + value + "\"}", Map.of());
+
+        var written = query(routes, "PUT", PATH + "/project/custom.label?project=p",
+                "{\"value\":\"" + value + "\",\"revision\":1}", Map.of());
+
+        assertEquals(200, written.status(), written.body());
     }
 
     @Test
     @DisplayName("a deletion against an older revision answers 409 with the current value")
     void aStaleDeletionIsRefusedWithTheCurrentValue() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"on\"}", Map.of());
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"" + value + "\"}", Map.of());
         var stale = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":0}", Map.of());
 
         assertAll(
                 () -> assertEquals(409, stale.status(), stale.body()),
                 () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
-                () -> assertTrue(stale.body().contains("\"value\":\"on\""), stale.body()));
+                () -> assertTrue(stale.body().contains("\"value\":\"" + value + "\""), stale.body()));
     }
 
     @Test
@@ -219,7 +240,7 @@ class MockConfigRoutesTest {
         var routes = new MockConfigRoutes();
         var machineValue = Generators.letterStrings(2, 6).next();
         query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
-        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null,\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(

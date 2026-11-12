@@ -460,12 +460,12 @@ public final class ConfigCommand implements Callable<Integer> {
         int keyWidth = 0;
         int valueWidth = 0;
         for (var value : values) {
-            keyWidth = Math.max(keyWidth, value.key().length());
+            keyWidth = Math.max(keyWidth, TerminalSanitizer.sanitizeLine(value.key()).length());
             valueWidth = Math.max(valueWidth, renderedValue(locale, value).length());
         }
         for (var value : values) {
             var line = MessageCatalogue.format(locale, "operator.config.show.row", Map.of(
-                                "key", pad(value.key(), keyWidth),
+                                "key", pad(TerminalSanitizer.sanitizeLine(value.key()), keyWidth),
                                 VALUE, pad(renderedValue(locale, value), valueWidth),
                                 "origin", levelText(locale, value.origin())));
             if (value.overrides() != null) {
@@ -671,7 +671,12 @@ public final class ConfigCommand implements Callable<Integer> {
         }
         out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
         out.flush();
-        if (!context.isInteractiveTerminal() || !applyAgain(context, locale)) {
+        if (!context.isInteractiveTerminal()) {
+            out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
+        if (!applyAgain(context, locale)) {
             out.println(MessageCatalogue.format(locale, "operator.settings.no_setting", Map.of()));
             out.flush();
             return 0;
@@ -695,7 +700,8 @@ public final class ConfigCommand implements Callable<Integer> {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
-            return line == null || !"k".equalsIgnoreCase(line.trim());
+            // An end of input is no answer: keeping the current value never overwrites another client's.
+            return line != null && !"k".equalsIgnoreCase(line.trim());
         }
     }
 

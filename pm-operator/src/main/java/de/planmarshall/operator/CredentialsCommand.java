@@ -136,6 +136,10 @@ public final class CredentialsCommand implements Callable<Integer> {
     }
 
     private static String providerHint(@Nullable Map<String, Object> status, String locale) {
+        var provider = status != null ? JsonTree.string(status, "provider") : null;
+        if (provider != null && !provider.isBlank()) {
+            return provider;
+        }
         var tokenPath = status != null ? JsonTree.string(status, "token_path") : null;
         return tokenPath != null && !tokenPath.isBlank()
                             ? tokenPath
