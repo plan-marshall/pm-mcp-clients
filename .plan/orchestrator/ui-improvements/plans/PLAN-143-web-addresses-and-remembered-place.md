@@ -19,16 +19,24 @@ caller stack and the in-page Backs go with Up in PLAN-144.
 ## Deliverables
 
 The documents are the specification; read them first: `doc/design/web-app/navigation.adoc` (#url, #missing, #lenses),
-`doc/design/web-app/README.adoc` (#routes), `doc/design/shared/plan-overview.adoc` (#persistence), and the D6 documents
-(Q6: what the remembered place holds, the entry points, the lens segment).
+`doc/design/web-app/README.adoc` (#routes, the `/` and `/overview` rows :445-449), `doc/design/shared/plan-overview.adoc`
+(#persistence :161-171), `doc/design/web-app/plan-view-interaction.adoc#addresses` (:122-129). D6 merged (#403, `8568b56e`) and settled
+Q6 (what the remembered place holds, the entry points, the lens segment) and Q3 (the plan's `tab=`, `node=` and `file=`); the
+deliverables below state its rulings.
 
 1. **The address model**
  - What:
    - `routes.ts` gains the objects of the scheme whose view exists: the project page `/projects/{id}`, a task
      `/plans/{id}/tasks/{task}`, one decision `/decisions/{id}`, one report `/reports/{id}`, and `/decomposition`. The query
      vocabulary is typed: `project`, `mode`, `group`, `follow`, `tab`, `open` (`{kind}:{id}`), `node` (ids joined by `/`),
-     `chat`, `turn`. It parses and serialises canonically, drops unknown keys, and carries the lens's modes on every address of
-     the lens.
+     `file` (a path of the plan's changes), `chat`, `turn`, and `lens` (`/?lens=waits`, the address the app's links to What waits
+     write, which names the lens and is never filled). It parses and serialises canonically, drops unknown keys, and carries the
+     lens's modes on every address of the lens.
+   - The tab keys (D6): a plan's `tab` is `process` (the default), `intent` or `changes`; an epic's `plans` (the default), `intent`,
+     `landings`, `reviews` or `events`. `node=` is serialised only with the plan's Process tab and `file=` only with `tab=changes`
+     (`/plans/fix-relay?tab=changes&file=pm-relay/pom.xml`); the serialiser drops a key whose tab is not shown. `changes=open` is
+     not a key of the scheme (#400 designed it, D6 replaced it with `tab=changes` before any code wrote it) and is dropped as unknown. A task's address
+     (`/plans/{id}/tasks/{task}`) carries no tab of the plan; `chat=open` on it names the plan's chat.
    - An object is `/{kind}s/{id}` and the segment after it is always an id; a workflow has a path of its own or a fixed
      segment below its object's id, so a project called `onboard` or an epic called `decompose` is an object.
    - These old addresses are replaced when opened: `/decisions?decision=`, `/reports?plan=`, `/projects?project=`,
@@ -41,13 +49,23 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
    - `routes.test.ts` round-trips every address of `navigation.adoc#url` and `README.adoc#routes` that this plan owns, a project `onboard` and an epic
      `decompose`, every old address, and a malformed escape; `routeTitles.test.ts` covers the new routes. It fails on a revert.
      Evidence order: `test-first`.
+   - `routes.test.ts`: each tab value of a plan and of an epic; `node=` serialised with Process and dropped with Intent and Changes;
+     `file=` serialised with `tab=changes` only; `changes=open` dropped; `/?lens=waits` round-trips. Evidence order: `test-first`.
 2. **One writer of the address, and the push and replace rule**
  - What:
    - A navigation module (`pm-web-app/src/lib/navigation/history.ts`, new) is the only writer: a change of depth, of lens or the
      opening of an object in place is a push; a sibling in the same column, a `j`/`k` move, a node, a tab, a mode or a scope, the
      opening or hiding of a side column and every selection the app makes on its own (a fallback to the parent, filling a bare
      lens, the next decision) is a replace. `syncUrl` becomes its internal; `+layout.svelte` writes through it.
-   - `popstate` reads path and query back into the store (selection, mode, tab, `open`, `node`, `chat`).
+   - **The app's mark** (D6 Q6): every entry the writer pushes or replaces carries the app's mark in `history.state`. `syncUrl` already
+     writes `{ path }` as the state of every push and replace (`runtime.ts:920-931` at `4a84f727`); the writer keeps such a mark and
+     exposes one predicate, "this load carries the app's mark", read once at start. A load whose state has none is the app opened from
+     outside it (a typed address, a bookmark, a new tab). The removal of the pairing fragment (`dropCodeFragment`, `runtime.ts:226`,
+     today `replaceState(null, …)`) must not count as the app's mark for the fill decision of that load, and the entry the app leaves
+     afterwards carries the mark.
+   - **A tab switch** is a replace that drops the other tab's key (`node=` leaving Process, `file=` leaving Changes); the view keeps
+     the other tab's selection in memory while the object stays open (`plan-view-interaction.adoc#addresses`).
+   - `popstate` reads path and query back into the store (selection, mode, tab, `open`, `node`, `file`, `chat`).
    - An object deleted while shown falls back to its parent, replacing the address, with the notice `web.nav.gone`
      (`{name} no longer exists.`) in the store and the frame's live region.
    - An object opened in place is opened by a push and closed by the history's back; an address loaded with `open=` closes by
@@ -57,25 +75,36 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
    - `history.test.ts` has one case per change kind in `navigation.adoc#url` asserting push or replace, back and forward
-     restoring the selection, the deleted-object fallback, and the pairing fragment never written; `layout.test.ts` follows.
+     restoring the selection, the deleted-object fallback, and the pairing fragment never written; every written entry carries
+     the app's mark; a tab switch replaces and drops the other tab's key; `layout.test.ts` follows.
      Evidence order: `test-first`.
-3. **The remembered place and its entry points**
+3. **The remembered place and its entry points** (D6 Q6, `plan-overview.adoc#persistence`, `navigation.adoc#url` :216-219)
  - What:
-   - A store `pm-web-app/src/lib/navigation/rememberedPlace.ts` (new) holds what the D6 documents say the place is (recommended:
-     project, grouping, and the selected plan or epic; never the mode). It keeps the existing storage keys
-     `pm_overview_selected_project` and `pm_overview_view_mode` and adds the selected object; `OverviewView` reads and writes
-     through its API (the smallest edit; PLAN-52 rewrites the view later).
-   - The fill, by replace, at the entry points D6 settles (recommended: the app opened without a marker in `history.state`, and
-     a click on the rail's lens entry), never for Up and the breadcrumb's lens segment. A remembered ended plan falls back to
-     its project, a project without running work to the project list.
-   - `landingRoute` and `openStartPage` (the rail's brand click) are replaced by one exported start rule: the remembered place,
-     else What waits at `/` once PLAN-49 registers it, and until then the present rule (the overview while work runs or waits,
-     the projects otherwise). PLAN-49 replaces that fallback in one place.
+   - A store `pm-web-app/src/lib/navigation/rememberedPlace.ts` (new) holds the place: the project, the grouping (by plan, by
+     epic), and the selected plan or epic — **never the mode** (running or ended) and never the follow mode, so the rail opens
+     running work. It keeps the existing storage keys `pm_overview_selected_project` and `pm_overview_view_mode` and adds the
+     selected object; `OverviewView` reads and writes through its API (the smallest edit; PLAN-52 rewrites the view later and
+     drops `pm_overview_show_ended` and `pm_overview_ended_page`).
+   - The fill applies at **two entry points only**: (a) a load **without the app's mark** in `history.state` at `/` or at the
+     bare `/overview` opens where the operator left it, **by a replace**; without a remembered place `/` stays on What waits;
+     (b) a **click on Running work** (the rail's, or the bottom bar's on a phone) opens `/overview` filled from the place, **by a
+     push** of the filled address. Never filled: a full address (it wins), `/?lens=waits` (also on a reload), and the lens's own
+     list pushed by Up or the breadcrumb's lens segment (`PLAN-144`), which carries the mark, so a reload keeps it unfilled.
+   - Fall-backs: a remembered plan that has ended falls back to its project; a project that no longer has running work falls back
+     to the list of projects.
+   - `landingRoute` and `openStartPage` (the rail's brand click) are replaced by one exported start rule: the remembered place
+     (at a mark-less load only), else What waits at `/` once PLAN-49 registers it, and until then the present rule (the overview
+     while work runs or waits, the projects otherwise). PLAN-49 replaces that fallback in one place.
+   - One exported function for the lens's unfilled list address (the address Up and the lens segment push), which `PLAN-144`
+     calls, and one for the Running work click (the filled push), which the rail's entry calls here (`NavRail.svelte`) and the
+     bottom bar's entry calls once `PLAN-144` rebuilds the bar.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - `rememberedPlace.test.ts` and `runtime.test.ts`: each fall-back, the mode not remembered, a state-less load filled and a
-     state-marked reload not, a rail click filled and a breadcrumb or Up push not. Evidence order: `test-first`.
+   - `rememberedPlace.test.ts` and `runtime.test.ts`: each fall-back, the mode not remembered (ended work open, then the rail opens
+     running work), a mark-less load at `/` and at `/overview` filled by a replace and a marked reload not, a rail click filled by a
+     push, `/?lens=waits` never filled, and the lens's unfilled list (Up, lens segment) not filled on a reload. Evidence order:
+     `test-first`.
 4. **The existing views read and write the scheme**
  - What:
    - `DecisionView` focuses the decision of `/decisions/{id}`, `ReportsView` the report of `/reports/{id}` (its detail is today
@@ -92,7 +121,9 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
 5. **Browser evidence**
  - What: a new `pm-web-e2e/tests/navigation.spec.js` on the mock: every owned address loads its route, a deep link opens, back
    and forward move through the selections, an old address is replaced, a fresh context at `/overview` is filled from the
-   remembered place while a click is filled only as D6 says, and a reload keeps the unfilled lens.
+   remembered place by a replace, a click on Running work is filled by a push and opens running work after ended work was open, a
+   reload of a marked `/overview` stays as it is, `/?lens=waits` is never filled, and `/plans/fix-relay?tab=changes&file=…` drops
+   `file=` on a switch to Process.
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
@@ -135,7 +166,9 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
 - HYPOTHESIS: the report's detail address `/reports/{id}` takes the report id while the completion report is keyed by plan id, so the view must look the plan up in the report record (`from.plan`) — confirm/refute at `pm-web-app/src/lib/views/ReportsView.svelte` § `selectedReportDetailPlanId` and `doc/design/shared/completion-report.adoc:103` (verify-at-outline)
 - HYPOTHESIS: every new path needs its own `+page.svelte` (no catch-all or fallback page) — confirm/refute at `pm-web-app/vite.config.ts` § adapter and `src/routes/+layout.ts` (verify-at-outline)
 - HYPOTHESIS: `CommandPalette.svelte` navigates through `navigateTo` with the same params and needs no change beyond the new routes — confirm/refute at `pm-web-app/src/lib/shell/CommandPalette.svelte` § `navigateTo` (verify-at-outline)
-- Verify-first clause: re-read the D6 documents (Q6) and `navigation.adoc#url` at the then-current HEAD. If the entry points or the remembered place's content differ from this spec, the documents win and the spec is re-scoped.
+- OBSERVED: `syncUrl` writes `{ path }` as the history state of every push and replace and returns early for an unchanged address; `dropCodeFragment` replaces the state with `null` — read at `pm-web-app/src/lib/stores/runtime.ts:920-931,224-227` (`4a84f727`)
+- OBSERVED: D6 settled the place (project, grouping, selected plan or epic; never the mode), the two fill entry points (a mark-less load at `/` or bare `/overview` by a replace; a click on Running work by a push), the unfilled lens list of Up and the lens segment, `/?lens=waits`, and the plan's `tab=`/`node=`/`file=` rules — read at `doc/design/shared/plan-overview.adoc:164-171`, `doc/design/web-app/navigation.adoc:178-222`, `doc/design/web-app/README.adoc:445-449`, `doc/design/web-app/plan-view-interaction.adoc:122-129` (`4a84f727`, D6 merged `8568b56e`)
+- Verify-first clause: re-read `navigation.adoc#url`, `plan-overview.adoc#persistence` and `plan-view-interaction.adoc#addresses` at the then-current HEAD. If the entry points or the remembered place's content differ from this spec, the documents win and the spec is re-scoped.
 
 ## Expected Surface
 
@@ -181,13 +214,13 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-45` landed (it holds `routes/+layout.svelte` and `views/`); `PLAN-129` landed (`ReportsView`); the D6 documents (Q6) merged. No D1 foundation dependency.
+- Depends on: `PLAN-45` landed (it holds `routes/+layout.svelte` and `views/`); `PLAN-129` landed (`ReportsView`); the D6 documents (Q6) merged — satisfied (#403, `8568b56e`). No D1 foundation dependency.
 - Overlaps with:
   - `PLAN-45` (running): `routes/+layout.svelte`, the `views/` directory.
   - `PLAN-129` (staged): `ReportsView.svelte`, `ReportsView.test.ts`.
   - `PLAN-142`: `ReportsView.svelte`. Series: never at the same time.
   - `PLAN-49`, `51`, `52`, `55`, `58`, `59` (parked): they rewrite the views whose address reads this plan touches; they follow. `PLAN-49` registers `/` in the route table this plan makes extensible and replaces the start rule's fallback.
-- Adjacent to: `PLAN-144` (removes `navigationStack`, `goBack` and the in-page Backs; left alone here so the app keeps a Back until Up arrives); `PLAN-60` (`/settings/machine` to `?tab=setup`) and `PLAN-85` (`/settings/browser`) own their old-address replacements; `PLAN-59` owns `/projects/onboard`.
+- Adjacent to: `PLAN-144` (removes `navigationStack`, `goBack` and the in-page Backs; left alone here so the app keeps a Back until Up arrives; it pushes the lens's unfilled list through this plan's function); `PLAN-135..137` (the chat's `open=` forms of status cards and reference chips wait for this plan; until it lands the pushed address is their only form); `PLAN-55`, `PLAN-58`, `PLAN-62` (they write `tab=`, `node=` and `file=` through this plan's writer); `PLAN-60` (`/settings/machine` to `?tab=setup`) and `PLAN-85` (`/settings/browser`) own their old-address replacements; `PLAN-59` owns `/projects/onboard`.
 
 ## Re-Grounding at Restart
 

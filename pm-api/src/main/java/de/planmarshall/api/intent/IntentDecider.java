@@ -17,8 +17,8 @@ import java.util.List;
  * Record; design <em>Intent and Outline</em>).
  * <p>
  * The separation is load-bearing: a client shows the operator's and a quorum's decisions apart from
- * the model's own calls and the facts the repository settled, so that a model's choice is never read
- * as the operator's.
+ * a role's own call and the facts the repository settled, so that a role's choice is never read as
+ * the operator's.
  */
 public enum IntentDecider {
 
@@ -28,8 +28,8 @@ public enum IntentDecider {
     /** A quorum of the roles decided. */
     QUORUM("quorum"),
 
-    /** The model decided as its own call. */
-    MODEL("model"),
+    /** The role decided as its own call. */
+    ROLE("role"),
 
     /** A fact of the repository or of a source settled it. */
     FACT("fact");
@@ -48,7 +48,7 @@ public enum IntentDecider {
     }
 
     /**
-     * @return {@code true} if the decision belongs to the operator or to a quorum, never to the model
+     * @return {@code true} if the decision belongs to the operator or to a quorum, never to a role
      */
     public boolean operatorFacing() {
         return this == OPERATOR || this == QUORUM;

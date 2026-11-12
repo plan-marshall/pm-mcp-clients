@@ -28,6 +28,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -37,6 +39,7 @@ import de.planmarshall.api.json.JsonTree;
  * codecs, and a malformed representation fails closed with a {@link JsonFormatException}.
  */
 @DisplayName("Intent contract")
+@EnableGeneratorController
 class IntentContractTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -53,6 +56,9 @@ class IntentContractTest {
                             CriterionStatus::fromWireOrNull),
                     () -> eachMember(IntentDecider.wireValues(), IntentDecider::fromWire,
                             IntentDecider::fromWireOrNull),
+                    () -> eachMember(PlanIntentResource.AdrRelation.wireValues(),
+                            PlanIntentResource.AdrRelation::fromWire,
+                            PlanIntentResource.AdrRelation::fromWireOrNull),
                     () -> eachMember(BuilderQuestion.Sort.wireValues(), BuilderQuestion.Sort::fromWire,
                             BuilderQuestion.Sort::fromWireOrNull),
                     () -> eachMember(BuilderQuestion.State.wireValues(), BuilderQuestion.State::fromWire,
@@ -76,7 +82,7 @@ class IntentContractTest {
                     () -> assertFalse(CriterionStatus.MET.requiresReason()),
                     () -> assertTrue(IntentDecider.OPERATOR.operatorFacing()),
                     () -> assertTrue(IntentDecider.QUORUM.operatorFacing()),
-                    () -> assertFalse(IntentDecider.MODEL.operatorFacing()),
+                    () -> assertFalse(IntentDecider.ROLE.operatorFacing()),
                     () -> assertTrue(BuilderQuestion.Sort.OPERATOR.needsOperator()),
                     () -> assertFalse(BuilderQuestion.Sort.MINOR.needsOperator()),
                     () -> assertTrue(DeliverableRecord.FileIntent.WRITE_NEW.writes()),
@@ -140,7 +146,7 @@ class IntentContractTest {
             assertEquals(CriterionStatus.NOT_VERIFIED, parsed.criterion("AC-002").status());
             assertEquals("The harness cannot observe the timeout.", parsed.criterion("AC-002").statusReason());
             assertEquals(2, parsed.operatorDecisions().size());
-            assertEquals(1, parsed.modelCalls().size());
+            assertEquals(1, parsed.roleCalls().size());
             assertEquals(1, parsed.openBuilderQuestions().size());
             assertEquals(1, parsed.notVerifiedCount());
             assertTrue(parsed.hasNotVerified());
@@ -239,7 +245,7 @@ class IntentContractTest {
         @DisplayName("a plan intent without a goal, criteria, or unique ids is refused")
         void invalidPlanIntent() {
             var repeated = List.of(criterion(), criterion());
-            var goals = List.of("none");
+            var goals = List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format."));
             List<PlanIntentResource.Decision> noDecisions = List.of();
             List<String> noQuestions = List.of();
             List<PlanIntentResource.DeferredItem> noDeferred = List.of();
@@ -346,8 +352,275 @@ class IntentContractTest {
         }
     }
 
+    @Nested
+    @DisplayName("A decision's ADR relation, its evidence, and the decider role")
+    class DecisionContract {
+
+        @Test
+        @DisplayName("a follows and a contradicts decision round-trip through all four codecs")
+        void adrRoundTrips() throws Exception {
+            var follows = new PlanIntentResource.Decision("DC-001", "The queue keeps its format.",
+                    IntentDecider.OPERATOR, List.of("follow the ADR", "contradict it"), "Q-001", null,
+                    new PlanIntentResource.AdrReference("ADR-0001", PlanIntentResource.AdrRelation.FOLLOWS));
+            var contradicts = new PlanIntentResource.Decision("DC-002", "The relay count leaves the status.",
+                    IntentDecider.OPERATOR, List.of(), "Q-002", null,
+                    new PlanIntentResource.AdrReference("ADR-0002", PlanIntentResource.AdrRelation.CONTRADICTS));
+            var intent = intentWith(List.of(follows, contradicts));
+
+            verify(intent, PlanIntentResource::toJson, PlanIntentResource::toMap,
+                    PlanIntentResource::fromJson, PlanIntentResource::fromMap,
+                    PlanIntentResource::readFrom, PlanIntentResource::writeTo);
+
+            var parsed = PlanIntentResource.fromJson(intent.toJson());
+            assertEquals(follows.adr(), parsed.decisions().getFirst().adr());
+            assertEquals(PlanIntentResource.AdrRelation.FOLLOWS,
+                    parsed.decisions().getFirst().adr().relation());
+            assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
+                    parsed.decisions().get(1).adr().relation());
+            assertNull(parsed.decisions().getFirst().evidence());
+            assertTrue(intent.toJson().contains("\"adr\":{"));
+            assertTrue(intent.toJson().contains("\"adr_id\":\"ADR-0001\""));
+            assertTrue(intent.toJson().contains("\"relation\":\"follows\""));
+            assertTrue(intent.toJson().contains("\"relation\":\"contradicts\""));
+        }
+
+        @Test
+        @DisplayName("a contradicts decision of a role, quorum, or fact decider is refused")
+        void contradictsIsTheOperatorsOnly() {
+            var contradicts = new PlanIntentResource.AdrReference("ADR-0003",
+                    PlanIntentResource.AdrRelation.CONTRADICTS);
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision("DC-003",
+                    "The transport leaves HTTP/2.", IntentDecider.ROLE, List.of(), null, null, contradicts));
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision("DC-004",
+                    "The quorum contradicts the ADR.", IntentDecider.QUORUM, List.of(), "Q-004", null,
+                    contradicts));
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision("DC-005",
+                    "The fact contradicts the ADR.", IntentDecider.FACT, List.of(), null, "some/evidence",
+                    contradicts));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-006\",\"text\":\"The transport leaves HTTP/2.\",\"decider\":\"role\","
+                            + "\"options_weighed\":[],"
+                            + "\"adr\":{\"adr_id\":\"ADR-0003\",\"relation\":\"contradicts\"}}")));
+        }
+
+        @Test
+        @DisplayName("a fact decision names its evidence and no other decider carries one")
+        void evidenceBelongsToFact() throws Exception {
+            var fact = new PlanIntentResource.Decision("DC-007", "The queue already persists each event.",
+                    IntentDecider.FACT, List.of(), null, "pm-relay/src/main/java/EventQueue.java", null);
+            var intent = intentWith(List.of(fact));
+
+            verify(intent, PlanIntentResource::toJson, PlanIntentResource::toMap,
+                    PlanIntentResource::fromJson, PlanIntentResource::fromMap,
+                    PlanIntentResource::readFrom, PlanIntentResource::writeTo);
+            assertEquals("pm-relay/src/main/java/EventQueue.java",
+                    PlanIntentResource.fromJson(intent.toJson()).decisions().getFirst().evidence());
+            assertTrue(intent.toJson().contains("\"evidence\":\"pm-relay/src/main/java/EventQueue.java\""));
+
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision("DC-008",
+                    "A fact without its evidence.", IntentDecider.FACT, List.of(), null, null, null));
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision("DC-009",
+                    "A role call with evidence.", IntentDecider.ROLE, List.of(), null, "some/evidence", null));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-010\",\"text\":\"A fact without its evidence.\",\"decider\":\"fact\","
+                            + "\"options_weighed\":[]}")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-011\",\"text\":\"A role call with evidence.\",\"decider\":\"role\","
+                            + "\"options_weighed\":[],\"evidence\":\"some/evidence\"}")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-016\",\"text\":\"A role call with a blank evidence.\",\"decider\":\"role\","
+                            + "\"options_weighed\":[],\"evidence\":\" \"}")));
+        }
+
+        @Test
+        @DisplayName("an unknown relation, a blank adr id, and the decider model are refused")
+        void unknownValuesAreRefused() {
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-012\",\"text\":\"An unknown relation.\",\"decider\":\"operator\","
+                            + "\"options_weighed\":[],\"question_id\":\"Q-012\","
+                            + "\"adr\":{\"adr_id\":\"ADR-0012\",\"relation\":\"abandons\"}}")));
+            assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.AdrReference(" ",
+                    PlanIntentResource.AdrRelation.FOLLOWS));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-013\",\"text\":\"The model decider is gone.\",\"decider\":\"model\","
+                            + "\"options_weighed\":[]}")));
+            assertThrows(IllegalArgumentException.class, () -> IntentDecider.fromWire("model"));
+            assertEquals("role", IntentDecider.ROLE.wireValue());
+        }
+
+        @Test
+        @DisplayName("roleCalls holds exactly the role decisions")
+        void roleCalls() {
+            var role = new PlanIntentResource.Decision("DC-014", "The transport stays HTTP/2.",
+                    IntentDecider.ROLE, List.of("HTTP/1.1", "HTTP/2"), null, null, null);
+            var operator = new PlanIntentResource.Decision("DC-015", "The operator chose the retry.",
+                    IntentDecider.OPERATOR, List.of(), "Q-015", null, null);
+
+            assertEquals(List.of(role), intentWith(List.of(role, operator)).roleCalls());
+        }
+    }
+
+    @Nested
+    @DisplayName("The non-goals as items")
+    class NonGoalItems {
+
+        @Test
+        @DisplayName("non-goals round-trip as {id, text} in the record's order, ids out of sequence")
+        void nonGoalsRoundTrip() throws Exception {
+            var outOfSequence = List.of(
+                    new PlanIntentResource.NonGoal("NG-3", "Do not change the queue format."),
+                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."),
+                    new PlanIntentResource.NonGoal("NG-12", "Do not raise the backoff ceiling."));
+            var intent = intentWith(List.of(), outOfSequence);
+
+            verify(intent, PlanIntentResource::toJson, PlanIntentResource::toMap,
+                    PlanIntentResource::fromJson, PlanIntentResource::fromMap,
+                    PlanIntentResource::readFrom, PlanIntentResource::writeTo);
+
+            var parsed = PlanIntentResource.fromJson(intent.toJson());
+            assertEquals(outOfSequence, parsed.nonGoals());
+            assertEquals(List.of("NG-3", "NG-1", "NG-12"),
+                    parsed.nonGoals().stream().map(PlanIntentResource.NonGoal::id).toList());
+            assertTrue(intent.toJson().contains("\"non_goals\":[{\"id\":\"NG-3\",\"text\":"));
+        }
+
+        @Test
+        @DisplayName("a string non-goal, a malformed id, a duplicate id, and a blank text are refused")
+        void malformedNonGoalsAreRefused() {
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[\"Do not change the queue format.\"]")));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new PlanIntentResource.NonGoal("NG_1", "Do not change the queue format."));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[{\"id\":\"NG_1\",\"text\":\"Do not change the queue format.\"}]")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[{\"id\":\"NG-1\",\"text\":\" \"}]")));
+            assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJsonWithNonGoals(
+                    "[{\"id\":\"NG-1\",\"text\":\"Do not change the queue format.\"},"
+                            + "{\"id\":\"NG-1\",\"text\":\"Do not add a second relay per machine.\"}]")));
+            var duplicates = List.of(
+                    new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format."),
+                    new PlanIntentResource.NonGoal("NG-1", "Do not add a second relay per machine."));
+            assertThrows(IllegalArgumentException.class, () -> intentWith(List.of(), duplicates));
+        }
+    }
+
+    @Nested
+    @DisplayName("The builder check's reason")
+    class BuilderCheckReason {
+
+        @Test
+        @DisplayName("a not_run check round-trips with its reason")
+        void notRunCarriesItsReason() throws Exception {
+            var check = new BuilderCheckResource(BuilderCheckResource.Resolution.NOT_RUN, List.of(),
+                    "The builder could not reach the operator within the relaunch window.");
+
+            verify(check, BuilderCheckResource::toJson, BuilderCheckResource::toMap,
+                    BuilderCheckResource::fromJson, BuilderCheckResource::fromMap,
+                    BuilderCheckResource::readFrom, BuilderCheckResource::writeTo);
+            assertEquals("The builder could not reach the operator within the relaunch window.",
+                    BuilderCheckResource.fromJson(check.toJson()).reason());
+            assertTrue(check.toJson().contains("\"reason\":"));
+        }
+
+        @Test
+        @DisplayName("a not_run without a reason and a pending or answered with one are refused")
+        void reasonBelongsToNotRun() {
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.NOT_RUN, List.of(), null));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.NOT_RUN, List.of(), " "));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.PENDING, List.of(), "A reason it must not carry."));
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.ANSWERED, List.of(), "A reason it must not carry."));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"not_run\",\"questions\":[]}"));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"pending\",\"questions\":[],"
+                            + "\"reason\":\"A reason it must not carry.\"}"));
+            assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"pending\",\"questions\":[],\"reason\":\" \"}"));
+        }
+    }
+
+    @Nested
+    @DisplayName("The distribution without a proposal")
+    class DistributionWithoutProposal {
+
+        @Test
+        @DisplayName("a distribution without proposed_multiple round-trips with no flagged comparison")
+        void absentProposal() throws Exception {
+            var distribution = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,
+                    List.of(new TokenBucket("0-1x", 0.0, 1.0, 8, 0),
+                            new TokenBucket("1-2x", 1.0, 2.0, 5, 0),
+                            new TokenBucket("2-3x", 2.0, 3.0, 3, 0),
+                            new TokenBucket("3x and more", 3.0, 6.0, 4, 0)));
+
+            verify(distribution, OverSizeDistributionResource::toJson,
+                    OverSizeDistributionResource::toMap, OverSizeDistributionResource::fromJson,
+                    OverSizeDistributionResource::fromMap, OverSizeDistributionResource::readFrom,
+                    OverSizeDistributionResource::writeTo);
+
+            var parsed = OverSizeDistributionResource.fromJson(distribution.toJson());
+            assertNull(parsed.proposedMultiple());
+            assertEquals(0, parsed.flaggedTasks());
+            assertEquals(0.0, parsed.flaggedShare(), 0.0001);
+            assertTrue(parsed.flaggedBuckets().isEmpty());
+            assertFalse(parsed.flagsMore());
+            assertEquals(20, parsed.totalTasks());
+            assertFalse(distribution.toJson().contains("\"proposed_multiple\""));
+        }
+
+        @Test
+        @DisplayName("a flagged task without a proposal and a non-positive proposal are refused")
+        void flagRulesHold() {
+            var flagged = List.of(bucket());
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, null, flagged));
+            assertThrows(JsonFormatException.class, () -> OverSizeDistributionResource.fromJson(
+                    "{\"project_id\":\"p\",\"role\":\"r\",\"current_multiple\":3.0,"
+                            + "\"buckets\":[{\"label\":\"x\",\"from_multiple\":1.0,\"to_multiple\":2.0,"
+                            + "\"task_count\":1,\"flagged_tasks\":1}]}"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, 0.0, flagged));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, -1.0, flagged));
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Helpers
+
+    private static PlanIntentResource intentWith(List<PlanIntentResource.Decision> decisions) {
+        return intentWith(decisions,
+                List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format.")));
+    }
+
+    private static PlanIntentResource intentWith(List<PlanIntentResource.Decision> decisions,
+                                                 List<PlanIntentResource.NonGoal> nonGoals) {
+        return new PlanIntentResource("plan-" + Generators.letterStrings(4, 10).next().toLowerCase(), 1,
+                "The relay keeps every event across a restart.",
+                List.of(new IntentCriterion("AC-001", "The relay shall keep every event.", List.of(1), null, null)),
+                nonGoals, decisions, List.of(), List.of(), null);
+    }
+
+    private static String intentJson(String decisions) {
+        return intentJsonWithNonGoals(
+                "[{\"id\":\"NG-1\",\"text\":\"Do not change the queue format.\"}]", decisions);
+    }
+
+    private static String intentJsonWithNonGoals(String nonGoals) {
+        return intentJsonWithNonGoals(nonGoals, "");
+    }
+
+    private static String intentJsonWithNonGoals(String nonGoals, String decisions) {
+        return "{\"plan_id\":\"" + Generators.letterStrings(4, 10).next().toLowerCase() + "\","
+                + "\"revision\":1,\"goal\":\"The relay keeps every event across a restart.\","
+                + "\"criteria\":[{\"id\":\"AC-001\",\"text\":\"The relay shall keep every event.\","
+                + "\"satisfies\":[]}],\"non_goals\":" + nonGoals + ","
+                + "\"decisions\":[" + decisions + "],\"open_questions\":[],\"deferred\":[]}";
+    }
 
     private static <T> void verify(T value, JsonSource<T> json, MapSource<T> map, JsonReader<T> fromJson,
                                    MapReader<T> fromMap, ParserReader<T> readFrom, GeneratorWriter<T> writeTo)
@@ -389,7 +662,7 @@ class IntentContractTest {
     }
 
     private static BuilderCheckResource builderCheck() {
-        return new BuilderCheckResource(BuilderCheckResource.Resolution.PENDING, List.of(question()));
+        return new BuilderCheckResource(BuilderCheckResource.Resolution.PENDING, List.of(question()), null);
     }
 
     private static PlanIntentResource planIntent() {
@@ -403,13 +676,13 @@ class IntentContractTest {
                                 List.of(1), CriterionStatus.NOT_MET, "The format moved in memory."),
                         new IntentCriterion("AC-004", "The old endpoint shall keep working.",
                                 List.of(2), null, null)),
-                List.of("Do not change the queue format."),
+                List.of(new PlanIntentResource.NonGoal("NG-1", "Do not change the queue format.")),
                 List.of(new PlanIntentResource.Decision("DC-001", "Retry with exponential backoff",
-                                IntentDecider.OPERATOR, List.of("fixed", "exponential"), "Q-007"),
+                                IntentDecider.OPERATOR, List.of("fixed", "exponential"), "Q-007", null, null),
                         new PlanIntentResource.Decision("DC-002", "A quorum chose the backoff ceiling",
-                                IntentDecider.QUORUM, List.of("30 s", "5 min"), "Q-008"),
+                                IntentDecider.QUORUM, List.of("30 s", "5 min"), "Q-008", null, null),
                         new PlanIntentResource.Decision("DC-003", "The transport stays HTTP/2",
-                                IntentDecider.MODEL, List.of("HTTP/2", "HTTP/1.1"), null)),
+                                IntentDecider.ROLE, List.of("HTTP/2", "HTTP/1.1"), null, null, null)),
                 List.of("Does the relay need IPv6 support?"),
                 List.of(new PlanIntentResource.DeferredItem("DF-001", "Metrics for reconnects",
                         "No metrics endpoint is in scope.")),

@@ -3,7 +3,7 @@
 epic: ui-improvements
 workstream: WS-02
 
-> Staged plan spec, one shippable unit of work, ready for hand-off on the `runbook` lane. Drafted 2026-11-10 from the
+> Staged plan spec, one shippable unit of work, ready for hand-off through `/plan-marshall`. Drafted 2026-11-10 from the
 > AGREED D3 documents. This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
 
 ## Objective
@@ -173,10 +173,10 @@ Re-read every file above at the then-current HEAD (this spec was grounded at `1c
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (a normal plan: five deliverables of new brand work; operator 2026-11-10: normal and large plans through `/plan-marshall`).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-130-web-brand-mark-and-waiting-mark.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-130-web-brand-mark-and-waiting-mark.md"
 ```
 
 ## Write-Boundary
