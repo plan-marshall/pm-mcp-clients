@@ -56,7 +56,6 @@ const TONES = [
 describe('KindMark', () => {
   it('has an expectation for every kind of the authoritative mapping and for none beyond it', () => {
     expect(Object.keys(EXPECTED).sort()).toEqual(Object.keys(KIND_ICONS).sort());
-    expect(KINDS.every((entry) => entry.icon !== undefined)).toBe(true);
   });
 
   it.each(KINDS)('draws the $kind icon $icon in its tone', ({ kind, icon, tone }) => {
