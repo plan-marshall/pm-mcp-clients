@@ -20,14 +20,13 @@ import java.util.List;
 import java.util.Map;
 
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -174,10 +173,10 @@ class ConfigRoutesTest {
                 var state = scenario.state(next);
                 assertNotNull(state, next);
                 var onward = state.links().values().stream()
-                                    .map(linkDefinition -> linkDefinition.next())
-                                    .filter(name -> name != null)
-                                    .findFirst()
-                                    .orElse(null);
+                        .map(linkDefinition -> linkDefinition.next())
+                        .filter(name -> name != null)
+                        .findFirst()
+                        .orElse(null);
                 assertNotNull(onward, next);
                 next = onward;
             }
@@ -203,7 +202,8 @@ class ConfigRoutesTest {
 
     @Test
     @DisplayName("a later run of the store and of the plan defaults records what they submit")
-    void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+    void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",

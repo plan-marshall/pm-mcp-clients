@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -994,7 +993,8 @@ class ConfigCommandTest {
                             + revision + ",\"error\":\"conflict\"}";
     }
 
-    private static String manyAspects() {        var aspects = new StringBuilder();
+    private static String manyAspects() {
+        var aspects = new StringBuilder();
         for (int index = 1; index <= 10; index++) {
             if (index > 1) {
                 aspects.append(',');

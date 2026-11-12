@@ -20,6 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -62,12 +64,12 @@ class CredentialsCommandTest {
     }
 
     private OperatorContext context(String typed) {
-        var first = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var first = new AtomicBoolean(true);
         var rendered = new ByteArrayOutputStream();
         return new OperatorContext(fixture.environment(), tempDir, true,
                             ClientEnvironment.capture(fixture.environment()),
                             () -> new DumbTerminal(new ByteArrayInputStream(
-                                                (first.getAndSet(false) ? typed : "").getBytes(StandardCharsets.UTF_8)),
+                                                                    (first.getAndSet(false) ? typed : "").getBytes(StandardCharsets.UTF_8)),
                                                 rendered),
                             null);
     }
@@ -91,7 +93,7 @@ class CredentialsCommandTest {
     }
 
     private void stub(String tokenPath, int dropped, boolean failed) throws Exception {
-        var current = new java.util.concurrent.atomic.AtomicReference<>("settings.choose");
+        var current = new AtomicReference<>("settings.choose");
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
             if ("/api/v1/credentials/github".equals(request.target()) && "GET".equals(request.method())) {

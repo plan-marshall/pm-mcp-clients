@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 /**
  * The one table of the aspect-owned keys ({@code 01-commands.adoc:148},
@@ -32,8 +32,8 @@ class AspectOwnedKeysTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "language.interface", "harness.default", "models.allowed", "credentials.store",
-        "providers.enabled", "plan_defaults.landing", "roles", "sources.documents_mode"
+            "language.interface", "harness.default", "models.allowed", "credentials.store",
+            "providers.enabled", "plan_defaults.landing", "roles", "sources.documents_mode"
     })
     @DisplayName("an owned key is known to be owned")
     void anOwnedKeyIsOwned(String key) {
@@ -42,8 +42,8 @@ class AspectOwnedKeysTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-        "language", "harness", "models", "credentials.github", "providers", "plan_defaults",
-        "roleset", "sources.documents"
+            "language", "harness", "models", "credentials.github", "providers", "plan_defaults",
+            "roleset", "sources.documents"
     })
     @DisplayName("a key no aspect owns is not owned")
     void anUnownedKeyIsNotOwned(String key) {

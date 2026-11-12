@@ -212,7 +212,7 @@ public final class MockConfigRoutes {
         var present = values.containsKey(key);
         var origin = present ? level
                 : (level == ConfigOrigin.MACHINE && machineValues.containsKey(key)
-                        ? ConfigOrigin.MACHINE : ConfigOrigin.DEFAULT);
+                ? ConfigOrigin.MACHINE : ConfigOrigin.DEFAULT);
         var currentValue = present ? values.get(key)
                 : (level == ConfigOrigin.MACHINE ? machineValues.get(key) : null);
         var body = new LinkedHashMap<String, Object>(
