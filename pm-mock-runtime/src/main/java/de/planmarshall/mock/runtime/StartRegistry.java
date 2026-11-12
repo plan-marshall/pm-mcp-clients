@@ -293,7 +293,7 @@ final class StartRegistry {
             return;
         }
         seedDefaults(scenario, fixture);
-        seedEndedWork(fixture);
+        endedWork.putAll(endedWorkOf(fixture));
         seedEntry(fixture);
     }
 
@@ -396,10 +396,6 @@ final class StartRegistry {
 
     private static AdoptableEpic adoptableFrom(Map<String, Object> map) {
         return new AdoptableEpic(JsonTree.string(map, KEY_EPIC_ID), JsonTree.string(map, KEY_TITLE));
-    }
-
-    private void seedEndedWork(Map<String, Object> fixture) {
-        endedWork.putAll(endedWorkOf(fixture));
     }
 
     /**

@@ -1754,8 +1754,9 @@ class MockRuntimeEngineTest {
     void refusesEndedWorkNamedTwice() {
         var before = engine.currentScenario().name();
         var reference = StandardScenarios.PROJECTS_AND_START + "#start.follow-up";
-        var ended = new ArrayList<Object>(Objects.requireNonNull(
-                JsonTree.asArray(member(startRuntimeFixture(reference), "start").get("ended_work"))));
+        var scenario = registry.resolve(reference);
+        var ended = new ArrayList<Object>(Objects.requireNonNull(JsonTree.asArray(
+                member(runtimeFixture(scenario, scenario.start()), "start").get("ended_work"))));
         var twin = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.asObject(ended.getFirst())));
         var subjectId = String.valueOf(twin.get("subject_id"));
         twin.put("subject_kind", "plan".equals(twin.get("subject_kind")) ? "epic" : "plan");
@@ -1840,15 +1841,6 @@ class MockRuntimeEngineTest {
         var chats = own != null ? own
                 : JsonTree.asArray(member(runtimeFixture(scenario, "running_work.active"), "control").get("chats"));
         return chats == null ? List.of() : chats;
-    }
-
-    /**
-     * @param reference the scenario, with the state to start in after {@code #}
-     * @return a copy of the runtime fixture of that state's own operator facts
-     */
-    private Map<String, Object> startRuntimeFixture(String reference) {
-        var scenario = registry.resolve(reference);
-        return runtimeFixture(scenario, scenario.start());
     }
 
     /**
