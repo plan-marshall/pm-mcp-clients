@@ -3029,7 +3029,8 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(),
+                                projectsRefusal, needsRefusal);
             currentOverviewLevel.set(levelModel);
             stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
         }
