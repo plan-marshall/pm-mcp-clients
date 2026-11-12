@@ -25,6 +25,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
 import de.planmarshall.api.system.CleanupDurations;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -135,8 +136,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             durations.putAll(changes);
             return record(out, locale, settings, durations, changes);
         }
-        printRows(out, locale, durations);
         if (!context.isInteractiveTerminal() || noInput) {
+            printRows(out, locale, durations);
             out.flush();
             return 0;
         }
@@ -252,13 +253,18 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                         Map<String, Integer> durations) throws IOException {
         var prompt = new StartPrompt(context, out, locale, false);
         var kinds = project == null ? MACHINE_KINDS : PROJECT_KINDS;
+        var changes = new LinkedHashMap<String, Integer>();
         while (true) {
             printRows(out, locale, durations);
             out.flush();
             var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.durations.keep",
                                 Map.of("range", "1-" + kinds.size())), DURATIONS_STATE, "durations", null);
-            if (answer == null || answer.isBlank() || "k".equalsIgnoreCase(answer)) {
-                return record(out, locale, settings, durations, Map.of());
+            if (answer == null || answer.isBlank() || "k".equalsIgnoreCase(answer)
+                                || ChoicePrompt.isLeave(locale, answer)) {
+                if (changes.isEmpty()) {
+                    return 0;
+                }
+                return record(out, locale, settings, durations, changes);
             }
             if ("?".equals(answer)) {
                 out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
@@ -273,6 +279,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             var days = askDays(prompt, locale, chosen);
             if (days != null) {
                 durations.put(chosen, days);
+                changes.put(chosen, days);
             }
         }
     }
