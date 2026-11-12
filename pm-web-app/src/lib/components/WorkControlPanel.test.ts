@@ -889,9 +889,29 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('chat-accept'));
 
     await waitFor(() => {
-      expect(accept).toHaveBeenCalledWith('pm-mcp-clients', 'codeberg-issues');
+      expect(accept).toHaveBeenCalledWith('plan', 'codeberg-issues');
     });
+    expect(apiClient.getEndedChat).toHaveBeenCalledWith('plan', 'codeberg-issues');
     expect(window.location.pathname).toBe('/entries/ent-3f9a2c41');
+  });
+
+  it('reads the chat of an ended epic by the epic, not by its project', async () => {
+    const ended = vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue(null);
+
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'relay-hardening',
+        subjectKind: 'epic',
+        projectId: 'pm-mcp-clients',
+        ended: true,
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+
+    await waitFor(() => {
+      expect(ended).toHaveBeenCalledWith('epic', 'relay-hardening');
+    });
   });
 
   it('reloads the actions when the subject changes', async () => {

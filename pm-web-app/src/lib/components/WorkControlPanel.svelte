@@ -662,7 +662,7 @@
     chatNotice = '';
     chatOpen = true;
     if (ended) {
-      const proposal = await apiClient.getEndedChat(projectId, subjectId).catch(() => null);
+      const proposal = await apiClient.getEndedChat(subjectKind, subjectId).catch(() => null);
       endedProposal = proposal?.proposal ?? null;
       endedRole = proposal?.role ?? (subjectKind === 'epic' ? 'decompose' : 'replan');
       if (!proposal) {
@@ -728,7 +728,7 @@
   async function startFollowUp(): Promise<void> {
     chatBusy = true;
     try {
-      const result = await apiClient.acceptFollowUp(projectId, subjectId);
+      const result = await apiClient.acceptFollowUp(subjectKind, subjectId);
       const entryId = result.start?.entry?.entry_id;
       chatOpen = false;
       if (entryId) {
