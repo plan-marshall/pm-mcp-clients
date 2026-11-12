@@ -1938,14 +1938,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         //    domain defaults: a scenario definition is never shadowed by a Java fixture, and an
         //    operator link under /links/ is always served as the scenario declares it.
         var route = activeRoute(request.method(), path);
-        if (!isLiveDomainPath(path)) {
-            if (handleStateLink(request, response)) {
-                return;
-            }
-            if (route != null) {
-                handleRouteWithDynamicStatus(route, path, response);
-                return;
-            }
+        if (!isLiveDomainPath(path) && handleStateLinkOrRoute(request, response, route)) {
+            return;
         }
 
         // 6. Dynamic routes of the domain areas.
@@ -1954,16 +1948,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 7. A live path no domain handler claimed falls back to the scenario's link or route.
-        if (handleStateLink(request, response)) {
-            return;
-        }
-        if (route != null) {
-            handleRouteWithDynamicStatus(route, path, response);
+        if (handleStateLinkOrRoute(request, response, route)) {
             return;
         }
 
         // 8. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    /**
+     * Serves a request through the active state's scenario link, or else through the scenario's static
+     * route of the request.
+     *
+     * @param request  the request
+     * @param response the response
+     * @param route    the scenario's static route of the request, or {@code null}
+     * @return {@code true} if the link or the route answered the request
+     * @throws IOException on I/O error
+     */
+    private boolean handleStateLinkOrRoute(MockHttpRequest request, MockHttpResponse response,
+            @Nullable RouteDefinition route) throws IOException {
+        if (handleStateLink(request, response)) {
+            return true;
+        }
+        if (route != null) {
+            handleRouteWithDynamicStatus(route, request.path(), response);
+            return true;
+        }
+        return false;
     }
 
     /**

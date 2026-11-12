@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import java.util.Objects;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -49,14 +50,15 @@ final class EventTiming {
      *
      * @param action  what sends the event
      * @param afterMs the delay under {@link MockTiming#REALISTIC}
-     * @return the scheduled task, or {@code null} when the event was sent at once
+     * @return the scheduled task, whose result is always {@code null}, or {@code null} when the event was
+     *         sent at once
      */
     @Nullable
-    ScheduledFuture<?> play(Runnable action, long afterMs) {
+    ScheduledFuture<Object> play(Runnable action, long afterMs) {
         if (timing == MockTiming.ORDERED) {
             action.run();
             return null;
         }
-        return scheduler.schedule(action, afterMs, TimeUnit.MILLISECONDS);
+        return scheduler.schedule(Executors.callable(action), afterMs, TimeUnit.MILLISECONDS);
     }
 }
