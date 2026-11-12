@@ -76,7 +76,10 @@ public final class PmConsole {
                         "fresh_code");
 
     private final OperatorContext context;
+
+    /** How long one refresh of the badges may take, unless the console is built with its own bound. */
     static final Duration REFRESH_BOUND = Duration.ofSeconds(5);
+    private final Duration refreshBound;
     private final EntryFlow entryFlow;
     private final ReentrantLock badgeRefreshLock = new ReentrantLock();
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -105,10 +108,20 @@ public final class PmConsole {
      * @param entryFlow the entry flow the console runs and takes its machine step count from
      */
     public PmConsole(OperatorContext context, EntryFlow entryFlow) {
+        this(context, entryFlow, REFRESH_BOUND);
+    }
+
+    /**
+     * @param context      the operator context
+     * @param entryFlow    the entry flow the console runs and takes its machine step count from
+     * @param refreshBound how long one refresh of the badges may take before it keeps what it had
+     */
+    PmConsole(OperatorContext context, EntryFlow entryFlow, Duration refreshBound) {
         this.context = Objects.requireNonNull(context, "context");
         this.noticeBuffer = context.noticeBuffer();
         this.entryFlow = Objects.requireNonNull(entryFlow, "entryFlow");
         this.machineSteps = entryFlow.aspects().size();
+        this.refreshBound = Objects.requireNonNull(refreshBound, "refreshBound");
     }
 
     private String locale() {
@@ -340,7 +353,7 @@ public final class PmConsole {
     void refreshSetupBadge(String locale, Terminal terminal) {
         long startNanos = System.nanoTime();
         try {
-            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!badgeRefreshLock.tryLock(refreshBound.toNanos(), TimeUnit.NANOSECONDS)) {
                 return;
             }
         } catch (InterruptedException _) {
@@ -348,7 +361,7 @@ public final class PmConsole {
             return;
         }
         try {
-            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            long remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             if (remainingNanos <= 0) {
                 return;
             }
@@ -357,7 +370,7 @@ public final class PmConsole {
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
 
-            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             List<ConsoleBadge> projectBadges = remainingNanos > 0
                                 ? fetchProjectBadgesSafe(locale, runtime, Duration.ofNanos(remainingNanos))
                                 : previousProjectBadges();
@@ -755,7 +768,7 @@ public final class PmConsole {
     void refreshBadges(Terminal terminal) {
         long startNanos = System.nanoTime();
         try {
-            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!badgeRefreshLock.tryLock(refreshBound.toNanos(), TimeUnit.NANOSECONDS)) {
                 return;
             }
         } catch (InterruptedException _) {
@@ -764,7 +777,7 @@ public final class PmConsole {
         }
         List<ConsoleBadge> refreshed;
         try {
-            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            long remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             if (remainingNanos <= 0) {
                 return;
             }
@@ -772,7 +785,7 @@ public final class PmConsole {
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
 
-            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             List<ConsoleBadge> projectBadges = remainingNanos > 0
                                 ? fetchProjectBadgesSafe(locale(), runtime, Duration.ofNanos(remainingNanos))
                                 : previousProjectBadges();

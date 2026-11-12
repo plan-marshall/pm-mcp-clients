@@ -23,10 +23,12 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -410,6 +412,57 @@ class StateDialogueTest {
 
         assertEquals(COMPLETED, last.stateId());
         assertEquals(List.of("begin", "set"), source.sent);
+    }
+
+    @Test
+    @DisplayName("gives up on a working state that stays without a link past the working timeout")
+    void givesUpOnAWorkingStateAfterTheWorkingTimeout() throws Exception {
+        var working = new StateDialogue.Frame("harness.probe", "working", 2, 7,
+                            "Checking 2 harnesses", Map.of(), List.of());
+        var writer = new StringWriter();
+        var out = new PrintWriter(writer, true);
+        var timeout = Duration.ofMillis(300);
+        var dialogue = new StateDialogue(new FakeSource(working), out, "en",
+                            stateId -> new ChoicePrompt(new BufferedReader(new StringReader("")), out, "en",
+                                                stateId),
+                            timeout);
+
+        var started = System.nanoTime();
+        var last = dialogue.run();
+        var elapsed = Duration.ofNanos(System.nanoTime() - started);
+
+        assertAll(
+                            () -> assertEquals(working, last),
+                            () -> assertFalse(last.isFinal()),
+                            () -> assertTrue(writer.toString().contains(
+                                                MessageCatalogue.format("en", "onboard.state.waits", Map.of())),
+                                                writer.toString()),
+                            () -> assertTrue(elapsed.compareTo(timeout) >= 0,
+                                                "gave up before the working timeout: " + elapsed),
+                            () -> assertTrue(elapsed.compareTo(Duration.ofSeconds(10)) < 0,
+                                                "waited past the working timeout: " + elapsed));
+    }
+
+    @Test
+    @DisplayName("refuses a working timeout that is zero or negative")
+    void refusesANonPositiveWorkingTimeout() {
+        var source = new FakeSource(completed());
+        var out = new PrintWriter(new StringWriter());
+        Function<String, ChoicePrompt> prompts = stateId -> new ChoicePrompt(
+                            new BufferedReader(new StringReader("")), out, "en", stateId);
+
+        assertAll(
+                            () -> assertThrows(IllegalArgumentException.class,
+                                                () -> new StateDialogue(source, out, "en", prompts, Duration.ZERO)),
+                            () -> assertThrows(IllegalArgumentException.class,
+                                                () -> new StateDialogue(source, out, "en", prompts,
+                                                                    Duration.ofMillis(-1))));
+    }
+
+    @Test
+    @DisplayName("the production working timeout stays 60 s")
+    void theProductionWorkingTimeoutStaysSixtySeconds() {
+        assertEquals(Duration.ofSeconds(60), StateDialogue.WORKING_TIMEOUT);
     }
 
     /**

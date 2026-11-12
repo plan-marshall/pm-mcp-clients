@@ -25,6 +25,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.dialogue.StateDialogue;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +46,9 @@ import org.junit.jupiter.api.io.TempDir;
 @EnableGeneratorController
 @DisplayName("ProjectCommand and ProjectsCommand")
 class ProjectCommandTest {
+
+    /** The short working timeout the tests that wait it out pass instead of the production 60 s. */
+    private static final Duration WORKING_TIMEOUT = Duration.ofMillis(300);
 
     @TempDir
     Path tempDir;
@@ -82,11 +87,16 @@ class ProjectCommandTest {
     }
 
     private int executeWithInput(String input, String... args) throws IOException {
+        return executeWithInput(input, StateDialogue.WORKING_TIMEOUT, args);
+    }
+
+    private int executeWithInput(String input, Duration workingTimeout, String... args) throws IOException {
         var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         var outStream = new ByteArrayOutputStream();
         var terminal = new DumbTerminal(inStream, outStream);
         var context = new OperatorContext(fixture.environment(), tempDir, true,
-                            ClientEnvironment.capture(fixture.environment()), () -> terminal, null);
+                            ClientEnvironment.capture(fixture.environment()), () -> terminal, null, null,
+                            workingTimeout);
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
         out.write(outStream.toString(StandardCharsets.UTF_8));
         return code;
@@ -141,9 +151,24 @@ class ProjectCommandTest {
             }
         });
 
-        var code = executeWithInput("", "project", "setup", "cui-parent");
+        var started = System.nanoTime();
+        var code = executeWithInput("", WORKING_TIMEOUT, "project", "setup", "cui-parent");
+        var elapsed = Duration.ofNanos(System.nanoTime() - started);
 
-        assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString());
+        assertAll(
+                            () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
+                            () -> assertTrue(elapsed.compareTo(WORKING_TIMEOUT) >= 0,
+                                                "the run gave up before its working timeout: " + elapsed),
+                            () -> assertTrue(elapsed.compareTo(Duration.ofSeconds(10)) < 0,
+                                                "the run waited past its working timeout: " + elapsed));
+    }
+
+    @Test
+    @DisplayName("the operator context hands the project setup the 60 s working timeout by default")
+    void projectSetupWorkingTimeoutDefault() {
+        var context = new OperatorContext(fixture.environment(), tempDir, true);
+
+        assertEquals(Duration.ofSeconds(60), context.projectSetupWorkingTimeout());
     }
 
     @Test

@@ -122,11 +122,29 @@ final class RuntimeActDialogue {
      */
     static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
                         boolean noInput, @Nullable String version) throws IOException {
+        return confirm(context, out, act, explicit, noInput, version, SNAPSHOT_BOUND);
+    }
+
+    /**
+     * Resolves the choice of when of an act, reading the runtime's snapshot under the given bound.
+     *
+     * @param context       the operator context
+     * @param out           the verb's output
+     * @param act           the act
+     * @param explicit      the when an option named, or {@code null} for none
+     * @param noInput       whether the verb may ask nothing
+     * @param version       the version an upgrade goes to, or {@code null}
+     * @param snapshotBound how long the confirmation waits for the runtime's snapshot
+     * @return the when to send, or the exit code of a verb that stopped at the choice
+     * @throws IOException when the confirmation cannot be drawn
+     */
+    static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
+                        boolean noInput, @Nullable String version, Duration snapshotBound) throws IOException {
         if (explicit != null) {
             return new Answer(explicit, 0, version);
         }
         try {
-            return ask(context, out, act, version, noInput);
+            return ask(context, out, act, version, noInput, snapshotBound);
         } catch (StopRefusedException refused) {
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                 refused.refusal.key(), Map.of()));
@@ -148,7 +166,7 @@ final class RuntimeActDialogue {
     }
 
     private static Answer ask(OperatorContext context, PrintWriter out, Act act,
-                        @Nullable String version, boolean noInput) throws IOException {
+                        @Nullable String version, boolean noInput, Duration snapshotBound) throws IOException {
         var locale = context.clientEnvironment().locale();
         if (noInput) {
             // A script stops at the choice at once; the snapshot is only read for the dialogue.
@@ -159,7 +177,7 @@ final class RuntimeActDialogue {
         }
         SystemSnapshot snapshot;
         try {
-            snapshot = snapshot(context);
+            snapshot = snapshot(context, snapshotBound);
         } catch (IOException _) {
             // No counts, but a restart or an upgrade still asks; a stop says why it cannot.
             if (act == Act.STOP) {
@@ -280,10 +298,11 @@ final class RuntimeActDialogue {
 
     /**
      * @param context the operator context
+     * @param bound   how long the read may take; {@link #SNAPSHOT_BOUND} for every production caller
      * @return the snapshot the runtime serves, or {@code null} when it serves none
-     * @throws IOException when the runtime does not answer within {@link #SNAPSHOT_BOUND}
+     * @throws IOException when the runtime does not answer within the bound
      */
-    private static @Nullable SystemSnapshot snapshot(OperatorContext context) throws IOException {
+    private static @Nullable SystemSnapshot snapshot(OperatorContext context, Duration bound) throws IOException {
         var runtime = context.runtime(false);
         var read = new AtomicReference<@Nullable SystemSnapshot>();
         var failure = new AtomicReference<IOException>();
@@ -297,7 +316,7 @@ final class RuntimeActDialogue {
         reader.setDaemon(true);
         reader.start();
         try {
-            reader.join(SNAPSHOT_BOUND.toMillis());
+            reader.join(bound.toMillis());
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new IOException("interrupted while reading the runtime");
@@ -305,7 +324,7 @@ final class RuntimeActDialogue {
         if (reader.isAlive()) {
             // A runtime that accepts and never answers is not answered: closing the read ends it.
             reader.interrupt();
-            throw new IOException("the runtime did not answer within " + SNAPSHOT_BOUND.toMillis() + " ms");
+            throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
         }
         var error = failure.get();
         if (error != null) {
