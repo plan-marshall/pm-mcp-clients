@@ -501,6 +501,32 @@ class ChatReadModelTest {
 
             assertEquals(turn, ChatTurn.fromJson(turn.toJson()));
         }
+
+        @Test
+        @DisplayName("an operator's turn with a model or steps is refused, as chat.turn.started refuses it")
+        void operatorTurnCarriesNoModelOrSteps() {
+            var operator = new ChatTurn(id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                    TurnFormat.PLAIN, false, null, id(), null, null, id(), null, null);
+            var map = operator.toMap();
+            var turnId = id();
+            var model = id();
+            var text = id();
+            var at = id();
+            var steps = List.of(message("chat.step.read"));
+
+            assertAll(
+                    () -> assertEquals(operator, ChatTurn.fromJson(operator.toJson())),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurn(turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                                    TurnFormat.PLAIN, false, model, text, null, null, at, null, null)),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurn(turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                                    TurnFormat.PLAIN, false, null, text, steps, null, at, null, null)),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurn.fromMap(with(map, "model", model))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurn.fromMap(with(map, "steps", List.of(steps.getFirst().toMap())))));
+        }
     }
 
     @Nested

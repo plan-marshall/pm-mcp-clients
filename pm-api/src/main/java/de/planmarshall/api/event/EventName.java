@@ -33,8 +33,8 @@ import de.planmarshall.api.id.DottedIdentifier;
  * change of {@code pm-api}.
  * <p>
  * Every member declares the streams it is sent on ({@link #streams()}), taken from the catalogue. A
- * constructor takes either at least one stream or the set of all streams, so no member can lack a
- * declaration and a missing stream is never read as none. The stream-control events {@link #RESET} and
+ * constructor takes either at least one stream or a set of streams, and refuses an empty set, so no
+ * member can lack a declaration and a missing stream is never read as none. The stream-control events {@link #RESET} and
  * {@link #STREAM_CLOSED} are sent on every stream and take the set of all of them, so a stream added
  * later is never left out.
  * <p>
@@ -294,7 +294,19 @@ public enum EventName {
      */
     EventName(String wire, EnumSet<EventStream> streams) {
         this.wire = wire;
-        this.streams = Collections.unmodifiableSet(streams);
+        this.streams = requireStreams(streams);
+    }
+
+    /**
+     * @param streams the streams an event is sent on
+     * @return the streams, unmodifiable
+     * @throws IllegalArgumentException if the set is empty, so no member can lack a stream
+     */
+    static Set<EventStream> requireStreams(EnumSet<EventStream> streams) {
+        if (streams.isEmpty()) {
+            throw new IllegalArgumentException("an event is sent on at least one stream");
+        }
+        return Collections.unmodifiableSet(EnumSet.copyOf(streams));
     }
 
     /**

@@ -11,6 +11,7 @@ package de.planmarshall.api.chat;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -35,7 +36,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param author    {@code operator}, or the role that writes the reply
  * @param format    the format of the turn's text
  * @param untrusted whether the turn came from outside the machine
- * @param model     the model of a role's turn, {@code null} for the operator's
+ * @param model     the model of a role's turn, {@code null} for the operator's (the one rule of an
+ *                  operator's turn, kept by {@link ChatTurn})
  * @param context   the chat's context of a role's turn, {@code null} for the operator's
  * @param text      the operator's message, {@code null} for a role's turn
  */
@@ -104,8 +106,9 @@ public record ChatTurnStartedEvent(
             throw new IllegalArgumentException("a started turn is a message, not " + kind.wireValue());
         }
         var operator = ChatTurn.AUTHOR_OPERATOR.equals(author);
-        if (operator && (text == null || model != null || context != null)) {
-            throw new IllegalArgumentException("the operator's message carries its text and no model or context");
+        ChatTurn.requireOperatorTurnRule(author, model, List.of());
+        if (operator && (text == null || context != null)) {
+            throw new IllegalArgumentException("the operator's message carries its text and no context");
         }
         if (!operator && (text != null || context == null)) {
             throw new IllegalArgumentException("a role's turn carries the chat's context and no text");
