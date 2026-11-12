@@ -411,6 +411,21 @@ class DecisionsScenarioTest {
         }
 
         @Test
+        @DisplayName("an answer that names no choice is refused and the decision stays open")
+        void answerWithoutChoice() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var noChoice = post(runtime, "/api/v1/decisions/Q-007/answer",
+                        JsonTree.write(Map.of("channel", "cli",
+                                "note", Generators.letterStrings(4, 12).next())));
+
+                assertEquals(400, noChoice.status());
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS, ApiErrorCode.fromWireOrNull(errorOf(noChoice)));
+                assertEquals(200, get(runtime, "/api/v1/decisions/Q-007").status(),
+                        "an answer that chooses nothing leaves the decision open");
+            }
+        }
+
+        @Test
         @DisplayName("words that are no object are refused, words under own_words are read")
         void interpretBody() throws Exception {
             try (var runtime = MockRuntime.start(STATE)) {

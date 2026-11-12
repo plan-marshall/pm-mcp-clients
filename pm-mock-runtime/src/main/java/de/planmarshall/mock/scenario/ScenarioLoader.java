@@ -632,7 +632,7 @@ public class ScenarioLoader {
             String scenario, String stateId, String path) {
         for (var key : map.keySet()) {
             if (!allowed.contains(key)) {
-                var field = path == null || path.isBlank() ? key : path + "." + key;
+                var field = path.isEmpty() ? key : path + "." + key;
                 throw new ScenarioValidationException(scenario, stateId, field,
                         "unknown field '" + key + "' in the closed scenario schema");
             }

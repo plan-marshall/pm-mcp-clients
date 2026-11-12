@@ -50,6 +50,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.process.EpicProcess;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.runtime.MockTiming;
 
@@ -240,8 +241,14 @@ class ControlScenarioTest {
                         JsonTree.write(Map.of("aspect", "landing", "value", "landing.main",
                                 "revision", 8)));
                 assertEquals(400, refused.status());
-                assertEquals("refused", JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.bodyText())),
-                        "error"));
+                var refusal = JsonTree.asObject(JsonTree.parse(refused.bodyText()));
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS,
+                        ApiErrorCode.fromWireOrNull(JsonTree.string(refusal, "error")),
+                        "the refusal is a member of the closed catalogue");
+                assertEquals("the base branch of pm-mcp-clients is protected", JsonTree.string(refusal, "reason"));
+                assertEquals(8, PlanSettingsRecord.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/settings").bodyText()).revision(),
+                        "a refused value changes nothing");
 
                 var tooLate = put(runtime, "/api/v1/plans/docs-typo/settings",
                         JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after",
@@ -283,6 +290,17 @@ class ControlScenarioTest {
                 assertEquals(3, check.carriedFindings());
                 assertEquals(5, check.carriedWatches());
                 assertEquals("review-findings", check.lines().get(2).action());
+            }
+        }
+
+        @Test
+        @DisplayName("serves the process of a known epic without its own process route")
+        void processOfKnownEpic() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var response = get(runtime, "/api/v1/epics/relay-docs-epic/process");
+
+                assertEquals(200, response.status());
+                assertEquals("relay-docs-epic", EpicProcess.fromJson(response.bodyText()).epicId());
             }
         }
 

@@ -5159,7 +5159,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if ("landing".equals(update.aspect()) && "landing.main".equals(update.value())) {
-                response.json(400, Map.of(KEY_ERROR, "refused",
+                // plan-settings.validate refuses a value the project does not allow; the catalogue's
+                // code for a request value the endpoint refuses is invalid_arguments (400).
+                response.json(ApiErrorCode.INVALID_ARGUMENTS.status(),
+                        Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
                         KEY_REASON, "the base branch of pm-mcp-clients is protected",
                         "value", update.value()));
                 return;
@@ -10169,7 +10172,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
             return;
         }
-        var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
+        var outcome = "decline".equalsIgnoreCase(action) ? "declined" : "waived";
         synchronized (decisionsLock) {
             openDecisions.remove(decisionId);
         }
@@ -10191,12 +10194,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (chosen == null && !answerReq.partAnswers().isEmpty()) {
             chosen = answerReq.partAnswers().values().iterator().next().toString();
         }
-        if ("later".equalsIgnoreCase(answerReq.action()) || "later".equalsIgnoreCase(chosen) || "l".equalsIgnoreCase(chosen)) {
+        if ("later".equalsIgnoreCase(answerReq.action()) || "later".equalsIgnoreCase(chosen)) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
         if (chosen == null) {
-            chosen = "1";
+            // An answer that names no option, no own words, and no part answer chooses nothing: it is
+            // refused and the decision stays open, never answered with a made-up first option.
+            response.json(ApiErrorCode.INVALID_ARGUMENTS.status(), Map.of(KEY_ERROR,
+                    ApiErrorCode.INVALID_ARGUMENTS.wire(), KEY_MESSAGE, "The answer names no option, no own words, and no part answer."));
+            return;
         }
 
         synchronized (decisionsLock) {
@@ -10390,11 +10397,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
-        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process
+        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process. An epic the scenario serves
+        // by its own process route is answered at step 1; an epic the scenario knows is answered from
+        // the template route; any other id is scope_not_found, as the ApiErrorCode catalogue names it.
         if (isEpicProcess) {
             var sub = path.substring(PATH_EPICS_PREFIX.length());
             var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!epicId.contains("/")) {
+                if (!knowsEpic(epicId)) {
+                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                            KEY_MESSAGE, "Epic not found: " + epicId));
+                    return true;
+                }
                 var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
@@ -10408,6 +10422,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         return false;
+    }
+
+    /**
+     * @param epicId the requested epic id
+     * @return {@code true} when the scenario serves the epic by a non-error detail route or holds it
+     *         among the epics of its control fixture
+     */
+    private boolean knowsEpic(String epicId) {
+        var detailRoute = activeRoute("GET", PATH_EPICS_PREFIX + epicId);
+        if (detailRoute != null && detailRoute.status() < 400) {
+            return true;
+        }
+        synchronized (controlLock) {
+            return controlEpics.containsKey(epicId);
+        }
     }
 
     /**
