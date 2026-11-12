@@ -17,7 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
+
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.OnboardingAspect;
@@ -30,12 +34,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The two dialogue sources ({@code CLI-UC-S-06}, {@code CLI-UC-P-01}): the machine onboarding reads
  * {@code GET /api/v1/onboarding/state} and sends {@code POST /api/v1/onboarding/step}, a project's
  * setup reads and advances its own resource, and a runtime that answers no state is refused.
  */
+@EnableGeneratorController
 @DisplayName("The dialogue sources")
 class DialogueSourceTest {
 
@@ -172,12 +180,14 @@ class DialogueSourceTest {
         assertEquals(2, frame.totalSteps());
     }
 
-    @Test
-    @DisplayName("a project setup with a custom total_steps reports that total")
-    void projectSetupWithCustomTotalStepsReportsThatTotal() throws Exception {
+    @ParameterizedTest(name = "a project setup reporting total_steps {0} reports {1}")
+    @MethodSource("projectSetupTotals")
+    @DisplayName("a project setup reports the total_steps it names, and 10 where it names none")
+    void projectSetupReportsItsTotalSteps(String totalSteps, int expected) throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/projects/my-proj/setup".equals(request.target())) {
-                response.json(200, "{\"state\":\"project.identity\",\"total_steps\":12,\"completed_steps\":0,\"links\":{}}");
+                response.json(200, "{\"state\":\"project.identity\"" + totalSteps
+                                    + ",\"completed_steps\":0,\"links\":{}}");
             } else {
                 response.send(404, null, "");
             }
@@ -187,24 +197,15 @@ class DialogueSourceTest {
         var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), "my-proj");
         var frame = source.fetch();
 
-        assertEquals(12, frame.totalSteps());
+        assertEquals(expected, frame.totalSteps());
     }
 
-    @Test
-    @DisplayName("a project setup without total_steps falls back to 10")
-    void projectSetupWithoutTotalStepsFallsBackToDefaultTen() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/projects/my-proj/setup".equals(request.target())) {
-                response.json(200, "{\"state\":\"project.identity\",\"step\":1,\"completed_steps\":0,\"links\":{}}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        var context = context();
-        var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), "my-proj");
-        var frame = source.fetch();
-
-        assertEquals(10, frame.totalSteps(), "project setup without total_steps must fall back to 10");
+    private static Stream<Arguments> projectSetupTotals() {
+        var valid = Generators.integers(1, 50).next();
+        return Stream.of(
+                            Arguments.of(",\"total_steps\":" + valid, valid),
+                            Arguments.of(",\"step\":1", 10),
+                            Arguments.of(",\"total_steps\":\"12\"", 10),
+                            Arguments.of(",\"total_steps\":3.0", 10));
     }
 }

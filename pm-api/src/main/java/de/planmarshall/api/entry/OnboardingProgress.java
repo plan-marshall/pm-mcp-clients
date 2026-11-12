@@ -120,7 +120,7 @@ public record OnboardingProgress(
         if (step == null) {
             step = JsonTree.integer(map, FIELD_COMPLETED_STEPS);
         }
-        var steps = JsonTree.integer(map, FIELD_STEPS);
+        var steps = JsonTree.positiveInteger(map, FIELD_STEPS);
         var completed = Boolean.TRUE.equals(JsonTree.bool(map, FIELD_COMPLETED))
                 || COMPLETED_STATE.equals(state);
         try {

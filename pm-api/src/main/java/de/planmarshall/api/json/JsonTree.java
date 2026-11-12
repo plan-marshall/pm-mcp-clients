@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
@@ -37,7 +38,9 @@ import org.jspecify.annotations.Nullable;
 public class JsonTree {
 
     private static final JsonFactory FACTORY = new JsonFactory();
-    private static final JsonFactory ASCII_FACTORY = JsonFactory.builder()
+
+    /** The source text of an integral JSON number: digits only, no sign, no decimal point, no exponent. */
+    private static final Pattern INTEGRAL_LITERAL = Pattern.compile("[0-9]+");    private static final JsonFactory ASCII_FACTORY = JsonFactory.builder()
             .enable(JsonWriteFeature.ESCAPE_NON_ASCII).build();
 
     /**
@@ -399,8 +402,11 @@ public class JsonTree {
     /**
      * Reads a member that must be an exact integral positive number within {@code int} range.
      * <p>
-     * A missing member, a value that is no number, a number with a fractional part, a number that is
-     * not finite, or a value outside {@code 1..Integer.MAX_VALUE} returns {@code null}.
+     * Only a JSON number whose source text is an integer literal, or an integral Java number, is a
+     * number here: a JSON string is a string, not a number, and a decimal or exponent form
+     * ({@code 3.0}, {@code 1e1}) is not integral. A missing member, a value that is no number, a
+     * number with a fractional part, or a value outside {@code 1..Integer.MAX_VALUE} returns
+     * {@code null}.
      *
      * @param object an object, may be {@code null}
      * @param name   the member name
@@ -411,27 +417,28 @@ public class JsonTree {
             return null;
         }
         var raw = object.get(name);
-        if (raw == null) {
-            return null;
-        }
-        var text = switch (raw) {
-            case JsonNumber(String value) -> value;
-            case Number value -> value.toString();
-            case String value -> value;
-            default -> null;
-        };
-        if (text == null) {
-            return null;
-        }
-        try {
-            var value = new BigDecimal(text).longValueExact();
-            if (value >= 1 && value <= Integer.MAX_VALUE) {
-                return (int) value;
+        final long value;
+        if (raw instanceof JsonNumber(String text)) {
+            if (!INTEGRAL_LITERAL.matcher(text).matches()) {
+                return null;
             }
-        } catch (NumberFormatException | ArithmeticException _) {
+            try {
+                value = Long.parseLong(text);
+            } catch (NumberFormatException _) {
+                return null;
+            }
+        } else if (raw instanceof Integer integer) {
+            value = integer;
+        } else if (raw instanceof Long longValue) {
+            value = longValue;
+        } else if (raw instanceof Short shortValue) {
+            value = shortValue;
+        } else if (raw instanceof Byte byteValue) {
+            value = byteValue;
+        } else {
             return null;
         }
-        return null;
+        return value >= 1 && value <= Integer.MAX_VALUE ? (int) value : null;
     }
 
     /**

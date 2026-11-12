@@ -76,7 +76,7 @@ public final class OnboardingSource implements StateDialogue.Source {
     /**
      * @return the machine onboarding aspects
      */
-    public List<OnboardingAspect> aspects() {
+    List<OnboardingAspect> aspects() {
         return aspects;
     }
 
