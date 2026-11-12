@@ -614,6 +614,19 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
+- PLAN-159 (2026-11-12): (a) **non-goals ≥1 against the engine's 0** — operator: keep the design's "at least one"
+  (`intent-and-outline.adoc:104`, `PlanIntentResource.java:454-457`). The engine's schema and spec allow `minItems 0` on the
+  light lane (`intent-record-v1.schema.json:26-28`), and its Java requires 1 until `PLAN-V2-129` (pm-mcp-core) aligns it. Once a
+  light-lane record is served, the client refuses the whole intent record. Owner: the design and the engine, to be settled before a
+  daemon intent route exists. (b) **Engine still writes decider `model`** (`pm-mcp-core` `IntentRecord.java:563`,
+  `IntentCodec.java:268`), while the client now refuses it and requires `role`. The engine's rename is `PLAN-V2-123` D1 (epic
+  `pm-mcp-core-m2-m4-v2`, staged, after 129), which also renames the store member `decisions` to `choices` (the client wire keeps
+  `decisions`). No daemon intent route may go live before 123 lands. Nothing breaks today: only the mock serves intent records.
+  (c) **`pm-api` branch coverage below the gate on `main`**: `-Pcoverage` reads 0.72 at `078b2ec5` and 0.73 at `572dc739`, against
+  0.80. No plan owns it. (d) Lessons (owner plan-marshall, runbook lane): the PR body did not carry `unresolved_review_threads=` and
+  `review_body_findings_*`, which only went into the landing message; CodeRabbit's outside-diff finding was fixed in `2c2eb9d1` but
+  got no reply; the landing counted a pre-existing red gate as its own "not met".
+
 - PLAN-132 (2026-11-11): (a) runtime spec, owner plan-marshall-documentation: a machine-scope decision chat has a route
   (`ChatRoutes.machineDecision`) but no event stream (`06-event-catalogue.adoc#chat-events` lists P, E, W, N only).
   (b) owner plan-marshall, lessons 001-009: the pre-commit gate's whole-tree import rewrite swept unrelated files into the PR and
@@ -794,6 +807,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   specs as HYPOTHESES: the engine allows 0 non-goals on the light lane while the client and design ask one or more
   (PLAN-159); the over_size route carries one role and no role parameter, the design one chart per role (PLAN-146,
   PLAN-159); the builder reason's wire name `reason` and an omitted `proposed_multiple` (no daemon route spec yet).
+  → SETTLED 2026-11-12 at the PLAN-159 landing: non-goals stay ≥1 (operator; Open Defects); the one-role route is PLAN-146's;
+  `reason`/`proposed_multiple` rest on the design alone (no engine or daemon schema names them).
 - PLAN-36 landed (PR #391, `36fb27d9`, analysed 2026-11-10); see `landings/PLAN-36.md`. `needs` verb, overview
   "Needs you" group with `!`, badge words for `credential`/`cleanup_due`; Sonar 0. MERGE RULE NOT MET: no bot reviewed
   any head (CodeRabbit refused 7 triggers on quota), merged under the lane's "standing review authorization". RESIDUE

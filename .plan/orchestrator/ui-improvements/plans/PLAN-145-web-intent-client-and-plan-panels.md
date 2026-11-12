@@ -141,6 +141,19 @@ verdict tag, the texts, the links and the shown fields.
 - HYPOTHESIS: a new catalogue area needs a registration beyond the properties files — confirm/refute at `pm-web-app/src/lib/i18n/catalogue.test.ts` and `pm-web-app/src/lib/i18n/index.ts` (verify-at-outline)
 - Verify-first clause: re-read `intent-and-outline.adoc`, its texts document and `PLAN-159`'s landing at the then-current HEAD; the verdict is a `StatusLabel` state (no new component); if `PLAN-159` has not landed (no `adr`, `evidence`, `{id, text}` non-goals, `role` or builder `reason` in `pm-api`), stop and loop back.
 
+5. **The `pm-api` intent residue of PLAN-159** (added 2026-11-12, operator routing of the PLAN-159 landing)
+ - What:
+   - Tests for the readers PLAN-159 added (`IntentJson.optionalRawText`, `optionalDouble`, `optionalObject`; `PlanIntentResource.java`, `BuilderCheckResource.java`, `OverSizeDistributionResource.java` at `835e7024`): an explicit `null` for `adr`, `evidence` and `reason` (the engine writes explicit nulls, `IntentCodec.java:271`), a non-object `adr`, a wrong-typed member, a `fact` decision with blank (not absent) evidence, and an empty non-goal list at record level (`PlanIntentResource.java:454-457`, untested). The refusals assert the field or message, not only the exception type.
+   - The `not_run` rule: `BuilderCheckResource` accepts `questions` on a `not_run` check while its own Javadoc (`:59`, "in the questions' absence") and the engine's spec (a `not_run` comes from `infeasible`, `lost` or an unqualified `qgate`; the questions sit in `facts.builder_open_questions`) say there are none. Refuse them, with a test. If the engine's spec at the then-current HEAD records questions on a `not_run` check, correct the Javadoc instead and pin that. If the spec is silent, stop and ask.
+   - The non-goals stay **at least one** (operator 2026-11-12: the design `intent-and-outline.adoc:104` stands; the engine's light-lane `minItems 0` is an Open Defect). The client fails closed on an empty list. Do not relax the rule.
+   - The list of choices is `decisions` on the client wire (`PlanIntentResource.java:66`); the engine renames its store member to `choices` (pm-mcp-core `PLAN-V2-123`, staged). The web types mirror the `pm-api` wire, not the store. Add no alias.
+   - The builder check's `reason` and a fact's `evidence` are untrusted text. They are rendered as plain text after `stripControlSequences` (D2, D3), and the tests of D3 include a `reason` with control sequences and markup.
+ - Persona: plan-marshall:persona-module-tester
+ - Skills: pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java:java-core
+ - Done when:
+   - Each new test in `IntentContractTest` fails on a revert of the rule it pins (for the readers, a scratch change of the reader; the failing runs are reported). The `not_run`-with-questions case is settled one way and pinned. Evidence order: `mutation-after` for the existing rules, `test-first` for the `not_run` change.
+   - `BuilderCheckList.test.ts` renders a `reason` with control sequences and markup as text. Evidence order: `test-first`.
+
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 1cc0e10e
@@ -163,6 +176,9 @@ verdict tag, the texts, the links and the shown fields.
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/message/IntentCatalogueTest.java` — absent at HEAD 4a84f727; created by this plan
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/PlanIntentResource.java` — present at HEAD 1cc0e10e (read only: `PLAN-159` grows the contract)
 - OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at HEAD 1cc0e10e (read only: `PLAN-159` grows the fixtures)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/BuilderCheckResource.java` — present at HEAD 835e7024 (D5: the `not_run` rule)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/IntentJson.java` — present at HEAD 835e7024 (D5: read for the reader tests)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/intent/IntentContractTest.java` — present at HEAD 835e7024 (D5)
 - OBSERVED: `pm-web-e2e/tests/intent.spec.js` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `doc/design/shared/intent-and-outline.adoc` — present at HEAD 1cc0e10e
 
@@ -210,3 +226,11 @@ the design document.
 
 Surface change: added `common.{en,de}.properties`, `MessageCatalogue.java`, `MessageCatalogueTest.java`, `IntentCatalogueTest.java`
 (new); `PlanIntentResource.java` and `running-work.json` are read only.
+
+## PLAN-159 Landed 2026-11-12 (Amendment)
+
+PLAN-159 merged as `835e7024` (#417): the contract carries `Decision.adr` and `evidence`, the decider `role`, the non-goals as
+`{id, text}`, `BuilderCheckResource.reason` (present exactly when `not_run`) and the optional `proposed_multiple`; both mock
+scenarios serve them (`fully-onboarded` a `not_run` check with a reason and a distribution without a proposal; `running-work` a
+`pending` check and a distribution with one). D1's types mirror these. Deliverable 5 is added by the operator's routing of the
+landing (`landings/PLAN-159.md`). Settled HYPOTHESES: the over-size route serves one role with no role parameter (`MockRuntimeEngine.java:5459-5465`) — `PLAN-146`'s; `reason` and `proposed_multiple` are named by the design alone (no engine schema defines them). Surface: +3 paths (`BuilderCheckResource.java`, `IntentJson.java`, `IntentContractTest.java`); `PlanIntentResource.java` stays read only.
