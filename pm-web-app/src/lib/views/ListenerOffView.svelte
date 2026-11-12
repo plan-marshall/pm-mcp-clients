@@ -1,17 +1,9 @@
-<script lang="ts" module>
-  /**
-   * The quiet timer on which a page of a lost connection tries again; the runtime that is not
-   * reachable waits on the same one.
-   */
-  export const RECONNECT_INTERVAL_MS = 15_000;
-</script>
-
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import { formatTime } from '../display/format';
-  import { runtimeStore, initRuntime } from '../stores/runtime';
+  import { runtimeStore, initRuntime, RECONNECT_INTERVAL_MS } from '../stores/runtime';
   import MascotFigure from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
 

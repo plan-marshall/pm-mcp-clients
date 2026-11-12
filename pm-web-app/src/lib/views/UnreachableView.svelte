@@ -3,14 +3,17 @@
   import { t } from '../i18n';
   import MascotFigure from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
-  import { initRuntime } from '../stores/runtime';
-  import { RECONNECT_INTERVAL_MS } from './ListenerOffView.svelte';
+  import { RECONNECT_INTERVAL_MS, retryRuntime } from '../stores/runtime';
 
   /**
    * The page of a runtime that is not reachable on this machine (entry.adoc, After Pairing).
    *
    * It says what is wrong and the one command that starts the runtime, and connects again by
-   * itself on a quiet timer. The `searching` figure stands beside the text, drawn from the object
+   * itself on a quiet timer while it is shown. It is not the only owner of that retry: after a
+   * failed start the runtime store retries on its own until an initialization succeeds, because
+   * the first successful request removes this page and its timer with it. Both retry through the
+   * store, so they never run two initializations side by side. The `searching` figure stands
+   * beside the text, drawn from the object
    * URL the app held since its start; without it the text stands alone and says everything. Where
    * the page is too narrow to hold both, the figure is hidden, never stacked above the text.
    */
@@ -39,7 +42,7 @@
     if (isReconnecting || !isMounted) return;
     isReconnecting = true;
     try {
-      await initRuntime();
+      await retryRuntime();
     } finally {
       isReconnecting = false;
     }

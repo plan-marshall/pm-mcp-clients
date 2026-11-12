@@ -186,6 +186,81 @@ export function deriveStepFromState(stateId?: string): number {
 let hashListenerRegistered = false;
 let eventsUnsubscribe: (() => void) | null = null;
 
+/**
+ * The quiet timer on which the app tries again to reach a runtime it could not reach; the pages
+ * of a lost connection wait on the same one.
+ */
+export const RECONNECT_INTERVAL_MS = 15_000;
+
+/** The timer that retries a failed initialization, while one is owed. */
+let recovery: ReturnType<typeof setInterval> | null = null;
+/** Whether a retry of the initialization is in flight, so a second one is not started beside it. */
+let retryInFlight = false;
+
+/**
+ * Starts retrying the initialization after one failed.
+ *
+ * The store owns the retry, not the page that shows the lost connection: any successful request
+ * clears the offline state and removes that page, but only a successful initialization loads the
+ * runtime's state and opens the event stream. The retry therefore runs until one initialization has
+ * succeeded, whatever clears the offline state in the meantime.
+ */
+function startRecovery(): void {
+  if (recovery !== null || typeof window === 'undefined') return;
+  recovery = setInterval(() => void retryRuntime(), RECONNECT_INTERVAL_MS);
+}
+
+/** Stops retrying the initialization: one succeeded, or the app is torn down. */
+export function stopRuntimeRecovery(): void {
+  if (recovery !== null) {
+    clearInterval(recovery);
+    recovery = null;
+  }
+}
+
+/** @returns whether a retry of the initialization is owed and its timer runs */
+export function isRuntimeRecovering(): boolean {
+  return recovery !== null;
+}
+
+/**
+ * Runs the initialization again, unless a retry is already in flight. The store's own timer and
+ * the page of the unreachable runtime both retry through it, so they never run two side by side.
+ */
+export async function retryRuntime(): Promise<void> {
+  if (retryInFlight) return;
+  retryInFlight = true;
+  try {
+    await initRuntime();
+  } finally {
+    retryInFlight = false;
+  }
+}
+
+/** Where the person stood: the address and the route the store showed. */
+interface RouteMark {
+  path: string;
+  route: AppRoute;
+}
+
+/** @returns where the person stands now */
+function routeMark(): RouteMark {
+  return {
+    path: typeof window !== 'undefined' ? window.location.pathname : '/',
+    route: get(runtimeStore).currentRoute,
+  };
+}
+
+/**
+ * @param mark where the person stood when the initialization started
+ * @returns whether the person moved since: the initialization then writes no route of its own,
+ *   so a late answer never takes them back to the address it read at its start
+ */
+function navigatedSince(mark: RouteMark): boolean {
+  const now = routeMark();
+  return now.path !== mark.path || now.route !== mark.route;
+}
+
 function subscribeToEvents(): void {
   if (eventsUnsubscribe) {
     eventsUnsubscribe();
@@ -438,8 +513,10 @@ export async function initRuntime(): Promise<void> {
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
   const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const mark = routeMark();
 
   if (!isPaired) {
+    stopRuntimeRecovery();
     runtimeStore.update((s) => ({
       ...s,
       isInitialized: true,
@@ -461,6 +538,17 @@ export async function initRuntime(): Promise<void> {
     // If there is a current state reported in status, store it
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
 
+    // A person who moved while the reads were in flight stays where they went.
+    const route = navigatedSince(mark)
+      ? {}
+      : {
+          currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
+          selectedPlanId: requested?.planId ?? null,
+          selectedEpicId: requested?.epicId ?? null,
+          startProjectId: requested?.projectId ?? null,
+          startEntryId: requested?.entryId ?? null,
+        };
+
     runtimeStore.update((s) => ({
       ...s,
       isInitialized: true,
@@ -468,11 +556,7 @@ export async function initRuntime(): Promise<void> {
       isOnboarded: onboarded,
       deviceLabel: label,
       machineName,
-      currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-      selectedPlanId: requested?.planId ?? null,
-      selectedEpicId: requested?.epicId ?? null,
-      startProjectId: requested?.projectId ?? null,
-      startEntryId: requested?.entryId ?? null,
+      ...route,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
       ...lifecycleFieldsOf(status),
@@ -480,34 +564,41 @@ export async function initRuntime(): Promise<void> {
       isRevoked: false,
     }));
 
+    // The runtime's state is loaded: no retry is owed any longer.
+    stopRuntimeRecovery();
     subscribeToEvents();
     void refreshReportsCount();
     void refreshDecisionsCount();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
+      stopRuntimeRecovery();
       return;
     }
+    const moved = navigatedSince(mark);
     runtimeStore.update((s) => ({
       ...s,
       isInitialized: true,
       // The browser still holds its pairing; a status read that failed is no reason to send the
       // person back to the pairing page, or away from the address they opened. The view that
       // address names then draws the error pattern of the load it could not finish. The pairing and
-      // entry pages are not views to land on, so they keep the previous route instead.
+      // entry pages are not views to land on, so they keep the previous route instead, and so does
+      // a person who moved while the read was in flight.
       isPaired: true,
       isOffline: true,
       currentRoute:
-        requested && requested.route !== 'pair' && requested.route !== 'entry'
+        !moved && requested && requested.route !== 'pair' && requested.route !== 'entry'
           ? requested.route
           : s.currentRoute,
-      selectedPlanId: requested?.planId ?? s.selectedPlanId,
-      selectedEpicId: requested?.epicId ?? s.selectedEpicId,
-      startProjectId: requested?.projectId ?? s.startProjectId,
-      startEntryId: requested?.entryId ?? s.startEntryId,
+      selectedPlanId: moved ? s.selectedPlanId : (requested?.planId ?? s.selectedPlanId),
+      selectedEpicId: moved ? s.selectedEpicId : (requested?.epicId ?? s.selectedEpicId),
+      startProjectId: moved ? s.startProjectId : (requested?.projectId ?? s.startProjectId),
+      startEntryId: moved ? s.startEntryId : (requested?.entryId ?? s.startEntryId),
       // No stream opens on this path, so the indicator must offer the one way back — unless the
       // retry already connected one, whose state then stands.
       streamState: s.streamState === 'connected' ? 'connected' : 'offline',
     }));
+    // The runtime's state was not loaded: retry until an initialization succeeds.
+    startRecovery();
   }
 }
 

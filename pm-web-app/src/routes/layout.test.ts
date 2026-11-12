@@ -1,11 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { messagesStore } from '../lib/i18n';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
-import { runtimeStore, handleRuntimeEvent } from '../lib/stores/runtime';
+import { ClientError } from '../lib/api/errors';
+import {
+  runtimeStore,
+  handleRuntimeEvent,
+  isRuntimeRecovering,
+  RECONNECT_INTERVAL_MS,
+  stopRuntimeRecovery,
+} from '../lib/stores/runtime';
 import { heldFigure, holdFigure } from '../lib/stores/heldFigure';
 import { makeRuntimeState } from '../lib/test/runtimeState';
 import { loadMessages } from '../test/catalogue-fixture';
@@ -18,6 +25,11 @@ vi.mock('../lib/stores/heldFigure', async () => {
 });
 
 const held = heldFigure as Writable<string>;
+
+// A failed start leaves the store retrying; no retry outlives its test.
+afterEach(() => {
+  stopRuntimeRecovery();
+});
 
 const STATUS: StatusResponse = {
   status: 'ready',
@@ -1015,5 +1027,97 @@ describe('the runtime that is not reachable', () => {
     expect(screen.getByTestId('open-view')).not.toHaveAttribute('hidden');
     expect(screen.getByTestId('open-view-input')).toBe(input);
     expect(input.value).toBe(unsent);
+  });
+});
+
+/**
+ * The recovery after a failed start: the shell, not the page of the unreachable runtime, owns the
+ * retry of the initialization. A successful request that clears the offline state removes that
+ * page and its timer, and the retry still loads the runtime's state and opens the event stream.
+ */
+describe('the recovery of a failed start', () => {
+  /** The open view the route renders. */
+  const openView = createRawSnippet(() => ({
+    render: () => '<p data-testid="open-view-content">open view</p>',
+  }));
+
+  beforeEach(() => {
+    // The spies of the tests above are counted afresh, so a call is this test's own.
+    vi.restoreAllMocks();
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    // The machine is onboarded, but this browser has not loaded that yet.
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: false,
+        isPaired: false,
+        isOnboarded: false,
+        currentRoute: 'pair',
+      }),
+    );
+    window.history.replaceState(null, '', '/reports');
+    held.set('');
+    vi.spyOn(apiClient, 'getMessages').mockResolvedValue(loadMessages('en'));
+    messagesStore.set(loadMessages('en'));
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('loads the runtime and opens the stream although a probe removed the unreachable page first', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let reachable = false;
+    vi.spyOn(apiClient, 'getStatus').mockImplementation(async () => {
+      if (!reachable) throw new ClientError('network_offline');
+      return STATUS;
+    });
+    // The stream itself is retried by the live indicator; only a successful initialization opens
+    // it through the store and then reads the counts, which is what this test observes.
+    const subscribe = vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    const decisions = vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    render(Layout, { props: { children: openView } });
+    await screen.findByTestId('unreachable-view');
+    expect(decisions).not.toHaveBeenCalled();
+    expect(get(runtimeStore).isOnboarded).toBe(false);
+    expect(isRuntimeRecovering()).toBe(true);
+
+    // The runtime comes back, and a successful request clears the offline state before the first
+    // retry tick; the page and its own timer go with it.
+    reachable = true;
+    subscribe.mockClear();
+    runtimeStore.update((state) => ({ ...state, isOffline: false }));
+    await waitFor(() => expect(screen.queryByTestId('unreachable-view')).not.toBeInTheDocument());
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+
+    await waitFor(() => expect(decisions).toHaveBeenCalled());
+    expect(subscribe).toHaveBeenCalled();
+    expect(get(runtimeStore).isOnboarded).toBe(true);
+    // The loaded state shows the open view, not the onboarding of a machine already onboarded.
+    expect(await screen.findByTestId('open-view-content')).toBeInTheDocument();
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('ends the retry with the shell', async () => {
+    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(new ClientError('network_offline'));
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+
+    const { unmount } = render(Layout, { props: { children: openView } });
+    await screen.findByTestId('unreachable-view');
+    expect(isRuntimeRecovering()).toBe(true);
+
+    unmount();
+
+    expect(isRuntimeRecovering()).toBe(false);
   });
 });

@@ -12,6 +12,7 @@
     lifecycleEpochOf,
     lifecycleFieldsOf,
     routeParamsOf,
+    stopRuntimeRecovery,
     syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
@@ -219,6 +220,10 @@
         if (themeChoice === 'system') applyTheme('system');
       }),
     );
+    // A start that fails leaves the store retrying the initialization until one succeeds; the
+    // shell owns that retry for its whole life and ends it with itself, never the page of the
+    // lost connection, which the first successful request removes.
+    onDestroy(stopRuntimeRecovery);
 
     // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
     // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.

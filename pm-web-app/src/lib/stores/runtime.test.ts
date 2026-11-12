@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
 import { ClientError } from '../api/errors';
@@ -7,12 +7,16 @@ import {
   checkUrlHashForCode,
   handleRuntimeEvent,
   initRuntime,
+  isRuntimeRecovering,
   landingRoute,
+  navigateTo,
   openStartPage,
   pairBrowser,
+  RECONNECT_INTERVAL_MS,
   replaceDesignerProject,
   routeParamsOf,
   runtimeStore,
+  stopRuntimeRecovery,
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 
@@ -39,6 +43,12 @@ describe('the runtime store', () => {
     vi.restoreAllMocks();
     window.history.replaceState(null, '', '/pair');
     runtimeStore.set(makeRuntimeState());
+  });
+
+  afterEach(() => {
+    // A failed start leaves the store retrying; no retry outlives its test.
+    stopRuntimeRecovery();
+    vi.useRealTimers();
   });
 
   it('does not redeem from an already paired browser', async () => {
@@ -436,5 +446,178 @@ describe('the runtime store', () => {
 
     await openStartPage();
     expect(get(runtimeStore).currentRoute).toBe('projects');
+  });
+});
+
+/**
+ * The recovery after a failed start: the store owns the retry of the initialization, not the page
+ * of the lost connection, so a request that clears the offline state before the first retry does
+ * not leave a runtime whose state was never loaded. A retry that lands late never takes the person
+ * back from a route they moved to while it waited.
+ */
+describe('the recovery of a failed start', () => {
+  /**
+   * A deferred answer to the status read, so the test can act while the initialization waits.
+   *
+   * @returns the pending answer with the hands that settle it
+   */
+  function deferredStatus(): {
+    promise: Promise<StatusResponse>;
+    resolve: (status: StatusResponse) => void;
+    reject: (err: Error) => void;
+  } {
+    let resolve!: (status: StatusResponse) => void;
+    let reject!: (err: Error) => void;
+    const promise = new Promise<StatusResponse>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  /**
+   * Stubs the reads a successful initialization makes after the status.
+   *
+   * @returns the spy on the event stream's subscription, which only a successful start opens
+   */
+  function stubLoadedRuntime() {
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    return vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/plans/fix-relay');
+    runtimeStore.set(makeRuntimeState({ isInitialized: false, isOnboarded: false }));
+  });
+
+  afterEach(() => {
+    stopRuntimeRecovery();
+    vi.useRealTimers();
+  });
+
+  it('completes the initialization although a probe cleared the offline state before the first retry', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockResolvedValue(PAIRED_STATUS);
+    const subscribe = stubLoadedRuntime();
+
+    await initRuntime();
+    expect(get(runtimeStore).isOffline).toBe(true);
+    expect(isRuntimeRecovering()).toBe(true);
+
+    // The connection probe reaches the runtime first and clears the offline state, as any
+    // successful request does; the page of the lost connection and its timer go with it.
+    runtimeStore.update((s) => ({ ...s, isOffline: false }));
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(1));
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(get(runtimeStore).isOnboarded).toBe(true);
+    expect(get(runtimeStore).machineName).toBe('mbp-oliver');
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('stops retrying after the first successful initialization', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockResolvedValue(PAIRED_STATUS);
+    const subscribe = stubLoadedRuntime();
+
+    await initRuntime();
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+
+    expect(status).toHaveBeenCalledTimes(2);
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('keeps retrying while the runtime stays unreachable', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValue(new ClientError('network_offline'));
+
+    await initRuntime();
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 2);
+
+    await vi.waitFor(() => expect(status).toHaveBeenCalledTimes(3));
+    expect(isRuntimeRecovering()).toBe(true);
+  });
+
+  it('stops retrying on teardown', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const status = vi
+      .spyOn(apiClient, 'getStatus')
+      .mockRejectedValue(new ClientError('network_offline'));
+
+    await initRuntime();
+    stopRuntimeRecovery();
+    await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 2);
+
+    expect(status).toHaveBeenCalledTimes(1);
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('starts no retry after a successful start', async () => {
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
+    stubLoadedRuntime();
+
+    await initRuntime();
+
+    expect(isRuntimeRecovering()).toBe(false);
+  });
+
+  it('opens the route its start read when the person stayed', async () => {
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, currentRoute: 'plan' }));
+    const answer = deferredStatus();
+    vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+    stubLoadedRuntime();
+
+    const pending = initRuntime();
+    answer.resolve(PAIRED_STATUS);
+    await pending;
+
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+  });
+
+  it('keeps a navigation made while a successful initialization awaited', async () => {
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, currentRoute: 'plan' }));
+    const answer = deferredStatus();
+    vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+    stubLoadedRuntime();
+
+    const pending = initRuntime();
+    navigateTo('reports');
+    answer.resolve(PAIRED_STATUS);
+    await pending;
+
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+    expect(window.location.pathname).toBe('/reports');
+    expect(get(runtimeStore).isOnboarded).toBe(true);
+  });
+
+  it('keeps a navigation made while a failed initialization awaited', async () => {
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, currentRoute: 'plan' }));
+    const answer = deferredStatus();
+    vi.spyOn(apiClient, 'getStatus').mockReturnValue(answer.promise);
+
+    const pending = initRuntime();
+    navigateTo('reports');
+    answer.reject(new ClientError('network_offline'));
+    await pending;
+
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+    expect(get(runtimeStore).isOffline).toBe(true);
   });
 });

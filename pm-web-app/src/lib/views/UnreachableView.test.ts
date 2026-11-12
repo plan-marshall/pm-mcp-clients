@@ -4,6 +4,7 @@ import { render, screen, within } from '@testing-library/svelte';
 import type { Writable } from 'svelte/store';
 import UnreachableView from './UnreachableView.svelte';
 import { heldFigure } from '../stores/heldFigure';
+import { RECONNECT_INTERVAL_MS, retryRuntime } from '../stores/runtime';
 import { currentLocale, messagesStore, type Locale } from '../i18n';
 import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -24,7 +25,14 @@ vi.mock('../stores/heldFigure', async () => {
   return { heldFigure: writable(''), holdFigure: vi.fn() };
 });
 
+// The page retries through the store; the test observes those retries without a runtime.
+vi.mock('../stores/runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../stores/runtime')>()),
+  retryRuntime: vi.fn(),
+}));
+
 const held = heldFigure as Writable<string>;
+const retry = vi.mocked(retryRuntime);
 
 /**
  * Generated input: an object URL of the kind the app holds for the disconnected states.
@@ -102,6 +110,61 @@ describe('UnreachableView', () => {
       held.set(objectUrl);
 
       expect(await screen.findByTestId('mascot-figure')).toHaveAttribute('src', objectUrl);
+    });
+  });
+
+  describe('the quiet timer', () => {
+    beforeEach(() => {
+      retry.mockReset();
+      retry.mockResolvedValue(undefined);
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('retries through the store on each tick while it is shown', async () => {
+      render(UnreachableView);
+      expect(retry).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+      expect(retry).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+      expect(retry).toHaveBeenCalledTimes(2);
+    });
+
+    it('starts no second retry while one is in flight', async () => {
+      let settle!: () => void;
+      retry.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        }),
+      );
+      render(UnreachableView);
+
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 3);
+      expect(retry).toHaveBeenCalledTimes(1);
+
+      settle();
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+      expect(retry).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops its timer when the page goes', async () => {
+      const { unmount } = render(UnreachableView);
+
+      unmount();
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS * 2);
+
+      expect(retry).not.toHaveBeenCalled();
+    });
+
+    it('shows no button to retry with', () => {
+      render(UnreachableView);
+
+      expect(within(screen.getByTestId('unreachable-view')).queryByRole('button')).toBeNull();
     });
   });
 
