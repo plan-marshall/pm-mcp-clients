@@ -28,6 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
@@ -207,6 +208,24 @@ class OverviewExplorerKeysTest {
             assertNull(screen().menu());
             assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
             assertEquals(ready, app.stack().level().id());
+        }
+
+        @Test
+        @DisplayName("r on a project whose read the runtime refuses stays in the explorer and names the refusal")
+        void runningWorkRefused() {
+            statusOf.put(PROJECTS_PATH + "/" + ready, 500);
+            var refusal = ErrorTexts.title("en", "internal_fault") + " " + ErrorTexts.cause("en", "internal_fault");
+            select(ProjectsExplorerLevel.GROUP_FAVOURITES, ready);
+
+            keys.handle(TuiKeyAction.OPEN);
+            assertTrue(keys.menu("r"));
+            var fromMenu = statusLine();
+            assertEquals(TuiLevel.Kind.PROJECTS, app.stack().level().kind());
+            assertTrue(keys.handle(TuiKeyAction.RUNNING_WORK));
+
+            assertEquals(TuiLevel.Kind.PROJECTS, app.stack().level().kind());
+            assertEquals(refusal, fromMenu);
+            assertEquals(refusal, statusLine());
         }
 
         @Test

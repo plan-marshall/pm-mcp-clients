@@ -483,7 +483,8 @@ public final class TuiLayout {
         if (start < offset) {
             offset = start;
         }
-        offset = Math.max(0, Math.min(offset, Math.max(0, total - inner)));
+        // More lines than the body holds: the window of inner lines always lies inside them.
+        offset = Math.max(0, Math.min(offset, total - inner));
 
         var view = new ArrayList<AttributedString>(height);
         if (indicators) {
@@ -492,12 +493,7 @@ public final class TuiLayout {
                                 ? indicator("operator.overview.more_above", above) : "", width)));
         }
         for (int i = 0; i < inner; i++) {
-            view.add(offset + i < total ? lines.get(offset + i).text
-                                : new AttributedString(" ".repeat(Math.max(0, width))));
-        }
-        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
-        while (view.size() < (indicators ? height - 1 : height)) {
-            view.add(blank);
+            view.add(lines.get(offset + i).text);
         }
         if (indicators) {
             int below = rowsBelow(lines, offset + inner, total);
@@ -522,7 +518,7 @@ public final class TuiLayout {
     private static int distinctRows(List<BodyLine> lines, int from, int to) {
         int rows = 0;
         int previous = Integer.MIN_VALUE;
-        for (int i = from; i < to && i < lines.size(); i++) {
+        for (int i = from; i < to; i++) {
             int rowIndex = lines.get(i).rowIndex;
             if (rowIndex >= 0 && rowIndex != previous) {
                 rows++;

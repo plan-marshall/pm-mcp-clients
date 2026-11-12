@@ -25,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
@@ -57,6 +58,8 @@ import org.junit.jupiter.api.condition.OS;
 class OverviewReportsKeysTest {
 
     private static final String REPORTS_PATH = "/api/v1/reports";
+    private static final String NOT_FOUND_REFUSAL =
+                        ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found");
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
     private final List<String> calls = new CopyOnWriteArrayList<>();
@@ -216,14 +219,14 @@ class OverviewReportsKeysTest {
         }
 
         @Test
-        @DisplayName("a project the runtime does not serve opens nothing and leaves the report unread")
+        @DisplayName("a project the runtime does not serve opens nothing, names the refusal and leaves the report unread")
         void refusedProjectKeepsReportUnread() {
             selectReport("rep-refused");
 
             keys.handle(TuiKeyAction.OPEN);
 
             assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
-            assertEquals("Failed to load reports", statusLine());
+            assertEquals(NOT_FOUND_REFUSAL, statusLine());
             assertEquals(List.of(), calls);
         }
 
@@ -328,6 +331,17 @@ class OverviewReportsKeysTest {
 
             assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
             assertEquals(List.of(), calls);
+        }
+
+        @Test
+        @DisplayName("p on a project the runtime refuses stays on the reports and names the refusal")
+        void refusedProject() {
+            selectReport("rep-refused");
+
+            keys.handle(TuiKeyAction.PROJECT);
+
+            assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
+            assertEquals(NOT_FOUND_REFUSAL, statusLine());
         }
 
         @Test

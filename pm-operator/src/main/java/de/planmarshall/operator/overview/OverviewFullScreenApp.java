@@ -15,10 +15,10 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -115,7 +115,10 @@ public final class OverviewFullScreenApp {
     private static final String STATUS_ROW_ID = "__status__";
     private static final String NEEDS_LEVEL = "needs";
     private static final String PROJECTS_LEVEL = "projects";
+    private static final String PROJECT_LEVEL = "project";
     private static final String EXPLORER_LEVEL = "explorer";
+    private static final Set<String> STRUCTURAL_EVENTS = Set.of("activity.changed", "tokens.changed",
+                        "state.entered", "state.left", "instance.changed", "needs_operator.changed", "reset");
 
     /**
      * Initial CLI selection state.
@@ -696,6 +699,9 @@ public final class OverviewFullScreenApp {
     }
 
     /**
+     * Opens a project's level. A read the runtime refuses opens nothing and puts the refusal on the
+     * status line, so the key that asked for the project never ends in silence.
+     *
      * @return {@code true} when the runtime served the project and its level was opened
      */
     boolean openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
@@ -715,8 +721,9 @@ public final class OverviewFullScreenApp {
                 stack.push(levelModel.level(locale), rows, selectedId);
                 return true;
             }
-        } catch (IOException _) {
-            // Fall back to staying at project list
+            statusMessage = LoadRefusal.of(locale, response, PROJECT_LEVEL).line();
+        } catch (IOException failure) {
+            statusMessage = LoadRefusal.of(locale, failure, PROJECT_LEVEL).line();
         }
         return false;
     }
@@ -1181,7 +1188,7 @@ public final class OverviewFullScreenApp {
         menuHold = null;
         menuDecision = null;
         menuEpic = resource;
-        var next = resource != null ? nextLaunchable(resource) : null;
+        var next = resource != null ? OperatorActions.nextLaunchable(resource) : null;
         var reasons = currentEpicView.get() != null
                             ? currentEpicView.get().waitReasons(locale) : List.<String>of();
         actionsMenu = ActionMenus.epic(locale, actions, next, reasons,
@@ -1215,22 +1222,6 @@ public final class OverviewFullScreenApp {
         }
         statusMessage = MessageCatalogue.format(locale, "operator.actions.dropped",
                             Map.of("actions", String.join(", ", menu.droppedActions())));
-    }
-
-    private static @Nullable String nextLaunchable(EpicResource epic) {
-        for (var workstream : epic.workstreams()) {
-            for (var row : workstream.rows()) {
-                if ("staged".equals(normalizeStatus(row.status()))
-                                    && (row.waitReason() == null || "none".equals(row.waitReason()))) {
-                    return row.planId();
-                }
-            }
-        }
-        return null;
-    }
-
-    private static String normalizeStatus(@Nullable String status) {
-        return status == null ? "" : status.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
     }
 
     /**
@@ -1300,7 +1291,12 @@ public final class OverviewFullScreenApp {
                             epic, holdId));
     }
 
-    private @Nullable String currentProjectId() {
+    /**
+     * @return the project of the level shown, the one a follow-up of ended work starts in, or
+     *         {@code null} when the level belongs to no project the view holds
+     */
+    @Nullable
+    String currentProjectId() {
         var lvl = stack.level();
         if (lvl == null) {
             return null;
@@ -1314,9 +1310,16 @@ public final class OverviewFullScreenApp {
                 var view = currentPlanView.get();
                 yield view != null && view.planId().equals(lvl.id()) ? view.projectId() : null;
             }
-            case PLAN_ACTIVITY, PLAN_COMPLETION -> {
+            case PLAN_ACTIVITY -> {
                 var view = currentPlanView.get();
                 yield view != null ? view.projectId() : null;
+            }
+            case PLAN_COMPLETION -> {
+                // A completion report opened from the reports has no plan view below it, or one of
+                // another plan: its own report names its project.
+                var completion = currentCompletion.get();
+                yield completion != null && completion.planId().equals(lvl.id())
+                                    ? completion.report().from().projectId() : null;
             }
             case PROJECT_BY_PLAN, PROJECT_BY_EPIC -> {
                 var detail = currentProjectDetail.get();
@@ -1638,20 +1641,13 @@ public final class OverviewFullScreenApp {
     }
 
     static boolean isStructuralChange(String name, String type) {
-        if (name.startsWith("project.") || name.startsWith("phase.") || name.startsWith("scope.")
-                            || name.startsWith("hold.") || name.startsWith("condition.") || name.startsWith("task.")
-                            || "activity.changed".equals(name) || "tokens.changed".equals(name)
-                            || "state.entered".equals(name) || "state.left".equals(name)
-                            || "instance.changed".equals(name)
-                            || "needs_operator.changed".equals(name) || "reset".equals(name)) {
-            return true;
-        }
-        return type.startsWith("project.") || type.startsWith("phase.") || type.startsWith("scope.")
-                            || type.startsWith("hold.") || type.startsWith("condition.") || type.startsWith("task.")
-                            || "activity.changed".equals(type) || "tokens.changed".equals(type)
-                            || "state.entered".equals(type) || "state.left".equals(type)
-                            || "instance.changed".equals(type) || "needs_operator.changed".equals(type)
-                            || "reset".equals(type);
+        return isStructural(name) || isStructural(type);
+    }
+
+    private static boolean isStructural(String kind) {
+        return kind.startsWith("project.") || kind.startsWith("phase.") || kind.startsWith("scope.")
+                            || kind.startsWith("hold.") || kind.startsWith("condition.") || kind.startsWith("task.")
+                            || STRUCTURAL_EVENTS.contains(kind);
     }
 
     void refreshActiveLevels() {
@@ -2128,8 +2124,8 @@ public final class OverviewFullScreenApp {
     }
 
     /**
-     * Says that an act failed, unless the operator gate refused it: the refusal already stands on
-     * the status line and names why, which the general failure would hide.
+     * Says that an act failed, unless the operator gate or the runtime refused it: the refusal
+     * already stands on the status line and names why, which the general failure would hide.
      *
      * @param key the catalogue key of the failure
      */
@@ -2932,7 +2928,7 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             if (!openReportDetail(report)) {
-                statusMessage = MessageCatalogue.format(locale, "report.list.load_failed", Map.of());
+                failedUnlessRefused("report.list.load_failed");
                 return true;
             }
             if (!markReportRead(report.id())) {

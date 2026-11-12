@@ -500,7 +500,12 @@ final class WorkActionDialogue {
         return "integrity_pause".equals(actions.holdKind());
     }
 
-    private static @Nullable String nextLaunchable(EpicResource epic) {
+    /**
+     * @param epic the epic
+     * @return the first staged plan that waits for nothing, the one the epic's next-work action
+     *         starts, or {@code null}
+     */
+    static @Nullable String nextLaunchable(EpicResource epic) {
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
                 if (STAGED.equals(normalize(row.status()))

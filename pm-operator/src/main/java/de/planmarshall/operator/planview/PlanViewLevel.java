@@ -663,13 +663,11 @@ public final class PlanViewLevel {
     }
 
     private static String nodeTitle(ProcessNode node, String locale) {
-        var title = PlanViewFormatting.clean(node.title());
+        var title = stripKindTitle(node);
         if (KIND_PHASE.equals(node.kind())) {
-            title = stripPrefix(title, KIND_PHASE);
             return MessageCatalogue.format(locale, "plan.node.kind.phase", Map.of()) + " " + title;
         }
         if (KIND_SUB_WORKFLOW.equals(node.kind())) {
-            title = stripPrefix(title, "sub-workflow");
             return "\u21b3 " + MessageCatalogue.format(locale, "plan.node.kind.sub_workflow", Map.of()) + " " + title;
         }
         return title;

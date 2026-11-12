@@ -29,6 +29,7 @@ import org.jline.terminal.impl.DumbTerminal;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
@@ -195,5 +196,79 @@ class OverviewReturnLevelsTest {
         var header = app.buildScreen().breadcrumb();
         assertTrue(header.contains(firstPlan), header);
         assertFalse(header.contains(secondPlan), header);
+    }
+
+    @Test
+    @DisplayName("a completion report opened from the reports belongs to its own project, not to the plan view below")
+    void completionKeepsItsProject() throws IOException {
+        var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        var firstPlan = first + "-plan";
+        var endedPlan = second + "-plan";
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/plans/" + firstPlan + "/process", process(firstPlan, first, epic));
+        bodyOf.put("/api/v1/reports", "{\"items\":[{\"id\":\"rep-1\",\"from\":{\"project_id\":\"" + second
+                            + "\",\"plan_id\":\"" + endedPlan + "\"},\"kind\":\"plan.ended\",\"subject\":\"ended\","
+                            + "\"created_at\":\"2026-10-20T11:00:00Z\",\"sent_at\":\"2026-10-20T11:00:00Z\"}],"
+                            + "\"unread_count\":1,\"has_older\":false,\"older_count\":0}");
+        bodyOf.put("/api/v1/plans/" + endedPlan + "/completion", "{\"plan_id\":\"" + endedPlan + "\",\"title\":\""
+                            + endedPlan + "\",\"from\":{\"project_id\":\"" + second + "\",\"plan_id\":\"" + endedPlan
+                            + "\"},\"outcome\":\"merged\",\"started_at\":\"2026-10-20T08:00:00Z\","
+                            + "\"ended_at\":\"2026-10-20T11:50:00Z\",\"deliverables\":[],\"replanning_records\":[],"
+                            + "\"decision_records\":[]}");
+        open(OverviewFullScreenApp.InitialSelection.plan(firstPlan));
+        assertEquals(first, app.currentProjectId());
+        keys.handle(TuiKeyAction.REPORTS);
+        app.stack().select(ReportsLevel.REPORT_PREFIX + "rep-1");
+
+        keys.handle(TuiKeyAction.OPEN);
+
+        assertEquals(TuiLevel.Kind.PLAN_COMPLETION, app.stack().level().kind());
+        assertEquals(second, app.currentProjectId());
+    }
+
+    private void openEpicOfPlan() throws IOException {
+        var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        var plan = first + "-plan";
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/plans/" + plan + "/process", process(plan, first, epic));
+        bodyOf.put("/api/v1/epics/" + epic, "{\"epic_id\":\"" + epic + "\",\"project_id\":\"" + first
+                            + "\",\"display_name\":\"" + first + "\",\"state\":\"running\",\"auto_start\":true,"
+                            + "\"overlap_max_files\":0,\"scope\":1,\"running\":1,\"workstreams\":[{\"id\":\"WS-1\","
+                            + "\"name\":\"One\",\"open\":true,\"rows\":[{\"plan_id\":\"" + plan + "\",\"title\":\""
+                            + plan + "\",\"status\":\"running\"}]}],\"sources\":[],\"landings\":0,\"events\":[]}");
+        open(OverviewFullScreenApp.InitialSelection.plan(plan));
+        keys.handle(TuiKeyAction.EPIC);
+        assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+    }
+
+    @Test
+    @DisplayName("p on an epic opens its project above it, and Esc returns to the epic")
+    void projectAboveEpic() throws IOException {
+        bodyOf.put("/api/v1/projects/" + first, detail(first));
+        openEpicOfPlan();
+        var epicLevel = app.stack().level().id();
+
+        keys.handle(TuiKeyAction.PROJECT);
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(first, app.stack().level().id());
+        keys.handle(TuiKeyAction.BACK);
+
+        assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+        assertEquals(epicLevel, app.stack().level().id());
+    }
+
+    @Test
+    @DisplayName("p on an epic whose project the runtime refuses stays on the epic and names the refusal")
+    void refusedProjectOfEpic() throws IOException {
+        openEpicOfPlan();
+        var epicLevel = app.stack().level().id();
+
+        keys.handle(TuiKeyAction.PROJECT);
+
+        assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+        assertEquals(epicLevel, app.stack().level().id());
+        var rows = app.buildScreen().rows();
+        assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
+                            rows.getLast().line().trim());
     }
 }
