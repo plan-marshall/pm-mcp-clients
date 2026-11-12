@@ -25,7 +25,7 @@ import de.planmarshall.api.json.JsonTree;
  *
  * @param chatId the chat's id
  * @param turnId the turn of the reply
- * @param step   the step, a {@code control.chat.step.*} key with its arguments
+ * @param step   the step, a {@code chat.step.*} key with its arguments
  */
 public record ChatTurnProgressEvent(String chatId, String turnId, MessageText step) {
 

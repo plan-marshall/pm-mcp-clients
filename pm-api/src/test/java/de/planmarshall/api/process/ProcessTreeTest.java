@@ -233,7 +233,7 @@ class ProcessTreeTest {
         var project = new ProcessProjectRef(planId, planId, null);
         var revision = new QueuedRevision(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
                 new ChatSubject(ChatSubjectKind.DECISION, Generators.nonBlankStrings().next()),
-                Generators.booleans().next(), MessageText.of("control.chat.applies.on_start"));
+                Generators.booleans().next(), MessageText.of("chat.applies.on_start"));
         var tree = new ProcessTree(planId, planId, project, null, "execute", "running", null,
                 false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
                 List.of(), List.of(), null, null, 0L, null, revision);
