@@ -518,22 +518,33 @@ async function railFoot(page) {
   }));
 }
 
+/** The API path the Reports view reads its list from. */
+const REPORTS_API_PATH = '/api/v1/reports';
+
 /**
- * Replaces every list in a JSON answer by an empty one, so a page reads an empty collection.
+ * Whether a request is the app's read of the reports list: a `fetch` or `xhr` GET of the API path,
+ * never the page navigation to `/reports`, whose document is HTML.
  *
- * @param {unknown} value the parsed answer
- * @returns {unknown} the answer without entries
+ * @param {import('@playwright/test').Request} request the intercepted request
+ * @returns {boolean} whether the request reads the reports list
  */
-function withoutEntries(value) {
-  if (Array.isArray(value)) {
-    return [];
-  }
-  if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, inner]) => [key, withoutEntries(inner)]),
-    );
-  }
-  return value;
+function isReportsRead(request) {
+  return (
+    request.method() === 'GET' &&
+    ['fetch', 'xhr'].includes(request.resourceType()) &&
+    new URL(request.url()).pathname === REPORTS_API_PATH
+  );
+}
+
+/**
+ * The served reports page without a report in it: no entries, nothing unread and nothing older,
+ * so the view shows its all-clear state and no unread count or load-older control beside it.
+ *
+ * @param {Record<string, unknown>} page the reports page the runtime served
+ * @returns {Record<string, unknown>} the same page read empty
+ */
+function emptyReportsPage(page) {
+  return { ...page, items: [], unread_count: 0, has_older: false, older_count: 0 };
 }
 
 test.describe('S12 mascot evidence', () => {
@@ -625,16 +636,17 @@ test.describe('S12 mascot evidence', () => {
 
         test(`reports without unread reports (${where})`, async ({ page, request }) => {
           await openShell(page, request, { scenario: 'reports', locale, theme });
-          // The list is read empty, so the page shows its calm state.
+          // The list read is answered empty, so the page shows its calm state; the navigation to
+          // the page itself and every other request pass through untouched.
           await page.route(
-            (url) => url.pathname.endsWith('/reports'),
+            (url) => url.pathname === REPORTS_API_PATH,
             async (route) => {
-              if (route.request().method() !== 'GET') {
-                await route.continue();
+              if (!isReportsRead(route.request())) {
+                await route.fallback();
                 return;
               }
               const response = await route.fetch();
-              await route.fulfill({ response, json: withoutEntries(await response.json()) });
+              await route.fulfill({ response, json: emptyReportsPage(await response.json()) });
             },
           );
           await page.goto('/reports');
@@ -643,6 +655,8 @@ test.describe('S12 mascot evidence', () => {
           await page.setViewportSize({ width, height });
           const reports = page.locator('.reports-view');
           await expect(reports).toBeVisible();
+          await expect(reports.locator('.report-card')).toHaveCount(0);
+          await expect(reports.getByTestId('unread-count')).toHaveCount(0);
           await expectFigure(reports, 'all-clear');
           await captureEvidence(page, 'reports-no-reports', shot);
         });
