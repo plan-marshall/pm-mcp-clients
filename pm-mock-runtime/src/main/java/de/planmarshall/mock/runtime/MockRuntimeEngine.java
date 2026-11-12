@@ -386,7 +386,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_CURRENT_SHA256 = "current_sha256";
     private static final String KEY_NEW_SHA256 = "new_sha256";
     private static final String KEY_STORE_PATH_QUERY = "path";
-    private static final String ERR_CONFIRMATION_MISMATCH = "confirmation_mismatch";
     private static final String ENROL_STORE_PATH = ".plan/marshal.json";
     private static final String ENROL_RECORDED_SHA256 =
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -2106,7 +2105,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var auth = request.header("Authorization");
         if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
-            response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing device secret"));
+            // The catalogue answers an unauthenticated request 401 without a code.
+            response.json(401, Map.of(KEY_MESSAGE, "Invalid or missing device secret"));
             return false;
         }
         return true;
@@ -2117,7 +2117,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
             var jobToken = request.header("PM-MCP-Job-Token");
             if (jobToken == null || !request.path().startsWith("/mcp")) {
-                response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing runtime token"));
+                response.json(401, Map.of(KEY_MESSAGE, "Invalid or missing runtime token"));
                 return false;
             }
         }
@@ -2406,7 +2406,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (newLabel == null || newLabel.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_label", KEY_MESSAGE, "Device label must not be blank"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "Device label must not be blank"));
             return;
         }
 
@@ -5788,8 +5788,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (ids.isEmpty()) {
             // The contract carries the ids alone. A body without them, the removed all form among
             // them, marks nothing and is refused so a caller cannot believe it read a report.
-            response.json(422, Map.of(
-                    KEY_ERROR, "report_ids_required",
+            response.json(400, Map.of(
+                    KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "POST /api/v1/reports/read needs a non-empty report_ids list"));
             return;
         }
@@ -6298,12 +6298,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
         } catch (IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_query",
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The search text has malformed percent-encoding"));
             return;
         }
         if (query == null || query.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_query", KEY_MESSAGE, "An empty search text is refused"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "An empty search text is refused"));
             return;
         }
         var text = query.trim();
@@ -7464,7 +7464,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             state = currentScenario.get().state(previousState);
         }
         if (state == null || state.links().isEmpty()) {
-            response.json(409, Map.of(KEY_ERROR, "no_step", KEY_STATE,
+            response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_STATE,
                     previousState != null ? previousState : ""));
             return;
         }
@@ -7731,7 +7731,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (!applyMachineSetting(update.key(), update.value())) {
                 // A value the setting cannot read is refused, so a caller never sees "saved" for a
                 // record none of whose figures took effect.
-                response.json(400, Map.of(KEY_ERROR, "invalid_value",
+                response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                         KEY_MESSAGE, "The value is not readable for " + update.key()));
                 return;
             }
@@ -8470,7 +8470,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             if (accept == null || !tampered.currentSha256().equals(accept.confirmedSha256())) {
                 response.json(409, Map.of(
-                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_ERROR, ERR_CONFLICT,
                         KEY_MESSAGE, "The confirmed SHA-256 does not match the current enrolment file",
                         KEY_CURRENT_SHA256, tampered.currentSha256()));
                 return;
@@ -8610,7 +8610,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
                 response.json(409, Map.of(
-                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_ERROR, ERR_CONFLICT,
                         KEY_MESSAGE, "The confirmed SHA-256 does not match the current file",
                         KEY_CURRENT_SHA256, store.currentSha256()));
                 return;
@@ -9657,7 +9657,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ));
             } else {
                 response.json(409, Map.of(
-                        KEY_ERROR, "cannot_withdraw",
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_MESSAGE, "Cannot withdraw upgrade: runtime is not upgrading"
                 ));
             }

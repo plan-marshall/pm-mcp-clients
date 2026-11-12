@@ -195,8 +195,8 @@ class ReportsScenarioTest {
                 var refusal = JsonTree.asObject(JsonTree.parse(res.bodyText()));
 
                 assertAll(
-                        () -> assertEquals(422, res.status(), "body: " + body),
-                        () -> assertEquals("report_ids_required", JsonTree.string(refusal, "error"), "body: " + body),
+                        () -> assertEquals(400, res.status(), "body: " + body),
+                        () -> assertEquals("invalid_arguments", JsonTree.string(refusal, "error"), "body: " + body),
                         () -> assertNotNull(JsonTree.string(refusal, "message"), "body: " + body));
             }
 

@@ -415,7 +415,7 @@ class NeedsAndFindScenarioTest {
 
                 var empty = client.send(HttpRequest.get(MachineApiPaths.FIND + "?q=").withHeader(AUTH_HEADER, auth));
                 assertEquals(400, empty.status());
-                assertEquals("invalid_query", JsonTree.string(
+                assertEquals("invalid_arguments", JsonTree.string(
                         JsonTree.asObject(JsonTree.parse(new String(empty.body()))), "error"));
 
                 var missing = client.send(HttpRequest.get(MachineApiPaths.FIND).withHeader(AUTH_HEADER, auth));

@@ -462,7 +462,7 @@ class MockRuntimeEngineTest {
         // Missing Authorization -> 401
         var res1 = send("GET", "/api/v1/status", Map.of(), new byte[0], true);
         assertEquals(401, res1.status());
-        assertEquals("unauthorized", res1.json().get("error"));
+        assertFalse(res1.json().containsKey("error"), "a 401 carries no code: " + res1.body());
 
         // Wrong Authorization -> 401
         var res2 = send("GET", "/api/v1/status", Map.of("Authorization",
@@ -484,7 +484,7 @@ class MockRuntimeEngineTest {
         // Missing Authorization -> 401
         var res1 = send("GET", "/api/v1/status", Map.of(), new byte[0], false);
         assertEquals(401, res1.status());
-        assertEquals("unauthorized", res1.json().get("error"));
+        assertFalse(res1.json().containsKey("error"), "a 401 carries no code: " + res1.body());
 
         // Valid runtime token -> 200
         var res2 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
@@ -779,7 +779,7 @@ class MockRuntimeEngineTest {
         var blankBody = "{\"label\":\"\"}".getBytes(StandardCharsets.UTF_8);
         var blankRes = send("PATCH", "/api/v1/web/devices/dev-1", auth, blankBody, false);
         assertEquals(400, blankRes.status());
-        assertEquals("invalid_label", blankRes.json().get("error"));
+        assertEquals("invalid_arguments", blankRes.json().get("error"));
 
         // 6. PATCH non-existent -> 404
         var notFoundRes = send("PATCH", "/api/v1/web/devices/non-existent", auth, renameBody, false);

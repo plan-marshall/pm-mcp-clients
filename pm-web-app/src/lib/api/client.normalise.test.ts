@@ -184,10 +184,10 @@ describe('ApiClient wire normalisation', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 409,
-      json: async () => ({ error: 'cannot_withdraw' }),
+      json: async () => ({ error: 'act_not_available' }),
     });
 
-    await expect(client.withdrawUpgrade()).rejects.toThrow('cannot_withdraw');
+    await expect(client.withdrawUpgrade()).rejects.toThrow('act_not_available');
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
