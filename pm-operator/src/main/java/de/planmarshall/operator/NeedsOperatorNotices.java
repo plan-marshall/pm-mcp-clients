@@ -11,7 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -63,7 +63,7 @@ public final class NeedsOperatorNotices {
     private static final String MACHINE = "machine";
 
     /** The last summary read per place, keyed by the place the event carries. */
-    private final Map<String, Set<String>> lastSeen = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Integer>> lastSeen = new ConcurrentHashMap<>();
 
     /**
      * Reads the notices one event raises: one per item it adds of a kind no other event announces.
@@ -83,10 +83,10 @@ public final class NeedsOperatorNotices {
             return List.of();
         }
         var place = placeOf(event);
-        var current = new LinkedHashSet<String>();
+        var current = new LinkedHashMap<String, Integer>();
         var notices = new ArrayList<Notice>();
         for (var item : summary.items()) {
-            current.add(identityOf(item));
+            current.merge(identityOf(item), 1, Integer::sum);
         }
         var previous = lastSeen.put(place, current);
         if (previous == null) {
@@ -94,8 +94,13 @@ public final class NeedsOperatorNotices {
             // when the console started was badged before, so it is announced once only.
             return List.of();
         }
+        var seen = new LinkedHashMap<String, Integer>();
         for (var item : summary.items()) {
-            if (previous.contains(identityOf(item)) || !UNANNOUNCED.contains(item.kind())) {
+            var identity = identityOf(item);
+            var count = seen.merge(identity, 1, Integer::sum);
+            // The identity counts, not a set of them: two link-less items of one kind are two
+            // items, and the second one is an addition like any other.
+            if (count <= previous.getOrDefault(identity, 0) || !UNANNOUNCED.contains(item.kind())) {
                 continue;
             }
             var where = placeOfItem(item);
@@ -127,7 +132,7 @@ public final class NeedsOperatorNotices {
         }
         try {
             return NeedsOperatorSummary.fromMap(raw);
-        } catch (IOException _) {
+        } catch (IOException | IllegalArgumentException _) {
             return null;
         }
     }
