@@ -7399,8 +7399,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         if (state.startsWith("providers.reconfigure")) {
-            machineProvidersVerified = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
+            var verify = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
+            machineProvidersVerified = verify && providerCheckSucceeds();
         }
+    }
+
+    /**
+     * @return whether the scenario declares its providers ready, so a verify that found no ready
+     *         provider records the failure instead of trusting the request's flag
+     */
+    private boolean providerCheckSucceeds() {
+        var route = currentScenario.get().route("GET", "/api/v1/status");
+        if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
+            return false;
+        }
+        return Boolean.TRUE.equals(map.get("providers_ready"));
     }
 
     /**
@@ -7433,7 +7446,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean handleConfigRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        return configRoutes.handle(request, response, machineConfigValues());
+        return configRoutes.handle(request, response, machineConfigValues(), planProjects());
+    }
+
+    /**
+     * @return the project each plan of the scenario belongs to, by plan id, so a plan-only
+     *         configuration read inherits that project's values
+     */
+    private Map<String, String> planProjects() {
+        var projects = new LinkedHashMap<String, String>();
+        var route = currentScenario.get().route("GET", "/api/v1/plans");
+        if (route == null || !(route.representation() instanceof Map<?, ?> map)
+                || !(map.get("plans") instanceof List<?> plans)) {
+            return projects;
+        }
+        for (var item : plans) {
+            var plan = JsonTree.asObject(item);
+            if (plan == null) {
+                continue;
+            }
+            var id = JsonTree.string(plan, "id");
+            var project = JsonTree.string(plan, "project");
+            if (id != null && project != null) {
+                projects.put(id, project);
+            }
+        }
+        return projects;
     }
 
     /**

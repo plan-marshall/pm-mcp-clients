@@ -142,6 +142,18 @@ class MockConfigRoutesTest {
     }
 
     @Test
+    @DisplayName("a plan-only read inherits the plan's project value")
+    void aPlanOnlyReadInheritsTheProjectValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        query(routes, "PUT", PATH + "/project/custom.label?project=fix-relay", "{\"value\":\"local\"}", Map.of());
+        var read = query(routes, "GET", PATH + "?plan=p-1", null, Map.of(), Map.of("p-1", "fix-relay"));
+
+        assertAll(
+                () -> assertTrue(read.body().contains("\"value\":\"local\""), read.body()),
+                () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()));
+    }
+
+    @Test
     @DisplayName("a change against an older revision answers 409 with the current value")
     void aStaleRevisionIsRefusedWithTheCurrentValue() throws Exception {
         var routes = new MockConfigRoutes();
@@ -222,8 +234,14 @@ class MockConfigRoutesTest {
 
     private static Answer query(MockConfigRoutes routes, String method, String target, String body,
             Map<String, Object> machineValues) throws IOException {
+        return query(routes, method, target, body, machineValues, Map.of());
+    }
+
+    private static Answer query(MockConfigRoutes routes, String method, String target, String body,
+            Map<String, Object> machineValues, Map<String, String> planProjects) throws IOException {
         var out = new ByteArrayOutputStream();
-        var served = routes.handle(request(method, target, body), new MockHttpResponse(out), machineValues);
+        var served = routes.handle(request(method, target, body), new MockHttpResponse(out), machineValues,
+                planProjects);
         assertTrue(served, method + " " + target + " is one of the configuration routes");
         var raw = out.toString(StandardCharsets.UTF_8);
         var statusLine = raw.substring(0, raw.indexOf('\r'));

@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -215,8 +216,26 @@ class ConfigRoutesTest {
                             values.toString()),
                     () -> assertEquals("landing.files", values.get("plan_defaults.landing").get(VALUE),
                             values.toString()),
-                    () -> assertTrue(String.valueOf(values.get("providers.enabled").get(VALUE))
+                    () -> assertFalse(String.valueOf(values.get("providers.enabled").get(VALUE))
                             .contains("verified"), values.toString()));
+        }
+    }
+
+    @Test
+    @DisplayName("a verify without a ready provider records the failure")
+    void aVerifyWithoutAReadyProviderRecordsTheFailure() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"reconfigure:providers\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+            var providers = values(runtime).get("providers.enabled");
+
+            assertAll(
+                    () -> assertTrue(String.valueOf(providers.get(VALUE)).contains("github"),
+                            providers.toString()),
+                    () -> assertFalse(String.valueOf(providers.get(VALUE)).contains("verified"),
+                            providers.toString()));
         }
     }
 

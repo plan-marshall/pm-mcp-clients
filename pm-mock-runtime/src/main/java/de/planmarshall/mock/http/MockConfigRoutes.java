@@ -71,9 +71,22 @@ public final class MockConfigRoutes {
      * @return whether this request is one of the configuration routes
      * @throws IOException on write failure
      */
-    @SuppressWarnings({"java:S1075", "java:S135"})
     public boolean handle(MockHttpRequest request, MockHttpResponse response,
             Map<String, Object> machineValues) throws IOException {
+        return handle(request, response, machineValues, Map.of());
+    }
+
+    /**
+     * @param request       the request
+     * @param response      the response to write
+     * @param machineValues the machine's own values, by effective key
+     * @param planProjects  the project each plan of the scenario belongs to, by plan id
+     * @return whether this request is one of the configuration routes
+     * @throws IOException on write failure
+     */
+    @SuppressWarnings({"java:S1075", "java:S135"})
+    public boolean handle(MockHttpRequest request, MockHttpResponse response,
+            Map<String, Object> machineValues, Map<String, String> planProjects) throws IOException {
         var collection = PATH.equals(request.path());
         if (!collection && !request.path().startsWith(PATH + SLASH)) {
             return false;
@@ -82,7 +95,7 @@ public final class MockConfigRoutes {
             if (!collection) {
                 return false;
             }
-            response.json(200, effective(machineValues, request.query()));
+            response.json(200, effective(machineValues, request.query(), planProjects));
             return true;
         }
         var segments = segments(request.path());
@@ -254,18 +267,20 @@ public final class MockConfigRoutes {
         return new ConfigValueChange(parsed, 0);
     }
 
-    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query) {
+    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
+            Map<String, String> planProjects) {
         var project = scopeValue(query, KEY_PROJECT);
         var plan = scopeValue(query, KEY_PLAN);
+        var levelProject = project != null ? project : (plan == null ? null : planProjects.get(plan));
         var keys = new TreeMap<String, Boolean>();
         machineValues.keySet().forEach(key -> keys.put(key, Boolean.TRUE));
         for (var level : OPERATOR_LEVELS) {
-            byLevel(level, levelScope(level, project, plan)).keySet()
+            byLevel(level, levelScope(level, levelProject, plan)).keySet()
                     .forEach(key -> keys.put(key, Boolean.TRUE));
         }
         var resources = new ArrayList<Map<String, Object>>();
         for (var key : keys.keySet()) {
-            resources.add(effective(key, machineValues, project, plan));
+            resources.add(effective(key, machineValues, project, plan, planProjects));
         }
         return resources;
     }
@@ -286,15 +301,16 @@ public final class MockConfigRoutes {
     }
 
     private Map<String, Object> effective(String key, Map<String, Object> machineValues,
-            @Nullable String project, @Nullable String plan) {
+            @Nullable String project, @Nullable String plan, Map<String, String> planProjects) {
         ConfigOrigin origin = null;
         Object value = null;
         ConfigOrigin overridden = null;
         long valueRevision = 0;
+        var levelProject = project != null ? project : (plan == null ? null : planProjects.get(plan));
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
-            var scope = levelScope(level, project, plan);
+            var scope = levelScope(level, levelProject, plan);
             var values = byLevel(level, scope);
             var present = values.containsKey(key);
             Object levelValue = present ? values.get(key) : null;
