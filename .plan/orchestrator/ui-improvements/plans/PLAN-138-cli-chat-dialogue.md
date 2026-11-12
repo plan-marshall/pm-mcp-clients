@@ -104,7 +104,7 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 - Ports: mock web port 21380 (`20000 + 10 × 138`), app port 21381 (`AGENTS.md` § Ports); other plans run at the same time: never stop or reuse a process this
   worktree did not start.
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
-- The merge rule: the merge question is asked only when every review thread has a reply and is resolved and every review body is answered; some head has had one
+- The merge rule: the run merges only when every review thread has a reply and is resolved and every review body is answered; some head has had one
   CodeRabbit review; the pull request body states the thread count, the resolved count and the review-body items from `ci pr comments`, never from memory; merge only
   on the operator's word; commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project

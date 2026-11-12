@@ -139,9 +139,9 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
 - Ports of this plan: mock web port 21420, app port 21421 (`20000 + 10 × 142`) (`AGENTS.md` § Ports). Other plans run at the same
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
-- The merge rule: the merge question is asked only when every review thread has a reply and is resolved and every review body is
+- The merge rule: the run merges only when every review thread has a reply and is resolved and every review body is
   answered, and some head has had one CodeRabbit review. The pull request body states thread count, resolved count and review-body
-  items from `ci pr comments`, never from memory. Merge only on the operator's word. Commits end with
+  items from `ci pr comments`, never from memory. The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer. If CodeRabbit refuses on
   quota, stop and ask the operator.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project

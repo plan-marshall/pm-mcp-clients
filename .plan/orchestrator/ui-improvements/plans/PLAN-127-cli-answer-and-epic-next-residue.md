@@ -173,11 +173,11 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
 - **The merge rule:**
-  - The merge question is asked only when every review thread on this pull request has a reply and is resolved, and every review
+  - The run merges only when every review thread on this pull request has a reply and is resolved, and every review
     body is answered; at least one CodeRabbit review of some head must exist (if CodeRabbit refuses on quota, stop and ask the operator).
   - The pull request body states the thread count, the resolved count and the review-body items with their count, read through
     `ci pr comments`, never from memory. A landing message whose review counts disagree with the PR is a defect of the run.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
     The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -254,9 +254,12 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-12 by the operator's size rule: six deliverables and about 40 paths after the PLAN-126 fold).
+Overlaps now running: PLAN-133 (#424, `MockRuntimeEngine.java`); whichever lands second rebases.
 
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-127-cli-answer-and-epic-next-residue.md
+```text
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-127-cli-answer-and-epic-next-residue.md"
+```
 
 ## Write-Boundary
 

@@ -80,6 +80,40 @@ Source of this plan (read before scoping):
      - A test per item fails before the change (a refused settings read exits 1; an unreachable aspect run prints the refusal; the duplicate
        key is caught by a catalogue test that fails on any duplicate key in a pack; `1` day renders singular in en and de). Evidence order: `test-first`.
 
+7. **What PLAN-160 left in `credentials rotate`, the config conflict and the mock (from the landing of PLAN-160, folded 2026-11-12 on the operator's decision)**
+   - What: read `landings/PLAN-160.md`; lines are as read at `37f51af7`.
+     - **Rotate follows the catalogue.** `CredentialsCommand.verifyProviders` (`CredentialsCommand.java:244-277`) reads the facts `plans`,
+       `failed`, `cause` and a state `providers.verified` that only the mock (`onboarding.json:2857-2910`) and the test stub define. The
+       onboarding state catalogue (`14-machine-onboarding.adoc:147-158`) ends a failed check in `providers.failed`, a choice state, and releases
+       held plans by the hold's own retry. Follow the catalogue: a failed check shows `providers.failed` as the dialogue does, and the
+       verb exits 1 when the check fails (today 0, pinned by `rotateReportsAFailedCheck`). Name the plans that go on only from what the
+       runtime reports. If the catalogue carries no such fact, drop that part of the line and say so. Rule 2: `rotateReportsAFailedCheck`'s exit-0
+       assertion is replaced.
+     - **No consent granted by the client.** Rotate prints "✓ Consent remembered" and sends `consents=["verify_providers"]` before any run,
+       without reading the recorded consents (`:244-257`). A consent is the operator's (PM-SEC-8): read the recorded consent; if it is there,
+       print the remembered line; if not, ask as `providers.verify-consent` does (`--no-input`: exit 3).
+     - **The mock's readiness is the scenario's.** `MockRuntimeEngine.providerCheckSucceeds` (`:7503-7518`) reads a `providers_ready` flag
+       on the served `/api/v1/status`. The `settings.verify-providers` path ignores it, and `fully-onboarded` says `github ready:true` in one state
+       and records failure in another. Take readiness from the scenario's provider facts and make the verify path consult it. Add the
+       positive case (a ready provider is recorded verified); the negative case must fail when verify does nothing.
+     - **Minors.** A second conflict on the retry prints `set_failed` with `HTTP 409` (`ConfigCommand.java:701-711`): print the conflict line
+       again. `ASPECT_PREFIXES` (`:124-131`) is a second prefix table beside `AspectOwnedKeys`: derive the display selection from it.
+       `fully-onboarded`'s `settings.choose` offers only `language` (`fully-onboarded.json:3055+`): offer every aspect the design lists.
+       `MockConfigRoutes` reads (`byLevel`, `effective`, `clear`, `:264-306`) race the synchronized writes: guard them. `01-commands.adoc`
+       lists `--project <id>|.|?` and `--plan <id>|?`, which `config` does not accept, and omits `--no-input` for set/unset: make them
+       agree. `ScreenCaptureIT.settled` (`:293-298`) was widened to any `›` for every capture: narrow it to what the captures need, or record why
+       not. New `ConfigCommandTest` cases use hand-written input: draw it from `Generators`. `listenerOff()` reports "on" for an unreadable
+       status (`:291-300`): show it as unknown.
+     - **Review replies.** #421: thread `4550425785` has no reply; #415: the reply on thread `4543426060` names the wrong commits (the fix is
+       #415's own `8471f56`..`818c96b`), and the correction for `4545310611` went to the PR, not into the thread
+       (`POST /pulls/415/comments/{id}/replies`). Reply in each thread.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A failed rotate check exits 1 and shows the failure state; rotate without a recorded consent asks; a ready provider is recorded
+       verified and an unready one is not; a second conflict prints the conflict line. Each test fails on a revert. Evidence order: `test-first`.
+     - Landing obligation (rule 4): the three thread replies are posted. Report them in the landing message.
+
 Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
 
 ## Standing Constraints
@@ -166,6 +200,14 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/AspectRunSource.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CredentialsCommand.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CredentialsCommandTest.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockConfigRoutes.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ConfigRoutesTest.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
 
 ## Dependencies and Sequencing
 
@@ -279,3 +321,10 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 From `landings/PLAN-32.md` (operator, AskUserQuestion): deliverable 6 takes the refused settings read (exit 1), the swallowed aspect-run
 refusal, and the `config` texts (a duplicate key, the plural, the German grammar, a misspelt key). Surface +4 paths. Runs after `PLAN-160`.
 Six deliverables now; the "Not split" note above counts five.
+
+## PLAN-160 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-160.md` (operator, AskUserQuestion — "Fold into PLAN-30"): deliverable 7 makes `credentials rotate` follow the
+catalogue (failure exits 1, no consent granted by the client), takes the mock's readiness from the scenario, and fixes the config minors and
+the review replies. Surface +8 paths. PLAN-30 now has seven deliverables and spans pm-operator, the mock and the catalogue:
+re-check its lane by the size rule at emit (likely `plan-marshall`).

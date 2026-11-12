@@ -151,12 +151,12 @@ the transport row `runtime-model/01-processes-and-transport.adoc:202` in `../pla
 - **The merge rule:**
   - The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's
     "standing review authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
-  - The merge question is asked only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  - The run merges only when every review thread has a reply and is resolved, and every review body item (outside-diff,
     nitpick, "additional comments") has a reply on the PR, not only a fix.
   - The pull request body states the thread count, the resolved count and the review-body items with their count
     (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`, never
     from memory.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
     The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the

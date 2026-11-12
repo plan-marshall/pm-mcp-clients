@@ -123,7 +123,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
   worktree did not start.
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
 - The merge rule: merge only when every thread has a reply and is resolved, every review body is answered and some head has had one
-  CodeRabbit review; counts stated from `ci pr comments`; merge on the operator's word only; commits end with
+  CodeRabbit review; counts stated from `ci pr comments`; the run merges itself once the gates hold (no further operator word); commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
