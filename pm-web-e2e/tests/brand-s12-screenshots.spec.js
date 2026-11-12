@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { pair, switchScenario } from './helpers/pairing.js';
+import { makeRuntimeUnreachable } from './helpers/unreachable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -606,15 +607,7 @@ test.describe('S12 mascot evidence', () => {
         test(`runtime not reachable (${where})`, async ({ page, request }) => {
           await openShell(page, request, { scenario: 'fully-onboarded', locale, theme });
           await waitForHeldFigure(page);
-          // The runtime is put out of reach by failing its status request, then read again.
-          await page.route(
-            (url) => url.pathname.endsWith('/status'),
-            (route) => route.abort('connectionrefused'),
-          );
-          await page.evaluate(async () => {
-            const { initRuntime } = await import('/src/lib/stores/runtime.ts');
-            await initRuntime();
-          });
+          await makeRuntimeUnreachable(page);
 
           await page.setViewportSize({ width, height });
           const figure = await expectFigure(page.getByTestId('unreachable-view'), 'searching');

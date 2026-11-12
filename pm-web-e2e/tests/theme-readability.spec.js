@@ -19,6 +19,7 @@ import {
 } from './helpers/textGuard.js';
 import { auditViewA11y, formatViolation as formatA11yViolation } from './helpers/a11y.js';
 import { openAnyPlan } from './helpers/plans.js';
+import { makeRuntimeUnreachable } from './helpers/unreachable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,24 +53,6 @@ export const DECLARED_VIEWS = [
   'EpicAdoptView',
   'RecipeReadyView',
 ];
-
-/**
- * Puts the runtime out of reach of a paired page: its status request fails and the app reads the
- * runtime again, so it shows the page of a runtime that is not reachable.
- *
- * @param {import('@playwright/test').Page} page the paired page
- */
-async function makeRuntimeUnreachable(page) {
-  await page.route(
-    (url) => url.pathname.endsWith('/status'),
-    (route) => route.abort('connectionrefused'),
-  );
-  await page.evaluate(async () => {
-    const { initRuntime } = await import('/src/lib/stores/runtime.ts');
-    await initRuntime();
-  });
-  await expect(page.getByTestId('unreachable-view')).toBeVisible();
-}
 
 /** Tracks views that have been audited during test execution. */
 const AUDIT_CACHE_FILE = path.resolve(__dirname, '../.audited-views.json');

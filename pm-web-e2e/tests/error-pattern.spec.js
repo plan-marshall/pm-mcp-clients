@@ -6,6 +6,10 @@ import { ensureMockRuntime, stopMockRuntime } from './helpers/mockRuntime.js';
  * The one error and loading pattern (UX-S-06, UX-P-08): a failed load draws the shared
  * `ErrorState` with the texts of its code and the one act, in both languages; a request that never
  * answers ends in the pattern within the client's 15-second limit, never in an endless spinner.
+ *
+ * A runtime that is not reachable at all is not a failed load: the app says so on a page of its own
+ * (entry.adoc, Where the App Opens), which covers the open view without replacing it, so the
+ * view's own error block stays hidden behind it.
  */
 test.describe('The one error and loading pattern (UX-S-06)', () => {
   test.afterEach(async ({ request }) => {
@@ -41,7 +45,7 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await expect(error).not.toContainText('plan_not_found');
   });
 
-  test('shows the pattern within 15 s when the mock stops while a view loads', async ({
+  test('shows the pattern within 15 s when a view read never answers', async ({
     page,
     request,
   }) => {
@@ -52,10 +56,10 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await switchScenario(request, 'plan-view');
     await pair(page, request);
 
-    // Hold the plan read open, so the view really waits on it rather than failing at once; the
-    // machine goes away underneath, and the client's own 15-second limit must end the wait.
-    await page.route('**/api/v1/plans/does-not-exist/**', () => {});
-    await stopMockRuntime();
+    // Hold the plan read open, so the view really waits on it rather than failing at once. The
+    // runtime itself stays reachable, so the view is the page shown, and the client's own
+    // 15-second limit must end the wait.
+    await page.route('**/api/v1/plans/does-not-exist**', () => {});
     await page.goto('/plans/does-not-exist');
 
     const error = page.getByTestId('error-state');
@@ -64,18 +68,25 @@ test.describe('The one error and loading pattern (UX-S-06)', () => {
     await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 
-  test('shows the offline pattern when the mock is already gone', async ({ page, request }) => {
+  test('covers the open view with the unreachable page when the mock is gone', async ({
+    page,
+    request,
+  }) => {
     await switchScenario(request, 'plan-view');
     await pair(page, request);
 
     await stopMockRuntime();
     await page.goto('/plans/does-not-exist');
 
-    const error = page.getByTestId('error-state');
-    await expect(error).toBeVisible({ timeout: 15000 });
-    // The dev server proxies `/api` to the mock, so a dead mock is an unreadable HTTP failure, not a
-    // refused connection: the client reads no code and the block draws the shared unknown fallback.
-    await expect(error.getByRole('heading')).toHaveText('The runtime refused the request');
-    await expect(error.getByRole('button', { name: 'Try again' })).toBeVisible();
+    // The runtime is not reachable: its own page says so instead of the view's error block.
+    const unreachable = page.getByTestId('unreachable-view');
+    await expect(unreachable).toBeVisible({ timeout: 15000 });
+    await expect(unreachable.getByRole('heading')).toHaveText(
+      'plan-marshall is not reachable on this machine',
+    );
+    // The open view stays mounted behind it, hidden, so nothing the operator had open is lost;
+    // its error block is not what the operator sees.
+    await expect(page.getByTestId('open-view')).toBeHidden();
+    await expect(page.getByTestId('error-state')).toBeHidden();
   });
 });
