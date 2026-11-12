@@ -131,6 +131,8 @@ describe('Compose', () => {
       expect(field).toBeEnabled();
       expect(field).toHaveFocus();
 
+      // A pointer press focuses the act, as a browser does; the act hands the focus back to the field.
+      act.focus();
       await fireEvent.click(act);
 
       expect(onstop).toHaveBeenCalledOnce();
