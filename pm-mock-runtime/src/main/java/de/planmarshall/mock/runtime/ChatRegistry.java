@@ -112,7 +112,7 @@ import de.planmarshall.mock.scenario.StateDefinition.ChatFailure;
 final class ChatRegistry {
 
     /** The most turns a page of the transcript holds. */
-    static final int PAGE_SIZE = 50;
+    private static final int PAGE_SIZE = 50;
 
     private static final String METHOD_GET = "GET";
     private static final String METHOD_POST = "POST";
@@ -152,14 +152,14 @@ final class ChatRegistry {
     private static final String KEY_EVENT = "event";
 
     /** The control route that arms a chat failure. */
-    static final String PATH_INJECT = "/mock/inject";
+    private static final String PATH_INJECT = "/mock/inject";
 
     /** The delay of a reply's {@code chat.turn.started} after the operator's message, realistic timing. */
-    static final long REPLY_START_MS = 300;
+    private static final long REPLY_START_MS = 300;
     /** The pace of a reply's steps, realistic timing. */
-    static final long STEP_PACE_MS = 400;
+    private static final long STEP_PACE_MS = 400;
     /** The pace a reply's pieces are written at, realistic timing: about a word each. */
-    static final long READING_PACE_MS = 80;
+    private static final long READING_PACE_MS = 80;
 
     private static final String CHAT_EVENT_PREFIX = "chat.";
     private static final String EVENT_DECISION_ANSWERED = "decision.answered";
@@ -456,7 +456,7 @@ final class ChatRegistry {
             if (proposal != null) {
                 events.addAll(propose(chat, play.address(), turn, proposal));
             }
-            chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
+            chat.state = chat.idleState();
             return events;
         }));
     }
@@ -499,10 +499,15 @@ final class ChatRegistry {
      * longer the chat's current one.
      */
     private synchronized void playStep(Chat chat, Play play, Supplier<List<ChatEvent>> step) {
-        if (chat.play != play || chats.get(chat.subject) != chat) {
+        if (!isCurrent(chat, play)) {
             return;
         }
         step.get().forEach(broadcaster);
+    }
+
+    /** Whether the play is the current one of a chat the registry still holds; call under the lock. */
+    private boolean isCurrent(Chat chat, Play play) {
+        return chat.play == play && chats.get(chat.subject) == chat;
     }
 
     /**
@@ -513,7 +518,7 @@ final class ChatRegistry {
     private void playFailure(Chat chat, Play play, ChatFailure.Kind kind) {
         if (kind == ChatFailure.Kind.WORKER_REPLACED) {
             synchronized (this) {
-                if (chat.play != play || chats.get(chat.subject) != chat) {
+                if (!isCurrent(chat, play)) {
                     return;
                 }
             }
@@ -527,10 +532,10 @@ final class ChatRegistry {
                     turn.format(), turn.untrusted(), turn.model(), turn.text(), turn.steps(), turn.refs(), turn.at(),
                     reason, turn.lines()));
             chat.endPlay();
-            chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
+            chat.state = chat.idleState();
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
             return List.of(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(
-                    chat.id, turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
+                    chat.id,turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
                     List.of()).toMap()));
         });
     }
@@ -780,7 +785,7 @@ final class ChatRegistry {
         }
         var stopped = withText(turn, turn.text(), TurnStatus.STOPPED);
         chat.turns.set(index, stopped);
-        chat.state = chat.proposal != null && chat.proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
+        chat.state = chat.idleState();
         var event = event(address, ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
                 stopped.turnId(), stopped.kind(), TurnStatus.STOPPED, stopped.untrusted(), stopped.text(),
                 stopped.refs(), null, List.of()).toMap());
@@ -1277,6 +1282,13 @@ final class ChatRegistry {
 
         void endPlay() {
             play = null;
+        }
+
+        /**
+         * @return the state of a chat whose reply is over: reading back while a proposal is open
+         */
+        ChatStatus idleState() {
+            return proposal != null && proposal.isOpen() ? ChatStatus.READ_BACK : ChatStatus.TURN;
         }
 
         void updateReply(String turnId, UnaryOperator<ChatTurn> change) {
