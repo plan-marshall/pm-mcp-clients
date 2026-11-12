@@ -256,7 +256,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         var reported = outcome.facts();
         if (Boolean.TRUE.equals(reported.get("failed"))) {
             out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
-                                Map.of("reason", TerminalSanitizer.sanitize(
+                                Map.of(REASON, TerminalSanitizer.sanitize(
                                                     Objects.toString(reported.get("cause"), "")))));
             out.flush();
             return 0;
