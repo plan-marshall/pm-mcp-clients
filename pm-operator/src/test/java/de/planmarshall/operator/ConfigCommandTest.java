@@ -443,6 +443,38 @@ class ConfigCommandTest {
 
 
     @Test
+    @DisplayName("config set refuses only the keys the one table owns")
+    void configSetOwnsOnlyTheSpecifiedKeys() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("GET".equals(request.method())) {
+                response.json(200, "[]");
+            } else if ("PUT".equals(request.method())) {
+                response.json(200, "{\"key\":\"x\",\"value\":\"1\",\"origin\":\"machine\",\"revision\":1}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int store = execute("config", "set", "credentials.store", "file");
+        var refused = err.toString();
+        err.getBuffer().setLength(0);
+        int credential = execute("config", "set", "credentials.github", "anything");
+        int roleish = execute("config", "set", "roleset", "1");
+
+        assertAll(
+                            () -> assertEquals(1, store, refused),
+                            () -> assertTrue(refused.contains("pm-operator config credentials"), refused),
+                            () -> assertEquals(0, credential, out.toString()),
+                            () -> assertTrue(requests.contains("PUT /api/v1/config/machine/credentials.github"),
+                                                requests.toString()),
+                            () -> assertEquals(0, roleish, out.toString()),
+                            () -> assertTrue(requests.contains("PUT /api/v1/config/machine/roleset"),
+                                                requests.toString()));
+    }
+
+    @Test
     @DisplayName("config <aspect> --plan refuses the verb's other options")
     void planScopeIsExclusive() throws Exception {
         int code = execute("config", "roles", "--plan", "fix-relay", "--set", "implement=x");

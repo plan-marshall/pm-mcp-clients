@@ -579,16 +579,7 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     static String getOwningAspect(@Nullable String key) {
-        if (key == null) return CONFIG_VERB;
-        if (key.startsWith(LANGUAGE + ".")) return LANGUAGE;
-        if (key.startsWith(HARNESS_PREFIX)) return HARNESSES;
-        if (key.startsWith(MODELS + ".")) return MODELS;
-        if (key.startsWith(CREDENTIALS + ".")) return CREDENTIALS;
-        if (key.startsWith(PROVIDERS + ".")) return PROVIDERS;
-        if (key.startsWith(PLAN_DEFAULTS_PREFIX)) return PLAN_DEFAULTS;
-        if (key.startsWith(DOCUMENTS_MODE_KEY)) return DOCUMENTS;
-        if (key.startsWith(ROLES)) return ROLES;
-        return CONFIG_VERB;
+        return AspectOwnedKeys.owningAspect(key).orElse(CONFIG_VERB);
     }
 
     /**
