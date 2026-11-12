@@ -137,7 +137,7 @@ A `NumberField` shows its unit after the control and offers _never_ as a choice 
 
 image::../../resources/diagrams/web-component-compose.svg[A compose field with its text area and the send icon act,360,align=center]
 
-One text area that grows with its text up to a limit and then scrolls, and the send act at its end: a `Button` with an icon and a visually hidden label (link:components.adoc#icon-button[Components, IconButton]), secondary, never the screen's primary. `Enter` sends, `Shift+Enter` adds a line, and nothing is sent while a composition (an input method, dictation) is open. The label of the area is visible or, where the frame names it, its `aria-label` from the catalogue.
+One text area that grows with its text up to a limit and then scrolls, and the send act at its end: a `Button` with an icon and a visually hidden label (link:components.adoc#icon-button[Components, IconButton]), secondary, never the screen's primary. `Enter` sends, `Shift+Enter` adds a line, and nothing is sent while a composition (an input method, dictation) is open; a held `Enter` sends once and adds no line for its repeats. The label of the area is visible or, where the frame names it, its `aria-label` from the catalogue; the props require one of the two, and that guard is a type, not a check at run time. While sending is held back, its reason is also the description of the area, so a keyboard, which cannot focus the held-back act, hears it there.
 
 [#field-a11y]
 == Accessibility

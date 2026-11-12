@@ -22,7 +22,9 @@ import actMoreUrl from './ui/act-more.svg?url';
 import actPauseUrl from './ui/act-pause.svg?url';
 import actRefreshUrl from './ui/act-refresh.svg?url';
 import actSearchUrl from './ui/act-search.svg?url';
+import actSendUrl from './ui/act-send.svg?url';
 import actStartUrl from './ui/act-start.svg?url';
+import actStopUrl from './ui/act-stop.svg?url';
 import kindDecisionUrl from './ui/kind-decision.svg?url';
 import kindDocumentUrl from './ui/kind-document.svg?url';
 import kindEntityUrl from './ui/kind-entity.svg?url';
@@ -30,9 +32,12 @@ import kindEpicUrl from './ui/kind-epic.svg?url';
 import kindHarnessUrl from './ui/kind-harness.svg?url';
 import kindIssueUrl from './ui/kind-issue.svg?url';
 import kindLessonUrl from './ui/kind-lesson.svg?url';
+import kindMachineUrl from './ui/kind-machine.svg?url';
 import kindPlanUrl from './ui/kind-plan.svg?url';
+import kindProjectUrl from './ui/kind-project.svg?url';
 import kindPullRequestUrl from './ui/kind-pull-request.svg?url';
 import kindReportUrl from './ui/kind-report.svg?url';
+import kindSideJobUrl from './ui/kind-side-job.svg?url';
 import kindTaskUrl from './ui/kind-task.svg?url';
 import navDecisionsUrl from './ui/nav-decisions.svg?url';
 import navDesignerUrl from './ui/nav-designer.svg?url';
@@ -83,13 +88,18 @@ const ICON_URLS = Object.freeze({
   'act.favourite': actFavouriteUrl,
   'act.favourite-on': actFavouriteOnUrl,
   'act.clean': actCleanUrl,
+  'act.send': actSendUrl,
+  'act.stop': actStopUrl,
   'state.check': stateCheckUrl,
   'state.dot': stateDotUrl,
   'state.alert': stateAlertUrl,
   'state.clock': stateClockUrl,
   'state.lock': stateLockUrl,
   'state.error': stateErrorUrl,
+  'kind.project': kindProjectUrl,
   'kind.plan': kindPlanUrl,
+  'kind.side-job': kindSideJobUrl,
+  'kind.machine': kindMachineUrl,
   'kind.epic': kindEpicUrl,
   'kind.decision': kindDecisionUrl,
   'kind.report': kindReportUrl,

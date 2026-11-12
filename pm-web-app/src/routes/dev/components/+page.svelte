@@ -19,6 +19,12 @@
   import ErrorState from '../../../lib/components/ErrorState.svelte';
   import Skeleton from '../../../lib/components/Skeleton.svelte';
   import WaitingMark from '../../../lib/components/WaitingMark.svelte';
+  import KindMark, { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
+  import Link from '../../../lib/components/Link.svelte';
+  import ExternalLink from '../../../lib/components/ExternalLink.svelte';
+  import PrChip from '../../../lib/components/PrChip.svelte';
+  import Compose from '../../../lib/components/Compose.svelte';
+  import FormStatus from '../../../lib/components/FormStatus.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -144,6 +150,41 @@
 
   /** The four skeleton shapes of the fixture, in the order VD-P-05 names them. */
   const SKELETON_SHAPES = ['row', 'card', 'table', 'figure'] as const;
+
+  /** The seven kinds, in the order `KindMark` declares them. */
+  const KINDS = Object.keys(KIND_ICONS) as Kind[];
+
+  /**
+   * The six grounds a kind icon stands on (components-tags.adoc, The Three Kind Tints), each with
+   * the catalogue key of its name; every key is a literal, so the catalogue guard checks it.
+   */
+  const GROUNDS = [
+    { id: 'app', key: 'dev.ground.app' },
+    { id: 'surface', key: 'dev.ground.surface' },
+    { id: 'raised', key: 'dev.ground.raised' },
+    { id: 'subtle', key: 'dev.ground.subtle' },
+    { id: 'rail', key: 'dev.ground.rail' },
+    { id: 'brand-subtle', key: 'dev.ground.brand_subtle' },
+  ] as const;
+
+  /** The address of the external-link fixture; a fixture value, not a runtime one. */
+  const EXTERNAL_HREF = 'https://example.org/docs';
+
+  /** The pull request of the chip fixture. */
+  const PR_NUMBER = 214;
+
+  /** The address of the chip fixture's pull request. */
+  const PR_HREF = `https://github.com/plan-marshall/pm-mcp-clients/pull/${PR_NUMBER}`;
+
+  /** The character limit the counter of the compose fixture names. */
+  const COMPOSE_LIMIT = 4000;
+
+  /** The three tones of the form result line, each with the catalogue key of its sentence. */
+  const FORM_STATUSES = [
+    { tone: 'neutral', key: 'dev.form_status.neutral' },
+    { tone: 'success', key: 'dev.form_status.success' },
+    { tone: 'danger', key: 'dev.form_status.danger' },
+  ] as const;
 </script>
 
 <div class="dev">
@@ -384,6 +425,83 @@
       <div class="dev__row">
         <WaitingMark label={$t('dev.waiting.label')} />
       </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.kinds')}</h3>
+      <div class="dev__grounds">
+        {#each GROUNDS as ground (ground.id)}
+          <div class="dev__ground dev__ground--{ground.id}" data-ground={ground.id}>
+            <span class="dev__ground-name">{$t(ground.key)}</span>
+            <div class="dev__row">
+              {#each KINDS as kind (kind)}
+                <KindMark {kind} />
+              {/each}
+            </div>
+            <div class="dev__row">
+              {#each KINDS as kind (kind)}
+                <KindMark {kind} wordHidden />
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.links')}</h3>
+      <div class="dev__row">
+        <Link href="/settings" label={$t('web.frame.settings')} />
+        <Link href="/projects" label={$t('dev.empty.act')} look="button" />
+        <Link href="/projects/relay" label={$t('dev.breadcrumb.projects')} look="chip" />
+      </div>
+      <p class="dev__note">
+        {$t('dev.link.sentence')}
+        <ExternalLink href={EXTERNAL_HREF} label={$t('dev.link.external')} />
+      </p>
+      <div class="dev__row">
+        <PrChip number={PR_NUMBER} href={PR_HREF} />
+        <PrChip number={PR_NUMBER} />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.compose')}</h3>
+      {#snippet composeTools()}
+        <IconButton
+          icon="act.copy"
+          size="sm"
+          label={$t('web.common.copy')}
+          advisory={$t('web.common.copy.title')}
+        />
+      {/snippet}
+      {#snippet composeFooter()}
+        {$t('dev.compose.counter', { count: 0, limit: COMPOSE_LIMIT })}
+      {/snippet}
+      <div class="dev__stack">
+        <Compose
+          label={$t('dev.compose.label')}
+          placeholder={$t('dev.compose.placeholder')}
+          sendLabel={$t('dev.compose.send')}
+          onsend={() => {}}
+        />
+        <Compose
+          label={$t('dev.compose.label_running')}
+          sendLabel={$t('dev.compose.send')}
+          stop={{ label: $t('dev.compose.stop'), onstop: () => {} }}
+          onsend={() => {}}
+        />
+        <Compose
+          label={$t('dev.compose.label_tools')}
+          sendLabel={$t('dev.compose.send')}
+          disabled
+          disabledReason={$t('dev.compose.empty_reason')}
+          tools={composeTools}
+          footer={composeFooter}
+          onsend={() => {}}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.form_status')}</h3>
+      <div class="dev__stack">
+        {#each FORM_STATUSES as status (status.tone)}
+          <FormStatus tone={status.tone} message={$t(status.key)} />
+        {/each}
+      </div>
     </section>
   {/each}
 </div>
@@ -455,5 +573,59 @@
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
     line-height: var(--line-height-sm);
+  }
+
+  .dev__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-inline-size: 40rem;
+  }
+
+  .dev__grounds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+    gap: var(--space-3);
+  }
+
+  .dev__ground {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+  }
+
+  .dev__ground-name {
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    line-height: var(--line-height-xs);
+  }
+
+  .dev__ground--app {
+    background-color: var(--color-bg-app);
+  }
+
+  .dev__ground--surface {
+    background-color: var(--color-bg-surface);
+  }
+
+  .dev__ground--raised {
+    background-color: var(--color-bg-raised);
+  }
+
+  .dev__ground--subtle {
+    background-color: var(--color-bg-subtle);
+  }
+
+  .dev__ground--rail {
+    background-color: var(--color-bg-rail);
+  }
+
+  .dev__ground--brand-subtle {
+    background-color: var(--color-brand-subtle);
   }
 </style>
