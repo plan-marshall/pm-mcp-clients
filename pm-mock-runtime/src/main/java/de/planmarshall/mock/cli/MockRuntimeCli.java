@@ -81,14 +81,13 @@ public final class MockRuntimeCli {
     }
 
     /**
-     * The options that take a value, each with its names and how its value is read: the one definition
-     * both the missing-value guard and the parser read.
+     * The options that take a value, each with its names and how its value is read.
      */
     enum ValuedOption {
         SCENARIO((value, opts, err) -> {
-        opts.scenario = value;
-        return null;
-    }, "--scenario", "-s"),
+            opts.scenario = value;
+            return null;
+        }, "--scenario", "-s"),
         BASE((value, opts, err) -> {
             opts.base = Path.of(value);
             return null;
