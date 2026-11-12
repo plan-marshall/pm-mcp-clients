@@ -1,7 +1,16 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import MascotFigure from '../components/MascotFigure.svelte';
   import { runtimeStore } from '../stores/runtime';
+
+  /**
+   * The page a revoked device lands on. The `access-ended` figure stands beside the text, quieter
+   * than the pairing page's hero and never above the text; this is the only surface of that pose.
+   */
+
+  /** The figure's height beside the text, within the design's 160–200 px. */
+  const FIGURE_HEIGHT = 180;
 
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
@@ -21,6 +30,7 @@
 </script>
 
 <div class="revoked-view" data-testid="revoked-view">
+  <MascotFigure pose="access-ended" height={FIGURE_HEIGHT} />
   <div class="revoked-card">
     <h1 class="revoked-title">{$t('devices.revoked.title')}</h1>
     <hr class="revoked-divider" />
@@ -47,6 +57,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-6);
     padding: var(--space-4);
     background-color: var(--color-bg-base);
   }

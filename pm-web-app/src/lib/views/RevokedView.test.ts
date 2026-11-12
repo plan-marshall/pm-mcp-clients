@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import RevokedView from './RevokedView.svelte';
 import { runtimeStore } from '../stores/runtime';
@@ -60,6 +60,36 @@ describe('RevokedView component', () => {
     expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
       'It expired after not being used since yesterday.',
     );
+  });
+
+  describe('the figure', () => {
+    it('draws the access-ended figure, full, at 180 px', () => {
+      render(RevokedView);
+      const figure = within(screen.getByTestId('revoked-view')).getByTestId('mascot-figure');
+
+      expect(figure).toHaveAttribute('data-pose', 'access-ended');
+      expect(figure).toHaveAttribute('data-crop', 'full');
+      expect(figure).toHaveAttribute('height', '180');
+      expect(figure).toHaveAttribute('alt', '');
+      expect(figure).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('stands beside the text, never above it or inside the card', () => {
+      render(RevokedView);
+      const view = screen.getByTestId('revoked-view');
+      const figure = within(view).getByTestId('mascot-figure');
+      const card = screen.getByRole('heading', { level: 1 }).closest('.revoked-card');
+
+      expect(figure.parentElement).toBe(view);
+      expect(card?.parentElement).toBe(view);
+      expect(card?.querySelector('img')).toBeNull();
+    });
+
+    it('sets no style attribute', () => {
+      const { container } = render(RevokedView);
+
+      expect(container.querySelectorAll('[style]')).toHaveLength(0);
+    });
   });
 
   it('navigates to pairing page when pair button is clicked', async () => {

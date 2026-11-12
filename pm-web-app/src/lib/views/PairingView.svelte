@@ -4,7 +4,14 @@
   import Spinner from '../components/Spinner.svelte';
   import BrandMark from '../components/BrandMark.svelte';
   import PairingQr from '../components/PairingQr.svelte';
+  import MascotFigure from '../components/MascotFigure.svelte';
   import { pairBrowser, runtimeStore, navigateTo } from '../stores/runtime';
+
+  /**
+   * The hero's height, within the design's 280–360 px (entry.adoc, The Pairing Page). The page's
+   * free-height threshold in the stylesheet below follows from it.
+   */
+  const HERO_HEIGHT = 320;
 
   let codeInput = '';
   let isPairing = false;
@@ -71,100 +78,120 @@
   }
 </script>
 
-<div class="pair-card" data-testid="pairing-view">
-  {#if $runtimeStore.isRevoked}
-    <div class="revoked-banner" role="alert">
-      <h2 class="revoked-banner__title">{$t('web.revoked.page.title')}</h2>
-      <p class="revoked-banner__reason">
-        {$runtimeStore.revokedReason || $t('web.revoked.reason.unknown')}
-      </p>
-    </div>
-  {/if}
-
-  {#if isPairing}
-    <div class="pair-card__loading" role="status">
-      <Spinner size="2rem" />
-      <p class="pair-card__loading-text">{$t('web.pair.page.pairing')}</p>
-    </div>
-  {:else}
-    <div class="pair-card__brand">
-      <BrandMark size={64} />
-      <span class="pair-card__wordmark">{$t('web.frame.brand')}</span>
-    </div>
-
-    <div class="pair-card__header">
-      <h1 class="pair-card__title">{$t('web.pair.page.title')}</h1>
-      <p class="pair-card__intro">{$t('web.pair.page.intro')}</p>
-    </div>
-
-    {#if errorMessage || $runtimeStore.pairingFailed}
-      <div class="alert alert--danger" role="alert" data-testid="pairing-error">
-        {errorMessage || $t('web.pair.page.invalid')}
+<!-- The hero stands beside the card on a wide, tall screen; the stylesheet hides it on a phone and
+     below the free-height threshold, and switches the brand icon from 28 px to 64 px with it. -->
+<div class="pairing-page">
+  <div class="pair-card" data-testid="pairing-view">
+    {#if $runtimeStore.isRevoked}
+      <div class="revoked-banner" role="alert">
+        <h2 class="revoked-banner__title">{$t('web.revoked.page.title')}</h2>
+        <p class="revoked-banner__reason">
+          {$runtimeStore.revokedReason || $t('web.revoked.reason.unknown')}
+        </p>
       </div>
     {/if}
 
-    <form class="pair-card__form" on:submit={handleManualSubmit}>
-      <div class="form-group">
-        <label for="pairing-code" class="form-label">
-          {$t('web.pair.page.code')}
-        </label>
-        <input
-          id="pairing-code"
-          type="text"
-          class="form-input mono"
-          placeholder={$t('web.pair.page.code_placeholder')}
-          maxlength="12"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="characters"
-          spellcheck="false"
-          bind:value={codeInput}
-        />
+    {#if isPairing}
+      <div class="pair-card__loading" role="status">
+        <Spinner size="2rem" />
+        <p class="pair-card__loading-text">{$t('web.pair.page.pairing')}</p>
+      </div>
+    {:else}
+      <div class="pair-card__brand">
+        <span class="pair-card__mark pair-card__mark--with-hero" data-testid="pairing-mark-28">
+          <BrandMark size={28} />
+        </span>
+        <span class="pair-card__mark pair-card__mark--alone" data-testid="pairing-mark-64">
+          <BrandMark size={64} />
+        </span>
+        <span class="pair-card__wordmark">{$t('web.frame.brand')}</span>
       </div>
 
-      <div class="pair-card__help">
-        <p class="pair-card__help-title">{$t('web.pair.page.get_code')}</p>
-        <div class="cmd-row">
-          <span class="cmd-row__desc">{$t('web.pair.page.this_machine')}</span>
-          <code class="cmd-row__code">{cmdLocal}</code>
-          <Button type="button" variant="ghost" on:click={() => copyToClipboard(cmdLocal, 'local')}>
-            {copiedCommand === 'local' ? $t('web.common.copied') : $t('web.common.copy')}
-          </Button>
-        </div>
-        <div class="cmd-row">
-          <span class="cmd-row__desc">{$t('web.pair.page.other_computer')}</span>
-          <code class="cmd-row__code">{cmdRemote}</code>
-          <Button
-            type="button"
-            variant="ghost"
-            on:click={() => copyToClipboard(cmdRemote, 'remote')}
-          >
-            {copiedCommand === 'remote' ? $t('web.common.copied') : $t('web.common.copy')}
-          </Button>
-        </div>
+      <div class="pair-card__header">
+        <h1 class="pair-card__title">{$t('web.pair.page.title')}</h1>
+        <p class="pair-card__intro">{$t('web.pair.page.intro')}</p>
       </div>
 
-      {#if isCodeValid}
-        <div class="pair-card__qr">
-          <PairingQr value={pairingUrl} label={$t('web.pair.qr.label')} />
-          <p class="pair-card__qr-hint">{$t('web.pair.qr.hint')}</p>
+      {#if errorMessage || $runtimeStore.pairingFailed}
+        <div class="alert alert--danger" role="alert" data-testid="pairing-error">
+          {errorMessage || $t('web.pair.page.invalid')}
         </div>
       {/if}
 
-      <div class="pair-card__footer">
-        <Button type="submit" variant="primary" disabled={!isCodeValid} loading={isPairing}>
-          {$t('web.pair.page.action')}
-        </Button>
-      </div>
-    </form>
-  {/if}
+      <form class="pair-card__form" on:submit={handleManualSubmit}>
+        <div class="form-group">
+          <label for="pairing-code" class="form-label">
+            {$t('web.pair.page.code')}
+          </label>
+          <input
+            id="pairing-code"
+            type="text"
+            class="form-input mono"
+            placeholder={$t('web.pair.page.code_placeholder')}
+            maxlength="12"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            bind:value={codeInput}
+          />
+        </div>
+
+        <div class="pair-card__help">
+          <p class="pair-card__help-title">{$t('web.pair.page.get_code')}</p>
+          <div class="cmd-row">
+            <span class="cmd-row__desc">{$t('web.pair.page.this_machine')}</span>
+            <code class="cmd-row__code">{cmdLocal}</code>
+            <Button type="button" variant="ghost" on:click={() => copyToClipboard(cmdLocal, 'local')}>
+              {copiedCommand === 'local' ? $t('web.common.copied') : $t('web.common.copy')}
+            </Button>
+          </div>
+          <div class="cmd-row">
+            <span class="cmd-row__desc">{$t('web.pair.page.other_computer')}</span>
+            <code class="cmd-row__code">{cmdRemote}</code>
+            <Button
+              type="button"
+              variant="ghost"
+              on:click={() => copyToClipboard(cmdRemote, 'remote')}
+            >
+              {copiedCommand === 'remote' ? $t('web.common.copied') : $t('web.common.copy')}
+            </Button>
+          </div>
+        </div>
+
+        {#if isCodeValid}
+          <div class="pair-card__qr">
+            <PairingQr value={pairingUrl} label={$t('web.pair.qr.label')} />
+            <p class="pair-card__qr-hint">{$t('web.pair.qr.hint')}</p>
+          </div>
+        {/if}
+
+        <div class="pair-card__footer">
+          <Button type="submit" variant="primary" disabled={!isCodeValid} loading={isPairing}>
+            {$t('web.pair.page.action')}
+          </Button>
+        </div>
+      </form>
+    {/if}
+  </div>
+  <div class="pairing-page__hero" data-testid="pairing-hero">
+    <MascotFigure pose="welcome" height={HERO_HEIGHT} eager entrance />
+  </div>
 </div>
 
 <style>
+  .pairing-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    margin: var(--space-10) auto;
+    padding: 0 var(--space-4);
+  }
+
   .pair-card {
     max-width: 38rem;
     width: 100%;
-    margin: var(--space-10) auto;
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -190,12 +217,24 @@
     color: var(--color-text-secondary);
   }
 
+  .pairing-page__hero {
+    flex: 0 0 auto;
+  }
+
+  /* Beside the hero the icon stands at 28 px next to the wordmark, as the rail head carries it. */
   .pair-card__brand {
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-8) var(--space-6) 0;
+  }
+
+  .pair-card__mark {
+    display: inline-flex;
+  }
+
+  .pair-card__mark--alone {
+    display: none;
   }
 
   .pair-card__wordmark {
@@ -337,9 +376,36 @@
     color: var(--color-text-secondary);
   }
 
+  /*
+   * Where the hero is hidden: on a phone, and where the page's free height is below the figure's.
+   * The threshold is the hero's 320 px plus the page's two outer margins and the top bar above it.
+   * Without the hero the icon stands at 64 px above the wordmark.
+   */
+  @media (max-width: 768px), (max-height: 520px) {
+    .pairing-page__hero {
+      display: none;
+    }
+
+    .pair-card__brand {
+      flex-direction: column;
+    }
+
+    .pair-card__mark--with-hero {
+      display: none;
+    }
+
+    .pair-card__mark--alone {
+      display: inline-flex;
+    }
+  }
+
   @media (max-width: 768px) {
-    .pair-card {
+    .pairing-page {
       margin: var(--space-4) auto;
+      padding: 0;
+    }
+
+    .pair-card {
       border-radius: 0;
       border-left: none;
       border-right: none;
