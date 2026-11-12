@@ -424,10 +424,9 @@ class ConfigCommandTest {
     @Test
     @DisplayName("a refused settings read names the refusal and leaves with 1")
     void aRefusedSettingsReadLeavesWithOne() throws Exception {
-        var reason = Generators.letterStrings(6, 16).next();
         fixture.start((request, response) -> {
             if ("/api/v1/config".equals(request.target())) {
-                response.json(500, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
+                response.json(500, "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
             }

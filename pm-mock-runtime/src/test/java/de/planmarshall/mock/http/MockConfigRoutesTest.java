@@ -64,14 +64,16 @@ class MockConfigRoutesTest {
         var routes = new MockConfigRoutes();
         var machine = new LinkedHashMap<String, Object>();
         machine.put("web.port", 7420);
+        var written = Generators.letterStrings(2, 6).next();
 
-        var written = query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"60\"}", machine);
+        var change = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"" + written + "\"}", machine);
         var read = query(routes, "GET", PATH, null, machine);
 
         assertAll(
-                () -> assertEquals(200, written.status(), written.body()),
+                () -> assertEquals(200, change.status(), change.body()),
                 () -> assertTrue(read.body().contains("\"key\":\"custom.timeout\""), read.body()),
-                () -> assertTrue(read.body().contains("\"value\":\"60\""), read.body()));
+                () -> assertTrue(read.body().contains("\"value\":\"" + written + "\""), read.body()));
     }
 
     @Test
@@ -89,11 +91,14 @@ class MockConfigRoutesTest {
     @DisplayName("a nearer level overrides the machine's and names it")
     void aNearerLevelNamesTheLevelItShadows() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"machine\"}", Map.of());
-        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":\"local\"}", Map.of());
+        var machineValue = Generators.letterStrings(2, 6).next();
+        var nearerValue = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":\"" + nearerValue + "\"}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
+                () -> assertTrue(read.body().contains("\"value\":\"" + nearerValue + "\""), read.body()),
                 () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()),
                 () -> assertTrue(read.body().contains("\"overrides\":\"machine\""), read.body()));
     }
@@ -102,9 +107,13 @@ class MockConfigRoutesTest {
     @DisplayName("a project's value is scoped to that project")
     void aProjectValueIsScoped() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/project/custom.label?project=p-1", "{\"value\":\"one\"}", Map.of());
-        var scoped = query(routes, "GET", PATH + "?project=p-1", null, Map.of());
-        var other = query(routes, "GET", PATH + "?project=p-2", null, Map.of());
+        var project = Generators.letterStrings(4, 8).next();
+        var otherProject = Generators.letterStrings(4, 8).next() + "-x";
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/project/custom.label?project=" + project,
+                "{\"value\":\"" + value + "\"}", Map.of());
+        var scoped = query(routes, "GET", PATH + "?project=" + project, null, Map.of());
+        var other = query(routes, "GET", PATH + "?project=" + otherProject, null, Map.of());
 
         assertAll(
                 () -> assertTrue(scoped.body().contains("custom.label"), scoped.body()),
@@ -208,7 +217,8 @@ class MockConfigRoutesTest {
     @DisplayName("a stored null at a nearer level overrides the machine's value")
     void aStoredNullOverridesTheMachine() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"machine\"}", Map.of());
+        var machineValue = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
         query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 

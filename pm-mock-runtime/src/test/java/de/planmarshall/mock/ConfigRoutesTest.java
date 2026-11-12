@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -35,6 +38,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
  * {@code DELETE /api/v1/config/{level}/{key}}): the operator's {@code config show|set|unset} read and
  * write them, so the mock serves them beside the machine settings.
  */
+@EnableGeneratorController
 @DisplayName("the configuration routes of the mock runtime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ConfigRoutesTest {
@@ -62,14 +66,15 @@ class ConfigRoutesTest {
     @Test
     @DisplayName("PUT /api/v1/config/{level}/{key} records a value that GET serves back")
     void putRecordsAValue() throws Exception {
+        var value = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.timeout", "{\"value\":\"60\"}"), runtime));
+                    "/api/v1/config/machine/custom.timeout", "{\"value\":\"" + value + "\"}"), runtime));
             var values = values(runtime);
 
             assertAll(
                     () -> assertEquals(200, written.status(), written.bodyText()),
-                    () -> assertEquals("60", values.get("custom.timeout").get(VALUE), values.toString()),
+                    () -> assertEquals(value, values.get("custom.timeout").get(VALUE), values.toString()),
                     () -> assertEquals("machine", values.get("custom.timeout").get(ORIGIN),
                             values.toString()));
         }
@@ -78,16 +83,18 @@ class ConfigRoutesTest {
     @Test
     @DisplayName("a value of a nearer level overrides the machine's and names it")
     void nearerLevelOverridesTheMachine() throws Exception {
+        var nearer = Generators.letterStrings(2, 6).next();
+        var machine = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/project/custom.label", "{\"value\":\"local\"}"), runtime));
+                    "/api/v1/config/project/custom.label", "{\"value\":\"" + nearer + "\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.label", "{\"value\":\"machine\"}"), runtime));
+                    "/api/v1/config/machine/custom.label", "{\"value\":\"" + machine + "\"}"), runtime));
 
             var value = values(runtime).get("custom.label");
             assertAll(
                     () -> assertEquals(200, written.status(), written.bodyText()),
-                    () -> assertEquals("local", value.get(VALUE), value.toString()),
+                    () -> assertEquals(nearer, value.get(VALUE), value.toString()),
                     () -> assertEquals("project", value.get(ORIGIN), value.toString()),
                     () -> assertEquals("machine", value.get("overrides"), value.toString()));
         }
@@ -109,9 +116,10 @@ class ConfigRoutesTest {
     @Test
     @DisplayName("DELETE removes the value of one level and refuses an unknown key")
     void deleteRemovesOneLevel() throws Exception {
+        var value = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.flag", "{\"value\":\"on\"}"), runtime));
+                    "/api/v1/config/machine/custom.flag", "{\"value\":\"" + value + "\"}"), runtime));
             var deleted = client(runtime).send(authorized(HttpRequest.json("DELETE",
                     "/api/v1/config/machine/custom.flag", "{\"revision\":1}"), runtime));
             var unknown = client(runtime).send(authorized(HttpRequest.json("DELETE",
@@ -195,8 +203,7 @@ class ConfigRoutesTest {
 
     @Test
     @DisplayName("a later run of the store and of the plan defaults records what they submit")
-    void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+    void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
