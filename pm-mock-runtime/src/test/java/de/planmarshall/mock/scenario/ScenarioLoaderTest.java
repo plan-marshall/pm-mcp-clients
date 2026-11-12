@@ -822,7 +822,8 @@ class ScenarioLoaderTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"GET /api/v1/epics/relay-hardening/process", "GET /api/v1/plans/fix-relay/intent",
             "GET /api/v1/epics/relay-hardening/intent", "GET /api/v1/plans/fix-relay/outline",
-            "GET /api/v1/plans/fix-relay/completion", "GET /api/v1/plans/fix-relay/tasks/TASK-1/activity"})
+            "GET /api/v1/plans/fix-relay/completion", "GET /api/v1/plans/fix-relay/tasks/TASK-1/activity",
+            "GET /api/v1/epics/relay-hardening"})
     @DisplayName("decodes a plan or epic route with its resource's codec")
     void decodesAPlanOrEpicRoute(String routeKey) {
         var json = docWithRoutes("{\"" + routeKey + "\":{\"representation\":{}}}");
@@ -835,7 +836,10 @@ class ScenarioLoaderTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"POST /api/v1/plans/fix-relay/process", "GET /api/v1/plans/fix-relay",
             "GET /api/v1/epics/relay-hardening/unregistered", "GET /api/v1/epics//process",
-            "GET /api/v1/plans/fix-relay/tasks/TASK-1/unregistered"})
+            "GET /api/v1/plans/fix-relay/tasks/TASK-1/unregistered", "GET /api/v1/epics/",
+            "GET /api/v1/epics/relay-hardening/tasks/TASK-1/activity",
+            "GET /api/v1/plans/fix-relay/steps/TASK-1/activity", "GET /api/v1/plans//tasks/TASK-1/activity",
+            "GET /api/v1/plans/fix-relay/tasks//activity"})
     @DisplayName("keeps a route of another shape without a codec")
     void keepsARouteWithoutCodec(String routeKey) {
         var json = docWithRoutes("{\"" + routeKey + "\":{\"representation\":{\"anything\":true}}}");

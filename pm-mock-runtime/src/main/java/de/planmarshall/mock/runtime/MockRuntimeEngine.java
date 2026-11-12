@@ -100,6 +100,7 @@ import de.planmarshall.api.entry.PairedDeviceResource;
 import de.planmarshall.api.entry.PairingCode;
 import de.planmarshall.api.entry.PairingRedemptionResponse;
 import de.planmarshall.api.entry.PairingResource;
+import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.entry.WebCredentialResource;
 import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
@@ -396,6 +397,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String DECISION_ANSWERED = EventName.DECISION_ANSWERED.wire();
     private static final String DECISION_CLOSED = EventName.DECISION_CLOSED.wire();
     private static final String PATH_CONNECTION_STATUS = "/api/v1/status/connection";
+    private static final String PATH_STATUS = "/api/v1/status";
     private static final String PATH_LAN_LISTENER = "/api/v1/web/listeners/lan";
     private static final String PATH_CREDENTIALS = "/api/v1/credentials/";
     private static final String EVENT_DEVICE_PAIRED = "device.paired";
@@ -1488,10 +1490,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         cancelPendingTasks();
         this.currentStateId.set(nextStateId);
 
-        var stateDef = currentScenario.get().state(nextStateId);
-        if (stateDef == null) {
-            return;
-        }
+        // Every caller names a declared state: a scenario's start, a link's or an auto transition's
+        // next (all checked by the loader), or a goToState target checked against the states.
+        var stateDef = Objects.requireNonNull(currentScenario.get().state(nextStateId));
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
@@ -2687,28 +2688,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return "https://" + CONST_LAN_HOST + ":" + lanListenerPort;
     }
 
-    private boolean isMachineOnboarded() {
-        var stateId = currentStateId.get();
-        var runtime = stateRuntimeFixture(stateId);
-        if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
-            return onboarded;
-        }
-        if (onboardingProgressFor(stateId) != null) {
-            return machineOnboardedFor(stateId, runtime);
-        }
-        var route = currentScenario.get().route("GET", "/api/v1/status");
+    /**
+     * Whether the machine's onboarding has completed, as the connection status reports it: read from
+     * the status the mock serves, with the reading every client applies to it
+     * ({@link RuntimeEntryResource}), so the two answers can never disagree. A scenario that serves
+     * no status object answers onboarded.
+     *
+     * @return whether the machine is onboarded
+     * @throws IOException when the served status does not decode
+     */
+    private boolean isMachineOnboarded() throws IOException {
+        var route = activeRoute("GET", PATH_STATUS);
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return true;
         }
-        if (Boolean.TRUE.equals(map.get(FIELD_ONBOARDED))) {
-            return true;
-        }
-        if (map.get(FIXTURE_ONBOARD) instanceof Map<?, ?> onboard
-                && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
-                || Boolean.TRUE.equals(onboard.get(FIELD_COMPLETED)))) {
-            return true;
-        }
-        return map.get(FIELD_MACHINE) instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get(FIELD_ONBOARDED));
+        return RuntimeEntryResource.fromMap(servedStatus(map)).onboarded();
     }
 
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -5845,6 +5839,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void handleStatusRoute(RouteDefinition route, Map<?, ?> map, MockHttpResponse response)
             throws IOException {
+        response.json(route.status(), servedStatus(map));
+    }
+
+    /**
+     * @param map the status route's representation
+     * @return the status the mock serves for it: the route completed with the live members, and in
+     *         the onboarding scenario with what the current state implies
+     */
+    private Map<String, Object> servedStatus(Map<?, ?> map) {
         var copy = new LinkedHashMap<String, Object>();
         for (var entry : map.entrySet()) {
             if (FIXTURE_WEB.equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
@@ -5872,7 +5875,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("drain_remaining_items", items);
             copy.put("drain_remaining_count", items.size());
         }
-        response.json(route.status(), copy);
+        return copy;
     }
 
     /**
@@ -5964,37 +5967,40 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
-        if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
+        if (!(rep instanceof Map<?, ?> map)) {
+            response.json(route.status(), rep);
+            return;
+        }
+        if (PATH_STATUS.equals(path)) {
             handleStatusRoute(route, map, response);
             return;
         }
-        if (rep instanceof Map<?, ?> map && (PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
+        if ((PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
                 && map.get(CONST_PROJECTS) instanceof List<?> list) {
             var copy = orderedMap(map);
             copy.put(CONST_PROJECTS, orderedProjects(list));
             response.json(route.status(), copy);
             return;
         }
-        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)) {
-            var detail = JsonTree.asObject(rep);
-            if (detail != null && (detail.get(KEY_PLANS) instanceof List<?> || detail.get(KEY_EPICS) instanceof List<?>)) {
-                var copy = orderedMap(map);
-                copy.put(KEY_PLANS, orderedActiveWork(rowsOf(detail, KEY_PLANS)));
-                var epics = new ArrayList<Object>();
-                for (var epicRow : rowsOf(detail, KEY_EPICS)) {
-                    var epicMap = JsonTree.asObject(epicRow);
-                    if (epicMap != null && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
-                        var epicCopy = orderedMap(epicMap);
-                        epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
-                        epics.add(epicCopy);
-                    } else {
-                        epics.add(epicRow);
-                    }
+        // A project's detail: its plans and its epics. The ended work of a project (.../ended) never
+        // reaches here as a read (handleProjectOverviewRoutes serves it) and lists items, not plans.
+        if (path.startsWith(PATH_PROJECTS_PREFIX)
+                && (map.get(KEY_PLANS) instanceof List<?> || map.get(KEY_EPICS) instanceof List<?>)) {
+            var copy = orderedMap(map);
+            copy.put(KEY_PLANS, orderedActiveWork(rowsOf(copy, KEY_PLANS)));
+            var epics = new ArrayList<Object>();
+            for (var epicRow : rowsOf(copy, KEY_EPICS)) {
+                if (epicRow instanceof Map<?, ?> epicMap && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
+                    var epicCopy = orderedMap(epicMap);
+                    epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
+                    epics.add(epicCopy);
+                } else {
+                    epics.add(epicRow);
                 }
-                copy.put(KEY_EPICS, orderedActiveWork(epics));
-                response.json(route.status(), copy);
-                return;
             }
+            copy.put(KEY_EPICS, orderedActiveWork(epics));
+            response.json(route.status(), copy);
+            return;
         }
         response.json(route.status(), rep);
     }
@@ -9447,34 +9453,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Moves the scenario on as the stop-now act of the current state declares: a state that offers
      * a stop act whose parameters carry {@code when=now} names the state the stopped runtime is in
-     * ({@code next} of its link), so the handler, the advertised act and the scenario agree.
+     * ({@code next} of its link), so the handler, the advertised act and the scenario agree. A state
+     * that offers no such act stays where it is.
+     *
+     * <p>The scenario loader guarantees what this reads: the current state is always one the
+     * scenario declares (every start, {@code next} and {@code goToState} target is checked), its
+     * representation decodes as an operator state whose every advertised link is an object with an
+     * id, a method and an href, and every advertised link has a scenario link of the same id.
      *
      * @param request the stop request
      */
     private void followStopNowLink(MockHttpRequest request) {
         synchronized (this) {
-            var stateId = currentStateId.get();
-            var state = currentScenario.get().state(stateId);
-            var representation = state != null ? JsonTree.asObject(state.representation()) : null;
-            var links = representation != null ? JsonTree.asArray(representation.get(KEY_LINKS)) : null;
-            if (state == null || links == null) {
+            var state = Objects.requireNonNull(currentScenario.get().state(currentStateId.get()));
+            var representation = Objects.requireNonNull(JsonTree.asObject(state.representation()));
+            var links = JsonTree.asArray(representation.get(KEY_LINKS));
+            if (links == null) {
                 return;
             }
             for (var element : links) {
-                var link = JsonTree.asObject(element);
-                var linkId = link != null ? JsonTree.string(link, "id") : null;
-                var params = link != null ? JsonTree.object(link, KEY_PARAMS) : null;
-                if (linkId == null || params == null
-                        || !request.method().equalsIgnoreCase(JsonTree.string(link, KEY_METHOD))
-                        || !request.path().equals(JsonTree.string(link, KEY_HREF))
-                        || !"now".equalsIgnoreCase(JsonTree.string(params, "when"))) {
-                    continue;
+                var link = Objects.requireNonNull(JsonTree.asObject(element));
+                var params = JsonTree.object(link, KEY_PARAMS);
+                if (request.path().equals(JsonTree.string(link, KEY_HREF))
+                        && request.method().equalsIgnoreCase(JsonTree.string(link, KEY_METHOD))
+                        && params != null && "now".equalsIgnoreCase(JsonTree.string(params, "when"))) {
+                    var linkId = Objects.requireNonNull(JsonTree.string(link, "id"));
+                    transitionTo(Objects.requireNonNull(state.links().get(linkId)).next());
+                    return;
                 }
-                var declared = state.links().get(linkId);
-                if (declared != null) {
-                    transitionTo(declared.next());
-                }
-                return;
             }
         }
     }

@@ -56,6 +56,7 @@ import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
@@ -2067,6 +2068,201 @@ class MockRuntimeEngineTest {
                 () -> assertEquals("runtime_stopping", delete.json().get("error")),
                 () -> assertEquals(200, cleanup.status(), cleanup.body()),
                 () -> assertNotEquals(Boolean.FALSE, cleanup.json().get("open"), "the job stays open"));
+    }
+
+    @Test
+    @DisplayName("the connection status reports onboarded as the served status says, not the state's runtime fixture")
+    void connectionStatusAgreesWithTheServedStatus() throws Exception {
+        // reports-and-system declares its status in the route (machine.onboarded true); the state's
+        // runtime fixture is applied to the status in the onboarding scenario only.
+        var stateId = drainStateId();
+        var running = Objects.requireNonNull(registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM)
+                .state(STATE_SYSTEM_RUNNING));
+        var runtimeFixture = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.object(
+                JsonTree.object(JsonTree.asObject(running.representation()), "facts"), "runtime")));
+        runtimeFixture.put("onboarded", false);
+        registerSystemState(stateId, Map.of("runtime", runtimeFixture), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+
+        var status = send("GET", "/api/v1/status", auth, new byte[0], false);
+        var connection = send("GET", "/api/v1/status/connection", auth, new byte[0], false);
+
+        assertEquals(200, status.status(), status.body());
+        assertEquals(200, connection.status(), connection.body());
+        var served = RuntimeEntryResource.fromMap(status.json()).onboarded();
+        assertTrue(served, "the route declares an onboarded machine");
+        assertEquals(served, connection.json().get("onboarded"),
+                "the connection status and the status a client reads agree");
+    }
+
+    @Test
+    @DisplayName("a stop now in a state that offers no act stops the runtime and leaves the scenario where it is")
+    void stopNowInAStateWithoutActsStaysInTheState() throws Exception {
+        var stateId = drainStateId();
+        var base = registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM);
+        var running = Objects.requireNonNull(base.state(STATE_SYSTEM_RUNNING));
+        var representation = new LinkedHashMap<String, Object>(
+                Objects.requireNonNull(JsonTree.asObject(running.representation())));
+        representation.remove("links");
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, Map.of(), List.of(), null));
+        registry.register(new Scenario(base.formatVersion(), base.name(), base.description(), base.start(),
+                base.pairingCode(), base.routes(), states));
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+
+        var stop = send("POST", PATH_STOP, auth,
+                JsonTree.write(Map.of("when", "now")).getBytes(StandardCharsets.UTF_8), false);
+
+        assertAll(
+                () -> assertEquals(200, stop.status(), stop.body()),
+                () -> assertEquals("stopping", stop.json().get("state")),
+                () -> assertEquals(RuntimeLifecycleState.STOPPING, engine.lifecycleState()),
+                () -> assertEquals(stateId, engine.currentStateId(), "no act names a state to move to"));
+    }
+
+    @Test
+    @DisplayName("a drain asked on the web names the web app, and a repeated drain keeps who started it")
+    void repeatedDrainKeepsWhoStartedIt() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_SYSTEM_RUNNING);
+        var web = Map.of("Authorization", "Bearer " + deviceSecret);
+
+        var first = send("POST", PATH_STOP, web, drainBody(THEN_EXIT), true);
+        var repeated = send("POST", PATH_STOP, auth, drainBody(THEN_EXIT), false);
+
+        assertAll(
+                () -> assertEquals(200, first.status(), first.body()),
+                () -> assertEquals("the web app", first.json().get("draining_by")),
+                () -> assertEquals(200, repeated.status(), repeated.body()),
+                () -> assertEquals("the web app", repeated.json().get("draining_by"),
+                        "the console repeating the drain does not take it over"),
+                () -> assertEquals(Boolean.TRUE, repeated.json().get("can_withdraw")));
+    }
+
+    @Test
+    @DisplayName("a stop that names no when drains, and a drain that asks for a restart runs again after its last item")
+    void stopWithoutWhenDrainsAndRestartsAfterItsLastItem() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_SYSTEM_RUNNING);
+
+        var stop = send("POST", PATH_STOP, auth,
+                JsonTree.write(Map.of("then", "restart")).getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, stop.status(), stop.body());
+        assertEquals("draining", stop.json().get("state"), "the default of when is drain");
+        var items = remainingItems(engine, auth).size();
+        assertTrue(items > 0, "a drain runs at least one item");
+
+        for (var step = 1; step < items; step++) {
+            engine.shrinkDrain();
+        }
+        assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState(), "one item left still drains");
+        engine.shrinkDrain();
+
+        assertEquals(RuntimeLifecycleState.RUNNING, engine.lifecycleState(), "a restart runs again");
+    }
+
+    @Test
+    @DisplayName("a cleanup delete on the web keeps the items left out as kept by the web app and ignores an id the job does not list")
+    void webCleanupDeleteKeepsTheItemsLeftOut() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_SYSTEM_RUNNING);
+        var unknown = "gone-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        var body = JsonTree.write(Map.of("unchecked_ids", List.of("token-usage", unknown)))
+                .getBytes(StandardCharsets.UTF_8);
+
+        var delete = send("POST", "/api/v1/system/cleanup/cln-0012/delete",
+                Map.of("Authorization", "Bearer " + deviceSecret), body, true);
+        var kept = send("GET", "/api/v1/system/cleanup/kept", auth, new byte[0], false);
+
+        assertEquals(200, delete.status(), delete.body());
+        assertEquals(1872127584L, JsonTree.number(delete.json(), "freed_bytes").longValue(),
+                "the item left out is not freed, the unknown id frees nothing");
+        assertEquals(200, kept.status(), kept.body());
+        var keptItems = Objects.requireNonNull(JsonTree.asArray(JsonTree.parse(kept.body()))).stream()
+                .map(JsonTree::asObject).toList();
+        assertEquals(1, keptItems.stream()
+                .filter(item -> "token-usage".equals(item.get("id")) && "the web app".equals(item.get("who")))
+                .count(), "the item left out is kept, by the web app: " + keptItems);
+        assertTrue(keptItems.stream().noneMatch(item -> unknown.equals(item.get("id"))),
+                "an id the job does not list is not kept: " + keptItems);
+    }
+
+    @Test
+    @DisplayName("a project's detail orders its epics when it lists no plans, and a project sub-resource is served as declared")
+    void projectDetailWithEpicsOnlyIsOrdered() throws Exception {
+        var scenarioName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var projectId = Generators.letterStrings(4, 10).next().toLowerCase();
+        var note = Generators.letterStrings(4, 10).next();
+        var ended = Map.<String, Object>of("epic_id", "ended-" + projectId, "phase_state", "ended");
+        var quiet = Map.<String, Object>of("epic_id", "quiet-" + projectId,
+                "running_since", "2026-03-01T10:00:00Z");
+        var waiting = Map.<String, Object>of("epic_id", "waiting-" + projectId,
+                "running_since", "2026-01-01T10:00:00Z", "needs_operator_count", 1);
+        var state = new StateDefinition(Map.of("message", "start"), Map.of(), List.of(), null);
+        registry.register(new Scenario(1, scenarioName, "Project detail order", "start", null,
+                Map.of("GET /api/v1/projects/" + projectId, new RouteDefinition(
+                                Map.of("project_id", projectId, "epics", List.of(ended, quiet, waiting)), 200),
+                        "GET /api/v1/projects/" + projectId + "/notes", new RouteDefinition(
+                                Map.of("note", note), 200)),
+                Map.of("start", state)));
+        engine.switchScenario(scenarioName);
+
+        var detail = send("GET", "/api/v1/projects/" + projectId, auth, new byte[0], false);
+        var notes = send("GET", "/api/v1/projects/" + projectId + "/notes", auth, new byte[0], false);
+
+        assertEquals(200, detail.status(), detail.body());
+        var epics = Objects.requireNonNull(JsonTree.asArray(detail.json().get("epics"))).stream()
+                .map(epic -> JsonTree.string(JsonTree.asObject(epic), "epic_id")).toList();
+        assertEquals(List.of("waiting-" + projectId, "quiet-" + projectId, "ended-" + projectId), epics,
+                "what needs the operator first, an ended epic last");
+        assertEquals(List.of(), detail.json().get("plans"), "the detail always lists its plans");
+        assertEquals(200, notes.status(), notes.body());
+        assertEquals(Map.of("note", note), notes.json(), "a sub-resource is not reshaped into a detail");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"recycle", "grant", "add_credential", "raise_budget", "give_up_removal"})
+    @DisplayName("a hold resolved by one of its releasing acts is cleared and its plan goes on")
+    void releasingActClearsTheHold(String act) throws Exception {
+        var holdId = "H-" + Generators.integers(2000, 9999).next();
+        var stateId = "control." + Generators.letterStrings(4, 8).next().toLowerCase();
+        var base = registry.resolve(StandardScenarios.RUNNING_WORK);
+        var holds = Objects.requireNonNull(base.state("control.holds"));
+        var representation = new LinkedHashMap<String, Object>(
+                Objects.requireNonNull(JsonTree.asObject(holds.representation())));
+        var facts = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.object(representation, "facts")));
+        var runtimeFixture = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.object(facts, "runtime")));
+        var control = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.object(runtimeFixture, "control")));
+        control.put("holds", List.of(Map.of(
+                "hold_id", holdId,
+                "subject_id", "fix-relay",
+                "subject_kind", "plan",
+                "kind", "condition",
+                "cause", "waits for the operator",
+                "attempts", 0,
+                "acts", List.of(act, "end_plan"))));
+        runtimeFixture.put("control", control);
+        facts.put("runtime", runtimeFixture);
+        representation.put("facts", facts);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, holds.links(), List.of(), null));
+        registry.register(new Scenario(base.formatVersion(), base.name(), base.description(), base.start(),
+                base.pairingCode(), base.routes(), states));
+        engine.switchScenario(StandardScenarios.RUNNING_WORK);
+        engine.goToState(stateId);
+        var path = "/api/v1/plans/fix-relay/holds/" + holdId + "/resolve";
+        var body = JsonTree.write(Map.of("act", act)).getBytes(StandardCharsets.UTF_8);
+
+        var resolved = send("POST", path, auth, body, false);
+        var again = send("POST", path, auth, body, false);
+
+        assertAll(
+                () -> assertEquals(200, resolved.status(), resolved.body()),
+                () -> assertEquals(Boolean.TRUE, resolved.json().get("released"), act + " releases the hold"),
+                () -> assertEquals(404, again.status(), "a released hold is gone: " + again.body()),
+                () -> assertEquals("target_not_found", again.json().get("error")));
     }
 
     private static final String PATH_STOP = "/api/v1/operator/runtime/stop";
