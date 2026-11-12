@@ -29,12 +29,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.config.ConfigOrigin;
-import de.planmarshall.api.control.ChatState;
 import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
@@ -44,7 +44,6 @@ import de.planmarshall.api.start.SourceKindOffer;
 import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.SourceTrust;
 import de.planmarshall.api.start.StartState;
-import de.planmarshall.api.start.StartTranscriptState;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -209,6 +208,23 @@ class StartRegistryTest {
         }
 
         @Test
+        @DisplayName("Back after a failed adoption offers the adoptable epics without the failure's cause")
+        void goesBackFromTheFailedAdoption() throws Exception {
+            var epicId = lowerLetters();
+            var entryId = seedEpicEntry(epicId, lowerLetters(),
+                    Map.of("epic_id", epicId, "reason", AdoptionFailureReason.LEDGER_INVALID.wireValue()));
+            registry.act(entryId, "adopt:" + epicId, Map.of());
+
+            var back = registry.act(entryId, "back", Map.of());
+
+            assertNotNull(back);
+            assertEquals(StartState.EPIC_ADOPT, back.entry().state());
+            assertNull(back.entry().adoptionFailure(), "the entry no longer carries the failed adoption");
+            assertNull(back.adoptionFailure());
+            assertEquals(epicId, back.entry().adoptableEpics().getFirst().epicId());
+        }
+
+        @Test
         @DisplayName("refuses to adopt an epic the ledger does not offer with act_not_available")
         void refusesAnEpicNotOffered() {
             var entryId = seedEpicEntry(lowerLetters(), lowerLetters(), null);
@@ -353,23 +369,6 @@ class StartRegistryTest {
         }
 
         @Test
-        @DisplayName("moves an open chat's transcript with the created plan")
-        void movesTheTranscript() throws Exception {
-            var entryId = seedPlanEntry();
-            registry.act(entryId, "add_description", Map.of("text", lowerLetters()));
-            registry.act(entryId, "chat", Map.of());
-            var planId = lowerLetters();
-
-            var created = registry.act(entryId, "create", Map.of("plan_id", planId));
-
-            assertNotNull(created);
-            assertNotNull(created.chat());
-            assertEquals(ChatState.END, created.chat().state());
-            assertEquals(StartTranscriptState.MOVED, created.chat().transcript());
-            assertEquals("plans/" + planId + "/chat", created.chat().transcriptPath());
-        }
-
-        @Test
         @DisplayName("creates an epic and broadcasts epic.started")
         void createsAnEpic() throws Exception {
             var entryId = seedEpicEntry(null, null, null);
@@ -459,6 +458,23 @@ class StartRegistryTest {
             assertEquals(SourceState.FAILED, registry.find(entryId).entry().sources().getFirst().state());
         }
 
+        @ParameterizedTest(name = "{0} after {1}")
+        @CsvSource({"lesson, lesson_store_damaged, STORED", "documents, not_readable, COPIED"})
+        @DisplayName("Try again on a source of this machine stores it in the state of its kind")
+        void retriesALocalSource(String kind, String cause, SourceState expected) throws Exception {
+            var sourceId = "src-" + lowerLetters();
+            var entryId = seedPlanEntryWith(List.of(Map.of("source_id", sourceId, "kind", kind,
+                    "state", "failed", "failure", Map.of("cause", cause))));
+
+            var retried = registry.act(entryId, "retry:" + sourceId, Map.of());
+
+            assertNotNull(retried);
+            var source = retried.entry().sources().getFirst();
+            assertEquals(expected, source.state(), "only documents are copied; a lesson is stored");
+            assertNull(source.failure());
+            assertNull(source.verdict(), "a source of this machine is never screened");
+        }
+
         @Test
         @DisplayName("refuses Try again for a source the entry does not hold")
         void refusesAnUnknownSource() {
@@ -468,6 +484,30 @@ class StartRegistryTest {
                     () -> registry.act(entryId, "retry:src-" + lowerLetters(), Map.of()));
 
             assertEquals("act_not_available", refused.error());
+        }
+    }
+
+    @Nested
+    @DisplayName("The chat about the request")
+    class Chat {
+
+        @Test
+        @DisplayName("an entry the state scripts no chat for derives the chat from its sources")
+        void derivedFromTheSources() {
+            var waitingId = seedPlanEntry();
+            var waiting = registry.find(waitingId).entry();
+            var storedId = seedEntry(Map.of("sources", List.of(storedDescription())));
+            var stored = registry.find(storedId).entry();
+
+            assertFalse(waiting.chatAvailable());
+            assertEquals("start.chat.waits", waiting.chatDisabledReason(), "no source is stored yet");
+            assertTrue(stored.chatAvailable(), "a stored source of this machine opens the chat");
+            assertNull(stored.chatDisabledReason());
+        }
+
+        private static Map<String, Object> storedDescription() {
+            return Map.of("source_id", "src-" + lowerLetters(), "kind", "description", "state", "stored",
+                    "reference", lowerLetters());
         }
     }
 
@@ -524,21 +564,7 @@ class StartRegistryTest {
 
         assertAll(
                 () -> assertNull(registry.find(unknown)),
-                () -> assertNull(registry.act(unknown, "abandon", Map.of())),
-                () -> assertNull(registry.endChat(unknown)),
-                () -> assertNull(registry.chatTurn(unknown, lowerLetters())),
-                () -> assertNull(registry.chatProposal(unknown, true)));
-    }
-
-    @Test
-    @DisplayName("refuses a chat turn and a proposal answer while no chat carries them")
-    void refusesChatActsWithoutAChat() {
-        var entryId = seedPlanEntry();
-
-        assertEquals("act_not_available", assertThrows(StartRegistry.ActRefused.class,
-                () -> registry.chatTurn(entryId, lowerLetters())).error());
-        assertEquals("act_not_available", assertThrows(StartRegistry.ActRefused.class,
-                () -> registry.chatProposal(entryId, true)).error());
+                () -> assertNull(registry.act(unknown, "abandon", Map.of())));
     }
 
     /** The registry the act tests drive, seeded by {@link #seedPlanEntry()}. */

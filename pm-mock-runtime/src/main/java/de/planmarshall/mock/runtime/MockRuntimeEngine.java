@@ -504,7 +504,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SUFFIX_DECOMPOSITION_COMMIT = "/decomposition/commit";
     private static final String EVENT_DECOMPOSITION_UPDATED = "epic.decomposition_updated";
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
-    private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
     private static final String MESSAGE_CLEANUP_JOB_NOT_FOUND = "Cleanup job not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
@@ -535,7 +534,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LESSON_ID = "lesson_id";
     private static final String EVENT_LESSON_CLAIMED = "source.lesson_claimed";
     private static final String EVENT_LESSON_RETIRED = "source.lesson_retired";
-    private static final String ERR_LESSON_CLAIM_REFUSED = "lesson_claim_refused";
     private static final String REASON_LESSON_CLAIMED_ELSEWHERE = "lesson_claimed_elsewhere";
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
@@ -581,7 +579,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_NO_PROJECT_TO_COMPOSE = "no_project_to_compose";
     private static final String ERR_CONFLICT = "conflict";
     private static final String ERR_UNIT_INVALID = "unit_invalid";
-    private static final String ERR_BAD_REQUEST = "bad_request";
     private static final String FIELD_UNIT = "unit";
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_TARGET = "target";
@@ -2970,7 +2967,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             validationRequest = WorkflowValidationRequest.fromMap(readBodyMap(request));
         } catch (IOException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "the text is required"));
             return;
         }
         response.json(200, designer.validate(validationRequest).toMap());
@@ -2985,7 +2982,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var text = JsonTree.string(body, FIELD_TEXT);
         if (text == null) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "the text is required"));
             return;
         }
         var existing = designer.findUnit(target, unit);
@@ -3574,7 +3571,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void refuseClaim(MockHttpResponse response, String lessonId, String reason) throws IOException {
-        response.json(409, Map.of(KEY_ERROR, ERR_LESSON_CLAIM_REFUSED, KEY_REASON, reason,
+        // the lesson's state no longer offers the claim; the reason names why
+        response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_REASON, reason,
                 KEY_LESSON_ID, lessonId));
     }
 
@@ -3916,7 +3914,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var findings = DecompositionValidator.validate(current.workstreams());
             if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
-                response.json(409, Map.of(KEY_ERROR, ERR_CHECKS_FAIL, KEY_PROJECT_ID, projectId,
+                // Agree is not offered while a check fails (design "Starting Work", the decomposition)
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_PROJECT_ID, projectId,
                         "epic_id", epicId, FIELD_FINDINGS,
                         findings.stream().map(DecompositionCheckFinding::toMap).toList()));
                 return;
@@ -6608,7 +6607,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var sub = path.substring("/api/v1/messages/".length());
         var parts = sub.split("/");
         if (parts.length > 2) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "Unexpected path segments"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "Unexpected path segments"));
             return;
         }
         var locale = parts[0];

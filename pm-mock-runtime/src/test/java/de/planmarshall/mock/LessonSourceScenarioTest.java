@@ -143,7 +143,8 @@ class LessonSourceScenarioTest {
 
             assertEquals(409, res.status());
             var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals("lesson_claim_refused", JsonTree.string(body, "error"));
+            assertEquals("act_not_available", JsonTree.string(body, "error"),
+                    "a refusal answers in the catalogue's codes");
             assertEquals("lesson_premise_broken", JsonTree.string(body, "reason"));
         }
     }

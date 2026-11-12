@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
@@ -741,6 +742,8 @@ class MockRuntimeEngineTest {
 
         var malformedRes = send("GET", "/api/v1/messages/en/common/extra/segments", Map.of(), new byte[0], false);
         assertEquals(400, malformedRes.status());
+        assertEquals("invalid_arguments", malformedRes.json().get("error"),
+                "a malformed path answers in the catalogue's codes");
     }
 
     @Test
@@ -823,6 +826,22 @@ class MockRuntimeEngineTest {
         assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource(delimiter = '|', value = {
+            "{ \"plans\": [ { \"state\": \"running\" } ] }|facts.runtime.control.plans names a plan without plan_id",
+            "{ \"epics\": [ { \"epic_id\": \" \" } ] }|facts.runtime.control.epics names an epic without epic_id",
+            "{ \"epics\": [ { \"epic_id\": \"e-1\", \"reviews\": [] } ] }|facts.runtime.control.epics.e-1.reviews must be an object",
+            "{ \"epics\": [ { \"epic_id\": \"e-1\", \"reviews\": { \"plan\": 1 } } ] }|facts.runtime.control.epics.e-1.reviews.plan must be an object"})
+    @DisplayName("refuses a control fixture that names work without its id or a review that is no object")
+    void refusesAnIncompleteControlFixture(String control, String expected) {
+        var scenario = ScenarioLoader.load(controlFixtureJson(control), brokenName);
+
+        var failure = assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, runtimeToken, deviceSecret));
+
+        assertTrue(failure.getMessage().contains(expected), failure.getMessage());
+    }
+
     @Test
     @DisplayName("a failed switch leaves the active scenario, its state, and its fixtures untouched")
     void failedSwitchKeepsTheActiveScenario() throws Exception {
@@ -885,6 +904,10 @@ class MockRuntimeEngineTest {
     }
 
     private String brokenFixtureJson() {
+        return controlFixtureJson("{ \"holds\": { \"hold_id\": \"H-1\" } }");
+    }
+
+    private String controlFixtureJson(String control) {
         return """
                 {
                   "format_version": 1,
@@ -897,7 +920,7 @@ class MockRuntimeEngineTest {
                         "state": { "state_id": "%2$s" },
                         "facts": {
                           "runtime": {
-                            "control": { "holds": { "hold_id": "H-1" } }
+                            "control": %3$s
                           }
                         },
                         "links": []
@@ -905,7 +928,7 @@ class MockRuntimeEngineTest {
                     }
                   }
                 }
-                """.formatted(brokenName, brokenState);
+                """.formatted(brokenName, brokenState, control);
     }
 
     @Test

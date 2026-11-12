@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -377,6 +378,10 @@ class DesignerScenarioTest {
         }
     }
 
+    private static String errorOf(String body) throws IOException {
+        return JsonTree.string(JsonTree.asObject(JsonTree.parse(body)), "error");
+    }
+
     @Test
     @DisplayName("rejects malformed validation, placing, and removal requests")
     void shouldRejectMalformedRequests() throws Exception {
@@ -387,10 +392,12 @@ class DesignerScenarioTest {
             var empty = client.send(new HttpRequest("POST", "/api/v1/workflows/validate",
                     Map.of("Authorization", auth), new byte[0]));
             assertEquals(400, empty.status());
+            assertEquals("invalid_arguments", errorOf(empty.bodyText()), "the catalogue's code for a bad body");
 
             var noText = client.send(HttpRequest.json("PUT", "/api/v1/workflows/landing.custom", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(400, noText.status());
+            assertEquals("invalid_arguments", errorOf(noText.bodyText()), "the catalogue's code for a bad body");
 
             var emptyName = client.send(new HttpRequest("DELETE", "/api/v1/workflows/",
                     Map.of("Authorization", auth), null));

@@ -556,8 +556,6 @@ final class StartRegistry {
             entry.recipe = entry.recipes.stream().filter(recipe -> recipe.key().equals(request.recipeKey()))
                     .findFirst().orElse(null);
         }
-        entry.chatAvailable = true;
-        entry.chatDisabledReason = null;
         if (request.kind().epic() && !entry.adoptable.isEmpty()) {
             entry.state = STATE_SOURCES;
         }
@@ -613,7 +611,7 @@ final class StartRegistry {
                 case StartStateResource.LINK_RECIPE ->
                     entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case StartStateResource.LINK_START -> continueToReady(entry);
-                case "back" -> leaveRecipe(entry);
+                case "back" -> back(entry);
                 case "create" -> create(entry, body);
                 case "set" -> setParameters(entry, body);
                 case "retry" -> retryAdoption(entry);
@@ -930,8 +928,9 @@ final class StartRegistry {
             if (source.failure() == null || !source.failure().retryable()) {
                 throw new ActRefused("act_not_available", "The source offers no retry");
             }
+            // only documents are copied; every other kind is stored (SourceState)
             replaced.add(new SourceResource(source.sourceId(), source.kind(), source.reference(), source.title(),
-                    source.kind().external() ? SourceState.STORED : SourceState.COPIED,
+                    source.kind() == SourceKind.DOCUMENTS ? SourceState.COPIED : SourceState.STORED,
                     source.kind().external() ? SourceTrust.TRUSTED : source.trust(),
                     source.kind().external() ? ScreeningVerdict.CLEAN : null, null, List.of(), null, null,
                     source.changedFiles(), source.digest()));
@@ -969,6 +968,15 @@ final class StartRegistry {
             throw new ActRefused("act_not_available", "Continue waits for a stored and screened source");
         }
         entry.state = STATE_READY;
+    }
+
+    /**
+     * <em>Back</em> to ①: from a recipe's steps it leaves the recipe, and from
+     * {@code start-epic.adopt-failed} it leaves the failed adoption, whose cause is no longer shown.
+     */
+    private static void back(StartEntry entry) {
+        entry.adoptionFailure = null;
+        leaveRecipe(entry);
     }
 
     private static void leaveRecipe(StartEntry entry) {
