@@ -185,6 +185,20 @@ Accept and reject act, each announced by `chat.proposal`. A revision of a plan i
 
 Every payload is read through its event's record of `pm-api` first: a payload the record refuses, or a `chat.*` name no chat event has, is refused `invalid_arguments`; a chat nobody opened is refused `target_not_found`, and an act the chat no longer offers (a message while the chat has ended or a reply is written, an answer without an open proposal, the end of an ended chat) `act_not_available`, or `conflict` for a turn id that exists or a proposal that is not the open one.
 
+==== Recording the Body of a Decision Act
+
+By default an act in `/mock/acts` carries its method, path, and state only, never what was sent: a developer's mock keeps no free-text answer, note, or waiver reason in a control surface. A test that has to prove what the operator sent starts the mock with `recordActBodies(true)` on `MockRuntimeConfig` (the flag has no command-line option):
+
+[source,java]
+----
+var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+        .scenario(StandardScenarios.RUNNING_WORK)
+        .recordActBodies(true)
+        .build());
+----
+
+With the flag on, an act on a decision resource (a path that holds `/decisions/`, or one below `/api/v1/questions/`) — an answer, a part answer, an own-words answer, a waiver, an interpretation, a withdrawal, or `later` — gains a `body` member with the request body as the client sent it. Every other act stays without a body, so credentials and device secrets never reach the act log. A test reads the list with `GET /mock/acts` and asserts on the `body` of the act it expects; the dialogue harness of `pm-operator` (`DialogueHarness`) starts its mock this way and reads each act as `Act(method, path, state, body)`, with an empty body where the act carried none.
+
 === Testing Usage
 
 ==== JUnit 5 Integration with `@EnableMockRuntime`

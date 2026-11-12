@@ -24,6 +24,14 @@ import org.jspecify.annotations.Nullable;
  * {@code ST} — this is where the clipboard OSC 52 and the window-title OSC 0/2 live), and the
  * string introducers DCS, SOS, PM, and APC ({@code ESC P}/{@code X}/{@code ^}/{@code _}).
  *
+ * <p>Neutralized as well are the characters that are not text the reader can see: the bidi
+ * controls ({@code U+202A}–{@code U+202E} and {@code U+2066}–{@code U+2069}), which reorder what
+ * the terminal shows; the zero-width characters ({@code U+200B}–{@code U+200D}, {@code U+2060}, and
+ * {@code U+FEFF}), which hide between the visible ones; and the tag characters
+ * ({@code U+E0000}–{@code U+E007F}), which can carry a whole hidden text. The text is read by code
+ * point, so a supplementary character is kept or dropped whole. Dropping the zero-width joiner
+ * splits a joined emoji into its parts; that loss is accepted.
+ *
  * <p>Nothing here is a boundary by itself; it is the single place a boundary is applied, so that a
  * new rendering path cannot forget the rule.
  */
@@ -36,6 +44,16 @@ public final class TerminalSanitizer {
     private static final char ST_8BIT = '\u009C';
     private static final char LF = '\n';
     private static final char TAB = '\t';
+    private static final int BIDI_EMBEDDING_FIRST = 0x202A;
+    private static final int BIDI_EMBEDDING_LAST = 0x202E;
+    private static final int BIDI_ISOLATE_FIRST = 0x2066;
+    private static final int BIDI_ISOLATE_LAST = 0x2069;
+    private static final int ZERO_WIDTH_FIRST = 0x200B;
+    private static final int ZERO_WIDTH_LAST = 0x200D;
+    private static final int WORD_JOINER = 0x2060;
+    private static final int BYTE_ORDER_MARK = 0xFEFF;
+    private static final int TAG_FIRST = 0xE0000;
+    private static final int TAG_LAST = 0xE007F;
     /** The longest window title kept; longer titles are cut, control sequences never survive. */
     static final int TITLE_MAX = 200;
 
@@ -67,14 +85,40 @@ public final class TerminalSanitizer {
                 i = skipOsc(text, i + 1);
             } else if (isStringIntroducer8Bit(c)) {
                 i = skipString(text, i + 1);
-            } else if (c == LF || c == TAB || !Character.isISOControl(c)) {
-                out.append(c);
-                i++;
             } else {
-                i++;
+                int codePoint = text.codePointAt(i);
+                if (isKept(codePoint)) {
+                    out.appendCodePoint(codePoint);
+                }
+                i += Character.charCount(codePoint);
             }
         }
         return out.toString();
+    }
+
+    private static boolean isKept(int codePoint) {
+        if (codePoint == LF || codePoint == TAB) {
+            return true;
+        }
+        return !Character.isISOControl(codePoint) && !isBidiControl(codePoint) && !isZeroWidth(codePoint)
+                && !isTag(codePoint);
+    }
+
+    /** The embedding, override, and isolate controls that reorder what the terminal shows. */
+    private static boolean isBidiControl(int codePoint) {
+        return (codePoint >= BIDI_EMBEDDING_FIRST && codePoint <= BIDI_EMBEDDING_LAST)
+                || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST);
+    }
+
+    /** The characters that take no width and so hide between the visible ones. */
+    private static boolean isZeroWidth(int codePoint) {
+        return (codePoint >= ZERO_WIDTH_FIRST && codePoint <= ZERO_WIDTH_LAST) || codePoint == WORD_JOINER
+                || codePoint == BYTE_ORDER_MARK;
+    }
+
+    /** The tag characters, invisible supplementary code points that can carry a hidden text. */
+    private static boolean isTag(int codePoint) {
+        return codePoint >= TAG_FIRST && codePoint <= TAG_LAST;
     }
 
     /**

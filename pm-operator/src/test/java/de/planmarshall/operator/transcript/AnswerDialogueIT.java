@@ -13,6 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.StandardScenarios;
 
@@ -27,9 +30,11 @@ import org.junit.jupiter.api.condition.OS;
  */
 @DisplayName("pm-operator answer dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class AnswerDialogueIT {
 
     private static final String PROMPT = "w) in my own words";
+    private static final String WAIVER_PROMPT = "Waive the gate";
 
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
@@ -102,18 +107,51 @@ class AnswerDialogueIT {
     @Test
     @DisplayName("waiver request: the waiver and its reason are posted")
     void waiverAnswers() throws Exception {
+        var reason = Generators.letterStrings(4, 12).next() + " " + Generators.letterStrings(4, 12).next();
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
              var session = harness.open("answer", "WR-2")) {
-            assertTrue(session.awaitText("Waive the gate", DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText(WAIVER_PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "y\ncovered by CI\n");
+            DialogueHarness.type(session, "y\n" + reason + "\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Waived CI check · integration tests for fix-relay"), session.screenText());
             var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/WR-2/answer")));
             assertNotNull(sent);
             assertEquals("waive", sent.get("action"), String.valueOf(sent));
-            assertEquals("covered by CI", sent.get("reason"), String.valueOf(sent));
+            assertEquals(reason, sent.get("reason"), String.valueOf(sent));
+        }
+    }
+
+    @Test
+    @DisplayName("waiver request, q first: the dialogue leaves and sends nothing")
+    void waiverQFirstSendsNothing() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
+             var session = harness.open("answer", "WR-2")) {
+            assertTrue(session.awaitText(WAIVER_PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "q\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
+            harness.assertNoAct();
+        }
+    }
+
+    @Test
+    @DisplayName("waiver request, an unknown input: the request is asked again and nothing is sent")
+    void waiverUnknownInputReAsks() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
+             var session = harness.open("answer", "WR-2")) {
+            assertTrue(session.awaitText(WAIVER_PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "zzz\nq\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Type y, d or l."), session.screenText());
+            assertTrue(DialogueHarness.times(session.rawOutput(), WAIVER_PROMPT) >= 2, session.screenText());
+            assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
+            harness.assertNoAct();
         }
     }
 

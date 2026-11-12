@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
  * a note only where the part allows them ({@code doc/design/shared/decisions.adoc}).
  */
 @DisplayName("AnswerCommand asks every part and offers its keys")
+@EnableGeneratorController
 class AnswerMultipartTest {
 
     @TempDir
@@ -202,9 +205,10 @@ class AnswerMultipartTest {
     @Test
     @DisplayName("a direct key on a decision that could not be read is refused and nothing is sent")
     void directAnswerOnUnreadableDecisionRefuses() throws Exception {
+        var failure = Generators.letterStrings(4, 20).next();
         fixture.start((request, response) -> {
             if ("GET".equals(request.method())) {
-                response.json(500, "{\"error\":\"store unavailable\"}");
+                response.json(500, "{\"error\":\"%s\"}".formatted(failure));
             } else {
                 postedBodies.add(request.bodyText());
                 response.json(200, "{\"ok\":true}");
@@ -235,34 +239,47 @@ class AnswerMultipartTest {
     @Test
     @DisplayName("unclear own words with no question are asked again, never posted")
     void unclearWithoutQuestionAsksAgain() throws Exception {
+        var unclearWords = words();
+        var clearWords = words();
+        var reading = words();
         var interpreted = new ArrayList<String>();
-        serveOwnWords(interpreted, words -> words.contains("first")
+        serveOwnWords(interpreted, words -> words.equals(unclearWords)
                             ? "{\"interpretation_type\":\"unclear\"}"
-                            : "{\"interpretation_type\":\"own_option\",\"read_back_text\":\"squash the branch\"}");
+                            : readBackJson(reading));
 
-        var code = run("w\nfirst try\nsquash it\n\n", "answer", "Q-001", "-i");
+        var code = run("w\n" + unclearWords + "\n" + clearWords + "\n\n", "answer", "Q-001", "-i");
 
         assertEquals(0, code);
-        assertEquals(2, interpreted.size(), interpreted.toString());
+        assertEquals(List.of(unclearWords, clearWords), interpreted);
         assertTrue(out.toString().contains("could not be read clearly enough"), out.toString());
         assertEquals(1, postedBodies.size(), postedBodies.toString());
         var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
-        assertEquals("squash the branch", body.get("words"), postedBodies.get(0));
+        assertEquals(reading, body.get("words"), postedBodies.get(0));
     }
 
     @Test
     @DisplayName("an unknown input at the read-back is asked again, the reading kept")
     void readBackTypoAsksAgain() throws Exception {
+        var reading = words();
         var interpreted = new ArrayList<String>();
-        serveOwnWords(interpreted, words -> "{\"interpretation_type\":\"own_option\",\"read_back_text\":\"squash the branch\"}");
+        serveOwnWords(interpreted, words -> readBackJson(reading));
 
-        var code = run("w\nsquash it\nzz\n\n", "answer", "Q-001", "-i");
+        var code = run("w\n" + words() + "\nzz\n\n", "answer", "Q-001", "-i");
 
         assertEquals(0, code);
         assertTrue(out.toString().contains("Please choose a valid option or action."), out.toString());
         assertEquals(1, postedBodies.size(), postedBodies.toString());
         var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
-        assertEquals("squash the branch", body.get("words"), postedBodies.get(0));
+        assertEquals(reading, body.get("words"), postedBodies.get(0));
+    }
+
+    /** Free words an operator types: letters only, so no word is read as a key of the dialogue. */
+    private static String words() {
+        return Generators.letterStrings(4, 10).next() + " " + Generators.letterStrings(4, 10).next();
+    }
+
+    private static String readBackJson(String reading) {
+        return "{\"interpretation_type\":\"own_option\",\"read_back_text\":\"%s\"}".formatted(reading);
     }
 
     @Test

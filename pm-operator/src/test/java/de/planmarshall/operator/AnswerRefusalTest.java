@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,6 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
  * come from the envelope's scope, blocks, project and plan, never from its subject text.
  */
 @DisplayName("AnswerCommand checks responses and takes its nouns from the envelope")
+@EnableGeneratorController
 class AnswerRefusalTest {
 
     private static final String REFUSED = "refused by the runtime";
@@ -68,11 +71,12 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("a withdraw the runtime refuses exits non-zero with the refusal")
     void refusedWithdraw() throws Exception {
+        var failure = text();
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, planEnvelope());
             } else if ("/api/v1/decisions/Q-001/withdraw".equals(request.target())) {
-                response.json(500, "{\"error\":\"withdraw blocked\"}");
+                response.json(500, errorBody(failure));
             } else {
                 response.send(404, null, "");
             }
@@ -87,22 +91,24 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("an own-words answer the runtime refuses exits non-zero with the refusal")
     void refusedOwnWordsAnswer() throws Exception {
+        var words = text();
+        var failure = text();
         fixture.start((request, response) -> {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, ownWordsEnvelope());
             } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
                 response.json(200, """
-                                    {"interpretation_type":"option","read_back_text":"Rebase","understood":true}
-                                    """);
+                                    {"interpretation_type":"option","read_back_text":"%s","understood":true}
+                                    """.formatted(words));
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
-                response.json(500, "{\"error\":\"answer blocked\"}");
+                response.json(500, errorBody(failure));
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = run("en", "w\nrebase\n\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+        var code = run("en", ("w\n" + words + "\n\n").getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
         assertTrue(err.toString().contains(REFUSED), err.toString());
@@ -122,14 +128,15 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("the German result lines select the noun of a plan, an epic and an entry")
     void germanNouns() throws Exception {
+        var project = text();
         fixture.start((request, response) -> {
             var target = request.target();
             if ("/api/v1/decisions/Q-PLAN".equals(target)) {
-                response.json(200, envelope("Q-PLAN", "plan", "plan", "plan storage-v2", "pm-mcp-clients"));
+                response.json(200, envelope("Q-PLAN", "plan", "plan", "plan " + text(), project));
             } else if ("/api/v1/decisions/Q-EPIC".equals(target)) {
-                response.json(200, envelope("Q-EPIC", "epic", "epic", "epic ui-improvements", "pm-mcp-clients"));
+                response.json(200, envelope("Q-EPIC", "epic", "epic", "epic " + text(), project));
             } else if ("/api/v1/decisions/Q-ENTRY".equals(target)) {
-                response.json(200, envelope("Q-ENTRY", "plan", "entry", "start in pm-mcp-clients", "pm-mcp-clients"));
+                response.json(200, envelope("Q-ENTRY", "plan", "entry", "start in " + project, project));
             } else if (target.endsWith("/answer") || target.endsWith("/withdraw")) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -141,16 +148,20 @@ class AnswerRefusalTest {
         assertGerman("du hast den Plan gebeten, neu zu \u00fcberlegen.", "answer", "Q-PLAN", "x");
         assertGerman("das Epic wartet darauf.", "answer", "Q-EPIC", "later");
         assertGerman("du hast das Epic gebeten, neu zu \u00fcberlegen.", "answer", "Q-EPIC", "x");
-        assertGerman("der Start in pm-mcp-clients wartet darauf.", "answer", "Q-ENTRY", "later");
-        assertGerman("du hast den Start in pm-mcp-clients gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "x");
+        assertGerman("der Start in " + project + " wartet darauf.", "answer", "Q-ENTRY", "later");
+        assertGerman("du hast den Start in " + project + " gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "x");
     }
 
     @Test
     @DisplayName("the dissent names the voter whose reason is the summary, not the first voter")
     void dissentByMatchingSummary() throws Exception {
+        var firstVoter = text();
+        var dissenter = text();
+        var firstReason = text();
+        var summary = text();
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target())) {
-                response.json(200, dissentEnvelope());
+                response.json(200, dissentEnvelope(firstVoter, firstReason, dissenter, summary));
             } else {
                 response.send(404, null, "");
             }
@@ -159,25 +170,26 @@ class AnswerRefusalTest {
         var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
 
         assertEquals(3, code);
-        assertTrue(out.toString().contains("Against it (reviewer-b): history gets noisy"), out.toString());
-        assertFalse(out.toString().contains("Against it (reviewer-a)"), out.toString());
+        assertTrue(out.toString().contains("Against it (" + dissenter + "): " + summary), out.toString());
+        assertFalse(out.toString().contains("Against it (" + firstVoter + ")"), out.toString());
     }
 
     @Test
     @DisplayName("with --plan a 404 on the answer sends nothing to the unscoped path")
     void scopedNotFoundStaysScoped() throws Exception {
+        var planId = text();
         var targets = new ArrayList<String>();
         fixture.start((request, response) -> {
             var target = request.target();
             targets.add(request.method() + " " + target);
-            if ("/api/v1/plans/storage-v2/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+            if (("/api/v1/plans/" + planId + "/decisions/Q-001").equals(target) && "GET".equals(request.method())) {
                 response.json(200, planEnvelope());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", "storage-v2");
+        var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", planId);
 
         assertNotEquals(0, code);
         assertTrue(err.toString().contains(REFUSED), err.toString());
@@ -187,7 +199,8 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("a 500 on the first read is a failed read, not a decision")
     void serverErrorOnFirstReadIsFailedRead() throws Exception {
-        fixture.start((request, response) -> response.json(500, "{\"error\":\"store unavailable\"}"));
+        var failure = text();
+        fixture.start((request, response) -> response.json(500, errorBody(failure)));
 
         var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
 
@@ -233,7 +246,16 @@ class AnswerRefusalTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
-    private static String dissentEnvelope() {
+    /** A word of letters only: it is safe in a path segment, a JSON string and a catalogue argument. */
+    private static String text() {
+        return Generators.letterStrings(4, 12).next();
+    }
+
+    private static String errorBody(String failure) {
+        return "{\"error\":\"%s\"}".formatted(failure);
+    }
+
+    private static String dissentEnvelope(String firstVoter, String firstReason, String dissenter, String summary) {
         return """
                             {
                               "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
@@ -244,16 +266,16 @@ class AnswerRefusalTest {
                                 "options": [
                                   {"key": "1", "label": "Rebase",
                                    "quorum_support": {"band": "clear_majority", "votes_count": 2, "total_votes": 4,
-                                     "models_count": 2, "dissent_summary": "history gets noisy"}},
+                                     "models_count": 2, "dissent_summary": "%s"}},
                                   {"key": "2", "label": "Merge",
                                    "quorum_support": {"band": "clear_majority", "votes_count": 2, "total_votes": 4,
                                      "models_count": 2,
-                                     "votes": [{"role": "reviewer-a", "model": "gpt-4o", "reason": "keeps merge commits"},
-                                               {"role": "reviewer-b", "model": "gpt-4o", "reason": "history gets noisy"}]}}
+                                     "votes": [{"role": "%s", "model": "gpt-4o", "reason": "%s"},
+                                               {"role": "%s", "model": "gpt-4o", "reason": "%s"}]}}
                                 ]
                               }]
                             }
-                            """;
+                            """.formatted(summary, firstVoter, firstReason, dissenter, summary);
     }
 
     private static String planEnvelope() {

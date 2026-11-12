@@ -82,6 +82,37 @@ class AcceptEditDialogueIT {
         }
     }
 
+    @Test
+    @DisplayName("q first: the confirmation is not given, nothing is sent and the project stays refused")
+    void qFirstSendsNothing() throws Exception {
+        assertNotConfirmed("q\n");
+    }
+
+    @Test
+    @DisplayName("an unknown input is no confirmation: nothing is sent and the project stays refused")
+    void unknownInputSendsNothing() throws Exception {
+        assertNotConfirmed("zzz\n");
+    }
+
+    /**
+     * The confirmation is a {@code [y/N]} question: only a typed yes confirms, so any other input
+     * leaves without an act, the act log stays empty and the project is still refused.
+     */
+    private static void assertNotConfirmed(String input) throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START).goTo("enrol.enrolment-tampered");
+             var session = harness.open("accept-edit", "enrolment", PROJECT)) {
+            assertTrue(session.awaitText(CONFIRM, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, input);
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertEquals(1, session.exitCode(), session.rawOutput());
+            assertTrue(session.screenText().contains("nothing was sent"), session.screenText());
+            assertTrue(harness.acts().isEmpty(), String.valueOf(harness.acts()));
+            assertEquals("enrolment_tampered", refusal(harness).get("error"));
+        }
+    }
+
     private static Map<String, Object> refusal(DialogueHarness harness) throws IOException {
         var response = harness.send(HttpRequest.get(PROJECT_PATH));
         assertEquals(409, response.status(), response.bodyText());
