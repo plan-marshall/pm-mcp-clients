@@ -25,7 +25,8 @@
         <pm.mock.webPort></pm.mock.webPort>
         <pm.web.port></pm.web.port>
         <!-- Empty by default: the S12 brand screenshots and the mascot evidence run only on
-             request, with -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS in the Playwright run). -->
+             request, with -Pe2e -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS=1 in the Playwright run);
+             the e2e profile is what starts Playwright at all, the property alone does not. -->
         <pm.e2e.brandShots></pm.e2e.brandShots>
     </properties>
 

@@ -29,12 +29,13 @@ const __dirname = path.dirname(__filename);
  * reports, and the rail-foot bear expanded and collapsed, above and below its free-height threshold.
  *
  * The set is evidence for a review, not a regression check, so it stays out of the default suite:
- * it runs only where `PM_E2E_BRAND_SHOTS` is set, from Maven with `-Dpm.e2e.brandShots=1`.
+ * it runs only where `PM_E2E_BRAND_SHOTS` is `1`, from Maven with `-Pe2e -Dpm.e2e.brandShots=1`
+ * (the `e2e` profile starts Playwright at all; any other value, `0` included, leaves the spec off).
  */
 
 test.skip(
-  !process.env.PM_E2E_BRAND_SHOTS,
-  'The S12 brand screenshots run only on request: -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS).',
+  process.env.PM_E2E_BRAND_SHOTS !== '1',
+  'The S12 brand screenshots run only on request: -Pe2e -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS=1).',
 );
 
 /** The directory the S12 screenshots are written to. */

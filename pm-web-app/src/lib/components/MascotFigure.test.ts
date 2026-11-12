@@ -4,7 +4,7 @@ import path from 'node:path';
 import { get } from 'svelte/store';
 import { render, screen } from '@testing-library/svelte';
 import MascotFigure, { mascotFiguresOnScreen } from './MascotFigure.svelte';
-import { MASCOT_POSES } from '../assets/mascot/mascotFiles';
+import { MASCOT_CROPS, MASCOT_POSES } from '../assets/mascot/mascotFiles';
 import bust1xUrl from '../assets/mascot/mascot-bust-1x.webp?url';
 import bust2xUrl from '../assets/mascot/mascot-bust-2x.webp?url';
 import full1xUrl from '../assets/mascot/mascot-full-1x.webp?url';
@@ -76,7 +76,7 @@ describe('MascotFigure', () => {
   const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(/\/\*[\s\S]*?\*\//g, '');
 
   describe('the files', () => {
-    it.each(MASCOT_POSES.flatMap((pose) => (['full', 'bust'] as const).map((crop) => [pose, crop] as const)))(
+    it.each(MASCOT_POSES.flatMap((pose) => MASCOT_CROPS.map((crop) => [pose, crop] as const)))(
       'draws the source files for the pose %s in the crop %s',
       (pose, crop) => {
         render(MascotFigure, { props: { pose, crop, height: 160 } });
