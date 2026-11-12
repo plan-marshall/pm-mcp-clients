@@ -50,6 +50,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.runtime.MockTiming;
 
 @DisplayName("ControlScenario")
@@ -445,6 +446,72 @@ class ControlScenarioTest {
                         "/api/v1/epics/relay-hardening/review?limit=1&register=watches").bodyText())
                         .register());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("An act the state does not offer")
+    class ActNotOffered {
+
+        @Test
+        @DisplayName("is refused act_not_available for a plan, whether absent or disabled")
+        void planActs() throws Exception {
+            try (var runtime = MockRuntime.start(READY)) {
+                // An ended plan offers chat only; a pause is not among its acts.
+                var absent = post(runtime, "/api/v1/plans/docs-typo/actions/pause", "{}");
+                assertActNotAvailable(absent);
+                assertEquals("ended", actions(runtime, "docs-typo").state());
+
+                // A paused plan lists chat but disables it, with the reason it names.
+                var disabled = post(runtime, "/api/v1/plans/relay-metrics/actions/chat", "{}");
+                assertActNotAvailable(disabled);
+                assertEquals("no configuration of replan qualifies yet",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(disabled.body())), "reason"));
+                assertEquals("paused", actions(runtime, "relay-metrics").state());
+            }
+        }
+
+        @Test
+        @DisplayName("is refused act_not_available for an ended epic, after its automatic was switched by flag")
+        void epicActs() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var autoOff = post(runtime, "/api/v1/epics/relay-hardening/actions/auto",
+                        JsonTree.write(Map.of("enabled", false)));
+                assertEquals(200, autoOff.status());
+                assertEquals(Boolean.FALSE, JsonTree.asObject(JsonTree.parse(autoOff.body())).get("auto_enabled"));
+
+                var cancelled = post(runtime, "/api/v1/epics/relay-hardening/actions/cancel", "{}");
+                assertEquals(200, cancelled.status());
+                assertEquals("ended", WorkActions.fromJson(get(runtime,
+                        "/api/v1/epics/relay-hardening/actions").bodyText()).state());
+
+                assertActNotAvailable(post(runtime, "/api/v1/epics/relay-hardening/actions/auto",
+                        JsonTree.write(Map.of("enabled", true))));
+            }
+        }
+
+        @Test
+        @DisplayName("is refused act_not_available for a hold, and the hold's own end act ends the plan")
+        void holdActs() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
+                // The overlap hold offers retry and end_plan, never accept.
+                var refused = post(runtime, "/api/v1/plans/relay-docs/holds/H-0002/resolve",
+                        JsonTree.write(Map.of("act", "accept")));
+                assertActNotAvailable(refused);
+                assertEquals(1, holds(runtime, "relay-docs").size(), "a refused act leaves the hold");
+
+                var ended = resolve(runtime, "relay-docs", "H-0002", "end_plan");
+                assertEquals(Boolean.TRUE, ended.get("released"));
+                assertEquals("ended", actions(runtime, "relay-docs").state());
+                assertTrue(holds(runtime, "relay-docs").isEmpty(), "ending the plan ends its holds");
+            }
+        }
+
+        private static void assertActNotAvailable(HttpResponse response) throws Exception {
+            assertEquals(409, response.status());
+            var code = JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error");
+            assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE, ApiErrorCode.fromWireOrNull(code),
+                    "the refusal is a member of the closed catalogue: " + code);
         }
     }
 

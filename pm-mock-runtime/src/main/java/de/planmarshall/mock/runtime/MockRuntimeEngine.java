@@ -2053,7 +2053,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleNeedsAndFindRoutes(request, response)
                 || handleReportRoutes(request, response, isWeb)
                 || handleIntentRoutes(request, response)
-                || (declaresDecisions() && handleDecisionRoutes(request, response, isWeb))
+                || (declaresDecisions() && handleDecisionRoutes(request, response))
                 || (declaresSystem() && handleSystemRoutes(request, response, isWeb))
                 || handleProcessRoutes(request, response)
                 || handleDecompositionRoutes(request, response)
@@ -4947,12 +4947,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var availability = buildPlanActions(planId).action(action);
             if (availability == null) {
-                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         planId + " is " + controlPlanStates.get(planId)));
                 return;
             }
             if (!availability.available()) {
-                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_REASON, availability.reason() != null ? availability.reason() : ""));
                 return;
             }
@@ -4999,12 +4999,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var availability = buildEpicActions(epicId).action(action);
             if (availability == null) {
-                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         epicId + " is " + controlEpicStates.get(epicId)));
                 return;
             }
             if (!availability.available()) {
-                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_REASON, availability.reason() != null ? availability.reason() : ""));
                 return;
             }
@@ -5068,7 +5068,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (!hold.offers(resolution.act())) {
-                response.json(409, Map.of(KEY_ERROR, "act_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         "Hold " + holdId + " does not offer act " + resolution.act()));
                 return;
             }
@@ -10022,7 +10022,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return "pm-mcp-clients";
     }
 
-    private boolean handleDecisionRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+    private boolean handleDecisionRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         var method = request.method();
 
@@ -10037,45 +10037,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        // 2. Decision specific routes
-        String decisionId = null;
-        String action = null;
+        // 2. Decision specific routes: the decision, question and plan-scoped forms all name the id and
+        // then the act; a question names its act like a decision does, so only /answers answers it.
+        String sub = null;
         if (path.startsWith(API_DECISIONS_PATH)) {
-            var sub = path.substring(API_DECISIONS_PATH.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = sub.substring(slash + 1);
-            }
+            sub = path.substring(API_DECISIONS_PATH.length());
         } else if (path.startsWith(API_QUESTIONS_PATH)) {
-            var sub = path.substring(API_QUESTIONS_PATH.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = "answer";
-            }
+            sub = path.substring(API_QUESTIONS_PATH.length());
         } else if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
-            var sub = path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = sub.substring(slash + 1);
-            }
+            sub = path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
         }
 
-        if (decisionId != null) {
+        if (sub != null) {
+            int slash = sub.indexOf('/');
+            var decisionId = slash < 0 ? sub : sub.substring(0, slash);
+            var action = slash < 0 ? null : sub.substring(slash + 1);
             if ("GET".equals(method) && action == null) {
                 handleGetDecision(response, decisionId);
                 return true;
             }
             if (METHOD_POST.equals(method) && ("answer".equals(action) || "answers".equals(action))) {
-                handleAnswerDecision(request, response, decisionId, isWeb);
+                handleAnswerDecision(request, response, decisionId);
                 return true;
             }
             if (METHOD_POST.equals(method) && "interpret".equals(action)) {
@@ -10144,25 +10126,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
             map.put("project", extractProject(envelope));
             response.json(200, map);
         } else {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
         }
     }
 
-    private void handleAnswerDecision(MockHttpRequest request, MockHttpResponse response, String decisionId, boolean isWeb) throws IOException {
+    private void handleAnswerDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
         DecisionEnvelope envelope;
         synchronized (decisionsLock) {
             envelope = openDecisions.get(decisionId);
         }
         if (envelope == null) {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
             return;
         }
 
+        // A body that is no answer object is refused like the runtime does: it never answers the
+        // decision with a choice the operator did not make.
         DecisionAnswerRequest answerReq;
         try {
             answerReq = DecisionAnswerRequest.fromJson(request.bodyText());
         } catch (IOException | IllegalArgumentException | IllegalStateException _) {
-            answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, isWeb ? "web" : "cli", null);
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "The answer to " + decisionId + " is no answer object."));
+            return;
         }
 
         if (envelope.isWaiver()) {
@@ -10246,19 +10232,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleInterpretDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
-        String words = "";
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(request.body()));
-            if (map != null) {
-                words = JsonTree.string(map, "words");
-                if (words == null) words = JsonTree.string(map, "own_words");
-            }
+        // Words are read for an open decision only; an unknown id is scope_not_found as on every other act.
+        boolean open;
+        synchronized (decisionsLock) {
+            open = openDecisions.containsKey(decisionId);
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
-            // Ignore
+        if (!open) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
+            return;
         }
-        if (words == null) words = "";
+        // A body that is no object is refused like the runtime does, never read as words that pick option 2.
+        var map = parseBody(request.body());
+        if (map == null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "The words to read for " + decisionId + " are no object."));
+            return;
+        }
+        var words = JsonTree.string(map, "words");
+        if (words == null) {
+            words = Objects.requireNonNullElse(JsonTree.string(map, "own_words"), "");
+        }
         var lower = words.toLowerCase();
 
         DecisionInterpretation interp;
@@ -10303,7 +10296,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             removed = openDecisions.remove(decisionId);
         }
         if (removed == null) {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
             return;
         }
 
