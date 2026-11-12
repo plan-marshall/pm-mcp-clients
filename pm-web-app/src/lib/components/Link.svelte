@@ -6,14 +6,23 @@
   const APP_ORIGIN = 'http://app.invalid';
 
   /**
+   * A second slash or a backslash right after the first one, with only the tabs, carriage returns and
+   * line feeds between them that a URL parser strips before it reads an address. Such an address
+   * supplies its own host (WHATWG URL spec, authority); it is no path of the app.
+   */
+  const AUTHORITY_FORM = /^\/[\t\n\r]*[/\\]/;
+
+  /**
    * @param href the address a caller hands in
-   * @returns whether it is a path of the app: it starts with `/` and, resolved the way a browser
-   *   resolves it, stays on the origin of the app. A `javascript:` or `data:` address, a host
-   *   written `//host` or `/\host`, and one hidden behind a tab or a line break are all refused.
+   * @returns whether it is a path of the app: it starts with `/`, names no host of its own and,
+   *   resolved the way a browser resolves it, stays on the origin of the app. A `javascript:` or
+   *   `data:` address, a host written `//host` or `/\host` (the placeholder host included, which the
+   *   origin comparison alone would let through), and one hidden behind a tab or a line break are all
+   *   refused.
    */
   export function isAppPath(href: string): boolean {
     const address = href.trim();
-    if (!address.startsWith('/')) {
+    if (!address.startsWith('/') || AUTHORITY_FORM.test(address)) {
       return false;
     }
     try {
