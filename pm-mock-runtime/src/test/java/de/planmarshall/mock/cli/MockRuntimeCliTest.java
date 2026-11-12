@@ -19,9 +19,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -68,6 +71,30 @@ class MockRuntimeCliTest {
         assertNull(result.config());
         assertFalse(result.isSuccess());
         assertTrue(stdout().contains("Usage: pm-mock-runtime"));
+    }
+
+    @Test
+    @DisplayName("--help names every timing MockTiming takes")
+    void helpNamesEveryTiming() {
+        var result = MockRuntimeCli.parse(new String[]{"--help"}, out, err);
+
+        assertEquals(0, result.exitCode());
+        assertTrue(stdout().contains("--timing <" + String.join("|", MockTiming.wireValues()) + ">"), stdout());
+    }
+
+    static Stream<String> valuedOptionNames() {
+        return Arrays.stream(MockRuntimeCli.ValuedOption.values()).flatMap(option -> option.names().stream());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("valuedOptionNames")
+    @DisplayName("refuses every valued option given without a value, without reading past the arguments")
+    void valuedOptionWithoutValue(String option) {
+        var result = MockRuntimeCli.parse(new String[]{option}, out, err, Map.of());
+
+        assertEquals(2, result.exitCode());
+        assertNull(result.config());
+        assertTrue(stderr().contains("Error: missing argument for " + option), stderr());
     }
 
     @Test

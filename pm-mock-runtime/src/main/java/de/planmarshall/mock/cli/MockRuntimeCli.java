@@ -17,6 +17,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 
@@ -65,12 +66,70 @@ public final class MockRuntimeCli {
         }
     }
 
-    private static boolean isValuedOption(String arg) {
-        return switch (arg) {
-            case "--scenario", "-s", "--base", "-b", "--web-port", "-p", "--token", "-t",
-                "--device-secret", "-d", OPTION_TIMING -> true;
-            default -> false;
-        };
+    /** Reads the value of an option into the options. */
+    @FunctionalInterface
+    private interface OptionHandler {
+
+        /**
+         * @param value the option's value
+         * @param opts  the options read so far
+         * @param err   the error output stream
+         * @return the exit code of a refused value, or {@code null} when the value was taken
+         */
+        @Nullable
+        Integer apply(String value, CliOptions opts, PrintStream err);
+    }
+
+    /**
+     * The options that take a value, each with its names and how its value is read: the one definition
+     * both the missing-value guard and the parser read.
+     */
+    enum ValuedOption {
+        SCENARIO((value, opts, err) -> {
+            opts.scenario = value;
+            return null;
+        }, "--scenario", "-s"),
+        BASE((value, opts, err) -> {
+            opts.base = Path.of(value);
+            return null;
+        }, "--base", "-b"),
+        WEB_PORT((value, opts, err) -> {
+            opts.webPort = parsePortArg(value, err);
+            return opts.webPort == null ? 2 : null;
+        }, "--web-port", "-p"),
+        TOKEN((value, opts, err) -> {
+            opts.token = value;
+            return null;
+        }, "--token", "-t"),
+        DEVICE_SECRET((value, opts, err) -> {
+            opts.deviceSecret = value;
+            return null;
+        }, "--device-secret", "-d"),
+        TIMING(MockRuntimeCli::parseTiming, OPTION_TIMING);
+
+        private final OptionHandler handler;
+        private final List<String> names;
+
+        ValuedOption(OptionHandler handler, String... names) {
+            this.handler = handler;
+            this.names = List.of(names);
+        }
+
+        /**
+         * @return the names the option is given by, the long one first
+         */
+        List<String> names() {
+            return names;
+        }
+
+        static @Nullable ValuedOption of(String arg) {
+            for (var option : values()) {
+                if (option.names.contains(arg)) {
+                    return option;
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -149,38 +208,28 @@ public final class MockRuntimeCli {
     }
 
     private static @Nullable Integer parseOption(String arg, String[] args, int[] index, CliOptions opts, PrintStream err) {
-        if (index[0] >= args.length && isValuedOption(arg)) {
+        var option = ValuedOption.of(arg);
+        if (option == null) {
+            err.println("Error: unrecognized argument: " + arg);
+            printUsage(err);
+            return 2;
+        }
+        if (index[0] >= args.length) {
             err.println(ERR_MISSING_ARG + arg);
             return 2;
         }
-        switch (arg) {
-            case "--scenario", "-s" -> opts.scenario = args[index[0]++];
-            case "--base", "-b" -> opts.base = Path.of(args[index[0]++]);
-            case "--token", "-t" -> opts.token = args[index[0]++];
-            case "--device-secret", "-d" -> opts.deviceSecret = args[index[0]++];
-            case "--web-port", "-p" -> {
-                opts.webPort = parsePortArg(args[index[0]++], err);
-                if (opts.webPort == null) {
-                    return 2;
-                }
-            }
-            case OPTION_TIMING -> {
-                var value = args[index[0]++];
-                try {
-                    opts.timing = MockTiming.fromWire(value);
-                } catch (IllegalArgumentException _) {
-                    err.println("Error: invalid timing: " + value + " (one of " + String.join(", ",
-                            MockTiming.wireValues()) + ")");
-                    return 2;
-                }
-            }
-            default -> {
-                err.println("Error: unrecognized argument: " + arg);
-                printUsage(err);
-                return 2;
-            }
+        return option.handler.apply(args[index[0]++], opts, err);
+    }
+
+    private static @Nullable Integer parseTiming(String value, CliOptions opts, PrintStream err) {
+        try {
+            opts.timing = MockTiming.fromWire(value);
+            return null;
+        } catch (IllegalArgumentException _) {
+            err.println("Error: invalid timing: " + value + " (one of " + String.join(", ",
+                    MockTiming.wireValues()) + ")");
+            return 2;
         }
-        return null;
     }
 
     /**
@@ -316,7 +365,8 @@ public final class MockRuntimeCli {
         out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: 7420 or PM_MOCK_WEB_PORT)");
         out.println("  -t, --token <token>         Fixed runtime token for authentication");
         out.println("  -d, --device-secret <secret> Fixed web device secret, bypassing the persisted one");
-        out.println("      --timing <realistic|ordered> How events and chat replies are played (default: realistic)");
+        out.println("      --timing <" + String.join("|", MockTiming.wireValues())
+                + "> How events and chat replies are played (default: " + MockTiming.REALISTIC.wireValue() + ")");
         out.println("  -h, --help                  Print this help message");
     }
 }
