@@ -2481,6 +2481,45 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, WebCredentialResource.stored(key).toMap());
     }
 
+    /**
+     * Serves one recorded credential entry as the terminal reads it before a rotate or a status
+     * ({@code GET /api/v1/credentials/{key}}): its provider, its kind, its expiry, and the store it
+     * is written to, never the secret.
+     *
+     * @param response the response to write
+     * @param path     the request path
+     * @return whether the request addressed a recorded entry
+     * @throws IOException on write failure
+     */
+    private boolean handleCredentialGet(MockHttpResponse response, String path) throws IOException {
+        var key = path.substring(PATH_CREDENTIALS.length());
+        synchronized (onboardingLock) {
+            for (var credential : machineCredentials) {
+                if (!key.equals(credential.get("key"))) {
+                    continue;
+                }
+                var body = new LinkedHashMap<String, Object>();
+                body.put("key", key);
+                body.put(KEY_STATUS, "present");
+                if (credential.get("provider") != null) {
+                    body.put("provider", credential.get("provider"));
+                }
+                if (credential.get("kind") != null) {
+                    body.put("kind", credential.get("kind"));
+                }
+                body.put("token_path", machineCredentialStore);
+                if (credential.get("expires_in_days") != null) {
+                    body.put("expires_in_days", credential.get("expires_in_days"));
+                }
+                body.put("expired", Boolean.TRUE.equals(credential.get("expired")));
+                response.json(200, body);
+                return true;
+            }
+        }
+        response.json(404, Map.of(KEY_ERROR, "credential_unknown"));
+        return true;
+    }
+
     private void broadcastListenerChanged(ListenerState state) {
         var event = new ListenerChangedEvent(ListenerKind.LAN, state, lanListenerPort);
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
@@ -2542,6 +2581,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (PATH_DEVICES.equals(path)) {
             handleListDevices(response);
             return true;
+        }
+        if (path.startsWith(PATH_CREDENTIALS)) {
+            return handleCredentialGet(response, path);
         }
         if (PATH_CONNECTION_STATUS.equals(path)) {
             handleConnectionStatus(response);

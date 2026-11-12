@@ -8,8 +8,8 @@
 # both locales: one Remembered consents row with its count, the documents mode's catalogue word, a
 # Paired devices row, and no wire token on screen.
 
-credentials-rotate-120x30-en | fully-onboarded | - | credentials rotate github | s3cret\n\n | 120x30 | en_US.UTF-8 | -
-credentials-rotate-120x30-de | fully-onboarded | - | credentials rotate github | s3cret\n\n | 120x30 | de_DE.UTF-8 | -
+credentials-rotate-120x30-en | onboarding-settings | settings.choose | credentials rotate github | s3cret\n\n | 120x30 | en_US.UTF-8 | -
+credentials-rotate-120x30-de | onboarding-settings | settings.choose | credentials rotate github | s3cret\n\n | 120x30 | de_DE.UTF-8 | -
 
 config-overview-120x30-en | fully-onboarded | - | config | q\n | 120x30 | en_US.UTF-8 | -
 config-overview-80x24-en | fully-onboarded | - | config | q\n | 80x24 | en_US.UTF-8 | -

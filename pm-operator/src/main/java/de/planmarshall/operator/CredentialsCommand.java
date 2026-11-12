@@ -150,9 +150,9 @@ public final class CredentialsCommand implements Callable<Integer> {
     private int store(PrintWriter out, PrintWriter err, String key, String mode, boolean yes,
                         @Nullable Map<String, Object> status) throws IOException {
         var locale = locale();
-        char[] secret;
         try (var lease = context.openTerminal()) {
             var terminal = lease.terminal();
+            char[] secret;
             try {
                 secret = SecretReader.read(terminal, out, locale);
             } catch (UserInterruptException _) {
@@ -185,15 +185,15 @@ public final class CredentialsCommand implements Callable<Integer> {
                 }
                 var response = context.runtime(true).send(
                                     HttpRequest.json("PUT", path(key), JsonTree.write(body)));
-                return reportStored(out, err, key, response, storeHint(status));
+                return reportStored(out, err, key, response, storeHint(status), terminal);
             } finally {
                 SecretReader.dispose(secret);
             }
         }
     }
 
-    private int reportStored(PrintWriter out, PrintWriter err, String key, HttpResponse response, String store)
-                        throws IOException {
+    private int reportStored(PrintWriter out, PrintWriter err, String key, HttpResponse response, String store,
+                        Terminal terminal) throws IOException {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
             out.println(MessageCatalogue.format(locale, "operator.credentials.failed",
@@ -212,7 +212,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, "operator.credentials.stored",
                             Map.of("key", key, "count", dropped)));
         out.flush();
-        return verifyProviders(out, err, key, store);
+        return verifyProviders(out, err, key, store, terminal);
     }
 
     /**
@@ -227,7 +227,8 @@ public final class CredentialsCommand implements Callable<Integer> {
      * @return the exit code
      * @throws IOException on transport failure
      */
-    private int verifyProviders(PrintWriter out, PrintWriter err, String key, String store) throws IOException {
+    private int verifyProviders(PrintWriter out, PrintWriter err, String key, String store, Terminal terminal)
+                        throws IOException {
         var locale = locale();
         out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
                             Map.of("action", MessageCatalogue.format(locale,
@@ -237,7 +238,8 @@ public final class CredentialsCommand implements Callable<Integer> {
         facts.put("current", store);
         var outcome = ConfigAspectRun.runFor(context, out, err, CREDENTIALS,
                             new ConfigAspectRun.Answers(facts, List.of("verify_providers"), false, false, false,
-                                                false));
+                                                false),
+                            terminal);
         if (outcome.exitCode() != 0) {
             return outcome.exitCode();
         }

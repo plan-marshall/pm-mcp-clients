@@ -293,8 +293,8 @@ class ScreenCaptureIT {
             // is not a settled screen, so the capture fails instead of recording the crash.
             return session.exitCode() == expectedExit;
         }
-        if (raw.contains(StartPrompt.SUFFIX) || (console
-                            && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
+        if (raw.contains(StartPrompt.SUFFIX) || raw.contains("\u203a")
+                            || (console && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();

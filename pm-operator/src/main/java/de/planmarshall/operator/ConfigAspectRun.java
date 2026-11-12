@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.dialogue.AspectRunSource;
@@ -125,16 +127,43 @@ final class ConfigAspectRun {
      */
     static Outcome runFor(OperatorContext context, PrintWriter out, PrintWriter err, String aspect,
                         Answers answers) throws IOException {
-        return new ConfigAspectRun(context, out, err, answers).execute(aspect);
+        return runFor(context, out, err, aspect, answers, null);
     }
 
-    private Outcome execute(String aspect) throws IOException {
+    /**
+     * Runs one aspect of the machine's onboarding again over a terminal the caller already holds, so
+     * a verb that read a secret on its own terminal does not open a second one for the check.
+     *
+     * @param context  the operator context
+     * @param out      the verb's output
+     * @param err      the verb's error output
+     * @param aspect   the aspect's name as the verb spells it
+     * @param answers  the answers the verb carries
+     * @param terminal the caller's terminal, or {@code null} to open one
+     * @return the outcome
+     * @throws IOException on transport failure
+     */
+    static Outcome runFor(OperatorContext context, PrintWriter out, PrintWriter err, String aspect,
+                        Answers answers, @Nullable Terminal terminal) throws IOException {
+        return new ConfigAspectRun(context, out, err, answers).execute(aspect, terminal);
+    }
+
+    private Outcome execute(String aspect, @Nullable Terminal terminal) throws IOException {
         var source = new AspectRunSource(context.runtime(true), context.gate(),
                             AspectRunSource.reconfigureLink(aspect), answers.facts(), answers.consents(),
                             new AspectRunSource.Flags(answers.noIcons(), answers.noAdvice(), answers.yes(),
                                                 answers.noInput()));
+        if (terminal != null) {
+            return runWith(source, aspect, terminal);
+        }
         try (var lease = context.openTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+            return runWith(source, aspect, lease.terminal());
+        }
+    }
+
+    private Outcome runWith(AspectRunSource source, String aspect, Terminal terminal) throws IOException {
+        try {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var dialogue = new StateDialogue(source, out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
