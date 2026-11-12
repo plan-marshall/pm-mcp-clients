@@ -435,7 +435,7 @@ class StateDialogueTest {
                             () -> assertEquals(working, last),
                             () -> assertFalse(last.isFinal()),
                             () -> assertTrue(writer.toString().contains(
-                                                MessageCatalogue.format("en", "onboard.state.waits", Map.of())),
+                                                                    MessageCatalogue.format("en", "onboard.state.waits", Map.of())),
                                                 writer.toString()),
                             () -> assertTrue(elapsed.compareTo(timeout) >= 0,
                                                 "gave up before the working timeout: " + elapsed),
@@ -462,7 +462,7 @@ class StateDialogueTest {
     @Test
     @DisplayName("the production working timeout stays 60 s")
     void theProductionWorkingTimeoutStaysSixtySeconds() {
-        assertEquals(Duration.ofSeconds(60), StateDialogue.WORKING_TIMEOUT);
+        assertEquals(StateDialogue.WORKING_TIMEOUT, Duration.ofSeconds(60));
     }
 
     /**

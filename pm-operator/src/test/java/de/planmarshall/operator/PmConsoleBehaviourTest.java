@@ -435,7 +435,7 @@ class PmConsoleBehaviourTest {
     @Test
     @DisplayName("the console's public constructors keep the 5 s refresh bound")
     void theProductionRefreshBoundStaysFiveSeconds() {
-        assertEquals(Duration.ofSeconds(5), PmConsole.REFRESH_BOUND);
+        assertEquals(PmConsole.REFRESH_BOUND, Duration.ofSeconds(5));
     }
 
     private static void awaitRelease(CountDownLatch release) {
