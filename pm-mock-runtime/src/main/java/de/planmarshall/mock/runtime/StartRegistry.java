@@ -399,16 +399,46 @@ final class StartRegistry {
     }
 
     private void seedEndedWork(Map<String, Object> fixture) {
+        endedWork.putAll(endedWorkOf(fixture));
+    }
+
+    /**
+     * Refuses the ended work a state's start fixture names before any store is touched, so a scenario
+     * switch or a jump to a state with a defective fixture fails instead of half-seeding the engine.
+     *
+     * @param scenario the scenario
+     * @param stateId  the state whose start fixture is read, may be {@code null}
+     * @throws IllegalStateException if two ended items share a subject id
+     */
+    static void validateEndedWork(Scenario scenario, @Nullable String stateId) {
+        endedWorkOf(startFixtureOf(scenario, stateId));
+    }
+
+    /**
+     * Reads the ended work of a start fixture, keyed by subject id. Two ended items with the same
+     * subject id, whatever their kind, are refused: the later one would replace the earlier one
+     * silently.
+     *
+     * @param fixture the state's start fixture
+     * @return the ended work by subject id, in fixture order
+     * @throws IllegalStateException if two ended items share a subject id
+     */
+    private static Map<String, EndedWork> endedWorkOf(Map<String, Object> fixture) {
         var projectId = projectOf(fixture);
+        var read = new LinkedHashMap<String, EndedWork>();
         objects(fixture.get(KEY_ENDED_WORK)).stream()
                 .filter(object -> JsonTree.string(object, KEY_SUBJECT_ID) != null
                         && EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND)) != null)
                 .forEach(object -> {
                     var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
-                    endedWork.put(subjectId, new EndedWork(subjectId,
-                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)), projectId,
-                            JsonTree.string(object, KEY_OUTCOME)));
+                    var ended = new EndedWork(subjectId, EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)),
+                            projectId, JsonTree.string(object, KEY_OUTCOME));
+                    if (read.putIfAbsent(subjectId, ended) != null) {
+                        throw new IllegalStateException("Malformed facts.runtime.start." + KEY_ENDED_WORK
+                                + ": the subject_id '" + subjectId + "' is named twice");
+                    }
                 });
+        return read;
     }
 
     private void seedEntry(Map<String, Object> fixture) {

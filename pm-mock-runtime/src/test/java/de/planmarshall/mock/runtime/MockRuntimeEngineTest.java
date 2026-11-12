@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 
 import org.junit.jupiter.api.AfterEach;
@@ -50,6 +51,9 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.http.SseReader;
@@ -1710,6 +1714,230 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("under ordered timing a reset keeps the start state's events: they follow the reset and replay after it")
+    void orderedStartEventsSurviveReset() throws Exception {
+        assertStartEventsFollowTheReset(MockRuntimeEngine::reset);
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("under ordered timing a scenario switch keeps the start state's events: they follow the reset and replay after it")
+    void orderedStartEventsSurviveSwitch() throws Exception {
+        assertStartEventsFollowTheReset(live -> live.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM));
+    }
+
+    @Test
+    @DisplayName("refuses two seeded chats about one subject instead of keeping the later one")
+    void refusesTwoChatsAboutOneSubject() throws Exception {
+        var first = firstSeededChat();
+        var twin = new ChatResource("C-" + Generators.letterStrings(4, 8).next(), first.subject(), first.role(),
+                first.scope(), first.state(), first.context(), first.proposal(), first.turns(), first.before());
+
+        assertChatSeedsRefused(twin, first.subject().id());
+    }
+
+    @Test
+    @DisplayName("refuses two seeded chats with one id instead of keeping both under one id")
+    void refusesTwoChatsWithOneId() throws Exception {
+        var first = firstSeededChat();
+        var other = new ChatResource(first.id(),
+                new ChatSubject(first.subject().kind(), Generators.letterStrings(4, 10).next().toLowerCase()),
+                first.role(), first.scope(), first.state(), first.context(), first.proposal(), first.turns(),
+                first.before());
+
+        assertChatSeedsRefused(other, first.id());
+    }
+
+    @Test
+    @DisplayName("refuses an ended plan and an ended epic with one id instead of keeping the later one")
+    void refusesEndedWorkNamedTwice() {
+        var before = engine.currentScenario().name();
+        var reference = StandardScenarios.PROJECTS_AND_START + "#start.follow-up";
+        var ended = new ArrayList<Object>(Objects.requireNonNull(
+                JsonTree.asArray(member(startRuntimeFixture(reference), "start").get("ended_work"))));
+        var twin = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.asObject(ended.getFirst())));
+        var subjectId = String.valueOf(twin.get("subject_id"));
+        twin.put("subject_kind", "plan".equals(twin.get("subject_kind")) ? "epic" : "plan");
+        ended.add(twin);
+        registry.register(withStartRuntimeFixture(reference, runtime -> {
+            var start = member(runtime, "start");
+            start.put("ended_work", ended);
+            runtime.put("start", start);
+        }));
+
+        var failure = assertThrows(IllegalStateException.class, () -> engine.switchScenario(brokenName));
+
+        assertAll(
+                () -> assertTrue(failure.getMessage().contains("facts.runtime.start.ended_work"), failure.getMessage()),
+                () -> assertTrue(failure.getMessage().contains(subjectId), failure.getMessage()),
+                () -> assertEquals(before, engine.currentScenario().name(), "the refused switch changes nothing"));
+    }
+
+    /**
+     * Starts a runtime under ordered timing whose start state plays one event, opens the runtime's
+     * stream, restarts the scenario and proves the event arrives after the restart's {@code reset} and
+     * is replayed to a client that reconnects with the id of that {@code reset}.
+     *
+     * @param restart what restarts the scenario: a reset or a scenario switch
+     */
+    private void assertStartEventsFollowTheReset(Consumer<MockRuntimeEngine> restart) throws Exception {
+        var stateId = "start." + Generators.letterStrings(4, 8).next().toLowerCase();
+        var marker = markerEvent();
+        registerSystemStart(stateId, List.of(new EventDefinition(Generators.integers(0, 500).next(), marker, Map.of())));
+        var reset = EventName.RESET.wire();
+        var latches = Map.of(marker, new CountDownLatch(1));
+
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                .registry(registry)
+                .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
+                .timing(MockTiming.ORDERED)
+                .build())) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = "Bearer " + runtime.token();
+            String resetId;
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer))) {
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), events, latches);
+
+                restart.accept(runtime.engine());
+
+                assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS), "the start state's event arrives: " + events);
+                var names = events.stream().map(SseEvent::event).toList();
+                assertTrue(names.contains(reset) && names.indexOf(reset) < names.indexOf(marker),
+                        "the reset precedes the start state's events: " + names);
+                resetId = events.get(names.indexOf(reset)).id();
+            }
+
+            var replayLatches = Map.of(marker, new CountDownLatch(1));
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer)
+                         .withHeader("Last-Event-ID", resetId))) {
+                var replayed = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), replayed, replayLatches);
+                assertTrue(replayLatches.get(marker).await(5, TimeUnit.SECONDS),
+                        "a client that reconnects after the reset replays the start state's events: " + replayed);
+            }
+        }
+    }
+
+    /**
+     * @return the first chat the state {@code control.chat} seeds, a chat about the plan
+     *         {@code fix-relay}
+     */
+    private ChatResource firstSeededChat() throws IOException {
+        var chats = seededChats();
+        assertFalse(chats.isEmpty(), "the state seeds a chat");
+        return ChatResource.fromMap(Objects.requireNonNull(JsonTree.asObject(chats.getFirst())));
+    }
+
+    /**
+     * @return the chats the state {@code control.chat} seeds: its own, or those of the scenario's base
+     *         state {@code running_work.active} when it declares none
+     */
+    private List<Object> seededChats() {
+        var scenario = registry.resolve(CHAT_STATE);
+        var own = JsonTree.asArray(member(runtimeFixture(scenario, scenario.start()), "control").get("chats"));
+        var chats = own != null ? own
+                : JsonTree.asArray(member(runtimeFixture(scenario, "running_work.active"), "control").get("chats"));
+        return chats == null ? List.of() : chats;
+    }
+
+    /**
+     * @param reference the scenario, with the state to start in after {@code #}
+     * @return a copy of the runtime fixture of that state's own operator facts
+     */
+    private Map<String, Object> startRuntimeFixture(String reference) {
+        var scenario = registry.resolve(reference);
+        return runtimeFixture(scenario, scenario.start());
+    }
+
+    /**
+     * @return a copy of the runtime fixture of a state's own operator facts
+     */
+    private static Map<String, Object> runtimeFixture(Scenario scenario, String stateId) {
+        var representation = Objects.requireNonNull(JsonTree.asObject(
+                Objects.requireNonNull(scenario.state(stateId)).representation()));
+        return member(member(representation, "facts"), "runtime");
+    }
+
+    /**
+     * Copies a scenario as one named {@link #brokenName} whose start state's runtime fixture is
+     * changed: the start state's own fixture, not the scenario's base one.
+     *
+     * @param reference the scenario, with the state to start in after {@code #}
+     * @param change    changes the copy of the start state's runtime fixture in place
+     * @return the changed scenario
+     */
+    private Scenario withStartRuntimeFixture(String reference, Consumer<Map<String, Object>> change) {
+        var base = registry.resolve(reference);
+        var state = Objects.requireNonNull(base.state(base.start()));
+        var representation = new LinkedHashMap<String, Object>(
+                Objects.requireNonNull(JsonTree.asObject(state.representation())));
+        var facts = member(representation, "facts");
+        var runtime = member(facts, "runtime");
+        change.accept(runtime);
+        facts.put("runtime", runtime);
+        representation.put("facts", facts);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(base.start(), new StateDefinition(representation, state.links(), state.events(), state.auto()));
+        return new Scenario(base.formatVersion(), brokenName, base.description(), base.start(), base.pairingCode(),
+                base.routes(), states);
+    }
+
+    /**
+     * @return a copy of the object member of a map, empty when the map has none
+     */
+    private static Map<String, Object> member(Map<String, Object> map, String key) {
+        var copy = new LinkedHashMap<String, Object>();
+        if (map.get(key) instanceof Map<?, ?> value) {
+            value.forEach((name, item) -> copy.put(String.valueOf(name), item));
+        }
+        return copy;
+    }
+
+    /**
+     * Registers the reports-and-system scenario starting in one more state: the state
+     * {@code system.running} with the given scheduled events.
+     *
+     * @param stateId the new start state
+     * @param events  the state's own scheduled events
+     */
+    private void registerSystemStart(String stateId, List<EventDefinition> events) {
+        var base = registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM);
+        var running = Objects.requireNonNull(base.state(STATE_SYSTEM_RUNNING));
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(running.representation(), running.links(), events, null));
+        registry.register(new Scenario(base.formatVersion(), base.name(), base.description(), stateId,
+                base.pairingCode(), base.routes(), states));
+    }
+
+    /**
+     * Registers the state {@code control.chat} with one more seeded chat as a scenario of its own and
+     * proves that switching to it is refused with the fixture path and the duplicate named, and changes
+     * nothing.
+     *
+     * @param extra    the chat added to the state's own
+     * @param expected what the refusal names besides the fixture path
+     */
+    private void assertChatSeedsRefused(ChatResource extra, String expected) {
+        var before = engine.currentScenario().name();
+        var chats = new ArrayList<Object>(seededChats());
+        chats.add(extra.toMap());
+        registry.register(withStartRuntimeFixture(CHAT_STATE, runtime -> {
+            var control = member(runtime, "control");
+            control.put("chats", chats);
+            runtime.put("control", control);
+        }));
+
+        var failure = assertThrows(IllegalStateException.class, () -> engine.switchScenario(brokenName));
+
+        assertAll(
+                () -> assertTrue(failure.getMessage().contains("facts.runtime.control.chats"), failure.getMessage()),
+                () -> assertTrue(failure.getMessage().contains(expected), failure.getMessage()),
+                () -> assertEquals(before, engine.currentScenario().name(), "the refused switch changes nothing"));
+    }
+
+    @Test
     @DisplayName("a repeated stop during a drain of a signal keeps the drain non-withdrawable")
     void repeatedStopKeepsSignalDrainNonWithdrawable() throws Exception {
         engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
@@ -1748,6 +1976,8 @@ class MockRuntimeEngineTest {
 
     private static final String PATH_STOP = "/api/v1/operator/runtime/stop";
     private static final String STATE_SYSTEM_RUNNING = "system.running";
+    /** The state that seeds the chats, among them the chat about the plan {@code fix-relay}. */
+    private static final String CHAT_STATE = StandardScenarios.RUNNING_WORK + "#control.chat";
     private static final String STATE_DRAINING_SIGNAL = "system.draining-signal";
     private static final String EVENT_DECISION_CLOSED = "decision.closed";
     private static final String EVENT_DRAINING = "runtime.draining";

@@ -916,6 +916,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
+        StartRegistry.validateEndedWork(scenario, scenario.start());
         validateStateFacts(scenario, scenario.start());
         this.currentScenario.set(scenario);
         this.currentStateId.set(scenario.start());
@@ -927,8 +928,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         configRoutes.clear();
         seedStateFixtures();
         designer.init(scenario);
-        transitionTo(scenario.start());
+        // The reset goes first: it clears every ring buffer, and under ordered timing the start state
+        // plays its events inline, so a reset after them would throw them away. The previous state's
+        // scheduled events are cancelled before it, so none of them lands after the reset.
+        cancelPendingTasks();
         broadcastReset();
+        transitionTo(scenario.start());
     }
 
     /**
@@ -943,8 +948,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.fixtureStateId.set(currentScenario.get().start());
         seedStateFixtures();
         designer.init(currentScenario.get());
-        transitionTo(currentScenario.get().start());
+        // The reset goes first, as in a scenario switch: the start state's ordered events must survive it.
+        cancelPendingTasks();
         broadcastReset();
+        transitionTo(currentScenario.get().start());
     }
 
     /**
@@ -1384,6 +1391,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture != null) {
             validateFixtureMembers(fixture);
         }
+        StartRegistry.validateEndedWork(scenario, stateId);
         validateStateFacts(scenario, stateId);
         var operatorDecisions = openOperatorCreatedDecisionIds();
         var previousStateId = this.fixtureStateId.get();
@@ -3110,11 +3118,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * @param control the control fixture
      * @return the chats the fixture declares under {@code chats}, each as {@code GET …/chat} reads it
+     * @throws IllegalStateException if a chat does not read, or two chats share a subject or an id: the
+     *                               registry holds one chat per subject, so the later one would replace
+     *                               the earlier one silently
      */
     private static List<ChatResource> readChatSeeds(Map<String, Object> control) {
         var chats = new ArrayList<ChatResource>();
+        var subjects = new HashSet<ChatSubject>();
+        var ids = new HashSet<String>();
         for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
-            chats.add(readFixture(() -> ChatResource.fromMap(chat), "facts.runtime.control.chats"));
+            var read = readFixture(() -> ChatResource.fromMap(chat), "facts.runtime.control.chats");
+            if (!subjects.add(read.subject())) {
+                throw new IllegalStateException("Malformed facts.runtime.control.chats: the subject "
+                        + read.subject().kind().wireValue() + " '" + read.subject().id() + "' has two chats");
+            }
+            if (!ids.add(read.id())) {
+                throw new IllegalStateException("Malformed facts.runtime.control.chats: the chat id '"
+                        + read.id() + "' is named twice");
+            }
+            chats.add(read);
         }
         return chats;
     }
