@@ -230,6 +230,7 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("onboarding-refusals", "onboarding#harness.consent");
             registry.registerLegacyAlias("onboarding-unknown-harness", "onboarding#harness.unknown");
             registry.registerLegacyAlias("onboarding-settings-conflict", "onboarding#settings.conflict");
+            registry.registerLegacyAlias("onboarding-settings", "onboarding#settings.choose");
             registry.registerLegacyAlias("web-pairing", "onboarding#web.pair");
             registry.registerLegacyAlias("entry", "onboarding#entry.ready");
             registry.registerLegacyAlias("entry-unonboarded", "onboarding#entry.unonboarded");

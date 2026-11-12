@@ -204,6 +204,7 @@ import de.planmarshall.api.system.WorkerMetric;
 import de.planmarshall.api.system.WorkerState;
 import de.planmarshall.api.web.PairedDevice;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.http.MockConfigRoutes;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
@@ -338,7 +339,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_NEEDS_OPERATOR = "needs_operator";
     private static final String REBASE_ONTO_MAIN = "Rebase onto main";
     private static final String DECISION_REBASE = "rebase";
-    private static final String OPERATOR_CHANNEL = "operator";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
@@ -414,11 +414,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
+    private static final String KEY_INTERFACE = "interface";
+    private static final String KEY_MODEL = "model";
+    private static final String KEY_CURRENT = "current";
+    private static final String KEY_VERIFY = "verify";
+    /** The later run's submit link: the one that records the answer. */
+    private static final String LINK_SET = "set";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
     private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
     private static final String KEY_LANGUAGE_MODEL = "language_model";
     private static final String LANGUAGE_CODE_GERMAN = "de";
     private static final String LANGUAGE_CODE_ENGLISH = "en";
+    /** The model-language choice that follows the interface language. */
+    private static final String LANGUAGE_CODE_SAME = "same";
     private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
@@ -470,6 +478,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
+    /** The provider key the mock's fixtures record a credential for. */
+    private static final String CONST_GITHUB = "github";
     private static final String CONST_SONNET = "sonnet-4.5";
     private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
             KEY_EPICS_AFTER_DAYS, KEY_LOGS_AFTER_DAYS, KEY_REPORTS_AFTER_DAYS, KEY_UNENROLLED_AFTER_DAYS);
@@ -760,6 +770,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
 
+    /** The credential store a later run of the store aspect chose. */
+    private String machineCredentialStore = "os";
+    /** Whether the providers' later run verified them. */
+    private boolean machineProvidersVerified;
+
+    /** The wire name of the operator channel, in the fixtures that report it. */
+    private static final String OPERATOR_FIELD = "operator";
+
+    /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
+    private final MockConfigRoutes configRoutes = new MockConfigRoutes();
+
     private final Object controlLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
     private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
@@ -837,6 +858,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.pairingCounter = 0;
         offeredOperatorLinks.clear();
         operatorActs.clear();
+        configRoutes.clear();
         seedStateFixtures();
         designer.init(scenario);
         transitionTo(scenario.start());
@@ -849,6 +871,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     public synchronized void reset() {
         offeredOperatorLinks.clear();
         operatorActs.clear();
+        configRoutes.clear();
         this.currentPairingCode = currentScenario.get().pairingCode();
         this.pairingCounter = 0;
         this.fixtureStateId.set(currentScenario.get().start());
@@ -1866,7 +1889,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             "/api/v1/enrol",
             "/api/v1/credentials",
             "/api/v1/machine/decisions",
-            "/api/v1/machine/settings");
+            "/api/v1/machine/settings",
+            MockConfigRoutes.PATH);
 
     private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
@@ -1876,6 +1900,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return handleDeviceRoutes(request, response, isWeb)
                 || handleOnboardingRoutes(request, response)
                 || handleMachineSettingsRoutes(request, response)
+                || handleConfigRoutes(request, response)
                 || handleEnrolmentRoutes(request, response)
                 || refuseTamperedEnrolment(request, response)
                 || handleDesignerRoutes(request, response, isWeb)
@@ -2762,7 +2787,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var currentDigest = existing.levels().getFirst().digest();
             if (currentDigest != null && !currentDigest.isBlank() && !currentDigest.equals(bodyDigest)) {
                 response.json(409, Map.of(KEY_ERROR, ERR_CONFLICT, KEY_MESSAGE,
-                        unit + " changed since the comparison", "current", existing.toMap()));
+                        unit + " changed since the comparison", KEY_CURRENT, existing.toMap()));
                 return;
             }
         }
@@ -5276,7 +5301,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, OPERATOR_CHANNEL, "web", "iPad", null),
+                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, OPERATOR_FIELD, "web", "iPad", null),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
         var fixRelayOwnCalls = List.of(
@@ -7042,6 +7067,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             machineDocumentsMode = DocumentsMode.ASK.wireValue();
             machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
             machineLanguageModel = LANGUAGE_CODE_ENGLISH;
+            machineCredentialStore = "os";
+            machineProvidersVerified = false;
             onboardingAuto = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
@@ -7060,7 +7087,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             machineRememberedConsents.add(rememberedConsent(ConsentKind.PROBE_HARNESS_LOGIN.wireValue(),
                     "Firefox", "2026-10-12T09:12:00Z"));
             machineCredentials.clear();
-            machineCredentials.add(credential("github", "GitHub", "fine-grained", 9, false));
+            machineCredentials.add(credential(CONST_GITHUB, "GitHub", "fine-grained", 9, false));
             machineCredentials.add(credential("sonar", "SonarCloud", "user token", null, false));
         }
     }
@@ -7131,7 +7158,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (state != null && state.representation() instanceof Map<?, ?> rep) {
             copyOperatorFacts(rep, body);
             copyOperatorScope(rep, body);
-            body.put(OPERATOR_CHANNEL, rep);
+            body.put(OPERATOR_FIELD, rep);
         }
         var links = onboardingLinkMap(state);
         if (!links.isEmpty()) {
@@ -7278,8 +7305,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     Objects.requireNonNullElse(link.error(), "rejected"), KEY_STATE, previousState));
             return;
         }
-        if (previousState != null && previousState.startsWith("language.")) {
-            recordInterfaceLanguage(body);
+        if (previousState != null && (previousState.startsWith("language.")
+                || previousState.startsWith("language.reconfigure"))) {
+            recordInterfaceLanguage(body, previousState, linkName);
+        }
+        if (previousState != null && previousState.endsWith(".reconfigure")) {
+            recordAspectAnswer(previousState, linkName, body);
         }
         String newState;
         synchronized (this) {
@@ -7298,17 +7329,72 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Records the interface and model language the operator chose at the language step (UC-ONB-3).
+     * The first run names the fields {@code language_interface}/{@code language_model}; a later run
+     * submits the state's own {@code interface}/{@code model} facts, and only through {@code set}.
      *
-     * @param body the step's request body
+     * @param body          the step's request body
+     * @param previousState the state the step left
+     * @param linkName      the link the step took
      */
-    private void recordInterfaceLanguage(Map<String, Object> body) {
-        var chosenInterface = JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
+    private void recordInterfaceLanguage(Map<String, Object> body, String previousState,
+            @Nullable String linkName) {
+        var reconfigure = previousState.startsWith("language.reconfigure");
+        if (reconfigure && !LINK_SET.equals(linkName)) {
+            return;
+        }
+        var chosenInterface = JsonTree.string(body,
+                reconfigure ? KEY_INTERFACE : KEY_LANGUAGE_INTERFACE);
         if (isSupportedLanguage(chosenInterface)) {
             machineLanguageInterface = Objects.requireNonNull(chosenInterface);
         }
-        var chosenModel = JsonTree.string(body, KEY_LANGUAGE_MODEL);
-        if (isSupportedLanguage(chosenModel)) {
+        var chosenModel = JsonTree.string(body,
+                reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
+        if (choiceSame(chosenModel)) {
+            machineLanguageModel = machineLanguageInterface;
+        } else if (isSupportedLanguage(chosenModel)) {
             machineLanguageModel = Objects.requireNonNull(chosenModel);
+        }
+    }
+
+    /**
+     * @param code a model-language choice
+     * @return {@code true} for the choice that follows the interface language
+     */
+    private static boolean choiceSame(@Nullable String code) {
+        return LANGUAGE_CODE_SAME.equals(code);
+    }
+
+    /**
+     * Records what a later run submitted at its own state: a plan default, the credential store, the
+     * provider check, or nothing the aspect keeps. A run that leaves through {@code back} recorded
+     * nothing, so it changes nothing.
+     *
+     * @param state    the reconfigure state the step left
+     * @param linkName the link the step took
+     * @param body     the step's request body
+     */
+    private void recordAspectAnswer(String state, @Nullable String linkName, Map<String, Object> body) {
+        if (!LINK_SET.equals(linkName)) {
+            return;
+        }
+        if (state.startsWith("defaults.reconfigure")) {
+            for (var key : List.of(KEY_LANDING, KEY_METHOD, KEY_ASKING)) {
+                var chosen = JsonTree.string(body, key);
+                if (chosen != null && !chosen.isBlank()) {
+                    machinePlanDefaults.put(key, chosen);
+                }
+            }
+            return;
+        }
+        if (state.startsWith("store.reconfigure")) {
+            var store = JsonTree.string(body, KEY_CURRENT);
+            if (store != null && !store.isBlank()) {
+                machineCredentialStore = store;
+            }
+            return;
+        }
+        if (state.startsWith("providers.reconfigure")) {
+            machineProvidersVerified = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
         }
     }
 
@@ -7341,6 +7427,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
         handleOnboardingState(response);
     }
 
+    private boolean handleConfigRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        return configRoutes.handle(request, response, machineConfigValues());
+    }
+
+    /**
+     * @return the machine's own configuration values, by effective key ({@code GET /api/v1/config})
+     */
+    private Map<String, Object> machineConfigValues() {
+        var values = new LinkedHashMap<String, Object>();
+        synchronized (onboardingLock) {
+            values.put("language.interface", machineLanguageInterface);
+            values.put("language.model", machineLanguageModel);
+            values.put("sources.documents_mode", machineDocumentsMode);
+            machinePlanDefaults.forEach((key, value) -> values.put("plan_defaults." + key, value));
+            machineCleanupDurations.forEach((key, value) -> values.put("cleanup." + key, value));
+            values.put("harness.default", CONST_CLAUDE);
+            values.put("models.allowed", "4");
+            values.put("roles.assigned", "31");
+            values.put("credentials.store", machineCredentialStore);
+            values.put("providers.enabled", machineProvidersVerified ? CONST_GITHUB + " (verified)" : CONST_GITHUB);
+        }
+        return values;
+    }
+
     private boolean handleMachineSettingsRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         if (!"/api/v1/machine/settings".equals(request.path())) {
             return false;
@@ -7365,8 +7475,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
                     aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
                     aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
-                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
-                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
+                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
+                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
                             String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
             body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
@@ -7398,7 +7508,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         map.put("aspect", aspect.wireValue());
         map.put("step", aspect.step());
         map.put(FIXTURE_SUMMARY, summary);
-        map.put("current", current);
+        map.put(KEY_CURRENT, current);
         return map;
     }
 
@@ -9450,7 +9560,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "by", OPERATOR_CHANNEL,
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
                     FIELD_FREED_BYTES, freedBytes
@@ -9502,7 +9612,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "by", OPERATOR_CHANNEL,
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli",
                     KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
@@ -9551,7 +9661,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "ignore",
-                    "by", OPERATOR_CHANNEL,
+                    "by", OPERATOR_FIELD,
                     "channel", isWeb ? "web" : "cli"
             ));
 

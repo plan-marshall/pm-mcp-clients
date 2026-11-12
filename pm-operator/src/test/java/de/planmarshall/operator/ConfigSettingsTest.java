@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,6 +20,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -114,21 +116,51 @@ class ConfigSettingsTest {
     }
 
     @Test
-    @DisplayName("a step of the settings opens its aspect")
+    @DisplayName("a step of the settings opens its aspect as a later run of its sub-workflow")
     void opensAspect() throws Exception {
+        var steps = new ArrayList<String>();
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target())) {
                 response.json(200, SETTINGS);
-            } else if ("/api/v1/config/language".equals(request.target())) {
-                response.json(200, "{\"ok\":true}");
+            } else if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                var body = request.bodyText() == null ? "" : request.bodyText();
+                steps.add(body);
+                if (body.contains("reconfigure:language")) {
+                    response.json(200, LANGUAGE_RECONFIGURE);
+                } else {
+                    response.json(200, SETTINGS_CHOOSE);
+                }
             } else {
                 response.send(404, null, "");
             }
         });
-        var code = run(context("1\nq\n"), "config");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("Language settings updated"), out.toString());
+        var code = run(context("1\n\n"), "config");
+        assertEquals(0, code, out.toString());
+        assertAll(
+                            () -> assertEquals(3, steps.size(), steps.toString()),
+                            () -> assertTrue(steps.get(0).contains("\"link\":\"settings\""), steps.toString()),
+                            () -> assertTrue(steps.get(1).contains("\"link\":\"reconfigure:language\""),
+                                                steps.toString()),
+                            () -> assertTrue(steps.get(2).contains("\"link\":\"set\""), steps.toString()),
+                            () -> assertTrue(out.toString().contains("Change the languages again"), out.toString()));
     }
+
+    private static final String ONBOARD_COMPLETED = """
+                        {"state":{"state_id":"onboard.completed","kind":"completed","level":"machine"},
+                         "links":[{"id":"settings","rel":"next","method":"POST","href":"/api/v1/onboarding/settings"}]}
+                        """;
+    private static final String SETTINGS_CHOOSE = """
+                        {"state":{"state_id":"settings.choose","kind":"operator_wait","level":"machine"},
+                         "links":[{"id":"reconfigure:language","rel":"alt","method":"POST","href":"/api/v1/onboarding/settings/reconfigure/language"},
+                                  {"id":"done","rel":"next","method":"POST","href":"/api/v1/onboarding/settings/done","preselected":true}]}
+                        """;
+    private static final String LANGUAGE_RECONFIGURE = """
+                        {"state":{"state_id":"language.reconfigure","kind":"operator_wait","level":"machine"},
+                         "facts":{"summary":"The languages run again","aspect":"language","interface":"en","model":"same"},
+                         "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/language/set","preselected":true}]}
+                        """;
 
     @Test
     @DisplayName("the consents are listed and one is withdrawn on confirmation")

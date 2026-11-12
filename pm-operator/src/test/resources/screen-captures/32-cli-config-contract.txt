@@ -1,0 +1,21 @@
+# Screen captures for PLAN-32: The Config Contract
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
+#
+# The set holds the machine settings' overview (`config`) and the effective values (`config show`) of
+# `fully-onboarded`, at both sizes and in both locales: the two views this plan changes. The overview
+# capture is a line dialogue and is read from `{name}.stdout.txt`; `config show` is a printed verb.
+#
+# CLI-UC-F-04 / CLI-UC-V-08: `config show` reads `GET /api/v1/config` and exits 0 where the runtime
+# serves it. Before this plan the mock served no such route, so the same set left with 1.
+
+# CLI-UC-F-05: the overview aligns its values in one column and prints its prompt on a line of its own.
+config-overview-120x30-en | fully-onboarded | - | config | q\n | 120x30 | en_US.UTF-8 | -
+config-overview-80x24-en | fully-onboarded | - | config | q\n | 80x24 | en_US.UTF-8 | -
+config-overview-120x30-de | fully-onboarded | - | config | q\n | 120x30 | de_DE.UTF-8 | -
+config-overview-80x24-de | fully-onboarded | - | config | q\n | 80x24 | de_DE.UTF-8 | -
+
+# CLI-UC-F-04 / CLI-UC-V-08: `config show` works against the runtime and names every value's origin.
+config-show-120x30-en | fully-onboarded | - | config show | - | 120x30 | en_US.UTF-8 | -
+config-show-80x24-en | fully-onboarded | - | config show | - | 80x24 | en_US.UTF-8 | -
+config-show-120x30-de | fully-onboarded | - | config show | - | 120x30 | de_DE.UTF-8 | -
+config-show-80x24-de | fully-onboarded | - | config show | - | 80x24 | de_DE.UTF-8 | -
