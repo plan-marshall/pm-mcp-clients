@@ -75,6 +75,7 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String CREDENTIAL_STORE_KEY = "credentials.store";
     private static final String DOCUMENTS_MODE_KEY = "sources.documents_mode";
     private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
+    private static final String ONE_LEVEL = "operator.config.one_level";
     private static final String CONFIG_VERB = "config";
     private static final String DOCUMENTS = "documents";
     private static final String CREDENTIALS = "credentials";
@@ -117,7 +118,7 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final List<String> VALUE_TEXT_KEYS = List.of(
                         "onboard.value.",
                         "unit.",
-                        "onboard.settings.documents.");
+                        DOCUMENTS_TEXT_PREFIX);
 
     private final OperatorContext context;
 
@@ -638,12 +639,12 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 1;
             }
             if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
             if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
@@ -705,12 +706,12 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 1;
             }
             if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
             if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, "operator.config.one_level", Map.of()));
+                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }

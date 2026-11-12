@@ -568,7 +568,7 @@ class ConfigCommandTest {
 
     @Test
     @DisplayName("config set refuses two levels at once")
-    void configRefusesTwoLevels() throws Exception {
+    void configRefusesTwoLevels() {
         int machineAndProject = execute("config", "set", "--machine", "--project", "p", "custom.key", "1");
         var text = out.toString();
         out.getBuffer().setLength(0);

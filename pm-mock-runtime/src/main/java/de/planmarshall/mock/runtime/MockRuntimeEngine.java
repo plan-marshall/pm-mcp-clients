@@ -471,6 +471,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
+    /** The provider key the mock's fixtures record a credential for. */
+    private static final String CONST_GITHUB = "github";
     private static final String CONST_SONNET = "sonnet-4.5";
     private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
             KEY_EPICS_AFTER_DAYS, KEY_LOGS_AFTER_DAYS, KEY_REPORTS_AFTER_DAYS, KEY_UNENROLLED_AFTER_DAYS);
@@ -7042,7 +7044,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             machineRememberedConsents.add(rememberedConsent(ConsentKind.PROBE_HARNESS_LOGIN.wireValue(),
                     "Firefox", "2026-10-12T09:12:00Z"));
             machineCredentials.clear();
-            machineCredentials.add(credential("github", "GitHub", "fine-grained", 9, false));
+            machineCredentials.add(credential(CONST_GITHUB, "GitHub", "fine-grained", 9, false));
             machineCredentials.add(credential("sonar", "SonarCloud", "user token", null, false));
         }
     }
@@ -7292,15 +7294,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void recordInterfaceLanguage(Map<String, Object> body, String previousState) {
         var reconfigure = previousState.startsWith("language.reconfigure");
-        var chosenInterface = reconfigure
-                ? JsonTree.string(body, KEY_INTERFACE)
-                : JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
+        var chosenInterface = JsonTree.string(body,
+                reconfigure ? KEY_INTERFACE : KEY_LANGUAGE_INTERFACE);
         if (isSupportedLanguage(chosenInterface)) {
             machineLanguageInterface = Objects.requireNonNull(chosenInterface);
         }
-        var chosenModel = reconfigure
-                ? JsonTree.string(body, KEY_MODEL)
-                : JsonTree.string(body, KEY_LANGUAGE_MODEL);
+        var chosenModel = JsonTree.string(body,
+                reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
         if (isSupportedLanguage(chosenModel)) {
             machineLanguageModel = Objects.requireNonNull(chosenModel);
         }
@@ -7383,7 +7383,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             values.put("models.allowed", "4");
             values.put("roles.assigned", "31");
             values.put("credentials.store", machineCredentialStore);
-            values.put("providers.enabled", machineProvidersVerified ? "github (verified)" : "github");
+            values.put("providers.enabled", machineProvidersVerified ? CONST_GITHUB + " (verified)" : CONST_GITHUB);
         }
         return values;
     }
@@ -7413,7 +7413,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
                     aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
                     aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
-                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
+                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
                             String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
             body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
