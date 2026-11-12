@@ -325,8 +325,8 @@ class ChatProposalsTest {
                         () -> assertEquals(PROJECT, started.projectId()),
                         () -> assertEquals(StartState.SOURCES, started.state()),
                         () -> assertTrue(started.sources().stream()
-                                .anyMatch(source -> source.kind() == SourceKind.DESCRIPTION
-                                        && String.valueOf(source.reference()).contains(planId)),
+                                        .anyMatch(source -> source.kind() == SourceKind.DESCRIPTION
+                                                && String.valueOf(source.reference()).contains(planId)),
                                 "the start follows the plan"));
             }
         }
@@ -373,7 +373,7 @@ class ChatProposalsTest {
                 assertAll("the reply has ended",
                         () -> assertNotEquals(ChatStatus.REPLY, replied.state()),
                         () -> assertTrue(replied.turns().stream()
-                                .noneMatch(turn -> turn.status() == TurnStatus.STREAMING),
+                                        .noneMatch(turn -> turn.status() == TurnStatus.STREAMING),
                                 String.valueOf(replied.turns())));
                 send(runtime, routes);
             }

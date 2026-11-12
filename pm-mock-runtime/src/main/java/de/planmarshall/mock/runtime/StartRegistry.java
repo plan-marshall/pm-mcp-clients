@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -659,7 +658,7 @@ final class StartRegistry {
     synchronized Map<ChatSubject, @Nullable String> endedSubjects() {
         var subjects = new LinkedHashMap<ChatSubject, @Nullable String>();
         endedWork.values().forEach(ended -> subjects.put(new ChatSubject(
-                ended.kind().epic() ? ChatSubjectKind.EPIC : ChatSubjectKind.PLAN, ended.subjectId()),
+                        ended.kind().epic() ? ChatSubjectKind.EPIC : ChatSubjectKind.PLAN, ended.subjectId()),
                 ended.outcome()));
         return subjects;
     }
