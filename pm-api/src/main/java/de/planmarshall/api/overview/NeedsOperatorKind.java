@@ -14,7 +14,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Closed enumeration of reasons why an item needs operator attention, in the order of the
  * specification: the decision, the waiver, any other operator wait, the holds, new findings, the
- * setup, then the machine's own items.
+ * setup, then the machine's own items — and, after them, the client's fallback for a reason this
+ * version does not know ({@link #OTHER}), which no runtime serves.
  */
 public enum NeedsOperatorKind {
     DECISION("decision"),
@@ -28,7 +29,14 @@ public enum NeedsOperatorKind {
     FINDINGS("findings"),
     SETUP("setup"),
     CREDENTIAL("credential"),
-    CLEANUP_DUE("cleanup_due");
+    CLEANUP_DUE("cleanup_due"),
+
+    /**
+     * The word for a reason this version does not know: a runtime that serves a kind added after
+     * this client was built still renders a row (04-console.adoc#pushed), instead of failing the
+     * whole list. No runtime serves this value.
+     */
+    OTHER("other");
 
     private final String value;
 
@@ -68,6 +76,19 @@ public enum NeedsOperatorKind {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves an enum constant from its wire string value for a client that must keep rendering: a
+     * kind this version does not know resolves to {@link #OTHER}, so one new runtime kind never
+     * fails the whole list.
+     *
+     * @param value wire string
+     * @return the enum constant, or {@link #OTHER} for a value this version does not know
+     */
+    public static NeedsOperatorKind fromWireOrOther(@Nullable String value) {
+        var kind = fromValue(value);
+        return kind != null ? kind : OTHER;
     }
 
     /**

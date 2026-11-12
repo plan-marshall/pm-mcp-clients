@@ -242,11 +242,13 @@ class TuiCapabilityIT {
                                 .filter(line -> line.contains("move") || line.contains("leave"))
                                 .findFirst()
                                 .orElse("");
-            var omitted = kind == TuiLevel.Kind.PLAN || kind == TuiLevel.Kind.OVERVIEW;
+            var cut = kind == TuiLevel.Kind.PLAN || kind == TuiLevel.Kind.OVERVIEW;
             assertAll(
                                 () -> assertTrue(footer.contains("move"), session.screenText()),
-                                () -> assertTrue(footer.contains(omitted ? "? more" : "? help"), footer),
-                                () -> assertFalse(footer.contains(omitted ? "? help" : "? more"), footer),
+                                () -> assertTrue(footer.contains("? help"), footer),
+                                () -> assertTrue(!cut || footer.contains("? more"), footer),
+                                () -> assertFalse(!cut && footer.contains("? more"),
+                                                    "a footer that left nothing out never advertises ? more: " + footer),
                                 () -> assertFalse(footer.contains("Esc close"), footer),
                                 () -> assertFalse(footer.contains("views"), footer),
                                 () -> assertFalse(footer.contains("\u2502"), footer),

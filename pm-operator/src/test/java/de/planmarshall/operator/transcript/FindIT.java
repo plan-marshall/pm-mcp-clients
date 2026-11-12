@@ -79,6 +79,29 @@ class FindIT {
         }
     }
 
+    @Test
+    @DisplayName("Ctrl+C leaves the find field and finds the prompt again")
+    void ctrlCLeavesTheField() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
+             var session = harness.open()) {
+            awaitPrompt(session);
+
+            DialogueHarness.type(session, "/\n");
+            awaitText(session, FIND_HINT);
+            DialogueHarness.type(session, "re");
+            // Ctrl+C on a real tty: the field leaves as Esc does, and the console keeps running.
+            DialogueHarness.type(session, "\u0003");
+
+            awaitConsolePrompt(session);
+
+            DialogueHarness.type(session, "exit\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertFalse(session.rawOutput().contains("Fix Relay Transport"),
+                                "no match was listed, so nothing was searched:\n" + session.rawOutput());
+        }
+    }
+
     private static void awaitPrompt(PtySession session) throws InterruptedException {
         assertTrue(session.awaitConsolePrompt(DialogueHarness.TIMEOUT),
                             () -> "the console prompt did not appear in:\n" + session.screenText());

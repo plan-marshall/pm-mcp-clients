@@ -63,6 +63,8 @@ import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
+import de.planmarshall.operator.LoadRefusal;
+import de.planmarshall.operator.NeedsOperatorNotices;
 import de.planmarshall.operator.OperatorActions;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -109,6 +111,10 @@ public final class OverviewFullScreenApp {
     private static final String VERB_ANSWER = "answer";
     private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
+    private static final String PLANS_VERB = "plans";
+    private static final String NEEDS_LEVEL = "needs";
+    private static final String PROJECTS_LEVEL = "projects";
+    private static final String EXPLORER_LEVEL = "explorer";
 
     /**
      * Initial CLI selection state.
@@ -176,6 +182,7 @@ public final class OverviewFullScreenApp {
     private final AtomicBoolean interrupted = new AtomicBoolean(false);
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicInteger unreadReports = new AtomicInteger(0);
+    private final NeedsOperatorNotices needsNotices = new NeedsOperatorNotices();
 
     private final InitialSelection initialSelection;
 
@@ -206,6 +213,9 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuLandingUnit;
     private @Nullable String menuDecision;
     private @Nullable String statusMessage;
+    private @Nullable LoadRefusal projectsRefusal;
+    private @Nullable LoadRefusal needsRefusal;
+    private @Nullable LoadRefusal explorerRefusal;
     private @Nullable String systemBanner;
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
@@ -399,6 +409,10 @@ public final class OverviewFullScreenApp {
             fetchExplorer(runtime);
             fetchUnreadReports(runtime);
             var level = explorerLevel.get();
+            if (level == null && explorerRefusal != null) {
+                level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(), List.of(), List.of(), List.of()),
+                                    false, explorerRefusal);
+            }
             if (level != null) {
                 var rows = level.rows(locale, clock);
                 stack.replaceRoot(ProjectsExplorerLevel.level(locale), rows,
@@ -412,7 +426,7 @@ public final class OverviewFullScreenApp {
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
         currentOverviewLevel.set(rootLevel);
         var rootRows = rootLevel.rows(locale, clock);
 
@@ -477,9 +491,14 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
             if (response.status() == 200) {
                 cachedNeedsOperator.set(NeedsOperatorPage.fromJson(response.bodyText()));
+                needsRefusal = null;
+                return;
             }
-        } catch (IOException _) {
-            // Keep existing cached needs operator if runtime read fails
+            needsRefusal = LoadRefusal.of(locale, response, NEEDS_LEVEL);
+        } catch (IOException failure) {
+            needsRefusal = LoadRefusal.of(locale, failure, NEEDS_LEVEL);
+        } catch (IllegalArgumentException failure) {
+            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL);
         }
     }
 
@@ -488,24 +507,49 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
                 cachedProjects.set(ProjectOverviewResponse.fromJson(response.bodyText()));
+                projectsRefusal = null;
+                return;
             }
-        } catch (IOException _) {
-            // Keep existing cached projects if runtime read fails
+            projectsRefusal = LoadRefusal.of(locale, response, PROJECTS_LEVEL);
+        } catch (IOException failure) {
+            projectsRefusal = LoadRefusal.of(locale, failure, PROJECTS_LEVEL);
+        } catch (IllegalArgumentException failure) {
+            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL);
         }
     }
 
     void fetchExplorer(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
-            if (response.status() == 200) {
-                var explorer = ProjectExplorer.fromJson(response.bodyText());
-                var current = explorerLevel.get();
-                boolean byMostUsed = current != null && current.byMostUsed();
-                explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed));
+            if (response.status() != 200) {
+                explorerRefusal = LoadRefusal.of(locale, response, EXPLORER_LEVEL);
+                keepExplorerRefusal();
+                return;
             }
-        } catch (IOException | IllegalArgumentException _) {
-            // Keep the last report of the projects when the runtime read fails.
+            var explorer = ProjectExplorer.fromJson(response.bodyText());
+            var current = explorerLevel.get();
+            boolean byMostUsed = current != null && current.byMostUsed();
+            explorerRefusal = null;
+            explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
+        } catch (IOException failure) {
+            explorerRefusal = LoadRefusal.of(locale, failure, EXPLORER_LEVEL);
+            keepExplorerRefusal();
+        } catch (IllegalArgumentException failure) {
+            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL);
+            keepExplorerRefusal();
         }
+    }
+
+    /**
+     * Keeps the refusal on the level the sort toggle and a favourite reorder rebuild from: the row
+     * must not vanish while the read still fails.
+     */
+    private void keepExplorerRefusal() {
+        var current = explorerLevel.get();
+        var explorer = current != null ? current.explorer()
+                            : new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
+        explorerLevel.set(new ProjectsExplorerLevel(explorer, current != null && current.byMostUsed(),
+                            explorerRefusal));
     }
 
     void fetchUnreadReports(RuntimeClient runtime) {
@@ -1197,6 +1241,18 @@ public final class OverviewFullScreenApp {
         };
     }
 
+    /**
+     * @return the item of what waits in the selected row, or {@code null} when the row is no such
+     *         item. The row carries the item's own identity, so an item that arrived above it does
+     *         not change what this answers.
+     */
+    @Nullable
+    NeedsOperatorItem selectedNeedsItem() {
+        var overview = currentOverviewLevel.get();
+        var selected = stack.selected();
+        return overview != null && selected != null ? overview.needsItemOf(selected.id()) : null;
+    }
+
     /** Opens what waits for the operator in the selected row, or jumps to the next waiting row. */
     private void openWhatWaits() {
         var lvl = stack.level();
@@ -1208,8 +1264,7 @@ public final class OverviewFullScreenApp {
         var selectedId = selected.id();
 
         if (kind == TuiLevel.Kind.OVERVIEW) {
-            var overview = currentOverviewLevel.get();
-            var needsItem = overview != null ? overview.needsItemOf(selectedId) : null;
+            var needsItem = selectedNeedsItem();
             if (needsItem != null) {
                 openNeedsItemAct(needsItem);
                 return;
@@ -1347,6 +1402,7 @@ public final class OverviewFullScreenApp {
             case CLEANUP_DUE -> runVerb("cleanup");
             case FINDINGS -> openFindingsAct(item);
             case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
+            case OTHER -> runVerb(PLANS_VERB);
         }
     }
 
@@ -1381,7 +1437,7 @@ public final class OverviewFullScreenApp {
             } catch (IOException _) {
                 // best effort
             }
-            runVerb("plan", "hold", planId);
+            runVerb("plan", planId);
         } else if (item.epic() != null) {
             runVerb("epic", item.epic().id());
         }
@@ -1509,12 +1565,18 @@ public final class OverviewFullScreenApp {
      * @param eventMap  the parsed event frame
      */
     private void holdNotice(@Nullable String eventName, @Nullable EventKind kind, Map<String, Object> eventMap) {
-        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
-        if (notice == null || context.isConsoleActive()) {
+        if (context.isConsoleActive()) {
             return;
         }
-        var category = categoryOf(kind != null ? kind.notice() : null);
-        noticeBuffer.hold(category, countOf(eventMap, category));
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
+        if (notice != null) {
+            var category = categoryOf(kind != null ? kind.notice() : null);
+            noticeBuffer.hold(category, countOf(eventMap, category));
+            return;
+        }
+        for (var added : needsNotices.noticesOf(locale, eventName, eventMap)) {
+            noticeBuffer.hold(categoryOf(added.kind()), 1);
+        }
     }
 
     static boolean isReportEvent(String name, String type) {
@@ -1653,7 +1715,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
             currentOverviewLevel.set(levelModel);
             stack.refresh(levelModel.rows(locale, clock));
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
@@ -1683,8 +1745,12 @@ public final class OverviewFullScreenApp {
         }
         var level = explorerLevel.get();
         if (level != null) {
+            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), explorerRefusal);
+        }
+        if (level != null) {
+            var refreshed = level;
             synchronized (this) {
-                stack.refresh(level.rows(locale, clock));
+                stack.refresh(refreshed.rows(locale, clock));
                 if (selectedId != null) {
                     stack.select(selectedId);
                 }
@@ -2963,7 +3029,8 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(),
+                                projectsRefusal, needsRefusal);
             currentOverviewLevel.set(levelModel);
             stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
         }

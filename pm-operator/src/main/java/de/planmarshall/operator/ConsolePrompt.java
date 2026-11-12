@@ -104,7 +104,7 @@ public final class ConsolePrompt {
         }
         var key = switch (kind) {
             case "decision", "question" -> BADGE_QUESTIONS;
-            case "waiver_request" -> BADGE_WAIVER_REQUESTS;
+            case "waiver_request", "waiver" -> BADGE_WAIVER_REQUESTS;
             case "operator_wait" -> "operator.console.badge.operator_waits";
             case "integrity_pause" -> "operator.console.badge.integrity_pauses";
             case "stalled" -> "operator.console.badge.stalled";

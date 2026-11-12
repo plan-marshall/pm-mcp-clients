@@ -26,8 +26,9 @@ import de.planmarshall.api.report.ReportSentEvent;
  * <p>A client resolves the kind of a streamed event by its <em>event name</em> first — the name in
  * the SSE {@code event} field, a member of {@link EventName} — and falls back to the {@code type}
  * member of the event's {@code data} only while the runtime sends it. An event that names no kind
- * here produces no notice; it may still change what waits for the operator
- * ({@link NeedsOperatorChangedEvent}), which is the prompt badge's source and not a notice.
+ * here produces no notice. What waits for the operator ({@link NeedsOperatorChangedEvent}) is the
+ * badge's source and not a notice of its own: the console raises one notice per item such a change
+ * <em>adds</em> of a kind no other event announces (04-console.adoc#pushed).
  *
  * <p>{@link #HOLD} is the one family: {@code hold.opened} names no notice itself, so the client
  * resolves the {@code kind} member of the hold's payload through {@link #fromType} — the hold kinds
@@ -91,10 +92,10 @@ public enum EventKind {
     SETUP(NeedsOperatorKind.SETUP.value(), List.of("setup"), List.of()),
 
     /** A machine credential needs operator attention. */
-    CREDENTIAL(NeedsOperatorKind.CREDENTIAL.value(), List.of("credential"), List.of("credential.needed")),
+    CREDENTIAL(NeedsOperatorKind.CREDENTIAL.value(), List.of("credential"), List.of()),
 
     /** Machine cleanup is due. */
-    CLEANUP_DUE(NeedsOperatorKind.CLEANUP_DUE.value(), List.of("cleanup_due"), List.of("cleanup.due")),
+    CLEANUP_DUE(NeedsOperatorKind.CLEANUP_DUE.value(), List.of("cleanup_due"), List.of()),
 
     /** A report was written: one quiet line, never the bell. */
     REPORT("report", List.of("report", "report.sent"), List.of(ReportSentEvent.EVENT_NAME)),

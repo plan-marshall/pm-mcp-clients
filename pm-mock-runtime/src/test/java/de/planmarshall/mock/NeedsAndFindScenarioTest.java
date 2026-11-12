@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +34,7 @@ import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
@@ -65,29 +68,33 @@ class NeedsAndFindScenarioTest {
 
                 var page = JsonTree.asObject(JsonTree.parse(new String(res.body())));
                 var items = JsonTree.asArray(page.get("items"));
-                assertEquals(12, items.size(), "one item of each kind of the closed list");
-                assertEquals(12, JsonTree.integer(page, "total"));
+                assertEquals(18, items.size(), "every item the scenario's one list carries");
+                assertEquals(18, JsonTree.integer(page, "total"));
                 // The served list parses through the contract's own record.
                 var parsed = NeedsOperatorPage.fromJson(new String(res.body()));
-                assertEquals(12, parsed.items().size());
+                assertEquals(18, parsed.items().size());
                 assertEquals(NeedsOperatorKind.FINDINGS, parsed.items().getFirst().kind());
 
                 // The items that block running work first, the oldest first; the machine's own
                 // items, which block nothing, after them.
-                assertEquals(List.of(
-                                "/api/v1/epics/relay-hardening",
-                                "/api/v1/plans/drop-legacy-api",
-                                "/api/v1/plans/fix-relay",
-                                "/api/v1/plans/session-log",
-                                "/api/v1/plans/profile-loader",
-                                "/api/v1/plans/relay-metrics",
-                                "/api/v1/plans/session-log",
-                                "/api/v1/plans/fix-relay",
-                                "/api/v1/plans/drop-legacy-api",
-                                "/api/v1/system/cleanup",
-                                "/api/v1/credentials/github",
-                                "/api/v1/projects/plan-marshall"),
-                        items.stream().map(item -> JsonTree.string(JsonTree.asObject(item), "link")).toList());
+                var kinds = parsed.items().stream()
+                        .collect(Collectors.groupingBy(
+                                item -> item.kind().value(), TreeMap::new,
+                                Collectors.counting()));
+                assertEquals(6L, kinds.get("decision"), "the six open decisions of the store: " + kinds);
+                assertEquals(2L, kinds.get("waiver"), "the two open waiver requests of the store: " + kinds);
+                assertEquals(12, kinds.size(), "every kind of the scenario is served: " + kinds);
+
+                var firstFree = -1;
+                for (int i = 0; i < parsed.items().size(); i++) {
+                    if (parsed.items().get(i).blocks() == null && firstFree < 0) {
+                        firstFree = i;
+                    }
+                }
+                assertEquals(14, firstFree, "the four items that block nothing come last: " + parsed.items());
+                for (int i = 1; i < firstFree; i++) {
+                    assertNotNull(parsed.items().get(i).since(), "a blocking item names its since: " + parsed.items());
+                }
             }
         }
 
@@ -122,7 +129,7 @@ class NeedsAndFindScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
-                assertEquals(12, itemCount(client, auth));
+                assertEquals(18, itemCount(client, auth));
 
                 try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader(AUTH_HEADER, auth))) {
                     assertTrue(exchange.isEventStream());
@@ -131,6 +138,7 @@ class NeedsAndFindScenarioTest {
                     var gotoRes = client.send(HttpRequest.json("POST", "/mock/goto/overview.needs-resolved", "{}"));
                     assertEquals(200, gotoRes.status());
 
+                    // The target state declares the list without the resolved item.
                     assertEquals(11, itemCount(client, auth));
 
                     var event = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> nextNeedsEvent(sse));
@@ -161,7 +169,7 @@ class NeedsAndFindScenarioTest {
         }
 
         @Test
-        @DisplayName("status incorporates machine needs_operator items into waiting counts")
+        @DisplayName("status counts what waits from the one list, kind by kind")
         void statusIncorporatesMachineNeeds() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
@@ -175,9 +183,27 @@ class NeedsAndFindScenarioTest {
                 assertEquals(1, JsonTree.integer(needs, "credential"));
                 assertEquals(1, JsonTree.integer(needs, "cleanup_due"));
                 assertEquals(6, JsonTree.integer(needs, "decision"));
-                assertEquals(2, JsonTree.integer(needs, "waiver_request"));
+                assertEquals(2, JsonTree.integer(needs, "waiver"));
                 assertEquals(1, JsonTree.integer(needs, "integrity_pause"));
                 assertEquals(1, JsonTree.integer(needs, "held"));
+
+                // The map is the list's own composition: no kind appears that the list does not
+                // carry, and the counts sum to the list's total.
+                var page = NeedsOperatorPage.fromJson(new String(client.send(
+                        HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR).withHeader(AUTH_HEADER, auth)).body()));
+                var listKinds = page.items().stream().collect(Collectors.groupingBy(
+                        item -> item.kind().value(), TreeMap::new,
+                        Collectors.counting()));
+                for (var entry : needs.entrySet()) {
+                    assertEquals(listKinds.get(entry.getKey()).intValue(),
+                            JsonTree.integer(needs, entry.getKey()).intValue(),
+                            entry.getKey() + " disagrees with the list: " + needs);
+                }
+                var sum = needs.values().stream()
+                        .mapToInt(value -> value instanceof Number number ? number.intValue()
+                                : value instanceof JsonNumber json ? (int) json.longValue() : 0)
+                        .sum();
+                assertEquals(page.total(), sum, "the counts sum to the list's total: " + needs);
             }
         }
 

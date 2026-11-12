@@ -11,23 +11,22 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpResponse;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -71,7 +70,7 @@ class NeedsCommandTest {
 
             assertAll(
                                 () -> assertEquals(0, exitCode, "needs should exit 0, err: " + error),
-                                () -> assertTrue(output.contains("Needs you · 12"), "expected header with 12 items: " + output),
+                                () -> assertTrue(output.contains("Needs you · 18"), "expected header with 18 items: " + output),
                                 () -> assertTrue(output.contains("findings"), "should contain findings item"),
                                 () -> assertTrue(output.contains("landing failed"), "should contain landing failed item"),
                                 () -> assertTrue(output.contains("held"), "should contain held item"),
@@ -126,7 +125,7 @@ class NeedsCommandTest {
 
             var output = out.toString();
             assertEquals(0, exitCode, "needs --json should exit 0");
-            assertTrue(output.contains("\"total\":12") || output.contains("\"total\": 12"), "expected JSON with total 12");
+            assertTrue(output.contains("\"total\":18") || output.contains("\"total\": 18"), "expected JSON with total 18");
             assertTrue(output.contains("\"items\":"), "expected items array in JSON");
         }
     }
@@ -156,7 +155,7 @@ class NeedsCommandTest {
 
             var consoleOutput = outStream.toString(StandardCharsets.UTF_8);
             assertEquals(0, exitCode, "console should exit 0");
-            assertTrue(consoleOutput.contains("Needs you · 12"), "console ! should execute needs: " + consoleOutput);
+            assertTrue(consoleOutput.contains("Needs you · 18"), "console ! should execute needs: " + consoleOutput);
         }
     }
 
@@ -182,9 +181,38 @@ class NeedsCommandTest {
             int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "needs");
 
             assertEquals(0, exitCode);
-            var output = out.toString();
-            assertTrue(output.contains("Nothing waits") || output.contains("Nichts wartet") || !output.isBlank(), output);
+            var output = out.toString().strip();
+            assertEquals(MessageCatalogue.format("en", "operator.needs.empty", Map.of()), output,
+                                "an empty list says so, and nothing else: " + output);
         }
+    }
+
+    @Test
+    @DisplayName("needs names the end of the loaded pages as Show more, never a silent cut")
+    void needsShowsMoreWhenTheRuntimeHasMore() throws Exception {
+        var context = new OperatorContext(
+                            Map.of(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(Map.of()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null
+        );
+        var page = "{\"page\":1,\"total_pages\":2,\"has_newer\":false,\"has_older\":true,\"total\":3,"
+                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\",\"blocks\":\"plan\"}]}";
+        NeedsCommand.RuntimeSender sender = req -> new HttpResponse(200, "application/json",
+                            page.getBytes(StandardCharsets.UTF_8));
+
+        var withMore = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(withMore), "en"));
+        assertTrue(withMore.toString().contains("Show more"), withMore.toString());
+
+        var lastPage = page.replace("\"has_older\":true", "\"has_older\":false");
+        NeedsCommand.RuntimeSender single = req -> new HttpResponse(200, "application/json",
+                            lastPage.getBytes(StandardCharsets.UTF_8));
+        var withoutMore = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(single, new PrintWriter(withoutMore), "en"));
+        assertFalse(withoutMore.toString().contains("Show more"), withoutMore.toString());
     }
 
     @Test
@@ -206,8 +234,8 @@ class NeedsCommandTest {
     }
 
     @Test
-    @DisplayName("executeNeeds falls back to English title when locale lacks key")
-    void executeNeedsTitleFallback() throws Exception {
+    @DisplayName("needs renders the title of the operator's language, never another one")
+    void needsTitleInTheOperatorLanguage() throws Exception {
         var context = new OperatorContext(
                             Map.of(),
                             tempDir,
@@ -216,58 +244,20 @@ class NeedsCommandTest {
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
                             null
         );
-        var cmd = new NeedsCommand(context);
-        var sw = new StringWriter();
-        var writer = new PrintWriter(sw);
-        var json = "{\"page\":1,\"total_pages\":1,\"has_prev\":false,\"has_next\":false,\"total\":1,\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\",\"blocks\":\"plan\"}]}".getBytes(StandardCharsets.UTF_8);
-        NeedsCommand.RuntimeSender sender = req -> {
-            if (MachineApiPaths.NEEDS_OPERATOR.equals(req.target())) {
-                return new HttpResponse(200, "application/json", json);
-            }
-            return new HttpResponse(404, null, new byte[0]);
-        };
-        cmd.executeNeeds(sender, writer, "fr");
-        assertTrue(sw.toString().contains("Needs you · 1"));
-    }
+        var json = ("{\"page\":1,\"total_pages\":1,\"has_older\":false,\"total\":1,"
+                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\","
+                            + "\"blocks\":\"plan\"}]}").getBytes(StandardCharsets.UTF_8);
+        NeedsCommand.RuntimeSender sender = req -> new HttpResponse(200, "application/json", json);
 
-    @Test
-    @DisplayName("parseDecisions extracts plan and project mappings, ignoring null ids")
-    void parseDecisionsMapping() {
-        var list = List.of(
-                            Map.of("missing_id", "val"),
-                            Map.of("id", "Q-1", "plan", "plan-1"),
-                            Map.of("id", "Q-2", "project", "proj-1")
-        );
-        var map = NeedsCommand.parseDecisions(list);
-        assertEquals("Q-1", map.get("plan-1"));
-        assertEquals("Q-2", map.get("proj-1"));
-        assertEquals(2, map.size());
-    }
+        var english = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(english), "en"));
+        assertTrue(english.toString().contains(MessageCatalogue.format("en", "operator.needs.title",
+                            Map.of("total", 1))), english.toString());
 
-    @Test
-    @DisplayName("fetchDecisionIds handles IOException gracefully")
-    void fetchDecisionIdsHandlesIoException() {
-        NeedsCommand.RuntimeSender sender = request -> {
-            throw new IOException("network error");
-        };
-        var map = NeedsCommand.fetchDecisionIds(sender);
-        assertTrue(map.isEmpty());
-    }
-
-    @Test
-    @DisplayName("fetchDecisionIds falls back to questions when decisions returns non-200")
-    void fetchDecisionIdsFallbackToQuestions() {
-        NeedsCommand.RuntimeSender sender = request -> {
-            if ("/api/v1/decisions".equals(request.target())) {
-                return new HttpResponse(404, null, new byte[0]);
-            }
-            if ("/api/v1/questions".equals(request.target())) {
-                var json = "[{\"id\":\"Q-100\",\"plan\":\"plan-x\"}]".getBytes(StandardCharsets.UTF_8);
-                return new HttpResponse(200, "application/json", json);
-            }
-            return new HttpResponse(404, null, new byte[0]);
-        };
-        var map = NeedsCommand.fetchDecisionIds(sender);
-        assertEquals("Q-100", map.get("plan-x"));
+        var german = new StringWriter();
+        assertEquals(0, new NeedsCommand(context).executeNeeds(sender, new PrintWriter(german), "de"));
+        assertTrue(german.toString().contains(MessageCatalogue.format("de", "operator.needs.title",
+                            Map.of("total", 1))), german.toString());
+        assertFalse(german.toString().contains("Needs you"), german.toString());
     }
 }

@@ -125,6 +125,7 @@ import de.planmarshall.api.overview.FindKind;
 import de.planmarshall.api.overview.FindMatch;
 import de.planmarshall.api.overview.FindPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.api.project.BeingAddedProject;
@@ -336,6 +337,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENDED = "/ended";
     private static final String KEY_ITEMS = "items";
     private static final String KEY_NEEDS_OPERATOR = "needs_operator";
+    private static final String REBASE_ONTO_MAIN = "Rebase onto main";
+    private static final String DECISION_REBASE = "rebase";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
@@ -778,6 +781,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean machineProvidersVerified;
 
     /** The wire name of the operator channel, in the fixtures that report it. */
+    private static final int NEEDS_PAGE_SIZE = 20;
     private static final String OPERATOR_FIELD = "operator";
 
     /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
@@ -5375,7 +5379,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", "Rebase onto main", "rebase", OPERATOR_FIELD, "web", "iPad", null),
+                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, OPERATOR_FIELD, "web", "iPad", null),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
         var fixRelayOwnCalls = List.of(
@@ -5821,12 +5825,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Counts what waits for the operator, by the kind the clients badge it as
-     * (04-console.adoc#prompt): the decisions the runtime holds open, and the holds a plan or epic
-     * carries. The clients never count these themselves; they read this map.
+     * (04-console.adoc#prompt). A scenario that declares the one list of what waits is counted from
+     * that list — one source, so a badge and a row can never disagree. A scenario that declares no
+     * list is counted from the stores it serves (the open decisions, the holds, and the machine's
+     * own summary), which is what it can answer from.
      *
-     * @return the waiting count per kind, in the order the kinds became non-empty
+     * @return the waiting count per kind, in the order the kinds appear
      */
     private Map<String, Object> waitingCounts() {
+        var listed = kindsOfTheServedList();
+        if (listed != null) {
+            return listed;
+        }
         var kinds = new LinkedHashMap<String, Integer>();
         synchronized (decisionsLock) {
             for (var decision : openDecisions.values()) {
@@ -5843,6 +5853,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return new LinkedHashMap<>(kinds);
     }
 
+    /**
+     * @return the kinds of the list the scenario serves, or {@code null} when it declares none
+     */
+    private @Nullable Map<String, Object> kindsOfTheServedList() {
+        var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
+        if (route == null) {
+            return null;
+        }
+        if (route.status() < 200 || route.status() >= 300) {
+            return new LinkedHashMap<>();
+        }
+        var kinds = new LinkedHashMap<String, Integer>();
+        var rep = JsonTree.asObject(route.representation());
+        for (var raw : rowsOf(rep, KEY_ITEMS)) {
+            var item = JsonTree.asObject(raw);
+            if (item != null && item.get(KEY_KIND) instanceof String kind) {
+                kinds.merge(NeedsOperatorKind.fromWireOrOther(kind).value(), 1, Integer::sum);
+            }
+        }
+        return new LinkedHashMap<>(kinds);
+    }
+
+    /**
+     * Adds the machine's own items to a store-derived count: a scenario that declares no list still
+     * says what the machine itself waits for.
+     *
+     * @param kinds the counts to extend
+     */
     private void mergeMachineNeeds(Map<String, Integer> kinds) {
         var machineRoute = activeRoute("GET", MachineApiPaths.MACHINE);
         if (machineRoute == null || !(machineRoute.representation() instanceof Map<?, ?> mMap)) {
@@ -6106,7 +6144,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var path = request.path();
         if (MachineApiPaths.NEEDS_OPERATOR.equals(path)) {
-            serveNeedsOperatorPage(response);
+            serveNeedsOperatorPage(request, response);
             return true;
         }
         if (MachineApiPaths.FIND.equals(path)) {
@@ -6130,7 +6168,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * item id is absent as well: the contract's {@link NeedsOperatorItem} has none, and that was the
      * operator's decision (2026-11-05).
      */
-    private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
+    private void serveNeedsOperatorPage(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
         if (route == null) {
             response.json(200, new NeedsOperatorPage(1, 1, false, false, 0, List.of()).toMap());
@@ -6154,7 +6192,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             return sinceOf(a).compareTo(sinceOf(b));
         });
-        response.json(200, new NeedsOperatorPage(1, 1, false, false, items.size(), items).toMap());
+        response.json(200, pageOf(items, request).toMap());
+    }
+
+    /**
+     * The page the request asks for, out of the list the scenario declares: the runtime serves the
+     * list a page at a time and names the pages around it, so a client can step through it
+     * ({@code needs --page}, {@code Show more}).
+     *
+     * @param items   the whole list, in the runtime's order
+     * @param request the request, whose {@code page} parameter is 1-based
+     * @return the page
+     */
+    private static NeedsOperatorPage pageOf(List<NeedsOperatorItem> items, MockHttpRequest request) {
+        var page = 1;
+        try {
+            var requested = queryParameter(request, "page");
+            if (requested != null && !requested.isBlank()) {
+                page = Math.max(1, Integer.parseInt(requested.trim()));
+            }
+        } catch (IllegalArgumentException _) {
+            // A malformed page parameter asks for the first page, never for an error.
+        }
+        var total = items.size();
+        var totalPages = Math.max(1, (total + NEEDS_PAGE_SIZE - 1) / NEEDS_PAGE_SIZE);
+        var from = Math.min((page - 1) * NEEDS_PAGE_SIZE, total);
+        var to = Math.min(from + NEEDS_PAGE_SIZE, total);
+        return new NeedsOperatorPage(page, totalPages, page > 1, page < totalPages, total,
+                List.copyOf(items.subList(from, to)));
     }
 
     private static Instant sinceOf(NeedsOperatorItem item) {
@@ -10129,7 +10194,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             interp = new DecisionInterpretation(
                     InterpretationType.OPTION_WITH_CONDITION, "2", "release/0.9 stays as it is",
                     "Rebase onto main, provided release/0.9 stays as it is.", null,
-                    List.of("rebase", "release/0.9")
+                    List.of(DECISION_REBASE, "release/0.9")
             );
         } else if (lower.contains("whatever") || lower.contains("reviewer") || lower.contains("unclear")) {
             interp = new DecisionInterpretation(
@@ -10152,7 +10217,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else {
             interp = new DecisionInterpretation(
                     InterpretationType.OPTION, "2", null,
-                    "Rebase onto main", null,
+                    REBASE_ONTO_MAIN, null,
                     List.of(words)
             );
         }
