@@ -15,11 +15,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -34,6 +41,12 @@ class ChatMessageKeysTest {
 
     private static final String LINE_PREFIX = "control.chat.line.";
     private static final String NO_DEVICE = "control.chat.line.decision_answered_no_device";
+    private static final String RENDERING_PREFIX = "control.chat.";
+    private static final String STEP_PREFIX = "control.chat.step.";
+    private static final String KNOWS_ITEM = "control.chat.knows.item";
+    private static final String REVISION_QUEUED = "control.chat.revision_queued";
+    /** The branch of a select that takes every value it does not name. */
+    private static final String OTHER = "other";
 
     /** The runtime keys the goldens, the test values of the chat package and the mock runtime send on the wire. */
     static Stream<String> wireKeys() {
@@ -49,6 +62,16 @@ class ChatMessageKeysTest {
     static Stream<String> packLines() {
         return MessageCatalogue.getMessages("en", "control").keySet().stream()
                 .filter(key -> key.startsWith(LINE_PREFIX) && !NO_DEVICE.equals(key)).sorted();
+    }
+
+    /** Every item the select of {@code control.chat.knows.item} names, but its other branch, the archive. */
+    static Stream<String> knowsItems() {
+        return selectBranches(controlPack().get(KNOWS_ITEM), ChatMessageKeys.ARG_ITEM).stream()
+                .filter(item -> !OTHER.equals(item));
+    }
+
+    private static Map<String, String> controlPack() {
+        return MessageCatalogue.getMessages("en", "control");
     }
 
     private static String name() {
@@ -120,7 +143,7 @@ class ChatMessageKeysTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"description", "tasks", "phase", "version", "sources", "rows", "items", "decision"})
+    @MethodSource("knowsItems")
     @DisplayName("every item the select of control.chat.knows.item names is mapped and never renders as an archive")
     void everyKnowsItemIsMapped(String item) {
         var key = "chat.knows." + item;
@@ -155,10 +178,11 @@ class ChatMessageKeysTest {
     @DisplayName("a knows item the select does not name, a typo among them, is refused")
     void unknownKnowsItemIsRefused() {
         var key = "chat.knows.zz_" + name();
+        var text = MessageText.of(key);
 
         assertAll(
                 () -> assertFalse(ChatMessageKeys.maps(key)),
-                () -> assertThrows(IllegalArgumentException.class, () -> ChatMessageKeys.render(MessageText.of(key))));
+                () -> assertThrows(IllegalArgumentException.class, () -> ChatMessageKeys.render(text)));
     }
 
     @Test
@@ -211,9 +235,101 @@ class ChatMessageKeysTest {
     @DisplayName("a line name the pack does not hold is refused")
     void unknownLineIsRefused() {
         var key = "chat.line.zz_" + name();
+        var text = MessageText.of(key);
 
         assertAll(
                 () -> assertFalse(ChatMessageKeys.maps(key)),
-                () -> assertThrows(IllegalArgumentException.class, () -> ChatMessageKeys.render(MessageText.of(key))));
+                () -> assertThrows(IllegalArgumentException.class, () -> ChatMessageKeys.render(text)));
+    }
+
+    @Nested
+    @DisplayName("Each family of names agrees with the en control pack")
+    class CatalogueAgreement {
+
+        @Test
+        @DisplayName("the lines are exactly the narrative lines of the pack")
+        void lines() {
+            var pack = packLines().map(key -> key.substring(LINE_PREFIX.length())).collect(Collectors.toSet());
+
+            assertEquals(pack, ChatMessageKeys.LINES);
+        }
+
+        @Test
+        @DisplayName("the steps are exactly the steps of the pack")
+        void steps() {
+            var pack = controlPack().keySet().stream().filter(key -> key.startsWith(STEP_PREFIX))
+                    .map(key -> key.substring(STEP_PREFIX.length())).collect(Collectors.toSet());
+
+            assertEquals(pack, ChatMessageKeys.STEPS);
+        }
+
+        @Test
+        @DisplayName("the knows items are exactly the branches of the select of control.chat.knows.item")
+        void knowsItemsAreTheSelectBranches() {
+            var branches = selectBranches(controlPack().get(KNOWS_ITEM), ChatMessageKeys.ARG_ITEM);
+
+            assertEquals(Set.copyOf(branches), ChatMessageKeys.KNOWS_ITEMS);
+        }
+
+        @Test
+        @DisplayName("every named point of control.chat.revision_queued is mapped, and one point at most takes"
+                + " its other branch")
+        void appliesPoints() {
+            var branches = selectBranches(controlPack().get(REVISION_QUEUED), ChatMessageKeys.ARG_APPLIES);
+            var named = branches.stream().filter(branch -> !OTHER.equals(branch)).collect(Collectors.toSet());
+            var byOther = new HashSet<>(ChatMessageKeys.APPLIES_POINTS);
+            byOther.removeAll(named);
+
+            assertAll(REVISION_QUEUED,
+                    () -> assertTrue(branches.contains(OTHER), "the select has its other branch"),
+                    () -> assertTrue(ChatMessageKeys.APPLIES_POINTS.containsAll(named), named.toString()),
+                    () -> assertEquals(1, byOther.size(), "one point renders through the other branch: " + byOther));
+        }
+
+        @Test
+        @DisplayName("every reason renders through a key of the en and de control packs")
+        void reasons() {
+            assertAll("reasons", ChatMessageKeys.REASONS.values().stream()
+                    .map(key -> (Executable) () -> assertTrue(inBothPacks(key), key)));
+        }
+
+        @Test
+        @DisplayName("every finding renders through control.chat.<name> of the en and de control packs")
+        void findings() {
+            assertAll("findings", ChatMessageKeys.FINDINGS.stream()
+                    .map(name -> (Executable) () -> assertTrue(inBothPacks(RENDERING_PREFIX + name), name)));
+        }
+    }
+
+    /**
+     * The top-level branch names of the select of an argument in a message template: nested braces, a
+     * branch text such as {@code {{count} tasks}} among them, are skipped.
+     */
+    private static List<String> selectBranches(String template, String argument) {
+        var head = "{" + argument + ", select, ";
+        var start = template.indexOf(head);
+        assertTrue(start >= 0, "a select of " + argument + " in " + template);
+        var branches = new ArrayList<String>();
+        var at = start + head.length();
+        while (at < template.length() && template.charAt(at) != '}') {
+            if (Character.isWhitespace(template.charAt(at))) {
+                at++;
+                continue;
+            }
+            var open = template.indexOf('{', at);
+            branches.add(template.substring(at, open).strip());
+            var depth = 0;
+            do {
+                var c = template.charAt(open);
+                if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                }
+                open++;
+            } while (depth > 0);
+            at = open;
+        }
+        return branches;
     }
 }

@@ -62,20 +62,34 @@ public final class ChatMessageKeys {
     private static final String KNOWS_ITEM = "control.chat.knows.item";
     private static final String REVISION_QUEUED = "control.chat.revision_queued";
 
-    private static final Set<String> LINES = Set.of("phase_changed", "task_ended", "decision_opened",
+    /*
+     * The names each family takes. They are the runtime's wire contract and are written here, not read
+     * from the control pack, so an edit of a rendering pack cannot widen what the runtime may send;
+     * ChatMessageKeysTest checks every family against the en control pack in both directions where the
+     * pack holds the family as a set of names, and the rendering key of every name where it does not.
+     * Package-private for that check.
+     */
+
+    /** The names of {@code chat.line.<name>}: the narrative lines of the pack. */
+    static final Set<String> LINES = Set.of("phase_changed", "task_ended", "decision_opened",
             DECISION_ANSWERED, "decision_closed", "hold_opened", "hold_cleared", "plan_pausing", "plan_paused",
             "plan_started", "version_changed", "pr_opened", "pr_merged", "pr_closed", "row_started", "row_landed",
             "row_failed", "auto_changed", "source_added", "source_removed", "source_flagged", "waiver_granted",
             "waiver_revoked", "replan_triggered", "register_added", "row_staged", "row_cancelled", "item_disposed");
-    private static final Set<String> KNOWS_ITEMS = Set.of("description", "tasks", "phase", "version", "sources",
+    /** The names of {@code chat.knows.<item>}: the branches of the select of {@code control.chat.knows.item}. */
+    static final Set<String> KNOWS_ITEMS = Set.of("description", "tasks", "phase", "version", "sources",
             "rows", "items", "decision", "other");
-    private static final Set<String> APPLIES_POINTS = Set.of("after_task", "on_start");
-    private static final Set<String> STEPS = Set.of("read", "search", "check");
-    private static final Map<String, String> REASONS = Map.of(
+    /** The names of {@code chat.applies.<point>}: the points of {@code control.chat.revision_queued}. */
+    static final Set<String> APPLIES_POINTS = Set.of("after_task", "on_start");
+    /** The names of {@code chat.step.<name>}: the steps of the pack. */
+    static final Set<String> STEPS = Set.of("read", "search", "check");
+    /** The names of {@code chat.reason.<name>} with the rendering key each maps to. */
+    static final Map<String, String> REASONS = Map.of(
             "lost", "control.chat.lost",
             "too_long", "control.chat.too_long_reply",
             "infeasible", "control.chat.infeasible");
-    private static final Set<String> FINDINGS = Set.of("check_failed", "changed_since", "lapsed", "already_queued");
+    /** The names of {@code chat.finding.<name>}, each rendering as {@code control.chat.<name>}. */
+    static final Set<String> FINDINGS = Set.of("check_failed", "changed_since", "lapsed", "already_queued");
 
     private ChatMessageKeys() {
         // Utility class
