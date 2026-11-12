@@ -628,7 +628,7 @@ public final class ConfigCommand implements Callable<Integer> {
         } catch (ReadFailedException failure) {
             change.out().println(failure.status() > 0
                                 ? MessageCatalogue.format(change.locale(), SETTINGS_FAILED,
-                                                    Map.of(STATUS, failure.status()))
+                                Map.of(STATUS, failure.status()))
                                 : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
             change.out().flush();
             return PmOperator.EXIT_FAILURE;

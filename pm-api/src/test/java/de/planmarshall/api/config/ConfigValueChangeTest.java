@@ -15,16 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 /**
@@ -37,7 +34,7 @@ class ConfigValueChangeTest {
 
     @Test
     @DisplayName("a change round-trips its value and revision")
-    void roundTrips() throws IOException {
+    void roundTrips() throws Exception {
         var value = Generators.letterStrings(2, 8).next();
         var revision = Generators.integers(0, 10_000).next().longValue();
 
@@ -48,7 +45,7 @@ class ConfigValueChangeTest {
 
     @Test
     @DisplayName("a deletion carries its revision and no value")
-    void aDeletionCarriesNoValue() throws IOException {
+    void aDeletionCarriesNoValue() throws Exception {
         var revision = Generators.integers(1, 10_000).next().longValue();
 
         var deletion = ConfigValueChange.deletion(revision);
