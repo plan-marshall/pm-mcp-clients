@@ -2423,4 +2423,37 @@ describe('ReportsView component', () => {
     await tick();
     expect(screen.getByText(/1 unread/)).toBeInTheDocument();
   });
+
+  describe('the mascot on the calm empty state', () => {
+    it('draws the all-clear bust on the no-reports state', async () => {
+      vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+        items: [],
+        unread_count: 0,
+        has_older: false,
+        older_count: 0,
+      });
+
+      render(ReportsView);
+      const emptyState = await screen.findByTestId('empty-state');
+      const figure = within(emptyState).getByTestId('mascot-figure');
+
+      expect(figure).toHaveAttribute('data-pose', 'all-clear');
+      expect(figure).toHaveAttribute('data-crop', 'bust');
+      expect(screen.getAllByTestId('mascot-figure')).toHaveLength(1);
+    });
+
+    it('keeps the plain text of the filter-empty block, without a figure', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const filter = within(screen.getByRole('search')).getByRole('searchbox');
+      await fireEvent.input(filter, { target: { value: `no-report-${crypto.randomUUID()}` } });
+      const filterEmpty = await screen.findByTestId('report-filter-empty');
+
+      expect(filterEmpty.textContent?.trim()).not.toBe('');
+      expect(within(filterEmpty).queryByTestId('mascot-figure')).toBeNull();
+      expect(screen.queryByTestId('mascot-figure')).toBeNull();
+      expect(screen.queryByTestId('empty-state')).toBeNull();
+    });
+  });
 });
