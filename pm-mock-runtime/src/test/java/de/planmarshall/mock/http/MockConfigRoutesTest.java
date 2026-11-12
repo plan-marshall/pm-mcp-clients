@@ -153,6 +153,19 @@ class MockConfigRoutesTest {
     }
 
     @Test
+    @DisplayName("a stored null at a nearer level overrides the machine's value")
+    void aStoredNullOverridesTheMachine() throws Exception {
+        var routes = new MockConfigRoutes();
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"machine\"}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null}", Map.of());
+        var read = query(routes, "GET", PATH, null, Map.of());
+
+        assertAll(
+                            () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()),
+                            () -> assertTrue(read.body().contains("\"value\":null"), read.body()));
+    }
+
+    @Test
     @DisplayName("the key an aspect owns is known by its prefix")
     void aspectOwnershipIsPrefixBased() {
         var key = Generators.letterStrings(4, 8).next();

@@ -228,11 +228,14 @@ public final class MockConfigRoutes {
         var candidates = new ArrayList<ConfigOrigin>(OPERATOR_LEVELS);
         candidates.sort((a, b) -> Integer.compare(b.rank(), a.rank()));
         for (var level : candidates) {
-            var levelValue = byLevel(level, levelScope(level, project, plan)).get(key);
-            if (levelValue == null && level == ConfigOrigin.MACHINE) {
-                levelValue = machineValues.get(key);
+            var values = byLevel(level, levelScope(level, project, plan));
+            var present = values.containsKey(key);
+            Object levelValue = present ? values.get(key) : null;
+            if (!present && level == ConfigOrigin.MACHINE) {
+                present = machineValues.containsKey(key);
+                levelValue = present ? machineValues.get(key) : null;
             }
-            if (levelValue == null) {
+            if (!present) {
                 continue;
             }
             if (origin == null) {
