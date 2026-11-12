@@ -1,12 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
-import { get } from 'svelte/store';
+import { createRawSnippet } from 'svelte';
+import { get, type Writable } from 'svelte/store';
 import { messagesStore } from '../lib/i18n';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
 import { runtimeStore, handleRuntimeEvent } from '../lib/stores/runtime';
+import { heldFigure, holdFigure } from '../lib/stores/heldFigure';
 import { makeRuntimeState } from '../lib/test/runtimeState';
 import { loadMessages } from '../test/catalogue-fixture';
+
+// The held figure is a session store fetched once; the shell only starts the fetch and the pages
+// only read it, so the test sets the held URL itself.
+vi.mock('../lib/stores/heldFigure', async () => {
+  const { writable } = await import('svelte/store');
+  return { heldFigure: writable(''), holdFigure: vi.fn() };
+});
+
+const held = heldFigure as Writable<string>;
 
 const STATUS: StatusResponse = {
   status: 'ready',
@@ -878,5 +889,131 @@ describe('the app shell', () => {
       globalThis.fetch = originalFetch;
       vi.useRealTimers();
     }
+  });
+});
+
+/**
+ * The runtime that is not reachable (entry.adoc, After Pairing): the shell shows its page with the
+ * held `searching` figure over the open view, which stays mounted but hidden, so the view and its
+ * unsent input are there again once the runtime is back. The listener turned off keeps its own page.
+ */
+describe('the runtime that is not reachable', () => {
+  /** The open view the route renders, standing in for any view with input of its own. */
+  const openView = createRawSnippet(() => ({
+    render: () => '<input data-testid="open-view-input" aria-label="Unsent input" />',
+  }));
+
+  /**
+   * Generated input: an object URL of the kind the app holds for the disconnected states.
+   *
+   * @returns a `blob:` URL with a random id
+   */
+  function generatedObjectUrl(): string {
+    return `blob:http://localhost/${crypto.randomUUID()}`;
+  }
+
+  /**
+   * Renders the shell of a paired, onboarded browser with the open view, and waits until it has
+   * started and reached its origin.
+   */
+  async function renderStartedShell(): Promise<void> {
+    const probe = vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    render(Layout, { props: { children: openView } });
+    await screen.findByTestId('open-view-input');
+    await waitFor(() => expect(probe).toHaveBeenCalled());
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    runtimeStore.set(
+      makeRuntimeState({ isInitialized: false, isPaired: false, currentRoute: 'pair' }),
+    );
+    window.history.replaceState(null, '', '/reports');
+    held.set('');
+    vi.mocked(holdFigure).mockClear();
+    vi.spyOn(apiClient, 'getMessages').mockResolvedValue(loadMessages('en'));
+    messagesStore.set(loadMessages('en'));
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  });
+
+  it('starts the one fetch of the held figure once the app has started and reaches its origin', async () => {
+    await renderStartedShell();
+
+    await waitFor(() => expect(holdFigure).toHaveBeenCalled());
+  });
+
+  it('shows the unreachable page with the searching figure at 180 px from the held URL', async () => {
+    const objectUrl = generatedObjectUrl();
+    held.set(objectUrl);
+    await renderStartedShell();
+
+    runtimeStore.update((state) => ({ ...state, isOffline: true }));
+
+    const page = await screen.findByTestId('unreachable-view');
+    const figure = within(page).getByTestId('mascot-figure');
+    expect(figure).toHaveAttribute('data-pose', 'searching');
+    expect(figure).toHaveAttribute('height', '180');
+    expect(figure).toHaveAttribute('src', objectUrl);
+    expect(within(page).getByRole('heading', { level: 1 })).toHaveTextContent(
+      'plan-marshall is not reachable on this machine',
+    );
+  });
+
+  it('shows the unreachable page as text alone while no figure is held', async () => {
+    await renderStartedShell();
+
+    runtimeStore.update((state) => ({ ...state, isOffline: true }));
+
+    const page = await screen.findByTestId('unreachable-view');
+    expect(within(page).queryByTestId('mascot-figure')).toBeNull();
+    expect(page).toHaveTextContent(
+      'Start it in a terminal: pm-operator. This page reconnects on its own.',
+    );
+  });
+
+  it('keeps the listener-off page ahead of the unreachable page', async () => {
+    held.set(generatedObjectUrl());
+    await renderStartedShell();
+
+    runtimeStore.update((state) => ({
+      ...state,
+      isOffline: true,
+      isListenerClosed: true,
+      currentRoute: 'listener-off',
+    }));
+
+    expect(await screen.findByTestId('listener-off-view')).toBeInTheDocument();
+    expect(screen.queryByTestId('unreachable-view')).not.toBeInTheDocument();
+  });
+
+  it('shows the same open view with its unsent input again after the runtime is back', async () => {
+    await renderStartedShell();
+    const input = screen.getByTestId('open-view-input') as HTMLInputElement;
+    const unsent = crypto.randomUUID();
+    await fireEvent.input(input, { target: { value: unsent } });
+
+    runtimeStore.update((state) => ({ ...state, isOffline: true }));
+
+    await screen.findByTestId('unreachable-view');
+    // The view is still in the document, hidden behind the page rather than replaced by it.
+    expect(screen.getByTestId('open-view')).toHaveAttribute('hidden');
+    expect(screen.getByTestId('open-view-input')).toBe(input);
+
+    runtimeStore.update((state) => ({ ...state, isOffline: false }));
+
+    await waitFor(() => expect(screen.queryByTestId('unreachable-view')).not.toBeInTheDocument());
+    expect(screen.getByTestId('open-view')).not.toHaveAttribute('hidden');
+    expect(screen.getByTestId('open-view-input')).toBe(input);
+    expect(input.value).toBe(unsent);
   });
 });
