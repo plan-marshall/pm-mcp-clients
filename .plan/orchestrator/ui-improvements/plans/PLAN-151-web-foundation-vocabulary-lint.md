@@ -54,7 +54,6 @@ Read first: `doc/design/web-app/components.adoc` (§ `#rules`, `#vocabulary`, `#
  - Skills: pm-dev-frontend:javascript
  - Done when:
    - `./mvnw -pl pm-web-app verify` prints the warnings and exits green (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 

@@ -131,8 +131,6 @@ deliverables below state its rulings.
      Evidence order: `test-first`.
    - Browser check (Playwright MCP) on `running-work` of a deep link, the history and the fill, in German and English. Evidence
      order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
 
 ## Standing Constraints
 

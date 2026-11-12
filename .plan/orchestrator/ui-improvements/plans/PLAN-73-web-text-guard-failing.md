@@ -38,7 +38,7 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - The baseline is empty (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Failing mode**
    - What: The guard fails on any violation; delete `text-guard-baseline.json`.
    - Persona: plan-marshall:persona-integration-tester
@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
    - Done when:
      - Adding a raw enum to a view fails the spec (evidence order: `mutation-after`)
      - `PM_MOCK_WEB_PORT=20730 PM_WEB_PORT=20731 ./mvnw -pl pm-web-e2e verify -Pe2e` passes (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20730 PM_WEB_PORT=20731 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.

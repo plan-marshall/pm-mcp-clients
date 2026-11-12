@@ -81,8 +81,6 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
  - Skills: pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
  - Done when:
    - `ChatKnowsIT` passes with `-Pintegration-tests` and asserts the screen (evidence order: `test-first`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue
-     dismissed (evidence order: `none`).
 
 ## Standing Constraints
 

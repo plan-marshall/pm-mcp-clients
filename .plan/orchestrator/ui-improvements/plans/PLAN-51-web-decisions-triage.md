@@ -25,28 +25,28 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `decisions.spec.js` on `running-work` → `decisions.open`: eight decisions, blocking first (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Keyboard and advance**
    - What: `1`–`9` choose, `Enter` decides, `c` chat, `l` later; after deciding a toast "Decided: <option>" and the next decision is selected; phone: list then detail.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - e2e: `1`, `Enter` decide; the next is selected; the toast names the option (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Recommendation and evidence** (from the former `PLAN-57`, superseded: one view, one plan)
    - What: "Recommended: Rebase onto main (by implement)"; evidence as fields with plain labels, `file`/`lines` as a link where the project offers one, unknown structures as a folded JSON block (`EvidenceView.svelte`).
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: label, fields, the fallback (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 4. **Own answer confirmed** (from the former `PLAN-57`)
    - What: The answer request carries a client request id; the `decision.answered` event with that id confirms "Decided: <option>"; other events produce "answered elsewhere" with channel, device and option label.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `decisions.spec.js`: own answer; a `POST /mock/broadcast` from `cli` shows "answered in the terminal" (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 5. **One notification for a burst, none after a reconnect** (from the package `web-moving-between-plans`, moved here from `PLAN-83`)
    - What: a notification fires only for a decision the client has not announced before (`doc/design/shared/decisions.adoc#announce`, merged with PR #278): the decision announcer keeps the set of decisions it has announced; the first read after a start, a reload or a reconnect primes that set silently; decisions that arrive within one second make one notification (several: `decision.notify.several`, `{count} decisions wait for you` / `{count} Entscheidungen warten auf dich`, which opens the list of open decisions; one: its own, which opens that decision); a decision answered before the notification shows is dropped from it. The key `decision.notify.several` goes into `decisions.{en,de}.properties`; a notification never carries a decision's content.
    - Persona: plan-marshall:persona-implementer
@@ -55,7 +55,6 @@ Source of this plan (read before scoping):
      - Unit tests with a fake clock and a fake notification: a reconnect raises none, a burst of three raises one that opens the list, a single decision raises one that opens it, an answered decision is not announced (evidence order: `test-first`)
      - An e2e test through the mock's decision events: the same two cases in the browser (evidence order: `test-first`)
      - The row of the package `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` if `PLAN-83` and `PLAN-59` D4 have landed (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 6. **The chat guards are pinned, and two replies are true** (PLAN-101 residue, `landings/PLAN-101.md`)
    - What: (a) `DecisionView.svelte` ~64-66 keeps one `chatBusyId` slot: B finishing first clears A's busy marker while A's request is in flight; busy is tracked per decision (the PR 319 thread asked for it), the operation token stays. (b) No test pins the guards of `11be8390`: the `chatBusyToken` clear, the `takeProposedAnswer` revision guard (a late answer to an earlier revision is dropped; the operator is told or the design says it is dropped silently) and the `endTheChat` generation guard. (c) Two replies in the PR 319 threads are false and are corrected in the thread: `format.ts:363` ("handled in `7c7ea71c`": that commit changes `DecisionView.test.ts` only; the finding was answered, not changed, and its behaviour is decided: a first paint without the unit key keeps the numeric figure or the design says it does not) and `DecisionView.svelte:60` (the fix is `e0140658`/`11be8390` of PR 335, then this deliverable).
@@ -64,11 +63,11 @@ Source of this plan (read before scoping):
    - Done when:
      - Tests that fail when each guard is reverted: the per-decision busy marker survives another decision's operation; a late proposal answer after a revision applies nothing; `endTheChat` of an earlier generation closes nothing of the reopened panel (evidence order: `mutation-after`)
      - The two PR 319 threads carry a reply that states the real commit or the reason, and the `format.ts` first-paint behaviour is decided in the design (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
      - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20510 PM_WEB_PORT=20511 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.

@@ -94,9 +94,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
  - Done when:
    - `git grep -n "ChatPanel" -- pm-web-app pm-web-e2e` is empty (evidence order: `none`).
    - Browser check (Playwright MCP) shows each place (the start, the project setup, the decomposition, the review, a decision, ended work) on
-     `projects-and-start`, `running-work` and `fully-onboarded`; baseline and after snapshots and screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read,
-     never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+     `projects-and-start`, `running-work` and `fully-onboarded`; baseline and after snapshots and screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 

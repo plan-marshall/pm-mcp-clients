@@ -53,8 +53,7 @@ Not in this plan: `StartView`, its footer and its steps (PLAN-53 owns them, with
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) on the scenario `decomposition.spec.js` uses and on `projects-and-start` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for the views (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on the scenario `decomposition.spec.js` uses and on `projects-and-start` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); `theme-readability.spec.js` passes for the views (evidence order: `none`).
 
 5. **What PLAN-158 left in the start steps and the mock (from its landing, folded 2026-11-11 on the operator's decision)**
  - What: read `landings/PLAN-158.md` of the epic; lines as read at `4a84f727`.

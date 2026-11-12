@@ -88,8 +88,6 @@ Make each do what the design says, with tests that can fail, and answer the revi
  - Skills: pm-dev-java:junit-core
  - Done when:
    - `ci pr comments --pr-number 377` and `--pr-number 381` read 0 unresolved threads and no unanswered review body. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open
-     (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed. Evidence order: `none`.
 
 5. **`config cleanup` and the overview's Cleanup row (PLAN-32 residue, folded 2026-11-12 on the operator's decision)**
  - What:

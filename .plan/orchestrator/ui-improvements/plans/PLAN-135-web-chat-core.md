@@ -96,12 +96,19 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
      subject's tasks, files and decisions; an empty chat shows `control.chat.empty` and two or three starters as chips that fill
      the field and send nothing; the hint `Dictate with your system` (`web.voice.os_hint`, no code of the speech role); a
      snippet slot for the microphone that draws nothing. The focus moves into the field when the chat opens.
+   - PLAN-147 residue (landing `landings/PLAN-147.md`): the composer is built on PLAN-147's `Compose`. Its name union lets
+     `label=""` with no `ariaLabel` through and so yields an unnamed text area (`Compose.svelte:64-78`, `:196`); make an empty
+     `label` count as absent (the field is then named by `ariaLabel`, which becomes required) and test it. `Compose` calls
+     `onsend` with an empty or whitespace value whenever it is not `disabled` (`Compose.svelte:140-145`); state the contract
+     (the consumer holds the act back with `disabled` and its reason) in `components.adoc` § `#compose` and pin it in a test.
    - Texts: every `web.chat.*` key of `chat.adoc` § `#texts` (not `web.voice.*`) in en and de.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - `Chat.test.ts` covers the send, stop, composition, limit, counter, starter, `#`, hide, new, draft-survives-reload and focus
      rules and fails on a revert (evidence order: `test-first`).
+   - `Compose.test.ts` fails for an unnamed field (`label=""`, no `ariaLabel`) and pins the empty-value `onsend` contract
+     (evidence order: `test-first`).
    - A fixture of `Chat` and `ChatTurn` on `/dev/components` in both themes and both locales.
 5. **The chat in the engine's side column, and the plan's and epic's chat acts**
  - What:
@@ -123,10 +130,8 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
  - Done when:
    - Browser check (Playwright MCP) shows this deliverable's change as specified on `running-work` → `plan fix-relay` with the
      chat open: the widths and the phone view, the working line, a streaming reply, Stop; baseline and after snapshots plus
-     screenshots recorded (evidence order: `none`).
+     screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
    - `chat.spec.js` passes with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set; it waits on events, never on time (evidence order: `test-first`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed
-     read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -171,6 +176,9 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 
 - OBSERVED: `pm-web-app/src/lib/chat/` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/Chat.svelte` — absent at `1cc0e10e`; created by this plan
+- OBSERVED: `pm-web-app/src/lib/components/Compose.svelte` — present at `dea405d8` (PLAN-147)
+- OBSERVED: `pm-web-app/src/lib/components/Compose.test.ts` — present at `dea405d8` (PLAN-147)
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `dea405d8`
 - OBSERVED: `pm-web-app/src/lib/components/ChatTurn.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatMarkdown.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by PLAN-137

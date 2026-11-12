@@ -42,8 +42,7 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) of the pairing page, a revoked page and the listener-off page of the mock (the scenarios `pairing.spec.js` and `entry.spec.js` use) at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) of the pairing page, a revoked page and the listener-off page of the mock (the scenarios `pairing.spec.js` and `entry.spec.js` use) at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 

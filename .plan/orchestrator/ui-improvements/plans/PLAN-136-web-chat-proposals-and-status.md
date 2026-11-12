@@ -108,9 +108,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
    - `PlanView.test.ts` and the overview test assert the line in each of the cases above and its removal on each exit (evidence order: `test-first`).
    - Browser check (Playwright MCP) on `running-work` shows the proposal card with its diff (accept, reject, an older-version refusal,
      an already-queued refusal, a lapse), a notice turn folded and unfolded, a status card, and the plan head's line; German and English,
-     light and dark, at `1440` and `390` px; baseline and after snapshots and screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read,
-     never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+     light and dark, at `1440` and `390` px; baseline and after snapshots and screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 

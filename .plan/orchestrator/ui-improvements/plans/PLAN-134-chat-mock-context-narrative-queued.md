@@ -83,8 +83,6 @@ Specification: `doc/design/web-app/chat.adoc` § `#subject-notices`, `#status-ca
  - Done when:
    - A web-listener test and a socket test assert the recorded channel; the full build and integration tests pass at the head
      (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed
-     read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 

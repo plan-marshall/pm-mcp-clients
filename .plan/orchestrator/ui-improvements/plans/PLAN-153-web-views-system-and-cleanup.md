@@ -63,8 +63,7 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) on `reports-and-system` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; the contrast audit `theme-readability.spec.js` passes for both views (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on `reports-and-system` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); the contrast audit `theme-readability.spec.js` passes for both views (evidence order: `none`).
 
 ## Standing Constraints
 

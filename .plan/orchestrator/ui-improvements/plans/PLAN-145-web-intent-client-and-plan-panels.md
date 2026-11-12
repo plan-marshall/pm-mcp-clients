@@ -101,8 +101,6 @@ verdict tag, the texts, the links and the shown fields.
    - `intent.spec.js` passes with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set. Evidence order: `test-first`.
    - Browser check (Playwright MCP) of the fixture on `running-work` at `1440 × 900` and `390 × 844`, German and English, both
      themes. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
 
 ## Standing Constraints
 

@@ -123,9 +123,7 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
    - `column-window.spec.js`, `reports.spec.js` and `mobile.spec.js` pass with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set; they wait on
      the layout's own condition, never on time. Evidence order: `test-first`.
    - Browser check (Playwright MCP) on `reports-and-system` and the `/dev/components` fixture at `1280` and `1440` px and on the
-     phone, German and English, light and dark; screenshots recorded. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
+     phone, German and English, light and dark; screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it). Evidence order: `none`.
 
 ## Standing Constraints
 

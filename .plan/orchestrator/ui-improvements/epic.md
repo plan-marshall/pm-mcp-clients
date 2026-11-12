@@ -279,6 +279,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   deliverable criterion whose evidence exists only after the PR (Sonar count, CI result, review outcome): state it as a landing
   obligation of the finalize steps instead. (5) (PLAN-132 lesson 014) never declare a design table read-only when a test
   compares the message packs to it: a change of wording then has to change the table.
+  Rule (4) applied 2026-11-12 (operator, after PLAN-147 needed an override at five heads for its D5 screenshot/Sonar Done-when):
+  every staged spec lost its "open-issue read at the pull request head" Done-when (a Standing Constraint carries the Sonar gate
+  instead), and "screenshots recorded" now reads "kept in the plan's working area, re-taken after any later visual fix; the pull
+  request lists them after the push; not a gate before it". New specs follow this form.
 
 ## Decisions
 
@@ -757,6 +761,16 @@ plan spec names the plan, proposal and finding documents it comes from.
   no production `running` field. So "N of M at once" is always unknown on the epic: the web shows `?` (PLAN-106/117), the
   terminal showed 0 (see Watches, PLAN-117) and shows `?` since PLAN-120 (#382, 2026-11-09). Owner: `plan-marshall-documentation` / `pm-mcpd` — add the count, or the clients
   drop the figure.
+
+- PLAN-147 lessons (2026-11-12, operator "adopt all 7"): filed in plan-marshall's lesson store as `2026-11-12-19-001` (triage drafted
+  inline multi-file edits, commit gate `no_sanction`), `-002` (functional review blocks on post-push evidence; needs an
+  `owed_after_push` category), `-003` (branch-cleanup escalates on the squash message under the merge queue), `-004` (branch-cleanup as
+  a leaf cannot remove its own worktree), `-005` (simplify after both reviews closed), `-006` (build-server wait spins: one line 602×
+  in one second, 5705 of 6559 work-log lines; high), `-007` (`pm-dev-frontend:javascript-security`: refuse malformed and authority URL
+  forms by syntax first, table-tested). Owner: plan-marshall.
+- Lane thread replies are stock text (PLAN-147, #420): 13 of 14 replies say "Will be addressed by TASK-19 … Fix commit: c4e592c" after
+  the fix had landed, citing the head instead of the fix commit (`3988e4d1`). Counts were correct this time. Owner: plan-marshall
+  (pr-comment reply template).
 
 ## Watches
 
