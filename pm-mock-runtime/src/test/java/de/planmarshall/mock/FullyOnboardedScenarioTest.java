@@ -257,8 +257,7 @@ class FullyOnboardedScenarioTest {
                         body -> ArchiveCheck.fromJson(body)));
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/review",
                         body -> ReviewResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/chat",
-                        body -> ChatResource.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/chat", ChatResource::fromJson));
 
                 for (var endpoint : endpoints) {
                     var response = get(runtime, endpoint.path());

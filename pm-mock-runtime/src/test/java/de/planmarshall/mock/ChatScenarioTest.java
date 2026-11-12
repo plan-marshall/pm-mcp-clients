@@ -18,10 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -86,9 +90,10 @@ class ChatScenarioTest {
      * @param subjectId the subject's id, from the generated id
      * @param role      the role the chat is routed to
      * @param scope     the chat's scope
+     * @param builder   the name of the {@link ChatRoutes} builder the subject's routes come from
      */
     record Subject(String name, String state, Function<String, ChatRoutes> routes, ChatSubjectKind kind,
-    Function<String, String> subjectId, String role, ChatScopeKind scope) {
+    Function<String, String> subjectId, String role, ChatScopeKind scope, String builder) {
 
         @Override
         public String toString() {
@@ -96,30 +101,53 @@ class ChatScenarioTest {
         }
     }
 
+    /**
+     * Every chat route of the contract, one per {@link ChatRoutes} builder: the list is the expected value
+     * of the route contract, and {@link #everyBuilderHasASubject} fails when a builder has no case here.
+     */
     static Stream<Subject> subjects() {
         var question = "Q-" + Generators.letterStrings(4, 8).next();
         return Stream.of(
                 new Subject("plan", CHAT_STATE, ChatRoutes::plan, ChatSubjectKind.PLAN, id -> id, REPLAN,
-                        ChatScopeKind.PLAN),
+                        ChatScopeKind.PLAN, "plan"),
                 new Subject("epic", CHAT_STATE, ChatRoutes::epic, ChatSubjectKind.EPIC, id -> id, DECOMPOSE,
-                        ChatScopeKind.EPIC),
+                        ChatScopeKind.EPIC, "epic"),
                 new Subject("entry", CHAT_STATE, ChatRoutes::entry, ChatSubjectKind.ENTRY, id -> id, REFINE,
-                        ChatScopeKind.ENTRY),
+                        ChatScopeKind.ENTRY, "entry"),
                 new Subject("decision of a plan", CHAT_STATE, id -> ChatRoutes.planDecision(id, question),
-                        ChatSubjectKind.DECISION, id -> id + "/" + question, REPLAN, ChatScopeKind.DECISION),
+                        ChatSubjectKind.DECISION, id -> id + "/" + question, REPLAN, ChatScopeKind.DECISION,
+                        "planDecision"),
                 new Subject("decision of an epic", CHAT_STATE, id -> ChatRoutes.epicDecision(id, question),
-                        ChatSubjectKind.DECISION, id -> id + "/" + question, DECOMPOSE, ChatScopeKind.DECISION),
+                        ChatSubjectKind.DECISION, id -> id + "/" + question, DECOMPOSE, ChatScopeKind.DECISION,
+                        "epicDecision"),
                 new Subject("decision of an entry", CHAT_STATE, id -> ChatRoutes.entryDecision(id, question),
-                        ChatSubjectKind.DECISION, id -> id + "/" + question, REFINE, ChatScopeKind.DECISION),
+                        ChatSubjectKind.DECISION, id -> id + "/" + question, REFINE, ChatScopeKind.DECISION,
+                        "entryDecision"),
                 new Subject("decision of a project's workspace", CHAT_STATE,
                         id -> ChatRoutes.workspaceDecision(id, question), ChatSubjectKind.DECISION,
-                        id -> id + "/" + question, REFINE, ChatScopeKind.DECISION),
+                        id -> id + "/" + question, REFINE, ChatScopeKind.DECISION, "workspaceDecision"),
                 new Subject("decision of the machine", CHAT_STATE, id -> ChatRoutes.machineDecision(question),
-                        ChatSubjectKind.DECISION, id -> "machine/" + question, REFINE, ChatScopeKind.DECISION),
+                        ChatSubjectKind.DECISION, id -> "machine/" + question, REFINE, ChatScopeKind.DECISION,
+                        "machineDecision"),
                 new Subject("ended plan", FOLLOW_UP_STATE, id -> ChatRoutes.endedPlan("codeberg-issues"),
-                        ChatSubjectKind.PLAN, id -> "codeberg-issues", REPLAN, ChatScopeKind.ARCHIVE),
+                        ChatSubjectKind.PLAN, id -> "codeberg-issues", REPLAN, ChatScopeKind.ARCHIVE, "endedPlan"),
                 new Subject("ended epic", FOLLOW_UP_STATE, id -> ChatRoutes.endedEpic("relay-hardening"),
-                        ChatSubjectKind.EPIC, id -> "relay-hardening", DECOMPOSE, ChatScopeKind.ARCHIVE));
+                        ChatSubjectKind.EPIC, id -> "relay-hardening", DECOMPOSE, ChatScopeKind.ARCHIVE,
+                        "endedEpic"));
+    }
+
+    @Test
+    @DisplayName("every builder of ChatRoutes has a subject the route tests run")
+    void everyBuilderHasASubject() {
+        var builders = Arrays.stream(ChatRoutes.class.getMethods())
+                .filter(method -> Modifier.isStatic(method.getModifiers())
+                        && method.getReturnType() == ChatRoutes.class)
+                .map(Method::getName).collect(Collectors.toSet());
+
+        var covered = subjects().map(Subject::builder).collect(Collectors.toSet());
+
+        assertFalse(builders.isEmpty(), "ChatRoutes has builders");
+        assertEquals(builders, covered);
     }
 
     @Nested
@@ -128,14 +156,15 @@ class ChatScenarioTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("de.planmarshall.mock.ChatScenarioTest#subjects")
-        @DisplayName("opens, reads, records a message once, refuses an answer without a proposal and ends")
-        void opensReadsTurnsAndEnds(Subject subject) throws Exception {
+        @DisplayName("is not found before it is opened, opens about its subject, and opens once")
+        void opensAndReads(Subject subject) throws Exception {
             var id = Generators.letterStrings(4, 10).next().toLowerCase();
             var routes = subject.routes().apply(id);
             try (var runtime = ordered(subject.state())) {
                 assertError(get(runtime, routes.chat()), 404, TARGET_NOT_FOUND);
 
                 var opened = post(runtime, routes.chat(), "");
+
                 assertEquals(201, opened.status(), opened.bodyText());
                 var chat = ChatResource.fromJson(opened.bodyText());
                 assertAll(subject.name(),
@@ -158,12 +187,24 @@ class ChatScenarioTest {
                 var again = post(runtime, routes.chat(), "");
                 assertEquals(200, again.status());
                 assertEquals(chat.id(), ChatResource.fromJson(again.bodyText()).id(), "one chat per subject");
+            }
+        }
 
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("de.planmarshall.mock.ChatScenarioTest#subjects")
+        @DisplayName("records a message once, is answered by its role, and refuses an answer without a proposal")
+        void recordsAMessageOnce(Subject subject) throws Exception {
+            var id = Generators.letterStrings(4, 10).next().toLowerCase();
+            var routes = subject.routes().apply(id);
+            try (var runtime = ordered(subject.state())) {
+                assertEquals(201, post(runtime, routes.chat(), "").status());
                 var message = message();
+
                 var accepted = post(runtime, routes.turns(), message.toJson());
+                var repeated = post(runtime, routes.turns(), message.toJson());
+
                 assertEquals(ChatTurnAccepted.HTTP_STATUS, accepted.status(), accepted.bodyText());
                 var turnId = ChatTurnAccepted.fromJson(accepted.bodyText()).turnId();
-                var repeated = post(runtime, routes.turns(), message.toJson());
                 assertEquals(ChatTurnAccepted.HTTP_STATUS, repeated.status());
                 assertEquals(turnId, ChatTurnAccepted.fromJson(repeated.bodyText()).turnId());
 
@@ -182,8 +223,22 @@ class ChatScenarioTest {
                 var answer = new ProposalAnswerRequest(turnId).toJson();
                 assertError(post(runtime, routes.accept(), answer), 409, ACT_NOT_AVAILABLE);
                 assertError(post(runtime, routes.reject(), answer), 409, ACT_NOT_AVAILABLE);
+            }
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("de.planmarshall.mock.ChatScenarioTest#subjects")
+        @DisplayName("ends, refuses what an ended chat no longer takes, and reopens as a new chat")
+        void endsAndReopens(Subject subject) throws Exception {
+            var id = Generators.letterStrings(4, 10).next().toLowerCase();
+            var routes = subject.routes().apply(id);
+            try (var runtime = ordered(subject.state())) {
+                var opened = post(runtime, routes.chat(), "");
+                assertEquals(201, opened.status(), opened.bodyText());
+                var chat = ChatResource.fromJson(opened.bodyText());
 
                 var ended = post(runtime, routes.end(), "");
+
                 assertEquals(200, ended.status());
                 assertEquals(ChatStatus.END, ChatResource.fromJson(ended.bodyText()).state());
                 assertError(post(runtime, routes.turns(), message().toJson()), 409, ACT_NOT_AVAILABLE);

@@ -114,6 +114,58 @@ class ChatReplyEventsTest {
         @Test
         @DisplayName("sends the operator's message, then the reply's start, steps, pieces and completion in order")
         void playsInOrder() throws Exception {
+            var played = play();
+
+            var names = played.sequence().stream().map(Seen::name).toList();
+            assertEquals(ChatTurnStartedEvent.EVENT_NAME, names.get(0));
+            assertEquals(ChatTurnStartedEvent.EVENT_NAME, names.get(1));
+            assertEquals(ChatTurnProgressEvent.EVENT_NAME, names.get(2));
+            assertEquals(ChatTurnCompletedEvent.EVENT_NAME, names.getLast());
+            var middle = names.subList(3, names.size() - 1);
+            assertFalse(middle.isEmpty(), "the reply's text comes in pieces");
+            assertTrue(middle.stream().allMatch(ChatTurnDeltaEvent.EVENT_NAME::equals), names::toString);
+            assertTrue(played.sequence().stream()
+                    .allMatch(seen -> "plan".equals(JsonTree.string(seen.scope(), KIND))
+                            && played.planId().equals(JsonTree.string(seen.scope(), ID))),
+                    "every event is on the plan's stream");
+            assertEquals(names, played.everywhere().stream().map(Seen::name).toList(),
+                    "/api/v1/events carries the same sequence");
+        }
+
+        @Test
+        @DisplayName("announces the operator's message and the role's reply with the turns the chat records")
+        void announcesTheTurns() throws Exception {
+            var played = play();
+
+            var sequence = played.sequence();
+            var operator = ChatTurnStartedEvent.fromMap(sequence.get(0).payload());
+            var reply = ChatTurnStartedEvent.fromMap(sequence.get(1).payload());
+            var progress = ChatTurnProgressEvent.fromMap(sequence.get(2).payload());
+            var completed = ChatTurnCompletedEvent.fromMap(sequence.getLast().payload());
+            assertAll("the turns the events announce",
+                    () -> assertTrue(operator.isOperator()),
+                    () -> assertEquals(played.operatorTurnId(), operator.turnId()),
+                    () -> assertEquals(played.message().text(), operator.text()),
+                    () -> assertNull(operator.model()),
+                    () -> assertEquals(REPLAN, reply.author()),
+                    () -> assertEquals(played.chat().role().model(), reply.model()),
+                    () -> assertNotNull(reply.context()),
+                    () -> assertNotEquals(operator.turnId(), reply.turnId()),
+                    () -> assertEquals(reply.turnId(), progress.turnId()),
+                    () -> assertEquals(reply.turnId(), completed.turnId()),
+                    () -> assertEquals(TurnStatus.COMPLETE, completed.status()),
+                    () -> assertEquals(joinedDeltas(sequence), completed.text()));
+            var written = played.written();
+            assertEquals(ChatStatus.TURN, written.state());
+            assertEquals(completed.text(), written.turns().getLast().text());
+            assertEquals(TurnStatus.COMPLETE, written.turns().getLast().status());
+        }
+
+        /**
+         * Sends one message to a new plan chat under ordered timing and reads the events it plays, on the
+         * plan's stream and on {@code /api/v1/events}, and the chat after the reply.
+         */
+        private Played play() throws Exception {
             var planId = id();
             var routes = ChatRoutes.plan(planId);
             try (var runtime = start(MockTiming.ORDERED);
@@ -121,51 +173,30 @@ class ChatReplyEventsTest {
                  var runtimeStream = open(runtime, RUNTIME_EVENTS)) {
                 var chat = openChat(runtime, routes);
                 var message = message();
-
                 var accepted = post(runtime, routes.turns(), message.toJson());
                 assertEquals(ChatTurnAccepted.HTTP_STATUS, accepted.status(), accepted.bodyText());
                 var operatorTurnId = ChatTurnAccepted.fromJson(accepted.bodyText()).turnId();
-
                 var sequence = untilCompleted(planStream.events(), chat.id());
-                var names = sequence.stream().map(Seen::name).toList();
-                assertEquals(ChatTurnStartedEvent.EVENT_NAME, names.get(0));
-                assertEquals(ChatTurnStartedEvent.EVENT_NAME, names.get(1));
-                assertEquals(ChatTurnProgressEvent.EVENT_NAME, names.get(2));
-                assertEquals(ChatTurnCompletedEvent.EVENT_NAME, names.getLast());
-                var middle = names.subList(3, names.size() - 1);
-                assertFalse(middle.isEmpty(), "the reply's text comes in pieces");
-                assertTrue(middle.stream().allMatch(ChatTurnDeltaEvent.EVENT_NAME::equals), names::toString);
-
-                var operator = ChatTurnStartedEvent.fromMap(sequence.get(0).payload());
-                var reply = ChatTurnStartedEvent.fromMap(sequence.get(1).payload());
-                var progress = ChatTurnProgressEvent.fromMap(sequence.get(2).payload());
-                var completed = ChatTurnCompletedEvent.fromMap(sequence.getLast().payload());
-                assertAll("the turns the events announce",
-                        () -> assertTrue(operator.isOperator()),
-                        () -> assertEquals(operatorTurnId, operator.turnId()),
-                        () -> assertEquals(message.text(), operator.text()),
-                        () -> assertNull(operator.model()),
-                        () -> assertEquals(REPLAN, reply.author()),
-                        () -> assertEquals(chat.role().model(), reply.model()),
-                        () -> assertNotNull(reply.context()),
-                        () -> assertNotEquals(operator.turnId(), reply.turnId()),
-                        () -> assertEquals(reply.turnId(), progress.turnId()),
-                        () -> assertEquals(reply.turnId(), completed.turnId()),
-                        () -> assertEquals(TurnStatus.COMPLETE, completed.status()),
-                        () -> assertEquals(joinedDeltas(sequence), completed.text()));
-                assertTrue(sequence.stream().allMatch(seen -> "plan".equals(JsonTree.string(seen.scope(), KIND))
-                        && planId.equals(JsonTree.string(seen.scope(), ID))), "every event is on the plan's stream");
-
                 var everywhere = untilCompleted(runtimeStream.events(), chat.id());
-                assertEquals(names, everywhere.stream().map(Seen::name).toList(),
-                        "/api/v1/events carries the same sequence");
-
-                var written = read(runtime, routes);
-                assertEquals(ChatStatus.TURN, written.state());
-                assertEquals(completed.text(), written.turns().getLast().text());
-                assertEquals(TurnStatus.COMPLETE, written.turns().getLast().status());
+                return new Played(planId, chat, message, operatorTurnId, sequence, everywhere,
+                        read(runtime, routes));
             }
         }
+    }
+
+    /**
+     * What one message to a plan chat played under ordered timing.
+     *
+     * @param planId         the plan
+     * @param chat           the chat as it was opened
+     * @param message        the operator's message
+     * @param operatorTurnId the turn the message was recorded as
+     * @param sequence       the chat's events on the plan's stream, up to the reply's completion
+     * @param everywhere     the chat's events on {@code /api/v1/events}, up to the reply's completion
+     * @param written        the chat after the reply
+     */
+    private record Played(String planId, ChatResource chat, ChatTurnRequest message, String operatorTurnId,
+            List<Seen> sequence, List<Seen> everywhere, ChatResource written) {
     }
 
     @Nested
