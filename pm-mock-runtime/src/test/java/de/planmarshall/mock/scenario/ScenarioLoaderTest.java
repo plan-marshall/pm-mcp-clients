@@ -16,14 +16,21 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -700,6 +707,186 @@ class ScenarioLoaderTest {
                 """;
         var scenario = ScenarioLoader.load(json, "plan-error.json");
         assertEquals(404, scenario.route("GET", "/api/v1/plans/fix-relay/process").status());
+    }
+
+    private static final String REP_A = """
+            {"scope":{"kind":"machine"},"state":{"state_id":"a","kind":"operator_wait"},"links":[]}""";
+
+    private static String repWithLink(String href) {
+        return """
+                {"scope":{"kind":"machine"},"state":{"state_id":"a","kind":"operator_wait"},
+                 "links":[{"id":"go","rel":"submit","method":"POST","href":"%s","params":{}}]}""".formatted(href);
+    }
+
+    private static String doc(String states) {
+        return """
+                {"format_version":1,"name":"x","start":"a","states":%s}""".formatted(states);
+    }
+
+    private static String docWithRoutes(String routes) {
+        return """
+                {"format_version":1,"name":"x","start":"a","routes":%s,
+                 "states":{"a":{"representation":%s}}}""".formatted(routes, REP_A);
+    }
+
+    static Stream<Arguments> invalidScenarios() {
+        return Stream.of(
+                Arguments.of("a root that is no object", "[]", null),
+                Arguments.of("no format_version", """
+                        {"name":"x","start":"a","states":{"a":{"representation":{}}}}""", "format_version"),
+                Arguments.of("a blank name", """
+                        {"format_version":1,"name":" ","start":"a","states":{"a":{"representation":{}}}}""", "name"),
+                Arguments.of("no start", """
+                        {"format_version":1,"name":"x","states":{"a":{"representation":{}}}}""", "start"),
+                Arguments.of("no state", doc("{}"), "states"),
+                Arguments.of("states that are no object", doc("[]"), "states"),
+                Arguments.of("a blank state id",
+                        doc("{\"a\":{\"representation\":" + REP_A + "},\" \":{\"representation\":{}}}"), "states"),
+                Arguments.of("a state that is no object", doc("{\"a\":1}"), null),
+                Arguments.of("a blank link name",
+                        doc("{\"a\":{\"representation\":{},\"links\":{\" \":{\"next\":\"a\"}}}}"), "links"),
+                Arguments.of("a link that is no object",
+                        doc("{\"a\":{\"representation\":{},\"links\":{\"go\":1}}}"), "links.go"),
+                Arguments.of("a link without next",
+                        doc("{\"a\":{\"representation\":{},\"links\":{\"go\":{\"method\":\"POST\"}}}}"), "links.go.next"),
+                Arguments.of("a negative link delay",
+                        doc("{\"a\":{\"representation\":{},\"links\":{\"go\":{\"next\":\"a\",\"delay_ms\":-1}}}}"),
+                        "links.go.delay_ms"),
+                Arguments.of("an event that is no object",
+                        doc("{\"a\":{\"representation\":{},\"events\":[1]}}"), "events[0]"),
+                Arguments.of("an event without after_ms",
+                        doc("{\"a\":{\"representation\":{},\"events\":[{\"event\":\"check.result\",\"data\":{}}]}}"),
+                        "events[0].after_ms"),
+                Arguments.of("an event without a name",
+                        doc("{\"a\":{\"representation\":{},\"events\":[{\"after_ms\":1,\"event\":\" \",\"data\":{}}]}}"),
+                        "events[0].event"),
+                Arguments.of("an event without data",
+                        doc("{\"a\":{\"representation\":{},\"events\":[{\"after_ms\":1,\"event\":\"check.result\"}]}}"),
+                        "events[0].data"),
+                Arguments.of("an auto transition that is no object",
+                        doc("{\"a\":{\"representation\":{},\"auto\":5}}"), "auto"),
+                Arguments.of("an auto transition without after_ms",
+                        doc("{\"a\":{\"representation\":{},\"auto\":{\"next\":\"a\"}}}"), "auto.after_ms"),
+                Arguments.of("an auto transition without next",
+                        doc("{\"a\":{\"representation\":{},\"auto\":{\"after_ms\":1}}}"), "auto.next"),
+                Arguments.of("a route that is no object", docWithRoutes("{\"GET /x\":1}"), "routes.GET /x"),
+                Arguments.of("a route whose representation is a scalar",
+                        docWithRoutes("{\"GET /x\":{\"representation\":\"s\"}}"), "routes.GET /x.representation"),
+                Arguments.of("a representation without a state_id",
+                        doc("{\"a\":{\"representation\":{\"scope\":{\"kind\":\"machine\"},\"state\":{}}}}"),
+                        "representation.state.state_id"),
+                Arguments.of("a scenario link the representation does not offer",
+                        doc("{\"a\":{\"representation\":" + REP_A
+                                + ",\"links\":{\"go\":{\"next\":\"a\",\"method\":\"POST\"}}}}"), "links.go"),
+                Arguments.of("a scenario method that disagrees with the offered link",
+                        doc("{\"a\":{\"representation\":" + repWithLink("/api/v1/go")
+                                + ",\"links\":{\"go\":{\"next\":\"a\",\"method\":\"GET\",\"href\":\"/api/v1/go\"}}}}"),
+                        "links.go.method"),
+                Arguments.of("a scenario href that disagrees with the offered link",
+                        doc("{\"a\":{\"representation\":" + repWithLink("/api/v1/go")
+                                + ",\"links\":{\"go\":{\"next\":\"a\",\"method\":\"POST\",\"href\":\"/api/v1/other\"}}}}"),
+                        "links.go.href"),
+                Arguments.of("an offered href that does not end in the link id",
+                        doc("{\"a\":{\"representation\":" + repWithLink("/api/v1/go-else")
+                                + ",\"links\":{\"go\":{\"next\":\"a\",\"method\":\"POST\"}}}}"),
+                        "links.go.href"),
+                Arguments.of("an offered link without a scenario link",
+                        doc("{\"a\":{\"representation\":" + repWithLink("/api/v1/go") + "}}"),
+                        "representation.links"),
+                Arguments.of("an event name outside the catalogue",
+                        doc("{\"a\":{\"representation\":" + REP_A
+                                + ",\"events\":[{\"after_ms\":1,\"event\":\"no.such_event\",\"data\":{}}]}}"),
+                        "events[0].event"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidScenarios")
+    @DisplayName("refuses a scenario that breaks the closed schema, naming the field")
+    void refusesAnInvalidScenario(String breach, String json, String field) {
+        var identifier = Generators.letterStrings(4, 10).next() + ".json";
+
+        var refused = assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(json, identifier));
+
+        assertEquals(identifier, refused.scenario(), breach);
+        assertEquals(field, refused.field(), breach);
+    }
+
+    @Test
+    @DisplayName("names a scenario without an identifier unnamed")
+    void namesItUnnamed() {
+        var refused = assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load("[]", " "));
+
+        assertEquals("unnamed", refused.scenario());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"GET /api/v1/epics/relay-hardening/process", "GET /api/v1/plans/fix-relay/intent",
+            "GET /api/v1/epics/relay-hardening/intent", "GET /api/v1/plans/fix-relay/outline",
+            "GET /api/v1/plans/fix-relay/completion", "GET /api/v1/plans/fix-relay/tasks/TASK-1/activity"})
+    @DisplayName("decodes a plan or epic route with its resource's codec")
+    void decodesAPlanOrEpicRoute(String routeKey) {
+        var json = docWithRoutes("{\"" + routeKey + "\":{\"representation\":{}}}");
+
+        var refused = assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(json, "codec.json"));
+
+        assertEquals("routes." + routeKey + ".representation", refused.field());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"POST /api/v1/plans/fix-relay/process", "GET /api/v1/plans/fix-relay",
+            "GET /api/v1/epics/relay-hardening/unregistered", "GET /api/v1/epics//process",
+            "GET /api/v1/plans/fix-relay/tasks/TASK-1/unregistered"})
+    @DisplayName("keeps a route of another shape without a codec")
+    void keepsARouteWithoutCodec(String routeKey) {
+        var json = docWithRoutes("{\"" + routeKey + "\":{\"representation\":{\"anything\":true}}}");
+
+        var scenario = ScenarioLoader.load(json, "no-codec.json");
+
+        assertNotNull(scenario.routes().get(routeKey));
+    }
+
+    @Nested
+    @DisplayName("Loading by name or path")
+    class ByNameOrPath {
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"", ".json"})
+        @DisplayName("finds a standard scenario by its name, with or without the suffix and the directory")
+        void findsByName(String suffix) {
+            var name = StandardScenarios.PROJECTS_AND_START;
+
+            var byName = ScenarioLoader.load(name + suffix);
+            var byResource = ScenarioLoader.load(ScenarioLoader.SCENARIOS_RESOURCE_DIR + name + suffix);
+
+            assertEquals(byName.name(), byResource.name());
+            assertEquals(byName.states().keySet(), byResource.states().keySet());
+        }
+
+        @Test
+        @DisplayName("refuses a name no resource and no file carries")
+        void refusesAnUnknownName() {
+            var unknown = "unknown-" + Generators.letterStrings(4, 10).next();
+
+            assertThrows(IllegalArgumentException.class, () -> ScenarioLoader.load(unknown));
+        }
+
+        @Test
+        @DisplayName("loads a scenario file named by its path")
+        void loadsAFile(@TempDir Path directory) throws IOException {
+            var file = directory.resolve(Generators.letterStrings(4, 10).next() + ".json");
+            Files.writeString(file, doc("{\"a\":{\"representation\":" + REP_A + "}}"));
+
+            var scenario = ScenarioLoader.load(file.toString());
+
+            assertEquals("x", scenario.name());
+            assertNotNull(scenario.state("a"));
+        }
+
+        @Test
+        @DisplayName("reports a path that cannot be read as such")
+        void reportsAnUnreadablePath(@TempDir Path directory) {
+            assertThrows(UncheckedIOException.class, () -> ScenarioLoader.load(directory.toString()));
+        }
     }
 
     @Test
