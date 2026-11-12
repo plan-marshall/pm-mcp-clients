@@ -33,6 +33,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.control.ChatState;
 import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
@@ -381,6 +382,45 @@ class StartRegistryTest {
             assertEquals(epicId, created.entry().planId());
             assertEquals("epic.started", events.getLast().name());
             assertEquals(epicId, events.getLast().data().get("epic_id"));
+        }
+    }
+
+    @Nested
+    @DisplayName("An epic's ready step")
+    class EpicReady {
+
+        @Test
+        @DisplayName("shows the project's values in force as the state names them")
+        void showsTheProjectsValues() {
+            var scope = Generators.integers(2, 9).next();
+            var overlap = Generators.integers(1, 20).next();
+            var entryId = seedEntry(Map.of("kind", "epic", "state", "start.ready", "title", lowerLetters(),
+                    "epic_auto_start", false, "epic_auto_start_origin", ConfigOrigin.PROJECT.wire(),
+                    "parallelization_scope", scope, "overlap_max_files", overlap));
+
+            var ready = registry.find(entryId).ready();
+
+            assertNotNull(ready);
+            assertEquals(Boolean.FALSE, ready.epicAutoStart());
+            assertEquals(ConfigOrigin.PROJECT, ready.epicAutoStartOrigin());
+            assertEquals(scope, ready.parallelizationScope());
+            assertEquals(overlap, ready.overlapMaxFiles());
+        }
+
+        @Test
+        @DisplayName("falls back to the machine's defaults for values out of their range")
+        void fallsBackToTheDefaults() {
+            var entryId = seedEntry(Map.of("kind", "epic", "state", "start.ready", "title", lowerLetters(),
+                    "epic_auto_start_origin", "origin-" + lowerLetters(),
+                    "parallelization_scope", 0, "overlap_max_files", -1));
+
+            var ready = registry.find(entryId).ready();
+
+            assertNotNull(ready);
+            assertEquals(Boolean.TRUE, ready.epicAutoStart(), "epic.auto_start defaults to on");
+            assertEquals(ConfigOrigin.MACHINE, ready.epicAutoStartOrigin());
+            assertEquals(1, ready.parallelizationScope(), "a scope below one is the machine default 1");
+            assertEquals(0, ready.overlapMaxFiles(), "a negative overlap is the default 0");
         }
     }
 
