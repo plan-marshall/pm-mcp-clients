@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { render } from '@testing-library/svelte';
-import BrandMark from './BrandMark.svelte';
+import BrandMark, { DELIVERED_SIZES, type BrandMarkProps } from './BrandMark.svelte';
 
 const SOURCE_DIR = path.resolve(__dirname, '../..');
 const COMPONENT_PATH = path.resolve(__dirname, 'BrandMark.svelte');
@@ -149,11 +149,19 @@ describe('BrandMark component', () => {
       expect(mark.getAttribute('data-rendering')).toBe('monochrome');
     });
 
-    it.each([20, 24] as const)('refuses the colour rendering at the monochrome-only size %i px', (size) => {
-      const { queryByTestId, container } = render(BrandMark, { props: { rendering: 'colour', size } });
+    it('declares the sizes of the design for each rendering', () => {
+      expect(DELIVERED_SIZES).toEqual({ colour: COLOUR_SIZES, monochrome: MONOCHROME_SIZES });
+    });
 
-      expect(queryByTestId('brand-mark')).toBeNull();
-      expect(container.querySelector('svg')).toBeNull();
+    it('rejects a monochrome-only size for the colour rendering at the call site', () => {
+      // The type check of the build (svelte-check) fails if either line below is accepted.
+      // @ts-expect-error 20 px is delivered in monochrome only
+      const colourAt20: BrandMarkProps = { rendering: 'colour', size: 20 };
+      // @ts-expect-error 24 px is delivered in monochrome only, and colour is the default rendering
+      const defaultAt24: BrandMarkProps = { size: 24 };
+      const monochromeAt20: BrandMarkProps = { rendering: 'monochrome', size: 20 };
+
+      expect([colourAt20.size, defaultAt24.size, monochromeAt20.size]).toEqual([20, 24, 20]);
     });
   });
 

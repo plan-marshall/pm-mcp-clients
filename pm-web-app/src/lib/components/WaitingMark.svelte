@@ -76,6 +76,8 @@
    * One cycle is 3.6 s: each tick is drawn in 0.3 s, 0.6 s after the one before (0 s, 0.6 s, 1.2 s),
    * the full list holds until 2.7 s, the ticks fade until 3.3 s, and the open list rests until the
    * cycle starts again. An open line's dot leaves when its tick starts and returns after the fade.
+   * Every cycle opens on the reduced-motion rest state (dots shown, ticks undrawn), so the first
+   * frame at 20 px never shows a line without its dot or its tick.
    */
   .waiting-mark__tick--1 {
     animation: waiting-mark-tick-1 3.6s linear infinite;
@@ -103,6 +105,10 @@
 
   @keyframes waiting-mark-tick-1 {
     0% {
+      stroke-dashoffset: 1;
+      opacity: 0;
+    }
+    0.001% {
       stroke-dashoffset: 1;
       opacity: 1;
     }
@@ -163,7 +169,10 @@
   }
 
   @keyframes waiting-mark-dot-1 {
-    0%,
+    0% {
+      opacity: 1;
+    }
+    0.001%,
     91.667% {
       opacity: 0;
     }

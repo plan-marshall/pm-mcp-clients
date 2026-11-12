@@ -120,6 +120,47 @@ describe('WaitingMark', () => {
     expect(ruleOf(reduced, '.waiting-mark__dot')).toMatch(/opacity:\s*1\s*;/);
   });
 
+  describe('the start frame at 20 px', () => {
+    /** The rest state of reduced motion: every dot shown, every tick undrawn. */
+    const reduced = (): string => blockOf(stylesheet, '@media (prefers-reduced-motion: reduce)');
+
+    /**
+     * @param keyframes the keyframes of one dot or tick
+     * @returns the declarations of the keyframe that opens a cycle, at 0% alone or in a list
+     */
+    function frameAtZero(keyframes: string): string {
+      const match = /(^|[{}])\s*0%\s*(,[^{]*)?\{([^}]*)\}/.exec(keyframes);
+      if (!match) throw new Error('no 0% keyframe');
+      return match[3];
+    }
+
+    it('starts the cycle from the mark the operator sees at 20 px', () => {
+      render(WaitingMark, { props: { label: LABEL } });
+      const mark = screen.getByTestId('waiting-mark-glyph');
+
+      expect(mark).toHaveAttribute('width', '20');
+      expect(mark).toHaveAttribute('height', '20');
+    });
+
+    it.each([1, 2, 3])('opens the cycle of tick %i undrawn, as reduced motion rests', (line) => {
+      const rest = ruleOf(reduced(), '.waiting-mark__tick');
+      const first = frameAtZero(blockOf(stylesheet, `@keyframes waiting-mark-tick-${line}`));
+
+      expect(rest).toMatch(/stroke-dashoffset:\s*1\s*;/);
+      expect(rest).toMatch(/opacity:\s*0\s*;/);
+      expect(first).toMatch(/stroke-dashoffset:\s*1\s*;/);
+      expect(first).toMatch(/opacity:\s*0\s*;/);
+    });
+
+    it.each([1, 2, 3])('opens the cycle of dot %i shown, as reduced motion rests', (line) => {
+      const rest = ruleOf(reduced(), '.waiting-mark__dot');
+      const first = frameAtZero(blockOf(stylesheet, `@keyframes waiting-mark-dot-${line}`));
+
+      expect(rest).toMatch(/opacity:\s*1\s*;/);
+      expect(first).toMatch(/opacity:\s*1\s*;/);
+    });
+  });
+
   it('sets no style attribute anywhere in the rendered tree and no literal colour in the component', () => {
     const { container } = render(WaitingMark, { props: { label: LABEL } });
 
