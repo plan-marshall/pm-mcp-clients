@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +65,8 @@ class FindCommandTest {
     private static final String ENDED_TITLE = "fix-relay-v1";
 
     private static final String AREA = "operator";
+
+    private static final String OVERVIEW_AREA = "overview";
 
     @TempDir
     Path tempDir;
@@ -435,6 +438,28 @@ class FindCommandTest {
             }
         }
 
+        @Test
+        @DisplayName("names every kind of a match from the catalogue in both languages")
+        void namesEveryKindInBothLanguages() {
+            for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+                for (var kind : FindKind.values()) {
+                    var key = "overview.find.kind." + kind.value();
+                    var word = FindCommand.kindOf(kind, locale);
+
+                    assertAll(
+                                        () -> assertTrue(MessageCatalogue.hasKey(locale, key),
+                                                            locale + " carries no word for " + kind.value()),
+                                        () -> assertFalse(word.isBlank(), locale + " renders no word for " + key)
+                    );
+                    if (!"en".equals(locale)) {
+                        // The English words are the wire values; every other language must translate them.
+                        assertNotEquals(kind.value(), word,
+                                            locale + " prints the wire value of " + kind.value());
+                    }
+                }
+            }
+        }
+
         private static Map<String, Object> arguments() {
             var arguments = new LinkedHashMap<String, Object>();
             arguments.put("text", "relay");
@@ -443,10 +468,20 @@ class FindCommandTest {
             return arguments;
         }
 
+        /**
+         * @param locale the interface locale
+         * @return the keys the command prints: its own {@code operator.find.*} rows, the shared
+         *         {@code overview.find.*} rows it reuses, the outcome of ended work and every kind word
+         */
         private static Set<String> keysOf(String locale) {
             var keys = new TreeSet<String>();
             for (var key : MessageCatalogue.getMessages(locale, AREA).keySet()) {
                 if (key.startsWith("operator.find.")) {
+                    keys.add(key);
+                }
+            }
+            for (var key : MessageCatalogue.getMessages(locale, OVERVIEW_AREA).keySet()) {
+                if (key.startsWith("overview.find.") || "overview.ended.outcome".equals(key)) {
                     keys.add(key);
                 }
             }
@@ -535,7 +570,7 @@ class FindCommandTest {
 
                 assertAll(
                                     () -> assertTrue(output.contains("99 is not offered here"), output),
-                                    () -> assertTrue(output.contains("Fix Relay Transport"), output)
+                                    () -> assertTrue(output.contains("status --project pm-mcp-clients"), output)
                 );
             }
         }

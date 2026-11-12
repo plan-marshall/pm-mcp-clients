@@ -428,9 +428,7 @@ public final class PmConsole {
             query = FindCommand.readField(reader, MessageCatalogue.format(locale, "overview.find.hint", Map.of())
                                 + StartPrompt.SUFFIX);
             if (query == null) {
-                // Esc leaves the field: nothing is sent, and the prompt is drawn again as it was.
-                out.println();
-                out.flush();
+                // Esc leaves the field: nothing is sent, and the console draws its prompt again.
                 return;
             }
         }
