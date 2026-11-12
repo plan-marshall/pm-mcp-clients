@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -22,10 +23,14 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 
+import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
@@ -45,6 +50,12 @@ class StartDialogueTest {
     /** The state whose entry has a stored description and a seeded chat with an open proposal. */
     private static final String START_CHAT = StandardScenarios.PROJECTS_AND_START + "#start.chat";
     private static final String CHAT_ENTRY = "ent-3f9a2c41";
+    /** The turn of the proposal the seeded chat holds open. */
+    private static final String SEEDED_PROPOSAL = "T-0103";
+    /** The text of the role's second reply in the mock's scripted conversation, the first one sent here. */
+    private static final String REPLY = "Here is what I would change.";
+    /** The summary of the proposal that reply makes about the entry's description. */
+    private static final String NEW_PROPOSAL = "Make the request more precise.";
 
     @Test
     @DisplayName("plan add applies its arguments and starts without asking")
@@ -425,8 +436,67 @@ class StartDialogueTest {
         var echoed = rendered.indexOf(message);
         assertAll(
                             () -> assertTrue(echoed >= 0, rendered),
-                            () -> assertTrue(rendered.indexOf("refine", echoed) > echoed,
-                                                "the role answers after the message: " + rendered),
+                            () -> assertTrue(rendered.indexOf(REPLY, echoed) > echoed,
+                                                "the role's reply follows the message: " + rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a reply the runtime writes over time is shown once written, with its proposal")
+    void chatWaitsForTheWrittenReply() throws Exception {
+        var message = Generators.letterStrings(8, 16).next();
+        var outcome = runWithCode(MockTiming.REALISTIC, null, START_CHAT,
+                            String.join("\n", "h", "x", message, "x", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        var reply = rendered.indexOf(REPLY, rendered.indexOf(message));
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(reply > 0, "the written reply is shown: " + rendered),
+                            () -> assertTrue(rendered.indexOf(NEW_PROPOSAL, reply) > reply,
+                                                "the reply's proposal is read back: " + rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("Enter accepts the open proposal with its turn and stores the description")
+    void chatAcceptsTheProposal() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED, null, START_CHAT, String.join("\n", "h", "", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(outcome.posted(ChatRoutes.entry(CHAT_ENTRY).accept())
+                                                .contains("\"turn_id\":\"" + SEEDED_PROPOSAL + "\"")),
+                            () -> assertFalse(outcome.wasPosted(ChatRoutes.entry(CHAT_ENTRY).reject())));
+    }
+
+    @Test
+    @DisplayName("r rejects the open proposal with its turn and stores nothing")
+    void chatRejectsTheProposal() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED, null, START_CHAT, String.join("\n", "h", "r", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertFalse(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(outcome.posted(ChatRoutes.entry(CHAT_ENTRY).reject())
+                                                .contains("\"turn_id\":\"" + SEEDED_PROPOSAL + "\"")),
+                            () -> assertFalse(outcome.wasPosted(ChatRoutes.entry(CHAT_ENTRY).accept())));
+    }
+
+    @Test
+    @DisplayName("a chat the runtime refuses to open is said, and the sources stay as they are")
+    void chatOpenRefused() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED,
+                            "{\"failure\":\"http_error\",\"status\":409,\"code\":\"invalid_arguments\"}", START_CHAT,
+                            "h\nq\n", "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(rendered.contains("Injected failure: invalid_arguments"), rendered),
+                            () -> assertFalse(rendered.contains("A provider that reads Codeberg issues"), rendered),
                             () -> assertTrue(rendered.contains("Left the start"), rendered));
     }
 
@@ -473,10 +543,23 @@ class StartDialogueTest {
     }
 
     private static Outcome runWithCode(String scenario, String input, String... args) throws Exception {
+        return runWithCode(MockTiming.ORDERED, null, scenario, input, args);
+    }
+
+    /**
+     * @param timing  how the mock plays the role's reply
+     * @param failure the chat failure armed before the verb runs, as {@code POST /mock/inject} takes it,
+     *                or {@code null}
+     */
+    private static Outcome runWithCode(MockTiming timing, String failure, String scenario, String input,
+                        String... args) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
-                                 .timing(MockTiming.ORDERED).build());
+                                 .timing(timing).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
+            if (failure != null) {
+                assertEquals(200, runtime.client().send(HttpRequest.json("POST", "/mock/inject", failure)).status());
+            }
             var environment = new HashMap<>(runtime.environment());
             environment.put("LANG", "en_US.UTF-8");
             environment.put("USER", "operator");
@@ -487,7 +570,7 @@ class StartDialogueTest {
                 driver.type(input);
             }
             var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
-            return new Outcome(code, driver.render());
+            return new Outcome(code, driver.render(), runtime.requests());
         }
     }
 
@@ -500,6 +583,21 @@ class StartDialogueTest {
                             StandardCharsets.UTF_8);
     }
 
-    private record Outcome(int code, String rendered) {
+    private record Outcome(int code, String rendered, List<MockHttpRequest> requests) {
+
+        /** @return the body of the one request posted to the path, failing when there is none */
+        String posted(String path) {
+            return requests.stream()
+                                .filter(request -> "POST".equals(request.method()) && path.equals(request.path()))
+                                .map(MockHttpRequest::bodyText)
+                                .findFirst()
+                                .orElseThrow(() -> new AssertionError("nothing was posted to " + path));
+        }
+
+        /** @return whether anything was posted to the path */
+        boolean wasPosted(String path) {
+            return requests.stream().anyMatch(request -> "POST".equals(request.method())
+                                && path.equals(request.path()));
+        }
     }
 }

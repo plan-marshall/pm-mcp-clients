@@ -10,19 +10,23 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.chat.ChatStatus;
 import de.planmarshall.api.chat.ChatTurnAccepted;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
+import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.decomposition.DecompositionCommitResult;
 import de.planmarshall.api.decomposition.DecompositionInstructRequest;
 import de.planmarshall.api.decomposition.EpicDecomposition;
@@ -50,13 +54,26 @@ final class StartApi {
     private static final String KEY_RECIPES = "recipes";
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
+    /** How long the terminal waits for the role's reply: a minute, read ten times a second. */
+    static final ReplyWait REPLY_WAIT = new ReplyWait(600, Duration.ofMillis(100));
+
     private final OperatorContext context;
+    private final ReplyWait replyWait;
 
     /**
      * @param context the operator context
      */
     StartApi(OperatorContext context) {
+        this(context, REPLY_WAIT);
+    }
+
+    /**
+     * @param context   the operator context
+     * @param replyWait how often the chat is read while the role's reply is written
+     */
+    StartApi(OperatorContext context, ReplyWait replyWait) {
         this.context = Objects.requireNonNull(context, "context");
+        this.replyWait = Objects.requireNonNull(replyWait, "replyWait");
     }
 
     /**
@@ -120,11 +137,13 @@ final class StartApi {
 
     /**
      * Sends one message of the operator; the runtime takes it at once and the role answers after it,
-     * so the chat is read again once the message is taken.
+     * so the chat is read again once the message is taken, and again while the role's reply is still
+     * written, at most as often as the reply wait allows.
      *
      * @param entryId the entry
      * @param text    the operator's message
-     * @return the entry's chat after the message
+     * @return the entry's chat after the message: the reply written, or still written when the wait ran
+     *         out ({@link #isWriting(ChatResource)})
      * @throws IOException       on transport failure
      * @throws StartActException if the runtime refuses the message
      */
@@ -135,7 +154,22 @@ final class StartApi {
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
             throw new StartActException(CHAT, messageOf(response));
         }
-        return chat(send(HttpRequest.get(routes.chat())));
+        var chat = chat(send(HttpRequest.get(routes.chat())));
+        for (int read = 1; read < replyWait.reads() && isWriting(chat); read++) {
+            LockSupport.parkNanos(replyWait.pause().toNanos());
+            chat = chat(send(HttpRequest.get(routes.chat())));
+        }
+        return chat;
+    }
+
+    /**
+     * @param chat the chat as last read
+     * @return {@code true} while the role's reply is written: the chat is in {@code chat.reply} or a
+     *         turn is still streaming
+     */
+    static boolean isWriting(ChatResource chat) {
+        return chat.state() == ChatStatus.REPLY
+                            || chat.turns().stream().anyMatch(turn -> turn.status() == TurnStatus.STREAMING);
     }
 
     /**
@@ -319,6 +353,27 @@ final class StartApi {
                                 : "HTTP " + response.status();
         } catch (IOException _) {
             return "HTTP " + response.status();
+        }
+    }
+
+    /**
+     * The bound of the wait for the role's reply: the chat is read at most {@code reads} times, with
+     * {@code pause} between two reads.
+     *
+     * @param reads how often the chat is read at most, at least once
+     * @param pause the pause between two reads, not negative
+     */
+    record ReplyWait(int reads, Duration pause) {
+
+        /**
+         * @param reads the reads, at least one
+         * @param pause the pause, not negative
+         */
+        ReplyWait {
+            Objects.requireNonNull(pause, "pause");
+            if (reads < 1 || pause.isNegative()) {
+                throw new IllegalArgumentException("a reply wait reads at least once and pauses no negative time");
+            }
         }
     }
 

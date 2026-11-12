@@ -726,9 +726,14 @@
 
   /** Opens the start on the follow-up plan the ended work's chat proposed. */
   async function startFollowUp(): Promise<void> {
+    // Accept names the proposal the operator saw; a proposal read without its turn cannot be named.
+    const turnId = endedProposal?.turn_id;
+    if (!turnId) {
+      return;
+    }
     chatBusy = true;
     try {
-      const result = await apiClient.acceptFollowUp(subjectKind, subjectId);
+      const result = await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
       const entryId = result.start?.entry?.entry_id;
       chatOpen = false;
       if (entryId) {

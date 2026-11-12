@@ -1572,6 +1572,8 @@ export interface ChatTurn {
 }
 
 export interface ChatProposal {
+  /** The proposal's turn, which accept and reject name. */
+  turn_id?: string;
   summary: string;
   before?: string | null;
   after: string;
@@ -2442,16 +2444,18 @@ export class ApiClient {
    *
    * @param subjectKind whether the ended work is a plan or an epic
    * @param subjectId the ended plan or epic
+   * @param turnId the turn of the proposal the operator saw and accepts
    * @returns the opened entry
    */
   public async acceptFollowUp(
     subjectKind: 'plan' | 'epic',
     subjectId: string,
+    turnId: string,
   ): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
       `${ApiClient.endedChatPath(subjectKind, subjectId)}/proposal/accept`,
-      {},
+      { turn_id: turnId },
     );
   }
 

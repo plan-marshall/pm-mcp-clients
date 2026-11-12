@@ -852,6 +852,7 @@ describe('WorkControlPanel component', () => {
       scope: 'archive',
       available: true,
       proposal: {
+        turn_id: 'T-0207',
         summary: 'A follow-up plan',
         after: 'Add the Codeberg issue provider on top of relay-v2.',
         applies: 'a new plan',
@@ -889,10 +890,42 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('chat-accept'));
 
     await waitFor(() => {
-      expect(accept).toHaveBeenCalledWith('plan', 'codeberg-issues');
+      expect(accept).toHaveBeenCalledWith('plan', 'codeberg-issues', 'T-0207');
     });
     expect(apiClient.getEndedChat).toHaveBeenCalledWith('plan', 'codeberg-issues');
     expect(window.location.pathname).toBe('/entries/ent-3f9a2c41');
+  });
+
+  it('accepts no follow-up whose proposal was read without its turn', async () => {
+    vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      role: 'decompose',
+      scope: 'archive',
+      available: true,
+      proposal: {
+        summary: 'A follow-up plan',
+        after: 'Add the reconnect test the ended work left out.',
+      },
+    });
+    const accept = vi.spyOn(apiClient, 'acceptFollowUp');
+
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'relay-hardening',
+        subjectKind: 'epic',
+        projectId: 'pm-mcp-clients',
+        ended: true,
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+    expect(await screen.findByTestId('chat-proposal-after')).toHaveTextContent(
+      'Add the reconnect test',
+    );
+    await fireEvent.click(screen.getByTestId('chat-accept'));
+
+    expect(accept).not.toHaveBeenCalled();
   });
 
   it('reads the chat of an ended epic by the epic, not by its project', async () => {

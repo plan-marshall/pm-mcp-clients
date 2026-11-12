@@ -18,6 +18,7 @@ import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.TurnKind;
+import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
 
@@ -35,6 +36,9 @@ final class ChatDialogue {
     private static final String KEY_ENDED = "start.chat.ended";
     private static final String STATE_SOURCES = "start.sources";
     private static final String KEY_OPEN = "start.chat.open";
+    /** The line that says the role is still writing its reply when the wait for it ran out. */
+    private static final String KEY_WORKING = "control.chat.working";
+    private static final String KEY_ROLE = "role";
 
     private final StartApi api;
     private final StartPrompt prompt;
@@ -81,6 +85,10 @@ final class ChatDialogue {
             try {
                 chat = api.entryChatTurn(entryId, answer);
                 renderTurns(chat.turns());
+                if (StartApi.isWriting(chat)) {
+                    prompt.raw(text(KEY_WORKING, Map.of(KEY_ROLE,
+                                        TerminalSanitizer.sanitizeLine(chat.role().name()), "scope", "entry")));
+                }
             } catch (StartApi.StartActException e) {
                 prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
             }
@@ -129,25 +137,30 @@ final class ChatDialogue {
     private String heading(ChatResource chat) {
         var subject = text("start.chat.subject_new", Map.of("kind", kind.wireValue(), "project", project));
         return text("start.chat.heading", Map.of("subject", subject,
-                            "role", TerminalSanitizer.sanitizeLine(chat.role().name())));
+                            KEY_ROLE, TerminalSanitizer.sanitizeLine(chat.role().name())));
     }
 
-    /** Renders the messages of the transcript not shown yet; a proposal is read back on its own. */
+    /**
+     * Renders the messages of the transcript not shown yet, up to a reply still written: that one and
+     * what follows it are shown once it is written. A proposal is read back on its own.
+     */
     private void renderTurns(List<ChatTurn> turns) {
-        for (int index = seenTurns; index < turns.size(); index++) {
-            var turn = turns.get(index);
-            if (turn.kind() == TurnKind.PROPOSAL) {
-                continue;
-            }
-            var text = TerminalSanitizer.sanitizeLine(turn.text());
-            if (turn.isOperator()) {
-                prompt.raw(text("start.chat.you_line", Map.of(KEY_TEXT, text)));
-            } else {
-                prompt.raw(text("start.chat.role_line", Map.of("role",
-                                    TerminalSanitizer.sanitizeLine(turn.author()), KEY_TEXT, text)));
+        while (seenTurns < turns.size() && turns.get(seenTurns).status() != TurnStatus.STREAMING) {
+            var turn = turns.get(seenTurns++);
+            if (turn.kind() != TurnKind.PROPOSAL) {
+                renderTurn(turn);
             }
         }
-        seenTurns = turns.size();
+    }
+
+    private void renderTurn(ChatTurn turn) {
+        var text = TerminalSanitizer.sanitizeLine(turn.text());
+        if (turn.isOperator()) {
+            prompt.raw(text("start.chat.you_line", Map.of(KEY_TEXT, text)));
+        } else {
+            prompt.raw(text("start.chat.role_line", Map.of(KEY_ROLE,
+                                TerminalSanitizer.sanitizeLine(turn.author()), KEY_TEXT, text)));
+        }
     }
 
     private String text(String key, Map<String, ?> args) {
