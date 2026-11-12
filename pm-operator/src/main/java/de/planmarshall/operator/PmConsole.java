@@ -905,10 +905,7 @@ public final class PmConsole {
         if (!notify || kind == null || UNNOTIFIED_KINDS.contains(kind)) {
             return;
         }
-        var named = scope;
-        if (named == null) {
-            named = ConsoleNotice.scopeOf(eventMap);
-        }
+        var named = scope != null ? scope : ConsoleNotice.scopeOf(eventMap);
         if (named.isBlank()) {
             return;
         }

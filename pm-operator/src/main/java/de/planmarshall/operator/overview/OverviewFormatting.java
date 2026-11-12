@@ -337,7 +337,7 @@ public final class OverviewFormatting {
         if (key != null) {
             return MessageCatalogue.format(locale, key, Map.of());
         }
-        return MessageCatalogue.format(locale, "state.unknown", Map.of());
+        return MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());
     }
 
     /**
@@ -381,6 +381,14 @@ public final class OverviewFormatting {
     }
 
     /**
+     * @param kind the kind token a row blocks
+     * @return the catalogue key of that kind's word
+     */
+    private static String kindKey(String kind) {
+        return COMMON_KIND_PREFIX + kind;
+    }
+
+    /**
      * @param place the place an item belongs to
      * @return its title, or its id where the store carries none
      */
@@ -401,7 +409,7 @@ public final class OverviewFormatting {
         if (blocks == null || blocks.isBlank()) {
             return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
         }
-        var key = COMMON_KIND_PREFIX + blocks;
+        var key = kindKey(blocks);
         var what = MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
                             : MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());

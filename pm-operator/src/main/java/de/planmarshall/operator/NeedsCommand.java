@@ -72,9 +72,9 @@ public final class NeedsCommand implements Callable<Integer> {
             return 0;
         }
 
-        var page = NeedsOperatorPage.fromJson(response.bodyText());
+        var list = NeedsOperatorPage.fromJson(response.bodyText());
 
-        if (page.items().isEmpty()) {
+        if (list.items().isEmpty()) {
             var emptyKey = MessageCatalogue.hasKey(locale, "operator.needs.empty")
                                 ? "operator.needs.empty"
                                 : "overview.needs.empty";
@@ -83,12 +83,12 @@ public final class NeedsCommand implements Callable<Integer> {
             return 0;
         }
 
-        out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", page.total())));
+        out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", list.total())));
 
-        for (var item : page.items()) {
+        for (var item : list.items()) {
             printItem(out, item, locale);
         }
-        printShowMore(out, page, locale);
+        printShowMore(out, list, locale);
         out.flush();
         return 0;
     }
