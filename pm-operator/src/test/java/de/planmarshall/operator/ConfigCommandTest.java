@@ -651,8 +651,8 @@ class ConfigCommandTest {
                             () -> assertTrue(column > 0, text),
                             () -> assertEquals("English, models English", valueAt(text, "Language", column), text),
                             () -> assertEquals("Claude Code 2.4.1", valueAt(text, "Harnesses", column), text),
-                            () -> assertEquals("scan_harnesses", valueAt(text, "look for harnesses", column), text),
-                            () -> assertEquals("ask", valueAt(text, "Ask each time", column), text)
+                            () -> assertEquals("2", valueAt(text, "Remembered consents", column), text),
+                            () -> assertEquals("Ask each time", valueAt(text, "Documents", column), text)
         );
     }
 
@@ -685,10 +685,87 @@ class ConfigCommandTest {
         return (request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target())) {
                 response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, DEVICES);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"web\":{\"lan\":false}}");
             } else {
                 response.send(404, null, "");
             }
         };
+    }
+
+    @Test
+    @DisplayName("the overview collapses the remembered consents into one row with their count")
+    void overviewCollapsesTheConsents() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var text = out.toString();
+        var consents = rowOfLabel(text, "Remembered consents");
+
+        assertAll(
+                            () -> assertNotNull(consents, text),
+                            () -> assertTrue(consents.stripTrailing().endsWith("2"), consents),
+                            () -> assertFalse(text.contains("look for harnesses"), text),
+                            () -> assertFalse(text.contains("fetch the icons"), text));
+    }
+
+    @Test
+    @DisplayName("the overview shows the documents mode as the catalogue names it")
+    void overviewShowsTheDocumentsModeText() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var documents = rowOfLabel(out.toString(), "Documents");
+
+        assertAll(
+                            () -> assertNotNull(documents, out.toString()),
+                            () -> assertTrue(documents.contains("Ask each time"), documents),
+                            () -> assertFalse(documents.stripTrailing().endsWith("ask"), documents));
+    }
+
+    @Test
+    @DisplayName("the overview names the paired devices and the listener")
+    void overviewNamesThePairedDevices() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+        var devices = rowOfLabel(out.toString(), "Paired devices");
+
+        assertAll(
+                            () -> assertNotNull(devices, out.toString()),
+                            () -> assertTrue(devices.contains("3 devices \u00b7 network listener off"), devices));
+    }
+
+    @Test
+    @DisplayName("the overview strips a control sequence from a runtime-served key")
+    void overviewStripsAControlSequence() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[{\"key\":\"custom.\\u001B[31mkey\",\"value\":\"v\","
+                                    + "\"origin\":\"machine\",\"revision\":0}]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertFalse(text.contains("\u001B"), text),
+                            () -> assertTrue(text.contains("custom.key"), text));
+    }
+
+    @Test
+    @DisplayName("the overview leaves the input on the prompt line")
+    void overviewLeavesTheInputOnThePromptLine() throws Exception {
+        fixture.start(sensibleSettings());
+
+        execute("config");
+
+        assertFalse(out.toString().endsWith("\n"), out.toString());
     }
 
     @Test
@@ -954,6 +1031,9 @@ class ConfigCommandTest {
 
     private static final String PORT_VALUE =
                         "{\"key\":\"web.port\",\"value\":7420,\"origin\":\"machine\",\"revision\":4}";
+    private static final String DEVICES = """
+                        [{"id":"d-1","label":"mbp-oliver"},{"id":"d-2","label":"iPad"},{"id":"d-3","label":"Firefox"}]
+                        """;
     private static final String FLAG_VALUE =
                         "{\"key\":\"console.full_screen\",\"value\":true,\"origin\":\"default\",\"revision\":0}";
     private static final String OVERRIDDEN_VALUE = "{\"key\":\"plan_defaults.landing\","

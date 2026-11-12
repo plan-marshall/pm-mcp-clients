@@ -94,6 +94,10 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String CONFLICT = "conflict";
     private static final String ERROR = "error";
+    private static final String DEVICES_PATH = "/api/v1/web/devices";
+    private static final String STATUS_PATH = "/api/v1/status";
+    private static final String WEB_VERB = "web";
+    private static final String DEVICES_VERB = "devices";
 
     /**
      * @param aspect an aspect of the machine onboarding
@@ -143,7 +147,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var settings = readSettingsQuiet();
         List<Item> items;
         try {
-            items = settings != null ? itemsOf(locale, settings) : itemsOfValues(locale);
+            items = settings != null ? itemsOf(locale, settings, devicesItem(locale)) : itemsOfValues(locale);
         } catch (ReadFailedException failure) {
             out.println(failure.status() > 0
                                 ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
@@ -211,7 +215,7 @@ public final class ConfigCommand implements Callable<Integer> {
      * @param settings the machine's settings
      * @return the overview's rows, in the order the prompt offers them
      */
-    private static List<Item> itemsOf(String locale, MachineSettingsRecord settings) {
+    private static List<Item> itemsOf(String locale, MachineSettingsRecord settings, @Nullable Item devices) {
         var items = new ArrayList<Item>();
         for (int index = 0; index < settings.aspects().size(); index++) {
             var aspect = settings.aspects().get(index);
@@ -222,18 +226,21 @@ public final class ConfigCommand implements Callable<Integer> {
                                 List.of(CONFIG_VERB, verb)));
         }
         for (var credential : settings.credentials()) {
-            items.add(new Item("operator.settings.tokens.title", credential.key(),
+            items.add(new Item("operator.settings.tokens.title", TerminalSanitizer.sanitizeLine(credential.key()),
                                 providerLine(locale, credential),
                                 List.of(CREDENTIALS, ROTATE, credential.key())));
         }
-        for (var consent : settings.consents()) {
-            items.add(new Item("operator.settings.consents.title",
-                                MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
-                                consent.kind().wireValue(), List.of(CONFIG_VERB, CONSENTS)));
-        }
-        items.add(new Item("operator.settings.documents.title", MessageCatalogue.format(locale,
+        items.add(new Item(null,
+                            MessageCatalogue.format(locale, "operator.settings.consents.title", Map.of()),
+                            String.valueOf(settings.consents().size()), List.of(CONFIG_VERB, CONSENTS)));
+        items.add(new Item(null,
+                            MessageCatalogue.format(locale, "operator.settings.documents.title", Map.of()),
+                            MessageCatalogue.format(locale,
                                                 DOCUMENTS_TEXT_PREFIX + settings.documentsMode().wireValue(), Map.of()),
-                            settings.documentsMode().wireValue(), List.of(CONFIG_VERB, DOCUMENTS)));
+                            List.of(CONFIG_VERB, DOCUMENTS)));
+        if (devices != null) {
+            items.add(devices);
+        }
         items.add(new Item(null,
                             MessageCatalogue.format(locale, "operator.settings.cleanup.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.cleanup.value", Map.of(
@@ -241,6 +248,49 @@ public final class ConfigCommand implements Callable<Integer> {
                                                 "remind", settings.cleanupDurations().remindAfterDays())),
                             List.of(CLEANUP)));
         return List.copyOf(items);
+    }
+
+    /**
+     * Reads the paired devices and the listener as the web devices view reads them, so the overview
+     * shows one row that opens that view.
+     *
+     * @param locale the interface locale
+     * @return the row, or {@code null} when the runtime serves no device list
+     * @throws IOException on transport failure
+     */
+    private @Nullable Item devicesItem(String locale) throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(DEVICES_PATH));
+        if (response.status() != 200) {
+            return null;
+        }
+        List<?> devices;
+        try {
+            var parsed = JsonTree.parse(response.bodyText());
+            if (!(parsed instanceof List<?> list)) {
+                return null;
+            }
+            devices = list;
+        } catch (IOException _) {
+            return null;
+        }
+        var listener = listenerOff()
+                            ? "operator.settings.devices.listener_off"
+                            : "operator.settings.devices.listener_on";
+        return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
+                            MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
+                                                "count", devices.size(),
+                                                "listener", MessageCatalogue.format(locale, listener, Map.of()))),
+                            List.of(WEB_VERB, DEVICES_VERB));
+    }
+
+    private boolean listenerOff() throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(STATUS_PATH));
+        if (response.status() != 200) {
+            return false;
+        }
+        var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+        var web = status != null ? JsonTree.object(status, "web") : null;
+        return web != null && Boolean.FALSE.equals(web.get("lan"));
     }
 
     /**
@@ -256,14 +306,15 @@ public final class ConfigCommand implements Callable<Integer> {
         var values = readValues();
         var items = new ArrayList<Item>();
         for (var value : values) {
-            items.add(new Item(null, value.key(), renderedValue(locale, value),
+            items.add(new Item(null, TerminalSanitizer.sanitizeLine(value.key()), renderedValue(locale, value),
                                 List.of(CONFIG_VERB, SHOW, value.key())));
         }
         return List.copyOf(items);
     }
 
     private static String providerLine(String locale, MachineCredentialStatus credential) {
-        return credential.provider() + " \u00b7 " + credential.kind() + " \u00b7 " + expiryText(locale, credential);
+        return TerminalSanitizer.sanitizeLine(credential.provider()) + " \u00b7 "
+                            + TerminalSanitizer.sanitizeLine(credential.kind()) + " \u00b7 " + expiryText(locale, credential);
     }
 
     /**
@@ -280,7 +331,7 @@ public final class ConfigCommand implements Callable<Integer> {
         }
         printItems(out, locale, items);
         if (!items.isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.open_prompt",
+            out.print(MessageCatalogue.format(locale, "operator.settings.open_prompt",
                                 Map.of(RANGE, "1-" + items.size()))
                                 + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
                                 + "   ?   \u203a ");
