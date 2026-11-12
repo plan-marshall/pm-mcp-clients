@@ -10044,7 +10044,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * The payload of {@code decision.answered}: the channel is the one the answer carried, and an absent
-     * channel stays absent, never read as {@code cli}; an absent device is written as the empty name.
+     * channel stays absent, never read as {@code cli}; the device likewise is written only when the
+     * answer carried one, so a client renders an answer without a device through the variant without one.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
             @Nullable String device) {
@@ -10054,7 +10055,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (channel != null) {
             payload.put("channel", channel);
         }
-        payload.put("device", device != null ? device : "");
+        if (device != null) {
+            payload.put("device", device);
+        }
         return payload;
     }
 
