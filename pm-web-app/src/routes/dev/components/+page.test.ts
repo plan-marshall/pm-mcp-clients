@@ -161,7 +161,7 @@ describe('/dev/components page fixture', () => {
         const linked = Array.from(block.querySelectorAll('a.link--chip')).filter((anchor) =>
           anchor.textContent?.includes(COPY[locale].chip),
         );
-        const plain = Array.from(block.querySelectorAll('.pr-chip')).filter((chip) =>
+        const plain = Array.from(block.querySelectorAll('span.link--chip')).filter((chip) =>
           chip.textContent?.includes(COPY[locale].chip),
         );
 

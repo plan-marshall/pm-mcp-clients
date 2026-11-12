@@ -35,7 +35,7 @@ describe('PrChip', () => {
 
     expect(screen.queryByRole('link')).toBeNull();
     expect(container.querySelector('a')).toBeNull();
-    expect(container.querySelector('.pr-chip')?.textContent).toBe('PR #214');
+    expect(container.querySelector('.link--chip')?.textContent).toBe('PR #214');
   });
 
   it('never draws href="#"', () => {

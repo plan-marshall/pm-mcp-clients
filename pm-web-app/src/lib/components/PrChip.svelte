@@ -19,22 +19,5 @@
   const text = $derived($t('common.pull_request.chip', { number }));
 </script>
 
-{#if href}
-  <ExternalLink {href} label={text} chip />
-{:else}
-  <span class="pr-chip">{text}</span>
-{/if}
-
-<style>
-  .pr-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-2);
-    background-color: var(--color-bg-subtle);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    line-height: var(--line-height-xs);
-  }
-</style>
+<!-- An unknown address makes ExternalLink draw the chip look without an anchor. -->
+<ExternalLink href={href ?? ''} label={text} chip />
