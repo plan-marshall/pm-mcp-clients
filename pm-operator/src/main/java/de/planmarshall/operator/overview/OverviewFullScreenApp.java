@@ -1222,8 +1222,9 @@ public final class OverviewFullScreenApp {
      * @return {@code true} to keep the view open
      */
     private boolean handleMenu(String trigger) {
-        if (runtimeMenu != null) {
-            handleRuntimeMenu(trigger);
+        var openRuntimeMenu = runtimeMenu;
+        if (openRuntimeMenu != null) {
+            handleRuntimeMenu(openRuntimeMenu, trigger);
             return true;
         }
         if (actionsMenu == null) {
@@ -1870,22 +1871,22 @@ public final class OverviewFullScreenApp {
     }
 
     /**
+     * The menu is modal like every menu of the view ({@link TuiMenu}): a key it does not hold
+     * leaves it open.
+     *
+     * @param menu    the open menu
      * @param trigger the menu's mnemonic, or the empty string to close the menu
      */
-    private void handleRuntimeMenu(String trigger) {
+    private void handleRuntimeMenu(TuiMenu menu, String trigger) {
         if (trigger.isEmpty()) {
             runtimeMenu = null;
-            return;
-        }
-        var menu = runtimeMenu;
-        runtimeMenu = null;
-        if (menu == null) {
             return;
         }
         var entry = menu.entry(trigger);
         if (entry == null) {
             return;
         }
+        runtimeMenu = null;
         switch (entry.action()) {
             case "stop" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
                                 "runtime", "stop"));
