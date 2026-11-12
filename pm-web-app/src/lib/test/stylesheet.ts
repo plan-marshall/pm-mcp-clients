@@ -41,9 +41,9 @@ export function blockOf(css: string, opener: string): string {
  * @returns the declarations of the first rule with exactly that selector
  */
 export function ruleOf(css: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   // The selector must open the rule, so it never matches the tail of a longer selector.
-  const match = new RegExp(`(^|[{}])\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(css);
+  const match = new RegExp(String.raw`(^|[{}])\s*${escaped}\s*\{([^}]*)\}`).exec(css);
   if (!match) throw new Error(`no rule for "${selector}"`);
   return match[2];
 }
