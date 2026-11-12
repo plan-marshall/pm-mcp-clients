@@ -397,17 +397,6 @@ public final class EpicViewLevel {
         return SUMMARY_ID;
     }
 
-    /**
-     * @param rowId the row to find
-     * @return the workstream that holds the plan row, or {@code null}
-     */
-    public @Nullable String workstreamOf(@Nullable String rowId) {
-        if (rowId == null || !rowId.startsWith(WORKSTREAM_PREFIX)) {
-            return null;
-        }
-        return rowId.substring(WORKSTREAM_PREFIX.length());
-    }
-
     private void index() {
         rowsById.clear();
         workstreamOfPlan.clear();

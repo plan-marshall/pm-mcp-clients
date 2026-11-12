@@ -19,13 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("PlanViewLevel")
+@EnableGeneratorController
 class PlanViewLevelTest {
 
     private static final String TREE = """
@@ -334,5 +338,102 @@ class PlanViewLevelTest {
         assertNull(view.waitingPlanOf("node:execute"));
         assertEquals("execute.envelope", view.nodeIdOfTask("TASK-003"));
         assertNotNull(view.taskIdOf("task:TASK-003"));
+    }
+
+    @Test
+    @DisplayName("a node that names what it waits for names its plan for the hand-off")
+    void nodeWaitsFor() throws Exception {
+        var tree = TREE.replace("\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"planned\"",
+                            "\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"planned\","
+                                                + " \"waits_for\": \"the review\"");
+        var view = new PlanViewLevel(ProcessTree.fromJson(tree));
+
+        assertEquals("fix-relay", view.waitingPlanOf("node:finalize"));
+        assertNull(view.waitingPlanOf("node:init"));
+    }
+
+    @Nested
+    @DisplayName("w finds where the plan is")
+    class WhereItIs {
+
+        private static final String PATH = "\"current_position_path\": [\"execute\", \"execute.envelope\", \"TASK-003\"]";
+
+        private PlanViewLevel view(String tree) throws Exception {
+            return new PlanViewLevel(ProcessTree.fromJson(tree));
+        }
+
+        @Test
+        @DisplayName("a path that ends at a node selects the node and opens it")
+        void pathEndsAtNode() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": [\"execute\", \"execute.envelope\"]"));
+            view.closeRow("node:execute");
+
+            assertEquals("node:execute.envelope", view.jumpToActive());
+
+            assertTrue(ids(view).contains("task:TASK-003"));
+        }
+
+        @Test
+        @DisplayName("without a path the running node is where the plan is, and it opens")
+        void runningNodeWithoutPath() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": []"));
+            view.closeRow("node:execute");
+
+            assertEquals("node:execute", view.jumpToActive());
+
+            assertTrue(ids(view).contains("node:execute.envelope"));
+        }
+
+        @Test
+        @DisplayName("a path of ids the tree does not hold falls back to the running node")
+        void unknownPath() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": [\"gone\", \"TASK-999\"]"));
+
+            assertEquals("node:execute", view.jumpToActive());
+        }
+
+        @Test
+        @DisplayName("with nothing running the first node is where the plan is, and without nodes the summary")
+        void nothingRunning() throws Exception {
+            var idle = TREE.replace(PATH, "\"current_position_path\": []").replace("\"state\": \"running\"",
+                                "\"state\": \"done\"");
+            assertEquals("node:init", view(idle).jumpToActive());
+
+            var empty = idle.substring(0, idle.indexOf("\"nodes\": [")) + "\"nodes\": [], \"current_position_path\": []}";
+            var emptyView = view(empty);
+            assertEquals(emptyView.rows("en").getFirst().id(), emptyView.jumpToActive());
+        }
+    }
+
+    @Test
+    @DisplayName("Enter on a node without children, a task, an unknown node or nothing changes nothing")
+    void openRowChangesNothing() throws Exception {
+        var view = view();
+        var before = ids(view);
+
+        assertFalse(view.openRow("node:init"));
+        assertFalse(view.openRow("task:TASK-003"));
+        assertFalse(view.openRow("node:unknown"));
+        assertFalse(view.openRow(null));
+
+        assertEquals(before, ids(view));
+    }
+
+    @Test
+    @DisplayName("← on a task the tree does not hold has no parent to go to")
+    void closeUnknownTask() throws Exception {
+        assertNull(view().closeRow("task:UNKNOWN"));
+    }
+
+    @Test
+    @DisplayName("x on a row that is no node of the tree opens the whole tree")
+    void expandAllFromUnknownRow() throws Exception {
+        var view = view();
+        view.closeRow("node:execute.envelope");
+
+        view.expandAll(Generators.fixedValues("node:unknown", "task:TASK-003", "summary:plan").next());
+
+        assertTrue(ids(view).contains("task:TASK-001"));
+        assertTrue(ids(view).contains("node:remediation"));
     }
 }

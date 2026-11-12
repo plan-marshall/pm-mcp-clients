@@ -24,7 +24,9 @@ import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("EpicViewLevel")
@@ -261,5 +263,148 @@ class EpicViewLevelTest {
                             null, List.of(), List.of(), 0, null, null, null, List.of());
         var view = new EpicViewLevel(CLOCK, resource);
         assertTrue(text(view).contains("Nothing runs in this epic."), text(view));
+    }
+
+    @Nested
+    @DisplayName("Enter and ← on the rows")
+    class OpenAndClose {
+
+        private static final String STAGED = EpicViewLevel.PLAN_PREFIX + "relay-reconnect-metrics";
+        private static final String RUNNING = EpicViewLevel.PLAN_PREFIX + "relay-cursor-order";
+        private static final String WS_1 = "ws:WS-1";
+
+        private EpicViewLevel view;
+
+        @BeforeEach
+        void view() throws Exception {
+            view = new EpicViewLevel(CLOCK, epic());
+            assertTrue(rowIds().contains(WS_1), rowIds().toString());
+        }
+
+        private List<String> rowIds() {
+            return view.rows("en").stream().map(TuiRow::id).toList();
+        }
+
+        @Test
+        @DisplayName("a staged plan, the sections and the workstreams open; another plan, a register and the head do not")
+        void openable() {
+            for (var rowId : List.of(STAGED, RUNNING, EpicViewLevel.SOURCES_ID, EpicViewLevel.LANDINGS_ID,
+                                EpicViewLevel.TOKENS_ID, WS_1)) {
+                assertTrue(view.openable(rowId), rowId);
+            }
+            for (var rowId : List.of(EpicViewLevel.FINDINGS_ID, EpicViewLevel.WATCHES_ID, view.initialRowId())) {
+                assertFalse(view.openable(rowId), rowId);
+            }
+        }
+
+        @Test
+        @DisplayName("Enter on a plan that is not staged, an unknown plan, a register or nothing opens nothing")
+        void toggleOpensNothing() {
+            var before = rowIds();
+
+            assertNull(view.toggle(RUNNING, "en"));
+            assertNull(view.toggle(EpicViewLevel.PLAN_PREFIX + "no-such-plan", "en"));
+            assertNull(view.toggle(EpicViewLevel.FINDINGS_ID, "en"));
+            assertNull(view.toggle(null, "en"));
+
+            assertEquals(before, rowIds());
+        }
+
+        @Test
+        @DisplayName("Enter on an open workstream closes it and its plans leave the view")
+        void workstreamCloses() {
+            assertTrue(rowIds().contains(RUNNING));
+
+            assertEquals(WS_1, view.toggle(WS_1, "en"));
+
+            assertFalse(rowIds().contains(RUNNING), rowIds().toString());
+            assertTrue(rowIds().contains(WS_1));
+        }
+
+        @Test
+        @DisplayName("← on an open staged plan closes it and keeps it selected")
+        void closesOpenPlan() {
+            view.toggle(STAGED, "en");
+            assertTrue(rowIds().stream().anyMatch(id -> id.endsWith("relay-reconnect-metrics:objective")));
+
+            assertEquals(STAGED, view.closeRow(STAGED));
+
+            assertFalse(rowIds().stream().anyMatch(id -> id.endsWith("relay-reconnect-metrics:objective")));
+        }
+
+        @Test
+        @DisplayName("← on a closed plan goes to its workstream, on an unknown plan to the head")
+        void closedPlanGoesUp() {
+            assertEquals(WS_1, view.closeRow(RUNNING));
+            assertEquals(view.initialRowId(), view.closeRow(EpicViewLevel.PLAN_PREFIX + "no-such-plan"));
+        }
+
+        @Test
+        @DisplayName("← on an open section closes it, on a closed one goes to the head, on nothing stays")
+        void closesSection() {
+            view.toggle(EpicViewLevel.SOURCES_ID, "en");
+
+            assertEquals(EpicViewLevel.SOURCES_ID, view.closeRow(EpicViewLevel.SOURCES_ID));
+            assertEquals(view.initialRowId(), view.closeRow(EpicViewLevel.SOURCES_ID));
+            assertNull(view.closeRow(null));
+        }
+
+        @Test
+        @DisplayName("only a known plan row names a plan or a staged plan")
+        void planLookups() {
+            assertNull(view.planIdOf(EpicViewLevel.PLAN_PREFIX + "no-such-plan"));
+            assertNull(view.planIdOf(null));
+            assertFalse(view.isStagedPlanRow(null));
+            assertFalse(view.isStagedPlanRow(EpicViewLevel.SOURCES_ID));
+            assertFalse(view.isStagedPlanRow(EpicViewLevel.PLAN_PREFIX + "no-such-plan"));
+            assertFalse(view.isStagedPlanRow(RUNNING));
+        }
+
+        @Test
+        @DisplayName("x opens every workstream, section and staged plan")
+        void expandAll() {
+            view.toggle(WS_1, "en");
+
+            view.expandAll();
+
+            var text = text(view);
+            assertTrue(rowIds().contains(RUNNING));
+            assertTrue(text.contains("Objective     measure the reconnect"), text);
+            assertTrue(text.contains("relay-reconnect-backoff  #211"), text);
+            assertTrue(text.contains("the epic's own tasks"), text);
+        }
+    }
+
+    @Test
+    @DisplayName("a landing shows the analysis of its own plan's event, not of a plan whose id it begins")
+    void landingAnalysis() throws Exception {
+        var events = "\"events\":["
+                            + "{\"at\":\"2026-10-16T12:10:00Z\",\"text\":\"relay-reconnect-backoff-v2 landed · analysis: other plan\"},"
+                            + "{\"at\":\"2026-10-16T12:05:00Z\",\"text\":\"relay-reconnect-backoff landed · analysis: clean merge\"},"
+                            + "{\"at\":\"2026-10-16T12:00:00Z\",\"text\":\"relay-reconnect-backoff\"}]}";
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(EPIC.substring(0, EPIC.indexOf("\"events\":"))
+                            + events));
+        view.toggle(EpicViewLevel.LANDINGS_ID, "en");
+
+        var landing = view.rows("en").stream()
+                            .filter(row -> row.line().contains("relay-reconnect-backoff  #211")).findFirst().orElseThrow();
+
+        assertTrue(landing.details() != null && landing.details().contains("clean merge"),
+                            String.valueOf(landing.details()));
+        assertFalse(landing.details().contains("other plan"), landing.details());
+    }
+
+    @Test
+    @DisplayName("a landing without an analysis event shows no analysis")
+    void landingWithoutAnalysis() throws Exception {
+        var events = "\"events\":[{\"at\":\"2026-10-16T12:05:00Z\",\"text\":\"relay-reconnect-backoff landed\"}]}";
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(EPIC.substring(0, EPIC.indexOf("\"events\":"))
+                            + events));
+        view.toggle(EpicViewLevel.LANDINGS_ID, "en");
+
+        var landing = view.rows("en").stream()
+                            .filter(row -> row.line().contains("relay-reconnect-backoff  #211")).findFirst().orElseThrow();
+
+        assertNull(landing.details());
     }
 }
