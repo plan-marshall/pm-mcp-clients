@@ -432,19 +432,8 @@ public final class OverviewFullScreenApp {
 
     void loadInitialData(RuntimeClient runtime) {
         if (initialSelection.explorer()) {
-            fetchExplorer(runtime);
+            showExplorerRoot(runtime);
             fetchUnreadReports(runtime);
-            var level = explorerLevel.get();
-            var refusal = refusals.get().explorer();
-            if (level == null && refusal != null) {
-                level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(), List.of(), List.of(), List.of()),
-                                    false, refusal);
-            }
-            if (level != null) {
-                var rows = level.rows(locale, clock);
-                stack.replaceRoot(ProjectsExplorerLevel.level(locale), rows,
-                                    ProjectsExplorerLevel.firstSelectableId(rows));
-            }
             return;
         }
         fetchProjects(runtime);
@@ -486,6 +475,21 @@ public final class OverviewFullScreenApp {
         }
 
         loadInitialSavedOrRoot(runtime, rootRows, projects, saved);
+    }
+
+    /**
+     * Reads the machine's projects and shows the explorer as the root of the view: the root the
+     * view opens with for {@code projects}, and the one {@code Esc} on the {@code plans} root leads
+     * to ({@code doc/design/terminal-client/15-overview.adoc#full-screen-levels}). A refused read
+     * leaves its refusal on the level, which {@link #fetchExplorer} always sets.
+     *
+     * @param runtime the runtime client
+     */
+    private void showExplorerRoot(RuntimeClient runtime) {
+        fetchExplorer(runtime);
+        var level = Objects.requireNonNull(explorerLevel.get(), "explorerLevel");
+        var rows = level.rows(locale, clock);
+        stack.replaceRoot(ProjectsExplorerLevel.level(locale), rows, ProjectsExplorerLevel.firstSelectableId(rows));
     }
 
     void loadInitialEnded(RuntimeClient runtime, List<TuiRow> rootRows, List<ProjectSummary> projects) {
@@ -3567,8 +3571,18 @@ public final class OverviewFullScreenApp {
                 refreshPoppedLevel();
                 return true;
             }
-            // A plan opened by name is the whole view; there is no caller to return to.
             var lvl = stack.level();
+            if (lvl != null && lvl.kind() == TuiLevel.Kind.OVERVIEW) {
+                // Esc on the plans root leads to the projects root; Esc there stays
+                // (15-overview.adoc#full-screen-levels).
+                try {
+                    showExplorerRoot(context.runtime(true));
+                } catch (IOException refused) {
+                    statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                }
+                return true;
+            }
+            // A plan opened by name is the whole view; there is no caller to return to.
             return lvl == null || lvl.kind() != TuiLevel.Kind.PLAN;
         }
     }
