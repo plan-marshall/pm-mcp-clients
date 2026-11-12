@@ -41,7 +41,7 @@ class NeedsAndFindContractTest {
     class TheClosedList {
 
         @Test
-        @DisplayName("joins credential and cleanup_due after setup, in the specification's order")
+        @DisplayName("joins credential and cleanup_due after setup, in the specification's order, then the fallback")
         void order() {
             assertEquals(List.of(
                     NeedsOperatorKind.DECISION,
@@ -55,7 +55,16 @@ class NeedsAndFindContractTest {
                     NeedsOperatorKind.FINDINGS,
                     NeedsOperatorKind.SETUP,
                     NeedsOperatorKind.CREDENTIAL,
-                    NeedsOperatorKind.CLEANUP_DUE), List.of(NeedsOperatorKind.values()));
+                    NeedsOperatorKind.CLEANUP_DUE,
+                    // The client's fallback for a kind this version does not know; no runtime serves it.
+                    NeedsOperatorKind.OTHER), List.of(NeedsOperatorKind.values()));
+        }
+
+        @Test
+        @DisplayName("keeps the list rendering when a runtime serves a kind it does not know")
+        void unknownKindKeepsTheList() {
+            assertEquals(NeedsOperatorKind.OTHER, NeedsOperatorKind.fromWireOrOther("a_later_kind"));
+            assertNull(NeedsOperatorKind.fromValue("a_later_kind"), "the strict reader still refuses it");
         }
 
         @Test

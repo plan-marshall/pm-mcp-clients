@@ -35,6 +35,9 @@ public final class StartPrompt {
 
     /** The exit code of a run the operator interrupted with {@code Ctrl+C}. */
     public static final int EXIT_INTERRUPTED = 130;
+
+    /** The operator left a choice before its done state ({@code q}): exit code 3. */
+    public static final int EXIT_NOT_FINISHED = 3;
     private static final String EMPTY = "";
 
     private final OperatorContext context;

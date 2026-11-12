@@ -85,6 +85,7 @@ public final class PmConsole {
     /** The prompt's badges, replaced as a whole so a draw never sees a half-updated set. */
     private final AtomicReference<List<ConsoleBadge>> badges = new AtomicReference<>(List.of());
     private final ConsoleNoticeBuffer noticeBuffer;
+    private final NeedsOperatorNotices needsNotices = new NeedsOperatorNotices();
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
@@ -690,21 +691,21 @@ public final class PmConsole {
      */
     void applyConsoleEvent(@Nullable String eventName, Map<String, Object> eventMap, LineReader reader) {
         var locale = locale();
-        var kind = noticeKind(eventName, eventMap);
-        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
-        if (notice != null) {
-            var category = categoryOf(kind);
+        var notices = noticesOf(locale, eventName, eventMap);
+        for (var notice : notices) {
+            var category = categoryOf(notice.kind());
             if (!noticeBuffer.hold(category, countOf(eventMap, category))) {
-                reader.printAbove(notice);
+                reader.printAbove(notice.text());
             }
-            notifyOperator(reader.getTerminal(), kind, eventMap);
+            notifyOperator(reader.getTerminal(), notice.kind(), eventMap, notice.place());
         }
-        if (notice != null || changesWaitingItems(eventName)) {
+        if (!notices.isEmpty() || changesWaitingItems(eventName)
+                            || NeedsOperatorNotices.isNeedsOperatorChanged(eventName, eventMap)) {
             refreshBadges(reader.getTerminal());
         }
         var name = eventName != null ? eventName : "";
         var payload = ConsoleNotice.payloadOf(eventMap);
-        var type = kind != null ? kind : "";
+        var type = notices.isEmpty() ? "" : notices.getFirst().kind();
         if ("device.paired".equals(name) || "paired".equals(type)) {
             var label = JsonTree.string(payload, "label");
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
@@ -719,16 +720,23 @@ public final class PmConsole {
     }
 
     /**
-     * Resolves the notice kind of one event, so the buffer and the notification name the same kind
-     * the notice was rendered from.
+     * The notices one event raises: the single notice of an event that announces one thing itself,
+     * or one notice per item a {@code needs_operator} change adds of a kind no other event announces.
      *
+     * @param locale    the interface locale
      * @param eventName the SSE event name, or {@code null}
      * @param eventMap  the parsed event payload
-     * @return the notice kind, or {@code null} when the event becomes no notice
+     * @return the notices, empty when the event raises none
      */
-    private static @Nullable String noticeKind(@Nullable String eventName, Map<String, Object> eventMap) {
-        var notice = ConsoleNotice.noticeKindOf(eventName, eventMap);
-        return notice != null ? notice.notice() : null;
+    private List<NeedsOperatorNotices.Notice> noticesOf(String locale, @Nullable String eventName,
+                        Map<String, Object> eventMap) {
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
+        if (notice != null) {
+            var kind = ConsoleNotice.noticeKindOf(eventName, eventMap);
+            return List.of(new NeedsOperatorNotices.Notice(kind != null ? kind.notice() : "",
+                                notice, ConsoleNotice.scopeOf(eventMap)));
+        }
+        return needsNotices.noticesOf(locale, eventName, eventMap);
     }
 
     /**
@@ -874,25 +882,28 @@ public final class PmConsole {
 
     /**
      * Sends one desktop notification for an event that puts something in front of the operator: the
-     * payload names the scope and the localized label of the kind, never the text of the item
-     * (04-console.adoc#notifications). An event that only reports or withdraws something — a report,
-     * an answer given elsewhere, a pairing — notifies nothing.
+                   /**
+     * Sends the desktop notification of one notice, where the terminal supports one, and the bell
+     * everywhere else ({@code 04-console.adoc#notifications}): the scope and the kind, never the
+     * text of a question, and never the item's own content.
      *
      * @param terminal the terminal to notify on
      * @param kind     the notice kind, or {@code null}
      * @param eventMap the event frame
+     * @param scope    the scope to name, or {@code null} to read it from the event frame
      */
-    private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
+    private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap,
+                        @Nullable String scope) {
         if (!notify || kind == null || UNNOTIFIED_KINDS.contains(kind)) {
             return;
         }
-        var scope = ConsoleNotice.scopeOf(eventMap);
-        if (scope.isBlank()) {
+        var named = namedScope(scope, eventMap);
+        if (named.isBlank()) {
             return;
         }
         var label = MessageCatalogue.format(locale(), notificationLabelKey(kind), Map.of());
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
-                            Map.of("scope", TerminalSanitizer.sanitize(scope),
+                            Map.of("scope", TerminalSanitizer.sanitize(named),
                                                 "kind", TerminalSanitizer.sanitize(label)));
         terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
         terminal.writer().flush();
@@ -931,6 +942,13 @@ public final class PmConsole {
                                 .append(']');
         }
         TerminalTitle.set(terminal, title.toString());
+    }
+
+    private static String namedScope(@Nullable String scope, Map<String, Object> eventMap) {
+        if (scope != null) {
+            return scope;
+        }
+        return ConsoleNotice.scopeOf(eventMap);
     }
 
     /**

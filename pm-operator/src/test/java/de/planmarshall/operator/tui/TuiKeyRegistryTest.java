@@ -132,7 +132,9 @@ class TuiKeyRegistryTest {
                             () -> assertTrue(cells.contains("Esc back"), footer),
                             () -> assertTrue(cells.contains("a actions"), footer),
                             () -> assertTrue(cells.contains("q leave"), footer),
-                            () -> assertTrue(footer.endsWith(TuiKeyRegistry.moreCell("en")), footer),
+                            () -> assertTrue(footer.contains(TuiKeyRegistry.moreCell("en")), footer),
+                            () -> assertTrue(footer.endsWith(TuiKeyRegistry.helpCell("en")),
+                                                "the help key is kept, never the one the width takes away: " + footer),
                             () -> assertFalse(footer.contains("\u2026"), footer),
                             () -> assertTrue(footer.indexOf("q leave") < footer.indexOf("? more"), footer)
         );
@@ -143,15 +145,18 @@ class TuiKeyRegistryTest {
     void widerFooterShowsMoreKeysInPriorityOrder() {
         var narrow = cells(TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0, 79));
         var wide = cells(TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0, 118));
-        var narrowKeys = narrow.subList(0, narrow.size() - 1);
-        var wideWithoutHelp = wide.stream()
-                            .filter(cell -> !cell.equals(TuiKeyRegistry.helpCell("en")))
+        var narrowKeys = narrow.subList(0, narrow.size() - 2);
+        var wideWithoutTail = wide.stream()
+                            .filter(cell -> !cell.equals(TuiKeyRegistry.helpCell("en"))
+                                                && !cell.equals(TuiKeyRegistry.moreCell("en")))
                             .toList();
 
         assertAll(
                             () -> assertTrue(wide.size() > narrow.size(), wide.toString()),
-                            () -> assertEquals(narrowKeys, wideWithoutHelp.subList(0, narrowKeys.size())),
-                            () -> assertEquals(narrow.getLast(), TuiKeyRegistry.moreCell("en"), narrow.toString())
+                            () -> assertEquals(narrowKeys, wideWithoutTail.subList(0, narrowKeys.size())),
+                            () -> assertEquals(TuiKeyRegistry.moreCell("en"), narrow.get(narrow.size() - 2),
+                                                narrow.toString()),
+                            () -> assertEquals(TuiKeyRegistry.helpCell("en"), narrow.getLast(), narrow.toString())
         );
     }
 

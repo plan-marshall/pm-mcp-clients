@@ -21,6 +21,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.operator.LoadRefusal;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
 
@@ -28,10 +29,13 @@ import de.planmarshall.operator.tui.TuiRow;
  * Level 1 of the full-screen overview: the projects list and needs-you group
  * ({@code doc/design/terminal-client/15-overview.adoc#full-screen-layout}).
  *
- * @param projects      the list of project summaries
- * @param needsOperator the page of items needing operator attention, or {@code null}
+ * @param projects        the list of project summaries
+ * @param needsOperator   the page of items needing operator attention, or {@code null}
+ * @param projectsRefusal the refusal of the projects read, or {@code null} when it succeeded
+ * @param needsRefusal    the refusal of the needs read, or {@code null} when it succeeded
  */
-public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator) {
+public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator,
+@Nullable LoadRefusal projectsRefusal, @Nullable LoadRefusal needsRefusal) {
 
     /** Group header row ID for the Needs You section. */
     public static final String GROUP_NEEDS_YOU_ID = "__group_needs_you__";
@@ -50,12 +54,22 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
     }
 
     /**
-     * Convenience constructor without needs-operator page.
+     * Convenience constructor without needs-operator page and without a refusal.
      *
      * @param projects the list of project summaries
      */
     public ProjectsOverviewLevel(List<ProjectSummary> projects) {
-        this(projects, null);
+        this(projects, null, null, null);
+    }
+
+    /**
+     * Convenience constructor without a refusal.
+     *
+     * @param projects      the list of project summaries
+     * @param needsOperator the page of items needing operator attention, or {@code null}
+     */
+    public ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable NeedsOperatorPage needsOperator) {
+        this(projects, needsOperator, null, null);
     }
 
     /**
@@ -81,10 +95,20 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
      */
     public List<TuiRow> rows(String locale, Clock clock) {
         var rows = new ArrayList<TuiRow>();
-        addNeedsYouRows(rows, locale, clock);
+        if (needsRefusal != null) {
+            rows.addAll(needsRefusal.rows());
+        } else {
+            addNeedsYouRows(rows, locale, clock);
+        }
 
+        if (projectsRefusal != null) {
+            rows.addAll(projectsRefusal.rows());
+        }
         if (projects.isEmpty()) {
-            if (rows.isEmpty()) {
+            if (!rows.isEmpty()) {
+                return rows;
+            }
+            if (projectsRefusal == null) {
                 var emptyText = MessageCatalogue.format(locale, "overview.projects.empty", Map.of());
                 return List.of(new TuiRow(EMPTY_ROW_ID, emptyText, null, false, false));
             }
@@ -94,35 +118,46 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         var sorted = OverviewFormatting.sortProjects(projects);
 
         for (var project : sorted) {
-            boolean needs = OverviewFormatting.needsOperator(project);
-            int attentionCount = OverviewFormatting.projectAttentionCount(project);
-
-            String marker;
-            if (attentionCount > 0) {
-                marker = String.format("%-5s", MessageCatalogue.format(locale, "overview.needs.count", Map.of("count", attentionCount)));
-            } else {
-                marker = "     ";
-            }
-
-            var name = project.displayName() != null && !project.displayName().isBlank()
-                                ? project.displayName()
-                                : project.projectId();
-            var cleanName = OverviewFormatting.clean(name);
-
-            var summary = formatSummary(locale, project);
-            var relativeTime = OverviewFormatting.formatRelativeActivity(locale, project.lastActivityAt(), clock);
-
-            String line;
-            if (!relativeTime.isEmpty()) {
-                line = String.format("%s%-16s %-36s %s", marker, cleanName, summary, relativeTime);
-            } else {
-                line = String.format("%s%-16s %s", marker, cleanName, summary);
-            }
-
-            rows.add(new TuiRow(project.projectId(), line.stripTrailing(), null, needs, true));
+            rows.add(projectRow(project, locale, clock));
         }
 
         return rows;
+    }
+
+    /**
+     * @param project the project
+     * @param locale  the target locale
+     * @param clock   the reference clock
+     * @return the row of one project
+     */
+    private static TuiRow projectRow(ProjectSummary project, String locale, Clock clock) {
+        boolean needs = OverviewFormatting.needsOperator(project);
+        int attentionCount = OverviewFormatting.projectAttentionCount(project);
+
+        String marker;
+        if (attentionCount > 0) {
+            marker = String.format("%-5s", MessageCatalogue.format(locale, "overview.needs.count",
+                                Map.of("count", attentionCount)));
+        } else {
+            marker = "     ";
+        }
+
+        var name = project.displayName() != null && !project.displayName().isBlank()
+                            ? project.displayName()
+                            : project.projectId();
+        var cleanName = OverviewFormatting.clean(name);
+
+        var summary = formatSummary(locale, project);
+        var relativeTime = OverviewFormatting.formatRelativeActivity(locale, project.lastActivityAt(), clock);
+
+        String line;
+        if (!relativeTime.isEmpty()) {
+            line = String.format("%s%-16s %-36s %s", marker, cleanName, summary, relativeTime);
+        } else {
+            line = String.format("%s%-16s %s", marker, cleanName, summary);
+        }
+
+        return new TuiRow(project.projectId(), line.stripTrailing(), null, needs, true);
     }
 
     /**
@@ -135,15 +170,39 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         if (needsOperator == null || rowId == null || !rowId.startsWith(NEEDS_ITEM_PREFIX)) {
             return null;
         }
-        try {
-            int index = Integer.parseInt(rowId.substring(NEEDS_ITEM_PREFIX.length()));
-            if (index >= 0 && index < needsOperator.items().size()) {
-                return needsOperator.items().get(index);
+        for (var item : needsOperator.items()) {
+            if (rowIdOf(item).equals(rowId)) {
+                return item;
             }
-        } catch (NumberFormatException _) {
-            // unmatched
         }
         return null;
+    }
+
+    /**
+     * The row ID of one item: its own identity, never its position, so an item that arrives above a
+     * row never moves the selection or what {@code !} opens
+     * ({@code doc/design/shared/needs-and-find.adoc#waits}).
+     *
+     * @param item the item
+     * @return the row ID
+     */
+    public static String rowIdOf(NeedsOperatorItem item) {
+        if (item.link() != null && !item.link().isBlank()) {
+            // The kind belongs to the identity: a decision and a failed landing can name the same
+            // plan, and two rows must never share an id.
+            return NEEDS_ITEM_PREFIX + item.kind().value() + "|" + item.link();
+        }
+        var id = new StringBuilder(NEEDS_ITEM_PREFIX).append(item.kind().value());
+        if (item.project() != null) {
+            id.append("@project:").append(item.project().id());
+        }
+        if (item.epic() != null) {
+            id.append("@epic:").append(item.epic().id());
+        }
+        if (item.plan() != null) {
+            id.append("@plan:").append(item.plan().id());
+        }
+        return id.toString();
     }
 
     /**
@@ -165,19 +224,15 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         if (needsOperator == null || needsOperator.items().isEmpty()) {
             return;
         }
-        var header = MessageCatalogue.hasKey(locale, "operator.needs.title")
-                            ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
-                            : "Needs you · " + needsOperator.total();
+        var header = MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()));
         rows.add(new TuiRow(GROUP_NEEDS_YOU_ID, header, null, false, false));
 
-        var items = needsOperator.items();
-        for (int i = 0; i < items.size(); i++) {
-            var item = items.get(i);
+        for (var item : needsOperator.items()) {
             var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
-            var subject = OverviewFormatting.formatNeedsItemSubject(item);
+            var subject = OverviewFormatting.formatNeedsItemSubject(item, locale);
             var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
             var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, clock);
-            var cmd = OverviewFormatting.formatNeedsItemCommand(item, Map.of());
+            var cmd = OverviewFormatting.formatNeedsItemCommand(item);
 
             var line = String.format("%-16s %-16s %-19s %-13s %s",
                                 "! " + kindLabel,
@@ -186,7 +241,7 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
                                 since,
                                 cmd).stripTrailing();
 
-            rows.add(new TuiRow(NEEDS_ITEM_PREFIX + i, line, null, true, true));
+            rows.add(new TuiRow(rowIdOf(item), line, null, true, true));
         }
     }
 

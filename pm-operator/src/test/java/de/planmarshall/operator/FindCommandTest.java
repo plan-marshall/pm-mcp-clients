@@ -116,6 +116,11 @@ class FindCommandTest {
         return out.toString() + err;
     }
 
+    private static int codeOf(OperatorContext context, String... args) {
+        return PmOperator.execute(context, new PrintWriter(new StringWriter()),
+                            new PrintWriter(new StringWriter()), args);
+    }
+
     private static DumbTerminal dumbTerminal(String input) {
         return dumbTerminal(input, new ByteArrayOutputStream());
     }
@@ -229,11 +234,14 @@ class FindCommandTest {
         @DisplayName("the empty text is refused with the catalogue text, not with a usage line")
         void refusedWithoutText() throws Exception {
             try (var runtime = runningWork()) {
-                var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())), "find");
+                var context = context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()));
+                var output = runSoftly(context, "find");
+                var code = codeOf(context, "find");
 
                 assertAll(
                                     () -> assertTrue(output.contains("Type a name to look for."), output),
-                                    () -> assertFalse(output.contains("Usage:"), output)
+                                    () -> assertFalse(output.contains("Usage:"), output),
+                                    () -> assertEquals(2, code, "an empty text is a caller error, never a finished read")
                 );
             }
         }
@@ -242,10 +250,44 @@ class FindCommandTest {
         @DisplayName("a text of blanks is refused like an empty one")
         void refusedForBlanks() throws Exception {
             try (var runtime = runningWork()) {
-                var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())),
-                                    "find", "   ");
+                var context = context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()));
+                var output = runSoftly(context, "find", "   ");
 
-                assertTrue(output.contains("Type a name to look for."), output);
+                assertAll(
+                                    () -> assertTrue(output.contains("Type a name to look for."), output),
+                                    () -> assertEquals(2, codeOf(context, "find", "   "))
+                );
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("the exit codes of the find verb")
+    class ExitCodes {
+
+        @Test
+        @DisplayName("an empty text is a refusal, not a finished read")
+        void emptyTextIsRefused() throws Exception {
+            try (var runtime = runningWork()) {
+                var out = new StringWriter();
+                var code = PmOperator.execute(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())),
+                                    new PrintWriter(out), new PrintWriter(new StringWriter()), "find");
+                assertAll(
+                                    () -> assertEquals(2, code, "an empty text is a caller error: " + out),
+                                    () -> assertTrue(out.toString().contains("Type a name to look for."), out.toString())
+                );
+            }
+        }
+
+        @Test
+        @DisplayName("leaving the choice with q is 3, not a finished read")
+        void leaveIsNotFinished() throws Exception {
+            try (var runtime = runningWork()) {
+                var out = new StringWriter();
+                var code = PmOperator.execute(
+                                    context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true, "q\n"),
+                                    new PrintWriter(out), new PrintWriter(new StringWriter()), "find", "relay");
+                assertEquals(3, code, "q leaves before the done state: " + out + "\n" + consoleOutput());
             }
         }
     }
@@ -270,18 +312,73 @@ class FindCommandTest {
         }
 
         @Test
-        @DisplayName("removes the control sequences of the query the runtime repeats")
+        @DisplayName("removes the control sequences of the query the operator typed")
         void removesControlSequencesFromTheQuery() throws Exception {
             var output = new StringWriter();
             var page = "{\"page\":1,\"total_pages\":1,\"has_newer\":false,\"has_older\":false,"
                                 + "\"query\":\"\\u001b[31mzzz\\u001b[0m\",\"matches\":[]}";
 
-            new FindCommand(context(Map.of())).executeFind(sender(page), new PrintWriter(output), "en", "zzz");
+            new FindCommand(context(Map.of())).executeFind(sender(page), new PrintWriter(output), "en",
+                                "\u001b[31mzzz\u001b[0m");
 
             var rendered = output.toString();
             assertAll(
                                 () -> assertFalse(rendered.contains("\u001b"), rendered),
                                 () -> assertTrue(rendered.contains("zzz"), rendered)
+            );
+        }
+
+        @Test
+        @DisplayName("names the text the operator typed, never the runtime's echo")
+        void namesTheTypedText() throws Exception {
+            var output = new StringWriter();
+            var page = "{\"page\":1,\"total_pages\":1,\"has_newer\":false,\"has_older\":false,"
+                                + "\"query\":\"\",\"matches\":[]}";
+
+            new FindCommand(context(Map.of())).executeFind(sender(page), new PrintWriter(output), "en", "relayy");
+
+            assertTrue(output.toString().contains("relayy"), output.toString());
+
+            var withMatches = new StringWriter();
+            var matchPage = "{\"page\":1,\"total_pages\":1,\"has_newer\":false,\"has_older\":false,"
+                                + "\"query\":\"other\",\"matches\":[{\"kind\":\"plan\",\"id\":\"p-1\","
+                                + "\"title\":\"A plan\",\"ended\":false}]}";
+            new FindCommand(context(Map.of())).executeFind(sender(matchPage), new PrintWriter(withMatches),
+                                "en", "relayy");
+            assertTrue(withMatches.toString().contains("relayy"), withMatches.toString());
+            assertFalse(withMatches.toString().contains("find other"), withMatches.toString());
+        }
+
+        @Test
+        @DisplayName("backspace removes one code point, never half a surrogate pair")
+        void backspaceRemovesOneCodePoint() {
+            var supplementary = new StringBuilder("a\uD83D\uDE00");
+            var plain = new StringBuilder("ab");
+            var empty = new StringBuilder();
+
+            assertAll(
+                                () -> assertEquals(2, FindCommand.removeLastCodePoint(supplementary)),
+                                () -> assertEquals("a", supplementary.toString(),
+                                                    "a lone surrogate would be sent as the text"),
+                                () -> assertEquals(1, FindCommand.removeLastCodePoint(plain)),
+                                () -> assertEquals("a", plain.toString()),
+                                () -> assertEquals(0, FindCommand.removeLastCodePoint(empty))
+            );
+        }
+
+        @Test
+        @DisplayName("renders a blank or control-only title through the display layer, never a bare id")
+        void blankTitleRendersThroughTheDisplay() {
+            var blank = new FindMatch(FindKind.PLAN, "relay-hardening", "   ", null, null, null, false, null);
+            var controlOnly = new FindMatch(FindKind.PLAN, "relay-hardening", "\u001b[31m", null, null, null,
+                                false, null);
+
+            assertAll(
+                                () -> assertFalse(FindCommand.titleOfMatch(blank, "en").isBlank(), "an empty cell"),
+                                () -> assertFalse(FindCommand.titleOfMatch(blank, "en").contains("relay-hardening"),
+                                                    "a bare id is never a title"),
+                                () -> assertEquals("unknown", FindCommand.titleOfMatch(blank, "en")),
+                                () -> assertEquals("unbekannt", FindCommand.titleOfMatch(controlOnly, "de"))
             );
         }
 
@@ -516,12 +613,15 @@ class FindCommandTest {
         @DisplayName("offers the matches and leaves on q without opening one")
         void leavesOnLeaveKey() throws Exception {
             try (var runtime = runningWork()) {
-                var output = run(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true, "q\n"),
-                                    "find", "relay");
+                var out = new StringWriter();
+                var code = PmOperator.execute(
+                                    context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString()), true, "q\n"),
+                                    new PrintWriter(out), new PrintWriter(new StringWriter()), "find", "relay");
 
                 assertAll(
-                                    () -> assertTrue(output.contains("Open a match"), output),
-                                    () -> assertFalse(output.contains("is not offered here"), output)
+                                    () -> assertTrue(out.toString().contains("Open a match"), out.toString()),
+                                    () -> assertFalse(out.toString().contains("is not offered here"), out.toString()),
+                                    () -> assertEquals(3, code, "q leaves before the done state")
                 );
             }
         }

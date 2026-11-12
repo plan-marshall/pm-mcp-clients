@@ -47,15 +47,14 @@ public record NeedsOperatorItemRef(NeedsOperatorKind kind, @Nullable String link
      *
      * @param map the map representation
      * @return the parsed reference
-     * @throws IOException on format failure
+     * @throws IOException when the map names no kind
      */
     public static NeedsOperatorItemRef fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var kind = NeedsOperatorKind.fromValue(JsonTree.string(map, "kind"));
-        if (kind == null) {
-            throw new JsonFormatException(
-                    "Unknown kind in NeedsOperatorItemRef: " + JsonTree.string(map, "kind"));
+        var wire = JsonTree.string(map, "kind");
+        if (wire == null || wire.isBlank()) {
+            throw new JsonFormatException("Missing kind in NeedsOperatorItemRef");
         }
-        return new NeedsOperatorItemRef(kind, JsonTree.string(map, "link"));
+        return new NeedsOperatorItemRef(NeedsOperatorKind.fromWireOrOther(wire), JsonTree.string(map, "link"));
     }
 }
