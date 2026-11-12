@@ -48,6 +48,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -1773,6 +1775,47 @@ class MockRuntimeEngineTest {
                 () -> assertTrue(failure.getMessage().contains("facts.runtime.start.ended_work"), failure.getMessage()),
                 () -> assertTrue(failure.getMessage().contains(subjectId), failure.getMessage()),
                 () -> assertEquals(before, engine.currentScenario().name(), "the refused switch changes nothing"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"without subject_id", "without subject_kind", "with an unrecognized subject_kind"})
+    @DisplayName("refuses an ended item without a subject id or a recognized subject kind at the start and at a jump")
+    void refusesMalformedEndedWork(String defect) {
+        var before = engine.currentScenario().name();
+        var reference = StandardScenarios.PROJECTS_AND_START + "#start.follow-up";
+        var scenario = registry.resolve(reference);
+        var ended = new ArrayList<Object>(Objects.requireNonNull(JsonTree.asArray(
+                member(runtimeFixture(scenario, scenario.start()), "start").get("ended_work"))));
+        var malformed = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.asObject(ended.getFirst())));
+        switch (defect) {
+            case "without subject_id" -> malformed.remove("subject_id");
+            case "without subject_kind" -> malformed.remove("subject_kind");
+            default -> malformed.put("subject_kind", "unknown-" + Generators.letterStrings(4, 10).next());
+        }
+        ended.set(0, malformed);
+        var broken = withStartRuntimeFixture(reference, runtime -> {
+            var start = member(runtime, "start");
+            start.put("ended_work", ended);
+            runtime.put("start", start);
+        });
+        registry.register(broken);
+        var jumpName = "jump-" + brokenName;
+        registry.register(new Scenario(broken.formatVersion(), jumpName, broken.description(),
+                registry.resolve(StandardScenarios.PROJECTS_AND_START).start(), broken.pairingCode(), broken.routes(),
+                broken.states()));
+
+        var atStart = assertThrows(IllegalStateException.class, () -> engine.switchScenario(brokenName));
+        var unchanged = engine.currentScenario().name();
+        engine.switchScenario(jumpName);
+        var brokenState = broken.start();
+        var atJump = assertThrows(IllegalStateException.class, () -> engine.goToState(brokenState));
+
+        var expected = "Malformed facts.runtime.start.ended_work: each item needs a subject_id and a recognized "
+                + "subject_kind";
+        assertAll(
+                () -> assertEquals(expected, atStart.getMessage()),
+                () -> assertEquals(expected, atJump.getMessage()),
+                () -> assertEquals(before, unchanged, "the refused switch changes nothing"));
     }
 
     /**

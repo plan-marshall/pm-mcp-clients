@@ -107,6 +107,8 @@ final class StartRegistry {
     private static final String KEY_ADOPTION_FAILURE = "adoption_failure";
     private static final String KEY_ADD_OUTCOMES = "add_outcomes";
     private static final String KEY_ENDED_WORK = "ended_work";
+    /** The head of every refusal of a defective ended-work fixture. */
+    private static final String MALFORMED_ENDED_WORK = "Malformed facts.runtime.start." + KEY_ENDED_WORK;
     private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_NEED = "need";
     private static final String KEY_REASON = "reason";
@@ -404,36 +406,39 @@ final class StartRegistry {
      *
      * @param scenario the scenario
      * @param stateId  the state whose start fixture is read, may be {@code null}
-     * @throws IllegalStateException if two ended items share a subject id
+     * @throws IllegalStateException if an ended item lacks a subject id or a recognized subject kind, or
+     *                               two ended items share a subject id
      */
     static void validateEndedWork(Scenario scenario, @Nullable String stateId) {
         endedWorkOf(startFixtureOf(scenario, stateId));
     }
 
     /**
-     * Reads the ended work of a start fixture, keyed by subject id. Two ended items with the same
-     * subject id, whatever their kind, are refused: the later one would replace the earlier one
-     * silently.
+     * Reads the ended work of a start fixture, keyed by subject id. An ended item without a subject id
+     * or a recognized subject kind is refused, and so are two ended items with the same subject id,
+     * whatever their kind: the later one would replace the earlier one silently.
      *
      * @param fixture the state's start fixture
      * @return the ended work by subject id, in fixture order
-     * @throws IllegalStateException if two ended items share a subject id
+     * @throws IllegalStateException if an ended item lacks a subject id or a recognized subject kind, or
+     *                               two ended items share a subject id
      */
     private static Map<String, EndedWork> endedWorkOf(Map<String, Object> fixture) {
         var projectId = projectOf(fixture);
         var read = new LinkedHashMap<String, EndedWork>();
-        objects(fixture.get(KEY_ENDED_WORK)).stream()
-                .filter(object -> JsonTree.string(object, KEY_SUBJECT_ID) != null
-                        && EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND)) != null)
-                .forEach(object -> {
-                    var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
-                    var ended = new EndedWork(subjectId, EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)),
-                            projectId, JsonTree.string(object, KEY_OUTCOME));
-                    if (read.putIfAbsent(subjectId, ended) != null) {
-                        throw new IllegalStateException("Malformed facts.runtime.start." + KEY_ENDED_WORK
-                                + ": the subject_id '" + subjectId + "' is named twice");
-                    }
-                });
+        for (var object : objects(fixture.get(KEY_ENDED_WORK))) {
+            var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
+            var subjectKind = EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND));
+            if (subjectId == null || subjectKind == null) {
+                throw new IllegalStateException(MALFORMED_ENDED_WORK
+                        + ": each item needs a subject_id and a recognized subject_kind");
+            }
+            var ended = new EndedWork(subjectId, subjectKind, projectId, JsonTree.string(object, KEY_OUTCOME));
+            if (read.putIfAbsent(subjectId, ended) != null) {
+                throw new IllegalStateException(MALFORMED_ENDED_WORK
+                        + ": the subject_id '" + subjectId + "' is named twice");
+            }
+        }
         return read;
     }
 
