@@ -382,6 +382,15 @@ describe('the catalogue carries every text of the package', () => {
       'epic.view.title',
       'common.breadcrumb',
       'common.action.retry',
+      'common.link.new_tab',
+      'common.pull_request.chip',
+      'common.kind.project',
+      'common.kind.epic',
+      'common.kind.plan',
+      'common.kind.side_job',
+      'common.kind.decision',
+      'common.kind.report',
+      'common.kind.machine',
     ];
     for (const key of required) {
       expect(en[key], `Key '${key}' must exist in the catalogue`).toBeTruthy();
