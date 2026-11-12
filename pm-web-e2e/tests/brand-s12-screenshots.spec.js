@@ -236,22 +236,27 @@ function expectWritten(file) {
  * Waits until the app has initialized its runtime, which follows the catalogue load, so the page
  * is rendered in the locale the browser stored before the navigation.
  *
+ * The store is read by an awaited evaluation: `waitForFunction` does not await a predicate that
+ * returns a promise and would take the pending promise as a truthy answer.
+ *
  * @param {import('@playwright/test').Page} page the page to wait for
  */
 async function waitForApp(page) {
-  await page.waitForFunction(
-    async () => {
-      const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
-      let initialized = false;
-      const unsubscribe = runtimeStore.subscribe((state) => {
-        initialized = state.isInitialized;
-      });
-      unsubscribe();
-      return initialized;
-    },
-    undefined,
-    { timeout: 20000 },
-  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+          let initialized = false;
+          const unsubscribe = runtimeStore.subscribe((state) => {
+            initialized = state.isInitialized;
+          });
+          unsubscribe();
+          return initialized;
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
 }
 
 /**
@@ -446,24 +451,27 @@ const BEAR_FREE_HEIGHT = 260;
 
 /**
  * Waits until the app holds the figure of the disconnected states as an object URL, which it
- * fetches once after its start.
+ * fetches once after its start. The store is read by an awaited evaluation, as `waitForApp` reads
+ * the runtime.
  *
  * @param {import('@playwright/test').Page} page the paired page
  */
 async function waitForHeldFigure(page) {
-  await page.waitForFunction(
-    async () => {
-      const { heldFigure } = await import('/src/lib/stores/heldFigure.ts');
-      let url = '';
-      const unsubscribe = heldFigure.subscribe((value) => {
-        url = value;
-      });
-      unsubscribe();
-      return url.startsWith('blob:');
-    },
-    undefined,
-    { timeout: 20000 },
-  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { heldFigure } = await import('/src/lib/stores/heldFigure.ts');
+          let url = '';
+          const unsubscribe = heldFigure.subscribe((value) => {
+            url = value;
+          });
+          unsubscribe();
+          return url.startsWith('blob:');
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
 }
 
 /**

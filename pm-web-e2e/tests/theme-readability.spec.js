@@ -174,22 +174,29 @@ const LABELS = {
  * Waits until the app has initialized its runtime, which follows the catalogue load, so the
  * page is rendered in the locale the browser stored before the navigation.
  *
+ * The store is read by an awaited evaluation: `waitForFunction` does not await a predicate that
+ * returns a promise, so it took the pending promise as a truthy answer and returned before the
+ * app had started. A journey that cut the runtime off then, as the unreachable one does, cut off
+ * the catalogue as well, and the page fell back to the English labels of the pairing.
+ *
  * @param {import('@playwright/test').Page} page the page to wait for
  */
 async function waitForApp(page) {
-  await page.waitForFunction(
-    async () => {
-      const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
-      let initialized = false;
-      const unsubscribe = runtimeStore.subscribe((state) => {
-        initialized = state.isInitialized;
-      });
-      unsubscribe();
-      return initialized;
-    },
-    undefined,
-    { timeout: 20000 },
-  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+          let initialized = false;
+          const unsubscribe = runtimeStore.subscribe((state) => {
+            initialized = state.isInitialized;
+          });
+          unsubscribe();
+          return initialized;
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
 }
 
 /**
