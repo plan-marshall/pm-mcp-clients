@@ -212,9 +212,20 @@ List<ChatFailure> chatFailures) {
                 throw new IllegalArgumentException("unknown chat failure '" + name + "', expected one of "
                         + Kind.wireValues());
             }
-            var status = (int) number(map.get(FIELD_STATUS), 0);
+            var status = status(number(map.get(FIELD_STATUS), 0));
             var delayMs = number(map.get(FIELD_DELAY_MS), kind == Kind.SLOW ? DEFAULT_DELAY_MS : 0);
             return new ChatFailure(kind, status, JsonTree.string(map, FIELD_CODE), delayMs);
+        }
+
+        /**
+         * Checks the status before it is narrowed: a number beyond an {@code int} would wrap into the
+         * range of an {@code http_error} and be taken for a status it is not.
+         */
+        private static int status(long status) {
+            if (status < Integer.MIN_VALUE || status > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("a chat failure's status " + status + " is no HTTP status");
+            }
+            return (int) status;
         }
 
         private static long number(@Nullable Object value, long fallback) {

@@ -326,6 +326,39 @@ class ChatReplyEventsTest {
         }
 
         @Test
+        @DisplayName("names the entry's close when the entry's plan is created")
+        void entryClosedByPlanCreate() throws Exception {
+            assertEntryClosedByCreate("start.chat", "ent-3f9a2c41", true);
+        }
+
+        @Test
+        @DisplayName("names the entry's close when the entry's epic is created")
+        void entryClosedByEpicCreate() throws Exception {
+            assertEntryClosedByCreate("start.epic", "ent-5c1b7d20", false);
+        }
+
+        /**
+         * Creates the entry's work while its chat is open; the chat a state seeds is read, every other
+         * one is opened.
+         */
+        private void assertEntryClosedByCreate(String stateId, String entryId, boolean seeded) throws Exception {
+            var routes = ChatRoutes.entry(entryId);
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(StandardScenarios.PROJECTS_AND_START + "#" + stateId)
+                         .timing(MockTiming.ORDERED).build());
+                 var stream = open(runtime, RUNTIME_EVENTS)) {
+                var chat = seeded ? read(runtime, routes) : openChat(runtime, routes);
+                assertNotEquals(ChatStatus.END, chat.state(), "the entry's chat is open before the create");
+
+                var created = post(runtime, "/api/v1/entries/" + entryId + "/links/create", "{}");
+                assertEquals(200, created.status(), created.bodyText());
+
+                assertEquals(ChatEndedEvent.EndedBy.ENTRY_CLOSED, endedBy(stream, chat.id()));
+                assertEquals(ChatStatus.END, read(runtime, routes).state());
+            }
+        }
+
+        @Test
         @DisplayName("names a decision's carried proposal")
         void proposalCarried() throws Exception {
             var question = "Q-" + Generators.letterStrings(4, 8).next();

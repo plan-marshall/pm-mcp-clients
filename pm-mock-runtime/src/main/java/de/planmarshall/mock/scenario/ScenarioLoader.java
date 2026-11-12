@@ -464,10 +464,6 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, stateId, field,
                     "the payload does not read as " + name + ": " + e.getMessage());
         }
-        if (read == null) {
-            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].event",
-                    "not a chat event of the catalogue: " + name);
-        }
         var unmapped = new ArrayList<String>();
         collectUnmappedKeys(read, unmapped);
         if (!unmapped.isEmpty()) {
@@ -477,24 +473,22 @@ public class ScenarioLoader {
     }
 
     /**
-     * @return the payload as the event's record writes it, or {@code null} when the name is no chat event
-     *         of the catalogue
-     * @throws IOException if the payload does not read through the record
+     * Reads a chat event through its {@code pm-api} record. The name is a catalogue member already, as
+     * {@link #validateOperatorEvent} refuses every other name before the payload is read.
+     *
+     * @return the payload as the event's record writes it
+     * @throws IOException if the payload does not read through the record, or no record reads the event
      */
-    private static @Nullable Map<String, Object> readChatEvent(String name, Map<String, Object> payload)
+    private static Map<String, Object> readChatEvent(String name, Map<String, Object> payload)
             throws IOException {
-        var eventName = EventName.fromWireOrNull(name);
-        if (eventName == null) {
-            return null;
-        }
-        return switch (eventName) {
+        return switch (EventName.fromWire(name)) {
             case CHAT_TURN_STARTED -> ChatTurnStartedEvent.fromMap(payload).toMap();
             case CHAT_TURN_DELTA -> ChatTurnDeltaEvent.fromMap(payload).toMap();
             case CHAT_TURN_PROGRESS -> ChatTurnProgressEvent.fromMap(payload).toMap();
             case CHAT_TURN_COMPLETED -> ChatTurnCompletedEvent.fromMap(payload).toMap();
             case CHAT_PROPOSAL -> ChatProposalEvent.fromMap(payload).toMap();
             case CHAT_ENDED -> ChatEndedEvent.fromMap(payload).toMap();
-            default -> null;
+            default -> throw new IOException("no chat record reads " + name);
         };
     }
 

@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -787,7 +788,7 @@ class StartScenarioTest {
         }
 
         @Test
-        @DisplayName("a chat turn is answered by the routed role, and the chat ends before the entry is created")
+        @DisplayName("a chat turn is answered by the routed role, and creating the entry ends its open chat")
         void chatTurnAndCreate() throws Exception {
             // Ordered timing plays the reply to its end before the message's 202 arrives.
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
@@ -808,11 +809,9 @@ class StartScenarioTest {
                 var rejected = post(runtime, ENTRY_CHAT.reject(), new ProposalAnswerRequest(proposalTurnId).toJson());
                 assertEquals(200, rejected.status(), rejected.bodyText());
                 assertFalse(ChatResource.fromJson(rejected.bodyText()).hasProposal());
+                assertNotEquals(ChatStatus.END, entryChat(runtime).state(), "the chat is open before the create");
 
-                var ended = post(runtime, ENTRY_CHAT.end(), "");
-                assertEquals(200, ended.status());
-                assertEquals(ChatStatus.END, ChatResource.fromJson(ended.bodyText()).state());
-
+                // Nothing but the create ends the chat: the entry is closed by its plan's start.
                 var created = post(runtime, "/api/v1/entries/" + ENTRY_ID + "/links/create", "{}");
                 assertEquals(200, created.status());
                 assertNull(StartStateResource.fromJson(created.bodyText()).chat());

@@ -977,7 +977,7 @@ final class StartRegistry {
         var event = entry.kind.epic() ? EVENT_EPIC_STARTED : EVENT_PLAN_STARTED;
         var name = entry.title != null ? entry.title : "";
         broadcaster.accept(new StartEvent(event, Map.of(idKey, entry.planId, KEY_PROJECT_ID,
-                entry.projectId, KEY_TITLE, name)));
+                entry.projectId, KEY_TITLE, name, KEY_ENTRY_ID, entry.entryId)));
     }
 
     private @Nullable String createdId(StartEntry entry, @Nullable String requestedPlanId) {
@@ -1018,7 +1018,7 @@ final class StartRegistry {
                 .map(AdoptableEpic::title).findFirst().orElse(epicId);
         entry.created = true;
         broadcaster.accept(new StartEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, epicId,
-                KEY_PROJECT_ID, entry.projectId, KEY_TITLE, entry.title)));
+                KEY_PROJECT_ID, entry.projectId, KEY_TITLE, entry.title, KEY_ENTRY_ID, entry.entryId)));
     }
 
     private void retryAdoption(StartEntry entry) {

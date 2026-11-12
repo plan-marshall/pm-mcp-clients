@@ -439,6 +439,24 @@ class ScenarioLoaderTest {
         assertEquals("chat_failures", ex.field());
     }
 
+    @Test
+    @DisplayName("refuses an http_error status that would wrap into 400-599 when narrowed to an int")
+    void rejectsWrappingChatFailureStatus() {
+        var status = Generators.integers(400, 599).next();
+        // 2^32 above the status: the low 32 bits are the status itself.
+        var wrapping = (1L << 32) + status;
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":[
+                  {"failure":"http_error","status":%d,"code":"scope_not_found"}]}}}
+                """.formatted(wrapping);
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "wrapping-status.json"));
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+    }
+
     /**
      * A scenario whose one state plays one event, its data the envelope's own members followed by the
      * given payload members.
@@ -474,7 +492,7 @@ class ScenarioLoaderTest {
     }
 
     @Test
-    @DisplayName("refuses a chat event name the catalogue does not hold")
+    @DisplayName("refuses a chat event name the catalogue does not hold before its payload is read")
     void rejectsUnknownChatEvent() {
         var json = stateWithEvent("chat.turn." + lowerLetters(), """
                 "chat_id":"%s","turn_id":"%s","text":"%s"

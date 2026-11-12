@@ -67,6 +67,9 @@ import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.mock.junit5.MockRuntimeLogMessages;
 import de.planmarshall.mock.runtime.MockTiming;
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+import de.planmarshall.mock.scenario.StateDefinition;
 
 /**
  * The scripted conversations of the mock's chats and the proposals that act: per proposal kind, the
@@ -348,6 +351,74 @@ class ChatProposalsTest {
                         MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
             }
         }
+
+        @Test
+        @DisplayName("logs a change to the rows of an epic that has no decomposition")
+        void rowsOfEpicWithoutDecomposition() throws Exception {
+            var routes = ChatRoutes.epic(id());
+            try (var runtime = ordered(CHAT_STATE)) {
+                openChat(runtime, routes);
+                var proposal = proposeAt(runtime, routes, 2, ProposalKind.ROWS);
+
+                var accepted = answer(runtime, routes.accept(), proposal);
+
+                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+
+        @Test
+        @DisplayName("logs an entry's description it cannot apply because it is blank, and keeps the description")
+        void blankDescription() throws Exception {
+            var routes = ChatRoutes.entry(ENTRY_ID);
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(withBlankDescriptionProposal()).timing(MockTiming.ORDERED).build())) {
+                var before = descriptions(runtime);
+                var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded proposal");
+                assertEquals(ProposalKind.DESCRIPTION, proposal.kind());
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(before, descriptions(runtime), "the blank description replaced nothing");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+    }
+
+    /**
+     * The state {@code start.chat} as the scenario's start, its seeded entry chat proposing a blank
+     * description.
+     */
+    @SuppressWarnings("unchecked")
+    private static Scenario withBlankDescriptionProposal() {
+        var base = new ScenarioRegistry().resolve(StandardScenarios.PROJECTS_AND_START);
+        var stateId = "start.chat";
+        var state = Objects.requireNonNull(base.state(stateId));
+        // The parsed representation is copied whole, so the registry's scenario stays as it was.
+        var representation = (Map<String, Object>) copy(state.representation());
+        var control = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) representation
+                .get("facts")).get("runtime")).get("control");
+        var chat = (Map<String, Object>) ((List<Object>) control.get("chats")).getFirst();
+        ((Map<String, Object>) chat.get("proposal")).put(ChatProposal.FIELD_AFTER, " ");
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, state.links(), state.events(), state.auto(),
+                state.chatFailures()));
+        return new Scenario(base.formatVersion(), base.name(), base.description(), stateId, base.pairingCode(),
+                base.routes(), states);
+    }
+
+    private static Object copy(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            var copy = new LinkedHashMap<String, Object>();
+            map.forEach((key, member) -> copy.put(String.valueOf(key), copy(member)));
+            return copy;
+        }
+        if (value instanceof List<?> list) {
+            return new ArrayList<>(list.stream().map(ChatProposalsTest::copy).toList());
+        }
+        return value;
     }
 
     @Nested
