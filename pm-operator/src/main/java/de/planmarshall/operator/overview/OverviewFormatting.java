@@ -385,7 +385,7 @@ public final class OverviewFormatting {
      * @return the catalogue key of that kind's word
      */
     private static String kindKey(String kind) {
-        return COMMON_KIND_PREFIX + kind;
+        return String.format("%s%s", COMMON_KIND_PREFIX, kind);
     }
 
     /**

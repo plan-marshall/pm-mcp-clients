@@ -905,7 +905,7 @@ public final class PmConsole {
         if (!notify || kind == null || UNNOTIFIED_KINDS.contains(kind)) {
             return;
         }
-        var named = scope != null ? scope : ConsoleNotice.scopeOf(eventMap);
+        var named = namedScope(scope, eventMap);
         if (named.isBlank()) {
             return;
         }
@@ -940,6 +940,18 @@ public final class PmConsole {
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.code_failed_fresh",
                                 Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
         }
+    }
+
+    /**
+     * @param scope    the scope the caller names, or {@code null}
+     * @param eventMap the event frame
+     * @return the scope to name
+     */
+    private static String namedScope(@Nullable String scope, Map<String, Object> eventMap) {
+        if (scope != null) {
+            return scope;
+        }
+        return ConsoleNotice.scopeOf(eventMap);
     }
 
     private void updateWindowTitle(Terminal terminal) {

@@ -337,6 +337,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_ITEMS = "items";
     private static final String KEY_NEEDS_OPERATOR = "needs_operator";
     private static final String REBASE_ONTO_MAIN = "Rebase onto main";
+    private static final String DECISION_REBASE = "rebase";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
@@ -5274,7 +5275,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new ReplanningRecord("the base moved", "09:55", "TASK-5 added", null)
         );
         var fixRelayDecisions = List.of(
-                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, "rebase", "operator", "web", "iPad", null),
+                new DecisionRecord("Q-003", REBASE_ONTO_MAIN, DECISION_REBASE, "operator", "web", "iPad", null),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null, null)
         );
         var fixRelayOwnCalls = List.of(
