@@ -1215,7 +1215,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 var name = MessageCatalogue.format(locale,
                                     DOCUMENTS_TEXT_PREFIX + candidate.wireValue(), Map.of());
                 var text = MessageCatalogue.format(locale,
-                                    "onboard.settings.documents." + candidate.wireValue() + "_text", Map.of());
+                                    DOCUMENTS_TEXT_PREFIX + candidate.wireValue() + "_text", Map.of());
                 out.println("  " + idx++ + ") " + name + "            " + text
                                     + (candidate == current ? " ←" : ""));
             }

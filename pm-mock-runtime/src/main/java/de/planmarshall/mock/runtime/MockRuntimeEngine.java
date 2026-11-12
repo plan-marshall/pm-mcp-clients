@@ -7445,7 +7445,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         map.put("aspect", aspect.wireValue());
         map.put("step", aspect.step());
         map.put(FIXTURE_SUMMARY, summary);
-        map.put("current", current);
+        map.put(KEY_CURRENT, current);
         return map;
     }
 
