@@ -35,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1464,11 +1465,15 @@ class MockRuntimeEngineTest {
     void stateScheduledEventSurvivesDrainStart() throws Exception {
         var stateId = drainStateId();
         var marker = markerEvent();
-        var afterMs = Generators.integers(400, 800).next();
+        var afterMs = Generators.integers(0, 20).next();
         registerSystemState(stateId, Map.of(), List.of(new EventDefinition(afterMs, marker, Map.of())));
         var latches = Map.of(marker, new CountDownLatch(1));
+        // The engine's scheduler is held until the drain has started, so the state's event is due
+        // only after it, without waiting for a delay.
+        var scheduler = Executors.newSingleThreadScheduledExecutor();
+        var release = holdScheduler(scheduler);
 
-        try (var runtime = startRuntime()) {
+        try (var runtime = startRuntime(scheduler)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var bearer = "Bearer " + runtime.token();
             try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer))) {
@@ -1480,6 +1485,7 @@ class MockRuntimeEngineTest {
                 var stop = client.send(HttpRequest.post(PATH_STOP).withHeader("Authorization", bearer)
                         .withBody(new String(drainBody(THEN_EXIT), StandardCharsets.UTF_8)));
                 assertEquals(200, stop.status(), stop.bodyText());
+                release.countDown();
 
                 assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS),
                         "the state's own event must still arrive after the drain started: " + names);
@@ -1733,16 +1739,20 @@ class MockRuntimeEngineTest {
         var staleItem = Generators.letterStrings(5, 10).next() + "-stale";
         var stateId = drainStateId();
         var marker = markerEvent();
-        var afterMs = Generators.integers(300, 500).next();
+        var afterMs = Generators.integers(0, 20).next();
         registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of(
                 new EventDefinition(afterMs, EVENT_DRAINING, Map.of(
                         "lifecycle_state", "draining",
                         "remaining_items", List.of(staleItem),
                         "remaining_work_count", 1)),
-                new EventDefinition(afterMs + 100, marker, Map.of())));
+                new EventDefinition(afterMs + 1, marker, Map.of())));
         var latches = Map.of(marker, new CountDownLatch(1));
+        // The engine's scheduler is held until the drain is withdrawn and replaced, so the stale
+        // event is due only after it, without waiting for a delay.
+        var scheduler = Executors.newSingleThreadScheduledExecutor();
+        var release = holdScheduler(scheduler);
 
-        try (var runtime = startRuntime()) {
+        try (var runtime = startRuntime(scheduler)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var bearer = Map.of("Authorization", "Bearer " + runtime.token());
             try (var exchange = client.open(HttpRequest.get("/api/v1/events")
@@ -1755,6 +1765,7 @@ class MockRuntimeEngineTest {
                 assertEquals(200, send(live, "DELETE", PATH_STOP, bearer, new byte[0], false).status());
                 var restarted = send(live, "POST", PATH_STOP, bearer, drainBody(THEN_EXIT), false);
                 assertEquals(200, restarted.status(), restarted.body());
+                release.countDown();
 
                 assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS), "the state's events are due: " + names);
                 assertFalse(remainingItems(live, bearer).contains(staleItem),
@@ -2065,7 +2076,8 @@ class MockRuntimeEngineTest {
 
         assertAll(
                 () -> assertEquals(409, delete.status(), delete.body()),
-                () -> assertEquals("runtime_stopping", delete.json().get("error")),
+                // A stopped runtime does not offer the deletion: the catalogue's act_not_available.
+                () -> assertEquals("act_not_available", delete.json().get("error")),
                 () -> assertEquals(200, cleanup.status(), cleanup.body()),
                 () -> assertNotEquals(Boolean.FALSE, cleanup.json().get("open"), "the job stays open"));
     }
@@ -2452,6 +2464,27 @@ class MockRuntimeEngineTest {
                 .registry(registry)
                 .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
                 .build());
+    }
+
+    private MockRuntime startRuntime(ScheduledExecutorService scheduler) throws IOException {
+        return MockRuntime.start(MockRuntimeConfig.builder()
+                .registry(registry)
+                .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
+                .scheduler(scheduler)
+                .build());
+    }
+
+    /**
+     * Holds the one thread of {@code scheduler}: every task scheduled after this call runs only once
+     * the returned latch is counted down, whatever its delay.
+     */
+    private static CountDownLatch holdScheduler(ScheduledExecutorService scheduler) {
+        var release = new CountDownLatch(1);
+        scheduler.submit(() -> {
+            release.await();
+            return null;
+        });
+        return release;
     }
 
     private static List<Object> remainingItems(MockRuntimeEngine target, Map<String, String> headers)

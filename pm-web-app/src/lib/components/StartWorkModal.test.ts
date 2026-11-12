@@ -107,13 +107,14 @@ describe('StartWorkModal component', () => {
   });
 
   it('reports a failure and stays open', async () => {
-    vi.spyOn(apiClient, 'startPlan').mockRejectedValue(new Error('start_refused'));
+    // A refused start answers the catalogue's act_not_available, whose fix sentence the modal shows.
+    vi.spyOn(apiClient, 'startPlan').mockRejectedValue(new Error('act_not_available'));
     render(StartWorkModal, { props: { open: true, projectId: 'plan-marshall', kind: 'plan' } });
 
     await fireEvent.click(screen.getByTestId('start-submit'));
     await waitFor(() =>
       expect(screen.getByTestId('start-error')).toHaveTextContent(
-        'The start failed: Update the client and try again; if the refusal stays, look at the details.',
+        'The start failed: Reload the view and choose an act the state offers.',
       ),
     );
   });

@@ -300,7 +300,8 @@ class ReportsScenarioTest {
             assertEquals(409, res.status());
 
             var body = JsonTree.asObject(JsonTree.parse(res.body()));
-            assertEquals("plan_running", JsonTree.string(body, "error"));
+            // A running plan does not offer its completion report yet: the catalogue's act_not_available.
+            assertEquals("act_not_available", JsonTree.string(body, "error"));
             assertTrue(JsonTree.string(body, "message").contains("running"));
         }
     }

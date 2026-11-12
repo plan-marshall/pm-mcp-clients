@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
 
 
 import lombok.Builder;
@@ -78,6 +79,15 @@ public class MockRuntimeConfig {
     /** An optional preloaded scenario instance. If specified, takes precedence as the initial scenario. */
     @Nullable
     Scenario initialScenario;
+
+    /**
+     * An optional single-threaded scheduler for the states' timed events, their auto transitions and
+     * the drain's steps; {@code null} for the engine's own. A test supplies its own to hold the timed
+     * events until it lets them run, instead of waiting for their delay. The runtime shuts it down on
+     * {@link MockRuntime#close()}.
+     */
+    @Nullable
+    ScheduledExecutorService scheduler;
 
     /**
      * @return the runtime token or a generated default

@@ -579,7 +579,7 @@ class PlanCommandTest {
             if ("/api/v1/plans/p-001/completion".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, "Completion Report: p-001 SUCCESS (3 tasks, 25m)");
             } else if ("/api/v1/plans/p-running/completion".equals(request.target())) {
-                response.send(409, null, "plan_running");
+                response.send(409, null, "act_not_available");
             } else {
                 response.send(404, null, "");
             }
@@ -708,7 +708,7 @@ class PlanCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/plans/running-plan/completion".equals(request.target())) {
                 response.json(409, """
-                                    {"error":"plan_running","state":"running"}
+                                    {"error":"act_not_available","state":"running"}
                                     """);
             } else {
                 response.send(404, null, "");

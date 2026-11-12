@@ -510,7 +510,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
-    private static final String ERR_START_REFUSED = "start_refused";
+    /**
+     * The catalogue's code of a refused start: the state does not offer the act. The refusal's own
+     * cause (project_not_ready, confirmation_required, preview_stale and the others) stays in the
+     * body's {@code reason}, which the clients read.
+     */
+    private static final String ERR_START_REFUSED = ApiErrorCode.ACT_NOT_AVAILABLE.wire();
     /** The catalogue's code of a request body or parameter that violates the endpoint's schema. */
     private static final String ERR_INVALID_ARGUMENTS = "invalid_arguments";
     private static final String ERR_CONFIRMATION_REQUIRED = "confirmation_required";
@@ -833,7 +838,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
             boolean recordActBodies) {
-        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC);
+        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC, null);
     }
 
     /**
@@ -843,15 +848,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param deviceSecret    the accepted device secret on the web port
      * @param recordActBodies whether {@code /mock/acts} records decision request bodies
      * @param timing          how scenario events and a chat's reply are played
+     * @param scheduler       the single-threaded scheduler of the states' timed events, their auto
+     *                        transitions and the drain's steps, or {@code null} for the engine's own; a
+     *                        test that supplies its own can hold the timed events until it lets them
+     *                        run instead of waiting for their delay. The engine shuts it down on close.
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
-            boolean recordActBodies, MockTiming timing) {
+            boolean recordActBodies, MockTiming timing, @Nullable ScheduledExecutorService scheduler) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.recordActBodies = recordActBodies;
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
-        this.eventTiming = new EventTiming(timing, scheduler);
+        this.scheduler = scheduler != null ? scheduler
+                : Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
+        this.eventTiming = new EventTiming(timing, this.scheduler);
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
             broadcastEvent(event.name(), event.data());
@@ -5812,8 +5822,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleGetPlanCompletion(MockHttpResponse response, String planId) throws IOException {
         if (CONST_RELAY_TOKEN_STORE.equals(planId) || "running-plan".equals(planId)) {
+            // A running plan does not offer its completion report yet: the catalogue's act_not_available.
             response.json(409, Map.of(
-                    KEY_ERROR, "plan_running",
+                    KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                     KEY_MESSAGE, planId + " is running; its completion report follows when it ends",
                     "plan", planId,
                     KEY_STATE, "running"
@@ -6600,6 +6611,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleMessages(MockHttpRequest request, MockHttpResponse response) throws IOException {
         if (!"GET".equalsIgnoreCase(request.method())) {
+            // A transport answer of HTTP, outside the catalogue of /api/v1 refusals: the route is GET-only.
             response.json(405, Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "Only GET is supported for messages"));
             return;
         }
@@ -9341,7 +9353,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     """;
             response.send(200, "text/plain; charset=utf-8", notes);
         } else {
-            response.json(404, Map.of(KEY_ERROR, "version_not_found", KEY_MESSAGE, "No release notes available for version: " + version));
+            // An unknown version is an unknown target of the catalogue.
+            response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(), KEY_MESSAGE, "No release notes available for version: " + version));
         }
     }
 
@@ -9695,8 +9708,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             // nothing new, a cleanup deletion included.
             if (lifecycleState == RuntimeLifecycleState.DRAINING || lifecycleState == RuntimeLifecycleState.STOPPING
                     || lifecycleState == RuntimeLifecycleState.STOPPED) {
+                // A stopping runtime does not offer the act: the catalogue's act_not_available.
                 response.json(409, Map.of(
-                        KEY_ERROR, "runtime_stopping",
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_MESSAGE, "The runtime is stopping; nothing new starts."
                 ));
                 return;
