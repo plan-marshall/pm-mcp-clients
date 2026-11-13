@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,8 +36,10 @@ import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatTurnAccepted;
 import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
+import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.runtime.MockTiming;
@@ -94,14 +97,38 @@ class ChatListenerAndResidueTest {
         @Test
         @DisplayName("is the listener's for a decision answered after a chat, not the request's default")
         void ofADecisionAnswered() throws Exception {
-            try (var runtime = webRuntime()) {
+            try (var runtime = webRuntime();
+                 var stream = openStream(runtime, "/api/v1/events")) {
                 var answered = webPost(runtime, "/api/v1/decisions/Q-007/answer", "{\"option\":\"1\"}");
                 assertEquals(200, answered.statusCode(), answered.body());
 
                 var act = actFor(runtime, "/api/v1/decisions/Q-007/answer");
+                var published = decisionAnswered(stream.events());
                 assertAll("the answer's channel",
                         () -> assertEquals(CHANNEL_WEB, act.get(CHANNEL)),
-                        () -> assertNotNull(act.get(DEVICE_ID)));
+                        () -> assertNotNull(act.get(DEVICE_ID), "the act names the device"),
+                        () -> assertEquals(CHANNEL_WEB, published.get(CHANNEL)));
+            }
+        }
+
+        /**
+         * @return the payload of the first {@code decision.answered} on the stream
+         */
+        private static Map<String, Object> decisionAnswered(SseReader events)
+                throws Exception {
+            while (true) {
+                var seen = events.next();
+                assertNotNull(seen, "the stream ended");
+                if ("decision.answered".equals(seen.event())) {
+                    var payload = new LinkedHashMap<>(
+                            JsonTree.asObject(JsonTree.parse(seen.data())));
+                    payload.remove("event");
+                    payload.remove("at");
+                    payload.remove("scope");
+                    if ("Q-007".equals(payload.get("id"))) {
+                        return payload;
+                    }
+                }
             }
         }
     }
@@ -208,6 +235,14 @@ class ChatListenerAndResidueTest {
     private static HttpResponse get(MockRuntime runtime, String path) throws IOException {
         return new UnixSocketHttpClient(runtime.socketPath())
                 .send(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
+    }
+
+    private static HttpExchange openStream(MockRuntime runtime, String path)
+            throws IOException {
+        var exchange = new UnixSocketHttpClient(runtime.socketPath())
+                .open(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
+        assertTrue(exchange.isEventStream(), path);
+        return exchange;
     }
 
     private static HttpResponse post(MockRuntime runtime, String path, String body) throws IOException {

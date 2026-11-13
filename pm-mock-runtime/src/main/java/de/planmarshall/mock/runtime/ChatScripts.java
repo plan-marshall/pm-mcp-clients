@@ -130,21 +130,22 @@ final class ChatScripts {
                     List.of(), proposal(subject, scope));
             case 2 -> new Reply(UNTRUSTED_TEXT, TurnFormat.PLAIN, true, List.of(), List.of(),
                     subject == ChatSubjectKind.EPIC && scope != ChatScopeKind.ARCHIVE ? draftProposal() : null);
-            default -> laterReply(subject, subjectId);
+            default -> laterReply(subject, subjectId, scope);
         };
     }
 
     /**
-     * The reply to every later message: a short answer that names, of a plan, a hold and the act the
-     * operator may take instead ({@code state-catalogue.adoc#chat-names-acts}: the role names an act,
-     * never performs one).
+     * The reply to every later message: a short answer that names, of a plan that still runs, a hold and
+     * the act the operator may take instead ({@code state-catalogue.adoc#chat-names-acts}: the role names
+     * an act, never performs one). Ended work names no act, since its archive offers none.
      *
      * @param subject   the kind of the chat's subject
      * @param subjectId the id of the chat's subject
+     * @param scope     the chat's scope
      * @return the reply
      */
-    private static Reply laterReply(ChatSubjectKind subject, String subjectId) {
-        var refs = subject == ChatSubjectKind.PLAN
+    private static Reply laterReply(ChatSubjectKind subject, String subjectId, ChatScopeKind scope) {
+        var refs = subject == ChatSubjectKind.PLAN && scope != ChatScopeKind.ARCHIVE
                 ? List.of(TurnRef.of(RefKind.HOLD, HOLD_ID),
                 TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
                 : List.<TurnRef>of();

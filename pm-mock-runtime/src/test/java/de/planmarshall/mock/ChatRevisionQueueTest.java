@@ -317,7 +317,8 @@ class ChatRevisionQueueTest {
             try (var runtime = ordered(CHAT_STATE)) {
                 var chat = open(runtime, routes);
 
-                var refused = broadcast(runtime, completedEvent(chat.id(), "cancel"));
+                // `archive` is an epic's act: a running plan never offers it, `pause` it does.
+                var refused = broadcast(runtime, completedEvent(chat.id(), "archive"));
                 var taken = broadcast(runtime, completedEvent(chat.id(), "pause"));
 
                 assertAll("the act check",

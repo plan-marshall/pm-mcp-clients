@@ -52,9 +52,24 @@ interface ChatFacts {
     /**
      * @param planId the plan's id
      * @return whether the plan still takes a revision: it runs in execute, or in finalize before its
-     *         merge
+     *         merge, and it has not ended
      */
     boolean revisionWindowOpen(String planId);
+
+    /**
+     * @param planId the plan's id
+     * @return the plan's activity as its control state reports it ({@code running}, {@code pausing},
+     *         {@code paused} or {@code ended})
+     */
+    String activity(String planId);
+
+    /**
+     * @param subject a chat's subject
+     * @return the plan the chat's revisions belong to — the plan itself, or the plan a decision is
+     *         about — or {@code null} where the subject belongs to no plan
+     */
+    @Nullable
+    String planFor(ChatSubject subject);
 
     /**
      * @param subject the subject an act would be offered on

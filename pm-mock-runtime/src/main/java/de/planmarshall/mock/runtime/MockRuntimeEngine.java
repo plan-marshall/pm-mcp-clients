@@ -978,6 +978,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     @Override
     public boolean revisionWindowOpen(String planId) {
+        synchronized (controlLock) {
+            if ("ended".equals(controlPlanStates.get(planId))) {
+                return false;
+            }
+        }
         var plan = planDetail(planId);
         if (plan == null) {
             // The scenario serves no detail of the plan: the mock cannot show the window closed.
@@ -995,17 +1000,37 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     @Override
+    public String activity(String planId) {
+        synchronized (controlLock) {
+            return controlPlanStates.getOrDefault(planId, "running");
+        }
+    }
+
+    @Override
+    public @Nullable String planFor(ChatSubject subject) {
+        if (subject.kind() == ChatSubjectKind.PLAN) {
+            return subject.id();
+        }
+        if (subject.kind() != ChatSubjectKind.DECISION) {
+            return null;
+        }
+        var slash = subject.id().indexOf('/');
+        if (slash <= 0) {
+            return null;
+        }
+        var candidate = subject.id().substring(0, slash);
+        // Only a decision about a plan names one: machine/, project/, epic/ and entry/ decisions do not.
+        return planDetail(candidate) == null ? null : candidate;
+    }
+
+    @Override
     public boolean offersAct(ChatSubject subject, String act) {
         if (subject.kind() != ChatSubjectKind.PLAN) {
             return false;
         }
         synchronized (controlLock) {
-            var state = controlPlanStates.getOrDefault(subject.id(), "running");
-            return switch (act) {
-                case ACT_PAUSE -> "running".equals(state) || "pausing".equals(state);
-                case ACT_START -> "paused".equals(state);
-                default -> false;
-            };
+            return buildPlanActions(subject.id()).actions().stream()
+                    .anyMatch(action -> act.equals(action.action()) && action.available());
         }
     }
 
@@ -5266,6 +5291,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private void handlePlanAction(MockHttpRequest request, MockHttpResponse response, String planId, String action)
             throws IOException {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
+        String eventName;
+        Map<String, Object> event;
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
                 response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
@@ -5287,31 +5314,39 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     var point = actionRequest.point() != null ? actionRequest.point() : "task";
                     controlPlanStates.put(planId, "pausing");
                     controlPlanPausePoints.put(planId, point);
-                    broadcastEvent(PlanControlEvent.EVENT_PAUSED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_PAUSED, planId, "pausing", point, null).toMap());
+                    eventName = PlanControlEvent.EVENT_PAUSED;
+                    event = new PlanControlEvent(eventName, planId, "pausing", point, null).toMap();
                 }
                 case ACTION_START -> {
                     controlPlanStates.put(planId, "running");
                     controlPlanPausePoints.remove(planId);
-                    broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
+                    eventName = PlanControlEvent.EVENT_RESUMED;
+                    event = new PlanControlEvent(eventName, planId, "running", null, null).toMap();
                 }
                 case ACTION_CANCEL, ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
-                    broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
-                            actionRequest.reason() != null ? actionRequest.reason() : "Cancelled by operator").toMap());
+                    eventName = PlanControlEvent.EVENT_CANCELLED;
+                    event = new PlanControlEvent(eventName, planId, "ended", null,
+                            actionRequest.reason() != null ? actionRequest.reason()
+                                    : "Cancelled by operator").toMap();
                 }
                 default -> {
                     // chat and settings open a dialogue; the state is unchanged
+                    eventName = null;
+                    event = null;
                 }
             }
             var resp = new LinkedHashMap<String, Object>();
             resp.put(KEY_STATUS, "ok");
             resp.putAll(buildPlanActions(planId).toMap());
             response.json(200, resp);
+        }
+        // The event is broadcast after the control lock is released: the chat registry takes its own
+        // lock and calls back into these facts, so the two must never be held in the other order.
+        if (eventName != null && event != null) {
+            broadcastEvent(eventName, event);
         }
     }
 
@@ -10340,7 +10375,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             openDecisions.put(decision.id(), decision);
             operatorCreatedDecisionIds.add(decision.id());
         }
-        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, decision.toMap()));
+        var opened = new LinkedHashMap<String, Object>();
+        opened.put(KEY_ID, decision.id());
+        var planId = extractPlan(decision);
+        if (planId != null) {
+            opened.put(KEY_PLAN_ID, planId);
+        }
+        opened.put(CONST_DECISION, decision.toMap());
+        broadcastEvent(DECISION_OPENED, opened);
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
@@ -10533,6 +10575,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (decisionsLock) {
             answered = openDecisions.remove(decisionId);
         }
+        if (answered == null) {
+            response.json(409, Map.of(KEY_ERROR, "already_answered", KEY_MESSAGE,
+                    "Decision " + decisionId + " is no longer open"));
+            return;
+        }
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
                 answerReq.channel(), answerReq.device(), extractPlan(answered)));
         broadcastEvent(DECISION_CLOSED, Map.of(
@@ -10562,6 +10609,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         DecisionEnvelope answered;
         synchronized (decisionsLock) {
             answered = openDecisions.remove(decisionId);
+        }
+        if (answered == null) {
+            response.json(409, Map.of(KEY_ERROR, "already_answered", KEY_MESSAGE,
+                    "Decision " + decisionId + " is no longer open"));
+            return;
         }
 
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(),
