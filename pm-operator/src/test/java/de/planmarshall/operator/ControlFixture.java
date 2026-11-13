@@ -230,12 +230,17 @@ final class ControlFixture implements AutoCloseable {
             response.json(200, "[]");
         } else if ("/api/v1/plans/fix-relay/chat".equals(path)) {
             response.json(200, """
-                                {"chat_id":"C-1","subject_id":"fix-relay","subject_kind":"plan",
-                                 "role":"replan","scope":"plan","state":"turn","turns":[
-                                   {"role":"operator","text":"Why?","at":"2026-10-16T10:00:00Z",
-                                    "untrusted":false},
-                                   {"role":"replan","text":"The cursor is written late.",
-                                    "at":"2026-10-16T10:01:00Z","untrusted":false}]}
+                                {"id":"C-1","subject":{"kind":"plan","id":"fix-relay"},
+                                 "role":{"name":"replan","model":"sonnet"},"scope":"plan",
+                                 "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                 "turns":[
+                                   {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                                    "format":"plain","untrusted":false,"text":"Why?","steps":[],"refs":[],
+                                    "at":"2026-10-16T10:00:00Z"},
+                                   {"turn_id":"T-2","kind":"message","author":"replan","status":"complete",
+                                    "format":"markdown","untrusted":false,"model":"sonnet",
+                                    "text":"The cursor is written late.","steps":[],"refs":[],
+                                    "at":"2026-10-16T10:01:00Z"}]}
                                 """);
         } else if ("/api/v1/epics/relay-hardening/review".equals(path)
                             || path.startsWith("/api/v1/epics/relay-hardening/review?")) {

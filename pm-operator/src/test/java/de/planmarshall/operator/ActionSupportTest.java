@@ -118,9 +118,12 @@ class ActionSupportTest {
         runtime((request, response) -> {
             if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                                    {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
-                                     "role":"replan","scope":"archive","state":"open","turns":[],
-                                     "proposal":{"summary":"Follow-up plan"}}
+                                    {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
+                                     "role":{"name":"replan","model":"sonnet"},"scope":"archive",
+                                     "state":"chat.read-back","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                     "turns":[],
+                                     "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                                       "summary":"Follow-up plan","after":"Follow up","state":"open"}}
                                     """);
             } else if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
@@ -165,9 +168,12 @@ class ActionSupportTest {
         runtime((request, response) -> {
             if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                                    {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
-                                     "role":"replan","scope":"archive","state":"open","turns":[],
-                                     "proposal":{"summary":"Follow-up plan"}}
+                                    {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
+                                     "role":{"name":"replan","model":"sonnet"},"scope":"archive",
+                                     "state":"chat.read-back","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                     "turns":[],
+                                     "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                                       "summary":"Follow-up plan","after":"Follow up","state":"open"}}
                                     """);
             } else if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
@@ -305,9 +311,24 @@ class ActionSupportTest {
     @DisplayName("chat posts message when provided")
     void chatPostMessage() throws Exception {
         runtime((request, response) -> {
-            if ("/api/v1/plans/p-1/chat".equals(request.target()) && "POST".equals(request.method())) {
-                assertTrue(request.bodyText().contains("\"message\":\"hello plan\""));
-                response.json(200, "{\"status\":\"delivered\"}");
+            if ("/api/v1/plans/p-1/chat/turns".equals(request.target())) {
+                assertTrue(request.bodyText().contains("\"text\":\"hello plan\""), request.bodyText());
+                assertTrue(request.bodyText().contains("client_turn_id"), request.bodyText());
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else if ("/api/v1/plans/p-1/chat".equals(request.target())) {
+                response.json(200, """
+                                    {"id":"C-1","subject":{"kind":"plan","id":"p-1"},
+                                     "role":{"name":"replan","model":"sonnet"},"scope":"plan",
+                                     "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                     "turns":[{"turn_id":"T-1","kind":"message","author":"operator",
+                                               "status":"complete","format":"plain","untrusted":false,
+                                               "text":"hello plan","steps":[],"refs":[],
+                                               "at":"2026-10-16T10:00:00Z"},
+                                              {"turn_id":"T-2","kind":"message","author":"replan",
+                                               "status":"complete","format":"markdown","untrusted":false,
+                                               "model":"sonnet","text":"delivered","steps":[],"refs":[],
+                                               "at":"2026-10-16T10:00:01Z"}]}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -315,7 +336,7 @@ class ActionSupportTest {
 
         var code = ActionSupport.chat(context, spec, "plan", "p-1", "hello plan");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("delivered"));
+        assertTrue(out.toString().contains("delivered"), out.toString());
     }
 
     @Test
@@ -324,12 +345,17 @@ class ActionSupportTest {
         runtime((request, response) -> {
             if ("/api/v1/epics/e-1/chat".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                                    {"chat_id":"C-1","subject_id":"e-1","subject_kind":"epic",
-                                     "role":"decompose","scope":"epic","state":"turn",
-                                     "turns":[{"role":"operator","text":"hi","at":"2026-10-16T10:00:00Z",
-                                               "untrusted":false},
-                                              {"role":"decompose","text":"hello from the epic",
-                                               "at":"2026-10-16T10:00:01Z","untrusted":false}]}
+                                    {"id":"C-1","subject":{"kind":"epic","id":"e-1"},
+                                     "role":{"name":"decompose","model":"sonnet"},"scope":"epic",
+                                     "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                     "turns":[
+                                       {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                                        "format":"plain","untrusted":false,"text":"hi","steps":[],"refs":[],
+                                        "at":"2026-10-16T10:00:00Z"},
+                                       {"turn_id":"T-2","kind":"message","author":"decompose","status":"complete",
+                                        "format":"markdown","untrusted":false,"model":"sonnet",
+                                        "text":"hello from the epic","steps":[],"refs":[],
+                                        "at":"2026-10-16T10:00:01Z"}]}
                                     """);
             } else {
                 response.send(404, null, "");

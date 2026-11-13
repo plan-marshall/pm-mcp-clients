@@ -14,10 +14,10 @@ import java.io.PrintWriter;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.control.ChatProposalResource;
-import de.planmarshall.api.control.ChatReadBackResource;
-import de.planmarshall.api.control.ChatScope;
-import de.planmarshall.api.control.ChatTurnResource;
+import de.planmarshall.api.chat.ChatProposal;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
 
@@ -34,7 +34,7 @@ import de.planmarshall.operator.actions.WorkActionsClient;
 final class WorkChatDialogue {
 
     private static final String STATE_ID = "control.chat";
-    private static final String ROLE_OPERATOR = ChatTurnResource.ROLE_OPERATOR;
+    private static final String ROLE_OPERATOR = ChatTurn.AUTHOR_OPERATOR;
 
     private final StartPrompt prompt;
     private final WorkActionsClient client;
@@ -87,9 +87,10 @@ final class WorkChatDialogue {
      * @param out     the verb's output
      * @param chat    the chat read-back
      */
-    static void render(OperatorContext context, PrintWriter out, ChatReadBackResource chat) {
-        var dialogue = new WorkChatDialogue(context, out, chat.subjectKind(), chat.subjectId(), false, true);
-        boolean endedChat = chat.chatScope() == ChatScope.ARCHIVE;
+    static void render(OperatorContext context, PrintWriter out, ChatResource chat) {
+        var dialogue = new WorkChatDialogue(context, out, chat.subject().kind().wireValue(), chat.subject().id(),
+                            false, true);
+        boolean endedChat = chat.scope() == ChatScopeKind.ARCHIVE;
         dialogue.showHead(chat, endedChat);
         for (var turn : chat.turns()) {
             dialogue.showTurn(turn);
@@ -112,7 +113,7 @@ final class WorkChatDialogue {
 
     private @Nullable String execute() throws IOException {
         var chat = client.chat(kind, subjectId);
-        boolean endedChat = ended || chat.chatScope() == ChatScope.ARCHIVE;
+        boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
         showHead(chat, endedChat);
         for (var turn : chat.turns()) {
             showTurn(turn);
@@ -130,13 +131,13 @@ final class WorkChatDialogue {
                         prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
                         return followUp(chat.proposal());
                     }
-                    chat = client.chatProposal(kind, subjectId, true);
+                    chat = client.chatProposal(kind, subjectId, chat.proposal().turnId(), true);
                     showNewTurns(chat, seen);
                     seen = chat.turns().size();
                     prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
                     continue;
                 }
-                chat = client.chatProposal(kind, subjectId, false);
+                chat = client.chatProposal(kind, subjectId, chat.proposal().turnId(), false);
                 continue;
             }
             var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
@@ -160,7 +161,7 @@ final class WorkChatDialogue {
     /**
      * @return {@code true} to accept, {@code false} to reject, or {@code null} to leave the chat
      */
-    private @Nullable Boolean askProposal(ChatReadBackResource chat, boolean endedChat) {
+    private @Nullable Boolean askProposal(ChatResource chat, boolean endedChat) {
         var proposal = chat.proposal();
         if (proposal == null) {
             return null;
@@ -175,8 +176,9 @@ final class WorkChatDialogue {
         if (proposal.after() != null) {
             prompt.raw("  + " + OutputSafety.stripControlSequences(proposal.after()));
         }
-        if (proposal.applies() != null) {
-            prompt.raw("  " + OutputSafety.stripControlSequences(proposal.applies()));
+        var applies = appliesText(proposal);
+        if (applies != null) {
+            prompt.raw("  " + OutputSafety.stripControlSequences(applies));
         }
         var question = endedChat
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.follow_up", Map.of())
@@ -196,15 +198,15 @@ final class WorkChatDialogue {
         return null;
     }
 
-    private void showHead(ChatReadBackResource chat, boolean endedChat) {
-        var scope = switch (chat.chatScope()) {
+    private void showHead(ChatResource chat, boolean endedChat) {
+        var scope = switch (chat.scope()) {
             case EPIC -> "operator.actions.chat.scope.epic";
             case ARCHIVE -> "operator.actions.chat.scope.archive";
             default -> "operator.actions.chat.scope.plan";
         };
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.head",
-                            Map.of("subject", OutputSafety.stripControlSequences(chat.subjectId()),
-                                                "role", chat.role(),
+                            Map.of("subject", OutputSafety.stripControlSequences(chat.subject().id()),
+                                                "role", chat.role().name(),
                                                 "scope", MessageCatalogue.format(prompt.locale(), scope, Map.of())))
                             + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end",
                             Map.of()));
@@ -214,17 +216,17 @@ final class WorkChatDialogue {
         }
     }
 
-    private void showNewTurns(ChatReadBackResource chat, int seen) {
+    private void showNewTurns(ChatResource chat, int seen) {
         var turns = chat.turns();
         for (int index = seen; index < turns.size(); index++) {
             showTurn(turns.get(index));
         }
     }
 
-    private void showTurn(ChatTurnResource turn) {
-        var role = ROLE_OPERATOR.equals(turn.role())
+    private void showTurn(ChatTurn turn) {
+        var role = ROLE_OPERATOR.equals(turn.author())
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you", Map.of())
-                            : OutputSafety.stripControlSequences(turn.role());
+                            : OutputSafety.stripControlSequences(turn.author());
         var text = OutputSafety.stripControlSequences(turn.text()).replace('\n', ' ');
         if (turn.untrusted()) {
             text = "\"" + text + "\"   "
@@ -234,7 +236,21 @@ final class WorkChatDialogue {
         prompt.raw("  " + role + "  " + text);
     }
 
-    private static @Nullable String followUp(ChatProposalResource proposal) {
+    /**
+     * @param proposal the proposal the role read back
+     * @return when it applies, read from the runtime's message key, or {@code null} where it names none
+     */
+    private @Nullable String appliesText(ChatProposal proposal) {
+        var applies = proposal.applies();
+        if (applies == null) {
+            return null;
+        }
+        var key = applies.key();
+        var point = key.substring(key.lastIndexOf('.') + 1);
+        return MessageCatalogue.format(prompt.locale(), "operator.actions.chat.applies." + point, applies.args());
+    }
+
+    private static @Nullable String followUp(ChatProposal proposal) {
         if (proposal.after() != null && !proposal.after().isBlank()) {
             return proposal.after();
         }

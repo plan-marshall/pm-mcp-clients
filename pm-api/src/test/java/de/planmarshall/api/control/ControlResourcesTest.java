@@ -151,38 +151,6 @@ class ControlResourcesTest {
     }
 
     @Test
-    @DisplayName("round-trips a chat read-back with its transcript and proposal")
-    void chatReadBack() throws Exception {
-        var chatId = Generators.nonBlankStrings().next();
-        var planId = Generators.nonBlankStrings().next();
-        var operatorText = Generators.nonBlankStrings().next();
-        var replanText = Generators.nonBlankStrings().next();
-        var askedAt = Generators.nonBlankStrings().next();
-        var answeredAt = Generators.nonBlankStrings().next();
-        var proposalHeadline = Generators.nonBlankStrings().next();
-        var currentDraft = Generators.nonBlankStrings().next();
-        var proposedDraft = Generators.nonBlankStrings().next();
-        var applies = Generators.nonBlankStrings().next();
-        var chat = new ChatReadBackResource(chatId, planId, "plan", "replan", "plan", "read-back",
-                List.of(new ChatTurnResource("operator", operatorText, askedAt, false),
-                        new ChatTurnResource("replan", replanText, answeredAt, false)),
-                new ChatProposalResource(proposalHeadline, currentDraft, proposedDraft, applies));
-
-        var parsed = ChatReadBackResource.fromJson(chat.toJson());
-
-        assertEquals("replan", parsed.chatRole().value());
-        assertEquals(ChatScope.PLAN, parsed.chatScope());
-        assertEquals(ChatState.READ_BACK, parsed.chatState());
-        assertTrue(parsed.hasProposal());
-        assertEquals(2, parsed.turns().size());
-        assertTrue(parsed.turns().getFirst().isOperator());
-        assertEquals(applies, parsed.proposal().applies());
-
-        var untrusted = new ChatTurnResource("replan", "from a comment", "2026-10-16T14:04:00Z", true);
-        assertTrue(ChatTurnResource.fromJson(untrusted.toJson()).untrusted());
-    }
-
-    @Test
     @DisplayName("round-trips a review with a promotion and a read-back")
     void review() throws Exception {
         var reviewId = Generators.nonBlankStrings().next();
@@ -360,7 +328,6 @@ class ControlResourcesTest {
     void rejectsMalformed() {
         assertThrows(JsonFormatException.class, () -> EpicResource.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> DecompositionResource.fromJson("[]"));
-        assertThrows(JsonFormatException.class, () -> ChatReadBackResource.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> ReviewResource.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> ArchiveCheck.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> TokenFigure.fromJson("[]"));
