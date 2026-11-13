@@ -954,7 +954,7 @@ describe('WorkControlPanel component', () => {
     expect(notice.className).toContain('work-control__notice');
   });
 
-  it('reports a refused follow-up as a failure, not as the success it follows', async () => {
+  it('reports a refused follow-up as an alert', async () => {
     vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
       subject_id: 'codeberg-issues',
       subject_kind: 'plan',

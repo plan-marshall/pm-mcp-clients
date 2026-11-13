@@ -457,7 +457,9 @@ class ControlDialoguesTest {
             index = text.indexOf(part, index + part.length());
         }
         return count;
-    }    @Test
+    }
+
+    @Test
     @DisplayName("a setting is applied and a conflict keeps the current value")
     void settingsConflict() throws Exception {
         serve((request, response) -> {
