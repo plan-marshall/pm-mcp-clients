@@ -777,6 +777,48 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("the editor takes a kind's name and refuses an unreadable day count")
+    void cleanupEditorTakesAKindNameAndRefusesBadDays() throws Exception {
+        serveSettings(body -> {
+            // left before anything is written
+        });
+
+        int code = executeWithTyped("plans\nabc\n60\n\n\n", "config", "cleanup");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("At least 7 days, or never."), out.toString()),
+                            () -> assertTrue(out.toString().contains("Durations recorded: Archived plans after 60 days."),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --reports is the machine's only")
+    void cleanupReportsIsMachineOnly() throws Exception {
+        fixture.start((request, response) -> response.json(200, SETTINGS));
+
+        int code = execute("config", "cleanup", "--project", "pm", "--reports", "60");
+
+        assertAll(
+                            () -> assertEquals(2, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("--reports"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --no-input without --yes stops at the confirmation")
+    void cleanupNoInputWithoutYesStops() throws Exception {
+        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        serveSettings(body -> writes.incrementAndGet());
+
+        int code = execute("config", "cleanup", "--plans", "60", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Needs a choice: --yes"), out.toString()),
+                            () -> assertEquals(0, writes.get()));
+    }
+
+    @Test
     @DisplayName("config cleanup --project refuses a machine-only option")
     void cleanupProjectRefusesAMachineOnlyOption() throws Exception {
         fixture.start((request, response) -> response.json(200, SETTINGS));
@@ -786,6 +828,108 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(2, code, out.toString()),
                             () -> assertTrue(err.toString().contains("is the machine's only"), err.toString()));
+    }
+
+    /** A settings server that records the machine-settings write, or {@code null} when none came. */
+    private void serveSettings(java.util.function.Consumer<String> onWrite) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target())) {
+                onWrite.accept(request.bodyText());
+                response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("the editor keeps the durations on Enter and writes nothing")
+    void cleanupEditorKeepsWhatIsThere() throws Exception {
+        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        serveSettings(body -> writes.incrementAndGet());
+
+        int code = executeWithTyped("\n", "config", "cleanup");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(0, writes.get(), "no duration is written"),
+                            () -> assertTrue(out.toString().contains("How long should ended work be kept?"),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("the editor changes one duration and records it on the confirmation")
+    void cleanupEditorChangesADuration() throws Exception {
+        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        serveSettings(posted::set);
+
+        int code = executeWithTyped("1\n60\n\n\n", "config", "cleanup");
+
+        var body = JsonTree.asObject(JsonTree.parse(posted.get()));
+        var recorded = CleanupDurations.fromJson(body != null ? String.valueOf(body.get("value")) : "{}");
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(60, recorded.plansAfterDays()),
+                            () -> assertTrue(out.toString().contains("Durations recorded: Archived plans after 60 days."),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("the editor explains with ? and reports an answer it does not offer")
+    void cleanupEditorExplainsAndRejects() throws Exception {
+        serveSettings(body -> {
+            // the editor is left before anything is written
+        });
+
+        int code = executeWithTyped("?\nzz\n\n", "config", "cleanup");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("An item is offered when its end is older"),
+                                                out.toString()),
+                            () -> assertTrue(out.toString().contains("is not offered"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --plans never records the never marker")
+    void cleanupRecordsNever() throws Exception {
+        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        serveSettings(posted::set);
+
+        int code = execute("config", "cleanup", "--plans", "never", "--yes");
+
+        var body = JsonTree.asObject(JsonTree.parse(posted.get()));
+        var recorded = CleanupDurations.fromJson(body != null ? String.valueOf(body.get("value")) : "{}");
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertEquals(-1, recorded.plansAfterDays()),
+                            () -> assertTrue(out.toString().contains("Archived plans never."), out.toString()));
+    }
+
+    @Test
+    @DisplayName("the project view shows the project's own value over the machine's")
+    void cleanupProjectShowsItsOwnValue() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if (request.target().startsWith("/api/v1/config")) {
+                response.json(200, """
+                                    [{"key":"cleanup.plans_after_days","value":90,"origin":"project","revision":3},
+                                     {"key":"custom.flag","value":"on","origin":"project","revision":4}]
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "cleanup", "--project", "pm", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertTrue(out.toString().contains("Archived plans   after 90 days"), out.toString()),
+                            () -> assertTrue(out.toString().contains("project pm"), out.toString()));
     }
 
     @Test

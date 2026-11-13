@@ -735,6 +735,55 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("a release with nothing running names no What ends, and ? explains")
+    void releaseWithNothingRunningExplains() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","display_name":"cui-parent","readiness":"ready",
+                                     "active_plans_count":0,"active_epics_count":0}
+                                    """);
+            } else if (request.target().endsWith("/release")) {
+                response.json(200, "{\"status\":\"released\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("why\n?\ny\n", "project", "release", "cui-parent");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertFalse(output.contains("What ends"), output),
+                            () -> assertTrue(output.contains("What stays"), output),
+                            () -> assertTrue(output.contains("Releasing ends every plan and epic"), output));
+    }
+
+    @Test
+    @DisplayName("an interactive unenrol prints what ends and what stays before it asks")
+    void unenrolPrintsItsBlock() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/unenrol")) {
+                response.json(200, "{\"status\":\"unenrolled\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("y\n", "project", "unenrol", "legacy-portal");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Unenrol legacy-portal?"), output),
+                            () -> assertTrue(output.contains("What ends"), output),
+                            () -> assertTrue(output.contains("Afterwards"), output),
+                            () -> assertTrue(server.requests().stream().anyMatch(r -> r.target().endsWith("/unenrol")),
+                                                server.requests().toString()));
+    }
+
+    @Test
     @DisplayName("project unenrol treats a closed input as a declined confirmation and sends nothing")
     void projectUnenrolWithClosedInputSendsNothing() throws Exception {
         var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"unenrolled\"}"));

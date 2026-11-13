@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
@@ -177,14 +178,30 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         try {
             for (var value : ConfigCommand.parseValues(response.bodyText())) {
                 var kind = kindOfKey(value.key());
-                if (kind != null && value.value() instanceof Number number) {
-                    durations.put(kind, number.intValue());
+                var days = numberValue(value.value());
+                if (kind != null && days != null) {
+                    durations.put(kind, days);
                 }
             }
         } catch (IOException _) {
             // an unreadable value list leaves the machine's durations in place
         }
         return durations;
+    }
+
+    /**
+     * @param value a configuration value as the tree holds it
+     * @return its whole number, or {@code null} when it is none
+     */
+    private static @Nullable Integer numberValue(Object value) {
+        if (value instanceof JsonNumber(String text)) {
+            try {
+                return Integer.valueOf(text.trim());
+            } catch (NumberFormatException _) {
+                return null;
+            }
+        }
+        return value instanceof Number number ? number.intValue() : null;
     }
 
     private static @Nullable String kindOfKey(String key) {
