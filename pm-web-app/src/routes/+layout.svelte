@@ -12,6 +12,7 @@
     lifecycleEpochOf,
     lifecycleFieldsOf,
     routeParamsOf,
+    stopRuntimeRecovery,
     syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
@@ -30,6 +31,8 @@
   import OnboardingView from '../lib/views/OnboardingView.svelte';
   import ListenerOffView from '../lib/views/ListenerOffView.svelte';
   import RevokedView from '../lib/views/RevokedView.svelte';
+  import UnreachableView from '../lib/views/UnreachableView.svelte';
+  import { holdFigure } from '../lib/stores/heldFigure';
   import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
   import AppShell from '../lib/shell/AppShell.svelte';
@@ -217,10 +220,20 @@
         if (themeChoice === 'system') applyTheme('system');
       }),
     );
+    // A start that fails leaves the store retrying the initialization until one succeeds; the
+    // shell owns that retry for its whole life and ends it with itself, never the page of the
+    // lost connection, which the first successful request removes.
+    let shellGone = false;
+    onDestroy(() => {
+      shellGone = true;
+      stopRuntimeRecovery();
+    });
 
     // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
     // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.
     await Promise.race([initI18n(), new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
+    // A shell torn down while the catalogue loaded starts no runtime: nothing would end its retry.
+    if (shellGone) return;
     await initRuntime();
   });
 
@@ -267,6 +280,14 @@
     if (!$messagesStore[key]) return;
     const base = $t(key, args);
     document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+  });
+
+  // Once the app has started and reaches its origin, it fetches the figure of the disconnected
+  // states once and holds it, so those states can draw it after the origin is lost.
+  $effect(() => {
+    if ($runtimeStore.isInitialized && !$runtimeStore.isOffline) {
+      void holdFigure();
+    }
   });
 
   // The tab icon carries the attention dot while items wait; it reads the same count the rail
@@ -340,7 +361,14 @@
       {:else if !$runtimeStore.isOnboarded && !$runtimeStore.isOffline && $runtimeStore.currentRoute !== 'onboarding'}
         <OnboardingView />
       {:else}
-        {@render children?.()}
+        <!-- The runtime that is not reachable covers the open view without replacing it: the view
+             stays mounted but hidden, so its state and unsent input survive the reconnection. -->
+        {#if $runtimeStore.isOffline}
+          <UnreachableView />
+        {/if}
+        <div class="open-view" hidden={$runtimeStore.isOffline} data-testid="open-view">
+          {@render children?.()}
+        </div>
       {/if}
     {/snippet}
   </AppShell>
@@ -390,6 +418,15 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  /* The wrapper adds no box of its own; while hidden it draws nothing. */
+  .open-view {
+    display: contents;
+  }
+
+  .open-view[hidden] {
+    display: none;
   }
 
   .draining-banner {

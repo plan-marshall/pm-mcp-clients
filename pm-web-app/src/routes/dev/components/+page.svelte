@@ -17,6 +17,7 @@
   import DataTable from '../../../lib/components/DataTable.svelte';
   import EmptyState from '../../../lib/components/EmptyState.svelte';
   import ErrorState from '../../../lib/components/ErrorState.svelte';
+  import MascotFigure from '../../../lib/components/MascotFigure.svelte';
   import Skeleton from '../../../lib/components/Skeleton.svelte';
   import WaitingMark from '../../../lib/components/WaitingMark.svelte';
   import KindMark, { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
@@ -384,7 +385,7 @@
       <DataTable columns={tableColumns} rows={[]} label={$t('dev.table.label_empty')}>
         <svelte:fragment slot="empty">
           <EmptyState
-            brand
+            icon="kind.plan"
             title={$t('dev.empty.title')}
             message={$t('dev.empty.message')}
             actionLabel={$t('dev.empty.act')}
@@ -396,7 +397,7 @@
       <h3 class="dev__section-title">{$t('dev.section.empty_states')}</h3>
       <div class="dev__grid">
         <EmptyState
-          brand
+          mascot="all-clear"
           title={$t('dev.empty.title')}
           message={$t('dev.empty.message')}
           actionLabel={$t('dev.empty.act')}
@@ -424,6 +425,10 @@
       <h3 class="dev__section-title">{$t('dev.section.brand')}</h3>
       <div class="dev__row">
         <WaitingMark label={$t('dev.waiting.label')} />
+      </div>
+      <div class="dev__row">
+        <MascotFigure pose="welcome" crop="full" height={200} />
+        <MascotFigure pose="all-clear" crop="bust" height={140} />
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.kinds')}</h3>

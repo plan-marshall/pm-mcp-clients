@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
+/** A desktop with enough free height for the hero. */
+const TALL_DESKTOP = { width: 1280, height: 800 };
+
+/** A desktop below the hero's free-height threshold (520 px). */
+const SHORT_DESKTOP = { width: 1280, height: 480 };
+
+/** The phone, where the page carries no hero. */
+const PHONE = { width: 390, height: 844 };
+
+/**
+ * A desktop wider than a phone whose page, beside the expanded rail, is too narrow for the hero
+ * and a whole card: the hero follows the page's width, not the viewport's.
+ */
+const MID_DESKTOP = { width: 900, height: 800 };
+
 test.describe('Web Client Pairing Flow', () => {
   test.beforeEach(async ({ page, request }) => {
     // A pairing code is single use, so each test starts from a fresh scenario.
@@ -28,13 +43,14 @@ test.describe('Web Client Pairing Flow', () => {
   test('presents the mark, the wordmark, the code and the QR on the pairing page', async ({
     page,
   }) => {
+    await page.setViewportSize(TALL_DESKTOP);
     await page.goto('/pair');
 
-    // The page carries the colour mark at its pairing-page size, beside the visible wordmark.
+    // Beside the hero the page carries the colour mark at 28 px, beside the visible wordmark.
     const pairView = page.getByTestId('pairing-view');
-    const mark = pairView.getByTestId('brand-mark');
+    const mark = page.getByTestId('pairing-mark-28').getByTestId('brand-mark');
     await expect(mark).toBeVisible();
-    await expect(mark).toHaveAttribute('data-size', '64');
+    await expect(mark).toHaveAttribute('data-size', '28');
     await expect(mark).toHaveAttribute('data-rendering', 'colour');
     await expect(pairView.getByText('plan-marshall')).toBeVisible();
 
@@ -54,6 +70,115 @@ test.describe('Web Client Pairing Flow', () => {
     await expect(qr).toBeVisible();
     expect(await qr.locator('svg rect').count()).toBeGreaterThan(20);
   });
+
+  test('shows the welcome hero beside the card with the 28 px mark at 1280 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize(TALL_DESKTOP);
+    await page.goto('/pair');
+
+    const hero = page.getByTestId('pairing-hero').getByTestId('mascot-figure');
+    await expect(hero).toBeVisible();
+    await expect(hero).toHaveAttribute('data-pose', 'welcome');
+    await expect(hero).toHaveAttribute('loading', 'eager');
+    await expect(hero).toHaveAttribute('alt', '');
+    const box = await hero.boundingBox();
+    expect(box?.height).toBeCloseTo(320, 0);
+
+    // The hero stands beside the card, not above or below it.
+    const card = await page.getByTestId('pairing-view').boundingBox();
+    expect(box?.x).toBeGreaterThanOrEqual((card?.x ?? 0) + (card?.width ?? 0));
+
+    await expect(page.getByTestId('pairing-mark-28').getByTestId('brand-mark')).toBeVisible();
+    await expect(page.getByTestId('pairing-mark-64').getByTestId('brand-mark')).toBeHidden();
+  });
+
+  for (const [where, viewport] of [
+    ['on the phone', PHONE],
+    ['below the free-height threshold', SHORT_DESKTOP],
+  ]) {
+    test(`hides the hero and shows the 64 px mark ${where}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/pair');
+
+      await expect(page.getByTestId('pairing-view')).toBeVisible();
+      await expect(page.getByTestId('pairing-hero')).toBeHidden();
+      const large = page.getByTestId('pairing-mark-64').getByTestId('brand-mark');
+      await expect(large).toBeVisible();
+      await expect(large).toHaveAttribute('data-size', '64');
+      await expect(page.getByTestId('pairing-mark-28').getByTestId('brand-mark')).toBeHidden();
+    });
+  }
+
+  test('hides the hero and keeps the command rows whole beside the expanded rail at 900 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize(MID_DESKTOP);
+    await page.goto('/pair');
+
+    // The rail is expanded, so the page is narrower than the viewport by the rail's width.
+    const rail = page.getByTestId('nav-rail');
+    await expect(rail).toBeVisible();
+    await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+
+    const card = page.getByTestId('pairing-view');
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId('pairing-hero')).toBeHidden();
+    await expect(page.getByTestId('pairing-mark-64').getByTestId('brand-mark')).toBeVisible();
+
+    // Every command row, its copy button included, lies inside the card: nothing is clipped.
+    const cardBox = await card.boundingBox();
+    const rows = card.locator('.cmd-row');
+    await expect(rows).toHaveCount(2);
+    for (const row of await rows.all()) {
+      const box = await row.boundingBox();
+      expect(box?.x).toBeGreaterThanOrEqual(cardBox?.x ?? 0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+        (cardBox?.x ?? 0) + (cardBox?.width ?? 0),
+      );
+      const copy = row.getByRole('button');
+      await expect(copy).toBeVisible();
+      const copyBox = await copy.boundingBox();
+      expect((copyBox?.x ?? 0) + (copyBox?.width ?? 0)).toBeLessThanOrEqual(
+        (cardBox?.x ?? 0) + (cardBox?.width ?? 0),
+      );
+    }
+  });
+
+  for (const [where, viewport, shows] of [
+    ['the bear beside the hidden hero at 900 px', MID_DESKTOP, 'bear'],
+    ['the hero and no bear at 1280 px', TALL_DESKTOP, 'hero'],
+  ]) {
+    test(`shows exactly one mascot beside the expanded rail: ${where}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/pair');
+
+      const rail = page.getByTestId('nav-rail');
+      await expect(rail).toBeVisible();
+      await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+      await expect(page.getByTestId('pairing-view')).toBeVisible();
+
+      // A mounted hero the page hides keeps no box and does not hide the bear; a shown one does.
+      const hero = page.getByTestId('pairing-hero').getByTestId('mascot-figure');
+      await expect(hero).toHaveCount(1);
+      if (shows === 'hero') {
+        await expect(hero).toBeVisible();
+        await expect(rail).not.toHaveClass(/nav-rail--bear/);
+      } else {
+        await expect(hero).toBeHidden();
+        await expect(rail).toHaveClass(/nav-rail--bear/);
+      }
+
+      // Exactly one mascot is drawn: the figures with a box, and the bear where it draws its bust.
+      const figures = await page
+        .getByTestId('mascot-figure')
+        .evaluateAll((all) => all.filter((figure) => figure.getClientRects().length > 0).length);
+      const bear = await rail
+        .locator('.nav-rail__bear')
+        .evaluate((element) => getComputedStyle(element).backgroundImage !== 'none');
+      expect(figures + (bear ? 1 : 0)).toBe(1);
+    });
+  }
 
   test('enables pair button and pairs successfully with code', async ({ page }) => {
     await page.goto('/');

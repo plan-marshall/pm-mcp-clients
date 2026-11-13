@@ -19,12 +19,13 @@ import {
 } from './helpers/textGuard.js';
 import { auditViewA11y, formatViolation as formatA11yViolation } from './helpers/a11y.js';
 import { openAnyPlan } from './helpers/plans.js';
+import { makeRuntimeUnreachable } from './helpers/unreachable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Declared inventory of the 22 view targets in `pm-web-app/src/lib/views/`
+ * Declared inventory of the 23 view targets in `pm-web-app/src/lib/views/`
  * (excluding the top-level dispatcher `AppRouter.svelte`).
  */
 export const DECLARED_VIEWS = [
@@ -46,6 +47,7 @@ export const DECLARED_VIEWS = [
   'PairingView',
   'RevokedView',
   'ListenerOffView',
+  'UnreachableView',
   'EpicDecompositionView',
   'DecompositionReviewView',
   'EpicAdoptView',
@@ -114,8 +116,10 @@ function writeGuardBaselineEntry(baseline, view, locale, violations) {
  *
  * @param {Record<string, Array<{ rule: string, word: string }>>} collected the violations per view
  * @param {string} locale the interface locale the views were read in
+ * @param {Record<string, Array<{ rule: string, word: string, context?: string }>>} [located] the
+ *   violations per view with the element they stand in, so a gained entry names its source
  */
-function verifyGuardViews(collected, locale) {
+function verifyGuardViews(collected, locale, located = {}) {
   const baseline = readGuardBaseline();
   const bootstrap = process.env.TEXT_GUARD_BOOTSTRAP === '1';
   const failures = [];
@@ -134,7 +138,10 @@ function verifyGuardViews(collected, locale) {
     }
     const { added, removed } = diffViolations(recorded, violations);
     for (const violation of added) {
-      failures.push(`${view} (${locale}) gained ${formatViolation(violation)}`);
+      const where = (located[view] ?? []).find(
+        (entry) => entry.rule === violation.rule && entry.word === violation.word,
+      );
+      failures.push(`${view} (${locale}) gained ${formatViolation(where ?? violation)}`);
     }
     for (const violation of removed) {
       failures.push(
@@ -167,22 +174,29 @@ const LABELS = {
  * Waits until the app has initialized its runtime, which follows the catalogue load, so the
  * page is rendered in the locale the browser stored before the navigation.
  *
+ * The store is read by an awaited evaluation: `waitForFunction` does not await a predicate that
+ * returns a promise, so it took the pending promise as a truthy answer and returned before the
+ * app had started. A journey that cut the runtime off then, as the unreachable one does, cut off
+ * the catalogue as well, and the page fell back to the English labels of the pairing.
+ *
  * @param {import('@playwright/test').Page} page the page to wait for
  */
 async function waitForApp(page) {
-  await page.waitForFunction(
-    async () => {
-      const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
-      let initialized = false;
-      const unsubscribe = runtimeStore.subscribe((state) => {
-        initialized = state.isInitialized;
-      });
-      unsubscribe();
-      return initialized;
-    },
-    undefined,
-    { timeout: 20000 },
-  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+          let initialized = false;
+          const unsubscribe = runtimeStore.subscribe((state) => {
+            initialized = state.isInitialized;
+          });
+          unsubscribe();
+          return initialized;
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
 }
 
 /**
@@ -524,6 +538,17 @@ const GUARD_JOURNEYS = [
         await expect(page.getByTestId('listener-off-view')).toBeVisible({ timeout: 1000 });
       }).toPass({ timeout: 15000 });
       await record('ListenerOffView');
+    },
+  },
+  {
+    title: 'runtime not reachable',
+    views: ['UnreachableView'],
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'fully-onboarded', locale);
+    },
+    async walk(page, record) {
+      await makeRuntimeUnreachable(page);
+      await record('UnreachableView');
     },
   },
   {
@@ -988,6 +1013,15 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await auditView(page, testInfo, { view: 'ListenerOffView', theme, viewport: vp });
         });
 
+        test(`UnreachableView in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
+          await switchScenario(request, 'fully-onboarded');
+          await pair(page, request);
+          await setTheme(page, theme);
+
+          await makeRuntimeUnreachable(page);
+          await auditView(page, testInfo, { view: 'UnreachableView', theme, viewport: vp });
+        });
+
         test(`EpicDecompositionView in ${theme} (${vp.name})`, async ({
           page,
           request,
@@ -1040,17 +1074,19 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
             await page.setViewportSize({ width: 1440, height: 900 });
             await journey.open(page, request, locale);
             const collected = {};
+            const located = {};
             await journey.walk(page, async (view) => {
-              const violations = normalizeViolations(
-                await collectTextGuardViolations(page, { locale }),
-              );
+              const found = await collectTextGuardViolations(page, { locale });
+              const violations = normalizeViolations(found);
               collected[view] = violations;
+              located[view] = found;
+              // The log names the element each word stands in, so a gained entry points at its source.
               const listed =
-                violations.map((violation) => formatViolation(violation)).join(', ') || 'none';
+                found.map((violation) => formatViolation(violation)).join(', ') || 'none';
               console.log(`[text-guard] ${view} (${locale}): ${violations.length} - ${listed}`);
             });
             expect(Object.keys(collected).sort()).toEqual(journey.views.slice().sort());
-            verifyGuardViews(collected, locale);
+            verifyGuardViews(collected, locale, located);
           });
         }
       });
@@ -1156,9 +1192,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
                   console.log(`[a11y] ${formatA11yViolation(label, violation)}`);
                 }
               }
-              const failures = failing.map((violation) =>
-                formatA11yViolation(label, violation),
-              );
+              const failures = failing.map((violation) => formatA11yViolation(label, violation));
               expect(
                 failures,
                 `serious accessibility issues found:\n${failures.join('\n')}`,
@@ -1173,7 +1207,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
   });
 
   test.describe('Declared View Coverage Guard', () => {
-    test('all 22 declared views in src/lib/views/ are present and were audited', () => {
+    test('all 23 declared views in src/lib/views/ are present and were audited', () => {
       const viewsDir = path.resolve(__dirname, '../../pm-web-app/src/lib/views');
       const viewFiles = fs
         .readdirSync(viewsDir)

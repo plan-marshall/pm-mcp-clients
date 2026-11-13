@@ -5,7 +5,8 @@ import path from 'node:path';
 /**
  * The one client-level time limit (D5, UX-S-06): the client bounds every request at 15 s, so no
  * view, route or act carries a 15-second constant of its own. The only other 15-second figure in the
- * package is the listener view's retry interval, which is not a request limit.
+ * package is the retry interval of a lost connection, which the runtime store keeps for itself and
+ * the pages of a lost connection; it is not a request limit.
  */
 
 const SOURCE_DIR = path.resolve(__dirname, '../..');
@@ -30,14 +31,14 @@ function walk(directory: string): string[] {
 const FIFTEEN_SECONDS = /\b15_?000\b|\b15\s*\*\s*1_?000\b|\b15e3\b/;
 
 describe('the one client-level request limit', () => {
-  it('keeps 15_000 only in the client limit and the listener retry interval', () => {
+  it('keeps 15_000 only in the client limit and the retry interval of a lost connection', () => {
     const offenders: string[] = [];
     for (const file of walk(SOURCE_DIR)) {
       if (!/\.(ts|js|svelte)$/.test(file) || /\.(test|spec)\.(ts|js)$/.test(file)) continue;
       const text = fs.readFileSync(file, 'utf-8');
       if (!FIFTEEN_SECONDS.test(text)) continue;
       const relative = path.relative(SOURCE_DIR, file).split(path.sep).join('/');
-      if (relative === 'lib/api/client.ts' || relative === 'lib/views/ListenerOffView.svelte') {
+      if (relative === 'lib/api/client.ts' || relative === 'lib/stores/runtime.ts') {
         continue;
       }
       offenders.push(relative);

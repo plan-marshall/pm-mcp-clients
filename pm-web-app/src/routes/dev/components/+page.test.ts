@@ -199,4 +199,29 @@ describe('/dev/components page fixture', () => {
       }
     });
   });
+
+  it.each(['light', 'dark'])('draws the mascot figure, full and bust, in the %s block', (theme) => {
+    render(DevComponentsPage);
+    const block = document.querySelector(`[data-theme="${theme}"]`);
+    const figures = Array.from(block?.querySelectorAll('[data-testid="mascot-figure"]') ?? []);
+    const crops = figures.map((figure) => figure.getAttribute('data-crop'));
+
+    expect(crops).toContain('full');
+    expect(crops).toContain('bust');
+    expect(block?.querySelectorAll('[data-testid="brand-mark"]')).toHaveLength(0);
+  });
+
+  it.each(['light', 'dark'])('draws the all-clear bust on the calm empty state only, in the %s block', (theme) => {
+    render(DevComponentsPage);
+    const block = document.querySelector(`[data-theme="${theme}"]`);
+    // In page order: the data table's empty slot, the calm empty state, the icon empty state.
+    const [tableEmpty, calm, iconEmpty] = Array.from(
+      block?.querySelectorAll('[data-testid="empty-state"]') ?? [],
+    );
+
+    expect(calm?.querySelector('[data-testid="mascot-figure"]')).toHaveAttribute('data-pose', 'all-clear');
+    expect(tableEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
+    expect(tableEmpty?.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'kind.plan');
+    expect(iconEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
+  });
 });

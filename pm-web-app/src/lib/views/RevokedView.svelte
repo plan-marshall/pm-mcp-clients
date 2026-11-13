@@ -1,7 +1,17 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import MascotFigure from '../components/MascotFigure.svelte';
   import { runtimeStore } from '../stores/runtime';
+
+  /**
+   * The page a revoked device lands on. The `access-ended` figure stands beside the text, quieter
+   * than the pairing page's hero and never above the text; this is the only surface of that pose.
+   * Where the page is too narrow to hold both, the figure is hidden and the card takes the width.
+   */
+
+  /** The figure's height beside the text, within the design's 160–200 px. */
+  const FIGURE_HEIGHT = 180;
 
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
@@ -21,6 +31,7 @@
 </script>
 
 <div class="revoked-view" data-testid="revoked-view">
+  <MascotFigure pose="access-ended" height={FIGURE_HEIGHT} />
   <div class="revoked-card">
     <h1 class="revoked-title">{$t('devices.revoked.title')}</h1>
     <hr class="revoked-divider" />
@@ -42,13 +53,30 @@
 </div>
 
 <style>
+  /*
+   * The page is the query container: it stretches across the view area, so its width is the page's
+   * and never the content's, and the narrow rule below follows the page, not the viewport the rail
+   * also takes from.
+   */
   .revoked-view {
+    container: revoked-view / inline-size;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-6);
     padding: var(--space-4);
     background-color: var(--color-bg-base);
+  }
+
+  /*
+   * Where the page cannot hold the figure beside a card that keeps its text and its button, the
+   * figure is hidden, never stacked above the text.
+   */
+  @container revoked-view (max-width: 36rem) {
+    .revoked-view :global(.mascot-figure) {
+      display: none;
+    }
   }
 
   .revoked-card {

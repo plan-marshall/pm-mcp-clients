@@ -151,11 +151,15 @@ describe('Icon component', () => {
   });
 });
 
+/** Raster images under `src/` (the mascot figures): binary files, not text a character can sit in. */
+const RASTER_IMAGE = /\.(webp|png)$/;
+
 describe('the emoji sweep', () => {
   it('leaves no pictographic character anywhere in the web app source', () => {
     const pictographic = /\p{Extended_Pictographic}/u;
     const sourceDirectory = join(projectRoot, 'src');
     const offenders = walk(sourceDirectory)
+      .filter((file) => !RASTER_IMAGE.test(file))
       .filter((file) => pictographic.test(readFileSync(file, 'utf-8')))
       .map((file) => file.slice(projectRoot.length + 1));
 

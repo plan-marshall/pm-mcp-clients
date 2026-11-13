@@ -2,10 +2,12 @@
  * The tab icon of the web app (VD-P-08): the brand mark, and the same mark carrying a small
  * attention dot while items wait for the operator.
  *
- * The two delivered vectors live in `static/`: `brand-mark.svg` bakes the light-theme brand colour
- * because a standalone SVG has no page context for `currentColor`, and `brand-mark-attention.svg`
- * adds the dot in the attention colour. Which one the tab shows follows the attention count alone,
- * so the icon never claims work that no counter reports.
+ * The two delivered vectors live in `static/`: `brand-mark.svg` is the colour rendering of the mark
+ * in the mascot palette — the gold star, the fur disc and the dark outline — written as literal
+ * fills and strokes, because a standalone SVG has no page tokens to read them from; and
+ * `brand-mark-attention.svg` is the same rendering with the dot in the attention colour. Which one
+ * the tab shows follows the attention count alone, so the icon never claims work that no counter
+ * reports.
  */
 
 /** The tab icon while nothing waits. */

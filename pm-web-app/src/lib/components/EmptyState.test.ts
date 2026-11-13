@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import EmptyState from './EmptyState.svelte';
+import { MASCOT_POSES } from '../assets/mascot/mascotFiles';
 
 /**
- * `EmptyState` (VD-P-05, VD-P-08, VD-S-04): an icon or the brand mark, a title, one sentence and
+ * `EmptyState` (VD-P-05, VD-P-08, VD-S-04): the mascot's bust or an icon, a title, one sentence and
  * one act. It is the block a list draws instead of an empty list, so it always says what is
  * missing and what the person can do about it.
  */
@@ -40,19 +41,34 @@ describe('EmptyState', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('draws the brand mark in monochrome at 64 px, so the muted text colour sets it', () => {
-    const { container } = render(EmptyState, {
-      props: { title: TITLE, message: MESSAGE, brand: true },
-    });
-    const mark = screen.getByTestId('brand-mark');
+  it.each(MASCOT_POSES)('draws the mascot bust in the pose %s above the title', (pose) => {
+    render(EmptyState, { props: { title: TITLE, message: MESSAGE, mascot: pose } });
+    const figure = screen.getByTestId('mascot-figure');
+    const title = screen.getByRole('heading', { name: TITLE });
 
-    expect(mark).toHaveAttribute('data-rendering', 'monochrome');
-    expect(mark).toHaveAttribute('data-size', '64');
-    expect(mark.closest('.empty-state__mark')).not.toBeNull();
-    expect(container.querySelector('.ui-icon')).toBeNull();
+    expect(figure).toHaveAttribute('data-pose', pose);
+    expect(figure).toHaveAttribute('data-crop', 'bust');
+    expect(figure.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('draws the icon the view names instead of the mark', () => {
+  it('draws the bust within 120 to 160 px', () => {
+    render(EmptyState, { props: { title: TITLE, message: MESSAGE, mascot: 'all-clear' } });
+    const height = Number(screen.getByTestId('mascot-figure').getAttribute('height'));
+
+    expect(height).toBeGreaterThanOrEqual(120);
+    expect(height).toBeLessThanOrEqual(160);
+  });
+
+  it('draws no icon beside the mascot, even when the view names one', () => {
+    const { container } = render(EmptyState, {
+      props: { title: TITLE, message: MESSAGE, mascot: 'start-here', icon: 'kind.plan' },
+    });
+
+    expect(screen.getByTestId('mascot-figure')).toBeInTheDocument();
+    expect(container.querySelector('[data-icon]')).toBeNull();
+  });
+
+  it('draws the icon the view names on an empty state that is not calm, and no figure', () => {
     const { container } = render(EmptyState, {
       props: { title: TITLE, message: MESSAGE, icon: 'kind.plan' },
     });
@@ -60,6 +76,7 @@ describe('EmptyState', () => {
 
     expect(mark).not.toBeNull();
     expect(mark).toHaveAttribute('data-icon', 'kind.plan');
+    expect(screen.queryByTestId('mascot-figure')).not.toBeInTheDocument();
     expect(screen.queryByTestId('brand-mark')).not.toBeInTheDocument();
   });
 

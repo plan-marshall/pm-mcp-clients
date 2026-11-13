@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { pair, switchScenario } from './helpers/pairing.js';
+import { makeRuntimeUnreachable } from './helpers/unreachable.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,8 +20,23 @@ const __dirname = path.dirname(__filename);
  * Beside them it writes the comparison sheets of the marks, read from their sources on disk because
  * they are not served and drawn in a plain page on a white and a dark ground: the kind marks beside
  * the waiting mark and the badge at 16 and 24 px (`kind-marks-{size}.png`), and the favourite marks
- * against the badge at 16 px in monochrome (`favourite-vs-badge-16.png`).
+ * against the badge at 16 px in monochrome (`favourite-vs-badge-16.png`). The tab icon is drawn and
+ * measured at 16 px, the size a browser tab shows it at.
+ *
+ * The same run writes the browser evidence of the mascot figure on every surface it stands on
+ * (`mascot-{surface}-{lang}-{theme}-{width}.png`): the pairing hero, the revoked device, the
+ * network listener turned off, the runtime that is not reachable, the reports page without unread
+ * reports, and the rail-foot bear expanded and collapsed, above and below its free-height threshold.
+ *
+ * The set is evidence for a review, not a regression check, so it stays out of the default suite:
+ * it runs only where `PM_E2E_BRAND_SHOTS` is `1`, from Maven with `-Pe2e -Dpm.e2e.brandShots=1`
+ * (the `e2e` profile starts Playwright at all; any other value, `0` included, leaves the spec off).
  */
+
+test.skip(
+  process.env.PM_E2E_BRAND_SHOTS !== '1',
+  'The S12 brand screenshots run only on request: -Pe2e -Dpm.e2e.brandShots=1 (PM_E2E_BRAND_SHOTS=1).',
+);
 
 /** The directory the S12 screenshots are written to. */
 const SHOT_DIR = path.resolve(__dirname, '../test-results/s12-brand');
@@ -40,8 +56,8 @@ const WIDTHS = [
 /** The desktop viewport, where the rail and its language toggle are drawn. */
 const DESKTOP = WIDTHS[0];
 
-/** The size the tab icon is rendered at for its screenshot. */
-const ICON_VIEWPORT = { width: 64, height: 64 };
+/** The size a browser tab draws its icon at, and the size the icon is captured at. */
+const TAB_ICON_SIZE = 16;
 
 /**
  * @param {string} surface the surface the screenshot shows
@@ -221,22 +237,27 @@ function expectWritten(file) {
  * Waits until the app has initialized its runtime, which follows the catalogue load, so the page
  * is rendered in the locale the browser stored before the navigation.
  *
+ * The store is read by an awaited evaluation: `waitForFunction` does not await a predicate that
+ * returns a promise and would take the pending promise as a truthy answer.
+ *
  * @param {import('@playwright/test').Page} page the page to wait for
  */
 async function waitForApp(page) {
-  await page.waitForFunction(
-    async () => {
-      const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
-      let initialized = false;
-      const unsubscribe = runtimeStore.subscribe((state) => {
-        initialized = state.isInitialized;
-      });
-      unsubscribe();
-      return initialized;
-    },
-    undefined,
-    { timeout: 20000 },
-  );
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+          let initialized = false;
+          const unsubscribe = runtimeStore.subscribe((state) => {
+            initialized = state.isInitialized;
+          });
+          unsubscribe();
+          return initialized;
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
 }
 
 /**
@@ -306,11 +327,16 @@ async function captureTabIcon(page, theme, file) {
 
   const iconPage = await page.context().newPage();
   try {
-    await iconPage.setViewportSize(ICON_VIEWPORT);
+    await iconPage.setViewportSize({ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE });
     await iconPage.emulateMedia({ colorScheme: theme });
     const response = await iconPage.goto(expected);
     expect(response?.ok(), `${expected} was not served`).toBe(true);
-    await expect(iconPage.locator('svg').first()).toBeVisible();
+    const icon = iconPage.locator('svg').first();
+    await expect(icon).toBeVisible();
+    // The served icon fills the tab's 16 px square.
+    const box = await icon.boundingBox();
+    expect(box?.width).toBe(TAB_ICON_SIZE);
+    expect(box?.height).toBe(TAB_ICON_SIZE);
     await iconPage.screenshot({ path: file, animations: 'disabled' });
   } finally {
     await iconPage.close();
@@ -381,7 +407,9 @@ test.describe('S12 brand screenshots', () => {
           await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
           const pairView = page.getByTestId('pairing-view');
           await expect(pairView).toBeVisible();
-          await expect(pairView.getByTestId('brand-mark')).toBeVisible();
+          // Beside the hero the icon stands at 28 px; on the phone, without it, at 64 px.
+          const shown = width === DESKTOP.width ? 'pairing-mark-28' : 'pairing-mark-64';
+          await expect(page.getByTestId(shown).getByTestId('brand-mark')).toBeVisible();
 
           const file = shotPath('pairing', locale, theme, width);
           await page.screenshot({ path: file, animations: 'disabled' });
@@ -411,4 +439,304 @@ test.describe('S12 mark comparison sheets', () => {
 
     expectWritten(file);
   });
+});
+
+/** A desktop below the pairing hero's free-height threshold (520 px). */
+const SHORT_DESKTOP = { width: 1280, height: 480 };
+
+/** A desktop tall enough to leave the rail-foot bear its 260 px of free height. */
+const TALL_DESKTOP = { width: 1280, height: 1400 };
+
+/** The free height below the last destination the rail-foot bear needs (brand-mark-mascot.adoc). */
+const BEAR_FREE_HEIGHT = 260;
+
+/**
+ * Waits until the app holds the figure of the disconnected states as an object URL, which it
+ * fetches once after its start. The store is read by an awaited evaluation, as `waitForApp` reads
+ * the runtime.
+ *
+ * @param {import('@playwright/test').Page} page the paired page
+ */
+async function waitForHeldFigure(page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const { heldFigure } = await import('/src/lib/stores/heldFigure.ts');
+          let url = '';
+          const unsubscribe = heldFigure.subscribe((value) => {
+            url = value;
+          });
+          unsubscribe();
+          return url.startsWith('blob:');
+        }),
+      { timeout: 20000 },
+    )
+    .toBe(true);
+}
+
+/**
+ * Asserts the one mascot figure of a surface: its pose, and that it is drawn.
+ *
+ * @param {import('@playwright/test').Locator} surface the surface that carries the figure
+ * @param {string} pose the pose the surface names
+ * @returns {Promise<import('@playwright/test').Locator>} the figure
+ */
+async function expectFigure(surface, pose) {
+  const figure = surface.getByTestId('mascot-figure');
+  await expect(figure).toHaveCount(1);
+  await expect(figure).toBeVisible();
+  await expect(figure).toHaveAttribute('data-pose', pose);
+  // The image arrived and was decoded: a figure that failed to load has no natural size.
+  await expect
+    .poll(() => figure.evaluate((image) => image.complete && image.naturalWidth > 0))
+    .toBe(true);
+  return figure;
+}
+
+/**
+ * Asserts the one mascot figure of a surface is mounted with its pose but hidden: on a phone the
+ * page is too narrow to hold it beside the text, so its narrow rule hides it and never stacks it
+ * above the text (brand-mark-mascot.adoc).
+ *
+ * @param {import('@playwright/test').Locator} surface the surface that carries the figure
+ * @param {string} pose the pose the surface names
+ * @returns {Promise<import('@playwright/test').Locator>} the figure
+ */
+async function expectFigureHidden(surface, pose) {
+  await expect(surface).toBeVisible();
+  const figure = surface.getByTestId('mascot-figure');
+  await expect(figure).toHaveCount(1);
+  await expect(figure).toHaveAttribute('data-pose', pose);
+  await expect(figure).toBeHidden();
+  return figure;
+}
+
+/**
+ * Asserts the figure of a terminal surface as the design draws it at the width: shown beside the
+ * text at the desktop width, hidden on the phone.
+ *
+ * @param {import('@playwright/test').Locator} surface the surface that carries the figure
+ * @param {string} pose the pose the surface names
+ * @param {boolean} desktop whether the page has the desktop width
+ * @returns {Promise<import('@playwright/test').Locator>} the figure
+ */
+async function expectFigureAtWidth(surface, pose, desktop) {
+  return desktop ? expectFigure(surface, pose) : expectFigureHidden(surface, pose);
+}
+
+/**
+ * Writes one evidence screenshot of a mascot surface and asserts it was written.
+ *
+ * @param {import('@playwright/test').Page} page the page that shows the surface
+ * @param {string} surface the surface the screenshot shows
+ * @param {{ locale: string, theme: string, width: number }} where the locale, theme and width
+ */
+async function captureEvidence(page, surface, { locale, theme, width }) {
+  const file = shotPath(`mascot-${surface}`, locale, theme, width);
+  await page.screenshot({ path: file, animations: 'disabled' });
+  expectWritten(file);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page the page that shows the rail
+ * @returns {Promise<{ freeHeight: number, background: string }>} the free height below the last
+ *   destination and the background the bear draws there
+ */
+async function railFoot(page) {
+  return page.getByTestId('rail-spacer').evaluate((spacer) => ({
+    freeHeight: spacer.getBoundingClientRect().height,
+    background: getComputedStyle(spacer.querySelector('.nav-rail__bear')).backgroundImage,
+  }));
+}
+
+/** The API path the Reports view reads its list from. */
+const REPORTS_API_PATH = '/api/v1/reports';
+
+/**
+ * Whether a request is the app's read of the reports list: a `fetch` or `xhr` GET of the API path,
+ * never the page navigation to `/reports`, whose document is HTML.
+ *
+ * @param {import('@playwright/test').Request} request the intercepted request
+ * @returns {boolean} whether the request reads the reports list
+ */
+function isReportsRead(request) {
+  return (
+    request.method() === 'GET' &&
+    ['fetch', 'xhr'].includes(request.resourceType()) &&
+    new URL(request.url()).pathname === REPORTS_API_PATH
+  );
+}
+
+/**
+ * The served reports page without a report in it: no entries, nothing unread and nothing older,
+ * so the view shows its all-clear state and no unread count or load-older control beside it.
+ *
+ * @param {Record<string, unknown>} page the reports page the runtime served
+ * @returns {Record<string, unknown>} the same page read empty
+ */
+function emptyReportsPage(page) {
+  return { ...page, items: [], unread_count: 0, has_older: false, older_count: 0 };
+}
+
+test.describe('S12 mascot evidence', () => {
+  test.afterAll(async ({ request }) => {
+    try {
+      await switchScenario(request, 'web-pairing');
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
+
+  for (const locale of LOCALES) {
+    for (const theme of THEMES) {
+      for (const { width, height } of WIDTHS) {
+        const where = `${locale}, ${theme}, ${width}px`;
+        const shot = { locale, theme, width };
+        const desktop = width === DESKTOP.width;
+
+        test(`pairing hero (${where})`, async ({ page, request }) => {
+          await page.setViewportSize({ width, height });
+          await switchScenario(request, 'web-pairing');
+          await page.goto('/');
+          await page.evaluate(() => localStorage.clear());
+          await storeChoices(page, locale, theme);
+          await page.goto('/pair');
+          await waitForApp(page);
+          await expect(page.getByTestId('pairing-view')).toBeVisible();
+
+          if (desktop) {
+            await expectFigure(page.getByTestId('pairing-hero'), 'welcome');
+          } else {
+            await expect(page.getByTestId('pairing-hero')).toBeHidden();
+          }
+          await captureEvidence(page, 'pairing-hero', shot);
+
+          if (desktop) {
+            // Below the free-height threshold the hero gives way and the icon grows to 64 px.
+            await page.setViewportSize(SHORT_DESKTOP);
+            await expect(page.getByTestId('pairing-hero')).toBeHidden();
+            await expect(
+              page.getByTestId('pairing-mark-64').getByTestId('brand-mark'),
+            ).toBeVisible();
+            await captureEvidence(page, 'pairing-hero-short', shot);
+          }
+        });
+
+        test(`revoked device (${where})`, async ({ page, request }) => {
+          await openShell(page, request, { scenario: 'paired-devices', locale, theme });
+          await page.goto('/settings');
+          await expect(page.locator('.settings-view')).toBeVisible();
+          const row = page.getByTestId('device-row-dev-1');
+          await row.getByTestId('action-bar-overflow').click();
+          await row.getByTestId('action-revoke').click();
+          await page.getByTestId('confirm-dialog-confirm').click();
+
+          await page.setViewportSize({ width, height });
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          await expectFigureAtWidth(page.getByTestId('revoked-view'), 'access-ended', desktop);
+          await captureEvidence(page, 'revoked', shot);
+        });
+
+        test(`network listener turned off (${where})`, async ({ page, request }) => {
+          await openShell(page, request, { scenario: 'paired-devices', locale, theme });
+          await waitForHeldFigure(page);
+          await page.evaluate(async () => {
+            const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+            runtimeStore.update((state) => ({
+              ...state,
+              isListenerClosed: true,
+              currentRoute: 'listener-off',
+            }));
+          });
+
+          await page.setViewportSize({ width, height });
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          const figure = await expectFigureAtWidth(
+            page.getByTestId('listener-off-view'),
+            'searching',
+            desktop,
+          );
+          await expect(figure).toHaveAttribute('src', /^blob:/);
+          await captureEvidence(page, 'listener-off', shot);
+        });
+
+        test(`runtime not reachable (${where})`, async ({ page, request }) => {
+          await openShell(page, request, { scenario: 'fully-onboarded', locale, theme });
+          await waitForHeldFigure(page);
+          await makeRuntimeUnreachable(page);
+
+          await page.setViewportSize({ width, height });
+          // On the phone the shot shows the page without the figure, as the design draws it.
+          const figure = await expectFigureAtWidth(
+            page.getByTestId('unreachable-view'),
+            'searching',
+            desktop,
+          );
+          await expect(figure).toHaveAttribute('src', /^blob:/);
+          await captureEvidence(page, 'unreachable', shot);
+        });
+
+        test(`reports without unread reports (${where})`, async ({ page, request }) => {
+          await openShell(page, request, { scenario: 'reports', locale, theme });
+          // The list read is answered empty, so the page shows its calm state; the navigation to
+          // the page itself and every other request pass through untouched.
+          await page.route(
+            (url) => url.pathname === REPORTS_API_PATH,
+            async (route) => {
+              if (!isReportsRead(route.request())) {
+                await route.fallback();
+                return;
+              }
+              const response = await route.fetch();
+              await route.fulfill({ response, json: emptyReportsPage(await response.json()) });
+            },
+          );
+          await page.goto('/reports');
+          await waitForApp(page);
+
+          await page.setViewportSize({ width, height });
+          const reports = page.locator('.reports-view');
+          await expect(reports).toBeVisible();
+          await expect(reports.locator('.report-card')).toHaveCount(0);
+          await expect(reports.getByTestId('unread-count')).toHaveCount(0);
+          await expectFigure(reports, 'all-clear');
+          await captureEvidence(page, 'reports-no-reports', shot);
+        });
+
+        test(`rail-foot bear (${where})`, async ({ page, request }) => {
+          await openShell(page, request, { scenario: 'fully-onboarded', locale, theme });
+
+          if (!desktop) {
+            // The phone has no rail, so no bear: the shot shows the page without it.
+            await page.setViewportSize({ width, height });
+            await expect(page.getByTestId('nav-rail')).toBeHidden();
+            await captureEvidence(page, 'rail-foot', shot);
+            return;
+          }
+
+          const rail = page.getByTestId('nav-rail');
+          await page.setViewportSize(TALL_DESKTOP);
+          await expect(rail).toHaveClass(/nav-rail--bear/);
+          const above = await railFoot(page);
+          expect(above.freeHeight).toBeGreaterThanOrEqual(BEAR_FREE_HEIGHT);
+          expect(above.background).toContain('url(');
+          await captureEvidence(page, 'rail-foot-expanded-above', shot);
+
+          await page.setViewportSize(SHORT_DESKTOP);
+          const below = await railFoot(page);
+          expect(below.freeHeight).toBeLessThan(BEAR_FREE_HEIGHT);
+          expect(below.background).toBe('none');
+          await captureEvidence(page, 'rail-foot-expanded-below', shot);
+
+          await page.setViewportSize(TALL_DESKTOP);
+          await page.getByTestId('rail-toggle').click();
+          await expect(rail).toHaveClass(/nav-rail--collapsed/);
+          await expect(rail).not.toHaveClass(/nav-rail--bear/);
+          expect((await railFoot(page)).background).toBe('none');
+          await captureEvidence(page, 'rail-foot-collapsed', shot);
+        });
+      }
+    }
+  }
 });

@@ -1051,6 +1051,7 @@
       <EmptyState
         title={$t('report.list.empty.title')}
         message={$t('report.list.empty.message')}
+        mascot="all-clear"
         titleLevel={2}
       />
     {:else if matchingItems.length === 0}

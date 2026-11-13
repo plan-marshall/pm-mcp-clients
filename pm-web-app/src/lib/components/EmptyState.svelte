@@ -1,11 +1,13 @@
 <script lang="ts">
-  import BrandMark from './BrandMark.svelte';
+  import type { MascotPose } from '../assets/mascot/mascotFiles';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
+  import MascotFigure from './MascotFigure.svelte';
 
   /**
-   * The block a list draws instead of an empty list (VD-P-05, VD-P-08, VD-S-04): an icon or the
-   * brand mark in `--color-text-muted`, a title, one sentence and one act.
+   * The block a list draws instead of an empty list (VD-P-05, VD-P-08, VD-S-04): the mascot's bust
+   * on a calm empty state, or an icon in `--color-text-muted` on any other, then a title, one
+   * sentence and one act.
    *
    * The sentence says what is missing and what the person can do about it; the act is that step.
    * An empty state is not an error, so it carries neither a danger colour nor a retry of its own.
@@ -13,21 +15,27 @@
   export let title: string;
   /** The one sentence under the title, from the view's catalogue key. */
   export let message: string;
-  /** The icon above the title, from the delivered UI icon set. */
+  /** The icon above the title, from the delivered UI icon set, for an empty state that is not calm. */
   export let icon: string | null | undefined = undefined;
-  /** Draws the brand mark instead of an icon; an empty state of the design system uses the mark. */
-  export let brand = false;
+  /**
+   * The pose of the mascot's bust above the title, for a calm empty state (brand-mark-mascot.adoc,
+   * Surfaces); it takes the place of the icon.
+   */
+  export let mascot: MascotPose | undefined = undefined;
   /** The one act, from the view's catalogue key; omitted when there is none. */
   export let actionLabel: string | undefined = undefined;
   /** Reports the act the person took. */
   export let onAct: () => void = () => {};
   /** The heading level of the title, so a view keeps its outline in order. */
   export let titleLevel: 2 | 3 | 4 | 5 | 6 = 3;
+
+  /** The bust's height on an empty state, within the design's 120–160 px. */
+  const MASCOT_HEIGHT = 140;
 </script>
 
 <div class="empty-state" data-testid="empty-state">
-  {#if brand}
-    <span class="empty-state__mark"><BrandMark rendering="monochrome" size={64} /></span>
+  {#if mascot}
+    <MascotFigure pose={mascot} crop="bust" height={MASCOT_HEIGHT} />
   {:else if icon}
     <span class="empty-state__mark"><Icon name={icon} size={24} /></span>
   {/if}
@@ -48,7 +56,7 @@
     text-align: center;
   }
 
-  /* The mark is a watermark, not a picture: the muted role keeps it behind the words. */
+  /* The icon is a watermark, not a picture: the muted role keeps it behind the words. */
   .empty-state__mark {
     display: inline-flex;
     color: var(--color-text-muted);
