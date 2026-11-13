@@ -189,7 +189,7 @@ class NeedsItemCommandsTest {
                             NeedsOperatorKind.LANDING_FAILED, "/api/v1/plans/" + planId, null,
                             new WorkLocation(epicId, null), plan, "plan")));
         assertEquals("plan " + planId, OverviewFormatting.formatNeedsItemCommand(item(
-                            NeedsOperatorKind.LANDING_FAILED, "/api/v1/plans/" + planId, null, null, plan, "plan")),
+                                                NeedsOperatorKind.LANDING_FAILED, "/api/v1/plans/" + planId, null, null, plan, "plan")),
                             "a plan's id names no epic, so the plan alone opens that plan");
     }
 
