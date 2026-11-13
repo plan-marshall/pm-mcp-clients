@@ -2,6 +2,9 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
 import { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
+import { REASONS } from '../../../lib/components/ReasonBadge.svelte';
+import { PHASES } from '../../../lib/components/PhaseLabel.svelte';
+import { MARKERS } from '../../../lib/components/Marker.svelte';
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
 
@@ -211,8 +214,7 @@ describe('/dev/components page fixture', () => {
     expect(block?.querySelectorAll('[data-testid="brand-mark"]')).toHaveLength(0);
   });
 
-  it.each(['light', 'dark'])('draws the all-clear bust on the calm empty state only, in the %s block', (theme) => {
-    render(DevComponentsPage);
+  it.each(['light', 'dark'])('draws the all-clear bust on the calm empty state only, in the %s block', (theme) => {    render(DevComponentsPage);
     const block = document.querySelector(`[data-theme="${theme}"]`);
     // In page order: the data table's empty slot, the calm empty state, the icon empty state.
     const [tableEmpty, calm, iconEmpty] = Array.from(
@@ -223,5 +225,52 @@ describe('/dev/components page fixture', () => {
     expect(tableEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
     expect(tableEmpty?.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'kind.plan');
     expect(iconEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
+  });
+
+  describe('the tag fixtures (D5)', () => {
+    /**
+     * @param locale the language of the page
+     * @returns the light and the dark block of the rendered page
+     */
+    function renderThemes(locale: 'en' | 'de'): HTMLElement[] {
+      currentLocale.set(locale);
+      messagesStore.set(loadMessages(locale));
+      render(DevComponentsPage);
+      return ['light', 'dark'].map(
+        (theme) => document.querySelector(`[data-theme="${theme}"]`) as HTMLElement,
+      );
+    }
+
+    it.each(['en', 'de'] as const)('draws every reason, phase and marker in both themes, in %s', (locale) => {
+      for (const block of renderThemes(locale)) {
+        // The thirteen reasons of the closed list, the counted form, the danger tone and the row's own.
+        expect(block.querySelectorAll('.reason-badge')).toHaveLength(REASONS.length + 3);
+        // The six phases, the form that names the asking role and the two rows' phases.
+        expect(block.querySelectorAll('.phase-label')).toHaveLength(PHASES.length + 3);
+        expect(block.querySelectorAll('.marker')).toHaveLength(MARKERS.length);
+        // The three rows of the RowLink fixture and the closed example row.
+        expect(block.querySelectorAll('.row-link')).toHaveLength(4);
+      }
+    });
+
+    it('draws the closed tag set once in one row, with its kind, reason, phase, state and menu', () => {
+      const [light] = renderThemes('en');
+      const examples = light.querySelectorAll('.row-link')[3];
+
+      expect(examples.querySelector('.kind-mark')).toHaveTextContent('plan');
+      expect(examples.querySelector('a.row-link__title')).toHaveTextContent('Drop the legacy endpoints');
+      expect(examples.querySelector('.reason-badge')).toHaveTextContent('! decision');
+      expect(examples.querySelector('.phase-label')).toHaveTextContent('finalize');
+      expect(examples.querySelector('.status-label')).toHaveTextContent('waiting for you');
+      expect(examples.querySelector('.row-link__acts button')).not.toBeNull();
+    });
+
+    it('draws the three conformed tags once each', () => {
+      const [light] = renderThemes('en');
+
+      expect(light.querySelectorAll('.status-label')).toHaveLength(5 + 2 + 1);
+      expect(light.querySelectorAll('[data-testid="count-badge"]').length).toBeGreaterThanOrEqual(3);
+      expect(light.querySelectorAll('button.chip').length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

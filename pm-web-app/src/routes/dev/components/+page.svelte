@@ -25,7 +25,9 @@
   import ExternalLink from '../../../lib/components/ExternalLink.svelte';
   import PrChip from '../../../lib/components/PrChip.svelte';
   import RowLink from '../../../lib/components/RowLink.svelte';
-  import PhaseLabel from '../../../lib/components/PhaseLabel.svelte';
+  import PhaseLabel, { PHASES } from '../../../lib/components/PhaseLabel.svelte';
+  import Marker, { MARKERS } from '../../../lib/components/Marker.svelte';
+  import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
 
@@ -534,6 +536,47 @@
           {#snippet tags()}<StatusLabel tone="success" label={$t('state.task.done')} />{/snippet}
         </RowLink>
       </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.reason_badge')}</h3>
+      <div class="dev__row">
+        {#each REASONS as reason (reason)}
+          <ReasonBadge {reason} />
+        {/each}
+        <ReasonBadge reason="decision" count={2} />
+        <ReasonBadge reason="landing_failed" />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.phase_label')}</h3>
+      <div class="dev__row">
+        {#each PHASES as phase (phase)}
+          <PhaseLabel {phase} />
+        {/each}
+        <PhaseLabel phase="execute" role="implement" />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.marker')}</h3>
+      <div class="dev__row">
+        {#each MARKERS as kind (kind)}
+          <Marker {kind} />
+        {/each}
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.tag_examples')}</h3>
+      <RowLink href="/plans/drop-legacy-api" title={$t('dev.examples.title')}>
+        {#snippet kind()}<KindMark kind="plan" />{/snippet}
+        {#snippet tags()}
+          <ReasonBadge reason="decision" />
+          <PhaseLabel phase="finalize" />
+          <StatusLabel tone="attention" label={$t('state.plan.waiting_for_you')} />
+        {/snippet}
+        {#snippet acts()}
+          <RowMenu
+            items={rowMenuItems}
+            label="{$t('dev.examples.menu')} ({$t(`dev.theme.${theme}`)})"
+            visibleLabel={$t('web.common.more')}
+          />
+        {/snippet}
+      </RowLink>
     </section>
   {/each}
 </div>
