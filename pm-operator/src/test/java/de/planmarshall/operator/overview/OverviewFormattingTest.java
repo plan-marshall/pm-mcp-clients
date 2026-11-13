@@ -9,15 +9,22 @@
  */
 package de.planmarshall.operator.overview;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.overview.ActiveEpicSummary;
@@ -29,9 +36,30 @@ import de.planmarshall.api.overview.WorkLocation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
+@EnableGeneratorController
 @DisplayName("OverviewFormatting")
 class OverviewFormattingTest {
+
+    /** The English word of every kind, as the catalogue names it. */
+    private static final Map<NeedsOperatorKind, String> NEEDS_WORDS_EN = Map.ofEntries(
+                        Map.entry(NeedsOperatorKind.DECISION, "decision"),
+                        Map.entry(NeedsOperatorKind.WAIVER, "waiver"),
+                        Map.entry(NeedsOperatorKind.WAITS_FOR_YOU, "waits for you"),
+                        Map.entry(NeedsOperatorKind.STALLED, "stalled"),
+                        Map.entry(NeedsOperatorKind.CONDITION, "needs a fix"),
+                        Map.entry(NeedsOperatorKind.INTEGRITY_PAUSE, "integrity pause"),
+                        Map.entry(NeedsOperatorKind.HELD, "held"),
+                        Map.entry(NeedsOperatorKind.LANDING_FAILED, "landing failed"),
+                        Map.entry(NeedsOperatorKind.FINDINGS, "new findings"),
+                        Map.entry(NeedsOperatorKind.SETUP, "setup"),
+                        Map.entry(NeedsOperatorKind.CREDENTIAL, "credential"),
+                        Map.entry(NeedsOperatorKind.CLEANUP_DUE, "cleanup due"),
+                        Map.entry(NeedsOperatorKind.OTHER, "another reason"));
 
     private final Instant baseInstant = Instant.parse("2026-10-20T12:00:00Z");
     private final Clock clock = Clock.fixed(baseInstant, ZoneOffset.UTC);
@@ -213,13 +241,19 @@ class OverviewFormattingTest {
         assertEquals("", OverviewFormatting.formatAttentionMarker("en", "decision", -1));
         assertEquals("", OverviewFormatting.formatAttentionMarker("en", "   ", 2));
 
-        for (var kind : List.of("question", "waiver", "waiver_request", "waits_for_you", "operator_wait",
+        for (var kind : List.of("question", "waiver", "waits_for_you", "operator_wait",
                 "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup")) {
             var single = OverviewFormatting.formatAttentionMarker("en", kind, 1);
             assertFalse(single.isBlank(), "Expected non-blank for single: " + kind);
             var plural = OverviewFormatting.formatAttentionMarker("en", kind, 3);
             assertTrue(plural.contains("! 3"), "Expected '! 3' in plural for: " + kind);
         }
+
+        assertEquals("overview.needs.waiver", OverviewFormatting.needsKeyForKind("waiver"));
+        assertEquals("overview.needs.waiver", OverviewFormatting.needsKeyForKind("waiver_request"),
+                            "the specification's spelling reads as the waiver kind");
+        assertEquals("waiver", OverviewFormatting.formatAttentionMarker("en", "waiver", 1));
+        assertEquals("waiver", OverviewFormatting.formatAttentionMarker("en", "waiver_request", 1));
 
         var unknownKind = OverviewFormatting.formatAttentionMarker("en", "custom_attention", 1);
         assertEquals("! unknown", unknownKind);
@@ -292,54 +326,165 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatNeedsItem methods cover subjects, kinds, blocks, since, and commands")
-    void needsItemFormattingExhaustive() {
+    @DisplayName("the expected English words name every kind of the contract, and no kind it lacks")
+    void needsWordsCoverEveryKind() {
+        var missing = Arrays.stream(NeedsOperatorKind.values())
+                            .filter(kind -> !NEEDS_WORDS_EN.containsKey(kind))
+                            .toList();
+
+        assertEquals(List.of(), missing, "NEEDS_WORDS_EN lacks the expected English word of " + missing);
+        assertEquals(NeedsOperatorKind.values().length, NEEDS_WORDS_EN.size());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("formatNeedsItem methods cover the subject, the kind word, blocks and since of every kind")
+    void needsItemFormattingExhaustive(NeedsOperatorKind kind) {
+        var project = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var epic = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var plan = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var recent = baseInstant.minusSeconds(120);
+
         assertNull(OverviewFormatting.needsKeyForKind(null));
         assertEquals("", OverviewFormatting.formatNeedsItemKind(null, "en"));
-        assertEquals("decision", OverviewFormatting.formatNeedsItemKind(NeedsOperatorKind.DECISION, "fr"));
 
-        var itemMachine = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, null, null, null, null, null);
-        assertEquals("machine", OverviewFormatting.formatNeedsItemSubject(itemMachine, "en"));
+        // The kind word, in the operator's language, and English for a language the catalogue lacks.
+        var english = Objects.requireNonNull(NEEDS_WORDS_EN.get(kind),
+                            "NEEDS_WORDS_EN has no expected English word for " + kind);
+        assertEquals(english, OverviewFormatting.formatNeedsItemKind(kind, "en"));
+        assertEquals(english, OverviewFormatting.formatNeedsItemKind(kind, "fr"));
+        var german = OverviewFormatting.formatNeedsItemKind(kind, "de");
+        assertFalse(german.isBlank(), "de has no word for " + kind);
+        assertFalse(german.contains("."), "a catalogue key leaked: " + german);
 
-        var itemEpic = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null, null, new WorkLocation("epic-1", "Epic One"), null, null, null);
-        assertEquals("Epic One", OverviewFormatting.formatNeedsItemSubject(itemEpic, "en"));
+        // The subject: the narrowest place's own title, and the machine's word where there is none.
+        var itemMachine = new NeedsOperatorItem(kind, null, null, null, null, recent, null);
+        assertEquals(placelessSubject(kind), OverviewFormatting.formatNeedsItemSubject(itemMachine, "en"));
+        var itemProj = new NeedsOperatorItem(kind, null, project, null, null, recent, null);
+        assertEquals(project.title(), OverviewFormatting.formatNeedsItemSubject(itemProj, "en"));
+        var itemEpic = new NeedsOperatorItem(kind, null, project, epic, null, recent, "epic");
+        assertEquals(epic.title(), OverviewFormatting.formatNeedsItemSubject(itemEpic, "en"));
+        assertEquals(epic.title(), OverviewFormatting.formatNeedsItemSubject(itemEpic, "de"));
+        var itemPlan = new NeedsOperatorItem(kind, null, project, epic, plan, recent, "plan");
+        assertEquals(plan.title(), OverviewFormatting.formatNeedsItemSubject(itemPlan, "en"));
 
-        var itemProj = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, new WorkLocation("proj-1", "Project One"), null, null, null, null);
-        assertEquals("Project One", OverviewFormatting.formatNeedsItemSubject(itemProj, "en"));
-
+        // Since.
         assertEquals("", OverviewFormatting.formatNeedsItemSince(null, "en", clock));
-        var recent = baseInstant.minusSeconds(120);
-        assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(recent, "en", clock));
+        assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(itemPlan.since(), "en", clock));
 
-        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(null, "fr"));
+        // What it blocks, in the operator's words.
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "en"));
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "fr"));
         assertEquals("blockiert: unbekannt", OverviewFormatting.formatNeedsItemBlocks("other-plan", "de"));
-        assertEquals("blockiert: Plan", OverviewFormatting.formatNeedsItemBlocks("plan", "de"));
+        assertEquals("blockiert: Plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "de"));
+        assertEquals("blocks: plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "en"));
+        assertEquals("blocks: epic", OverviewFormatting.formatNeedsItemBlocks(itemEpic.blocks(), "en"));
+    }
 
-        var itemPlan = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
-                            new WorkLocation("proj-1", "Proj"), null, new WorkLocation("plan-1", "Plan"), recent, "plan");
-        assertEquals("answer Q-001", OverviewFormatting.formatNeedsItemCommand(itemPlan));
+    /**
+     * @param kind the kind of an item that belongs to no place
+     * @return the English subject such an item names
+     */
+    private static String placelessSubject(NeedsOperatorKind kind) {
+        return switch (kind) {
+            case CLEANUP_DUE -> "cleanup";
+            case CREDENTIAL -> "credential";
+            default -> "machine";
+        };
+    }
 
-        var itemProjDec = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null,
-                            new WorkLocation("proj-1", "Proj"), null, null, recent, null);
-        assertEquals("questions", OverviewFormatting.formatNeedsItemCommand(itemProjDec),
-                            "a link with no decision id opens the list of the open questions");
+    /**
+     * @return per kind, an item of that kind and the command its row prints
+     */
+    static Stream<Arguments> needsItemCommands() {
+        var recent = Instant.parse("2026-10-20T11:58:00Z");
+        var project = new WorkLocation("proj-1", "Proj");
+        var epic = new WorkLocation("epic-1", "Epic");
+        var plan = new WorkLocation("plan-1", "Plan");
+        return Stream.of(
+                            Arguments.of(NeedsOperatorKind.DECISION, new NeedsOperatorItem(NeedsOperatorKind.DECISION,
+                                                "/api/v1/decisions/Q-001", project, null, plan, recent, "plan"), "answer Q-001"),
+                            // A link with no decision id opens the list of the open questions.
+                            Arguments.of(NeedsOperatorKind.DECISION, new NeedsOperatorItem(NeedsOperatorKind.DECISION,
+                                                null, project, null, null, recent, null), "questions"),
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, epic, null, recent, null), "epic epic-1"),
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, null, null, recent, null), "plans"),
+                            // A plan's id names no epic: the failed landing of a plan alone opens that plan.
+                            Arguments.of(NeedsOperatorKind.LANDING_FAILED, new NeedsOperatorItem(
+                                                NeedsOperatorKind.LANDING_FAILED, null, null, null, plan, recent, "plan"), "plan plan-1"),
+                            Arguments.of(NeedsOperatorKind.HELD, new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
+                                                null, epic, null, recent, null), "epic epic-1"),
+                            Arguments.of(NeedsOperatorKind.HELD, new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
+                                                null, null, null, recent, null), "plans"));
+    }
 
-        var itemLandingEpic = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
-                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
-        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemLandingEpic));
+    @ParameterizedTest(name = "{0}: {2}")
+    @MethodSource("needsItemCommands")
+    @DisplayName("formatNeedsItemCommand prints the command of each kind's row")
+    void needsItemCommandPerKind(NeedsOperatorKind kind, NeedsOperatorItem item, String expected) {
+        assertAll(
+                            () -> assertEquals(expected, OverviewFormatting.formatNeedsItemCommand(item)),
+                            () -> assertFalse(OverviewFormatting.formatNeedsItemKind(kind, "en").isBlank(),
+                                                "every kind has a label of its own")
+        );
+    }
 
-        var itemLandingNoLoc = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null, null, null, null, recent, null);
-        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemLandingNoLoc));
+    @Test
+    @DisplayName("the printed commands follow the design's kind table, word by word")
+    void needsItemCommandsFollowTheDesignTable() {
+        var plan = new WorkLocation("plan-1", "Plan");
+        var epic = new WorkLocation("epic-1", "Epic");
+        var project = new WorkLocation("proj-1", "Project");
 
-        var itemLandingPlan = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
-                            null, null, new WorkLocation("plan-1", "Plan"), recent, "plan");
-        assertEquals("epic plan-1", OverviewFormatting.formatNeedsItemCommand(itemLandingPlan));
+        assertEquals(List.of("answer", "Q-7"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.WAIVER, "/api/v1/decisions/Q-7", null, null, plan, null, null)));
+        assertEquals(List.of("questions"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.WAIVER, "/api/v1/plans/plan-1", null, null, plan, null, null)));
+        assertEquals(List.of("plan", "plan-1"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.STALLED, null, null, epic, plan, null, null)));
+        assertEquals(List.of("epic", "epic-1"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.CONDITION, null, null, epic, null, null, null)));
+        assertEquals(List.of("epic", "epic-1"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.WAITS_FOR_YOU, null, null, epic, null, null, null)));
+        assertEquals(List.of("epic", "epic-1"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.HELD, null, null, epic, plan, null, null)));
+        assertEquals(List.of("plan", "plan-1"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.HELD, null, null, null, plan, null, null)));
+        assertEquals(List.of("epic", "findings", "epic-1"), OverviewFormatting.needsItemCommand(
+                            new NeedsOperatorItem(NeedsOperatorKind.FINDINGS, null, null, epic, null, null, null)));
+        assertEquals(List.of("reports"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.FINDINGS, null, null, null, null, null, null)));
+        assertEquals(List.of("project", "setup", "proj-1"), OverviewFormatting.needsItemCommand(
+                            new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, project, null, null, null, null)));
+        assertEquals(List.of("project", "setup"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.SETUP, null, null, null, null, null, null)));
+        assertEquals(List.of("credentials"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.CREDENTIAL, null, null, null, null, null, null)));
+        assertEquals(List.of("cleanup"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.CLEANUP_DUE, null, null, null, null, null, null)));
+        assertEquals(List.of("plans"), OverviewFormatting.needsItemCommand(new NeedsOperatorItem(
+                            NeedsOperatorKind.OTHER, null, null, null, plan, null, null)));
+    }
 
-        var itemHeldEpic = new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
-                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
-        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemHeldEpic));
+    @Test
+    @DisplayName("a place without a title is named as Display.title names it, never by its bare id")
+    void needsItemSubjectFollowsDisplayTitle() {
+        var untitled = new NeedsOperatorItem(NeedsOperatorKind.STALLED, null, null, null,
+                            new WorkLocation("plan-untitled-7", null), null, null);
+        var blank = new NeedsOperatorItem(NeedsOperatorKind.STALLED, null, null, null,
+                            new WorkLocation("plan-untitled-7", "  "), null, null);
 
-        var itemHeldNoLoc = new NeedsOperatorItem(NeedsOperatorKind.HELD, null, null, null, null, recent, null);
-        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemHeldNoLoc));
+        var english = OverviewFormatting.formatNeedsItemSubject(untitled, "en");
+        var german = OverviewFormatting.formatNeedsItemSubject(untitled, "de");
+
+        assertEquals(Display.title("en", null, "plan-untitled-7"), english);
+        assertEquals(Display.title("de", null, "plan-untitled-7"), german);
+        assertEquals(english, OverviewFormatting.formatNeedsItemSubject(blank, "en"));
+        assertFalse(english.contains("plan-untitled-7"), english);
+        assertEquals("Plan", OverviewFormatting.formatNeedsItemSubject(new NeedsOperatorItem(
+                            NeedsOperatorKind.STALLED, null, null, null, new WorkLocation("plan-1", "Plan"), null,
+                            null), "en"));
     }
 }

@@ -12,9 +12,11 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ListResourceBundle;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -455,41 +457,102 @@ public final class EpicCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * {@code epic next}: reads the epic and starts its next plan, asking to raise the scope by one
+     * when no plan is launchable and the scope is full or the count of running plans is unknown
+     * (19-actions.adoc). It takes the one decision path of the menu's {@code next}; the flags answer
+     * the question, and the option descriptions come from the catalogue.
+     */
     @Command(name = "next", description = "Advances or plans the next workstream/plan.")
     @OperatorVerb
     static final class NextCommand implements Callable<Integer> {
-        @Spec
+        private static final String OPTION_KEY = "control.epic.next.option.";
+
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
         String epicId = "";
 
-        @Option(names = "--raise-scope", description = "Raise concurrent plan scope")
+        @Option(names = "--raise-scope", descriptionKey = OPTION_KEY + "raise_scope",
+                            description = "When the scope is full, answer yes")
         boolean raiseScope;
 
-        @Option(names = "--no-raise", description = "Do not raise concurrent plan scope")
+        @Option(names = "--no-raise", descriptionKey = OPTION_KEY + "no_raise",
+                            description = "When the scope is full, answer no")
         boolean noRaise;
+
+        @Option(names = "--no-input", descriptionKey = OPTION_KEY + "no_input",
+                            description = "Ask nothing")
+        boolean noInput;
 
         NextCommand(OperatorContext context) {
             this.context = context;
         }
 
+        /**
+         * Takes the verb's specification and gives its options their descriptions from the catalogue,
+         * in the operator's locale.
+         *
+         * @param built the specification picocli built for the verb
+         */
+        @Spec
+        void bindSpec(CommandSpec built) {
+            this.spec = built;
+            built.resourceBundle(new CatalogueBundle(context.clientEnvironment().locale(), optionKeys()));
+        }
+
+        /**
+         * The catalogue keys of the option descriptions, read from the verb's {@code @Option}
+         * declarations, so an option added with a description key enters the catalogue bundle
+         * without a second list to keep in step.
+         *
+         * @return the description keys of the options, in declaration order
+         */
+        static List<String> optionKeys() {
+            return Arrays.stream(NextCommand.class.getDeclaredFields())
+                                .map(field -> field.getAnnotation(Option.class))
+                                .filter(Objects::nonNull)
+                                .map(Option::descriptionKey)
+                                .filter(key -> !key.isEmpty())
+                                .toList();
+        }
+
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var out = spec.commandLine().getOut();
-            var payload = Map.of("raise_scope", raiseScope);
-
-            var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/next";
-            var response = context.runtime(true).send(
-                                HttpRequest.json("POST", path, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ Next plan for %s started%n", epicId);
-                out.flush();
-                return 0;
+            if (ActionSupport.contradicts(context, spec, raiseScope, noRaise, ActionSupport.FlagPair.RAISE)) {
+                return ActionSupport.EXIT_USAGE;
             }
-            throw new OperatorRefusedException("epic next", response);
+            return WorkActionDialogue.next(context, spec.commandLine().getOut(), epicId, answer(), noInput);
+        }
+
+        /** The answer the flags give to raising the scope: yes, no, or {@code null} to ask. */
+        private @Nullable Boolean answer() {
+            if (raiseScope) {
+                return Boolean.TRUE;
+            }
+            return noRaise ? Boolean.FALSE : null;
+        }
+    }
+
+    /**
+     * The texts of a verb's options, read from the message catalogue in one locale, as the resource
+     * bundle picocli renders the help from.
+     */
+    static final class CatalogueBundle extends ListResourceBundle {
+        private final Object[][] contents;
+
+        CatalogueBundle(String locale, List<String> keys) {
+            contents = keys.stream()
+                                .filter(key -> MessageCatalogue.hasKey(locale, key))
+                                .map(key -> new Object[]{key, MessageCatalogue.format(locale, key, Map.of())})
+                                .toArray(Object[][]::new);
+        }
+
+        @Override
+        protected Object[][] getContents() {
+            return contents;
         }
     }
 

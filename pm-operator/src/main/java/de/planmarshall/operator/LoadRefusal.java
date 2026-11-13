@@ -67,15 +67,16 @@ public record LoadRefusal(String title, String cause, String fix, String level) 
     }
 
     /**
-     * Reads the refusal out of a failed read.
+     * The refusal of a read that failed before the runtime answered: the catalogue's own cause, never
+     * the message of the failure, which is raw, unlocalised and may name what the operator cannot act
+     * on.
      *
-     * @param locale  the interface locale
-     * @param failure the failure
-     * @param level   the level the refusal belongs to
+     * @param locale the interface locale
+     * @param level  the level the refusal belongs to
      * @return the refusal's three lines
      */
-    public static LoadRefusal of(String locale, IOException failure, String level) {
-        return of(locale, failure.getMessage(), level);
+    public static LoadRefusal unreachable(String locale, String level) {
+        return of(locale, (String) null, level);
     }
 
     /**

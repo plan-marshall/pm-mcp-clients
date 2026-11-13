@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Map;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal;
 import org.jline.utils.NonBlockingReader;
 import org.jspecify.annotations.Nullable;
@@ -52,9 +53,15 @@ public final class SecretReader {
         out.print(MessageCatalogue.format(locale, "operator.credentials.secret_prompt", Map.of()));
         out.flush();
         var buffer = new Buffer();
-        var originalAttributes = terminal.getAttributes();
-        terminal.enterRawMode();
+        var originalAttributes = terminal.enterRawMode();
         try {
+            // A terminal that keeps ISIG turns Ctrl+C into a signal that ends the JVM before this
+            // finally restores the echo: the interrupt is read as a key here, as
+            // FindCommand.readField does. The current attributes are the raw ones, so the flag
+            // changes what the raw mode left.
+            var raw = terminal.getAttributes();
+            raw.setLocalFlag(Attributes.LocalFlag.ISIG, false);
+            terminal.setAttributes(raw);
             fill(terminal.reader(), out, buffer);
         } catch (UserInterruptException e) {
             buffer.clear();

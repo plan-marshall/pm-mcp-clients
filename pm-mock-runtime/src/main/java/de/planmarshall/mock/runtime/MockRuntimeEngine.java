@@ -779,8 +779,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** Whether the providers' later run verified them. */
     private boolean machineProvidersVerified;
 
-    /** The wire name of the operator channel, in the fixtures that report it. */
+    /** How many items of what waits one page of {@code GET /api/v1/machine/needs-operator} serves. */
     private static final int NEEDS_PAGE_SIZE = 20;
+
+    /** The wire name of the operator channel, in the fixtures that report it. */
     private static final String OPERATOR_FIELD = "operator";
 
     /** The configuration values written through {@code PUT}/{@code DELETE /api/v1/config/{level}/{key}}. */
@@ -5885,7 +5887,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var kinds = new LinkedHashMap<String, Integer>();
         synchronized (decisionsLock) {
             for (var decision : openDecisions.values()) {
-                kinds.merge(decision.isWaiver() ? "waiver_request" : "decision", 1, Integer::sum);
+                kinds.merge(decision.isWaiver() ? NeedsOperatorKind.WAIVER.value() : NeedsOperatorKind.DECISION.value(),
+                        1, Integer::sum);
             }
         }
         synchronized (controlLock) {
@@ -5922,7 +5925,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Adds the machine's own items to a store-derived count: a scenario that declares no list still
-     * says what the machine itself waits for.
+     * says what the machine itself waits for. Each item counts under the contract's kind, so a
+     * fixture that spells a kind the specification's way ({@code waiver_request}) still adds to the
+     * one count of that kind ({@code waiver}) and the mock serves one list of kinds.
      *
      * @param kinds the counts to extend
      */
@@ -5939,7 +5944,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         for (var item : items) {
             if (item instanceof Map<?, ?> itemMap && itemMap.get(KEY_KIND) instanceof String k) {
-                kinds.merge(k, 1, Integer::sum);
+                kinds.merge(NeedsOperatorKind.fromWireOrOther(k).value(), 1, Integer::sum);
             }
         }
     }

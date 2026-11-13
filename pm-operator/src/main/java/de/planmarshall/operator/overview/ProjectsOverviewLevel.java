@@ -181,18 +181,18 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
     /**
      * The row ID of one item: its own identity, never its position, so an item that arrives above a
      * row never moves the selection or what {@code !} opens
-     * ({@code doc/design/shared/needs-and-find.adoc#waits}).
+     * ({@code doc/design/shared/needs-and-find.adoc#waits}). Every part of the item's place belongs
+     * to the identity: a decision and a failed landing can name the same plan, and two items of one
+     * kind can share a link while they belong to different work, yet two rows must never share an id.
      *
      * @param item the item
      * @return the row ID
      */
     public static String rowIdOf(NeedsOperatorItem item) {
-        if (item.link() != null && !item.link().isBlank()) {
-            // The kind belongs to the identity: a decision and a failed landing can name the same
-            // plan, and two rows must never share an id.
-            return NEEDS_ITEM_PREFIX + item.kind().value() + "|" + item.link();
-        }
         var id = new StringBuilder(NEEDS_ITEM_PREFIX).append(item.kind().value());
+        if (item.link() != null && !item.link().isBlank()) {
+            id.append('|').append(item.link());
+        }
         if (item.project() != null) {
             id.append("@project:").append(item.project().id());
         }
@@ -201,6 +201,9 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
         }
         if (item.plan() != null) {
             id.append("@plan:").append(item.plan().id());
+        }
+        if (item.since() != null) {
+            id.append("@since:").append(item.since());
         }
         return id.toString();
     }

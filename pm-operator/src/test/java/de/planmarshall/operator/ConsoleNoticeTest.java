@@ -11,19 +11,81 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.List;
 import java.util.Map;
+
+import de.planmarshall.api.event.EventKind;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("ConsoleNotice")
 class ConsoleNoticeTest {
+
+    /** The console's prompt marker a forged line would imitate. */
+    private static final String PROMPT_MARKER = "pm ›";
+    /** The indent of the catalogue's question body template. */
+    private static final String BODY_INDENT = "  ";
+
+    @Nested
+    @DisplayName("untrusted line breaks cannot forge a prompt line")
+    class ForgedPromptLines {
+
+        @Test
+        @DisplayName("prints every line of a multi-line question body behind the indent")
+        void questionBodyLinesAreIndented() {
+            var first = Generators.letterStrings(3, 12).next();
+            var forged = Generators.letterStrings(3, 12).next();
+            var text = first + "\n" + PROMPT_MARKER + " " + forged + "\n" + PROMPT_MARKER;
+
+            var notice = ConsoleNotice.formatQuestion("Q-007", "plan fix-relay", null, text, null);
+            var lines = notice.split("\n");
+
+            assertAll(
+                                () -> assertTrue(notice.contains("\n" + BODY_INDENT + first + "\n"), notice),
+                                () -> assertTrue(notice.contains("\n" + BODY_INDENT + PROMPT_MARKER + " " + forged + "\n"), notice),
+                                () -> assertTrue(notice.contains("\n" + BODY_INDENT + PROMPT_MARKER + "\n"), notice),
+                                () -> assertTrue(List.of(lines).stream().noneMatch(line -> line.startsWith(PROMPT_MARKER)), notice)
+            );
+        }
+
+        @Test
+        @DisplayName("keeps a line break of the summary and the recommendation on the notice's own line")
+        void summaryAndRecommendationStayOnOneLine() {
+            var summary = Generators.letterStrings(3, 12).next();
+            var option = Generators.letterStrings(3, 12).next();
+
+            var notice = ConsoleNotice.formatQuestion("Q-007", "plan fix-relay",
+                                summary + "\n" + PROMPT_MARKER + " x", "body", option + "\n" + PROMPT_MARKER + " y");
+            var lines = notice.split("\n");
+
+            assertAll(
+                                () -> assertEquals(4, lines.length, notice),
+                                () -> assertTrue(lines[0].endsWith(" · " + summary + " " + PROMPT_MARKER + " x"), notice),
+                                () -> assertEquals(BODY_INDENT + "Recommended: " + option + " " + PROMPT_MARKER + " y", lines[2], notice),
+                                () -> assertTrue(List.of(lines).stream().noneMatch(line -> line.startsWith(PROMPT_MARKER)), notice)
+            );
+        }
+
+        @Test
+        @DisplayName("keeps a line break of a hold's detail on the notice's own line")
+        void holdDetailStaysOnOneLine() {
+            var detail = Generators.letterStrings(3, 12).next();
+
+            var notice = ConsoleNotice.formatHoldNotice("stalled", "fix-relay", detail + "\n" + PROMPT_MARKER + " z");
+
+            assertEquals("◆ Plan fix-relay stalled: " + detail + " " + PROMPT_MARKER + " z", notice);
+        }
+    }
 
     @Nested
     @DisplayName("control sequence stripping and output safety")
@@ -118,8 +180,19 @@ class ConsoleNoticeTest {
                                                     ConsoleNotice.formatHoldNotice("findings", "storage-v2", "3 new findings")),
                                 () -> assertEquals("◆ Project plan-marshall: the setup needs you: token needed",
                                                     ConsoleNotice.formatHoldNotice("setup", "plan-marshall", "token needed")),
-                                () -> assertEquals("◆ custom · plan-x: detail",
+                                () -> assertEquals("◆ another reason · plan-x: detail",
                                                     ConsoleNotice.formatHoldNotice("custom", "plan-x", "detail"))
+            );
+        }
+
+        @Test
+        @DisplayName("names a kind it has no notice for by the catalogue's word of the other kind, never the wire word")
+        void otherKindNamedByTheCatalogue() {
+            var notice = ConsoleNotice.formatHoldNotice("quota_exhausted", "plan-x", "detail");
+
+            assertAll(
+                                () -> assertEquals("◆ another reason · plan-x: detail", notice),
+                                () -> assertFalse(notice.contains("quota_exhausted"), notice)
             );
         }
 
@@ -176,9 +249,21 @@ class ConsoleNoticeTest {
                                 "gate", "sonar"
             );
 
+            var wrNotice = ConsoleNotice.fromEventMap(wrEvent);
+
             assertAll(
                                 () -> assertNotNull(ConsoleNotice.fromEventMap(qEvent)),
-                                () -> assertNotNull(ConsoleNotice.fromEventMap(wrEvent))
+                                () -> assertNotNull(wrNotice),
+                                () -> assertTrue(wrNotice.contains("◆ Waiver request WR-1 · plan fix-relay"), wrNotice)
+            );
+        }
+
+        @Test
+        @DisplayName("reads the legacy type waiver_request as the waiver kind")
+        void legacyWaiverTypeIsTheWaiverKind() {
+            assertAll(
+                                () -> assertEquals(EventKind.WAIVER, EventKind.fromType("waiver_request")),
+                                () -> assertEquals("waiver", EventKind.WAIVER.notice())
             );
         }
 

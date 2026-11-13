@@ -121,7 +121,10 @@ In the console and as direct verbs:
   epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
-  needs                       the list of what waits across projects, in runtime order (UC-PLN-7)
+  needs [--page <n>] [--json] the list of what waits across projects, in runtime order, one page at a time;
+                              each item names the command that opens it (UC-PLN-7). --page reads the runtime's
+                              ?page=<n>; a page past the last one says so with how much waits
+                              (operator.needs.page_beyond), never "Nothing needs you"
   find <text> [--print]       the work that matches part of an id or a title, or a pull request number:
                               grouped by kind in runtime order, running work first and ended work
                               marked; a choice in a terminal, prints with --print (UC-PLN-8)

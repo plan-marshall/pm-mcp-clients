@@ -198,6 +198,18 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Type {raise} to raise the scope or {leave} to leave it.
 |Tippe {raise}, um den Umfang zu erhöhen, oder {leave}, um es zu lassen.
 
+|`control.epic.next.option.raise_scope`
+|When the scope is full, answer yes: raise it by one and start the next plan
+|Ist der Umfang voll, antworte ja: erhöhe ihn um eins und starte den nächsten Plan
+
+|`control.epic.next.option.no_raise`
+|When the scope is full, answer no: leave it and start no plan
+|Ist der Umfang voll, antworte nein: lass ihn so und starte keinen Plan
+
+|`control.epic.next.option.no_input`
+|Ask nothing: without --raise-scope or --no-raise, a full scope stops here
+|Frage nichts: ohne --raise-scope oder --no-raise hält ein voller Umfang hier an
+
 |`control.epic.next_waiting`
 |The epic is still being read; the next plan cannot start yet.
 |Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.

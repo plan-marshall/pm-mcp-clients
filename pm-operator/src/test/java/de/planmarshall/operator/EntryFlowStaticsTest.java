@@ -150,10 +150,24 @@ class EntryFlowStaticsTest {
     @DisplayName("badges come from the needs_operator summaries and drop the zero counts")
     void badges() {
         var badges = EntryFlow.extractWaitingBadges(Map.of("needs_operator", Map.of(
-                            "question", 2, "waiver_request", 1, "stalled", 0)));
+                            "question", 2, "waiver", 1, "stalled", 0)));
         assertTrue(badges.contains("2 questions"), badges.toString());
         assertTrue(badges.contains("1 waiver request"), badges.toString());
         assertEquals(2, badges.size());
+    }
+
+    @Test
+    @DisplayName("a status that still names the waiver by the specification's spelling badges the waiver kind")
+    void legacyWaiverSpellingBadgesTheWaiverKind() {
+        var badges = EntryFlow.extractWaitingConsoleBadges("en", Map.of("needs_operator", Map.of(
+                            "waiver_request", 3)));
+
+        assertAll(
+                            () -> assertEquals(1, badges.size(), badges.toString()),
+                            () -> assertEquals("waiver", badges.getFirst().itemKind()),
+                            () -> assertEquals("3 waiver requests", badges.getFirst().text()),
+                            () -> assertTrue(badges.getFirst().isQuestion())
+        );
     }
 
     @Test
