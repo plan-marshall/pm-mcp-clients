@@ -630,6 +630,145 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
 
     window.matchMedia = original;
   });
+
+  /** @returns the editor's text */
+  function editorText(): string {
+    return (screen.getByTestId('workflow-text') as HTMLTextAreaElement).value;
+  }
+
+  it('keeps the author prompt while the name is typed and writes the remembered name', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId('designer-author-input'), {
+      target: { value: 'Ada Lovelace ' },
+    });
+    expect(screen.getByTestId('designer-author-input')).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Remember my name' }));
+
+    expect(localStorage.getItem('pm_designer_author')).toBe('Ada Lovelace');
+    expect(editorText()).toContain('author: Ada Lovelace');
+    expect(screen.queryByTestId('designer-author-input')).toBeNull();
+  });
+
+  it.each([
+    ['frontmatter-description', 'Settles the plan and lands it.', 'description: Settles the plan and lands it.'],
+    ['frontmatter-type', 'workflow', 'type: workflow'],
+    ['frontmatter-icon', 'phase.execute', 'icon: phase.execute'],
+    ['frontmatter-author', 'Grace Hopper', 'author: Grace Hopper'],
+    ['frontmatter-modified', '2026-01-02', 'modified: 2026-01-02'],
+    ['frontmatter-release', '1.0.0', 'release: 1.0.0'],
+  ])('writes a first edit of %s into the text as typed', async (field, value, line) => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId(field), { target: { value } });
+
+    expect(editorText().split('\n')).toContain(line);
+  });
+
+  it('writes the entries and exits typed into the panel as interface lines', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId('frontmatter-entries'), {
+      target: { value: 'start, resume' },
+    });
+    await fireEvent.input(screen.getByTestId('frontmatter-exits'), {
+      target: { value: 'merged abandoned' },
+    });
+
+    const lines = editorText().split('\n');
+    expect(lines).toEqual(
+      expect.arrayContaining(['entry start', 'entry resume', 'exit merged', 'exit abandoned']),
+    );
+  });
+
+  it('adds a frontmatter to a unit that has none, named after the unit', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.input(screen.getByTestId('designer-paste'), {
+      target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
+    });
+    await fireEvent.click(screen.getByTestId('designer-paste-open'));
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add the frontmatter' }));
+
+    const lines = editorText().split('\n');
+    expect(lines[0]).toBe('workflow bare-unit version 1 format 1');
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        '---',
+        'name: bare-unit',
+        'type: subworkflow',
+        `modified: ${new Date().toISOString().slice(0, 10)}`,
+        'release: 0.9.0',
+      ]),
+    );
+    expect(screen.getByTestId('frontmatter-name')).toHaveValue('bare-unit');
+  });
+
+  describe('an uploaded file', () => {
+    /**
+     * jsdom's `File` has no `text()`; the designer reads only the size and the text.
+     *
+     * @param content the file's text, or a reason it cannot be read
+     * @param size the size the browser reports
+     * @returns the file the operator chooses
+     */
+    function fileOf(content: string | Error, size = 64): File {
+      return {
+        name: 'unit.pmwf',
+        size,
+        text: () => (content instanceof Error ? Promise.reject(content) : Promise.resolve(content)),
+      } as unknown as File;
+    }
+
+    /**
+     * @param file the file the operator chooses
+     */
+    async function upload(file: File): Promise<void> {
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+      await fireEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+      const input = screen.getByTestId('designer-file-input');
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      await fireEvent.change(input);
+    }
+
+    it('opens a unit read from the file', async () => {
+      const content = finalizeText.replace('phase-6-finalize', 'uploaded-unit');
+
+      await upload(fileOf(content));
+
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(content));
+      expect(screen.getByTestId('designer-unit')).toHaveTextContent('uploaded-unit');
+    });
+
+    it.each([
+      ['a file over the limit', fileOf(finalizeText, 1_048_577), 'The file is larger than 1 MB.'],
+      ['a file that is not text', fileOf('workflow �'), 'The file is not UTF-8 text.'],
+      [
+        'a text without a header line',
+        fileOf('state lonely\n'),
+        'The text has no header line (workflow <name> version <n> format <n>).',
+      ],
+    ])('refuses %s and keeps the open unit', async (_case, file, message) => {
+      await upload(file);
+
+      expect(await screen.findByTestId('designer-intake-error')).toHaveTextContent(message);
+      expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText);
+    });
+
+    it('says when the file could not be read', async () => {
+      await upload(fileOf(new Error('gone')));
+
+      expect(await screen.findByTestId('designer-intake-error')).toHaveTextContent(
+        'The file could not be read.',
+      );
+    });
+  });
 });
 
 /**

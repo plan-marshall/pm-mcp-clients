@@ -84,6 +84,8 @@
   let signatureDropped = $state(false);
   let pendingAction = $state<(() => void) | null>(null);
   let savedAuthor = $state('');
+  /** The name typed into the author prompt; it becomes the saved author only when remembered. */
+  let authorDraft = $state('');
 
   /** The route project the designer has settled on, so the same route is not adopted twice. */
   let appliedRouteProjectId: string | null = null;
@@ -498,7 +500,8 @@
    * @param create whether the panel is adding a frontmatter
    */
   function applyFrontmatterEdit(edit: (fields: FrontmatterFields) => void): void {
-    text = editFrontmatter(text, edit, true);
+    // The first change stamps the date and the release, and drops the signature; the operator's
+    // own edit is applied after the stamp, so a first edit of the date or the release stands.
     if (!touched) {
       touched = true;
       const modified = new Date().toISOString().slice(0, 10);
@@ -510,6 +513,7 @@
       });
       if (signature) signatureDropped = true;
     }
+    text = editFrontmatter(text, edit, true);
     afterEdit();
   }
 
@@ -556,14 +560,15 @@
 
   /** Remembers the author once on this device and writes it into the unit. */
   function rememberAuthor(): void {
-    if (typeof window !== 'undefined' && savedAuthor) {
-      try {
-        window.localStorage.setItem(AUTHOR_KEY, savedAuthor);
-      } catch {
-        // The name applies to this visit where the browser cannot remember it.
-      }
+    const name = authorDraft.trim();
+    if (!name) return;
+    savedAuthor = name;
+    try {
+      window.localStorage.setItem(AUTHOR_KEY, name);
+    } catch {
+      // The name applies to this visit where the browser cannot remember it.
     }
-    setField('author', savedAuthor);
+    setField('author', name);
   }
 
   /**
@@ -1204,7 +1209,7 @@
               <input
                 id="designer-author"
                 class="frontmatter__input"
-                bind:value={savedAuthor}
+                bind:value={authorDraft}
                 data-testid="designer-author-input"
               />
               <Button
