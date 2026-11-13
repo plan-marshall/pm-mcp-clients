@@ -148,7 +148,7 @@ public final class ConsolePrompt {
      * @return the shared word of the resolved kind ({@code overview.needs.<kind>}), or the word of a
      *         reason this version does not know ({@code overview.needs.other}) — never the wire word
      */
-    private static String kindWord(String locale, String kind) {
+    static String kindWord(String locale, String kind) {
         var resolved = NeedsOperatorKind.fromWireOrOther(kind);
         return MessageCatalogue.format(locale, "overview.needs." + resolved.value(), Map.of());
     }

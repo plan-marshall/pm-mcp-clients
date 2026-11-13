@@ -29,7 +29,6 @@ import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.AlongsideLanding;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
-import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.overview.ProjectSummary;
@@ -393,22 +392,15 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     /**
-     * The label a row of the tree names its needs kind by: the runtime's word is resolved to the
-     * contract's kind first ({@link NeedsOperatorKind#fromWireOrOther}, which reads the aliases
-     * {@code waiver_request} and {@code operator_wait} and answers {@code other} for a word this
-     * version does not know), and the label is the catalogue's text of that kind, never the wire
-     * word and never a key built from it (shared/texts-and-languages.adoc).
+     * The label a row of the tree names its needs kind by: the catalogue's word of the resolved kind
+     * ({@link ConsolePrompt#kindWord}, never the wire word), or {@code attention} when no kind is named.
      *
      * @param locale the interface locale
      * @param kind   the runtime's needs kind, or {@code null} when it names none
-     * @return the catalogue's label of the resolved kind, or {@code attention} when no kind is named
+     * @return the label of the kind
      */
     private static String needsLabel(String locale, @Nullable String kind) {
-        if (kind == null) {
-            return "attention";
-        }
-        var resolved = NeedsOperatorKind.fromWireOrOther(kind);
-        return MessageCatalogue.format(locale, "overview.needs." + resolved.value(), Map.of());
+        return kind == null ? "attention" : ConsolePrompt.kindWord(locale, kind);
     }
 
     private void renderProjectByEpic(PrintWriter out, ProjectDetailResponse detail, String locale) {
