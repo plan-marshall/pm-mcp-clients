@@ -137,6 +137,9 @@ class PmConsoleTest {
                 response.json(200, "[\"Q-007 (pending)\"]");
             } else if (target.startsWith("/api/v1/questions/Q-007/answers")) {
                 response.json(200, "{\"ok\":true}");
+            } else if ("/api/v1/decisions/Q-007".equals(target) && "GET".equals(request.method())) {
+                // answer reads the decision it answers before it sends the answer.
+                response.json(200, "{\"id\":\"Q-007\"}");
             } else if ("/api/v1/web/pairings".equals(target)) {
                 response.json(201, "{\"code\":\"NEW-CODE1\",\"url\":\"http://127.0.0.1:7420/pair#code=NEW-CODE1\"}");
             } else {

@@ -145,11 +145,11 @@ class AnswerRefusalTest {
         });
 
         assertGerman("der Plan wartet darauf.", "answer", "Q-PLAN", "later");
-        assertGerman("du hast den Plan gebeten, neu zu \u00fcberlegen.", "answer", "Q-PLAN", "x");
+        assertGerman("du hast den Plan gebeten, neu zu \u00fcberlegen.", "answer", "Q-PLAN", "withdraw");
         assertGerman("das Epic wartet darauf.", "answer", "Q-EPIC", "later");
-        assertGerman("du hast das Epic gebeten, neu zu \u00fcberlegen.", "answer", "Q-EPIC", "x");
+        assertGerman("du hast das Epic gebeten, neu zu \u00fcberlegen.", "answer", "Q-EPIC", "withdraw");
         assertGerman("der Start in " + project + " wartet darauf.", "answer", "Q-ENTRY", "later");
-        assertGerman("du hast den Start in " + project + " gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "x");
+        assertGerman("du hast den Start in " + project + " gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "withdraw");
     }
 
     @Test
