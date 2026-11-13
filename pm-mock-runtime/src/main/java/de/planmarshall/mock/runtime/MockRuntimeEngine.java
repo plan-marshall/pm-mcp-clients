@@ -3941,14 +3941,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on write failure
      */
     private boolean handleProjectOnboardingEntry(MockHttpRequest request, MockHttpResponse response,
-                        String entryId, @Nullable String act) throws IOException {
+            String entryId, @Nullable String act) throws IOException {
         synchronized (projectsLock) {
             var being = beingAddedProjects.stream()
-                                .filter(candidate -> candidate.continueLink() != null
-                                                    && candidate.continueLink()
-                                                                        .contains(PATH_ENTRIES_PREFIX + entryId + "/"))
-                                .findFirst()
-                                .orElse(null);
+                    .filter(candidate -> candidate.continueLink() != null
+                            && candidate.continueLink()
+                            .contains(PATH_ENTRIES_PREFIX + entryId + "/"))
+                    .findFirst()
+                    .orElse(null);
             if (being == null) {
                 return false;
             }
@@ -3984,7 +3984,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put("name", entryId);
         body.put("pilot", false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                        PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
+                PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
         return body;
     }
 
