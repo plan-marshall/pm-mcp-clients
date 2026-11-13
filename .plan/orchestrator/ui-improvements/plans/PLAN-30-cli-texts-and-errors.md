@@ -113,6 +113,53 @@ Source of this plan (read before scoping):
        verified and an unready one is not; a second conflict prints the conflict line. Each test fails on a revert. Evidence order: `test-first`.
      - Landing obligation (rule 4): the three thread replies are posted. Report them in the landing message.
 
+8. **What PLAN-128 left in `cleanup`, `project add` and `config cleanup` (from the landing of PLAN-128, folded 2026-11-13 on the operator's decision)**
+   - What: read `landings/PLAN-128.md`; lines are as read at `56e1ad37`.
+     - **Review campaign on #425.** Four threads are unresolved with no reply (`ConfigCleanupCommand` `d)`; `MockRuntimeEngine.java:3976`
+       onboarding replaces an existing enrolment; `:3979` `project.changed` lacks `project_id`; `ConfigCleanupCommand.java:392` a kept value
+       reported as recorded). The four body-only items of CodeRabbit's reviews (outside-diff "Kept for good", "terminal-free preview
+       unreachable", "pending changes lost"; nitpick "non-interactive delete via the command") have no reply on GitHub. Five replies say
+       "Fixed in cf940bcb" for changes that commit does not contain (below). The `d)` deferral was posted under the JSON-number thread. Fix
+       what is fixable here, then reply in each thread (and to each body item where the reviewer reads it) with the fixing commit of THIS
+       pull request, correct the five false replies, and resolve.
+     - **Project view hides items 21 and up.** `CleanupCommand.java:707-718` caps at `PAGE_SIZE` unconditionally and suppresses the "more"
+       line when `project != null` (also for `--project .`, which means unfiltered); `printMore` points at `cleanup --project <id>`, which
+       prints the same 20. A project-filtered view shows every item of the project; `.` behaves like the unfiltered view. Test both.
+     - **The five false-fixed items.** (1) The reminder choice reads `r) ask me again in 3 days` (`26-cleanup.adoc:64`) from the configured
+       reminder duration, not the bare `operator.cleanup.choose.remind`. (2) `project.add.no_input` (`projects.{en,de}.properties:141`) no
+       longer says "or answer that state" after the entry is closed. (3) `MockConfigRoutes.java:466-471` refuses at PROJECT/TEAM the
+       `cleanup.*` keys `config cleanup --project` refuses (`reports`, `unenrolled`, `remind`). (4) `ConfigCleanupCommand.parseDays`
+       (`:443-445`) accepts the catalogue's word for never in the operator's language (`nie`), or the prompt (`operator.de.properties:717`)
+       stops offering it; for `remind`, `ask_days` and `durations.minimum` do not offer "never" at all (`:436` refuses it). (5) The mock's
+       onboarding `set` (`MockRuntimeEngine.java:3976-3979`) emits the enrolment event with `project_id` and does not replace an existing
+       enrolment of the same basename; test it.
+     - **Decision 7: the code follows the doc** (operator 2026-11-13). The cleanup choice bar and the delete confirmation render as
+       `26-cleanup.adoc:64-75,159-164` draws them (`r) ask me again in {days} days … q) leave`, `Delete? y) yes   n) no, back   ?`), within 80
+       columns (wrap the bar if it does not fit; amend the doc's picture to the wrapped form in that case); `?` explains the delete.
+     - **`project add`.** `q` or Ctrl+D exits 3, not 0 (`ProjectCommand.java:245-246`; `ProjectSetupDialogueIT.java:106` pins 0 and is
+       replaced, rule 2). An argument no state asked for is reported as `01-commands.adoc:172` says (`operator.config.argument_unused`, today
+       only in `ConfigAspectRun.java:208`).
+     - **`config cleanup`.** `recordProject` (`ConfigCleanupCommand.java:383-398`) reports "Durations recorded" only for what was written; a
+       kept value (`k` on a conflict) is reported as kept. A 409 on the machine write (`recordMachine`) goes through the conflict handling,
+       not `settings.list_failed`. Add `d) remove its own values` to the `--project` editor as `26-cleanup.adoc#t-durations` draws it (the
+       project returns to inheritance). `"Needs a choice: --yes"` (`:343`) uses `operator.config.needs_choice`.
+     - **Sonar.** `java:S4449` at `ConfigCleanupCommand.java:181` (nullable `value.value()` into `numberValue`) is fixed. It was open at
+       #425's merge although the landing reported 0.
+     - **Captures.** `PLAN-128.txt`'s header claims cleanup, `project add`, the release block and the step overview but holds only
+       `config cleanup`; capture the four missing areas (a 25-item job, also with `--project`; `project add` at a later state; the release
+       block; a reduced aspect list) in en and de, and correct the header.
+     - **Minor.** `PmConsole.java:881-885` was already repaired by #425 (PLAN-127's item); a blank line at EOF of `26-cleanup.adoc:382`.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
+   - Done when:
+     - Tests: a 25-item job under `--project X` and `--project .` shows every item / the "more" line; the reminder label carries the days;
+       `nie` is accepted (or not offered); `remind` offers no "never"; a kept conflict value is not reported as recorded; `q` in `project add`
+       exits 3; an unasked argument is reported; `d)` returns the project to inheritance; the mock refuses the project-level `cleanup.*` keys
+       and emits the enrolment event with `project_id`. Each fails on a revert. Evidence order: `test-first`.
+     - Terminal check through `ScreenCaptureIT` of the choice bar, the delete confirmation and the four areas above, en and de, 120 × 30 and
+       80 × 24 (evidence order: `none`).
+     - Landing obligation (rule 4): the #425 replies are posted in their threads and the threads resolved. Report them in the landing message.
+
 Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
 
 ## Standing Constraints
@@ -208,6 +255,16 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
 - OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ConfigRoutesTest.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCleanupCommand.java` — present at `56e1ad37` (PLAN-128 residue, folded 2026-11-13)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCleanupCommandTest.java` — absent at `56e1ad37`; created by this plan if `ConfigCommandTest` does not hold the cases (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectCommand.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ProjectCommandTest.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ProjectSetupDialogueIT.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-128.txt` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `doc/design/terminal-client/26-cleanup.adoc` — present at `56e1ad37` (PLAN-128 residue)
 
 ## Dependencies and Sequencing
 
@@ -328,3 +385,14 @@ From `landings/PLAN-160.md` (operator, AskUserQuestion — "Fold into PLAN-30"):
 catalogue (failure exits 1, no consent granted by the client), takes the mock's readiness from the scenario, and fixes the config minors and
 the review replies. Surface +8 paths. PLAN-30 now has seven deliverables and spans pm-operator, the mock and the catalogue:
 re-check its lane by the size rule at emit (likely `plan-marshall`).
+
+## PLAN-128 Residue Fold 2026-11-13 (Amendment)
+
+From `landings/PLAN-128.md` (operator, AskUserQuestion — "Fold into PLAN-30"; decision 7 "Code follows the doc"): deliverable 8 runs
+#425's unfinished review campaign, fixes the project-view cap, the five false-fixed items, `project add`'s exit and unasked argument, the
+`config cleanup` reporting, `d)`, the open Sonar issue and the missing captures. Surface +11 paths. Re-grounding owed at outline: every
+`CleanupCommand`/`ConfigCommand` line of deliverables 1, 6 and 7 is stale after #425 (+251 lines); `CleanupCommand` gained literals
+(`"   …  "` `:743`, `"Unenrolled projects"` `:705`, `"The runtime is stopping…"` `:933`) and `"Needs a choice: --yes"` is now in three places;
+the "Kept for good … 30 days … 3 days" line (`CleanupCommand.java:721`) takes the option "read them from the runtime" (decided by
+the PLAN-128 fold, since `config cleanup` now records other durations); `operator.cleanup.durations.after` joins deliverable 6's plural item
+("after 1 days"). Eight deliverables: the emit form is the runbook lane (operator 2026-11-13).

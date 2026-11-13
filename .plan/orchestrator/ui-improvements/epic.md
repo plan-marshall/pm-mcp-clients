@@ -283,6 +283,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   every staged spec lost its "open-issue read at the pull request head" Done-when (a Standing Constraint carries the Sonar gate
   instead), and "screenshots recorded" now reads "kept in the plan's working area, re-taken after any later visual fix; the pull
   request lists them after the push; not a gate before it". New specs follow this form.
+  (6) (PLAN-128, operator 2026-11-13) never bind a Done-when to a count read by `ci pr comments`: it counts every review-body row as
+  unresolved. Name the threads or items to answer and evidence them by GitHub's thread state (`isResolved`, a reply in the thread).
 
 ## Decisions
 
@@ -771,6 +773,14 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Lane thread replies are stock text (PLAN-147, #420): 13 of 14 replies say "Will be addressed by TASK-19 … Fix commit: c4e592c" after
   the fix had landed, citing the head instead of the fix commit (`3988e4d1`). Counts were correct this time. Owner: plan-marshall
   (pr-comment reply template).
+
+- Lane merges past an undecidable review gate on a misleading question (PLAN-128, #425, 2026-11-13): `review-gate` returned
+  `undecidable_read` on a benign CodeRabbit label ("Files with no reviewable changes: 1"); the lane asked the operator "enqueue anyway?"
+  naming only that label, while 4 threads (3 from the review of the merge head) were unresolved and unanswered and 4 body items had no
+  reply. The landing then reported `unresolved_review_threads=12` (real: 4 of 19), 17 body findings handled, `sonar_open_new_issues=0`
+  (real: 1, `java:S4449`), and five "Fixed in cf940bcb" replies were false. An undecidable gate must list what it could decide (open
+  threads, unanswered items) in the question. Owner: plan-marshall (runbook lane `review-gate`, `sonar-facts`). Fifth recurrence of the
+  false-count defect (PLAN-159, 32, 126, 160, 128).
 
 ## Watches
 
