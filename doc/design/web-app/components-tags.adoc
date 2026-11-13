@@ -207,7 +207,7 @@ Source and surface: `pm-web-app/src/lib/components/KindMark.svelte` (new), tests
 [#kind-tints]
 ==== The Three Kind Tints
 
-Each tint is a token in both themes. It replaces `--color-epic` and its aliases `--color-epic-subtle` and `--color-epic-text`, so no kind takes the brand violet any more.
+Each tint is a token in both themes. No kind takes the brand violet: the brand marks the one primary act, the focus ring and the selected item only (link:components.adoc#rules[Components, Rules Every Component Keeps]).
 
 [cols="1,2,2,2",options="header"]
 |===
@@ -236,7 +236,7 @@ Each tint is a token in both themes. It replaces `--color-epic` and its aliases 
 . a ΔE~00~ of at least *30* to each of the other two tints;
 . a contrast of at least *3:1* as a non-text graphic against every ground an icon stands on: `--color-bg-app`, `--color-bg-surface`, `--color-bg-raised`, `--color-bg-subtle`, `--color-bg-rail`, and `--color-brand-subtle` under the selected row.
 
-The mascot's orange and gold are taken from the source figure (`#E17512`, `#F2B630`) until its own tokens (`--color-mascot-*`, link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]) exist; from then on the check reads those tokens. The package that adds the tints adds a test to `src/styles/tokens.test.ts` that computes the four rules in both themes and fails a tint that breaks one, so a later change of a state colour or of the brand cannot move a tint into it unnoticed; until then the values above are the checked ones. The values above reach:
+The mascot's orange and gold are its tokens `--color-mascot-fur` and `--color-mascot-gold` (link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]). `src/styles/tokens.test.ts` computes the four rules in both themes from the resolved palettes, reading those two mascot tokens with the state colours and the brand, and fails a tint that breaks one, so a later change of a state colour, of the brand or of the mascot palette cannot move a tint into it unnoticed. The values above reach:
 
 [cols="2,1,1,1",options="header"]
 |===

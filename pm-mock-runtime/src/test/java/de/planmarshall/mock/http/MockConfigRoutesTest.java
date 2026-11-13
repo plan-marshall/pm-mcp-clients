@@ -64,14 +64,16 @@ class MockConfigRoutesTest {
         var routes = new MockConfigRoutes();
         var machine = new LinkedHashMap<String, Object>();
         machine.put("web.port", 7420);
+        var written = Generators.letterStrings(2, 6).next();
 
-        var written = query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"60\"}", machine);
+        var change = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"" + written + "\"}", machine);
         var read = query(routes, "GET", PATH, null, machine);
 
         assertAll(
-                () -> assertEquals(200, written.status(), written.body()),
+                () -> assertEquals(200, change.status(), change.body()),
                 () -> assertTrue(read.body().contains("\"key\":\"custom.timeout\""), read.body()),
-                () -> assertTrue(read.body().contains("\"value\":\"60\""), read.body()));
+                () -> assertTrue(read.body().contains("\"value\":\"" + written + "\""), read.body()));
     }
 
     @Test
@@ -89,11 +91,15 @@ class MockConfigRoutesTest {
     @DisplayName("a nearer level overrides the machine's and names it")
     void aNearerLevelNamesTheLevelItShadows() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"machine\"}", Map.of());
-        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":\"local\"}", Map.of());
+        var machineValue = Generators.letterStrings(2, 6).next();
+        var nearerValue = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label",
+                "{\"value\":\"" + nearerValue + "\",\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
+                () -> assertTrue(read.body().contains("\"value\":\"" + nearerValue + "\""), read.body()),
                 () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()),
                 () -> assertTrue(read.body().contains("\"overrides\":\"machine\""), read.body()));
     }
@@ -102,9 +108,13 @@ class MockConfigRoutesTest {
     @DisplayName("a project's value is scoped to that project")
     void aProjectValueIsScoped() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/project/custom.label?project=p-1", "{\"value\":\"one\"}", Map.of());
-        var scoped = query(routes, "GET", PATH + "?project=p-1", null, Map.of());
-        var other = query(routes, "GET", PATH + "?project=p-2", null, Map.of());
+        var project = Generators.letterStrings(4, 8).next();
+        var otherProject = Generators.letterStrings(4, 8).next() + "-x";
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/project/custom.label?project=" + project,
+                "{\"value\":\"" + value + "\"}", Map.of());
+        var scoped = query(routes, "GET", PATH + "?project=" + project, null, Map.of());
+        var other = query(routes, "GET", PATH + "?project=" + otherProject, null, Map.of());
 
         assertAll(
                 () -> assertTrue(scoped.body().contains("custom.label"), scoped.body()),
@@ -131,14 +141,102 @@ class MockConfigRoutesTest {
     void deleteRemovesOneLevel() throws Exception {
         var routes = new MockConfigRoutes();
         query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"on\"}", Map.of());
-        var deleted = query(routes, "DELETE", PATH + "/machine/custom.flag", null, Map.of());
-        var unknown = query(routes, "DELETE", PATH + "/machine/custom.flag", null, Map.of());
+        var deleted = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":1}", Map.of());
+        var unknown = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
                 () -> assertEquals(204, deleted.status(), deleted.body()),
                 () -> assertEquals(404, unknown.status(), unknown.body()),
                 () -> assertFalse(read.body().contains("custom.flag"), read.body()));
+    }
+
+    @Test
+    @DisplayName("a plan-only read inherits the plan's project value")
+    void aPlanOnlyReadInheritsTheProjectValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        var project = Generators.letterStrings(4, 8).next();
+        var plan = Generators.letterStrings(4, 8).next();
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/project/custom.label?project=" + project,
+                "{\"value\":\"" + value + "\"}", Map.of());
+        var read = query(routes, "GET", PATH + "?plan=" + plan, null, Map.of(), Map.of(plan, project));
+
+        assertAll(
+                () -> assertTrue(read.body().contains("\"value\":\"" + value + "\""), read.body()),
+                () -> assertTrue(read.body().contains("\"origin\":\"project\""), read.body()));
+    }
+
+    @Test
+    @DisplayName("a change made before a deletion stays stale")
+    void aDeletedValueKeepsItsRevision() throws Exception {
+        var routes = new MockConfigRoutes();
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"" + value + "\"}", Map.of());
+        var deleted = query(routes, "DELETE", PATH + "/machine/custom.timeout", "{\"revision\":1}", Map.of());
+        var stale = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"" + value + "\",\"revision\":1}", Map.of());
+
+        assertAll(
+                () -> assertEquals(204, deleted.status(), deleted.body()),
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()));
+    }
+
+    @Test
+    @DisplayName("a change against an older revision answers 409 with the current value")
+    void aStaleRevisionIsRefusedWithTheCurrentValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        var current = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.timeout", "{\"value\":\"" + current + "\"}", Map.of());
+        var stale = query(routes, "PUT", PATH + "/machine/custom.timeout",
+                "{\"value\":\"" + Generators.letterStrings(2, 6).next() + "\",\"revision\":0}", Map.of());
+
+        assertAll(
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"value\":\"" + current + "\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"revision\":1"), stale.body()));
+    }
+
+    @Test
+    @DisplayName("a change of a nearer level is made against the revision the read serves")
+    void aNearerChangeIsMadeAgainstTheServedRevision() throws Exception {
+        var routes = new MockConfigRoutes();
+        var value = Generators.letterStrings(2, 6).next();
+        // The machine's write is revision 1; a project read serves that same revision.
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + value + "\"}", Map.of());
+
+        var written = query(routes, "PUT", PATH + "/project/custom.label?project=p",
+                "{\"value\":\"" + value + "\",\"revision\":1}", Map.of());
+
+        assertEquals(200, written.status(), written.body());
+    }
+
+    @Test
+    @DisplayName("a deletion against an older revision answers 409 with the current value")
+    void aStaleDeletionIsRefusedWithTheCurrentValue() throws Exception {
+        var routes = new MockConfigRoutes();
+        var value = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.flag", "{\"value\":\"" + value + "\"}", Map.of());
+        var stale = query(routes, "DELETE", PATH + "/machine/custom.flag", "{\"revision\":0}", Map.of());
+
+        assertAll(
+                () -> assertEquals(409, stale.status(), stale.body()),
+                () -> assertTrue(stale.body().contains("\"error\":\"conflict\""), stale.body()),
+                () -> assertTrue(stale.body().contains("\"value\":\"" + value + "\""), stale.body()));
+    }
+
+    @Test
+    @DisplayName("DELETE refuses an aspect-owned key with 409 aspect_owned")
+    void deleteRefusesAnAspectOwnedKey() throws Exception {
+        var routes = new MockConfigRoutes();
+        var refused = query(routes, "DELETE", PATH + "/machine/language.interface", "{\"revision\":0}",
+                Map.of());
+
+        assertAll(
+                () -> assertEquals(409, refused.status(), refused.body()),
+                () -> assertTrue(refused.body().contains("\"error\":\"aspect_owned\""), refused.body()));
     }
 
     @Test
@@ -156,8 +254,9 @@ class MockConfigRoutesTest {
     @DisplayName("a stored null at a nearer level overrides the machine's value")
     void aStoredNullOverridesTheMachine() throws Exception {
         var routes = new MockConfigRoutes();
-        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"machine\"}", Map.of());
-        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null}", Map.of());
+        var machineValue = Generators.letterStrings(2, 6).next();
+        query(routes, "PUT", PATH + "/machine/custom.label", "{\"value\":\"" + machineValue + "\"}", Map.of());
+        query(routes, "PUT", PATH + "/project/custom.label", "{\"value\":null,\"revision\":1}", Map.of());
         var read = query(routes, "GET", PATH, null, Map.of());
 
         assertAll(
@@ -174,7 +273,28 @@ class MockConfigRoutesTest {
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("language." + key)),
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("harness." + key)),
                 () -> assertTrue(MockConfigRoutes.isAspectOwned("roles")),
+                () -> assertTrue(MockConfigRoutes.isAspectOwned("cleanup.plans_after_days")),
                 () -> assertFalse(MockConfigRoutes.isAspectOwned("custom." + key)));
+    }
+
+    @Test
+    @DisplayName("a cleanup duration has one source: the machine settings, a project's own value at its level")
+    void cleanupDurationsHaveOneSource() throws Exception {
+        var routes = new MockConfigRoutes();
+        var machine = Map.<String, Object>of("cleanup.plans_after_days", 30);
+
+        var machineWrite = query(routes, "PUT", PATH + "/machine/cleanup.plans_after_days",
+                "{\"value\":3}", machine);
+        var projectWrite = query(routes, "PUT", PATH + "/project/cleanup.plans_after_days?project=pm",
+                "{\"value\":60}", machine);
+        var projectRead = query(routes, "GET", PATH + "?project=pm", null, machine);
+
+        assertAll(
+                () -> assertEquals(409, machineWrite.status(), machineWrite.body()),
+                () -> assertTrue(machineWrite.body().contains("\"error\":\"aspect_owned\""), machineWrite.body()),
+                () -> assertEquals(200, projectWrite.status(), projectWrite.body()),
+                () -> assertTrue(projectRead.body().contains("\"value\":60"), projectRead.body()),
+                () -> assertTrue(projectRead.body().contains("\"origin\":\"project\""), projectRead.body()));
     }
 
     private record Answer(int status, String body) {
@@ -182,8 +302,14 @@ class MockConfigRoutesTest {
 
     private static Answer query(MockConfigRoutes routes, String method, String target, String body,
             Map<String, Object> machineValues) throws IOException {
+        return query(routes, method, target, body, machineValues, Map.of());
+    }
+
+    private static Answer query(MockConfigRoutes routes, String method, String target, String body,
+            Map<String, Object> machineValues, Map<String, String> planProjects) throws IOException {
         var out = new ByteArrayOutputStream();
-        var served = routes.handle(request(method, target, body), new MockHttpResponse(out), machineValues);
+        var served = routes.handle(request(method, target, body), new MockHttpResponse(out), machineValues,
+                planProjects);
         assertTrue(served, method + " " + target + " is one of the configuration routes");
         var raw = out.toString(StandardCharsets.UTF_8);
         var statusLine = raw.substring(0, raw.indexOf('\r'));

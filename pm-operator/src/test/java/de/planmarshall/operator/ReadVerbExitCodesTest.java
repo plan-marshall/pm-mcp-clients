@@ -13,12 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -114,7 +117,11 @@ class ReadVerbExitCodesTest {
         fixture.start((request, response) -> response.send(status, null,
                             "{\"error\":\"unavailable\",\"reason\":\"" + request.target() + "\"}"));
 
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]),
+                                                new ByteArrayOutputStream()),
+                            null);
         int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
 
         assertEquals(1, code, label + " stdout: " + out + " stderr: " + err);

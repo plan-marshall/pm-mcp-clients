@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -34,6 +37,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
  * {@code DELETE /api/v1/config/{level}/{key}}): the operator's {@code config show|set|unset} read and
  * write them, so the mock serves them beside the machine settings.
  */
+@EnableGeneratorController
 @DisplayName("the configuration routes of the mock runtime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ConfigRoutesTest {
@@ -59,16 +63,36 @@ class ConfigRoutesTest {
     }
 
     @Test
+    @DisplayName("a credential PUT refreshes the entry a GET serves")
+    void aCredentialPutRefreshesTheEntry() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+            var read = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/github"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("PUT", "/api/v1/credentials/github",
+                    "{\"mode\":\"rotate\",\"secret\":\"s3cret\",\"kind\":\"classic\"}"), runtime));
+            var rotated = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/github"), runtime));
+            var unknown = client(runtime).send(authorized(HttpRequest.get("/api/v1/credentials/nope"), runtime));
+
+            assertAll(
+                    () -> assertEquals(200, read.status(), read.bodyText()),
+                    () -> assertTrue(read.bodyText().contains("\"status\":\"present\""), read.bodyText()),
+                    () -> assertTrue(rotated.bodyText().contains("\"kind\":\"classic\""), rotated.bodyText()),
+                    () -> assertTrue(rotated.bodyText().contains("\"expired\":false"), rotated.bodyText()),
+                    () -> assertEquals(404, unknown.status(), unknown.bodyText()));
+        }
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/config/{level}/{key} records a value that GET serves back")
     void putRecordsAValue() throws Exception {
+        var value = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.timeout", "{\"value\":\"60\"}"), runtime));
+                    "/api/v1/config/machine/custom.timeout", "{\"value\":\"" + value + "\"}"), runtime));
             var values = values(runtime);
 
             assertAll(
                     () -> assertEquals(200, written.status(), written.bodyText()),
-                    () -> assertEquals("60", values.get("custom.timeout").get(VALUE), values.toString()),
+                    () -> assertEquals(value, values.get("custom.timeout").get(VALUE), values.toString()),
                     () -> assertEquals("machine", values.get("custom.timeout").get(ORIGIN),
                             values.toString()));
         }
@@ -77,16 +101,18 @@ class ConfigRoutesTest {
     @Test
     @DisplayName("a value of a nearer level overrides the machine's and names it")
     void nearerLevelOverridesTheMachine() throws Exception {
+        var nearer = Generators.letterStrings(2, 6).next();
+        var machine = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var written = client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/project/custom.label", "{\"value\":\"local\"}"), runtime));
+                    "/api/v1/config/project/custom.label", "{\"value\":\"" + nearer + "\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.label", "{\"value\":\"machine\"}"), runtime));
+                    "/api/v1/config/machine/custom.label", "{\"value\":\"" + machine + "\"}"), runtime));
 
             var value = values(runtime).get("custom.label");
             assertAll(
                     () -> assertEquals(200, written.status(), written.bodyText()),
-                    () -> assertEquals("local", value.get(VALUE), value.toString()),
+                    () -> assertEquals(nearer, value.get(VALUE), value.toString()),
                     () -> assertEquals("project", value.get(ORIGIN), value.toString()),
                     () -> assertEquals("machine", value.get("overrides"), value.toString()));
         }
@@ -108,13 +134,14 @@ class ConfigRoutesTest {
     @Test
     @DisplayName("DELETE removes the value of one level and refuses an unknown key")
     void deleteRemovesOneLevel() throws Exception {
+        var value = Generators.letterStrings(2, 6).next();
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             client(runtime).send(authorized(HttpRequest.json("PUT",
-                    "/api/v1/config/machine/custom.flag", "{\"value\":\"on\"}"), runtime));
-            var deleted = client(runtime).send(authorized(new HttpRequest("DELETE",
-                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
-            var unknown = client(runtime).send(authorized(new HttpRequest("DELETE",
-                    "/api/v1/config/machine/custom.flag", Map.of(), null), runtime));
+                    "/api/v1/config/machine/custom.flag", "{\"value\":\"" + value + "\"}"), runtime));
+            var deleted = client(runtime).send(authorized(HttpRequest.json("DELETE",
+                    "/api/v1/config/machine/custom.flag", "{\"revision\":1}"), runtime));
+            var unknown = client(runtime).send(authorized(HttpRequest.json("DELETE",
+                    "/api/v1/config/machine/custom.flag", "{\"revision\":1}"), runtime));
 
             assertAll(
                     () -> assertEquals(204, deleted.status(), deleted.bodyText()),
@@ -160,7 +187,21 @@ class ConfigRoutesTest {
             }
             var back = submit.links().get("set");
             assertNotNull(back, link.next());
-            assertEquals("settings.choose", back.next(), link.next());
+            var next = back.next();
+            for (int step = 0; step < 8 && !"settings.choose".equals(next); step++) {
+                var state = scenario.state(next);
+                assertNotNull(state, next);
+                String onward = null;
+                for (var entry : state.links().entrySet()) {
+                    if (!"back".equals(entry.getKey())) {
+                        onward = entry.getValue().next();
+                        break;
+                    }
+                }
+                assertNotNull(onward, next);
+                next = onward;
+            }
+            assertEquals("settings.choose", next, link.next());
         }
     }
 
@@ -185,10 +226,6 @@ class ConfigRoutesTest {
     void aLaterRunRecordsTheStoreAndTheDefaults() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                    "{\"link\":\"reconfigure:credentials\"}"), runtime));
-            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
-                    "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
-            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"reconfigure:plan-defaults\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"set\",\"landing\":\"landing.files\"}"), runtime));
@@ -196,6 +233,10 @@ class ConfigRoutesTest {
                     "{\"link\":\"reconfigure:providers\"}"), runtime));
             client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
                     "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"reconfigure:credentials\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"set\",\"current\":\"file\"}"), runtime));
             var values = values(runtime);
 
             assertAll(
@@ -203,8 +244,26 @@ class ConfigRoutesTest {
                             values.toString()),
                     () -> assertEquals("landing.files", values.get("plan_defaults.landing").get(VALUE),
                             values.toString()),
-                    () -> assertTrue(String.valueOf(values.get("providers.enabled").get(VALUE))
+                    () -> assertFalse(String.valueOf(values.get("providers.enabled").get(VALUE))
                             .contains("verified"), values.toString()));
+        }
+    }
+
+    @Test
+    @DisplayName("a verify without a ready provider records the failure")
+    void aVerifyWithoutAReadyProviderRecordsTheFailure() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS)) {
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"reconfigure:providers\"}"), runtime));
+            client(runtime).send(authorized(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                    "{\"link\":\"set\",\"verify\":\"true\"}"), runtime));
+            var providers = values(runtime).get("providers.enabled");
+
+            assertAll(
+                    () -> assertTrue(String.valueOf(providers.get(VALUE)).contains("github"),
+                            providers.toString()),
+                    () -> assertFalse(String.valueOf(providers.get(VALUE)).contains("verified"),
+                            providers.toString()));
         }
     }
 

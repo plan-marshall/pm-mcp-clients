@@ -52,7 +52,9 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-danger-subtle` |`#2C1517` |`#FDECEA` |Error state block.
 |`--color-success` |`#3FB37F` |`#1E7A4E` |Dot for done, merged, ready.
 |`--color-neutral` |`#8B95A7` |`#7A808B` |Dot for planned, paused, staged.
-|`--color-epic` |`#B58CFF` |`#7A3FD1` |The epic glyph only (never a fill).
+|`--color-kind-project` |`#ADCD4A` |`#606700` |The project kind icon only (never a fill or a word).
+|`--color-kind-epic` |`#EF8BC5` |`#BB2D8C` |The epic kind icon, and the word of the epic badge on `--color-bg-subtle`.
+|`--color-kind-plan` |`#3BCDDC` |`#007785` |The plan kind icon only (never a fill or a word).
 |`--color-on-brand` |`#0E1116` |`#FFFFFF` |The label on a brand-coloured fill.
 |`--color-overlay` |`rgb(0 0 0 / 0.7)` |`rgb(15 23 42 / 0.5)` |The scrim behind a dialog.
 |`--color-diff-removed` |`#3D1F24` |`#FBE3E1` |The ground of a removed line in a chat proposal's diff, and nowhere else.

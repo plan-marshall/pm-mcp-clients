@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,6 +102,18 @@ class ConfigSettingsTest {
     }
 
     @Test
+    @DisplayName("config language runs its later run on fully-onboarded")
+    void configLanguageOnFullyOnboarded() throws Exception {
+        var outcome = StartTestSupport.run(StandardScenarios.FULLY_ONBOARDED, "\n",
+                            "config", "language", "--interface", "de");
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("language run again"),
+                                                outcome.rendered()));
+    }
+
+    @Test
     @DisplayName("the settings screen lists aspects, a token, the consents, and the documents mode")
     void settingsScreen() throws Exception {
         settings(200);
@@ -111,7 +124,8 @@ class ConfigSettingsTest {
         assertTrue(text.contains("Language"), text);
         assertTrue(text.contains("github"), text);
         assertTrue(text.contains("expires in 9 days"), text);
-        assertTrue(text.contains("scan_harnesses"), text);
+        assertFalse(text.contains("scan_harnesses"), text);
+        assertTrue(text.contains("Remembered consents"), text);
         assertTrue(text.contains("Documents"), text);
     }
 

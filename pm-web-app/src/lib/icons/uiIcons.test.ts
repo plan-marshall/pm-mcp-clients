@@ -115,6 +115,26 @@ describe('Icon component', () => {
     }
   });
 
+  /** The kind and act icons of the foundation's kind marks and the composer. */
+  const FOUNDATION_ICONS = ['kind.project', 'kind.side-job', 'kind.machine', 'act.send', 'act.stop'];
+
+  it.each(FOUNDATION_ICONS)('registers %s and renders it at 16, 20 and 24 px', (id) => {
+    expect(isUiIconId(id), `${id} is a UiIconId`).toBe(true);
+    const url = uiIconUrl(id);
+    expect(url, `${id} resolves`).toBeTruthy();
+
+    for (const size of [16, 20, 24] as const) {
+      const { container } = render(Icon, { props: { name: id, size } });
+      const icon = container.querySelector('.ui-icon') as HTMLElement;
+
+      expect(icon, `${id} renders at ${size}`).not.toBeNull();
+      expect(icon.getAttribute('data-icon')).toBe(id);
+      expect(icon.getAttribute('style')).toContain(`url("${url}")`);
+      expect(icon.getAttribute('style')).toContain(`--ui-icon-size: ${size}px`);
+      cleanup();
+    }
+  });
+
   it('carries an accessible name when it stands without a label', () => {
     const { container } = render(Icon, { props: { name: 'nav.inbox', label: 'Inbox' } });
     const icon = container.querySelector('.ui-icon') as HTMLElement;

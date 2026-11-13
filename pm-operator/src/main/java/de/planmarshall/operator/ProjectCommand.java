@@ -16,7 +16,10 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -66,6 +69,18 @@ public final class ProjectCommand implements Callable<Integer> {
     private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
+
+    /** The catalogue key of the refusal a run that cannot close its entry reports. */
+    private static final String KEY_CLOSE_FAILED = "project.add.close_failed";
+
+    /** The wire member the start of a project's onboarding carries the operator's login environment in. */
+    private static final String PARAM_BUILD_ENVIRONMENT = "build_environment";
+
+    /** The width of a confirmation block's label column. */
+    private static final int LABEL_WIDTH = 15;
+
+    /** The dialogue width a confirmation block wraps at. */
+    private static final int BLOCK_WIDTH = 80;
 
     /** The exit code of a run that stopped before its done state (01-commands.adoc#exit-codes). */
     static final int EXIT_NEEDS_INPUT = 3;
@@ -203,7 +218,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 return EXIT_NEEDS_INPUT;
             }
 
-            var startPayload = JsonTree.write(Map.of("path", path, "pilot", pilot));
+            var startPayload = startBody();
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/project-onboardings", startPayload));
 
             var refusalExit = checkResponse(response, safePath, locale, out, err);
@@ -211,19 +226,20 @@ public final class ProjectCommand implements Callable<Integer> {
                 return refusalExit;
             }
 
-            var source = resolveSource(response);
-
+            Started started = null;
             var startPrompt = new StartPrompt(context, out, locale, noInput);
-            var dialogue = new StateDialogue(source, out, locale, stateId -> {
-                if ("project.identity".equals(stateId) && pilot) {
-                    return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
-                }
-                return new ChoicePrompt(startPrompt, stateId);
-            });
-
             try {
+                started = resolveSource(response);
+                var dialogue = new StateDialogue(started.source(), out, locale, stateId -> {
+                    if ("project.identity".equals(stateId) && pilot) {
+                        return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
+                    }
+                    return new ChoicePrompt(startPrompt, stateId);
+                });
                 var finalFrame = dialogue.run();
                 return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
+            } catch (StartPrompt.MissingInputException missing) {
+                return stopAtMissingInput(out, locale, missing, started);
             } catch (StartPrompt.InterruptException _) {
                 return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
@@ -234,6 +250,73 @@ public final class ProjectCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
+        }
+
+        /**
+         * The contract's start body: the checkout path resolved absolutely, and the build environment
+         * the operator's login shell captured ({@code 01-cli-and-installer.adoc#client-environment}).
+         * {@code --pilot} is no field of the contract; it answers the identity state instead.
+         *
+         * @return the body as JSON
+         */
+        private String startBody() {
+            var body = new LinkedHashMap<String, Object>();
+            body.put("path", Path.of(path).toAbsolutePath().normalize().toString());
+            body.put(PARAM_BUILD_ENVIRONMENT, context.clientEnvironment().buildEnvironment());
+            return JsonTree.write(body);
+        }
+
+        /**
+         * Stops the run at a choice it was not given: the state is printed from the catalogue, the
+         * started entry is closed so no being-added project is left behind, and the exit code says
+         * that the run did not reach its done state.
+         *
+         * @param out     the verb's writer
+         * @param locale  the interface locale
+         * @param missing the choice the run was not given
+         * @param started the source and the entry the run opened
+         * @return the exit code of a run stopped before its done state
+         */
+        private int stopAtMissingInput(PrintWriter out, String locale, StartPrompt.MissingInputException missing,
+                            @Nullable Started started) {
+            out.println(MessageCatalogue.format(locale, "project.add.no_input",
+                                Map.of("title", stateTitle(locale, missing.state()), "need", missing.need())));
+            if (started != null && !closeEntry(started.entryId())) {
+                out.println(MessageCatalogue.format(locale, KEY_CLOSE_FAILED,
+                                    Map.of("entry", String.valueOf(started.entryId()))));
+            }
+            out.flush();
+            return EXIT_NEEDS_INPUT;
+        }
+
+        /**
+         * Ends the entry the run opened, so the project does not stay listed as being added: the
+         * onboarding's own {@code abandon} route, which changes no enrolment because none exists yet.
+         *
+         * @param entryId the entry the start opened, or {@code null} when the runtime named none
+         * @return whether the entry is closed; a refusal is reported so the operator can abandon it
+         */
+        private boolean closeEntry(@Nullable String entryId) {
+            if (entryId == null) {
+                return true;
+            }
+            try {
+                var response = context.runtime(true).send(HttpRequest.delete(
+                                    "/api/v1/entries/" + OperatorUrlUtil.encodePathSegment(entryId) + "/abandon"));
+                return response.status() == 200 || response.status() == 204;
+            } catch (IOException _) {
+                return false;
+            }
+        }
+
+        /**
+         * @param locale  the interface locale
+         * @param stateId the state the run stopped at
+         * @return the state's title, or the state id where the catalogue names none
+         */
+        private static String stateTitle(String locale, String stateId) {
+            var key = stateId + ".title";
+            return MessageCatalogue.hasKey(locale, key) ? MessageCatalogue.format(locale, key, Map.of()) : stateId;
         }
 
         private @Nullable Integer checkResponse(HttpResponse response, String safePath, String locale,
@@ -265,9 +348,8 @@ public final class ProjectCommand implements Callable<Integer> {
             return null;
         }
 
-        private StateDialogue.Source resolveSource(HttpResponse response) throws IOException {
+        private Started resolveSource(HttpResponse response) throws IOException {
             String entryId = null;
-            String projectId = null;
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(response.bodyText()));
                 if (parsed != null) {
@@ -278,29 +360,27 @@ public final class ProjectCommand implements Callable<Integer> {
                     if (entryId == null) {
                         entryId = JsonTree.string(parsed, "entry_id");
                     }
-                    projectId = JsonTree.string(parsed, "project_id");
-                    if (projectId == null) {
-                        projectId = JsonTree.string(parsed, "id");
-                    }
                 }
             } catch (IOException _) {
-                // fall back below
+                // no entry named below: the run has no address to continue
             }
-
-            if (projectId != null) {
-                return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+            if (entryId == null) {
+                // The contract opens an entry and names it; without one there is nothing to continue,
+                // and the checkout directory's name is no address the runtime serves.
+                throw new IOException("the project onboarding answered no entry");
             }
-            if (entryId != null) {
-                return ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId);
-            }
-            try {
-                var name = Path.of(path).getFileName();
-                projectId = name != null ? name.toString() : path;
-            } catch (IllegalArgumentException _) {
-                projectId = path;
-            }
-            return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+            return new Started(ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId),
+                                entryId);
         }
+    }
+
+    /**
+     * The run a start opened: the source its states are read from, and the entry it is addressed by.
+     *
+     * @param source  the onboarding's states
+     * @param entryId the entry the runtime opened, or {@code null} where it named none
+     */
+    private record Started(StateDialogue.Source source, @Nullable String entryId) {
     }
 
     @Command(name = "setup", description = "Continues a project's onboarding setup.")
@@ -451,12 +531,12 @@ public final class ProjectCommand implements Callable<Integer> {
             }
 
             if (!yes) {
-                var confirmationExit = promptReleaseConfirmation(locale);
+                var confirmationExit = promptReleaseConfirmation(out, err, locale);
                 if (confirmationExit != null) {
                     return confirmationExit;
                 }
             } else if (reason == null || reason.isBlank()) {
-                reason = "Released by operator";
+                reason = text(locale, "project.release.reason_default");
             }
 
             var req = new ProjectReleaseRequest(projectId, true, force, reason);
@@ -483,20 +563,73 @@ public final class ProjectCommand implements Callable<Integer> {
             throw new OperatorRefusedException("release project " + sanitizedId, response);
         }
 
-        private @Nullable Integer promptReleaseConfirmation(String locale) throws IOException {
+        private @Nullable Integer promptReleaseConfirmation(PrintWriter out, PrintWriter err, String locale)
+                            throws IOException {
+            var project = interactiveProject();
+            if (project == null) {
+                // A release that cannot show what it ends is never confirmed: it would end work blind.
+                err.println(MessageCatalogue.format(locale, "project.release.summary_unavailable",
+                                    Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
+                err.flush();
+                return 1;
+            }
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                printReleaseBlock(out, locale, project);
                 if (reason == null || reason.isBlank()) {
-                    var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
+                    var prompt = text(locale, "project.release.reason") + "  \u203a ";
                     var line = readLineSafe(reader, prompt);
-                    reason = line != null && !line.isBlank() ? line.trim() : "Released by operator";
+                    reason = line != null && !line.isBlank() ? line.trim()
+                                        : text(locale, "project.release.reason_default");
                 }
-                if (!confirm(reader, locale, "operator.projects.release.confirm")) {
+                printRow(out, locale, "project.release.afterwards",
+                                    MessageCatalogue.format(locale, "project.release.afterwards_release",
+                                                        Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
+                out.flush();
+                if (!confirm(out, reader, locale, text(locale, "project.release.action_release"),
+                                    text(locale, "project.release.explain"))) {
                     return 0;
                 }
                 return null;
             } catch (StartPrompt.InterruptException _) {
                 return StartPrompt.EXIT_INTERRUPTED;
+            }
+        }
+
+        /**
+         * Prints what a release ends and what it keeps, before the reason and the confirmation are
+         * asked ({@code 17-projects.adoc#release}). Each line appears only where there is something
+         * to name.
+         *
+         * @param out     the verb's writer
+         * @param locale  the interface locale
+         * @param project the project as the explorer reports it, or {@code null}
+         */
+        private void printReleaseBlock(PrintWriter out, String locale, EnrolledProject project) {
+            out.println(MessageCatalogue.format(locale, "project.release.title",
+                                Map.of("action", "release",
+                                                    PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
+            var plans = project.activePlansCount();
+            var epics = project.activeEpicsCount();
+            if (plans > 0 || epics > 0) {
+                printRow(out, locale, "project.release.what_ends", MessageCatalogue.format(locale,
+                                    "project.release.ends", Map.of("plans", plans, "epics", epics)));
+            }
+            printRow(out, locale, "project.release.what_stays",
+                                MessageCatalogue.format(locale, "project.release.stays", Map.of()));
+            out.flush();
+        }
+
+        /**
+         * @return the project as the explorer reports it, or {@code null} when the read does not answer
+         */
+        private @Nullable EnrolledProject interactiveProject() {
+            try {
+                var response = context.runtime(true).send(HttpRequest.get(
+                                    PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId)));
+                return response.status() == 200 ? EnrolledProject.fromJson(response.bodyText()) : null;
+            } catch (IOException _) {
+                return null;
             }
         }
     }
@@ -544,7 +677,10 @@ public final class ProjectCommand implements Callable<Integer> {
             if (!yes) {
                 try (var lease = context.openTerminal()) {
                     var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                    if (!confirm(reader, locale, "operator.projects.unenrol.confirm")) {
+                    printUnenrolBlock(out, locale);
+                    out.flush();
+                    if (!confirm(out, reader, locale, text(locale, "project.release.action_unenrol"),
+                                        text(locale, "project.release.unenrol_explain"))) {
                         return 0;
                     }
                 } catch (StartPrompt.InterruptException _) {
@@ -579,6 +715,25 @@ public final class ProjectCommand implements Callable<Integer> {
             }
             throw new OperatorRefusedException("project unenrol " + sanitizedId, response);
         }
+
+        /**
+         * Prints what an unenrolment ends and what it keeps, before the confirmation
+         * ({@code 17-projects.adoc#release}).
+         *
+         * @param out    the verb's writer
+         * @param locale the interface locale
+         */
+        private void printUnenrolBlock(PrintWriter out, String locale) {
+            var safeId = OutputSafety.stripControlSequences(projectId);
+            out.println(MessageCatalogue.format(locale, "project.release.unenrol_title",
+                                Map.of(PARAM_PROJECT, safeId)));
+            printRow(out, locale, "project.release.what_ends",
+                                MessageCatalogue.format(locale, "project.release.afterwards_unenrol",
+                                                    Map.of(PARAM_PROJECT, safeId)));
+            printRow(out, locale, "project.release.afterwards",
+                                MessageCatalogue.format(locale, "project.release.afterwards_unenrol_next",
+                                                    Map.of(PARAM_PROJECT, safeId)));
+        }
     }
 
     /**
@@ -608,16 +763,98 @@ public final class ProjectCommand implements Callable<Integer> {
         }
     }
 
-    private static boolean confirm(LineReader reader, String locale, String confirmKey) {
-        var confirmText = text(locale, confirmKey);
-        var keepItText = text(locale, "operator.projects.keep_it");
-        var yesText = text(locale, "operator.project.detail.yes");
-        var yKey = "de".equals(locale) ? "j" : "y";
-        var prompt = confirmText + "? " + yKey + ") " + yesText + "   n) " + keepItText + "   ?   \u203a ";
-        var line = readLineSafe(reader, prompt);
-        if (line == null) {
-            return false;
+    /**
+     * Prints one row of a confirmation block: the label in its column and the value wrapped at the
+     * dialogue width, so a long value never runs past it ({@code 17-projects.adoc#release}).
+     *
+     * @param out      the verb's writer
+     * @param locale   the interface locale
+     * @param labelKey the catalogue key of the label
+     * @param value    the rendered value
+     */
+    private static void printRow(PrintWriter out, String locale, String labelKey, String value) {
+        out.println(row(MessageCatalogue.format(locale, labelKey, Map.of()), value));
+    }
+
+    /**
+     * @param label the rendered label
+     * @param value the rendered value
+     * @return the row, its value wrapped and its continuation lines aligned under the label
+     */
+    private static String row(String label, String value) {
+        var lines = wrap(value, BLOCK_WIDTH - LABEL_WIDTH - 2);
+        var text = new StringBuilder("  ").append(pad(label, LABEL_WIDTH)).append(lines.get(0));
+        for (var line : lines.subList(1, lines.size())) {
+            text.append('\n').append(" ".repeat(LABEL_WIDTH + 2)).append(line);
         }
-        return Answers.isYes(line);
+        return text.toString();
+    }
+
+    private static String pad(String text, int width) {
+        return text.length() >= width ? text + " " : text + " ".repeat(width - text.length());
+    }
+
+    private static List<String> wrap(String text, int width) {
+        var lines = new ArrayList<String>();
+        var current = new StringBuilder();
+        for (var word : text.split(" ")) {
+            if (!current.isEmpty() && current.length() + 1 + word.length() > width) {
+                lines.add(current.toString());
+                current.setLength(0);
+            }
+            if (!current.isEmpty()) {
+                current.append(' ');
+            }
+            current.append(word);
+        }
+        lines.add(current.toString());
+        return lines;
+    }
+
+    /**
+     * Asks the confirmation of a release or an unenrolment: {@code y} yes, {@code n} keeps the
+     * project, {@code ?} explains, and anything else asks again with {@code Type y or n.} rather than
+     * declining.
+     *
+     * @param out         the verb's writer
+     * @param reader      the open line reader
+     * @param locale      the interface locale
+     * @param question    the rendered question, without its question mark
+     * @param explanation what {@code ?} prints
+     * @return {@code true} when the act may run
+     */
+    private static boolean confirm(PrintWriter out, LineReader reader, String locale, String question,
+                        String explanation) {
+        var yesText = MessageCatalogue.format(locale, "operator.project.detail.yes", Map.of());
+        var keepItText = MessageCatalogue.format(locale, "operator.projects.keep_it", Map.of());
+        var prompt = question + "? " + yesKey(locale) + ") " + yesText + "   n) " + keepItText + "   ?   \u203a ";
+        while (true) {
+            var line = readLineSafe(reader, prompt);
+            if (line == null) {
+                return false;
+            }
+            var answer = line.trim();
+            if ("?".equals(answer)) {
+                out.println("  " + explanation);
+                out.flush();
+                continue;
+            }
+            if (Answers.isYes(answer)) {
+                return true;
+            }
+            if (Answers.isNo(answer)) {
+                return false;
+            }
+            out.println(MessageCatalogue.format(locale, "operator.dialogue.consent.type_yn", Map.of()));
+            out.flush();
+        }
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the mnemonic of yes in that language: {@code j} where the locale starts with {@code de}
+     */
+    private static String yesKey(String locale) {
+        return locale.toLowerCase(Locale.ROOT).startsWith("de") ? "j" : "y";
     }
 }

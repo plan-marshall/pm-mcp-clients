@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
@@ -32,11 +35,15 @@ import de.planmarshall.operator.StartPrompt;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The one state dialogue ({@code CLI-UC-S-06}): a fake runtime reports three states, and the
  * dialogue renders each frame, reads the choice, sends the link and stops at the final state.
  */
+@EnableGeneratorController
 @DisplayName("StateDialogue")
 class StateDialogueTest {
 
@@ -291,29 +298,27 @@ class StateDialogueTest {
                             dialogue(new FakeSource(frame), "", new StringWriter()).stepLine(frame));
     }
 
-    @Test
+    @ParameterizedTest(name = "total_steps {0} falls back to {1}")
+    @MethodSource("totalStepsVariants")
     @DisplayName("validates StateDialogue.fromJson total_steps variants: missing, zero, negative, fractional, over-range, non-numeric, and custom valid")
-    void stateDialogueTotalStepsVariants() throws Exception {
-        var missingFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1}", 10, true);
-        assertEquals(10, missingFrame.totalSteps(), "missing total_steps falls back to passed default 10");
+    void stateDialogueTotalStepsVariants(String totalSteps, int expected) throws Exception {
+        var frame = StateDialogue.fromJson(
+                            "{\"state\":\"project.identity\",\"step\":1" + totalSteps + "}", 10, true);
 
-        var zeroFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":0}", 10, true);
-        assertEquals(10, zeroFrame.totalSteps(), "zero total_steps falls back to passed default 10");
+        assertEquals(expected, frame.totalSteps(), "total_steps " + totalSteps);
+    }
 
-        var negativeFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":-5}", 10, true);
-        assertEquals(10, negativeFrame.totalSteps(), "negative total_steps falls back to passed default 10");
-
-        var fractionalFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":3.9}", 10, true);
-        assertEquals(10, fractionalFrame.totalSteps(), "fractional total_steps falls back to passed default 10");
-
-        var overRangeFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":4294967297}", 10, true);
-        assertEquals(10, overRangeFrame.totalSteps(), "over-range total_steps falls back to passed default 10");
-
-        var nonNumericFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":\"invalid\"}", 10, true);
-        assertEquals(10, nonNumericFrame.totalSteps(), "non-numeric total_steps falls back to passed default 10");
-
-        var customFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":12}", 10, true);
-        assertEquals(12, customFrame.totalSteps(), "valid custom total_steps is preserved");
+    private static Stream<Arguments> totalStepsVariants() {
+        var valid = Generators.integers(1, 50).next();
+        return Stream.of(
+                            Arguments.of("", 10),
+                            Arguments.of(",\"total_steps\":0", 10),
+                            Arguments.of(",\"total_steps\":-5", 10),
+                            Arguments.of(",\"total_steps\":3.9", 10),
+                            Arguments.of(",\"total_steps\":4294967297", 10),
+                            Arguments.of(",\"total_steps\":\"invalid\"", 10),
+                            Arguments.of(",\"total_steps\":\"" + valid + "\"", 10),
+                            Arguments.of(",\"total_steps\":" + valid, valid));
     }
 
     @Test
@@ -332,7 +337,7 @@ class StateDialogueTest {
     }
 
     @Test
-    @DisplayName("a dialogue over a two-aspect list shows 2 in intro and exactly those two aspects in overview")
+    @DisplayName("a dialogue over a two-aspect list shows 2 in intro and names exactly those two aspects in overview")
     void dialogueFollowsInjectedAspectList() {
         var aspects = List.of(OnboardingAspect.LANGUAGE, OnboardingAspect.HARNESSES);
         var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 2, null, Map.of(),
@@ -342,12 +347,36 @@ class StateDialogueTest {
                                                 new PrintWriter(new StringWriter()), "en", stateId), aspects);
 
         var content = dialogue.content(frame);
-        assertTrue(content.getFirst().startsWith("2 steps."), "intro says 2 steps");
-        var overviewLines = content.subList(1, content.size());
-        assertEquals(2, overviewLines.size(), "overview should list exactly the two injected aspects");
+        assertAll(
+                            () -> assertTrue(content.getFirst().startsWith("2 steps."), "intro says 2 steps"),
+                            () -> assertEquals(3, content.size(), "intro plus exactly two aspect rows"),
+                            () -> assertTrue(content.get(1).contains(
+                                                MessageCatalogue.format("en", OnboardingAspect.LANGUAGE.stepNameKey(),
+                                                                    Map.of())), content.toString()),
+                            () -> assertTrue(content.get(2).contains(
+                                                MessageCatalogue.format("en", OnboardingAspect.HARNESSES.stepNameKey(),
+                                                                    Map.of())), content.toString()));
+    }
 
+    @Test
+    @DisplayName("a state of an aspect the run does not inject names no step, never Done")
+    void excludedAspectNamesNoStep() {
+        var aspects = List.of(OnboardingAspect.LANGUAGE, OnboardingAspect.HARNESSES);
+        var dialogue = new StateDialogue(new FakeSource(mode()), new PrintWriter(new StringWriter()), "en",
+                            stateId -> new ChoicePrompt(new BufferedReader(new StringReader("")),
+                                                new PrintWriter(new StringWriter()), "en", stateId), aspects);
         var rolesFrame = new StateDialogue.Frame("roles.review", "operator_wait", 3, 2, null, Map.of(), List.of());
-        assertEquals("Done", dialogue.stepName(rolesFrame), "aspect outside injected list maps to Done");
+
+        assertAll(
+                            () -> assertEquals("", dialogue.stepName(rolesFrame)),
+                            () -> assertEquals("[3/2] Give every role a harness and a model",
+                                                dialogue.stepLine(rolesFrame)),
+                            () -> assertFalse(dialogue.stepLine(rolesFrame).contains("Done"),
+                                                dialogue.stepLine(rolesFrame)),
+                            () -> assertEquals("Language", dialogue.stepName(new StateDialogue.Frame(
+                                                "language.choose", "operator_wait", 1, 2, null, Map.of(), List.of()))),
+                            () -> assertEquals("Done", dialogue.stepName(new StateDialogue.Frame(
+                                                COMPLETED, "completed", 2, 2, null, Map.of(), List.of()))));
     }
 
     @Test

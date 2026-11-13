@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -25,7 +26,10 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
@@ -367,21 +371,20 @@ class ProjectCommandTest {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
-                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue",
+                                     "current_step":"Identity","step_number":2,"total_steps":10}
                                     """);
-            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
-                if (request.bodyText().contains("\"link\"")) {
-                    response.json(200, """
-                                        {"project_id":"cui-parent","state":"project.completed","step":10,
-                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
-                                        """);
-                } else {
-                    response.json(200, """
-                                        {"project_id":"cui-parent","state":"project.identity","step":2,
-                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
-                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
-                                        """);
-                }
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.identity","step":2,
+                                     "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                     "links":{"set":{"href":"/api/v1/entries/ent-cui-parent/links/set","method":"POST"}}}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent/links/set".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -393,7 +396,7 @@ class ProjectCommandTest {
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(output.contains("Id"), output),
                             () -> assertTrue(output.contains("cui-parent"), output),
-                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(output.contains("The project is ready"), output),
                             () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
                                                 "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
         );
@@ -435,21 +438,20 @@ class ProjectCommandTest {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
-                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue",
+                                     "current_step":"Identity","step_number":2,"total_steps":10}
                                     """);
-            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
-                if (request.bodyText().contains("\"link\"")) {
-                    response.json(200, """
-                                        {"project_id":"cui-parent","state":"project.completed","step":10,
-                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
-                                        """);
-                } else {
-                    response.json(200, """
-                                        {"project_id":"cui-parent","state":"project.identity","step":2,
-                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":true,
-                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
-                                        """);
-                }
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.identity","step":2,
+                                     "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":true,
+                                     "links":{"set":{"href":"/api/v1/entries/ent-cui-parent/links/set","method":"POST"}}}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent/links/set".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -459,7 +461,7 @@ class ProjectCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(output.contains("The project is ready"), output),
                             () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
                                                 "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
         );
@@ -473,11 +475,12 @@ class ProjectCommandTest {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
-                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue",
+                                     "current_step":"Identity","step_number":2,"total_steps":10}
                                     """);
-            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
                 response.json(200, """
-                                    {"project_id":"cui-parent","state":"project.completed","step":10,
+                                    {"state":"project.completed","step":10,
                                      "total_steps":10,"summary":"cui-parent is ready","links":{}}
                                     """);
             } else {
@@ -561,16 +564,11 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project add names the project after the checkout directory when the runtime names neither")
-    void projectAddFallsBackToTheCheckoutDirectoryName() throws Exception {
-        var server = fixture.start((request, response) -> {
+    @DisplayName("project add reports a start that names no entry as unreadable")
+    void projectAddWithoutAnEntryReportsUnreadable() throws Exception {
+        fixture.start((request, response) -> {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, "{\"status\":\"started\"}");
-            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
-                response.json(200, """
-                                    {"project_id":"cui-parent","state":"project.completed","step":10,
-                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
-                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -579,10 +577,9 @@ class ProjectCommandTest {
         int code = execute("project", "add", "/git/cui-parent", "--pilot");
 
         assertAll(
-                            () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(server.requests().stream()
-                                                                    .anyMatch(r -> "/api/v1/projects/cui-parent/setup".equals(r.target())),
-                                                "the run is read at the directory name"));
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("could not be read"), err.toString())
+        );
     }
 
     @Test
@@ -632,6 +629,164 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project add --no-input at a later choice state exits 3, prints the catalogue and closes the entry")
+    void projectAddNoInputAtALaterStateClosesTheEntry() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.consent","step":1,"total_steps":10,
+                                     "links":{"yes":{"href":"/api/v1/entries/ent-cui-parent/links/yes"}}}
+                                    """);
+            } else if (request.target().endsWith("/abandon")) {
+                response.json(200, "{\"status\":\"abandoned\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--no-input", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
+                            () -> assertTrue(out.toString().contains(
+                                                "The project setup needs"), out.toString()),
+                            () -> assertTrue(out.toString().contains("Look at the checkout"), out.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                                    .anyMatch(r -> "DELETE".equals(r.method())
+                                                                                        && r.target().endsWith("/abandon")),
+                                                () -> "the entry is closed: " + server.requests())
+        );
+    }
+
+    @Test
+    @DisplayName("project add sends the contract's body: the absolute checkout path and the build environment")
+    void projectAddSendsTheContractBody() throws Exception {
+        var posted = new AtomicReference<String>("");
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                posted.set(request.bodyText());
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,"total_steps":10,
+                                     "summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var checkout = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("project", "add", checkout, "--pilot", "--no-input");
+
+        var body = posted.get();
+        var parsed = JsonTree.asObject(JsonTree.parse(body));
+        var buildEnvironment = parsed != null && parsed.get("build_environment") instanceof Map<?, ?> env
+                            ? env : Map.of();
+        assertAll(
+                            () -> assertEquals(0, code, out.toString()),
+                            () -> assertNotNull(parsed, body),
+                            () -> assertTrue(buildEnvironment.containsKey("PM_MCP_BASE"), body),
+                            () -> assertEquals(Path.of(checkout).toAbsolutePath().toString(),
+                                                String.valueOf(parsed.get("path")), body),
+                            () -> assertFalse(parsed.containsKey("pilot"), body)
+        );
+    }
+
+    @Test
+    @DisplayName("a release without --yes prints the block and asks again on anything but y or n")
+    void releaseWithoutYesPrintsTheBlockAndReAsks() throws Exception {
+        var releases = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","display_name":"cui-parent","readiness":"ready",
+                                     "active_plans_count":3,"active_epics_count":1}
+                                    """);
+            } else if (request.target().endsWith("/release")) {
+                releases.incrementAndGet();
+                response.json(200, "{\"status\":\"released\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput(Generators.letterStrings(4, 12).next() + "\n"
+                            + Generators.letterStrings(4, 12).next() + "\ny\n",
+                            "project", "release", "cui-parent");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(1, releases.get(), "the release is sent once"),
+                            () -> assertTrue(output.contains("What ends"), output),
+                            () -> assertTrue(output.contains("3 plans, each ended as released and archived; 1 epic"), output),
+                            () -> assertTrue(output.contains("What stays"), output),
+                            () -> assertTrue(output.contains("Afterwards"), output),
+                            () -> assertTrue(output.contains("Type y or n."), output),
+                            () -> assertTrue(output.contains("Reason"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("a release with nothing running names no What ends, and ? explains")
+    void releaseWithNothingRunningExplains() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","display_name":"cui-parent","readiness":"ready",
+                                     "active_plans_count":0,"active_epics_count":0}
+                                    """);
+            } else if (request.target().endsWith("/release")) {
+                response.json(200, "{\"status\":\"released\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput(Generators.letterStrings(4, 12).next() + "\n?\ny\n",
+                            "project", "release", "cui-parent");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertFalse(output.contains("What ends"), output),
+                            () -> assertTrue(output.contains("What stays"), output),
+                            () -> assertTrue(output.contains("Releasing ends every plan and epic"), output));
+    }
+
+    @Test
+    @DisplayName("an interactive unenrol prints what ends and what stays before it asks")
+    void unenrolPrintsItsBlock() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/unenrol")) {
+                response.json(200, "{\"status\":\"unenrolled\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("y\n", "project", "unenrol", "legacy-portal");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Unenrol legacy-portal?"), output),
+                            () -> assertTrue(output.contains("What ends"), output),
+                            () -> assertTrue(output.contains("Afterwards"), output),
+                            () -> assertTrue(server.requests().stream().anyMatch(r -> r.target().endsWith("/unenrol")),
+                                                server.requests().toString()));
+    }
+
+    @Test
     @DisplayName("project unenrol treats a closed input as a declined confirmation and sends nothing")
     void projectUnenrolWithClosedInputSendsNothing() throws Exception {
         var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"unenrolled\"}"));
@@ -648,7 +803,13 @@ class ProjectCommandTest {
     @Test
     @DisplayName("project release treats a closed input as a declined confirmation and sends nothing")
     void projectReleaseWithClosedInputSendsNothing() throws Exception {
-        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"released\"}"));
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"my-app\",\"display_name\":\"my-app\"}");
+            } else {
+                response.json(200, "{\"status\":\"released\"}");
+            }
+        });
 
         int code = executeWithInput("", "project", "release", "my-app");
 
@@ -688,7 +849,9 @@ class ProjectCommandTest {
     @DisplayName("project release marks project released")
     void projectRelease() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else if ("/api/v1/projects/old-app/release".equals(request.target())) {
                 response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
             } else {
                 response.send(404, null, "");
@@ -735,12 +898,20 @@ class ProjectCommandTest {
     @Test
     @DisplayName("project release without --yes prompts confirmation; declining sends nothing")
     void projectReleaseWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
-        var server = fixture.start((request, response) -> response.json(200, "{}"));
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else {
+                response.json(200, "{}");
+            }
+        });
 
         int code = executeWithInput("n\n", "project", "release", "old-app", "--reason", "my-reason");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                            () -> assertTrue(server.requests().stream()
+                                                                    .noneMatch(request -> request.target().endsWith("/release")),
+                                                "no release is sent when declined: " + server.requests()),
                             () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
         );
     }
@@ -749,19 +920,23 @@ class ProjectCommandTest {
     @DisplayName("project release interactive without --reason asks reason and records it")
     void projectReleaseInteractiveWithoutReasonAsksReason() throws Exception {
         var server = fixture.start((request, response) -> {
-            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else if ("/api/v1/projects/old-app/release".equals(request.target())) {
                 response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = executeWithInput("my custom reason\ny\n", "project", "release", "old-app");
+        var reason = Generators.letterStrings(4, 12).next();
+        int code = executeWithInput(reason + "\ny\n", "project", "release", "old-app");
+        var releases = server.requests().stream().filter(request -> request.target().endsWith("/release")).toList();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertEquals(1, server.requests().size()),
-                            () -> assertTrue(server.requests().get(0).bodyText().contains("my custom reason"),
-                                                server.requests().get(0).bodyText()),
+                            () -> assertEquals(1, releases.size(), server.requests().toString()),
+                            () -> assertTrue(releases.getFirst().bodyText().contains(reason),
+                                                releases.getFirst().bodyText()),
                             () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
         );
     }

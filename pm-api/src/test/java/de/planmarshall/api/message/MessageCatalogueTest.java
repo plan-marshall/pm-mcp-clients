@@ -17,8 +17,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.TreeSet;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
+@EnableGeneratorController
 class MessageCatalogueTest {
 
     @Test
@@ -116,5 +123,40 @@ class MessageCatalogueTest {
         assertAll(
                 () -> assertEquals("Helles Theme", de.get("dev.theme.light")),
                 () -> assertEquals("Dunkles Theme", de.get("dev.theme.dark")));
+    }
+
+    @Test
+    @DisplayName("Names a link that opens a new tab and the pull request chip in both languages")
+    void shouldCarryTheLinkAndPullRequestChipTexts() {
+        var number = String.valueOf(Generators.integers(1, 999).next());
+
+        assertAll(
+                () -> assertEquals("opens in a new tab",
+                        MessageCatalogue.getMessages("en", "common").get("common.link.new_tab")),
+                () -> assertEquals("öffnet in einem neuen Tab",
+                        MessageCatalogue.getMessages("de", "common").get("common.link.new_tab")),
+                () -> assertEquals("PR #" + number,
+                        MessageCatalogue.format("en", "common.pull_request.chip", Map.of("number", number))),
+                () -> assertEquals("PR #" + number,
+                        MessageCatalogue.format("de", "common.pull_request.chip", Map.of("number", number))));
+    }
+
+    @ParameterizedTest(name = "common.kind.{0} is ''{1}'' and ''{2}''")
+    @DisplayName("Carries the seven kind words of texts-and-languages.adoc, kinds")
+    @CsvSource({
+            "project, project, Projekt",
+            "epic, epic, Epic",
+            "plan, plan, Plan",
+            "side_job, side job, Nebenarbeit",
+            "decision, decision, Entscheidung",
+            "report, report, Bericht",
+            "machine, machine, Maschine"
+    })
+    void shouldCarryTheKindWords(String kind, String english, String german) {
+        var key = "common.kind." + kind;
+
+        assertAll(
+                () -> assertEquals(english, MessageCatalogue.getMessages("en", "common").get(key)),
+                () -> assertEquals(german, MessageCatalogue.getMessages("de", "common").get(key)));
     }
 }

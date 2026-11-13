@@ -1,0 +1,15 @@
+# Screen captures for PLAN-128: cleanup, project add, the release block, the step overview, config cleanup
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+#
+# `config cleanup` is the durations editor of 26-cleanup.adoc#t-durations. The first pair shows the
+# list it opens (the machine's six durations); the second pair records an archived-plans duration
+# through the one shell command the design names, with its result line.
+
+PLAN-128-config-cleanup-120x30-en | fully-onboarded | | config cleanup | q\n | 120x30 | en_US.UTF-8 | - |
+PLAN-128-config-cleanup-120x30-de | fully-onboarded | | config cleanup | v\n | 120x30 | de_DE.UTF-8 | - |
+
+PLAN-128-config-cleanup-record-120x30-en | fully-onboarded | | config cleanup --plans 60 --yes |  | 120x30 | en_US.UTF-8 | - |
+PLAN-128-config-cleanup-record-120x30-de | fully-onboarded | | config cleanup --plans 60 --yes |  | 120x30 | de_DE.UTF-8 | - |
+
+PLAN-128-config-cleanup-project-120x30-en | fully-onboarded | | config cleanup --project . | q\n | 120x30 | en_US.UTF-8 | - |
+PLAN-128-config-cleanup-project-120x30-de | fully-onboarded | | config cleanup --project . | v\n | 120x30 | de_DE.UTF-8 | - |

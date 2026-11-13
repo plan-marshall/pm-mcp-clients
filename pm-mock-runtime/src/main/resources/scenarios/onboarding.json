@@ -2818,6 +2818,111 @@
         "set": {
           "method": "POST",
           "href": "/api/v1/onboarding/store/set",
+          "next": "settings.store-credential"
+        }
+      }
+    },
+    "settings.store-credential": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.store-credential",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The token is stored; checking the providers that use it",
+          "current": "os"
+        },
+        "links": [
+          {
+            "id": "stored",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/store-credential",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "stored": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/store-credential",
+          "next": "settings.verify-providers"
+        }
+      }
+    },
+    "settings.verify-providers": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.verify-providers",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Providers \u00b7 Checking the providers that use github",
+          "kind": "verify_providers",
+          "current": "os",
+          "key": "github",
+          "providers": [
+            {
+              "provider": "github",
+              "ready": true
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/verify-providers",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/verify-providers",
+          "next": "providers.verified"
+        }
+      }
+    },
+    "providers.verified": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.verified",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The provider check is done",
+          "current": "os",
+          "plans": "fix-relay"
+        },
+        "links": [
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/verify-providers/done",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/verify-providers/done",
           "next": "settings.choose"
         }
       }

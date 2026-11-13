@@ -1401,7 +1401,7 @@
   }
 
   .work-card--epic .work-card__glyph {
-    color: var(--color-epic);
+    color: var(--color-kind-epic);
   }
 
   .work-card__title {
@@ -1601,8 +1601,8 @@
   }
 
   .badge--epic {
-    background-color: var(--color-epic-subtle);
-    color: var(--color-epic-text);
+    background-color: var(--color-bg-subtle);
+    color: var(--color-kind-epic);
   }
 
   .badge--phase {

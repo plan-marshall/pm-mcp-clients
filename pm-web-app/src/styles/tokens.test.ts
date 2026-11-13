@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { contrastRatio, deltaE00, hueDistance, toOklch } from '../test/colourMetrics';
 
 /**
  * The design system v2 contract of `tokens.css` (VD-P-02, VD-P-03, VD-P-04).
@@ -21,6 +22,7 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
   '--ui-icon-url', // Component-local mask-image URL bound inline on Icon
   '--workflow-icon-size', // Component-local size bound inline on WorkflowIcon
   '--workflow-icon-url', // Component-local mask-image URL bound inline on WorkflowIcon
+  '--compose-lines', // Component-local line count Compose sets from script on its text area
 ]);
 
 /**
@@ -53,7 +55,9 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-danger-subtle': { dark: '#2C1517', light: '#FDECEA' },
   '--color-success': { dark: '#3FB37F', light: '#1E7A4E' },
   '--color-neutral': { dark: '#8B95A7', light: '#7A808B' },
-  '--color-epic': { dark: '#B58CFF', light: '#7A3FD1' },
+  '--color-kind-project': { dark: '#ADCD4A', light: '#606700' },
+  '--color-kind-epic': { dark: '#EF8BC5', light: '#BB2D8C' },
+  '--color-kind-plan': { dark: '#3BCDDC', light: '#007785' },
   /** The ink on a brand-coloured fill; the proposal names the brand fill but not the text on it. */
   '--color-on-brand': { dark: '#0E1116', light: '#FFFFFF' },
   '--color-overlay': { dark: 'rgb(0 0 0 / 0.7)', light: 'rgb(15 23 42 / 0.5)' },
@@ -154,8 +158,6 @@ const ALIASES: Record<string, string> = {
   '--color-danger-border': '--color-danger',
   '--color-danger-text': '--color-danger',
   '--color-danger-contrast': '--color-on-brand',
-  '--color-epic-subtle': '--color-bg-subtle',
-  '--color-epic-text': '--color-epic',
   '--color-star': '--color-attention-text',
   '--shadow-sm': '--shadow-1',
   '--shadow-md': '--shadow-2',
@@ -203,7 +205,7 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['--color-running', '--color-bg-surface'],
   ['--color-danger', '--color-bg-surface'],
   ['--color-success', '--color-bg-surface'],
-  ['--color-epic', '--color-bg-surface'],
+  ['--color-kind-epic', '--color-bg-subtle'],
 ];
 
 /** The state dots and edges, which are graphical objects and owe WCAG's 3:1, not the text ratio. */
@@ -213,13 +215,33 @@ const STATE_DOTS = [
   '--color-danger',
   '--color-success',
   '--color-neutral',
-  '--color-epic',
 ];
+
+/** The tints of the three tinted kinds (`components-tags.adoc`, The Three Kind Tints). */
+const KIND_TINTS = ['--color-kind-project', '--color-kind-epic', '--color-kind-plan'];
+
+/**
+ * The colours a kind tint must keep clear of: the state tones, the brand and the mascot's orange and
+ * gold. The state tones are `STATE_DOTS` itself, so a state token added there is checked here too.
+ */
+const TINT_NEIGHBOURS = [...STATE_DOTS, '--color-brand', '--color-mascot-fur', '--color-mascot-gold'];
+
+/** Every ground a kind icon stands on, the selected row's brand-subtle among them. */
+const TINT_GROUNDS = [...SURFACES, '--color-brand-subtle'];
 
 /** The dotted pairs of the state colours on every surface. */
 const DOT_PAIRS: Array<[string, string]> = SURFACES.flatMap((surface) =>
   STATE_DOTS.map((dot): [string, string] => [dot, surface]),
 );
+
+/**
+ * @param rows measurements, each with its raw `value`
+ * @param minimum the least value that passes
+ * @returns the rows whose raw value is below the minimum, with the value rounded for the report only
+ */
+function belowMinimum<T extends { value: number }>(rows: readonly T[], minimum: number): T[] {
+  return rows.filter((row) => row.value < minimum).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
+}
 
 /**
  * @param css the stylesheet
@@ -323,46 +345,6 @@ function resolveAliases(palette: Record<string, string>): Record<string, string>
     }
   }
   return resolved;
-}
-
-/**
- * @param colour a `#rrggbb` literal
- * @returns its channels
- */
-function rgb(colour: string): { r: number; g: number; b: number } {
-  const match = /^#([0-9a-fA-F]{6})$/.exec(colour.trim());
-  if (!match) throw new Error(`Not a six-digit hex colour: ${colour}`);
-  return {
-    r: parseInt(match[1].slice(0, 2), 16),
-    g: parseInt(match[1].slice(2, 4), 16),
-    b: parseInt(match[1].slice(4, 6), 16),
-  };
-}
-
-/**
- * @param colour a `#rrggbb` literal
- * @returns the WCAG 2.1 relative luminance
- */
-function luminance(colour: string): number {
-  const { r, g, b } = rgb(colour);
-  const linear = (channel: number): number => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-}
-
-/**
- * @param foreground the text or state colour
- * @param background the surface it is rendered on
- * @returns the WCAG 2.1 contrast ratio
- */
-function contrast(foreground: string, background: string): number {
-  const a = luminance(foreground);
-  const b = luminance(background);
-  const lighter = Math.max(a, b);
-  const darker = Math.min(a, b);
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 /**
@@ -512,22 +494,107 @@ describe('tokens.css: the design system v2 contract', () => {
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
     it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = TEXT_PAIRS.map(([foreground, background]) => {
-        const ratio = contrast(palette[foreground], palette[background]);
-        return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
-      }).filter((pair) => pair.ratio < 4.5);
+      const failures = belowMinimum(
+        TEXT_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        4.5,
+      );
 
       expect(failures).toEqual([]);
     });
 
     it.each(['light', 'dark'] as const)('keeps every state dot at or above 3:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = DOT_PAIRS.map(([foreground, background]) => {
-        const ratio = contrast(palette[foreground], palette[background]);
-        return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
-      }).filter((pair) => pair.ratio < 3);
+      const failures = belowMinimum(
+        DOT_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        3,
+      );
 
       expect(failures).toEqual([]);
+    });
+  });
+
+  describe('the three kind tints keep clear of every other colour (components-tags.adoc, kind-tints)', () => {
+    const palettes = {
+      light: resolveAliases({ ...themes.root, ...themes.light }),
+      dark: resolveAliases({ ...themes.root, ...themes.dark }),
+    };
+    const tintPairs = KIND_TINTS.flatMap((tint, index) =>
+      KIND_TINTS.slice(index + 1).map((other): [string, string] => [tint, other]),
+    );
+
+    it.each(['light', 'dark'] as const)(
+      'keeps a ΔE00 of at least 20 to each state, brand and mascot colour in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            TINT_NEIGHBOURS.map((other) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+          ),
+          20,
+        );
+
+        expect(failures).toEqual([]);
+      },
+    );
+
+    it.each(['light', 'dark'] as const)(
+      'keeps an OKLCH hue at least 30° from each of those that has a hue in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const hued = TINT_NEIGHBOURS.filter((other) => toOklch(palette[other]).c > 0.06);
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            hued.map((other) => ({
+              tint,
+              other,
+              value: hueDistance(toOklch(palette[tint]).h, toOklch(palette[other]).h),
+            })),
+          ),
+          30,
+        );
+
+        expect(hued).not.toContain('--color-neutral');
+        expect(failures).toEqual([]);
+      },
+    );
+
+    it.each(['light', 'dark'] as const)('keeps a ΔE00 of at least 30 between the tints in the %s theme', (theme) => {
+      const palette = palettes[theme];
+      const failures = belowMinimum(
+        tintPairs.map(([tint, other]) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+        30,
+      );
+
+      expect(failures).toEqual([]);
+    });
+
+    it.each(['light', 'dark'] as const)('keeps every tint at or above 3:1 on every ground in the %s theme', (theme) => {
+      const palette = palettes[theme];
+      const failures = belowMinimum(
+        KIND_TINTS.flatMap((tint) =>
+          TINT_GROUNDS.map((ground) => ({ tint, ground, value: contrastRatio(palette[tint], palette[ground]) })),
+        ),
+        3,
+      );
+
+      expect(failures).toEqual([]);
+    });
+
+    it('declares none of the retired epic tokens in :root or any theme block', () => {
+      const retired = ['--color-epic', '--color-epic-subtle', '--color-epic-text'];
+      const declaredRetired = Object.entries(themes).flatMap(([block, declared]) =>
+        retired.filter((name) => name in declared).map((name) => `${block}: ${name}`),
+      );
+
+      expect(declaredRetired).toEqual([]);
     });
   });
 });
