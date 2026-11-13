@@ -101,7 +101,7 @@ An 8 px dot in the tone of the state, followed by the state word in `--color-tex
 
 The word is the shared display word of the state (`state.<kind>.<value>`, through the display layer's `displayState`), never a wire value and never an area's own word for the same state (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, One Word per Value]). In a list the state takes a slot of fixed width, so the dots of the rows stand one under the other.
 
-Source and surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, tests in `StatusLabel.test.ts`; the props are `tone` (`running`, `attention`, `neutral`, `danger`, `success`) and `label`.
+Source and surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, tests in `StatusLabel.test.ts`; the props are `tone` (`running`, `attention`, `neutral`, `danger`, `success`), `label` and `slot`, the fixed state slot a list asks for.
 
 [#reason-badge]
 === ReasonBadge
@@ -112,7 +112,7 @@ A pill (`--radius-full`) that starts with `!` and names why the object needs the
 
 * *The reasons* are the closed list of the runtime, as link:../shared/needs-and-find.adoc#reasons[What Waits, The Kinds of an Item Are Reasons] names it and in its order, and `completion_review` for an epic whose completion review waits for the operator. Each has one word, its key `overview.needs.<reason>`; this part repeats none of them, so a reason the runtime adds needs no edit here.
 * *Its text* is one key, `overview.needs.badge`, with the count and the reason's word as arguments; the `!` comes from the catalogue, never from the view.
-* *Its tone*: `--color-attention-subtle` with `--color-attention-text` for every reason, and `--color-danger-subtle` with `--color-danger` for the two that mean the work cannot go on as it is: `landing_failed` and `integrity_hold`.
+* *Its tone*: `--color-attention-subtle` with `--color-attention-text` for every reason, and `--color-danger-subtle` with `--color-danger` for the two that mean the work cannot go on as it is: `landing_failed` and `integrity_pause`.
 * *The first reason* stands in the badge, in the order the runtime serves the reasons; the count says how many there are.
 * *A row that is itself the decision* (a row of kind Decision) carries no `! decision`: its kind already says what it is. A waiver request is a Decision row too and carries `! waiver`, so it is told from a decision on the row, without opening it. A plan or an epic that waits for a decision carries `! decision`.
 * *A failed or stalled object* carries its `ReasonBadge` beside its `StatusLabel` wherever the runtime lists a reason, so it stands out although its state is only a dot.
@@ -312,7 +312,7 @@ Chip(id) · PrChip · head links · PhaseLabel · StatusLabel · state sentence
 == One Meaning per Colour
 
 * *State tones* are the dot of `StatusLabel` (<<status-label>>): running blue, waiting for you and held amber, failed red, done green, the rest neutral. A state is never drawn in another component's colour.
-* *Reasons* are amber, and red only for `landing_failed` and `integrity_hold` (<<reason-badge>>).
+* *Reasons* are amber, and red only for `landing_failed` and `integrity_pause` (<<reason-badge>>).
 * *An attention count* is amber wherever it stands; a plain count is neutral (<<count-badge>>).
 * *The brand violet* marks the one primary act of a screen, the focus ring, and the selected item. It is never an id, a count, a marker, a tag or a kind.
 * *A kind's tint* is on its icon only (<<kind-tints>>).

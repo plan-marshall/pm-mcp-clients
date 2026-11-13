@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -158,5 +159,42 @@ class MessageCatalogueTest {
         assertAll(
                 () -> assertEquals(english, MessageCatalogue.getMessages("en", "common").get(key)),
                 () -> assertEquals(german, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @ParameterizedTest(name = "phase.name.{0} is ''{0}'' in both languages")
+    @DisplayName("Carries the six phase words of texts-and-languages.adoc, phases")
+    @ValueSource(strings = {"init", "refine", "outline", "plan", "execute", "finalize"})
+    void shouldCarryThePhaseWords(String phase) {
+        var key = "phase.name." + phase;
+
+        assertAll(
+                () -> assertEquals(phase, MessageCatalogue.getMessages("en", "common").get(key)),
+                () -> assertEquals(phase, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @ParameterizedTest(name = "role.name.{0} is ''{0}'' in both languages")
+    @DisplayName("Carries the role words of texts-and-languages.adoc, phases and roles")
+    @ValueSource(strings = {"implement", "architecture", "outline", "enrich", "decompose", "settings"})
+    void shouldCarryTheRoleWords(String role) {
+        var key = "role.name." + role;
+
+        assertAll(
+                () -> assertEquals(role, MessageCatalogue.getMessages("en", "common").get(key)),
+                () -> assertEquals(role, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @Test
+    @DisplayName("Carries the three marker words of components-tags.adoc, markers")
+    void shouldCarryTheMarkerWords() {
+        var en = MessageCatalogue.getMessages("en", "common");
+        var de = MessageCatalogue.getMessages("de", "common");
+
+        assertAll(
+                () -> assertEquals("recommended", en.get("common.marker.recommended")),
+                () -> assertEquals("empfohlen", de.get("common.marker.recommended")),
+                () -> assertEquals("default", en.get("common.marker.default")),
+                () -> assertEquals("Standard", de.get("common.marker.default")),
+                () -> assertEquals("this one", en.get("common.marker.this_one")),
+                () -> assertEquals("dieses Gerät", de.get("common.marker.this_one")));
     }
 }

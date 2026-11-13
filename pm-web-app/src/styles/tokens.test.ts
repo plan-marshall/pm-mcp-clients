@@ -54,6 +54,7 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-danger': { dark: '#F25F5C', light: '#C0362F' },
   '--color-danger-subtle': { dark: '#2C1517', light: '#FDECEA' },
   '--color-success': { dark: '#3FB37F', light: '#1E7A4E' },
+  '--color-success-subtle': { dark: '#15271D', light: '#E9F6EE' },
   '--color-neutral': { dark: '#8B95A7', light: '#7A808B' },
   '--color-kind-project': { dark: '#ADCD4A', light: '#606700' },
   '--color-kind-epic': { dark: '#EF8BC5', light: '#BB2D8C' },
@@ -146,7 +147,6 @@ const ALIASES: Record<string, string> = {
   '--color-accent': '--color-brand',
   '--color-accent-hover': '--color-brand-hover',
   '--color-success-hover': '--color-success',
-  '--color-success-subtle': '--color-bg-subtle',
   '--color-success-border': '--color-success',
   '--color-success-text': '--color-success',
   '--color-warning': '--color-attention',
@@ -201,6 +201,8 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['--color-text-primary', '--color-attention-subtle'],
   ['--color-danger', '--color-danger-subtle'],
   ['--color-success', '--color-success-subtle'],
+  ['--color-text-primary', '--color-success-subtle'],
+  ['--color-text-secondary', '--color-success-subtle'],
   ['--color-star', '--color-bg-surface'],
   ['--color-running', '--color-bg-surface'],
   ['--color-danger', '--color-bg-surface'],
@@ -595,6 +597,37 @@ describe('tokens.css: the design system v2 contract', () => {
       );
 
       expect(declaredRetired).toEqual([]);
+    });
+  });
+
+  describe('the reason tones (components-tags.adoc, reason-badge)', () => {
+    /** The two pairs a `ReasonBadge` draws: amber for every reason, red for the two that stop work. */
+    const REASON_TONE_PAIRS: Array<[string, string]> = [
+      ['--color-attention-text', '--color-attention-subtle'],
+      ['--color-danger', '--color-danger-subtle'],
+    ];
+
+    it('draws each tone from the pair audited below', () => {
+      const source = fs.readFileSync(path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'), 'utf8');
+
+      expect(source).toContain('background-color: var(--color-attention-subtle)');
+      expect(source).toContain('color: var(--color-attention-text)');
+      expect(source).toContain('background-color: var(--color-danger-subtle)');
+      expect(source).toContain('color: var(--color-danger)');
+    });
+
+    it.each(['light', 'dark'] as const)('keeps both pairs at or above 4.5:1 in the %s theme', (theme) => {
+      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
+      const failures = belowMinimum(
+        REASON_TONE_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        4.5,
+      );
+
+      expect(failures).toEqual([]);
     });
   });
 });
