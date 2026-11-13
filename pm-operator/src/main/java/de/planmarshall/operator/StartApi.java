@@ -51,9 +51,6 @@ final class StartApi {
     private static final String CHAT = "chat";
     private static final String RECIPES = "/api/v1/recipes";
     private static final String DECOMPOSITION = "/decomposition";
-    private static final String KEY_MESSAGE = "message";
-    /** The member of an error body that names its code. */
-    private static final String KEY_ERROR = "error";
     private static final String KEY_RECIPES = "recipes";
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
@@ -361,26 +358,6 @@ final class StartApi {
         throw new OperatorRefusedException(verb, response);
     }
 
-    private static String messageOf(HttpResponse response) {
-        var message = bodyMember(response, KEY_MESSAGE);
-        return message != null ? OutputSafety.stripControlSequences(message) : "HTTP " + response.status();
-    }
-
-    private static @Nullable ApiErrorCode codeOf(HttpResponse response) {
-        var wire = bodyMember(response, KEY_ERROR);
-        return wire == null ? null : ApiErrorCode.fromWireOrNull(wire);
-    }
-
-    /** @return the string member of an error body, or {@code null} when the body has none or is no JSON */
-    private static @Nullable String bodyMember(HttpResponse response, String key) {
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            return map == null ? null : JsonTree.string(map, key);
-        } catch (IOException _) {
-            return null;
-        }
-    }
-
     /**
      * The bound of the wait for the role's reply: the chat is read at most {@code reads} times, with
      * {@code pause} between two reads.
@@ -405,6 +382,9 @@ final class StartApi {
     /** An act the runtime refused; the dialogue prints it and asks again. */
     static final class StartActException extends RuntimeException {
         private static final long serialVersionUID = 1L;
+        private static final String KEY_MESSAGE = "message";
+        /** The member of an error body that names its code. */
+        private static final String KEY_ERROR = "error";
 
         private final @Nullable ApiErrorCode code;
 
@@ -423,6 +403,26 @@ final class StartApi {
         @Nullable
         ApiErrorCode code() {
             return code;
+        }
+
+        private static String messageOf(HttpResponse response) {
+            var message = bodyMember(response, KEY_MESSAGE);
+            return message != null ? OutputSafety.stripControlSequences(message) : "HTTP " + response.status();
+        }
+
+        private static @Nullable ApiErrorCode codeOf(HttpResponse response) {
+            var wire = bodyMember(response, KEY_ERROR);
+            return wire == null ? null : ApiErrorCode.fromWireOrNull(wire);
+        }
+
+        /** @return the string member of an error body, or {@code null} when the body has none or is no JSON */
+        private static @Nullable String bodyMember(HttpResponse response, String key) {
+            try {
+                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                return map == null ? null : JsonTree.string(map, key);
+            } catch (IOException _) {
+                return null;
+            }
         }
     }
 }
