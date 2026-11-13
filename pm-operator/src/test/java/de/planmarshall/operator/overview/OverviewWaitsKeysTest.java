@@ -38,6 +38,7 @@ import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OverviewStateStore;
+import de.planmarshall.operator.epicview.EpicViewLevel;
 import de.planmarshall.operator.projects.ProjectsExplorerLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLevel;
@@ -116,11 +117,15 @@ class OverviewWaitsKeysTest {
     }
 
     private void open() throws IOException {
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+    }
+
+    private void open(OverviewFullScreenApp.InitialSelection selection) throws IOException {
         var env = new HashMap<>(fixture.environment());
         env.put("LANG", "en_US.UTF-8");
         var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream());
         var context = new OperatorContext(env, tempDir, true, ClientEnvironment.capture(env), () -> terminal, null);
-        app = new OverviewFullScreenApp(context, terminal, OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
+        app = new OverviewFullScreenApp(context, terminal, selection, clock,
                             new OverviewStateStore(context.stateDirectory()), new ConsoleNoticeBuffer());
         app.loadInitialData(context.runtime(false));
         keys = app.keyHandler();
@@ -236,6 +241,180 @@ class OverviewWaitsKeysTest {
         keys.handle(TuiKeyAction.WAITS);
 
         assertFalse(readsContaining(project).isEmpty(), reads.toString());
+    }
+
+    @Nested
+    @DisplayName("! on the levels of a project, an epic and a plan")
+    class WorkLevels {
+
+        private String quiet;
+        private String epic;
+
+        @BeforeEach
+        void work() {
+            quiet = "quiet-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            needs();
+        }
+
+        private void detail(boolean epicWaits) {
+            bodyOf.put("/api/v1/projects/" + project, "{\"project_id\":\"" + project + "\",\"display_name\":\""
+                                + project + "\",\"plans\":[{\"plan_id\":\"" + plan + "\",\"title\":\"Waiting plan\","
+                                + "\"current_phase\":\"execute\",\"phase_state\":\"waiting\",\"needs_operator_count\":1,"
+                                + "\"needs_operator_kind\":\"held\"},{\"plan_id\":\"" + quiet + "\",\"title\":\"Quiet plan\","
+                                + "\"current_phase\":\"execute\",\"phase_state\":\"running\"}],\"epics\":[{\"epic_id\":\""
+                                + epic + "\",\"title\":\"Waiting epic\",\"running_plans_count\":0,\"staged_plans_count\":0,"
+                                + (epicWaits ? "\"needs_operator_count\":1,\"needs_operator_kind\":\"findings\"," : "")
+                                + "\"plans\":[]}],\"alongside_landings\":[]}");
+        }
+
+        private void openProject(boolean byEpic) throws IOException {
+            open();
+            app.stack().select(project);
+            keys.handle(TuiKeyAction.OPEN);
+            if (byEpic) {
+                keys.handle(TuiKeyAction.SWITCH_VIEW);
+            }
+            reads.clear();
+        }
+
+        private String epicBody(String planId) {
+            return "{\"epic_id\":\"" + epic + "\",\"project_id\":\"" + project + "\",\"display_name\":\"" + project
+                                + "\",\"state\":\"running\",\"auto_start\":true,\"overlap_max_files\":0,\"scope\":1,"
+                                + "\"running\":1,\"workstreams\":[{\"id\":\"WS-1\",\"name\":\"One\",\"open\":true,\"rows\":[{"
+                                + "\"plan_id\":\"" + planId + "\",\"title\":\"" + planId + "\",\"status\":\"running\"}]}],"
+                                + "\"sources\":[],\"landings\":0,\"events\":[]}";
+        }
+
+        private void process() {
+            bodyOf.put("/api/v1/plans/" + plan + "/process", "{\"plan_id\":\"" + plan + "\",\"title\":\"" + plan
+                                + "\",\"project\":{\"project_id\":\"" + project + "\",\"display_name\":\"" + project
+                                + "\"},\"epic\":{\"epic_id\":\"" + epic + "\",\"title\":\"" + epic + "\"},"
+                                + "\"current_phase\":\"execute\",\"phase_state\":\"running\",\"nodes\":[{\"node_id\":"
+                                + "\"execute\",\"title\":\"phase execute\",\"kind\":\"phase\",\"state\":\"running\"}],"
+                                + "\"current_position_path\":[]}");
+        }
+
+        @Test
+        @DisplayName("a held plan of a project opens its hold and reads no decision")
+        void heldPlanOpensItsHold() throws IOException {
+            detail(false);
+            bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-1\",\"plan_id\":\"" + plan
+                                + "\",\"kind\":\"condition\",\"cause\":\"needs a fix\"}]");
+            openProject(false);
+            app.stack().select(plan);
+
+            assertTrue(keys.handle(TuiKeyAction.WAITS));
+
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/holds").isEmpty(), reads.toString());
+            assertEquals(List.of(), readsContaining("/decisions"));
+        }
+
+        @Test
+        @DisplayName("a waiting plan without a hold opens its open decision")
+        void planWithoutHoldOpensItsDecision() throws IOException {
+            detail(false);
+            bodyOf.put("/api/v1/plans/" + plan + "/holds", "[]");
+            bodyOf.put("/api/v1/plans/" + plan + "/decisions", "[{\"id\":\"Q-31\"}]");
+            openProject(false);
+            app.stack().select(plan);
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertFalse(readsContaining("/api/v1/decisions/Q-31").isEmpty(), reads.toString());
+        }
+
+        @Test
+        @DisplayName("a waiting plan whose holds and decisions are unreadable opens its actions")
+        void unreadablePlanOpensItsActions() throws IOException {
+            detail(false);
+            openProject(false);
+            app.stack().select(plan);
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/holds").isEmpty(), reads.toString());
+            assertFalse(readsContaining("/api/v1/decisions?plan=" + plan).isEmpty(), reads.toString());
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/actions").isEmpty(), reads.toString());
+        }
+
+        @Test
+        @DisplayName("a row of a project that waits for nothing moves to the plan that does, and reads nothing")
+        void quietPlanJumps() throws IOException {
+            detail(false);
+            openProject(false);
+            app.stack().select(quiet);
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertEquals(plan, app.stack().selected().id());
+            assertEquals(List.of(), reads);
+        }
+
+        @Test
+        @DisplayName("an epic with open findings opens its findings")
+        void epicWithFindingsOpensThem() throws IOException {
+            detail(true);
+            bodyOf.put("/api/v1/epics/" + epic, epicBody(plan).replace("\"events\":[]",
+                                "\"events\":[],\"findings\":{\"new\":1,\"open\":2,\"kept\":0}"));
+            openProject(true);
+            app.stack().select(epic);
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertFalse(readsContaining("/api/v1/epics/" + epic + "/review?register=findings").isEmpty(),
+                                reads.toString());
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @CsvSource({"without open findings, true", "unreadable, false"})
+        @DisplayName("a waiting epic without findings to open opens its actions")
+        void epicWithoutFindingsOpensActions(String name, boolean readable) throws IOException {
+            detail(true);
+            if (readable) {
+                bodyOf.put("/api/v1/epics/" + epic, epicBody(plan));
+            }
+            openProject(true);
+            app.stack().select(epic);
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertEquals(List.of(), readsContaining("register=findings"), name);
+            assertFalse(readsContaining("/api/v1/epics/" + epic + "/actions").isEmpty(), name + ": " + reads);
+        }
+
+        @Test
+        @DisplayName("a plan row of an epic opens what waits in that plan")
+        void planOfEpic() throws IOException {
+            process();
+            bodyOf.put("/api/v1/epics/" + epic, epicBody(plan));
+            bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-2\",\"plan_id\":\"" + plan
+                                + "\",\"kind\":\"condition\"}]");
+            open(OverviewFullScreenApp.InitialSelection.plan(plan));
+            keys.handle(TuiKeyAction.EPIC);
+            assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+            app.stack().select(EpicViewLevel.PLAN_PREFIX + plan);
+            reads.clear();
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/holds").isEmpty(), reads.toString());
+        }
+
+        @Test
+        @DisplayName("the plan view opens what waits in its own plan, whichever row is selected")
+        void planView() throws IOException {
+            process();
+            bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-3\",\"plan_id\":\"" + plan
+                                + "\",\"kind\":\"condition\"}]");
+            open(OverviewFullScreenApp.InitialSelection.plan(plan));
+            assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
+            reads.clear();
+
+            keys.handle(TuiKeyAction.WAITS);
+
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/holds").isEmpty(), reads.toString());
+        }
     }
 
     @Nested

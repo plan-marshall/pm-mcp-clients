@@ -108,6 +108,57 @@ class TuiLayoutTest {
     }
 
     @Nested
+    @DisplayName("where a menu is drawn")
+    class MenuPlace {
+
+        private List<String> render(TuiMenu menu, int selected) {
+            var base = screen(selected, 3);
+            var withMenu = new TuiScreen(base.breadcrumb(), base.kind(), base.rows(), selected, "", false, true, 0,
+                                null, menu, null);
+            return layout.render(withMenu, 120, 20).stream().map(Object::toString).toList();
+        }
+
+        private static int indexOf(List<String> lines, String text) {
+            for (int index = 0; index < lines.size(); index++) {
+                if (lines.get(index).contains(text)) {
+                    return index;
+                }
+            }
+            throw new AssertionError("no line holds " + text + ": " + lines);
+        }
+
+        private static TuiMenu menu(String subjectRowId) {
+            return TuiMenu.opening(subjectRowId, List.of(TuiMenuEntry.enabled("x", "pause", "Pause the work")));
+        }
+
+        @Test
+        @DisplayName("a menu below its subject row, wherever the selection is")
+        void belowItsSubject() {
+            var lines = render(menu("row-2"), 0);
+
+            assertTrue(indexOf(lines, "Pause the work") > indexOf(lines, "row number 2"), lines.toString());
+        }
+
+        @Test
+        @DisplayName("a menu whose subject row is not shown is drawn below the selected row")
+        void subjectNotShown() {
+            var lines = render(menu("row-hidden"), 1);
+
+            var menuLine = indexOf(lines, "Pause the work");
+            assertTrue(menuLine > indexOf(lines, "row number 1"), lines.toString());
+            assertTrue(menuLine < indexOf(lines, "row number 2"), lines.toString());
+        }
+
+        @Test
+        @DisplayName("a menu of no row without a selection is drawn below the last row")
+        void noSubjectNoSelection() {
+            var lines = render(menu(null), -1);
+
+            assertTrue(indexOf(lines, "Pause the work") > indexOf(lines, "row number 2"), lines.toString());
+        }
+    }
+
+    @Nested
     @DisplayName("width thresholds")
     class Widths {
 

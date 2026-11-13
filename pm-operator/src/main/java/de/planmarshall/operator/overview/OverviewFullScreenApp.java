@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
@@ -116,6 +117,7 @@ public final class OverviewFullScreenApp {
     private static final String NEEDS_LEVEL = "needs";
     private static final String PROJECTS_LEVEL = "projects";
     private static final String PROJECT_LEVEL = "project";
+    private static final String PLAN_LEVEL = "plan";
     private static final String EXPLORER_LEVEL = "explorer";
     private static final Set<String> STRUCTURAL_EVENTS = Set.of("activity.changed", "tokens.changed",
                         "state.entered", "state.left", "instance.changed", "needs_operator.changed", "reset");
@@ -803,11 +805,22 @@ public final class OverviewFullScreenApp {
     }
 
     boolean fetchPlan(RuntimeClient runtime, String planId, @Nullable EndedInfo ended) {
+        return readPlan(runtime, planId, ended) == null;
+    }
+
+    /**
+     * Opens a plan's view as a level of the full-screen view.
+     *
+     * @return {@code null} when the runtime served the plan's process and its level was opened, else
+     *         the refusal, for the caller that has no other way to open the row to name
+     */
+    @Nullable
+    LoadRefusal readPlan(RuntimeClient runtime, String planId, @Nullable EndedInfo ended) {
         try {
             var path = PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId) + "/process";
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() != 200) {
-                return false;
+                return LoadRefusal.of(locale, response, PLAN_LEVEL);
             }
             var tree = ProcessTree.fromJson(response.bodyText());
             var view = new PlanViewLevel(tree, ended);
@@ -816,9 +829,11 @@ public final class OverviewFullScreenApp {
             var level = TuiLevel.of(TuiLevel.Kind.PLAN, planId,
                                 view.breadcrumb(locale, null));
             stack.push(level, view.rows(locale), view.initialRowId());
-            return true;
-        } catch (IOException | IllegalArgumentException _) {
-            return false;
+            return null;
+        } catch (IOException failure) {
+            return LoadRefusal.of(locale, failure, PLAN_LEVEL);
+        } catch (IllegalArgumentException failure) {
+            return LoadRefusal.of(locale, failure.getMessage(), PLAN_LEVEL);
         }
     }
 
@@ -1309,10 +1324,6 @@ public final class OverviewFullScreenApp {
             case PLAN -> {
                 var view = currentPlanView.get();
                 yield view != null && view.planId().equals(lvl.id()) ? view.projectId() : null;
-            }
-            case PLAN_ACTIVITY -> {
-                var view = currentPlanView.get();
-                yield view != null ? view.projectId() : null;
             }
             case PLAN_COMPLETION -> {
                 // A completion report opened from the reports has no plan view below it, or one of
@@ -2154,10 +2165,21 @@ public final class OverviewFullScreenApp {
         if (lvl == null || lvl.kind() != TuiLevel.Kind.REPORTS) {
             return;
         }
-        int direction = delta == 0 ? 1 : delta;
+        skipHeadings(delta, ReportsLevel::isHeading);
+    }
+
+    /**
+     * Moves the selection in the direction given until it rests on a row that is no heading; at the
+     * edge of the list it turns once, and a list of headings alone keeps the selection at its edge.
+     * The movement is clamped at both edges, so the walk ends after at most twice the rows.
+     *
+     * @param delta     the direction of the movement: {@code 1} down, {@code -1} up
+     * @param isHeading whether a row id is a heading
+     */
+    private void skipHeadings(int delta, Predicate<String> isHeading) {
+        int direction = delta;
         boolean reversed = false;
-        int guard = 0;
-        while (stack.selected() != null && ReportsLevel.isHeading(stack.selected().id()) && guard++ < 100) {
+        while (stack.selected() != null && isHeading.test(stack.selected().id())) {
             int before = stack.selectedIndex();
             stack.move(direction);
             if (stack.selectedIndex() == before) {
@@ -2353,21 +2375,26 @@ public final class OverviewFullScreenApp {
             boolean newByEpic = !currentByEpic.get();
             currentByEpic.set(newByEpic);
             var sel = stack.selected();
-            var selectedId = sel != null ? sel.id() : null;
-            var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(detail, newByEpic, isCurrentProjectSetupNeedingOperator());
-            var newLevel = newLevelModel.level(locale);
-            var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
+            replaceProjectLevel(detail, newByEpic, sel != null ? sel.id() : null);
+        }
 
-            if (stack.depth() > 1) {
-                stack.filter("");
-                stack.back();
-                stack.push(newLevel, newRows, selectedId);
-                if (!currentFilter.isEmpty()) {
-                    stack.filter(currentFilter);
-                }
-            } else {
-                stack.replaceRoot(newLevel, newRows, selectedId);
+        /**
+         * Replaces the project level shown with the project's other view, keeping its filter. A
+         * project level is never a root of the view: it is always opened above the overview, the
+         * explorer or a plan opened as the root.
+         *
+         * @param detail   the project's detail
+         * @param byEpic   whether the new level is the view by epic
+         * @param selectId the row to select in the new level, or {@code null} for its first
+         */
+        private void replaceProjectLevel(ProjectDetailResponse detail, boolean byEpic, @Nullable String selectId) {
+            var currentFilter = stack.filter();
+            var newLevelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
+            stack.filter("");
+            stack.back();
+            stack.push(newLevelModel.level(locale), newLevelModel.rows(locale, clock, stack.helpVisible()), selectId);
+            if (!currentFilter.isEmpty()) {
+                stack.filter(currentFilter);
             }
         }
 
@@ -2403,21 +2430,7 @@ public final class OverviewFullScreenApp {
             }
 
             currentByEpic.set(true);
-            var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(detail, true, isCurrentProjectSetupNeedingOperator());
-            var newLevel = newLevelModel.level(locale);
-            var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
-
-            if (stack.depth() > 1) {
-                stack.filter("");
-                stack.back();
-                stack.push(newLevel, newRows, plan.epicId());
-                if (!currentFilter.isEmpty()) {
-                    stack.filter(currentFilter);
-                }
-            } else {
-                stack.replaceRoot(newLevel, newRows, plan.epicId());
-            }
+            replaceProjectLevel(detail, true, plan.epicId());
         }
 
         private boolean openSelected() {
@@ -2819,20 +2832,17 @@ public final class OverviewFullScreenApp {
                 }
                 return;
             }
+            // A plan whose process the runtime refuses opens nothing: the level stays and names the
+            // refusal, as a refused project does, so no level of the view acts on another plan.
+            LoadRefusal refusal;
             try {
-                if (openPlan(context.runtime(true), itemId, null)) {
-                    return;
-                }
-            } catch (IOException _) {
-                // fall back to the read-only inspection level
+                refusal = readPlan(context.runtime(true), itemId, null);
+            } catch (IOException failure) {
+                refusal = LoadRefusal.of(locale, failure, PLAN_LEVEL);
             }
-            var lvl = stack.level();
-            var levelId = lvl != null ? lvl.id() : "";
-            var title = levelId + " \u00b7 " + itemId;
-            var inspectLevel = TuiLevel.of(TuiLevel.Kind.PLAN, itemId, title);
-            var itemRows = new ArrayList<TuiRow>();
-            itemRows.add(new TuiRow(itemId, itemId, null, false, true));
-            stack.push(inspectLevel, itemRows, itemId);
+            if (refusal != null) {
+                statusMessage = refusal.line();
+            }
         }
 
         private void openEndedLevel() {
@@ -3193,21 +3203,7 @@ public final class OverviewFullScreenApp {
             if (!isExplorerLevel()) {
                 return;
             }
-            int direction = delta == 0 ? 1 : delta;
-            boolean reversed = false;
-            int guard = 0;
-            while (stack.selected() != null && ProjectsExplorerLevel.isHeader(stack.selected().id())
-                                && guard++ < 100) {
-                int before = stack.selectedIndex();
-                stack.move(direction);
-                if (stack.selectedIndex() == before) {
-                    if (reversed) {
-                        return;
-                    }
-                    direction = -direction;
-                    reversed = true;
-                }
-            }
+            skipHeadings(delta, ProjectsExplorerLevel::isHeader);
         }
 
         private @Nullable EnrolledProject selectedExplorerProject() {

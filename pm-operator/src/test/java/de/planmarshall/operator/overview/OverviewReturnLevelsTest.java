@@ -22,6 +22,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -166,6 +167,105 @@ class OverviewReturnLevelsTest {
     }
 
     @Test
+    @DisplayName("e on a plan of a filtered project moves to its epic by epic, and Tab back keeps the filter")
+    void epicAndSwitchKeepTheFilter() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/projects/" + first, detail(first));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.OPEN);
+        keys.filter(first);
+        app.stack().select(first + "-plan");
+
+        assertTrue(keys.handle(TuiKeyAction.EPIC));
+
+        assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+        assertEquals(first + "-epic", app.stack().selected().id());
+        assertEquals(first, app.stack().filter());
+        assertEquals(2, app.stack().depth());
+
+        keys.handle(TuiKeyAction.SWITCH_VIEW);
+
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(first, app.stack().filter());
+        assertEquals(2, app.stack().depth());
+    }
+
+    @Test
+    @DisplayName("Enter on a plan whose process the runtime refuses stays on the project and names the refusal")
+    void refusedPlanOfProject() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/projects/" + first, detail(first));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.OPEN);
+        app.stack().select(first + "-plan");
+
+        assertTrue(keys.handle(TuiKeyAction.OPEN));
+
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(first, app.stack().level().id());
+        assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
+                            app.buildScreen().rows().getLast().line().trim());
+    }
+
+    private static String endedPage(String projectId, int page, boolean hasOlder, String itemId) {
+        return "{\"project_id\":\"" + projectId + "\",\"page\":" + page + ",\"total_pages\":2,\"has_newer\":"
+                            + (page > 1) + ",\"has_older\":" + hasOlder + ",\"items\":[{\"id\":\"" + itemId
+                            + "\",\"kind\":\"plan\",\"title\":\"" + itemId + "\",\"outcome\":\"merged\","
+                            + "\"ended_at\":\"2026-10-19T10:00:00Z\"}]}";
+    }
+
+    @Test
+    @DisplayName("G on the last row of ended work reads the older page and shows its work below")
+    void endedWorkReadsTheOlderPage() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/projects/" + first + "/ended?page=1", endedPage(first, 1, true, "newer-plan"));
+        bodyOf.put("/api/v1/projects/" + first + "/ended?page=2", endedPage(first, 2, false, "older-plan"));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.ENDED);
+        assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
+        assertFalse(rowIds().contains("older-plan"), rowIds().toString());
+
+        assertTrue(keys.handle(TuiKeyAction.LAST));
+
+        assertTrue(rowIds().contains("newer-plan"), rowIds().toString());
+        assertTrue(rowIds().contains("older-plan"), rowIds().toString());
+    }
+
+    @Test
+    @DisplayName("G on the last row of ended work whose older page is refused keeps the rows it has")
+    void endedWorkOlderPageRefused() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/projects/" + first + "/ended?page=1", endedPage(first, 1, true, "newer-plan"));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.ENDED);
+        var before = rowIds();
+
+        keys.handle(TuiKeyAction.LAST);
+
+        assertEquals(before, rowIds());
+    }
+
+    @Test
+    @DisplayName("e on a plan that belongs to no epic stays on the plan")
+    void epicOfPlanWithoutEpic() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/projects/" + first, detail(first).replace(",\"epic_id\":\"" + first + "-epic\"", ""));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.OPEN);
+        app.stack().select(first + "-plan");
+
+        keys.handle(TuiKeyAction.EPIC);
+
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(first + "-plan", app.stack().selected().id());
+    }
+
+    @Test
     @DisplayName("the header of a plan the operator returned to names that plan, not the one opened from its epic")
     void planLevelKeepsItsPlan() throws IOException {
         var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
@@ -239,6 +339,30 @@ class OverviewReturnLevelsTest {
         open(OverviewFullScreenApp.InitialSelection.plan(plan));
         keys.handle(TuiKeyAction.EPIC);
         assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+    }
+
+    @Test
+    @DisplayName("close on a plan of an epic moves to its workstream, closes it there, and * opens it again")
+    void closeAndExpandInTheEpic() throws IOException {
+        openEpicOfPlan();
+        var planRow = EpicViewLevel.PLAN_PREFIX + first + "-plan";
+        var workstream = EpicViewLevel.WORKSTREAM_PREFIX + "WS-1";
+        app.stack().select(planRow);
+
+        assertTrue(keys.handle(TuiKeyAction.CLOSE));
+        assertEquals(workstream, app.stack().selected().id());
+        assertTrue(rowIds().contains(planRow), rowIds().toString());
+
+        keys.handle(TuiKeyAction.CLOSE);
+        assertEquals(workstream, app.stack().selected().id());
+        assertFalse(rowIds().contains(planRow), rowIds().toString());
+
+        keys.handle(TuiKeyAction.EXPAND_ALL);
+        assertTrue(rowIds().contains(planRow), rowIds().toString());
+    }
+
+    private List<String> rowIds() {
+        return app.stack().rows().stream().map(TuiRow::id).toList();
     }
 
     @Test

@@ -172,6 +172,59 @@ class OverviewReportsKeysTest {
     }
 
     @Nested
+    @DisplayName("the selection never rests on a group heading")
+    class Headings {
+
+        @BeforeEach
+        void openReports() throws IOException {
+            open(Map.of());
+        }
+
+        @Test
+        @DisplayName("the list opens with a heading above its first report")
+        void headingAboveFirstReport() {
+            var rows = app.stack().rows();
+
+            assertTrue(ReportsLevel.isHeading(rows.getFirst().id()), rows.toString());
+            assertEquals(reportRowIds().getFirst(), app.stack().selected().id());
+        }
+
+        @Test
+        @DisplayName("up on the first report turns at the heading above it and stays on the report")
+        void upTurnsAtTheTopHeading() {
+            var first = reportRowIds().getFirst();
+            app.stack().select(first);
+
+            assertTrue(keys.handle(TuiKeyAction.MOVE_UP));
+
+            assertEquals(first, app.stack().selected().id());
+        }
+
+        @Test
+        @DisplayName("g moves to the first report, not to the heading above it")
+        void firstIsTheFirstReport() {
+            app.stack().select(reportRowIds().getLast());
+
+            keys.handle(TuiKeyAction.FIRST);
+
+            assertEquals(reportRowIds().getFirst(), app.stack().selected().id());
+        }
+
+        @Test
+        @DisplayName("down from the last report of a group passes its next group's heading")
+        void downPassesTheNextHeading() {
+            var rows = app.stack().rows().stream().map(row -> row.id()).toList();
+            var heading = rows.stream().skip(1).filter(ReportsLevel::isHeading).findFirst()
+                                .orElseThrow(() -> new AssertionError("one group only: " + rows));
+            app.stack().select(rows.get(rows.indexOf(heading) - 1));
+
+            keys.handle(TuiKeyAction.MOVE_DOWN);
+
+            assertEquals(rows.get(rows.indexOf(heading) + 1), app.stack().selected().id());
+        }
+    }
+
+    @Nested
     @DisplayName("Enter opens the detail and reads the report")
     class Detail {
 

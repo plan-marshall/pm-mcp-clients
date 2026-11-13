@@ -233,6 +233,34 @@ class PlanViewLevelTest {
         assertTrue(ended.footer("en").contains("c completion"), ended.footer("en"));
     }
 
+    private static String summary(PlanViewLevel view) {
+        return view.rows("en").stream().filter(row -> PlanViewLevel.SUMMARY_ROW_ID.equals(row.id()))
+                            .map(TuiRow::line).findFirst().orElseThrow();
+    }
+
+    @Test
+    @DisplayName("the summary of an ended plan without a time or a reason ends with its outcome alone")
+    void endedSummaryWithoutTimeOrReason() throws Exception {
+        var ended = new PlanViewLevel(ProcessTree.fromJson(TREE), new PlanViewLevel.EndedInfo("merged", "done", "2 d ago"));
+        var bare = new PlanViewLevel(ProcessTree.fromJson(TREE), new PlanViewLevel.EndedInfo("abandoned", " ", null));
+
+        assertTrue(summary(ended).endsWith("merged · 2 d ago · done"), summary(ended));
+        assertTrue(summary(bare).endsWith("abandoned"), summary(bare));
+    }
+
+    @Test
+    @DisplayName("the summary of a plan that waits says so, and leaves out a pull request and a time it has not")
+    void waitingSummary() throws Exception {
+        var tree = TREE.replace("\"needs_operator\": false", "\"needs_operator\": true")
+                            .replace("\"duration_seconds\": 7800,", "\"duration_seconds\": 0,")
+                            .replace("\"pull_request_number\": 214,", "");
+        var line = summary(new PlanViewLevel(ProcessTree.fromJson(tree)));
+
+        assertTrue(line.endsWith("waits for you"), line);
+        assertFalse(line.contains("#214"), line);
+        assertTrue(summary(view()).contains("#214"), summary(view()));
+    }
+
     @Test
     @DisplayName("a plan of no epic leaves e out of the footer")
     void footerWithoutEpic() throws Exception {
