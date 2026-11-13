@@ -1,20 +1,35 @@
 <script lang="ts" module>
-  /** The schemes an external link may open; every other address is drawn as text. */
-  const WEB_SCHEMES = new Set(['http:', 'https:']);
+  /**
+   * A C0 control character, in front of the address or inside it. A URL parser strips some of them
+   * before it reads an address, so an address that carries one is no address a person typed.
+   */
+  const CONTROL_CHARACTER = /[\u0000-\u001F\u007F]/;
+
+  /**
+   * A web address: `http` or `https`, its two slashes, and then a character that is no slash, no
+   * backslash and no white space. A special scheme skips every slash and backslash after it
+   * (WHATWG URL spec, "special authority ignore slashes state"), so `https:///host` and
+   * `https:\\host` name the host `host` instead of a path - a form a harmless `https://host` never
+   * takes.
+   */
+  const WEB_ADDRESS = /^https?:\/\/[^/\\\s]/i;
 
   /**
    * @param href the address a caller hands in
    * @returns whether, without the white space around it, it is an absolute http or https URL
-   *   written with the `//` right after the scheme: `https:example.org` and `https:/example.org`
-   *   parse as absolute, yet a browser resolves them against the page's own address
+   *   written with exactly the two slashes right after the scheme: `https:example.org`,
+   *   `https:/example.org`, `https:///example.org` and `https:\\example.org` all supply a host of
+   *   their own - a browser resolves the first two against the page's own address and reads the
+   *   last two as the host `example.org`
    */
   export function isWebAddress(href: string): boolean {
     const address = href.trim();
-    if (!/^https?:\/\//i.test(address)) {
+    if (CONTROL_CHARACTER.test(address) || !WEB_ADDRESS.test(address)) {
       return false;
     }
     try {
-      return WEB_SCHEMES.has(new URL(address).protocol);
+      const parsed = new URL(address);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
     } catch {
       return false;
     }

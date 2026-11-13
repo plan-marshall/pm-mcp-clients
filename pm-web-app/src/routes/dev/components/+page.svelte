@@ -24,6 +24,8 @@
   import Link from '../../../lib/components/Link.svelte';
   import ExternalLink from '../../../lib/components/ExternalLink.svelte';
   import PrChip from '../../../lib/components/PrChip.svelte';
+  import RowLink from '../../../lib/components/RowLink.svelte';
+  import PhaseLabel from '../../../lib/components/PhaseLabel.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
 
@@ -506,6 +508,30 @@
         {#each FORM_STATUSES as status (status.tone)}
           <FormStatus tone={status.tone} message={$t(status.key)} />
         {/each}
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.row_link')}</h3>
+      <div class="dev__stack">
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.title')}>
+          {#snippet kind()}<KindMark kind="plan" />{/snippet}
+          {#snippet tags()}
+            <PhaseLabel phase="execute" />
+            <StatusLabel tone="running" label={$t('state.plan.running')} />
+          {/snippet}
+          {#snippet acts()}
+            <Chip value={CHIP_VALUE} />
+            <IconButton icon="act.favourite" label={$t('dev.row_link.favourite')} />
+            <RowMenu
+              items={rowMenuItems}
+              label="{$t('dev.row_link.menu')} ({$t(`dev.theme.${theme}`)})"
+            />
+          {/snippet}
+        </RowLink>
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.plain')} />
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.current')} current>
+          {#snippet kind()}<KindMark kind="plan" />{/snippet}
+          {#snippet tags()}<StatusLabel tone="success" label={$t('state.task.done')} />{/snippet}
+        </RowLink>
       </div>
     </section>
   {/each}

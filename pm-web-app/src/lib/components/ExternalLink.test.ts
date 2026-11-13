@@ -92,6 +92,26 @@ describe('ExternalLink', () => {
     expect(container).toHaveTextContent('Pull request');
   });
 
+  /*
+   * The address forms PLAN-147 left open: a special scheme skips every slash and backslash after it
+   * (WHATWG URL spec, "special authority ignore slashes state"), so `https:///host` names `host` and
+   * `https:\\host` names it too; a control character in front is stripped by the same parser.
+   */
+  it.each([
+    ['https:\\\\host', 'a backslash pair instead of the two slashes'],
+    ['https:/\t/host', 'a tab between the two slashes'],
+    ['\u0000https://example.org', 'a leading NUL control character'],
+    ['\u0001https://example.org/x', 'a leading start-of-heading control character'],
+    ['https:///evil.example/x', 'a host behind a third slash'],
+    ['https://\\\\evil.example/x', 'a host behind two backslashes'],
+  ])('refuses %j (%s)', (href, _why) => {
+    useCatalogue('en');
+    const { container } = render(ExternalLink, { props: { href, label: 'Pull request' } });
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container).toHaveTextContent('Pull request');
+  });
+
   it.each(['http://example.org', 'HTTPS://EXAMPLE.ORG/A'])('accepts the web address %s', (href) => {
     useCatalogue('en');
     render(ExternalLink, { props: { href, label: 'Site' } });
