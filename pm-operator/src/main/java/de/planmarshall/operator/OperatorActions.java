@@ -11,7 +11,6 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
