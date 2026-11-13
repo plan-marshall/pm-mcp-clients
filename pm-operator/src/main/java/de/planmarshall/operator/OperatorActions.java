@@ -77,19 +77,17 @@ public final class OperatorActions {
     }
 
     /**
-     * Runs the read-only chat about ended work, and starts the follow-up plan its proposal names.
+     * Runs the read-only chat about ended work.
      *
-     * @param context   the operator context
-     * @param out       the console's output
-     * @param kind      {@code plan} or {@code epic}
-     * @param id        the ended subject
-     * @param projectId the project the follow-up is started in, or {@code null}
-     * @param locale    the interface locale
+     * @param context the operator context
+     * @param out     the console's output
+     * @param kind    {@code plan} or {@code epic}
+     * @param id      the ended subject
      * @return the exit code
      * @throws IOException on transport failure
      */
-    public static int chatAboutEnded(OperatorContext context, PrintWriter out, String kind, String id,
-                        @Nullable String projectId, String locale) throws IOException {
+    public static int chatAboutEnded(OperatorContext context, PrintWriter out, String kind, String id)
+                        throws IOException {
         // The dialogue accepts the follow-up on the runtime, which opens the start and names no way
         // to the entry: it says so and nothing is started a second time here (PLAN-161, D2).
         WorkChatDialogue.run(context, out, kind, id, true, false);

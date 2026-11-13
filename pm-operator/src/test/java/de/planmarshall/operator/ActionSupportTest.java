@@ -11,8 +11,6 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,21 +20,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
-import org.jline.terminal.Terminal;
 
-import de.planmarshall.api.start.EntryKind;
-import de.planmarshall.api.start.EntryResource;
-import de.planmarshall.api.start.StartState;
-import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
@@ -203,8 +191,7 @@ class ActionSupportTest {
                             ClientEnvironment.capture(env), virtual::terminal, null);
 
         virtual.type("\n");
-        var code = OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
-                            "pm-mcp-clients", "en");
+        var code = OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1");
         assertEquals(0, code, "the ended work chat leaves back with 0");
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
     }

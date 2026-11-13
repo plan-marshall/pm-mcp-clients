@@ -1272,8 +1272,7 @@ public final class OverviewFullScreenApp {
         }
         var kind = menuKind != null ? menuKind : "plan";
         if (subject == ActionsMenu.Subject.ENDED) {
-            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId(),
-                                currentProjectId(), locale));
+            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId()));
             return;
         }
         if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
