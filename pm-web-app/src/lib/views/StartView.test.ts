@@ -108,7 +108,16 @@ describe('StartView', () => {
       return { emit: (event) => listener?.(event, {}) };
     }
 
-    it.each(['entry.changed', 'source.changed', 'chat.turn'])(
+    it.each([
+      'reset',
+      'source.added',
+      'source.removed',
+      'source.flagged',
+      'progress.changed',
+      'check.result',
+      'entry.moved',
+      'state.entered',
+    ])(
       're-reads the entry on %s and shows what changed',
       async (event) => {
         arrangeOpen();
@@ -126,17 +135,28 @@ describe('StartView', () => {
       },
     );
 
-    it('ignores the events that change nothing it shows', async () => {
-      arrangeOpen();
-      const { emit } = arrangeEvents();
-      const read = vi.spyOn(apiClient, 'getEntry');
-      render(StartView, { projectId: PROJECT, kind: 'plan' });
-      await screen.findByTestId('source-list');
+    it.each([
+      'chat.turn.delta',
+      'chat.turn.completed',
+      'chat.proposal',
+      'chat.ended',
+      'entry.changed',
+      'source.changed',
+      'chat.turn',
+    ])(
+      'does not re-read the entry on %s: a chat event is the chat\'s own read, and the rest is a piece of a turn or a name no contract has',
+      async (event) => {
+        arrangeOpen();
+        const { emit } = arrangeEvents();
+        const read = vi.spyOn(apiClient, 'getEntry');
+        render(StartView, { projectId: PROJECT, kind: 'plan' });
+        await screen.findByTestId('source-list');
 
-      emit('chat.turn.delta');
+        emit(event);
 
-      expect(read).not.toHaveBeenCalled();
-    });
+        expect(read).not.toHaveBeenCalled();
+      },
+    );
 
     it('keeps what it shows when the re-read fails', async () => {
       arrangeOpen(sources({ sources: [source({ title: 'Shown before' })] }));
@@ -145,7 +165,7 @@ describe('StartView', () => {
       render(StartView, { projectId: PROJECT, kind: 'plan' });
       await screen.findByText('Shown before');
 
-      emit('entry.changed');
+      emit('source.added');
 
       await vi.waitFor(() => expect(read).toHaveBeenCalled());
       expect(screen.getByText('Shown before')).toBeInTheDocument();

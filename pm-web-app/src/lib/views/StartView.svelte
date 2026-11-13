@@ -108,6 +108,23 @@
   let decompositionCommitted = false;
   let decompositionError = '';
 
+  /**
+   * The events of the entry's stream (`EventName` of pm-api, stream `entry`) that change what the
+   * entry resource holds: its sources, their progress and checks, and its state; `reset` asks for
+   * a fresh read. The chat's turns and proposals are the chat's own read (`refreshChat`), and a
+   * streamed piece of a turn changes nothing the entry holds.
+   */
+  const ENTRY_REFRESH_EVENTS = new Set([
+    'reset',
+    'source.added',
+    'source.removed',
+    'source.flagged',
+    'progress.changed',
+    'check.result',
+    'entry.moved',
+    'state.entered',
+  ]);
+
   let lastState = '';
   let unsubscribeEntry: (() => void) | null = null;
   let destroyed = false;
@@ -210,7 +227,7 @@
     if (destroyed) return;
     unsubscribeEntry?.();
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
-      if (event === 'entry.changed' || event === 'source.changed') {
+      if (ENTRY_REFRESH_EVENTS.has(event)) {
         void refresh();
       } else if (
         event === 'chat.turn.started' ||
