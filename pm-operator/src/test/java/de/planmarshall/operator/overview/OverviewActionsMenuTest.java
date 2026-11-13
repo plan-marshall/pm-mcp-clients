@@ -406,4 +406,84 @@ class OverviewActionsMenuTest {
                                 callsContaining("POST"));
         }
     }
+
+    @Nested
+    @DisplayName("a on an epic's row of its project names what that epic's own staged plans wait for")
+    class EpicWaitReasons {
+
+        private String shown;
+        private String asked;
+        private String shownStaged;
+        private String askedStaged;
+
+        @BeforeEach
+        void twoEpics() {
+            shown = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            asked = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            shownStaged = "staged-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            askedStaged = "staged-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            bodyOf.put("/api/v1/projects/" + project, "{\"project_id\":\"" + project + "\",\"display_name\":\""
+                                + project + "\",\"plans\":[],\"epics\":[" + epicRow(shown) + "," + epicRow(asked)
+                                + "],\"alongside_landings\":[]}");
+            bodyOf.put("/api/v1/epics/" + shown, epic(shown, shownStaged));
+            bodyOf.put("/api/v1/epics/" + asked, epic(asked, askedStaged));
+            bodyOf.put("/api/v1/epics/" + asked + "/actions", "{\"subject_id\":\"" + asked
+                                + "\",\"subject_kind\":\"epic\",\"state\":\"running\",\"actions\":["
+                                + "{\"action\":\"next\",\"available\":false}]}");
+        }
+
+        private static String epicRow(String epicId) {
+            return "{\"epic_id\":\"" + epicId + "\",\"title\":\"" + epicId + "\",\"running_plans_count\":1,"
+                                + "\"staged_plans_count\":1,\"plans\":[]}";
+        }
+
+        private String epic(String epicId, String staged) {
+            return "{\"epic_id\":\"" + epicId + "\",\"project_id\":\"" + project + "\",\"display_name\":\"" + project
+                                + "\",\"state\":\"running\",\"auto_start\":false,\"overlap_max_files\":0,\"scope\":1,"
+                                + "\"running\":1,\"workstreams\":[{\"id\":\"WS-1\",\"name\":\"One\",\"open\":true,"
+                                + "\"rows\":[{\"plan_id\":\"" + plan + "\",\"title\":\"" + plan
+                                + "\",\"status\":\"running\"},{\"plan_id\":\"" + staged + "\",\"title\":\"" + staged
+                                + "\",\"status\":\"staged\",\"wait_reason\":\"dependency\",\"wait_plan_id\":\"" + plan
+                                + "\"}]}],\"sources\":[],\"landings\":0,\"events\":[]}";
+        }
+
+        private void openProjectByEpic() throws IOException {
+            open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+            app.stack().select(project);
+            keys.handle(TuiKeyAction.OPEN);
+            keys.handle(TuiKeyAction.SWITCH_VIEW);
+            assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+        }
+
+        private String nextLabel() {
+            app.stack().select(asked);
+            return entryFor(openMenu(), "next").label();
+        }
+
+        @Test
+        @DisplayName("without an epic view opened before")
+        void noEpicViewOpened() throws IOException {
+            openProjectByEpic();
+
+            var label = nextLabel();
+
+            assertTrue(label.contains(askedStaged), label);
+        }
+
+        @Test
+        @DisplayName("after another epic's view was opened and left")
+        void anotherEpicViewShownBefore() throws IOException {
+            openProjectByEpic();
+            app.stack().select(shown);
+            keys.handle(TuiKeyAction.OPEN);
+            assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+            keys.handle(TuiKeyAction.BACK);
+            assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+
+            var label = nextLabel();
+
+            assertTrue(label.contains(askedStaged), label);
+            assertFalse(label.contains(shownStaged), label);
+        }
+    }
 }

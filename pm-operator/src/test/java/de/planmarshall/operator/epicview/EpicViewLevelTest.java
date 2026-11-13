@@ -20,6 +20,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("EpicViewLevel")
+@EnableGeneratorController
 class EpicViewLevelTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"),
@@ -91,6 +94,23 @@ class EpicViewLevelTest {
 
     private static String text(EpicViewLevel view) {
         return view.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+    }
+
+    @Test
+    @DisplayName("why no plan can start names each staged plan that waits, never one without a wait")
+    void waitReasonsNameOnlyWaitingPlans() throws Exception {
+        var free = "free-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        var view = new EpicViewLevel(CLOCK, EpicResource.fromJson(EPIC.replace(
+                            "\"overlap_files\":[\"pm-api/src/store/Docs.java\"]}",
+                            "\"overlap_files\":[\"pm-api/src/store/Docs.java\"]},\n{\"plan_id\":\"" + free
+                                                + "\",\"title\":\"" + free + "\",\"status\":\"staged\"}")));
+
+        var reasons = view.waitReasons("en");
+
+        assertEquals(2, reasons.size(), reasons.toString());
+        assertTrue(reasons.getFirst().contains("relay-token-rotation"), reasons.toString());
+        assertTrue(reasons.getLast().contains("relay-docs"), reasons.toString());
+        assertTrue(reasons.stream().noneMatch(line -> line.contains(free)), reasons.toString());
     }
 
     @Test

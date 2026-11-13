@@ -655,7 +655,8 @@ public final class PlanViewLevel {
         }
         return switch (status.toLowerCase(Locale.ROOT)) {
             case STATUS_DONE, STATUS_SUBMITTED -> NodeState.DONE.glyph();
-            case "running" -> NodeState.RUNNING.glyph();
+            // A task at work is `executing` in the design's leaf (16-plan-view.adoc#full-screen-leaf).
+            case "running", "executing" -> NodeState.RUNNING.glyph();
             case "waiting", "waiting_for_you" -> NodeState.WAITING_FOR_OPERATOR.glyph();
             case "failed" -> NodeState.FAILED.glyph();
             default -> NodeState.PLANNED.glyph();

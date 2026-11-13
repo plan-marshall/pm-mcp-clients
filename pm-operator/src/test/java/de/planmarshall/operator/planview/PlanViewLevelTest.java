@@ -21,12 +21,15 @@ import java.util.stream.Collectors;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("PlanViewLevel")
 @EnableGeneratorController
@@ -146,6 +149,19 @@ class PlanViewLevelTest {
                             () -> assertTrue(text.contains("run 3")),
                             () -> assertTrue(text.contains("1 of 2 tasks done"))
         );
+    }
+
+    @ParameterizedTest(name = "a task {0} carries {1}")
+    @CsvSource({"running, RUNNING", "executing, RUNNING", "done, DONE", "submitted, DONE"})
+    @DisplayName("a task of a leaf carries the glyph of its status; one at work, executing, is running")
+    void taskGlyphFollowsItsStatus(String status, NodeState expected) throws Exception {
+        var view = new PlanViewLevel(ProcessTree.fromJson(TREE.replace("\"attempt\": 2, \"status\": \"running\"",
+                            "\"attempt\": 2, \"status\": \"" + status + "\"")));
+
+        var line = view.rows("en").stream().filter(row -> "task:TASK-003".equals(row.id())).map(TuiRow::line)
+                            .findFirst().orElseThrow().strip();
+
+        assertTrue(line.startsWith(expected.glyph()), line);
     }
 
     @Test

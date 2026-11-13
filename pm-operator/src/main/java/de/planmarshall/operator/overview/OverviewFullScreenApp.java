@@ -1216,8 +1216,11 @@ public final class OverviewFullScreenApp {
         menuDecision = null;
         menuEpic = resource;
         var next = resource != null ? OperatorActions.nextLaunchable(resource) : null;
-        var reasons = currentEpicView.get() != null
-                            ? currentEpicView.get().waitReasons(locale) : List.<String>of();
+        // What the asked epic's own staged plans wait for, read from the resource just fetched:
+        // never the epic view shown last, which may be another epic's or none at all when the menu
+        // is opened on an epic's row of its project.
+        var reasons = resource != null ? new EpicViewLevel(clock, resource).waitReasons(locale)
+                            : List.<String>of();
         actionsMenu = ActionMenus.epic(locale, actions, next, reasons,
                             resource != null && resource.autoStart(),
                             resource != null ? resource.overlapMaxFiles() : 0,
@@ -1423,14 +1426,8 @@ public final class OverviewFullScreenApp {
                 return;
             }
             jumpToNextWaitingRow();
-            return;
         }
-
-        if (selected.needsOperator()) {
-            openActions();
-        } else {
-            jumpToNextWaitingRow();
-        }
+        // No other level binds ! (TuiKeyRegistry), so there is nothing else to open here.
     }
 
     private void openPlanWaitAct(String planId) {
