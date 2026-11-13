@@ -362,21 +362,20 @@ final class StartApi {
     }
 
     private static String messageOf(HttpResponse response) {
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            var message = map == null ? null : JsonTree.string(map, KEY_MESSAGE);
-            return message != null ? OutputSafety.stripControlSequences(message)
-                                : "HTTP " + response.status();
-        } catch (IOException _) {
-            return "HTTP " + response.status();
-        }
+        var message = bodyMember(response, KEY_MESSAGE);
+        return message != null ? OutputSafety.stripControlSequences(message) : "HTTP " + response.status();
     }
 
     private static @Nullable ApiErrorCode codeOf(HttpResponse response) {
+        var wire = bodyMember(response, KEY_ERROR);
+        return wire == null ? null : ApiErrorCode.fromWireOrNull(wire);
+    }
+
+    /** @return the string member of an error body, or {@code null} when the body has none or is no JSON */
+    private static @Nullable String bodyMember(HttpResponse response, String key) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            var wire = map == null ? null : JsonTree.string(map, KEY_ERROR);
-            return wire == null ? null : ApiErrorCode.fromWireOrNull(wire);
+            return map == null ? null : JsonTree.string(map, key);
         } catch (IOException _) {
             return null;
         }
