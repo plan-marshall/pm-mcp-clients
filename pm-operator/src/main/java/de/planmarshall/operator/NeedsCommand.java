@@ -74,6 +74,15 @@ public final class NeedsCommand implements Callable<Integer> {
 
         var list = NeedsOperatorPage.fromJson(response.bodyText());
 
+        if (list.items().isEmpty() && list.total() > 0) {
+            // A page past the last one is empty while things still wait: saying that nothing waits
+            // would be false, so the line names the page and how much waits.
+            out.println(MessageCatalogue.format(locale, "operator.needs.page_beyond",
+                                Map.of("page", page, "pages", list.totalPages(), "total", list.total())));
+            out.flush();
+            return 0;
+        }
+
         if (list.items().isEmpty()) {
             var emptyKey = MessageCatalogue.hasKey(locale, "operator.needs.empty")
                                 ? "operator.needs.empty"

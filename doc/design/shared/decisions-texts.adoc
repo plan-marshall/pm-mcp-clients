@@ -12,7 +12,7 @@ Status: `AGREED`. The texts of link:decisions.adoc[Decisions]; the texts of the 
 [#texts]
 == Texts
 
-The texts both clients use for decisions, keys of the area `decision` (link:texts-and-languages.adoc#keys[Keys and Packs]); the keys `decision.chat.*` and `decision.answer.chat` are those of link:decisions.adoc#chat[A Chat Before Answering].
+The texts both clients use for decisions, keys of the area `decision` (link:texts-and-languages.adoc#keys[Keys and Packs]); the keys `decision.chat.*` and `decision.answer.chat` are those of link:decisions.adoc#chat[A Chat Before Answering]. The German `decision.project.fallback` is the dative "dem Projekt", because every template puts `{project}` after "von" or "in".
 
 [cols="3,3,3",options="header"]
 |===
@@ -56,7 +56,11 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 
 |`decision.project.fallback`
 |the project
-|das Projekt
+|dem Projekt
+
+|`operator.decision.parts_unreadable`
+|{id} could not be read, so it is not known whether it has parts; nothing was sent. Answer it in the dialogue.
+|{id} ließ sich nicht lesen, daher ist unbekannt, ob sie Teile hat; nichts wurde gesendet. Beantworte sie im Dialog.
 
 |`decision.waiver.plan_fallback`
 |Plan

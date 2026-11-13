@@ -39,6 +39,7 @@ import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
+import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiKeyRegistry;
 import de.planmarshall.operator.tui.TuiLevel;
 
@@ -243,7 +244,12 @@ class TuiCapabilityIT {
                                 .filter(line -> line.contains("move") || line.contains("leave"))
                                 .findFirst()
                                 .orElse("");
-            var cut = kind == TuiLevel.Kind.PLAN || kind == TuiLevel.Kind.OVERVIEW;
+            // Which levels leave keys out at 80 columns is derived from the registry, not listed: a
+            // footer is cut exactly when a cell the registry declares for the level is not drawn.
+            var cut = TuiKeyRegistry.footerEntries(kind).stream()
+                                .filter(entry -> entry.action() != TuiKeyAction.REPORTS)
+                                .map(entry -> entry.display() + " " + TuiKeyRegistry.label(entry.action(), kind, "en", 0))
+                                .anyMatch(cell -> !footer.contains(cell));
             assertAll(
                                 () -> assertTrue(footer.contains("move"), session.screenText()),
                                 () -> assertTrue(footer.contains("? help"), footer),

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +28,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -89,24 +91,26 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a decrease raises no notice and no bell")
     void decreaseRaisesNoNotice() {
+        var key = Generators.letterStrings(4, 12).next();
+        var credentialNotice = "Credential " + key + " needs attention";
         var console = console();
         // The first summary of a place is the baseline: what already waited is badged, not announced.
         console.applyConsoleEvent("needs_operator.changed", machineEvent("none", 0), reader);
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 2,
-                            item("credential", "/api/v1/credentials/github"),
+                            item("credential", "/api/v1/credentials/" + key),
                             item("cleanup_due", "/api/v1/system/cleanup")), reader);
         var afterArrival = output();
 
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 1,
-                            item("credential", "/api/v1/credentials/github")), reader);
+                            item("credential", "/api/v1/credentials/" + key)), reader);
         var afterDecrease = output();
 
         assertAll(
-                            () -> assertEquals(1, count(afterArrival, "Credential github needs attention"), afterArrival),
+                            () -> assertEquals(1, count(afterArrival, credentialNotice), afterArrival),
                             () -> assertEquals(1, count(afterArrival, "Cleanup is due"), afterArrival),
                             () -> assertEquals(2, count(afterArrival, DISPLAY_MARK), afterArrival),
                             () -> assertEquals(2, count(afterArrival, NOTIFICATION), afterArrival),
-                            () -> assertEquals(1, count(afterDecrease, "Credential github needs attention"), afterDecrease),
+                            () -> assertEquals(1, count(afterDecrease, credentialNotice), afterDecrease),
                             () -> assertEquals(1, count(afterDecrease, "Cleanup is due"), afterDecrease),
                             () -> assertEquals(2, count(afterDecrease, DISPLAY_MARK), afterDecrease),
                             () -> assertEquals(2, count(afterDecrease, NOTIFICATION), afterDecrease)
@@ -116,17 +120,19 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a plan-level decision change after decision.opened yields exactly one notice")
     void decisionChangeAfterDecisionOpenedYieldsOneNotice() {
+        var decision = "Q-" + Generators.integers(100, 999).next();
+        var plan = Generators.letterStrings(4, 12).next();
         var console = console();
         console.applyConsoleEvent("decision.opened", Map.of(
                             "event", "decision.opened",
                             "data", Map.of("decision", Map.of(
-                                                "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan"))), reader);
+                                                "id", decision, "subject", "plan " + plan, "blocks", "plan"))), reader);
         console.applyConsoleEvent("needs_operator.changed", Map.of(
-                            "plan_id", "fix-relay", "kind", "decision", "count", 1), reader);
+                            "plan_id", plan, "kind", "decision", "count", 1), reader);
 
         var text = output();
         assertAll(
-                            () -> assertEquals(1, count(text, "Question Q-007"), text),
+                            () -> assertEquals(1, count(text, "Question " + decision), text),
                             () -> assertEquals(1, count(text, DISPLAY_MARK), text),
                             () -> assertEquals(1, count(text, NOTIFICATION), text)
         );
@@ -135,18 +141,121 @@ class ConsoleNeedsNoticeTest {
     @Test
     @DisplayName("a machine summary that adds a credential yields one notice naming the sanitized key")
     void addedCredentialYieldsOneNotice() {
+        var head = Generators.letterStrings(2, 8).next();
+        var tail = Generators.letterStrings(2, 8).next();
         var console = console();
         console.applyConsoleEvent("needs_operator.changed", machineEvent("none", 0), reader);
         console.applyConsoleEvent("needs_operator.changed", machineEvent("credential", 1,
-                            item("credential", "/api/v1/credentials/git\u0007hub")), reader);
+                            item("credential", "/api/v1/credentials/" + head + "\u0007" + tail)), reader);
 
         var text = output();
         assertAll(
-                            () -> assertTrue(text.contains("Credential github needs attention"), text),
-                            () -> assertFalse(text.contains("git\u0007hub"), "no control character may reach the screen"),
+                            () -> assertTrue(text.contains("Credential " + head + tail + " needs attention"), text),
+                            () -> assertFalse(text.contains(head + "\u0007" + tail),
+                                                "no control character may reach the screen"),
                             () -> assertEquals(1, count(text, DISPLAY_MARK), text),
                             () -> assertEquals(1, count(text, NOTIFICATION), text)
         );
+    }
+
+    @Test
+    @DisplayName("a credential arriving as the first event after a start whose status read showed none raises one notice")
+    void firstCredentialAfterAnEmptyStartIsAnnounced() {
+        var key = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of()));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertAll(
+                            () -> assertEquals(1, raised.size(), raised.toString()),
+                            () -> assertEquals("credential", raised.getFirst().kind()),
+                            () -> assertTrue(raised.getFirst().text().contains("Credential " + key + " needs attention"),
+                                                raised.getFirst().text())
+        );
+    }
+
+    @Test
+    @DisplayName("an item the status read at start already showed raises no notice")
+    void itemTheStartShowedIsNotAnnouncedAgain() {
+        var key = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertTrue(raised.isEmpty(), raised.toString());
+    }
+
+    @Test
+    @DisplayName("an item beyond what the status read showed is announced, one notice for the one added")
+    void itemBeyondTheStartIsAnnounced() {
+        var shown = Generators.letterStrings(4, 12).next();
+        var added = shown + "-" + Generators.letterStrings(2, 6).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 2,
+                            item("credential", "/api/v1/credentials/" + shown),
+                            item("credential", "/api/v1/credentials/" + added)));
+
+        assertAll(
+                            () -> assertEquals(1, raised.size(), raised.toString()),
+                            () -> assertEquals(added, raised.getFirst().place())
+        );
+    }
+
+    @Test
+    @DisplayName("the start baseline is used up by the place that takes it: a later place's first item is announced")
+    void startBaselineIsUsedUpByTheFirstPlace() {
+        var shown = Generators.letterStrings(4, 12).next();
+        var added = shown + "-" + Generators.letterStrings(2, 6).next();
+        var plan = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var first = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + shown)));
+        var second = notices.noticesOf("en", "needs_operator.changed", Map.of(
+                            "plan_id", plan, "kind", "credential", "count", 1,
+                            "needs_operator", Map.of("count", 1, "items",
+                                                List.of(item("credential", "/api/v1/credentials/" + added)))));
+
+        assertAll(
+                            () -> assertTrue(first.isEmpty(), first.toString()),
+                            () -> assertEquals(1, second.size(), second.toString()),
+                            () -> assertEquals(added, second.getFirst().place())
+        );
+    }
+
+    @Test
+    @DisplayName("a negative count in the status read showed nothing: the first item is announced")
+    void negativeStatusCountShowsNothing() {
+        var key = Generators.letterStrings(4, 12).next();
+        var negative = JsonNumber.of(-(long) Generators.integers(1, 1000).next());
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", negative)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertEquals(1, raised.size(), raised.toString());
+    }
+
+    @Test
+    @DisplayName("a count beyond the int range in the status read is the largest count: nothing is announced")
+    void hugeStatusCountIsClampedToTheLargest() {
+        var key = Generators.letterStrings(4, 12).next();
+        var huge = JsonNumber.of(Integer.MAX_VALUE + (long) Generators.integers(1, 1000).next());
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", huge)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertTrue(raised.isEmpty(), raised.toString());
     }
 
     private PmConsole console() {

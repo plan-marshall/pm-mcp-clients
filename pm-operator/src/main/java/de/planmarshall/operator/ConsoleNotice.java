@@ -18,6 +18,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 
 /**
  * Formats notice blocks printed above the prompt (via {@code LineReader.printAbove(...)}) when
@@ -26,7 +27,10 @@ import de.planmarshall.api.message.MessageCatalogue;
  * <p>Every text is a key of the message catalogue (area {@code operator}, {@code
  * operator.console.*}), and every value taken from the runtime is put through {@link
  * TerminalSanitizer} before it is composed, so a crafted value cannot move the cursor, write the
- * clipboard, set the window title, or fake a prompt.
+ * clipboard, set the window title, or fake a prompt. A value that fills a cell of a one-line
+ * template is reduced to a single line; the one untrusted multi-line value, the body of a question,
+ * is printed behind the notice's indent one line at a time, so no line of it starts at the
+ * beginning of a terminal line.
  */
 public final class ConsoleNotice {
 
@@ -99,19 +103,35 @@ public final class ConsoleNotice {
         sb.append(MessageCatalogue.format(locale, "operator.console.question.notice",
                             Map.of(ID, id, SCOPE, scope)));
         if (summary != null && !summary.isBlank()) {
-            sb.append(" \u00b7 ").append(TerminalSanitizer.sanitize(summary));
+            sb.append(" \u00b7 ").append(TerminalSanitizer.sanitizeLine(summary));
         }
         sb.append('\n');
         if (text != null && !text.isBlank()) {
-            sb.append(MessageCatalogue.format(locale, "operator.console.question.body",
-                                Map.of("text", TerminalSanitizer.sanitize(text)))).append('\n');
+            appendBody(sb, locale, text);
         }
         if (recommendation != null && !recommendation.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.question.recommended",
-                                Map.of(OPTION, TerminalSanitizer.sanitize(recommendation)))).append('\n');
+                                Map.of(OPTION, TerminalSanitizer.sanitizeLine(recommendation)))).append('\n');
         }
         sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of(ID, id)));
         return sb.toString();
+    }
+
+    /**
+     * Appends an untrusted multi-line body behind the notice's indent, one line at a time: every
+     * line of the sanitized text, the first included, goes through the catalogue's body template,
+     * so no line of it starts at the beginning of a terminal line and none can imitate a prompt
+     * (04-console.adoc#output-safety). The line structure of a real multi-line text is kept.
+     *
+     * @param sb     the notice being composed
+     * @param locale the interface locale
+     * @param text   the raw body text
+     */
+    private static void appendBody(StringBuilder sb, String locale, String text) {
+        for (var line : TerminalSanitizer.sanitize(text).split("\n")) {
+            sb.append(MessageCatalogue.format(locale, "operator.console.question.body",
+                                Map.of("text", line))).append('\n');
+        }
     }
 
     /**
@@ -140,10 +160,10 @@ public final class ConsoleNotice {
         Objects.requireNonNull(scope, SCOPE);
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
-            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
-                                Map.of(ID, id, SCOPE, scope, "gate", Display.gate(locale, TerminalSanitizer.sanitize(gate)))));
+            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver",
+                                Map.of(ID, id, SCOPE, scope, "gate", Display.gate(locale, TerminalSanitizer.sanitizeLine(gate)))));
         } else {
-            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
+            sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_plain",
                                 Map.of(ID, id, SCOPE, scope)));
         }
         sb.append('\n');
@@ -174,7 +194,7 @@ public final class ConsoleNotice {
      */
     public static String formatHoldNotice(String locale, String kind, String scope, @Nullable String detail) {
         var safeScope = TerminalSanitizer.sanitizeLine(scope);
-        var safeDetail = TerminalSanitizer.sanitize(detail);
+        var safeDetail = TerminalSanitizer.sanitizeLine(detail);
         var text = switch (kind) {
             case "operator_wait" -> MessageCatalogue.format(locale, "operator.console.notice.operator_wait",
                                 Map.of("name", safeScope, "what", safeDetail));
@@ -197,9 +217,21 @@ public final class ConsoleNotice {
             case "cleanup_due" -> MessageCatalogue.format(locale, "operator.console.notice.cleanup_due",
                                 Map.of());
             default -> MessageCatalogue.format(locale, "operator.console.notice.generic",
-                                Map.of("kind", TerminalSanitizer.sanitizeLine(kind), SCOPE, safeScope, DETAIL, safeDetail));
+                                Map.of("kind", otherKindLabel(locale), SCOPE, safeScope, DETAIL, safeDetail));
         };
         return BULLET + text;
+    }
+
+    /**
+     * The word a notice names a kind by that has no notice of its own: {@code other}, the client's
+     * fallback for a reason this version does not know. The catalogue's text, never the wire word,
+     * which a newer runtime chose and no operator reads.
+     *
+     * @param locale the interface locale
+     * @return the catalogue's text of the fallback kind
+     */
+    private static String otherKindLabel(String locale) {
+        return MessageCatalogue.format(locale, "overview.needs." + NeedsOperatorKind.OTHER.value(), Map.of());
     }
 
     /**
@@ -237,7 +269,7 @@ public final class ConsoleNotice {
      */
     public static String formatPairedNotice(String locale, String label) {
         return CHECK + MessageCatalogue.format(locale, "operator.console.paired",
-                            Map.of(LABEL, TerminalSanitizer.sanitize(label)));
+                            Map.of(LABEL, TerminalSanitizer.sanitizeLine(label)));
     }
 
     /**
@@ -265,7 +297,7 @@ public final class ConsoleNotice {
         return CHECK + MessageCatalogue.format(locale, "operator.console.new_code",
                             Map.of("code", code, "time", validUntil))
                             + "\n" + MessageCatalogue.format(locale, "operator.console.url_indent",
-                            Map.of("url", TerminalSanitizer.sanitize(url)));
+                            Map.of("url", TerminalSanitizer.sanitizeLine(url)));
     }
 
     /**
@@ -294,10 +326,10 @@ public final class ConsoleNotice {
      */
     public static String formatAnsweredElsewhere(String locale, String id, String channel, @Nullable String device,
                         @Nullable String answer) {
-        var safeAnswer = TerminalSanitizer.sanitize(answer);
+        var safeAnswer = TerminalSanitizer.sanitizeLine(answer);
         if (device != null && !device.isBlank()) {
             return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere",
-                                Map.of(ID, id, CHANNEL, channel, "device", TerminalSanitizer.sanitize(device),
+                                Map.of(ID, id, CHANNEL, channel, "device", TerminalSanitizer.sanitizeLine(device),
                                                     OPTION, safeAnswer));
         }
         return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere_plain",
@@ -347,13 +379,13 @@ public final class ConsoleNotice {
         }
         return switch (kind) {
             case QUESTION -> questionNotice(locale, payload);
-            case WAIVER_REQUEST -> waiverNotice(locale, payload);
+            case WAIVER -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
             case PAIRED -> formatPairedNotice(locale,
                                 String.valueOf(payload.getOrDefault(LABEL, "unknown")));
             case FRESH_CODE -> formatFreshCodeNotice(locale,
-                                TerminalSanitizer.sanitize(String.valueOf(payload.get("code"))),
-                                TerminalSanitizer.sanitize(String.valueOf(payload.getOrDefault("valid_until", ""))),
+                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.get("code"))),
+                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.getOrDefault("valid_until", ""))),
                                 String.valueOf(payload.getOrDefault("url", "")));
             case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
                 formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
@@ -393,11 +425,11 @@ public final class ConsoleNotice {
             return EventKind.fromType(stringOf(payload, "kind"));
         }
         if (byName != null) {
-            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
+            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER : byName;
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
         if (byType == EventKind.QUESTION && isWaiver(payload)) {
-            return EventKind.WAIVER_REQUEST;
+            return EventKind.WAIVER;
         }
         return byType == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byType;
     }
@@ -418,7 +450,7 @@ public final class ConsoleNotice {
             return null;
         }
         return formatAnsweredElsewhere(locale,
-                            TerminalSanitizer.sanitize(textOr(event, ID, "Q-???")),
+                            TerminalSanitizer.sanitizeLine(textOr(event, ID, "Q-???")),
                             channelText(locale, channel),
                             stringOf(event, "device"),
                             stringOf(event, "answer"));
@@ -428,7 +460,7 @@ public final class ConsoleNotice {
         var key = "operator.console.channel." + channel;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : TerminalSanitizer.sanitize(channel);
+                            : TerminalSanitizer.sanitizeLine(channel);
     }
 
     /**
@@ -443,8 +475,8 @@ public final class ConsoleNotice {
     private static String questionNotice(String locale, Map<String, Object> event) {
         var source = decisionSource(event);
         return formatQuestion(locale,
-                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "Q-???"))),
-                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
+                            TerminalSanitizer.sanitizeLine(textOr(source, ID, textOr(event, ID, "Q-???"))),
+                            TerminalSanitizer.sanitizeLine(firstText(source, event, SCOPE, SUBJECT, "plan")),
                             summaryOf(locale, source),
                             firstText(source, event, "description", "text", null),
                             recommendationOf(source));
@@ -461,8 +493,8 @@ public final class ConsoleNotice {
     private static String waiverNotice(String locale, Map<String, Object> event) {
         var source = decisionSource(event);
         return formatWaiverRequest(locale,
-                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "WR-?"))),
-                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
+                            TerminalSanitizer.sanitizeLine(textOr(source, ID, textOr(event, ID, "WR-?"))),
+                            TerminalSanitizer.sanitizeLine(firstText(source, event, SCOPE, SUBJECT, "plan")),
                             firstText(source, event, "waiver_gate", "gate", null));
     }
 
@@ -640,7 +672,7 @@ public final class ConsoleNotice {
         if (event.containsKey(COUNT) && event.get(COUNT) instanceof Number num && num.intValue() > 1) {
             var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
-                                Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
+                                Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitizeLine(scope)));
         }
         var id = String.valueOf(event.getOrDefault(ID, ""));
         var subject = stringOf(event, SUBJECT);
@@ -652,14 +684,14 @@ public final class ConsoleNotice {
         if (subject == null || subject.isBlank()) {
             subject = MessageCatalogue.format(locale, "operator.console.notice.report_new", Map.of());
         }
-        var safeLeaf = TerminalSanitizer.sanitize(leaf);
-        var safeSubject = TerminalSanitizer.sanitize(subject);
+        var safeLeaf = TerminalSanitizer.sanitizeLine(leaf);
+        var safeSubject = TerminalSanitizer.sanitizeLine(subject);
         if (id.isBlank()) {
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line",
                                 Map.of("leaf", safeLeaf, SUBJECT, safeSubject));
         }
         return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line_open",
-                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, ID, TerminalSanitizer.sanitize(id)));
+                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, ID, TerminalSanitizer.sanitizeLine(id)));
     }
 
     private static @Nullable String stringOf(Map<String, Object> event, String key) {

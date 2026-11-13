@@ -103,6 +103,9 @@ final class ActionSupport {
 
         /** What happens to the running plans of a cancelled epic. */
         static final FlagPair PLANS = new FlagPair("--with-plans", "--without-plans");
+
+        /** The answer to raising a full epic scope by one. */
+        static final FlagPair RAISE = new FlagPair("--raise-scope", "--no-raise");
     }
 
     /**

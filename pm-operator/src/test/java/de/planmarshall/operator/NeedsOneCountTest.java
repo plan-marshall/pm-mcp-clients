@@ -87,6 +87,10 @@ class NeedsOneCountTest {
                 perKind.merge(item.kind().value(), 1, Integer::sum);
             }
             assertEquals(18, page.total(), "the list's own total");
+            // The scenario's composition is pinned too: a kind whose count moves to another kind
+            // leaves the total at 18 and must still fail here.
+            assertEquals(6, perKind.get(NeedsOperatorKind.DECISION.value()), "the list's decisions: " + perKind);
+            assertEquals(2, perKind.get(NeedsOperatorKind.WAIVER.value()), "the list's waivers: " + perKind);
 
             // Surface 1: 'needs'
             var outNeeds = new StringWriter();
@@ -100,12 +104,19 @@ class NeedsOneCountTest {
             // Surface 2: the overview's "Needs you" group
             var projRes = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
             var projects = ProjectOverviewResponse.fromJson(projRes.bodyText()).projects();
-            var overviewRows = new ProjectsOverviewLevel(projects, page).rows("en", context.clock());
+            var overview = new ProjectsOverviewLevel(projects, page);
+            var overviewRows = overview.rows("en", context.clock());
             assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, overviewRows.getFirst().id());
             assertTrue(overviewRows.getFirst().line().contains("Needs you · 18"), overviewRows.getFirst().line());
-            assertEquals(page.items().size(),
-                                overviewRows.stream().filter(row -> row.id().startsWith(ProjectsOverviewLevel.NEEDS_ITEM_PREFIX)).count(),
-                                "the group carries one row per item");
+            var overviewKinds = new TreeMap<String, Integer>();
+            for (var row : overviewRows) {
+                var item = overview.needsItemOf(row.id());
+                if (item != null) {
+                    overviewKinds.merge(item.kind().value(), 1, Integer::sum);
+                }
+            }
+            assertEquals(perKind, overviewKinds,
+                                "the group carries one row per item, and every kind as often as the list says");
 
             // Surface 3: 'status --json'
             var outStatus = new StringWriter();
