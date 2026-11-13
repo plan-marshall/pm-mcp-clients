@@ -370,6 +370,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_PROJECTS = "/api/v1/projects";
     private static final String CONST_LEGACY_PORTAL = "legacy-portal";
     private static final String CONST_UNENROLLED = "unenrolled";
+    /** How a kept item came to be kept: left out of a delete ({@code cleanup-texts.adoc#texts-kept}). */
+    private static final String KEPT_EXCLUDE = "exclude";
+    /** How a kept item came to be kept: the job was ignored. */
+    private static final String KEPT_IGNORE = "ignore";
     private static final String PATH_ENROL = "/api/v1/enrol";
     private static final String SEGMENT_ENROL = "/enrol";
     private static final String SEGMENT_STORES_DIGEST = "/stores/digest";
@@ -7975,10 +7979,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             dropBufferedDrainFrames();
 
             keptItems.clear();
-            keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", "left out of a delete", "13 Oct", "the console"));
-            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", "ignored", "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", "read_reports", "3 read reports", "ignored", "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", "ignored", "2 Oct", "the web app (iPad)"));
+            // how is the wire value the catalogue selects on: ignore or exclude
+            keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", KEPT_EXCLUDE, "13 Oct", "the console"));
+            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
+            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", "read_reports", "3 read reports", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
+            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
 
             cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
             cleanupResidues.clear();
@@ -9749,7 +9754,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var entry = cleanupEntry(un);
                 if (entry != null) {
                     keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
-                            "left out of a delete", "today", isWeb ? "the web app" : "the console"));
+                            KEPT_EXCLUDE, "today", isWeb ? "the web app" : "the console"));
                 }
             }
 
@@ -9882,7 +9887,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             for (var prj : activeCleanupJob.projectItems()) {
                 for (var entry : prj.items()) {
-                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), "ignored", "today", isWeb ? "the web app" : "the console"));
+                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), KEPT_IGNORE, "today", isWeb ? "the web app" : "the console"));
                 }
             }
 
