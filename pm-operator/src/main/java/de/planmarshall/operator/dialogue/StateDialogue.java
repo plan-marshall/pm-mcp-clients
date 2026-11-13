@@ -75,6 +75,7 @@ public final class StateDialogue {
     private static final String DONE = "done";
     private static final String ONBOARD_COMPLETED = "onboard.completed";
     private static final String PROJECT_COMPLETED = "project.completed";
+    private static final String TOTAL_PARAM = "total";
 
     /** The step every project state of the checkout phase names. */
     private static final String CHECKOUT_STEP = "checkout";
@@ -301,10 +302,10 @@ public final class StateDialogue {
             // A state of an aspect the run does not inject names no step: the overview lists the
             // injected aspects only, and "Done" is reserved for the run's own last state.
             return MessageCatalogue.format(locale, "onboard.state.step_line_unnamed", Map.of(
-                                STEP_FIELD, frame.step(), "total", frame.totalSteps(), "title", title));
+                                STEP_FIELD, frame.step(), TOTAL_PARAM, frame.totalSteps(), "title", title));
         }
         return MessageCatalogue.format(locale, "onboard.state.step_line", Map.of(
-                            STEP_FIELD, frame.step(), "total", frame.totalSteps(),
+                            STEP_FIELD, frame.step(), TOTAL_PARAM, frame.totalSteps(),
                             "name", name, "title", title));
     }
 
@@ -332,7 +333,7 @@ public final class StateDialogue {
 
     private List<String> modeContent(Frame frame) {
         var lines = new ArrayList<String>();
-        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of("total", frame.totalSteps())));
+        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of(TOTAL_PARAM, frame.totalSteps())));
         addStepOverview(lines);
         return lines;
     }

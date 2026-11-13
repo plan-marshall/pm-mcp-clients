@@ -278,11 +278,9 @@ final class ConfigCleanupCommand implements Callable<Integer> {
      * @param answer    the operator's line
      * @param durations the durations being edited
      * @param changes   the changes taken so far
-     * @throws IOException on transport failure
      */
     private void changeOne(StartPrompt prompt, PrintWriter out, String locale, List<String> kinds,
-                        String answer, Map<String, Integer> durations, Map<String, Integer> changes)
-                        throws IOException {
+                        String answer, Map<String, Integer> durations, Map<String, Integer> changes) {
         if ("?".equals(answer)) {
             out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
             return;
