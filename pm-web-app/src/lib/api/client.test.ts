@@ -1353,6 +1353,24 @@ describe('ApiClient chat on the B1 contract', () => {
     );
   });
 
+  it('reads a start entry chat without opening one', async () => {
+    // Arrange
+    respondWith([chatResource()]);
+
+    // Act
+    const chat = await client.getEntryChat('ent-showroom');
+
+    // Assert: a read on the chat's own address, never an open.
+    expect(requested).toEqual([
+      {
+        method: 'GET',
+        url: 'http://localhost:7420/api/v1/entries/ent-showroom/chat',
+        body: undefined,
+      },
+    ]);
+    expect(chat.chat_id).toBe('chat-1');
+  });
+
   it('stops reading at the bound while the reply keeps streaming', async () => {
     // Arrange: every read still shows the reply being written.
     const streaming = chatResource({

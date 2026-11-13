@@ -75,6 +75,11 @@
   let chatOpen = false;
   /** The entry's chat, read from its own `ChatRoutes` address rather than from the start state. */
   let chat: ChatReadBack | null = null;
+  /**
+   * Counts the chat operations: a refresh that started before a send, an end or an answer is not
+   * applied over the newer state those produced.
+   */
+  let chatGeneration = 0;
 
   let readyTitle = '';
   let readyId = '';
@@ -219,10 +224,15 @@
     if (!chatOpen || chat === null || chat.state === 'chat.end' || chat.state === 'chat.carried') {
       return;
     }
-    const generation = entryGeneration;
+    // A refresh is applied only while no send, end or answer has overtaken it.
+    const generation = chatGeneration;
     try {
-      const opened = await apiClient.openEntryChat(target);
-      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+      const opened = await apiClient.getEntryChat(target);
+      if (
+        destroyed ||
+        generation !== chatGeneration ||
+        (entryId !== null && target !== entryId)
+      )
         return;
       chat = opened;
     } catch {
@@ -496,18 +506,18 @@
   }
 
   async function openChat(): Promise<void> {
-    if (chat) {
-      chatOpen = true;
-      return;
-    }
     const target = entry?.entry_id;
     if (!target) return;
-    const generation = entryGeneration;
+    if (chatOpen) return;
+    const generation = ++chatGeneration;
     busy = true;
     try {
-      // The chat is its own resource now: it is opened on its route, not by an act of the entry.
-      const opened = await apiClient.openEntryChat(target);
-      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+      // The chat is its own resource, read on its route: a cached one is read again, so a proposal
+      // answered or a reply completed while the panel was closed is shown as it stands.
+      const opened = chat === null
+        ? await apiClient.openEntryChat(target)
+        : await apiClient.getEntryChat(target);
+      if (destroyed || generation !== chatGeneration || (entryId !== null && target !== entryId))
         return;
       chat = opened;
       chatOpen = true;
@@ -533,12 +543,12 @@
   async function sendChat(text: string): Promise<void> {
     const target = entry?.entry_id;
     if (!target) return;
-    const generation = entryGeneration;
+    const generation = ++chatGeneration;
     busy = true;
     try {
       // The turn is answered at once; the client reads on until the reply turn is complete.
       const answered = await apiClient.chatTurn(target, text);
-      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+      if (destroyed || generation !== chatGeneration || (entryId !== null && target !== entryId))
         return;
       chat = answered;
     } catch (e) {
@@ -551,11 +561,11 @@
   async function endChat(): Promise<void> {
     const target = entry?.entry_id;
     if (!target) return;
-    const generation = entryGeneration;
+    const generation = ++chatGeneration;
     busy = true;
     try {
       const closed = await apiClient.endEntryChat(target);
-      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+      if (destroyed || generation !== chatGeneration || (entryId !== null && target !== entryId))
         return;
       chat = closed;
       chatOpen = false;
@@ -570,12 +580,12 @@
     const target = entry?.entry_id;
     const turnId = chat?.proposal?.turn_id;
     if (!target || !turnId) return;
-    const generation = entryGeneration;
+    const generation = ++chatGeneration;
     busy = true;
     try {
       // The answer names the proposal the operator saw, by its own turn.
       const answered = await apiClient.answerChatProposal(target, turnId, accept);
-      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+      if (destroyed || generation !== chatGeneration || (entryId !== null && target !== entryId))
         return;
       chat = answered;
       // An accepted proposal stores the description, so the entry is read again.

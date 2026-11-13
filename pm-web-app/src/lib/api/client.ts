@@ -2487,6 +2487,18 @@ export class ApiClient {
   }
 
   /**
+   * Reads the entry's chat without opening one.
+   *
+   * @param entryId the entry's id
+   * @returns the chat, with its transcript and its proposal where it has one
+   */
+  public async getEntryChat(entryId: string): Promise<ChatReadBack> {
+    return normaliseChat(
+      await this.request<WireChatResource>('GET', ApiClient.entryChatPath(entryId)),
+    );
+  }
+
+  /**
    * Sends the operator's message and reads the chat on until the role's reply is complete.
    *
    * @param entryId the entry's id
