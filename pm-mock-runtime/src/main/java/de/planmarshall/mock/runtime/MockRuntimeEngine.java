@@ -47,10 +47,14 @@ import org.jspecify.annotations.Nullable;
 
 import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatSubject;
 import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.chat.ProposalKind;
+import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.DecompositionCheck;
@@ -223,7 +227,7 @@ import de.planmarshall.mock.scenario.StateDefinition;
  * The core state machine and request dispatcher for the mock runtime.
  */
 @SuppressWarnings("java:S1075")
-public final class MockRuntimeEngine implements AutoCloseable {
+public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private static final CuiLogger LOGGER = new CuiLogger(MockRuntimeEngine.class);
 
@@ -361,6 +365,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_NODE_ID = "node_id";
     private static final String KEY_TITLE = "title";
     private static final String KEY_PHASE = "phase";
+    private static final String KEY_ACTIVITY = "activity";
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
@@ -460,6 +465,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The state whose runtime fixture is the base every other state of the scenario inherits. */
     private static final String BASE_FIXTURE_STATE = "running_work.active";
     private static final String FIXTURE_CONTROL = "control";
+    private static final String KNOWS_DESCRIPTION = "chat.knows.description";
+    private static final String KNOWS_TASKS = "chat.knows.tasks";
+    private static final String KNOWS_PHASE = "chat.knows.phase";
+    private static final String KNOWS_VERSION = "chat.knows.version";
+    private static final String KNOWS_ARG_COUNT = "count";
+    private static final String KNOWS_ARG_PHASE = "phase";
+    private static final String KNOWS_ARG_VERSION = "version";
+    private static final String ACT_PAUSE = "pause";
+    private static final String ACT_START = "start";
+    private static final String KEY_CHANNEL = "channel";
+    private static final String CHANNEL_WEB = "web";
+    private static final String CHANNEL_CLI = "cli";
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
     private static final String FIXTURE_REPORTS = "reports";
@@ -802,6 +819,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, ReviewResource> controlReviews = new LinkedHashMap<>();
     private final Map<String, ArchiveCheck> controlArchiveChecks = new LinkedHashMap<>();
 
+    /** The plan's queued revision, by plan id, as {@code plan.revision_queued} announces it. */
+    private final Map<String, QueuedRevision> planQueuedRevisions = new LinkedHashMap<>();
+    /** How many instance versions the revisions of chats moved each plan on by, by plan id. */
+    private final Map<String, Integer> planAppliedVersions = new LinkedHashMap<>();
+    /** The chat and the turn the last version of each plan came from, by plan id. */
+    private final Map<String, ChatOrigin> planRevisionOrigins = new LinkedHashMap<>();
+    /** The phase each plan entered while the runtime runs, by plan id. */
+    private final Map<String, String> planPhases = new LinkedHashMap<>();
+    /** The activity each plan reports while the runtime runs, by plan id. */
+    private final Map<String, String> planActivities = new LinkedHashMap<>();
+
     private final Object decompositionLock = new Object();
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
 
@@ -856,7 +884,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent(event.name(), event.data());
         });
         this.chatRegistry = new ChatRegistry(event -> broadcastEvent(event.name(), scopedPayload(event)),
-                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal);
+                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal, this);
         setScenario(scenario);
     }
 
@@ -896,6 +924,268 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public MockTiming timing() {
         return eventTiming.timing();
+    }
+
+    @Override
+    public List<MessageText> knows(ChatSubject subject, ChatScopeKind scope) {
+        if (scope == ChatScopeKind.ARCHIVE) {
+            return List.of();
+        }
+        return switch (subject.kind()) {
+            case PLAN -> planKnows(subject.id());
+            case EPIC -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            case ENTRY -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            default -> List.of();
+        };
+    }
+
+    /**
+     * What the role of a plan's chat is given of the plan, rendered from the scenario's plan detail
+     * ({@code state-catalogue.adoc#chat-context}, The Context Summary): the description, the tasks'
+     * count, the phase and the instance version, the version being the one the chats moved the plan on
+     * to.
+     *
+     * @param planId the plan's id
+     * @return the items, in order; empty where the scenario serves no such plan
+     */
+    private List<MessageText> planKnows(String planId) {
+        var plan = planDetail(planId);
+        if (plan == null) {
+            return List.of();
+        }
+        var knows = new ArrayList<MessageText>();
+        knows.add(MessageText.of(KNOWS_DESCRIPTION));
+        var tasks = tasksTotal(plan);
+        if (tasks != null) {
+            knows.add(new MessageText(KNOWS_TASKS, Map.of(KNOWS_ARG_COUNT, tasks)));
+        }
+        var phase = planPhase(planId, plan);
+        if (phase != null) {
+            knows.add(new MessageText(KNOWS_PHASE, Map.of(KNOWS_ARG_PHASE, phase)));
+        }
+        knows.add(new MessageText(KNOWS_VERSION, Map.of(KNOWS_ARG_VERSION, instanceVersion(planId))));
+        return knows;
+    }
+
+    @Override
+    public int instanceVersion(String planId) {
+        synchronized (controlLock) {
+            return baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0);
+        }
+    }
+
+    @Override
+    public boolean revisionWindowOpen(String planId) {
+        var plan = planDetail(planId);
+        if (plan == null) {
+            // The scenario serves no detail of the plan: the mock cannot show the window closed.
+            return true;
+        }
+        var state = JsonTree.string(plan, "phase_state");
+        if (state == null) {
+            state = JsonTree.string(plan, "state");
+        }
+        if ("done".equals(state) || "ended".equals(state) || "merged".equals(state)) {
+            return false;
+        }
+        var phase = planPhase(planId, plan);
+        return PHASE_EXECUTE.equals(phase) || "finalize".equals(phase);
+    }
+
+    @Override
+    public boolean offersAct(ChatSubject subject, String act) {
+        if (subject.kind() != ChatSubjectKind.PLAN) {
+            return false;
+        }
+        synchronized (controlLock) {
+            var state = controlPlanStates.getOrDefault(subject.id(), "running");
+            return switch (act) {
+                case ACT_PAUSE -> "running".equals(state) || "pausing".equals(state);
+                case ACT_START -> "paused".equals(state);
+                default -> false;
+            };
+        }
+    }
+
+    @Override
+    public @Nullable QueuedRevision queuedRevision(String planId) {
+        synchronized (controlLock) {
+            var queued = planQueuedRevisions.get(planId);
+            if (queued == null) {
+                return null;
+            }
+            // A chat is open until it ends; the chats say so, and the map holds the last answer.
+            return queued;
+        }
+    }
+
+    @Override
+    public void queueRevision(String planId, QueuedRevision revision) {
+        synchronized (controlLock) {
+            planQueuedRevisions.put(planId, revision);
+        }
+    }
+
+    @Override
+    public void revisionChatEnded(String planId) {
+        synchronized (controlLock) {
+            var queued = planQueuedRevisions.get(planId);
+            if (queued != null) {
+                planQueuedRevisions.put(planId, new QueuedRevision(queued.chatId(), queued.turnId(),
+                        queued.subject(), false, queued.applies()));
+            }
+        }
+    }
+
+    @Override
+    public void applyRevision(String planId, ChatOrigin origin) {
+        synchronized (controlLock) {
+            planQueuedRevisions.remove(planId);
+            planAppliedVersions.merge(planId, 1, Integer::sum);
+            planRevisionOrigins.put(planId, origin);
+        }
+    }
+
+    @Override
+    public void clearRevision(String planId) {
+        synchronized (controlLock) {
+            planQueuedRevisions.remove(planId);
+        }
+    }
+
+    /**
+     * @param planId the plan's id
+     * @return the plan's detail as the scenario serves it, its version without the chats' revisions, or
+     *         {@code null} when the scenario serves no such plan
+     */
+    private @Nullable Map<String, Object> planDetail(String planId) {
+        var route = activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS);
+        if (route != null && route.representation() instanceof Map<?, ?> representation) {
+            return orderedMap(representation);
+        }
+        return planSummary(planId);
+    }
+
+    /**
+     * @param planId the plan's id
+     * @return the instance version the scenario's plan detail names, without the chats' revisions
+     */
+    private int baseInstanceVersion(String planId) {
+        var plan = planDetail(planId);
+        var version = plan == null ? null : JsonTree.integer(plan, "instance_version");
+        return version != null ? version : 1;
+    }
+
+    /**
+     * @param plan the plan's detail
+     * @return the number of tasks the plan's detail names, or {@code null} where it names none
+     */
+    private static @Nullable Integer tasksTotal(Map<String, Object> plan) {
+        var tokens = JsonTree.asObject(plan.get("tokens_so_far"));
+        var total = tokens == null ? null : JsonTree.integer(tokens, "tasks_total");
+        if (total != null) {
+            return total;
+        }
+        var counted = countLeafTasks(rowsOf(plan, "nodes"));
+        return counted == 0 ? null : counted;
+    }
+
+    /**
+     * @param nodes the plan's process nodes
+     * @return the number of leaf tasks they hold, at every depth
+     */
+    private static int countLeafTasks(List<?> nodes) {
+        var count = 0;
+        for (var raw : nodes) {
+            var node = JsonTree.asObject(raw);
+            if (node == null) {
+                continue;
+            }
+            count += rowsOf(node, "leaf_tasks").size();
+            count += countLeafTasks(rowsOf(node, "sub_nodes"));
+        }
+        return count;
+    }
+
+    /**
+     * @param planId the plan's id
+     * @param plan   the plan's detail
+     * @return the plan's current phase, the one it entered while the runtime runs where it did, else
+     *         the one the scenario's detail names
+     */
+    private @Nullable String planPhase(String planId, Map<String, Object> plan) {
+        synchronized (controlLock) {
+            var entered = planPhases.get(planId);
+            if (entered != null) {
+                return entered;
+            }
+        }
+        var phase = JsonTree.string(plan, KEY_PHASE);
+        return phase != null ? phase : JsonTree.string(plan, "current_phase");
+    }
+
+    /**
+     * Patches a plan's representation with what its chats moved on: its instance version, the
+     * {@code queued_revision} waiting for its boundary, and the origin of the version a chat's
+     * revision made ({@code state-catalogue.adoc#chat-proposal-states}, {@code #chat-origin}).
+     *
+     * @param planId         the plan's id
+     * @param representation the representation the scenario serves
+     * @return the representation to answer
+     */
+    private Map<String, Object> withPlanOverlay(String planId, Map<?, ?> representation) {
+        var copy = orderedMap(representation);
+        synchronized (controlLock) {
+            copy.put("instance_version", baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0));
+            var phase = planPhases.get(planId);
+            if (phase != null) {
+                copy.put(KEY_PHASE, phase);
+                copy.put("current_phase", phase);
+            }
+            var activity = planActivities.get(planId);
+            if (activity != null) {
+                copy.put(KEY_ACTIVITY, activity);
+            }
+            var queued = planQueuedRevisions.get(planId);
+            if (queued != null) {
+                copy.put("queued_revision", queued.toMap());
+            }
+            var origin = planRevisionOrigins.get(planId);
+            if (origin != null) {
+                copy.put("origin", origin.toMap());
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Patches the plan rows of an overview with the {@code queued_revision} each plan waits for.
+     *
+     * @param rows the plan rows of a project or of an epic
+     * @return the rows to answer
+     */
+    private List<Object> withQueuedRevisions(List<?> rows) {
+        var result = new ArrayList<Object>(rows.size());
+        for (var row : rows) {
+            var map = JsonTree.asObject(row);
+            if (map == null) {
+                result.add(row);
+                continue;
+            }
+            var planId = JsonTree.string(map, "id");
+            if (planId == null) {
+                planId = JsonTree.string(map, KEY_PLAN_ID);
+            }
+            var copy = orderedMap(map);
+            synchronized (controlLock) {
+                var queued = planId == null ? null : planQueuedRevisions.get(planId);
+                if (queued != null) {
+                    copy.put("queued_revision", queued.toMap());
+                }
+            }
+            result.add(copy);
+        }
+        return result;
     }
 
     /**
@@ -1648,7 +1938,41 @@ public final class MockRuntimeEngine implements AutoCloseable {
         deliverEvent(event, data);
         var payload = payloadOf(data);
         recordEndedWork(event, payload);
+        recordPlanProgress(event, payload);
         chatRegistry.observe(event, payload);
+    }
+
+    /**
+     * Records what an event says the plan moved on to, so a chat's context and the plan's revision
+     * window read the plan as it is now rather than as the scenario's fixture spells it: the phase it
+     * entered, its activity, and its instance version ({@code state-catalogue.adoc#chat-context}).
+     *
+     * @param event   the event's name
+     * @param payload the event's payload
+     */
+    private void recordPlanProgress(String event, Map<String, Object> payload) {
+        var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            return;
+        }
+        synchronized (controlLock) {
+            if (EventName.PHASE_CHANGED.wire().equals(event)) {
+                var phase = stringMember(payload, KEY_PHASE);
+                if (phase != null) {
+                    planPhases.put(planId, phase);
+                }
+            } else if (EventName.ACTIVITY_CHANGED.wire().equals(event)) {
+                var activity = stringMember(payload, KEY_ACTIVITY);
+                if (activity != null) {
+                    planActivities.put(planId, activity);
+                }
+            } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
+                var version = JsonTree.integer(payload, "instance_version");
+                if (version != null) {
+                    planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
+                }
+            }
+        }
     }
 
     /**
@@ -1923,7 +2247,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!isAuthorized(request, response, isWeb)) {
             return;
         }
-        recordOperatorAct(request);
+        recordOperatorAct(request, isWeb);
 
         // 2b. An act against a state left meanwhile is refused before any dynamic route serves it.
         if (handleStaleOperatorLink(request, response)) {
@@ -3067,6 +3391,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlEpics.clear();
             controlReviews.clear();
             controlArchiveChecks.clear();
+            planQueuedRevisions.clear();
+            planAppliedVersions.clear();
+            planRevisionOrigins.clear();
+            planPhases.clear();
+            planActivities.clear();
 
             var control = fixtureObject(startRuntimeFixture(), FIXTURE_CONTROL);
             if (control == null) {
@@ -5969,13 +6298,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var detail = JsonTree.asObject(rep);
             if (detail != null && (detail.get(KEY_PLANS) instanceof List<?> || detail.get(KEY_EPICS) instanceof List<?>)) {
                 var copy = orderedMap(map);
-                copy.put(KEY_PLANS, orderedActiveWork(rowsOf(detail, KEY_PLANS)));
+                copy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(rowsOf(detail, KEY_PLANS))));
                 var epics = new ArrayList<Object>();
                 for (var epicRow : rowsOf(detail, KEY_EPICS)) {
                     var epicMap = JsonTree.asObject(epicRow);
                     if (epicMap != null && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
                         var epicCopy = orderedMap(epicMap);
-                        epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
+                        epicCopy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(epicPlans)));
                         epics.add(epicCopy);
                     } else {
                         epics.add(epicRow);
@@ -7173,12 +7502,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Records one operator act: an authenticated request that is not a read. A dialogue sends one
      * when it sends what the operator chose. A request is recorded whether the runtime accepts or
-     * refuses it, so the log proves what was sent, not what took effect. The log is what
-     * {@code GET /mock/acts} serves.
+     * refuses it, so the log proves what was sent, not what took effect. The channel is the listener's
+     * — {@code cli} on the Unix socket, {@code web} with the device on the web listener — never a
+     * request's own default. The log is what {@code GET /mock/acts} serves.
      *
      * @param request the authenticated request
+     * @param isWeb   {@code true} if the request arrived on the web listener
      */
-    private void recordOperatorAct(MockHttpRequest request) {
+    private void recordOperatorAct(MockHttpRequest request, boolean isWeb) {
         var method = request.method().toUpperCase(Locale.ROOT);
         if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)) {
             return;
@@ -7191,10 +7522,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
+        act.put(KEY_CHANNEL, isWeb ? CHANNEL_WEB : CHANNEL_CLI);
+        var deviceId = isWeb ? webListenerDevice() : null;
+        if (deviceId != null) {
+            act.put("device_id", deviceId);
+        }
         if (recordActBodies && carriesDecisionBody(request.path())) {
             act.put("body", request.bodyText());
         }
         operatorActs.add(act);
+    }
+
+    /**
+     * @return the id of the device the web listener's secret belongs to, or {@code null} when no
+     *         device is paired
+     */
+    private @Nullable String webListenerDevice() {
+        synchronized (devicesLock) {
+            return pairedDevices.isEmpty() ? null : pairedDevices.getFirst().deviceId();
+        }
     }
 
     /**
@@ -10157,8 +10503,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             answerReq = DecisionAnswerRequest.fromJson(request.bodyText());
         } catch (IOException | IllegalArgumentException | IllegalStateException _) {
-            answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, isWeb ? "web" : "cli", null);
+            answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, null, null);
         }
+        // The channel is the listener's, never a request's own default (PLAN-132 D5), and so is the
+        // device an answer on the web listener came from.
+        answerReq = new DecisionAnswerRequest(answerReq.partAnswers(), answerReq.option(), answerReq.ownWords(),
+                answerReq.note(), answerReq.action(), answerReq.reason(), isWeb ? CHANNEL_WEB : CHANNEL_CLI,
+                isWeb ? webListenerDevice() : null);
 
         if (envelope.isWaiver()) {
             handleWaiverAnswer(response, decisionId, answerReq);
@@ -10342,6 +10693,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 1. If static route is defined for this exact process path, return it directly
         var route = activeRoute("GET", path);
         if (route != null) {
+            if (isPlanProcess && route.representation() instanceof Map<?, ?> planRep) {
+                var sub = path.substring(PATH_PLANS_PREFIX.length());
+                var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
+                if (!planId.contains("/")) {
+                    response.json(route.status(), withPlanOverlay(planId, planRep));
+                    return true;
+                }
+            }
             response.json(route.status(), route.representation());
             return true;
         }
@@ -10387,7 +10746,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var template = defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> rep
                         ? rep
                         : null;
-                response.json(200, synthesizedPlan(template, planId, summary));
+                response.json(200, withPlanOverlay(planId, synthesizedPlan(template, planId, summary)));
                 return true;
             }
         }

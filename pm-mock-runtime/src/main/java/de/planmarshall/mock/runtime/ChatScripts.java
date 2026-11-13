@@ -17,6 +17,7 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatSubject;
 import de.planmarshall.api.chat.ChatSubjectKind;
 import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.chat.ProposalKind;
@@ -49,6 +50,8 @@ final class ChatScripts {
     private static final String ARG_CHECK = "check";
     private static final String ARG_TASK_ID = "task_id";
     private static final String TASK_ID = "TASK-4";
+    private static final String HOLD_ID = "H-1";
+    private static final String ACT_PAUSE = "pause";
 
     private static final String RICH_TEXT = """
             Three points:
@@ -113,12 +116,13 @@ final class ChatScripts {
     }
 
     /**
-     * @param subject the kind of the chat's subject
-     * @param scope   the chat's scope
-     * @param index   how many replies the role has written in the chat before this one
+     * @param subject   the kind of the chat's subject
+     * @param subjectId the id of the chat's subject
+     * @param scope     the chat's scope
+     * @param index     how many replies the role has written in the chat before this one
      * @return the reply the role writes
      */
-    Reply reply(ChatSubjectKind subject, ChatScopeKind scope, int index) {
+    Reply reply(ChatSubjectKind subject, String subjectId, ChatScopeKind scope, int index) {
         return switch (index) {
             case 0 -> richReply();
             case 1 -> new Reply("Here is what I would change.", TurnFormat.MARKDOWN, false,
@@ -126,8 +130,25 @@ final class ChatScripts {
                     List.of(), proposal(subject, scope));
             case 2 -> new Reply(UNTRUSTED_TEXT, TurnFormat.PLAIN, true, List.of(), List.of(),
                     subject == ChatSubjectKind.EPIC && scope != ChatScopeKind.ARCHIVE ? draftProposal() : null);
-            default -> new Reply(LATER_TEXT, TurnFormat.MARKDOWN, false, List.of(), List.of(), null);
+            default -> laterReply(subject, subjectId);
         };
+    }
+
+    /**
+     * The reply to every later message: a short answer that names, of a plan, a hold and the act the
+     * operator may take instead ({@code state-catalogue.adoc#chat-names-acts}: the role names an act,
+     * never performs one).
+     *
+     * @param subject   the kind of the chat's subject
+     * @param subjectId the id of the chat's subject
+     * @return the reply
+     */
+    private static Reply laterReply(ChatSubjectKind subject, String subjectId) {
+        var refs = subject == ChatSubjectKind.PLAN
+                ? List.of(TurnRef.of(RefKind.HOLD, HOLD_ID),
+                        TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
+                : List.<TurnRef>of();
+        return new Reply(LATER_TEXT, TurnFormat.MARKDOWN, false, List.of(), refs, null);
     }
 
     private static Reply richReply() {
