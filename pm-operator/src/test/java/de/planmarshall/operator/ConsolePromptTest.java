@@ -18,10 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
-import de.planmarshall.api.overview.NeedsOperatorKind;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import de.planmarshall.api.overview.NeedsOperatorKind;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
