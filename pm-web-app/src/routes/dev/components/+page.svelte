@@ -513,7 +513,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.row_link')}</h3>
-      <div class="dev__stack">
+      <div class="dev__rows">
         <RowLink href="/plans/fix-relay" title={$t('dev.row_link.title')}>
           {#snippet kind()}<KindMark kind="plan" />{/snippet}
           {#snippet tags()}
@@ -655,6 +655,13 @@
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: 40rem;
+  }
+
+  /* The row fixtures take the width a list column would, so a row shows its own 40 px height. */
+  .dev__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .dev__grounds {
