@@ -15,10 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import de.planmarshall.api.display.Display;
@@ -33,10 +36,28 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@EnableGeneratorController
 @DisplayName("OverviewFormatting")
 class OverviewFormattingTest {
+
+    /** The English word of every kind, as the catalogue names it. */
+    private static final Map<NeedsOperatorKind, String> NEEDS_WORDS_EN = Map.ofEntries(
+                        Map.entry(NeedsOperatorKind.DECISION, "decision"),
+                        Map.entry(NeedsOperatorKind.WAIVER, "waiver"),
+                        Map.entry(NeedsOperatorKind.WAITS_FOR_YOU, "waits for you"),
+                        Map.entry(NeedsOperatorKind.STALLED, "stalled"),
+                        Map.entry(NeedsOperatorKind.CONDITION, "needs a fix"),
+                        Map.entry(NeedsOperatorKind.INTEGRITY_PAUSE, "integrity pause"),
+                        Map.entry(NeedsOperatorKind.HELD, "held"),
+                        Map.entry(NeedsOperatorKind.LANDING_FAILED, "landing failed"),
+                        Map.entry(NeedsOperatorKind.FINDINGS, "new findings"),
+                        Map.entry(NeedsOperatorKind.SETUP, "setup"),
+                        Map.entry(NeedsOperatorKind.CREDENTIAL, "credential"),
+                        Map.entry(NeedsOperatorKind.CLEANUP_DUE, "cleanup due"),
+                        Map.entry(NeedsOperatorKind.OTHER, "another reason"));
 
     private final Instant baseInstant = Instant.parse("2026-10-20T12:00:00Z");
     private final Clock clock = Clock.fixed(baseInstant, ZoneOffset.UTC);
@@ -302,28 +323,59 @@ class OverviewFormattingTest {
         assertTrue(OverviewFormatting.needsOperator(epicWithAttention));
     }
 
-    @Test
-    @DisplayName("formatNeedsItem methods cover subjects, kinds, blocks, and since")
-    void needsItemFormattingExhaustive() {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("formatNeedsItem methods cover the subject, the kind word, blocks and since of every kind")
+    void needsItemFormattingExhaustive(NeedsOperatorKind kind) {
+        var project = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var epic = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var plan = new WorkLocation(Generators.letterStrings(4, 12).next(), Generators.letterStrings(4, 12).next());
+        var recent = baseInstant.minusSeconds(120);
+
         assertNull(OverviewFormatting.needsKeyForKind(null));
         assertEquals("", OverviewFormatting.formatNeedsItemKind(null, "en"));
 
-        var itemMachine = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, null, null, null, null, null);
-        assertEquals("machine", OverviewFormatting.formatNeedsItemSubject(itemMachine, "en"));
+        // The kind word, in the operator's language, and English for a language the catalogue lacks.
+        assertEquals(NEEDS_WORDS_EN.get(kind), OverviewFormatting.formatNeedsItemKind(kind, "en"));
+        assertEquals(NEEDS_WORDS_EN.get(kind), OverviewFormatting.formatNeedsItemKind(kind, "fr"));
+        var german = OverviewFormatting.formatNeedsItemKind(kind, "de");
+        assertFalse(german.isBlank(), "de has no word for " + kind);
+        assertFalse(german.contains("."), "a catalogue key leaked: " + german);
 
-        var itemEpic = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null, null, new WorkLocation("epic-1", "Epic One"), null, null, null);
-        assertEquals("Epic One", OverviewFormatting.formatNeedsItemSubject(itemEpic, "en"));
+        // The subject: the narrowest place's own title, and the machine's word where there is none.
+        var itemMachine = new NeedsOperatorItem(kind, null, null, null, null, recent, null);
+        assertEquals(placelessSubject(kind), OverviewFormatting.formatNeedsItemSubject(itemMachine, "en"));
+        var itemProj = new NeedsOperatorItem(kind, null, project, null, null, recent, null);
+        assertEquals(project.title(), OverviewFormatting.formatNeedsItemSubject(itemProj, "en"));
+        var itemEpic = new NeedsOperatorItem(kind, null, project, epic, null, recent, "epic");
+        assertEquals(epic.title(), OverviewFormatting.formatNeedsItemSubject(itemEpic, "en"));
+        assertEquals(epic.title(), OverviewFormatting.formatNeedsItemSubject(itemEpic, "de"));
+        var itemPlan = new NeedsOperatorItem(kind, null, project, epic, plan, recent, "plan");
+        assertEquals(plan.title(), OverviewFormatting.formatNeedsItemSubject(itemPlan, "en"));
 
-        var itemProj = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, new WorkLocation("proj-1", "Project One"), null, null, null, null);
-        assertEquals("Project One", OverviewFormatting.formatNeedsItemSubject(itemProj, "en"));
-
+        // Since.
         assertEquals("", OverviewFormatting.formatNeedsItemSince(null, "en", clock));
-        var recent = baseInstant.minusSeconds(120);
-        assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(recent, "en", clock));
+        assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(itemPlan.since(), "en", clock));
 
-        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(null, "en"));
+        // What it blocks, in the operator's words.
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "en"));
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "fr"));
         assertEquals("blockiert: unbekannt", OverviewFormatting.formatNeedsItemBlocks("other-plan", "de"));
-        assertEquals("blockiert: Plan", OverviewFormatting.formatNeedsItemBlocks("plan", "de"));
+        assertEquals("blockiert: Plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "de"));
+        assertEquals("blocks: plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "en"));
+        assertEquals("blocks: epic", OverviewFormatting.formatNeedsItemBlocks(itemEpic.blocks(), "en"));
+    }
+
+    /**
+     * @param kind the kind of an item that belongs to no place
+     * @return the English subject such an item names
+     */
+    private static String placelessSubject(NeedsOperatorKind kind) {
+        return switch (kind) {
+            case CLEANUP_DUE -> "cleanup";
+            case CREDENTIAL -> "credential";
+            default -> "machine";
+        };
     }
 
     /**

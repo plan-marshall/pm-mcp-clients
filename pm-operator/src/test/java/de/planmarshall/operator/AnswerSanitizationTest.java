@@ -67,11 +67,6 @@ class AnswerSanitizationTest {
     /** Every class of hostile text at once, as a JSON string fragment. */
     private static final String HOSTILE = CSI + OSC + C1_CSI + C1_OSC + BIDI + ZERO_WIDTH + TAG;
 
-    /** The paths that print a decision. */
-    enum AnswerPath {
-        DIALOGUE, NO_INPUT, WAIVER, DIRECT
-    }
-
     /** The nouns the answer lines take from the envelope without a catalogue text of their own. */
     enum Noun {
         SUBJECT, PROJECT, PLAN
@@ -99,21 +94,55 @@ class AnswerSanitizationTest {
         }
     }
 
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(AnswerPath.class)
-    @DisplayName("each path prints the decision's text without one hostile character")
-    void pathPrintsNoHostileCharacter(AnswerPath path) throws Exception {
+    @Test
+    @DisplayName("the interactive dialogue prints the decision's text without one hostile character")
+    void dialogueIsClean() throws Exception {
+        var anchor = anchor();
+        var terminal = new StringWriter();
+
+        var code = runDialogue(anchor, terminal);
+
+        assertEquals(0, code);
+        assertNoControlSequences(out.toString());
+        assertNoControlSequences(terminal.toString());
+        var rendered = out.toString() + terminal;
+        assertTrue(rendered.contains(anchor), () -> "the dialogue printed no text of the decision: " + rendered);
+    }
+
+    @Test
+    @DisplayName("the --no-input view prints the decision's text without one hostile character")
+    void noInputViewIsClean() throws Exception {
         var anchor = anchor();
 
-        var rendered = switch (path) {
-            case DIALOGUE -> runDialogue(anchor);
-            case NO_INPUT -> runNoInput(anchor);
-            case WAIVER -> runWaiverView(anchor);
-            case DIRECT -> runDirect(anchor);
-        };
+        var code = runNoInput(anchor);
 
-        assertClean(rendered);
-        assertTrue(rendered.contains(anchor), () -> "the path printed no text of the decision: " + rendered);
+        assertEquals(3, code);
+        assertNoControlSequences(out.toString());
+        assertTrue(out.toString().contains(anchor), () -> "the view printed no text of the decision: " + out);
+    }
+
+    @Test
+    @DisplayName("the waiver view prints its gate and reason without one hostile character")
+    void waiverViewIsClean() throws Exception {
+        var anchor = anchor();
+
+        var code = runWaiverView(anchor);
+
+        assertEquals(3, code);
+        assertNoControlSequences(out.toString());
+        assertTrue(out.toString().contains(anchor), () -> "the view printed no reason of the waiver: " + out);
+    }
+
+    @Test
+    @DisplayName("the direct answer prints the decision's text without one hostile character")
+    void directAnswerIsClean() throws Exception {
+        var anchor = anchor();
+
+        var code = runDirect(anchor);
+
+        assertEquals(0, code);
+        assertNoControlSequences(out.toString());
+        assertTrue(out.toString().contains(anchor), () -> "the answer printed no text of the decision: " + out);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -128,7 +157,7 @@ class AnswerSanitizationTest {
             case PLAN -> runPlan(anchor);
         };
 
-        assertClean(rendered);
+        assertNoControlSequences(rendered);
         assertTrue(rendered.contains(anchor), () -> "the noun was not printed: " + rendered);
     }
 
@@ -152,7 +181,7 @@ class AnswerSanitizationTest {
         var code = execute("answer", "Q-001", "--words", words);
 
         assertEquals(0, code);
-        assertClean(out.toString());
+        assertNoControlSequences(out.toString());
         assertTrue(out.toString().contains(anchor), out::toString);
     }
 
@@ -195,12 +224,12 @@ class AnswerSanitizationTest {
 
         var message = new OperatorRefusedException("answer Q-001", response).getMessage();
 
-        assertClean(message);
+        assertNoControlSequences(message);
         assertTrue(message.contains("409"), message);
         assertTrue(message.contains(anchor), message);
     }
 
-    private String runDialogue(String anchor) throws IOException {
+    private int runDialogue(String anchor, StringWriter terminal) throws IOException {
         var interpreted = new int[]{0};
         fixture.start((request, response) -> {
             var target = request.target();
@@ -231,13 +260,10 @@ class AnswerSanitizationTest {
                 response.send(404, null, "");
             }
         });
-        var terminal = new StringWriter();
-        var code = executeInteractive("?\n?r\nw\nmy words\nclarify reply\n\n", terminal, "answer", "Q-001", "-i");
-        assertEquals(0, code);
-        return out.toString() + terminal;
+        return executeInteractive("?\n?r\nw\nmy words\nclarify reply\n\n", terminal, "answer", "Q-001", "-i");
     }
 
-    private String runNoInput(String anchor) throws IOException {
+    private int runNoInput(String anchor) throws IOException {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, hostileEnvelope(anchor));
@@ -245,11 +271,10 @@ class AnswerSanitizationTest {
                 response.send(404, null, "");
             }
         });
-        assertEquals(3, execute("answer", "Q-001", "--no-input"));
-        return out.toString();
+        return execute("answer", "Q-001", "--no-input");
     }
 
-    private String runWaiverView(String anchor) throws IOException {
+    private int runWaiverView(String anchor) throws IOException {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/WR-1".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
@@ -265,11 +290,10 @@ class AnswerSanitizationTest {
                 response.send(404, null, "");
             }
         });
-        assertEquals(3, execute("answer", "WR-1", "--no-input"));
-        return out.toString();
+        return execute("answer", "WR-1", "--no-input");
     }
 
-    private String runDirect(String anchor) throws IOException {
+    private int runDirect(String anchor) throws IOException {
         fixture.start((request, response) -> {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
@@ -280,8 +304,7 @@ class AnswerSanitizationTest {
                 response.send(404, null, "");
             }
         });
-        assertEquals(0, execute("answer", "Q-001", "1"));
-        return out.toString();
+        return execute("answer", "Q-001", "1");
     }
 
     private String runSubject(String anchor) throws IOException {
@@ -342,8 +365,10 @@ class AnswerSanitizationTest {
      * Fails when the rendered text carries a control character other than the layout's line feed,
      * carriage return and tab, an escape, a bidi control, a zero-width character or a tag character.
      */
-    private static void assertClean(String rendered) {
+    private static void assertNoControlSequences(String rendered) {
         assertFalse(rendered.contains(ESC), rendered);
+        assertFalse(rendered.indexOf(0x9B) >= 0 || rendered.indexOf(0x9D) >= 0,
+                            () -> "a C1 control introducer reached the terminal: " + rendered);
         rendered.codePoints().forEach(codePoint -> {
             var layout = codePoint == '\n' || codePoint == '\r' || codePoint == '\t';
             var hostile = (Character.isISOControl(codePoint) && !layout)

@@ -322,6 +322,43 @@ class EpicCommandTest {
         );
     }
 
+    @Test
+    @DisplayName("epic next reads the epic, then triggers its next plan and names the plan it started")
+    void epicNext() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var planId = Generators.letterStrings(6, 12).next();
+        var epicPath = "/api/v1/epics/" + epicId;
+        var server = fixture.start((request, response) -> {
+            if (epicPath.equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"epic_id":"%s","project_id":"pm-mcp-clients","display_name":"pm-mcp-clients",
+                                     "state":"running","auto_start":false,"overlap_max_files":0,
+                                     "scope":3,"running":3,
+                                     "workstreams":[{"id":"WS-1","name":"W","open":true,"rows":[
+                                       {"plan_id":"%s","title":"%s","status":"staged","wait_reason":"scope"}]}],
+                                     "sources":[],"landings":0,"findings":{"new":0,"open":0,"kept":0},
+                                     "watches":{"new":0,"open":0,"kept":0},"events":[]}
+                                    """.formatted(epicId, planId, planId));
+            } else if ((epicPath + "/actions/next").equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"subject_id\":\"" + epicId + "\",\"subject_kind\":\"epic\","
+                                    + "\"state\":\"running\",\"actions\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "next", epicId, "--raise-scope");
+
+        var targets = server.requests().stream().map(FakeRuntimeServer.Request::target).toList();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(epicPath, targets.getFirst(), targets.toString()),
+                            () -> assertTrue(targets.contains(epicPath + "/actions/next"),
+                                                "the next plan was never triggered: " + targets),
+                            () -> assertTrue(out.toString().contains(planId), out.toString())
+        );
+    }
+
     /**
      * {@code epic next} reads the epic and asks to raise a full scope by one; the flags answer the
      * question and {@code raise_scope} is sent only as the operator's answer (19-actions.adoc).

@@ -11,6 +11,8 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -29,6 +31,7 @@ import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.WorkLocation;
@@ -39,6 +42,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
@@ -145,6 +149,121 @@ class NeedsItemCommandsTest {
         designTable().forEach(testCase -> covered.add(testCase.kind()));
 
         assertEquals(EnumSet.allOf(NeedsOperatorKind.class), covered);
+    }
+
+    @ParameterizedTest(name = "{0} prints a registered verb")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("every kind, in every place, prints a verb the operator registers")
+    void everyKindPrintsARegisteredVerb(NeedsOperatorKind kind) {
+        var planId = Generators.letterStrings(4, 12).next();
+        var epicId = Generators.letterStrings(4, 12).next();
+        var projectId = Generators.letterStrings(4, 12).next();
+        var decisionId = Generators.letterStrings(4, 12).next();
+        var plan = new WorkLocation(planId, null);
+        var epic = new WorkLocation(epicId, null);
+        var project = new WorkLocation(projectId, null);
+        var items = List.of(
+                            item(kind, "/api/v1/decisions/" + decisionId, project, epic, plan, "plan"),
+                            item(kind, "/api/v1/plans/" + planId, null, null, plan, "plan"),
+                            item(kind, "/api/v1/epics/" + epicId, null, epic, null, "epic"),
+                            item(kind, null, project, null, null, null),
+                            item(kind, null, null, null, null, null));
+
+        for (var item : items) {
+            var command = OverviewFormatting.formatNeedsItemCommand(item);
+            var verb = command.split(" ", 2)[0];
+            assertTrue(OperatorVerbs.registered().contains(verb),
+                                kind + " prints " + command + ", and " + verb + " is no registered verb");
+            assertFalse(command.contains("hold"), kind + " prints a hold verb: " + command);
+        }
+    }
+
+    @Test
+    @DisplayName("a failed landing opens the epic that owns it, and a plan alone opens that plan")
+    void landingFailedOpensTheEpic() {
+        var planId = Generators.letterStrings(4, 12).next();
+        var epicId = Generators.letterStrings(4, 12).next();
+        var plan = new WorkLocation(planId, null);
+
+        assertEquals("epic " + epicId, OverviewFormatting.formatNeedsItemCommand(item(
+                            NeedsOperatorKind.LANDING_FAILED, "/api/v1/plans/" + planId, null,
+                            new WorkLocation(epicId, null), plan, "plan")));
+        assertEquals("plan " + planId, OverviewFormatting.formatNeedsItemCommand(item(
+                            NeedsOperatorKind.LANDING_FAILED, "/api/v1/plans/" + planId, null, null, plan, "plan")),
+                            "a plan's id names no epic, so the plan alone opens that plan");
+    }
+
+    @Test
+    @DisplayName("a decision takes its id from the item's own link, never from a store of its own")
+    void decisionTakesItsIdFromTheLink() {
+        var decisionId = Generators.letterStrings(4, 12).next();
+        var item = item(NeedsOperatorKind.DECISION, "/api/v1/decisions/" + decisionId,
+                            new WorkLocation(Generators.letterStrings(4, 12).next(), null), null,
+                            new WorkLocation(Generators.letterStrings(4, 12).next(), null), "plan");
+
+        assertEquals("answer " + decisionId, OverviewFormatting.formatNeedsItemCommand(item));
+    }
+
+    @Test
+    @DisplayName("names the subject by its title, never by its raw id")
+    void subjectNamesTheTitle() {
+        var planId = Generators.letterStrings(4, 12).next();
+        var title = Generators.letterStrings(4, 12).next();
+        var titled = item(NeedsOperatorKind.DECISION, "/api/v1/decisions/" + planId, null, null,
+                            new WorkLocation(planId, title), "plan");
+        var untitled = item(NeedsOperatorKind.CONDITION, "/api/v1/plans/" + planId, null, null,
+                            new WorkLocation(planId, null), "plan");
+
+        assertEquals(title, OverviewFormatting.formatNeedsItemSubject(titled, "en"));
+        var subject = OverviewFormatting.formatNeedsItemSubject(untitled, "de");
+        assertEquals(Display.title("de", null, planId), subject,
+                            "a place without a title is named as the display layer names it");
+        assertFalse(subject.contains(planId), "the bare id reached the operator: " + subject);
+    }
+
+    @Test
+    @DisplayName("renders what an item blocks in the operator's words, never the wire token")
+    void blocksAreCatalogueWords() {
+        assertEquals(Map.of("en", "blocks: plan", "de", "blockiert: Plan"),
+                            Map.of("en", OverviewFormatting.formatNeedsItemBlocks("plan", "en"),
+                                                "de", OverviewFormatting.formatNeedsItemBlocks("plan", "de")));
+    }
+
+    @ParameterizedTest(name = "{0} names its kind in both languages")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("every kind has its catalogue word in both languages")
+    void everyKindHasItsWord(NeedsOperatorKind kind) {
+        for (var locale : List.of("en", "de")) {
+            var word = OverviewFormatting.formatNeedsItemKind(kind, locale);
+            assertFalse(word.isBlank(), locale + " has no word for " + kind);
+            assertFalse(word.contains("."), "a catalogue key leaked: " + word);
+        }
+    }
+
+    @ParameterizedTest(name = "{0} names its place by the place's own title")
+    @EnumSource(NeedsOperatorKind.class)
+    @DisplayName("every kind names its subject, in both languages")
+    void everyKindNamesItsSubject(NeedsOperatorKind kind) {
+        var planTitle = Generators.letterStrings(4, 12).next();
+        var epicTitle = Generators.letterStrings(4, 12).next();
+        var epic = new WorkLocation(Generators.letterStrings(4, 12).next(), epicTitle);
+        var withPlan = item(kind, null, null, epic,
+                            new WorkLocation(Generators.letterStrings(4, 12).next(), planTitle), "plan");
+        assertEquals(planTitle, OverviewFormatting.formatNeedsItemSubject(withPlan, "en"),
+                            "the plan's own title is the subject");
+
+        var epicOnly = item(kind, null, null, epic, null, "epic");
+        for (var locale : List.of("en", "de")) {
+            var subject = OverviewFormatting.formatNeedsItemSubject(epicOnly, locale);
+            assertEquals(OverviewFormatting.clean(epicTitle), subject,
+                                locale + " names the epic's own title for " + kind);
+        }
+    }
+
+    private static NeedsOperatorItem item(NeedsOperatorKind kind, @Nullable String link,
+                        @Nullable WorkLocation project, @Nullable WorkLocation epic, @Nullable WorkLocation plan,
+                        @Nullable String blocks) {
+        return new NeedsOperatorItem(kind, link, project, epic, plan, Instant.parse("2026-10-16T15:05:00Z"), blocks);
     }
 
     private static NeedsOperatorItem itemOf(Case testCase, String planId, String epicId, String projectId,

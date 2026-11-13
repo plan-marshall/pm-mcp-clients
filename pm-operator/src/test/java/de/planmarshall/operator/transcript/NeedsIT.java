@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
@@ -40,7 +41,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectRow(session, "Drop the legacy endpoints");
+            selectByTitle(session, "Drop the legacy endpoints");
 
             // Type ! on the waiting row: it must open the decision dialogue directly
             DialogueHarness.type(session, "!");
@@ -59,7 +60,7 @@ class NeedsIT {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK);
              var session = harness.open("plans", "--project", "pm-mcp-clients")) {
             awaitText(session, "by plan");
-            selectRow(session, "Fix Relay Transport");
+            selectByTitle(session, "Fix Relay Transport");
 
             // Fix Relay Transport has no wait; pressing ! must jump to the next waiting row
             DialogueHarness.type(session, "!");
@@ -80,7 +81,7 @@ class NeedsIT {
             awaitText(session, "Needs you");
             // The group lists the plan three times (landing failed, questions, answer Q-009);
             // the row meant is the decision whose own command is "answer Q-009".
-            selectRow(session, "Drop the legacy endpoints", "answer Q-009");
+            selectByTitle(session, "Drop the legacy endpoints", "answer Q-009");
 
             // ! on that item runs the command its row prints: the decision opens.
             DialogueHarness.type(session, "!");
@@ -92,9 +93,14 @@ class NeedsIT {
         }
     }
 
-    /** Moves the selection down to the first row whose line holds every one of the given texts. */
-    private static void selectRow(PtySession session, String... texts) throws Exception {
-        var wanted = List.of(texts);
+    /**
+     * Moves the selection down to the first row whose line holds the title and every one of the
+     * given markers.
+     */
+    private static void selectByTitle(PtySession session, String title, String... markers) throws Exception {
+        var wanted = new ArrayList<String>();
+        wanted.add(title);
+        wanted.addAll(List.of(markers));
         for (int step = 0; step < 40; step++) {
             var line = selected(session);
             if (wanted.stream().allMatch(line::contains)) {

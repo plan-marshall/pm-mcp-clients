@@ -66,23 +66,6 @@ class AcceptEditDialogueIT {
     }
 
     @Test
-    @DisplayName("a declined confirmation sends nothing and the project stays refused")
-    void declinedKeepsTheRefusal() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START).goTo("enrol.enrolment-tampered");
-             var session = harness.open("accept-edit", "enrolment", PROJECT)) {
-            assertTrue(session.awaitText(CONFIRM, DialogueHarness.TIMEOUT), session.rawOutput());
-
-            DialogueHarness.type(session, "n\n");
-            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
-
-            assertEquals(1, session.exitCode(), session.rawOutput());
-            assertTrue(session.screenText().contains("nothing was sent"), session.screenText());
-            harness.assertNoAct();
-            assertEquals("enrolment_tampered", refusal(harness).get("error"));
-        }
-    }
-
-    @Test
     @DisplayName("q first: the confirmation is not given, nothing is sent and the project stays refused")
     void qFirstSendsNothing() throws Exception {
         assertNotConfirmed("q\n");
@@ -109,6 +92,23 @@ class AcceptEditDialogueIT {
             assertEquals(1, session.exitCode(), session.rawOutput());
             assertTrue(session.screenText().contains("nothing was sent"), session.screenText());
             assertTrue(harness.acts().isEmpty(), String.valueOf(harness.acts()));
+            assertEquals("enrolment_tampered", refusal(harness).get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("a declined confirmation sends nothing and the project stays refused")
+    void declinedKeepsTheRefusal() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START).goTo("enrol.enrolment-tampered");
+             var session = harness.open("accept-edit", "enrolment", PROJECT)) {
+            assertTrue(session.awaitText(CONFIRM, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "n\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertEquals(1, session.exitCode(), session.rawOutput());
+            assertTrue(session.screenText().contains("nothing was sent"), session.screenText());
+            harness.assertNoAct();
             assertEquals("enrolment_tampered", refusal(harness).get("error"));
         }
     }
