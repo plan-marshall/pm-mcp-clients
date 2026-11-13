@@ -51,6 +51,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * The keys of the projects explorer ({@code doc/design/terminal-client/17-projects.adoc#explorer}),
@@ -309,6 +311,71 @@ class OverviewExplorerKeysTest {
             assertTrue(keys.handle(TuiKeyAction.OPEN));
 
             assertNull(screen().menu());
+        }
+    }
+
+    @Nested
+    @DisplayName("the entries of the menu hand over to the dialogue they name")
+    class MenuHandOffs {
+
+        private void runEntry(String group, String projectId, String trigger) {
+            select(group, projectId);
+            keys.handle(TuiKeyAction.OPEN);
+            assertTrue(triggers().contains(trigger), triggers().toString());
+            virtual.endOfInput();
+            calls.clear();
+
+            assertTrue(keys.menu(trigger));
+
+            assertNull(screen().menu());
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @CsvSource({"e starts an epic, e", "p starts a plan, p"})
+        @DisplayName("e and p start work in the ready project")
+        void startWork(String name, String trigger) {
+            runEntry(ProjectsExplorerLevel.GROUP_FAVOURITES, ready, trigger);
+
+            assertFalse(sent("/api/v1/projects/" + ready + "/entries").isEmpty(), name + ": " + calls);
+        }
+
+        @Test
+        @DisplayName("u runs the ready project's setup")
+        void setup() {
+            runEntry(ProjectsExplorerLevel.GROUP_FAVOURITES, ready, "u");
+
+            assertTrue(calls.contains("GET " + PROJECTS_PATH + "/" + ready + "/setup"), calls.toString());
+        }
+
+        @Test
+        @DisplayName("c on a project whose setup waits continues that setup")
+        void continueSetup() {
+            runEntry(ProjectsExplorerLevel.GROUP_RECENT, notReady, "c");
+
+            assertTrue(calls.contains("GET " + PROJECTS_PATH + "/" + notReady + "/setup"), calls.toString());
+        }
+
+        @Test
+        @DisplayName("a on a released project enrols it again")
+        void enrolAgain() {
+            runEntry(ProjectsExplorerLevel.GROUP_ALL, released, "a");
+
+            assertFalse(sent(released).isEmpty(), calls.toString());
+        }
+
+        @Test
+        @DisplayName("c on a project being added continues its onboarding")
+        void continueOnboarding() {
+            selectBeingAdded();
+            keys.handle(TuiKeyAction.OPEN);
+            virtual.endOfInput();
+            calls.clear();
+
+            assertTrue(keys.menu("c"));
+
+            assertNull(screen().menu());
+            assertTrue(calls.stream().anyMatch(call -> !call.startsWith("GET ") && call.contains(checkout)),
+                                calls.toString());
         }
     }
 
