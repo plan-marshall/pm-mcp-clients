@@ -116,6 +116,10 @@
     loadedEntryId = entryId;
     unsubscribeEntry?.();
     unsubscribeEntry = null;
+    // The chat belongs to the entry it was read for: a new entry starts without one, so a cached
+    // transcript or proposal turn can never travel to it.
+    chat = null;
+    chatOpen = false;
     void load(++entryGeneration);
   }
 
@@ -193,10 +197,37 @@
     if (destroyed) return;
     unsubscribeEntry?.();
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
-      if (event === 'entry.changed' || event === 'source.changed' || event === 'chat.turn') {
+      if (event === 'entry.changed' || event === 'source.changed') {
         void refresh();
+      } else if (
+        event === 'chat.turn.started' ||
+        event === 'chat.turn.completed' ||
+        event === 'chat.proposal'
+      ) {
+        // Another device's turn or proposal reaches this panel through the chat's own route.
+        void refreshChat(id);
       }
     });
+  }
+
+  /**
+   * Reads the open chat again after an event that changes it.
+   *
+   * @param target the entry whose chat is open
+   */
+  async function refreshChat(target: string): Promise<void> {
+    if (!chatOpen || chat === null || chat.state === 'chat.end' || chat.state === 'chat.carried') {
+      return;
+    }
+    const generation = entryGeneration;
+    try {
+      const opened = await apiClient.openEntryChat(target);
+      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+        return;
+      chat = opened;
+    } catch {
+      // A failed read leaves the shown chat as it is.
+    }
   }
 
   async function refresh(): Promise<void> {

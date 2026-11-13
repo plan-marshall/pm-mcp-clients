@@ -19,6 +19,7 @@ import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.TurnKind;
+import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
 
@@ -30,7 +31,8 @@ import de.planmarshall.operator.actions.WorkActionsClient;
  * ended work. A message is never interpreted or read back: the role answers it, and only a change
  * the role proposes is read back, old against new, and applied only when the operator accepts it.
  * The chat about ended work never changes the archive; its one proposal is a follow-up plan's
- * description, which {@code Enter} returns so that the caller opens {@code plan add} with it.
+ * description, and answering it accepts it on the runtime, which opens the start and names no way
+ * to the entry — the terminal says so and starts nothing a second time.
  */
 final class WorkChatDialogue {
 
@@ -134,8 +136,18 @@ final class WorkChatDialogue {
                 }
                 if (answer) {
                     if (endedChat) {
+                        // The accept opens the start on the runtime; no B1 surface names the entry it
+                        // opened, so the operator is told the start is being prepared and the chat is
+                        // left with the proposal answered (PLAN-161, D2).
+                        var accepted = proposal;
+                        var description = accepted == null ? null : followUp(accepted);
+                        client.chatProposal(kind, subjectId, accepted.turnId(), true);
                         prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                        return proposal == null ? null : followUp(proposal);
+                        if (description != null) {
+                            prompt.line("operator.actions.chat.follow_up_started",
+                                                Map.of("description", description));
+                        }
+                        return null;
                     }
                     chat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
                     showNewTurns(chat, seen);
@@ -244,11 +256,17 @@ final class WorkChatDialogue {
 
     /**
      * @param chat the chat as read
-     * @return the id of its last turn, or {@code null} where it has none
+     * @return the id of its last turn that is no longer being written, or {@code null} where it has
+     *         none: a streaming turn stays unseen so its finished text is printed once, whole
      */
     private static @Nullable String lastTurnId(ChatResource chat) {
         var turns = chat.turns();
-        return turns.isEmpty() ? null : turns.getLast().turnId();
+        for (int index = turns.size() - 1; index >= 0; index--) {
+            if (turns.get(index).status() != TurnStatus.STREAMING) {
+                return turns.get(index).turnId();
+            }
+        }
+        return null;
     }
 
     private void showTurn(ChatTurn turn) {

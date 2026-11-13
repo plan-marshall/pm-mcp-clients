@@ -15,15 +15,13 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
-import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.start.EntryKind;
 
 /**
  * The action dialogues as the full-screen views call them.
  *
  * <p>The views live in their own packages and know nothing of the dialogues' inputs and outputs;
  * this facade is the one seam between them. It runs the action's dialogue, the hold's acts, and the
- * read-only chat about ended work, including the follow-up plan a chat about ended work opens.
+ * read-only chat about ended work.
  */
 public final class OperatorActions {
 
@@ -92,20 +90,9 @@ public final class OperatorActions {
      */
     public static int chatAboutEnded(OperatorContext context, PrintWriter out, String kind, String id,
                         @Nullable String projectId, String locale) throws IOException {
-        var description = WorkChatDialogue.run(context, out, kind, id, true, false);
-        if (description == null) {
-            return 0;
-        }
-        out.println(MessageCatalogue.format(locale, "operator.actions.chat.follow_up_started",
-                            Map.of("description", OutputSafety.stripControlSequences(description))));
-        out.flush();
-        var answers = new StartAnswers().withDescription(description);
-        if (projectId != null && !projectId.isBlank()) {
-            answers.withProject(projectId);
-        }
-        var code = StartDialogue.run(context, out, EntryKind.PLAN, answers);
-        // The follow-up start is one of the view's other dialogues: its interrupt leaves back to the
-        // view as q does (04-console.adoc#console-dialogue-handoff), never ending it with 130.
-        return ActionSupport.leaveBack(code);
+        // The dialogue accepts the follow-up on the runtime, which opens the start and names no way
+        // to the entry: it says so and nothing is started a second time here (PLAN-161, D2).
+        WorkChatDialogue.run(context, out, kind, id, true, false);
+        return 0;
     }
 }

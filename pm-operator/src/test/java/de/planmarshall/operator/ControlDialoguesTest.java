@@ -422,17 +422,25 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("a chat about ended work proposes a follow-up plan")
     void chatEndedFollowUp() throws Exception {
+        var accepted = new AtomicBoolean();
         serve((request, response) -> {
-            if (request.target().endsWith("/chat")) {
+            var path = request.target();
+            if (path.endsWith("/chat")) {
                 response.json(200, CHAT_ENDED);
+            } else if (path.endsWith("/proposal/accept")) {
+                accepted.set(true);
+                response.json(200, CHAT_ANSWERED_PROPOSAL);
             } else {
                 response.send(404, null, "");
             }
         });
         virtual.type("\n");
-        var description = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false);
-        assertEquals("Add the provider on top of relay-v2", description);
+        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false));
+        // The accept reaches the runtime, which opens the start; the terminal says so once.
+        assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
         assertTrue(out.toString().contains("read only"), out.toString());
+        assertTrue(out.toString().contains("A new plan is being started with this description"),
+                            out.toString());
     }
 
     @Test

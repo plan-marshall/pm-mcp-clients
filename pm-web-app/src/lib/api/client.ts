@@ -3753,12 +3753,30 @@ export class ApiClient {
     operatorTurnId: string,
   ): Promise<ChatReadBack> {
     const bound = Date.now() + ApiClient.CHAT_REPLY_BOUND_MS;
-    // One read per call and the next read chained after the pause: the bound caps how often it
-    // recurs, and no read waits inside a loop.
+    let latest: WireChatResource | undefined;
+    // One read per call and the next read chained after the pause: each read spends only what is
+    // left of the bound, and a read that fails leaves the last snapshot to be shown as it stands.
     const read = async (): Promise<ChatReadBack> => {
-      const resource = await this.request<WireChatResource>('GET', chatPath);
-      if (chatReplySettled(resource, operatorTurnId) || Date.now() >= bound) {
-        return normaliseChat(resource);
+      const remaining = bound - Date.now();
+      if (latest !== undefined && remaining <= 0) {
+        return normaliseChat(latest);
+      }
+      try {
+        latest = await this.request<WireChatResource>(
+          'GET',
+          chatPath,
+          undefined,
+          undefined,
+          Math.max(remaining, 1),
+        );
+      } catch (error) {
+        if (latest === undefined) {
+          throw error;
+        }
+        return normaliseChat(latest);
+      }
+      if (chatReplySettled(latest, operatorTurnId) || Date.now() >= bound) {
+        return normaliseChat(latest);
       }
       await new Promise((resolve) => setTimeout(resolve, ApiClient.CHAT_READ_INTERVAL_MS));
       return read();

@@ -22,7 +22,6 @@ import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
@@ -358,18 +357,7 @@ final class ActionSupport {
         }
 
         if (context.isConsoleActive()) {
-            var description = WorkChatDialogue.run(context, out, kind, id, false, false);
-            if (description != null) {
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.actions.chat.follow_up_started",
-                                    Map.of("description", OutputSafety.stripControlSequences(description))));
-                out.flush();
-                var code = StartDialogue.run(context, out, EntryKind.PLAN,
-                                    new StartAnswers().withDescription(description));
-                // The chat is one of the view's other dialogues: a start it opens leaves back
-                // with it, so its interrupt never ends the console or the view with 130.
-                return leaveBack(code);
-            }
+            WorkChatDialogue.run(context, out, kind, id, false, false);
             return 0;
         }
         WorkChatDialogue.render(context, out, client.chat(kind, id));

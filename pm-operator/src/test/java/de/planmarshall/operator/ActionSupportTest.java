@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
@@ -109,14 +110,12 @@ class ActionSupportTest {
     }
 
     @Test
-    @DisplayName("chat follow-up in console maps interrupt to 0 at its call site")
-    void chatFollowUpInterruptLeavesBack() throws Exception {
-        var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
-                            null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
-        var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
-
+    @DisplayName("a follow-up in the console is accepted on the runtime and the start is announced")
+    void chatFollowUpAcceptsOnTheRuntime() throws Exception {
+        var accepted = new AtomicBoolean();
         runtime((request, response) -> {
-            if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
+            var path = request.target();
+            if ("/api/v1/plans/p-1/chat".equals(path) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
                                      "role":{"name":"replan","model":"sonnet"},"scope":"archive",
@@ -125,10 +124,16 @@ class ActionSupportTest {
                                      "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
                                        "summary":"Follow-up plan","after":"Follow up","state":"open"}}
                                     """);
-            } else if ("/api/v1/projects".equals(request.target())) {
-                response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
-            } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, startState);
+            } else if (path.endsWith("/proposal/accept")) {
+                accepted.set(true);
+                response.json(200, """
+                                    {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
+                                     "role":{"name":"replan","model":"sonnet"},"scope":"archive",
+                                     "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:01Z"},
+                                     "turns":[],
+                                     "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                                       "summary":"Follow-up plan","after":"Follow up","state":"accepted"}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -141,9 +146,12 @@ class ActionSupportTest {
                             ClientEnvironment.capture(env), virtual::terminal, null);
         activeContext.setConsoleActive(true);
 
-        var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
-                            () -> ActionSupport.chat(activeContext, spec, "plan", "p-1", null));
-        assertEquals(0, code, "the follow-up interrupt leaves back with 0");
+        virtual.type("\n");
+        var code = ActionSupport.chat(activeContext, spec, "plan", "p-1", null);
+        assertEquals(0, code, "the chat leaves back with 0");
+        assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
+        assertTrue(out.toString().contains("A new plan is being started with this description"),
+                            out.toString());
     }
 
     @Test
@@ -159,14 +167,12 @@ class ActionSupportTest {
     }
 
     @Test
-    @DisplayName("OperatorActions.chatAboutEnded maps interrupt to 0 at its call site")
-    void chatAboutEndedInterruptLeavesBack() throws Exception {
-        var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
-                            null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
-        var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
-
+    @DisplayName("chatAboutEnded accepts the follow-up on the runtime and announces the start")
+    void chatAboutEndedAcceptsTheFollowUp() throws Exception {
+        var accepted = new AtomicBoolean();
         runtime((request, response) -> {
-            if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
+            var path = request.target();
+            if ("/api/v1/plans/p-1/chat".equals(path) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
                                      "role":{"name":"replan","model":"sonnet"},"scope":"archive",
@@ -175,10 +181,16 @@ class ActionSupportTest {
                                      "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
                                        "summary":"Follow-up plan","after":"Follow up","state":"open"}}
                                     """);
-            } else if ("/api/v1/projects".equals(request.target())) {
-                response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
-            } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, startState);
+            } else if (path.endsWith("/proposal/accept")) {
+                accepted.set(true);
+                response.json(200, """
+                                    {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
+                                     "role":{"name":"replan","model":"sonnet"},"scope":"archive",
+                                     "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:01Z"},
+                                     "turns":[],
+                                     "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                                       "summary":"Follow-up plan","after":"Follow up","state":"accepted"}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -190,58 +202,11 @@ class ActionSupportTest {
         var activeContext = new OperatorContext(env, fixture.base().getParent(), true,
                             ClientEnvironment.capture(env), virtual::terminal, null);
 
-        var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
-                            () -> OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
-                                                "pm-mcp-clients", "en"));
-        assertEquals(0, code, "the ended work chat interrupt leaves back with 0");
-    }
-
-    private int interruptedAt(VirtualScreenTerminal virtual, String proposalMarker,
-                        String interruptMarker, Handler handler) throws Exception {
-        var code = new AtomicInteger(-1);
-        var failure = new AtomicReference<IOException>();
-        var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
-            try {
-                code.set(handler.run());
-            } catch (IOException failed) {
-                failure.set(failed);
-            }
-        });
-        try {
-            var deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
-            var proposalAccepted = false;
-            var interrupted = false;
-            while (reader.isAlive() && System.nanoTime() < deadline) {
-                var screen = String.join("\n", virtual.screen().lines());
-                var text = out.toString() + "\n" + screen;
-                if (!proposalAccepted && text.contains(proposalMarker)) {
-                    virtual.type("\n");
-                    proposalAccepted = true;
-                }
-                // The reader installs its interrupt handler only once it reads, and a Ctrl+C that comes
-                // before it is dropped, so the interrupt repeats until the dialogue has left.
-                if (proposalAccepted && (interrupted || text.contains(interruptMarker))) {
-                    interrupted = true;
-                    virtual.terminal().raise(Terminal.Signal.INT);
-                    virtual.type("\u0003");
-                }
-                LockSupport.parkNanos(Duration.ofMillis(20).toNanos());
-            }
-            reader.join(TimeUnit.SECONDS.toMillis(5));
-            assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out
-                                + "\n" + String.join("\n", virtual.screen().lines()));
-            assertNull(failure.get(), "the dialogue failed: " + failure.get());
-            assertTrue(interrupted, interruptMarker + " was never reached: " + out);
-            return code.get();
-        } finally {
-            virtual.close();
-            reader.interrupt();
-        }
-    }
-
-    @FunctionalInterface
-    private interface Handler {
-        int run() throws IOException;
+        virtual.type("\n");
+        var code = OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
+                            "pm-mcp-clients", "en");
+        assertEquals(0, code, "the ended work chat leaves back with 0");
+        assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
     }
 
     @Test
