@@ -14,7 +14,13 @@
     type StartStateResource,
     type UnclaimedLessonSummary,
   } from '../api/client';
-  import { navigateTo, openEpicView, openPlanView, runtimeStore } from '../stores/runtime';
+  import {
+    navigateTo,
+    openEpicView,
+    openPlanView,
+    openProjectOnboarding,
+    runtimeStore,
+  } from '../stores/runtime';
   import SourceList from '../components/SourceList.svelte';
   import ConfinedFilePicker from '../components/ConfinedFilePicker.svelte';
   import GrantModal from '../components/GrantModal.svelte';
@@ -722,22 +728,31 @@
     }
   }
 
-  function refusalText(): string {
-    if (!state?.refusal) return '';
-    return state.refusal.reason === 'machine_not_onboarded'
-      ? $t('start.gate.machine', { need: state.refusal.need ?? '' })
+  type Refusal = NonNullable<StartState['refusal']>;
+
+  /**
+   * @param refusal the gate's refusal the start opened on
+   * @returns what is missing, for the machine or for the project
+   */
+  function refusalText(refusal: Refusal): string {
+    return refusal.reason === 'machine_not_onboarded'
+      ? $t('start.gate.machine', { need: refusal.need ?? '' })
       : $t('start.gate.project', {
-          project: state.refusal.project_id ?? currentProject,
-          need: state.refusal.need ?? '',
+          project: refusal.project_id ?? currentProject,
+          need: refusal.need ?? '',
         });
   }
 
-  function openRefusalAction(): void {
-    if (!state?.refusal) return;
-    if (state.refusal.reason === 'machine_not_onboarded') {
+  /**
+   * Goes on where the refusal is fixed: the machine's onboarding, or the project's.
+   *
+   * @param refusal the gate's refusal the start opened on
+   */
+  function openRefusalAction(refusal: Refusal): void {
+    if (refusal.reason === 'machine_not_onboarded') {
       navigateTo('onboarding');
     } else {
-      navigateTo('projects');
+      openProjectOnboarding(null, refusal.project_id ?? currentProject);
     }
   }
 
@@ -809,10 +824,15 @@
     {/if}
 
     {#if state?.refusal}
+      {@const refusal = state.refusal}
       <section class="start-view__panel" data-testid="start-refused">
-        <p class="start-view__gate">{refusalText()}</p>
-        <button type="button" data-testid="refusal-action" on:click={openRefusalAction}>
-          {$t(state.refusal.action_key)}
+        <p class="start-view__gate">{refusalText(refusal)}</p>
+        <button
+          type="button"
+          data-testid="refusal-action"
+          on:click={() => openRefusalAction(refusal)}
+        >
+          {$t(refusal.action_key)}
         </button>
       </section>
     {:else if showDecomposition}
