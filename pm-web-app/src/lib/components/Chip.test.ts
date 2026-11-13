@@ -5,7 +5,7 @@ import { tick } from 'svelte';
 import Chip from './Chip.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import { ruleOf, styleOf } from '../../test/templateStyle';
+import { ruleOf, rulesOf, styleOf } from '../../test/templateStyle';
 
 /**
  * `Chip` (VD-P-05, components-tags.adoc: chip): an id, branch or version in `--text-xs` monospace on
@@ -160,6 +160,10 @@ describe('Chip', () => {
     expect(ruleOf(STYLE, '.chip')).toContain('max-inline-size: 100%');
     expect(ruleOf(STYLE, '.chip__value')).toContain('text-overflow: ellipsis');
     expect(ruleOf(STYLE, '.chip__value')).toContain('white-space: nowrap');
+  });
+
+  it('gives the chip the 44 px target on a phone', () => {
+    expect(rulesOf(STYLE, '.chip').join('\n')).toContain('min-block-size: 44px');
   });
 
   it('restarts the reset window on a second click', async () => {

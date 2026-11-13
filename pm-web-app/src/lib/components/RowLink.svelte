@@ -63,6 +63,7 @@
   .row-link {
     position: relative;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
     min-block-size: 40px;
@@ -96,6 +97,8 @@
   }
 
   .row-link__title {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
     color: inherit;
     text-decoration: none;
   }
@@ -110,8 +113,10 @@
 
   .row-link__tags {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+    min-inline-size: 0;
     margin-inline-start: auto;
     color: var(--color-text-secondary);
   }

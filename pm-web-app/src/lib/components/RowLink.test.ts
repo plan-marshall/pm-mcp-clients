@@ -130,4 +130,10 @@ describe('RowLink', () => {
     expect(rulesOf(STYLE, '.row-link').join('\n')).toContain('min-block-size: 44px');
     expect(rulesOf(STYLE, '.row-link__acts').join('\n')).toContain('position: relative');
   });
+
+  it('lets the row wrap on a narrow screen instead of overflowing it', () => {
+    expect(ruleOf(STYLE, '.row-link')).toContain('flex-wrap: wrap');
+    expect(ruleOf(STYLE, '.row-link__title')).toContain('min-inline-size: 0');
+    expect(ruleOf(STYLE, '.row-link__tags')).toContain('flex-wrap: wrap');
+  });
 });

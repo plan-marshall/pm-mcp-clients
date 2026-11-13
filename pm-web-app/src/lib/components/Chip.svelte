@@ -129,4 +129,11 @@
   .chip__state:not(:empty) {
     margin-inline-start: var(--space-1);
   }
+
+  /* A phone gets the 44 px target, as every control of the design system does. */
+  @media (max-width: 767px) {
+    .chip {
+      min-block-size: 44px;
+    }
+  }
 </style>
