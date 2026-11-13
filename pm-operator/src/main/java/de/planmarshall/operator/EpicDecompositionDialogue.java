@@ -353,7 +353,7 @@ final class EpicDecompositionDialogue {
     private String readBack(EpicDecomposition before, EpicDecomposition after, @Nullable String planId) {
         var buffer = new StringWriter();
         try (var writer = new PrintWriter(buffer)) {
-            DecompositionSupport.printReadBack(writer, before, after, planId);
+            DecompositionSupport.printReadBack(writer, prompt.locale(), before, after, planId);
         }
         return buffer.toString().stripTrailing();
     }

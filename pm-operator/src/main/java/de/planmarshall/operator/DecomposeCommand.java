@@ -24,6 +24,7 @@ import de.planmarshall.api.decomposition.InstructAction;
 import de.planmarshall.api.decomposition.StagedPlanRecord;
 import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 
 import picocli.CommandLine.Command;
@@ -39,14 +40,13 @@ import picocli.CommandLine.Spec;
  * {@code decompose} shows the cut and continues a left decomposition; {@code review} runs the
  * checks and, with {@code --agree}, commits the cut; {@code instruct} passes the operator's words
  * for a plan and prints the read-back, old against new. Every verb is an operator verb and refuses
- * outside an interactive terminal ({@link OperatorGate}, PM-SEC-3).
+ * outside an interactive terminal ({@link OperatorGate}, PM-SEC-3). The epic id names the epic
+ * ({@code 01-commands.adoc}); its project is the one the runtime's epic names, and
+ * {@code --project} names it where the operator wants to.
  */
 @Command(name = "decompose", description = "Opens, or drafts again, the epic's decomposition.")
 @OperatorVerb
 public final class DecomposeCommand implements Callable<Integer> {
-
-    /** The default project of the decomposition verbs. */
-    static final String DEFAULT_PROJECT = "pm-mcp-clients";
 
     @Spec
     CommandSpec spec = CommandSpec.create();
@@ -54,7 +54,7 @@ public final class DecomposeCommand implements Callable<Integer> {
     @Parameters(index = "0", description = "Epic ID")
     String epicId = "";
 
-    @Option(names = "--project", description = "Target project ID (default: " + DEFAULT_PROJECT + ")")
+    @Option(names = "--project", description = "Target project ID (default: the epic's own)")
     @Nullable
     String project;
 
@@ -72,23 +72,16 @@ public final class DecomposeCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var cut = DecompositionSupport.load(context, DecompositionSupport.project(project), epicId);
-        if (cut == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
-            return 1;
+        var projectId = DecompositionSupport.project(context, project, epicId);
+        var cut = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
+        if (projectId == null || cut == null) {
+            return DecompositionSupport.notFound(out, epicId);
         }
         if (instruction != null && !instruction.isBlank()) {
             var requested = new DecompositionInstructRequest(null, instruction, InstructAction.REWRITE);
-            cut = DecompositionSupport.instruct(context, DecompositionSupport.project(project), epicId,
-                                requested);
-            if (cut == null) {
-                out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-                out.flush();
-                return 1;
-            }
+            cut = DecompositionSupport.instruct(context, projectId, epicId, requested);
         }
-        DecompositionSupport.printTree(out, cut);
+        DecompositionSupport.printTree(out, context.clientEnvironment().locale(), cut);
         out.flush();
         return 0;
     }
@@ -107,8 +100,7 @@ final class ReviewCommand implements Callable<Integer> {
     @Parameters(index = "0", description = "Epic ID")
     String epicId = "";
 
-    @Option(names = "--project", description = "Target project ID (default: "
-                        + DecomposeCommand.DEFAULT_PROJECT + ")")
+    @Option(names = "--project", description = "Target project ID (default: the epic's own)")
     @Nullable
     String project;
 
@@ -125,33 +117,26 @@ final class ReviewCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var projectId = DecompositionSupport.project(project);
-        var cut = DecompositionSupport.check(context, projectId, epicId);
-        if (cut == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
-            return 1;
+        var locale = context.clientEnvironment().locale();
+        var projectId = DecompositionSupport.project(context, project, epicId);
+        var cut = projectId != null ? DecompositionSupport.check(context, projectId, epicId) : null;
+        if (projectId == null || cut == null) {
+            return DecompositionSupport.notFound(out, epicId);
         }
-        DecompositionSupport.printTree(out, cut);
+        DecompositionSupport.printTree(out, locale, cut);
         if (!agree) {
             out.flush();
             return 0;
         }
         if (!cut.everyCheckPasses()) {
-            out.println("\u2717 " + MessageCatalogue.format("decomposition.checks_fail",
+            out.println("✗ " + MessageCatalogue.format(locale, "decomposition.checks_fail",
                                 Map.of("count", cut.findings().size())));
             out.flush();
             return 1;
         }
-        var result = DecompositionSupport.commit(context, projectId, epicId);
-        if (result == null) {
-            out.println("\u2717 " + MessageCatalogue.format("decomposition.refused",
-                                Map.of("epic", OutputSafety.stripControlSequences(epicId),
-                                                    "cause", MessageCatalogue.get("decomposition.checks_fail"))));
-            out.flush();
-            return 1;
-        }
-        out.println("\u2713 " + MessageCatalogue.format("decomposition.committed",
+        // a commit the runtime refuses is its refusal, with the reason it gives
+        DecompositionSupport.commit(context, projectId, epicId);
+        out.println("✓ " + MessageCatalogue.format(locale, "decomposition.committed",
                             Map.of("epic", OutputSafety.stripControlSequences(cut.epicId()),
                                                 "workstreams", cut.workstreams().size(),
                                                 "plans", cut.stagedPlanCount())));
@@ -174,8 +159,7 @@ final class InstructCommand implements Callable<Integer> {
     @Parameters(index = "0", description = "Epic ID")
     String epicId = "";
 
-    @Option(names = "--project", description = "Target project ID (default: "
-                        + DecomposeCommand.DEFAULT_PROJECT + ")")
+    @Option(names = "--project", description = "Target project ID (default: the epic's own)")
     @Nullable
     String project;
 
@@ -201,38 +185,26 @@ final class InstructCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
+        var locale = context.clientEnvironment().locale();
         if (instruction == null || instruction.isBlank()) {
-            out.println(MessageCatalogue.get("decomposition.instruct.prompt") + " (--instruction)");
+            out.println(MessageCatalogue.format(locale, "decomposition.instruct.prompt", Map.of()) + " (--instruction)");
             out.flush();
             return 1;
         }
-        var projectId = DecompositionSupport.project(project);
         var resolvedAction = parseAction(action);
-        if (resolvedAction == InstructAction.ADD || resolvedAction == InstructAction.REWRITE) {
-            if (instruction.isBlank()) {
-                out.println(MessageCatalogue.get("decomposition.instruct.prompt") + " (--instruction)");
-                out.flush();
-                return 1;
-            }
-        } else if (plan == null || plan.isBlank()) {
+        if (resolvedAction == InstructAction.EDIT && (plan == null || plan.isBlank())) {
             out.println("--plan is required to edit a staged plan.");
             out.flush();
             return 1;
         }
-        var before = DecompositionSupport.load(context, projectId, epicId);
-        if (before == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
-            return 1;
+        var projectId = DecompositionSupport.project(context, project, epicId);
+        var before = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
+        if (projectId == null || before == null) {
+            return DecompositionSupport.notFound(out, epicId);
         }
         var requested = new DecompositionInstructRequest(plan, instruction, resolvedAction);
         var after = DecompositionSupport.instruct(context, projectId, epicId, requested);
-        if (after == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
-            return 1;
-        }
-        DecompositionSupport.printReadBack(out, before, after, plan);
+        DecompositionSupport.printReadBack(out, locale, before, after, plan);
         out.flush();
         return 0;
     }
@@ -251,13 +223,52 @@ final class InstructCommand implements Callable<Integer> {
 final class DecompositionSupport {
 
     private static final String PATH_PROJECTS = "/api/v1/projects/";
+    private static final String PATH_EPICS = "/api/v1/epics/";
+    private static final String KEY_NONE = "decomposition.none";
 
     private DecompositionSupport() {
         // Utility class
     }
 
-    static String project(@Nullable String project) {
-        return project != null && !project.isBlank() ? project : DecomposeCommand.DEFAULT_PROJECT;
+    /**
+     * The project of the epic: the one {@code --project} names, else the one the runtime's epic
+     * names ({@code GET /api/v1/epics/{epic_id}}).
+     *
+     * @param context the operator context
+     * @param project the project the operator named, or {@code null}
+     * @param epicId  the epic
+     * @return the project, or {@code null} where the runtime knows no such epic
+     * @throws IOException on transport failure, or the runtime's refusal
+     */
+    static @Nullable String project(OperatorContext context, @Nullable String project, String epicId)
+                        throws IOException {
+        if (project != null && !project.isBlank()) {
+            return project;
+        }
+        var response = context.runtime(true).send(HttpRequest.get(PATH_EPICS + OperatorUrlUtil.encodePathSegment(epicId)));
+        if (response.status() == 404) {
+            return null;
+        }
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("epic " + epicId, response);
+        }
+        var projectId = JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "project_id");
+        if (projectId == null || projectId.isBlank()) {
+            throw new OperatorRefusedException("epic " + OutputSafety.stripControlSequences(epicId)
+                                + ": the runtime's epic names no project");
+        }
+        return projectId;
+    }
+
+    /**
+     * @param out    the verb's writer
+     * @param epicId the epic the runtime does not know
+     * @return the exit code of an epic not found
+     */
+    static int notFound(PrintWriter out, String epicId) {
+        out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
+        out.flush();
+        return 1;
     }
 
     private static String basePath(String projectId, String epicId) {
@@ -290,114 +301,136 @@ final class DecompositionSupport {
         return EpicDecomposition.fromJson(response.bodyText());
     }
 
-    static @Nullable EpicDecomposition instruct(OperatorContext context, String projectId, String epicId,
+    /**
+     * @return the cut after the words; the verbs read the decomposition first, so an epic the
+     *         runtime no longer knows here is its refusal
+     */
+    static EpicDecomposition instruct(OperatorContext context, String projectId, String epicId,
                         DecompositionInstructRequest request) throws IOException {
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             basePath(projectId, epicId) + "/instruct", request.toJson()));
-        if (response.status() == 404) {
-            throw new OperatorRefusedException("epic instruct", response);
-        }
         if (response.status() != 200) {
             throw new OperatorRefusedException("epic instruct", response);
         }
         return EpicDecomposition.fromJson(response.bodyText());
     }
 
-    static @Nullable DecompositionCommitResult commit(OperatorContext context, String projectId, String epicId)
+    static DecompositionCommitResult commit(OperatorContext context, String projectId, String epicId)
                         throws IOException {
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", basePath(projectId, epicId) + "/commit", "{}"));
-        if (response.status() == 200) {
-            return DecompositionCommitResult.fromJson(response.bodyText());
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("epic review", response);
         }
-        return null;
+        return DecompositionCommitResult.fromJson(response.bodyText());
     }
 
-    static void printTree(PrintWriter out, EpicDecomposition cut) {
+    static void printTree(PrintWriter out, String locale, EpicDecomposition cut) {
         var epicId = OutputSafety.stripControlSequences(cut.epicId());
-        out.println(MessageCatalogue.format("decomposition.title", Map.of("epic", epicId)));
+        out.println(MessageCatalogue.format(locale, "decomposition.title", Map.of("epic", epicId)));
         for (var workstream : cut.workstreams()) {
-            printWorkstream(out, workstream);
+            printWorkstream(out, locale, workstream);
         }
         for (var finding : cut.findings()) {
-            var mark = finding.severity() == CheckSeverity.ERROR ? "\u2717" : "!";
+            var mark = finding.severity() == CheckSeverity.ERROR ? "✗" : "!";
             out.printf("  %s %s%n", mark, OutputSafety.stripControlSequences(finding.message()));
         }
         if (cut.everyCheckPasses()) {
-            out.println("  " + MessageCatalogue.get("decomposition.checks_pass"));
+            out.println("  " + MessageCatalogue.format(locale, "decomposition.checks_pass", Map.of()));
         } else {
-            out.println("  " + MessageCatalogue.format("decomposition.checks_fail",
+            out.println("  " + MessageCatalogue.format(locale, "decomposition.checks_fail",
                                 Map.of("count", cut.findings().size())));
         }
     }
 
-    private static void printWorkstream(PrintWriter out, WorkstreamRecord workstream) {
+    private static void printWorkstream(PrintWriter out, String locale, WorkstreamRecord workstream) {
         out.printf("  %s  %s%n", OutputSafety.stripControlSequences(workstream.id()),
                             OutputSafety.stripControlSequences(workstream.name()));
         var index = 0;
         for (var plan : workstream.stagedPlans()) {
             index++;
-            printPlan(out, index, plan);
+            printPlan(out, locale, index, plan);
         }
     }
 
-    private static void printPlan(PrintWriter out, int index, StagedPlanRecord plan) {
+    private static void printPlan(PrintWriter out, String locale, int index, StagedPlanRecord plan) {
         var surface = plan.expectedSurface().isEmpty()
-                            ? MessageCatalogue.get("decomposition.none")
+                            ? MessageCatalogue.format(locale, KEY_NONE, Map.of())
                             : String.join(", ", plan.expectedSurface());
         var suffix = new StringBuilder();
         if (!plan.dependencies().isEmpty()) {
-            suffix.append("  after ").append(String.join(", ", plan.dependencies()));
+            suffix.append("  after ").append(OutputSafety.stripControlSequences(String.join(", ", plan.dependencies())));
         }
         if (plan.isLocked()) {
-            suffix.append("  ").append(MessageCatalogue.get("decomposition.locked"));
+            suffix.append("  ").append(MessageCatalogue.format(locale, "decomposition.locked", Map.of()));
         } else if (!StagedPlanRecord.STATUS_STAGED.equals(plan.status())
                             && !StagedPlanRecord.STATUS_COMMITTED.equals(plan.status())) {
-            suffix.append("  ").append(MessageCatalogue.format("decomposition.change",
-                                Map.of("change", plan.status())));
+            suffix.append("  ").append(MessageCatalogue.format(locale, "decomposition.change",
+                                Map.of("change", OutputSafety.stripControlSequences(plan.status()))));
         }
         out.printf("    %d) %-28s %-30s%s%n", index,
                             OutputSafety.stripControlSequences(plan.planId()),
                             OutputSafety.stripControlSequences(surface), suffix);
     }
 
-    static void printReadBack(PrintWriter out, EpicDecomposition before, EpicDecomposition after,
+    /**
+     * Prints the read-back of the words, old against new: the plan the words named, else the plan
+     * they added; words that named and added no plan (a rewrite of the cut) show the cut again.
+     *
+     * @param out    the writer
+     * @param locale the interface locale
+     * @param before the cut before the words
+     * @param after  the cut after them
+     * @param planId the plan the words named, or {@code null}
+     */
+    static void printReadBack(PrintWriter out, String locale, EpicDecomposition before, EpicDecomposition after,
                         @Nullable String planId) {
-        var target = planId != null ? planId : firstPlanId(after);
+        var target = planId != null ? planId : addedPlanId(before, after);
         if (target == null) {
-            out.println(MessageCatalogue.get("decomposition.checks_pass"));
+            printTree(out, locale, after);
             return;
         }
-        var oldPlan = before.plan(target);
         var newPlan = after.plan(target);
-        var title = OutputSafety.stripControlSequences(target);
-        out.println(MessageCatalogue.format("decomposition.read_back.title", Map.of("plan", title)));
-        if (oldPlan == null || newPlan == null) {
+        out.println(MessageCatalogue.format(locale, "decomposition.read_back.title",
+                            Map.of("plan", OutputSafety.stripControlSequences(target))));
+        if (newPlan == null) {
+            out.println("  " + MessageCatalogue.format(locale, "decomposition.plan_not_found",
+                                Map.of("plan", OutputSafety.stripControlSequences(target))));
             return;
         }
-        diffLine(out, "decomposition.objective", oldPlan.objective(), newPlan.objective());
-        diffLine(out, "decomposition.surface", String.join(", ", oldPlan.expectedSurface()),
+        // a plan the words added had no old values: each line reads none against new
+        var oldPlan = before.plan(target);
+        diffLine(out, locale, "decomposition.objective", oldPlan != null ? oldPlan.objective() : null,
+                            newPlan.objective());
+        diffLine(out, locale, "decomposition.surface",
+                            oldPlan != null ? String.join(", ", oldPlan.expectedSurface()) : null,
                             String.join(", ", newPlan.expectedSurface()));
-        diffLine(out, "decomposition.depends_on", String.join(", ", oldPlan.dependencies()),
+        diffLine(out, locale, "decomposition.depends_on",
+                            oldPlan != null ? String.join(", ", oldPlan.dependencies()) : null,
                             String.join(", ", newPlan.dependencies()));
     }
 
-    private static void diffLine(PrintWriter out, String labelKey, @Nullable String before, @Nullable String after) {
-        var oldValue = before == null || before.isBlank() ? MessageCatalogue.get("decomposition.none") : before;
-        var newValue = after == null || after.isBlank() ? MessageCatalogue.get("decomposition.none") : after;
+    private static void diffLine(PrintWriter out, String locale, String labelKey, @Nullable String before,
+                        @Nullable String after) {
+        var none = MessageCatalogue.format(locale, KEY_NONE, Map.of());
+        var oldValue = before == null || before.isBlank() ? none : before;
+        var newValue = after == null || after.isBlank() ? none : after;
         if (oldValue.equals(newValue)) {
             return;
         }
-        var label = MessageCatalogue.get(labelKey);
+        var label = MessageCatalogue.format(locale, labelKey, Map.of());
         out.printf("  - %-14s %s%n", label, OutputSafety.stripControlSequences(oldValue));
         out.printf("  + %-14s %s%n", label, OutputSafety.stripControlSequences(newValue));
     }
 
-    private static @Nullable String firstPlanId(EpicDecomposition cut) {
-        if (cut.workstreams().isEmpty()) {
-            return null;
+    private static @Nullable String addedPlanId(EpicDecomposition before, EpicDecomposition after) {
+        for (var workstream : after.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                if (before.plan(plan.planId()) == null) {
+                    return plan.planId();
+                }
+            }
         }
-        var plans = cut.workstreams().getFirst().stagedPlans();
-        return plans.isEmpty() ? null : plans.getFirst().planId();
+        return null;
     }
 }
