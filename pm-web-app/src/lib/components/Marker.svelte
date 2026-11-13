@@ -45,12 +45,7 @@
   let { kind, label }: Props = $props();
 </script>
 
-<span
-  class="marker"
-  data-marker={kind}
-  role={label ? 'note' : undefined}
-  aria-label={label || undefined}
->
+<span class="marker" data-marker={kind} title={label || undefined}>
   <Icon name={MARKER_ICONS[kind]} size={16} />
   <span class="marker__word">{$t(MARKER_WORD_KEYS[kind])}</span>
 </span>

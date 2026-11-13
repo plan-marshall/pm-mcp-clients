@@ -657,7 +657,10 @@
     max-inline-size: 40rem;
   }
 
-  /* The row fixtures take the width a list column would, so a row shows its own 40 px height. */
+  /*
+   * The row fixtures take the theme block's whole width, so a row shows its own 40 px height: its
+   * title never wraps (a long one is cut) and only the controls wrap on a narrow screen.
+   */
   .dev__rows {
     display: flex;
     flex-direction: column;

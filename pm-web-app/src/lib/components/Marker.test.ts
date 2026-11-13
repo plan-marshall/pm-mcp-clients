@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
-import { render, screen } from '@testing-library/svelte';
+import { render } from '@testing-library/svelte';
 import Marker, { MARKERS } from './Marker.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -47,11 +47,13 @@ describe('Marker', () => {
   it.each([
     ['en', 'Primary desktop'],
     ['de', 'Primary desktop'],
-  ] as const)('names the option it marks in %s', (locale, label) => {
+  ] as const)('names the option it marks as its advisory in %s, keeping its own word as its name', (locale, label) => {
     useCatalogue(locale);
-    render(Marker, { props: { kind: 'this_one', label } });
+    const { container } = render(Marker, { props: { kind: 'this_one', label } });
+    const marker = container.querySelector('.marker') as HTMLElement;
 
-    expect(screen.getByRole('note', { name: label })).toBeInTheDocument();
+    expect(marker).toHaveAttribute('title', label);
+    expect(marker).toHaveTextContent(WORDS[locale].this_one);
   });
 
   it('draws no fill, no border and no brand colour', () => {
