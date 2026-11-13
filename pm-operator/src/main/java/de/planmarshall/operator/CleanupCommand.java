@@ -535,7 +535,10 @@ public final class CleanupCommand implements Callable<Integer> {
                 out.flush();
                 return null;
             }
-            ids.add(item.id());
+            if (!ids.contains(item.id())) {
+                // Two tokens may name the same item: the job keeps it once, so the request carries it once.
+                ids.add(item.id());
+            }
         }
         return ids;
     }
@@ -710,7 +713,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 }
                 itemIndex++;
             }
-            if (prj.items().size() > PAGE_SIZE) {
+            if (project == null && prj.items().size() > PAGE_SIZE) {
                 printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }
@@ -1022,7 +1025,7 @@ public final class CleanupCommand implements Callable<Integer> {
             return;
         }
         for (var unknown : toggleLeftOut(items, leftOut, answer)) {
-            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("id", unknown)));
+            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("item", unknown)));
         }
         out.flush();
     }
@@ -1069,7 +1072,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var item = findItem(items, answer);
         if (item == null) {
-            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("id", answer)));
+            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("item", answer)));
             out.flush();
             return;
         }

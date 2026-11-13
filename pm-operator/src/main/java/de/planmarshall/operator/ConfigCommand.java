@@ -623,7 +623,7 @@ public final class ConfigCommand implements Callable<Integer> {
      * @throws IOException on transport failure
      */
     static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
-                        @Nullable String value, boolean noInput) throws IOException {
+                        @Nullable Object value, boolean noInput) throws IOException {
         long revision;
         try {
             revision = revisionOf(context, change.readPath(), change.key());
@@ -674,14 +674,14 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     private static HttpResponse sendChange(OperatorContext context, boolean deletion, String writePath,
-                        @Nullable String value, long revision) throws IOException {
+                        @Nullable Object value, long revision) throws IOException {
         var body = deletion ? ConfigValueChange.deletion(revision).toJson()
                             : new ConfigValueChange(value, revision).toJson();
         return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
     }
 
     private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
-                        @Nullable String value, boolean noInput, ConfigValueResource current) throws IOException {
+                        @Nullable Object value, boolean noInput, ConfigValueResource current) throws IOException {
         var rendered = renderedValue(change.locale(), current);
         if (noInput) {
             change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",

@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -773,7 +774,7 @@ class ConfigCommandTest {
                             () -> assertEquals(0, code, out.toString()),
                             () -> assertTrue(target.get().contains("/project/cleanup.plans_after_days"),
                                                 target.get()),
-                            () -> assertTrue(written.get().contains("\"value\":\"60\""), written.get()));
+                            () -> assertTrue(written.get().contains("\"value\":60"), written.get()));
     }
 
     @Test
@@ -807,7 +808,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config cleanup --no-input without --yes stops at the confirmation")
     void cleanupNoInputWithoutYesStops() throws Exception {
-        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        var writes = new AtomicInteger();
         serveSettings(body -> writes.incrementAndGet());
 
         int code = execute("config", "cleanup", "--plans", "60", "--no-input");
@@ -831,7 +832,7 @@ class ConfigCommandTest {
     }
 
     /** A settings server that records the machine-settings write, or {@code null} when none came. */
-    private void serveSettings(java.util.function.Consumer<String> onWrite) throws Exception {
+    private void serveSettings(Consumer<String> onWrite) throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, SETTINGS);
@@ -847,7 +848,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("the editor keeps the durations on Enter and writes nothing")
     void cleanupEditorKeepsWhatIsThere() throws Exception {
-        var writes = new java.util.concurrent.atomic.AtomicInteger();
+        var writes = new AtomicInteger();
         serveSettings(body -> writes.incrementAndGet());
 
         int code = executeWithTyped("\n", "config", "cleanup");
@@ -862,7 +863,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("the editor changes one duration and records it on the confirmation")
     void cleanupEditorChangesADuration() throws Exception {
-        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var posted = new AtomicReference<String>("");
         serveSettings(posted::set);
 
         int code = executeWithTyped("1\n60\n\n\n", "config", "cleanup");
@@ -895,7 +896,7 @@ class ConfigCommandTest {
     @Test
     @DisplayName("config cleanup --plans never records the never marker")
     void cleanupRecordsNever() throws Exception {
-        var posted = new java.util.concurrent.atomic.AtomicReference<String>("");
+        var posted = new AtomicReference<String>("");
         serveSettings(posted::set);
 
         int code = execute("config", "cleanup", "--plans", "never", "--yes");

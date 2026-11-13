@@ -70,6 +70,9 @@ public final class ProjectCommand implements Callable<Integer> {
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
 
+    /** The catalogue key of the refusal a run that cannot close its entry reports. */
+    private static final String KEY_CLOSE_FAILED = "project.add.close_failed";
+
     /** The wire member the start of a project's onboarding carries the operator's login environment in. */
     private static final String PARAM_BUILD_ENVIRONMENT = "build_environment";
 
@@ -278,10 +281,11 @@ public final class ProjectCommand implements Callable<Integer> {
                             @Nullable Started started) {
             out.println(MessageCatalogue.format(locale, "project.add.no_input",
                                 Map.of("title", stateTitle(locale, missing.state()), "need", missing.need())));
-            out.flush();
-            if (started != null) {
-                closeEntry(started.entryId());
+            if (started != null && !closeEntry(started.entryId())) {
+                out.println(MessageCatalogue.format(locale, KEY_CLOSE_FAILED,
+                                    Map.of("entry", String.valueOf(started.entryId()))));
             }
+            out.flush();
             return EXIT_NEEDS_INPUT;
         }
 
@@ -290,16 +294,18 @@ public final class ProjectCommand implements Callable<Integer> {
          * onboarding's own {@code abandon} route, which changes no enrolment because none exists yet.
          *
          * @param entryId the entry the start opened, or {@code null} when the runtime named none
+         * @return whether the entry is closed; a refusal is reported so the operator can abandon it
          */
-        private void closeEntry(@Nullable String entryId) {
+        private boolean closeEntry(@Nullable String entryId) {
             if (entryId == null) {
-                return;
+                return true;
             }
             try {
-                context.runtime(true).send(HttpRequest.delete(
+                var response = context.runtime(true).send(HttpRequest.delete(
                                     "/api/v1/entries/" + OperatorUrlUtil.encodePathSegment(entryId) + "/abandon"));
+                return response.status() == 200 || response.status() == 204;
             } catch (IOException _) {
-                // A run that could not close its entry still stops with the exit code below.
+                return false;
             }
         }
 
@@ -525,7 +531,7 @@ public final class ProjectCommand implements Callable<Integer> {
             }
 
             if (!yes) {
-                var confirmationExit = promptReleaseConfirmation(out, locale);
+                var confirmationExit = promptReleaseConfirmation(out, err, locale);
                 if (confirmationExit != null) {
                     return confirmationExit;
                 }
@@ -557,10 +563,19 @@ public final class ProjectCommand implements Callable<Integer> {
             throw new OperatorRefusedException("release project " + sanitizedId, response);
         }
 
-        private @Nullable Integer promptReleaseConfirmation(PrintWriter out, String locale) throws IOException {
+        private @Nullable Integer promptReleaseConfirmation(PrintWriter out, PrintWriter err, String locale)
+                            throws IOException {
+            var project = interactiveProject();
+            if (project == null) {
+                // A release that cannot show what it ends is never confirmed: it would end work blind.
+                err.println(MessageCatalogue.format(locale, "project.release.summary_unavailable",
+                                    Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
+                err.flush();
+                return 1;
+            }
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                printReleaseBlock(out, locale, interactiveProject());
+                printReleaseBlock(out, locale, project);
                 if (reason == null || reason.isBlank()) {
                     var prompt = text(locale, "project.release.reason") + "  \u203a ";
                     var line = readLineSafe(reader, prompt);
@@ -590,12 +605,12 @@ public final class ProjectCommand implements Callable<Integer> {
          * @param locale  the interface locale
          * @param project the project as the explorer reports it, or {@code null}
          */
-        private void printReleaseBlock(PrintWriter out, String locale, @Nullable EnrolledProject project) {
+        private void printReleaseBlock(PrintWriter out, String locale, EnrolledProject project) {
             out.println(MessageCatalogue.format(locale, "project.release.title",
                                 Map.of("action", "release",
                                                     PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
-            var plans = project != null ? project.activePlansCount() : 0;
-            var epics = project != null ? project.activeEpicsCount() : 0;
+            var plans = project.activePlansCount();
+            var epics = project.activeEpicsCount();
             if (plans > 0 || epics > 0) {
                 printRow(out, locale, "project.release.what_ends", MessageCatalogue.format(locale,
                                     "project.release.ends", Map.of("plans", plans, "epics", epics)));

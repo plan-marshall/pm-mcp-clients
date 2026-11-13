@@ -719,7 +719,9 @@ class ProjectCommandTest {
             }
         });
 
-        int code = executeWithInput("the gates move\nmaybe\ny\n", "project", "release", "cui-parent");
+        int code = executeWithInput(Generators.letterStrings(4, 12).next() + "\n"
+                            + Generators.letterStrings(4, 12).next() + "\ny\n",
+                            "project", "release", "cui-parent");
 
         var output = out.toString();
         assertAll(
@@ -750,7 +752,8 @@ class ProjectCommandTest {
             }
         });
 
-        int code = executeWithInput("why\n?\ny\n", "project", "release", "cui-parent");
+        int code = executeWithInput(Generators.letterStrings(4, 12).next() + "\n?\ny\n",
+                            "project", "release", "cui-parent");
 
         var output = out.toString();
         assertAll(
@@ -800,7 +803,13 @@ class ProjectCommandTest {
     @Test
     @DisplayName("project release treats a closed input as a declined confirmation and sends nothing")
     void projectReleaseWithClosedInputSendsNothing() throws Exception {
-        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"released\"}"));
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"my-app\",\"display_name\":\"my-app\"}");
+            } else {
+                response.json(200, "{\"status\":\"released\"}");
+            }
+        });
 
         int code = executeWithInput("", "project", "release", "my-app");
 
@@ -840,7 +849,9 @@ class ProjectCommandTest {
     @DisplayName("project release marks project released")
     void projectRelease() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else if ("/api/v1/projects/old-app/release".equals(request.target())) {
                 response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
             } else {
                 response.send(404, null, "");
@@ -887,7 +898,13 @@ class ProjectCommandTest {
     @Test
     @DisplayName("project release without --yes prompts confirmation; declining sends nothing")
     void projectReleaseWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
-        var server = fixture.start((request, response) -> response.json(200, "{}"));
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else {
+                response.json(200, "{}");
+            }
+        });
 
         int code = executeWithInput("n\n", "project", "release", "old-app", "--reason", "my-reason");
         assertAll(
@@ -903,19 +920,22 @@ class ProjectCommandTest {
     @DisplayName("project release interactive without --reason asks reason and records it")
     void projectReleaseInteractiveWithoutReasonAsksReason() throws Exception {
         var server = fixture.start((request, response) -> {
-            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+            if ("/api/v1/projects/old-app".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"display_name\":\"old-app\"}");
+            } else if ("/api/v1/projects/old-app/release".equals(request.target())) {
                 response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = executeWithInput("my custom reason\ny\n", "project", "release", "old-app");
+        var reason = Generators.letterStrings(4, 12).next();
+        int code = executeWithInput(reason + "\ny\n", "project", "release", "old-app");
         var releases = server.requests().stream().filter(request -> request.target().endsWith("/release")).toList();
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertEquals(1, releases.size(), server.requests().toString()),
-                            () -> assertTrue(releases.getFirst().bodyText().contains("my custom reason"),
+                            () -> assertTrue(releases.getFirst().bodyText().contains(reason),
                                                 releases.getFirst().bodyText()),
                             () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
         );

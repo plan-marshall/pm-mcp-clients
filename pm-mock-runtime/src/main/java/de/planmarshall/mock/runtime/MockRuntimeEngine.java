@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -3957,12 +3958,38 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return true;
             }
             if (METHOD_POST.equals(request.method()) && "set".equals(act)) {
+                var enrolled = new EnrolledProject(
+                        being.checkoutPath().contains("/")
+                                ? being.checkoutPath().substring(being.checkoutPath().lastIndexOf('/') + 1)
+                                : being.checkoutPath(),
+                        being.checkoutPath(),
+                        null,
+                        ProjectReadiness.READY,
+                        null,
+                        0,
+                        0,
+                        0,
+                        Instant.now(),
+                        false,
+                        false);
                 beingAddedProjects.remove(being);
+                enrolledProjects.removeIf(candidate -> candidate.projectId().equals(enrolled.projectId()));
+                enrolledProjects.add(enrolled);
+                broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "enrolled", enrolled.projectId()));
                 response.json(200, projectOnboardingEntryState(entryId, true));
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * @param id the onboarding's own id
+     * @return the entry id as a path segment, so a checkout whose name carries a space keeps one id
+     */
+    private static String encodedEntryId(String id) {
+        return "ent-" + URLEncoder.encode(id, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     /**
@@ -8932,8 +8959,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     STEP_IDENTITY,
                     2,
                     10,
-                    "/api/v1/entries/ent-" + id + "/continue",
-                    "/api/v1/entries/ent-" + id + SUFFIX_ABANDON
+                    PATH_ENTRIES_PREFIX + encodedEntryId(id) + "/continue",
+                    PATH_ENTRIES_PREFIX + encodedEntryId(id) + SUFFIX_ABANDON
             );
             beingAddedProjects.add(beingAdded);
             lastBuildEnvironment = buildEnvironment;

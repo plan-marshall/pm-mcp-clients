@@ -142,7 +142,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             out.flush();
             return 0;
         }
-        return edit(out, locale, settings, durations);
+        return edit(out, locale, settings, durations, Map.of());
     }
 
     private String machineOnlyOption() {
@@ -267,17 +267,20 @@ final class ConfigCleanupCommand implements Callable<Integer> {
     }
 
     private int edit(PrintWriter out, String locale, MachineSettingsRecord settings,
-                        Map<String, Integer> durations) throws IOException {
+                        Map<String, Integer> durations, Map<String, Integer> pending) throws IOException {
         var prompt = new StartPrompt(context, out, locale, false);
         var kinds = project == null ? MACHINE_KINDS : PROJECT_KINDS;
-        var changes = new LinkedHashMap<String, Integer>();
+        var changes = new LinkedHashMap<>(pending);
         while (true) {
             printRows(out, locale, durations);
             out.flush();
             var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.durations.keep",
                                 Map.of("range", "1-" + kinds.size())), DURATIONS_STATE, "durations", null);
-            if (answer.isBlank() || "k".equalsIgnoreCase(answer)
-                                || ChoicePrompt.isLeave(locale, answer)) {
+            if (ChoicePrompt.isLeave(locale, answer)) {
+                // q leaves the dialogue with nothing sent, whatever was changed on screen.
+                return 0;
+            }
+            if (answer.isBlank() || "k".equalsIgnoreCase(answer)) {
                 return changes.isEmpty() ? 0 : write(out, locale, settings, durations, changes);
             }
             changeOne(prompt, out, locale, kinds, answer, durations, changes);
@@ -344,7 +347,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             var prompt = new StartPrompt(context, out, locale, false);
             if (!prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.durations.confirm", Map.of()),
                                 DURATIONS_STATE, "confirmation", null).isBlank()) {
-                return edit(out, locale, settings, durations);
+                return edit(out, locale, settings, durations, changes);
             }
         }
         var recorded = project == null
@@ -386,8 +389,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null),
                                 OperatorUrlUtil.appendScope(write, project, null), key, "",
                                 "operator.config.set_failed");
-            var code = ConfigCommand.writeWithRevision(context, change, false,
-                                String.valueOf(entry.getValue()), noInput);
+            var code = ConfigCommand.writeWithRevision(context, change, false, entry.getValue(), noInput);
             if (code != 0) {
                 return code;
             }
@@ -430,7 +432,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
     }
 
     private static boolean isAllowed(String kind, int days) {
-        return days == NEVER || days >= minimumOf(kind);
+        // The postponement always names days: `never` is a retention value alone (26-cleanup.adoc#commands).
+        return days >= minimumOf(kind) || (days == NEVER && !KIND_REMIND.equals(kind));
     }
 
     /**
