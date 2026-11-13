@@ -272,6 +272,25 @@ describe('OverviewView component', () => {
     expect(screen.getByText('! landing failed')).toBeInTheDocument();
   });
 
+  it.each([
+    ['a counted reason', { needs_operator_kind: 'decision', needs_operator_count: 2 }, '! 2 · decision'],
+    ['a reason by its word', { needs_operator_kind: 'waits_for_you', needs_operator_count: 1 }, '! waits for you'],
+    ['no reason', { needs_operator_kind: null, needs_operator_count: 1 }, '! another reason'],
+  ])('names %s of a plan and of an epic from the catalogue', async (_case, needs, expected) => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      plans: [{ ...mockDetailClients.plans[0], ...needs }],
+      epics: [{ ...mockDetailClients.epics[0], ...needs }],
+    });
+    render(OverviewView);
+
+    const planBadge = await screen.findByTestId('needs-badge-pln-console-history');
+    expect(planBadge.textContent?.trim()).toBe(expected);
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+    const epicBadge = await screen.findByTestId('needs-badge-epic-epc-client-work');
+    expect(epicBadge.textContent?.trim()).toBe(expected);
+  });
+
   it('toggles view between by-plan and by-epic', async () => {
     render(OverviewView);
 
@@ -330,6 +349,47 @@ describe('OverviewView component', () => {
       expect(screen.getByText('Session log and generations')).toBeInTheDocument();
       expect(screen.queryByText('Console history of answers')).not.toBeInTheDocument();
     });
+  });
+
+  it('says an ended-work page that could not be read failed, never that nothing ended', async () => {
+    vi.spyOn(apiClient, 'getEndedWork').mockRejectedValue(new ClientError('timeout'));
+    render(OverviewView);
+    await fireEvent.click(await screen.findByText('Ended work'));
+
+    const error = await screen.findByTestId('overview-ended-error');
+    expect(error).toHaveTextContent('The request took too long');
+    expect(screen.queryByText(/No ended work/)).not.toBeInTheDocument();
+
+    vi.spyOn(apiClient, 'getEndedWork').mockResolvedValue(mockEndedPage);
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Relay drops events on reconnect')).toBeInTheDocument();
+  });
+
+  it.each<[string, string[], string | null]>([
+    ['moves to the first project left when the open one is gone', ['pm-mcp-core'], 'pm-mcp-core'],
+    ['empties the running work when no project is left', [], null],
+  ])('on a live change it %s', async (_case, left, opened) => {
+    let onEvent: ((event: string) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback as (event: string) => void;
+      return () => {};
+    });
+    const detail = vi.spyOn(apiClient, 'getProjectDetail');
+    render(OverviewView);
+    await screen.findByText('Console history of answers');
+
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
+      ...mockProjects,
+      projects: mockProjects.projects.filter((project) => left.includes(project.project_id)),
+    });
+    onEvent?.('project.changed');
+
+    await waitFor(() =>
+      expect(screen.queryByText('Console history of answers')).not.toBeInTheDocument(),
+    );
+    if (opened) {
+      expect(detail).toHaveBeenLastCalledWith(opened);
+    }
   });
 
   it('opens ended work view with outcomes, reasons, and pagination controls', async () => {
