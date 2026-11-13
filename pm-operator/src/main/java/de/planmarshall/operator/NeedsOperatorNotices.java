@@ -222,9 +222,12 @@ public final class NeedsOperatorNotices {
     }
 
     /**
+     * The status read at start counted the whole machine once per kind, so the baseline is used up as
+     * places take it: what one place takes is no longer left for the next place seen first.
+     *
      * @param summary the first summary of a place
      * @return the items of it the status read at start already showed, counted per identity: of each
-     *         kind, the first as many as that read counted, in the summary's order
+     *         kind, the first as many as that read still counts, in the summary's order
      */
     private Map<String, Integer> baselineOf(NeedsOperatorSummary summary) {
         var baseline = new LinkedHashMap<String, Integer>();
@@ -236,6 +239,7 @@ public final class NeedsOperatorNotices {
                 baseline.merge(identityOf(item), 1, Integer::sum);
             }
         }
+        takenPerKind.forEach((kind, taken) -> shownAtStart.merge(kind, -taken, Integer::sum));
         return baseline;
     }
 

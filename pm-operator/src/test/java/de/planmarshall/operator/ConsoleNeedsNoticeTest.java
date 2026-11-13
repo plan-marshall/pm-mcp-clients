@@ -208,6 +208,29 @@ class ConsoleNeedsNoticeTest {
     }
 
     @Test
+    @DisplayName("the start baseline is used up by the place that takes it: a later place's first item is announced")
+    void startBaselineIsUsedUpByTheFirstPlace() {
+        var shown = Generators.letterStrings(4, 12).next();
+        var added = shown + "-" + Generators.letterStrings(2, 6).next();
+        var plan = Generators.letterStrings(4, 12).next();
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", 1)));
+
+        var first = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + shown)));
+        var second = notices.noticesOf("en", "needs_operator.changed", Map.of(
+                            "plan_id", plan, "kind", "credential", "count", 1,
+                            "needs_operator", Map.of("count", 1, "items",
+                                                List.of(item("credential", "/api/v1/credentials/" + added)))));
+
+        assertAll(
+                            () -> assertTrue(first.isEmpty(), first.toString()),
+                            () -> assertEquals(1, second.size(), second.toString()),
+                            () -> assertEquals(added, second.getFirst().place())
+        );
+    }
+
+    @Test
     @DisplayName("a negative count in the status read showed nothing: the first item is announced")
     void negativeStatusCountShowsNothing() {
         var key = Generators.letterStrings(4, 12).next();

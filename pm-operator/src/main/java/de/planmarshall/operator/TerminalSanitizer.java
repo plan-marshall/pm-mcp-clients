@@ -48,6 +48,11 @@ public final class TerminalSanitizer {
     private static final int BIDI_EMBEDDING_LAST = 0x202E;
     private static final int BIDI_ISOLATE_FIRST = 0x2066;
     private static final int BIDI_ISOLATE_LAST = 0x2069;
+    private static final int LEFT_TO_RIGHT_MARK = 0x200E;
+    private static final int RIGHT_TO_LEFT_MARK = 0x200F;
+    private static final int ARABIC_LETTER_MARK = 0x061C;
+    private static final int LINE_SEPARATOR = 0x2028;
+    private static final int PARAGRAPH_SEPARATOR = 0x2029;
     private static final int ZERO_WIDTH_FIRST = 0x200B;
     private static final int ZERO_WIDTH_LAST = 0x200D;
     private static final int WORD_JOINER = 0x2060;
@@ -104,10 +109,16 @@ public final class TerminalSanitizer {
                             && !isTag(codePoint);
     }
 
-    /** The embedding, override, and isolate controls that reorder what the terminal shows. */
+    /**
+     * The embedding, override, and isolate controls and the implicit direction marks that reorder what
+     * the terminal shows, and the line and paragraph separators that break a line the console did not.
+     */
     private static boolean isBidiControl(int codePoint) {
         return (codePoint >= BIDI_EMBEDDING_FIRST && codePoint <= BIDI_EMBEDDING_LAST)
-                            || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST);
+                            || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST)
+                            || codePoint == LEFT_TO_RIGHT_MARK || codePoint == RIGHT_TO_LEFT_MARK
+                            || codePoint == ARABIC_LETTER_MARK || codePoint == LINE_SEPARATOR
+                            || codePoint == PARAGRAPH_SEPARATOR;
     }
 
     /** The characters that take no width and so hide between the visible ones. */
