@@ -25,8 +25,10 @@ import org.jspecify.annotations.Nullable;
  * string introducers DCS, SOS, PM, and APC ({@code ESC P}/{@code X}/{@code ^}/{@code _}).
  *
  * <p>Neutralized as well are the characters that are not text the reader can see: the bidi
- * controls ({@code U+202A}–{@code U+202E} and {@code U+2066}–{@code U+2069}), which reorder what
- * the terminal shows; the zero-width characters ({@code U+200B}–{@code U+200D}, {@code U+2060}, and
+ * controls ({@code U+202A}–{@code U+202E} and {@code U+2066}–{@code U+2069}) and the direction
+ * marks ({@code U+200E}, {@code U+200F}, {@code U+061C}), which reorder what the terminal shows;
+ * the line and paragraph separators ({@code U+2028}, {@code U+2029}), which break a line the
+ * console did not; the zero-width characters ({@code U+200B}–{@code U+200D}, {@code U+2060}, and
  * {@code U+FEFF}), which hide between the visible ones; and the tag characters
  * ({@code U+E0000}–{@code U+E007F}), which can carry a whole hidden text. The text is read by code
  * point, so a supplementary character is kept or dropped whole. Dropping the zero-width joiner
