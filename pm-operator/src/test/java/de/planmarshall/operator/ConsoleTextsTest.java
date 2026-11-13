@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -19,10 +20,13 @@ import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.operator.tui.TuiKeyAction;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * The console's texts in both languages: every badge, every notice kind, and the report lines come
@@ -115,19 +119,67 @@ class ConsoleTextsTest {
                             ConsoleNotice.formatReportNotice("en", Map.of("plan", "docs", "summary", "no change")));
     }
 
-    @Test
-    @DisplayName("every badge kind renders in both languages, and the zero count yields none")
-    void badges() {
-        for (var kind : List.of("question", "decision", "waiver_request", "operator_wait", "integrity_pause",
-                            "stalled", "condition", "held", "landing_failed", "findings", "setup", "custom")) {
-            assertNotNull(ConsolePrompt.formatBadge("en", kind, 1), kind);
-            assertNotNull(ConsolePrompt.formatBadge("de", kind, 2), kind);
+    /**
+     * The inventory of kinds is the contract's enum, not a hand list: a kind the enum gains runs
+     * here at once. The badge key is asserted rather than the rendered text alone, because for some
+     * kinds the fallback badge ({@code {count} {kind word}}) reads the same as the kind's own badge
+     * ({@code 1 cleanup due}), so only the key tells a removed branch from a present one.
+     */
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(value = NeedsOperatorKind.class, mode = EnumSource.Mode.EXCLUDE, names = "OTHER")
+    @DisplayName("every canonical kind has its own badge in both languages, never the fallback")
+    void canonicalKindsHaveTheirOwnBadge(NeedsOperatorKind kind) {
+        var key = ConsolePrompt.badgeKey(kind.value());
+
+        assertNotEquals(ConsolePrompt.BADGE_FALLBACK, key, kind + " falls to the fallback badge");
+        for (var locale : List.of("en", "de")) {
+            assertTrue(MessageCatalogue.hasKey(locale, key), locale + " lacks " + key);
+            for (var count : List.of(1, 2)) {
+                var badge = ConsolePrompt.formatBadge(locale, kind.value(), count);
+                var otherBadge = MessageCatalogue.format(locale, ConsolePrompt.BADGE_FALLBACK, Map.of("count", count,
+                                    "kind", MessageCatalogue.format(locale, "overview.needs.other", Map.of())));
+                assertEquals(MessageCatalogue.format(locale, key, Map.of("count", count)), badge, kind + " " + locale);
+                assertNotEquals(otherBadge, badge, kind + " " + locale + " renders as an unknown kind");
+            }
         }
+    }
+
+    @Test
+    @DisplayName("the aliases read the badge of their canonical kind, and an unknown kind the fallback")
+    void aliasesAndUnknownKindBadges() {
+        assertEquals(ConsolePrompt.badgeKey(NeedsOperatorKind.DECISION.value()), ConsolePrompt.badgeKey("question"));
+        assertEquals(ConsolePrompt.badgeKey(NeedsOperatorKind.WAITS_FOR_YOU.value()),
+                            ConsolePrompt.badgeKey("operator_wait"));
+        assertEquals(ConsolePrompt.BADGE_FALLBACK, ConsolePrompt.badgeKey("custom"));
+        assertEquals("1 another reason", ConsolePrompt.formatBadge("en", "custom", 1));
+        assertEquals("2 anderer Grund", ConsolePrompt.formatBadge("de", "custom", 2));
+        assertEquals("2 wait for you", ConsolePrompt.formatBadge("en", "operator_wait", 2));
+        assertEquals("2 wait for you", ConsolePrompt.formatBadge("en", "waits_for_you", 2));
+    }
+
+    @Test
+    @DisplayName("the badges carry their catalogue words and plurals, and the zero count yields none")
+    void badges() {
         assertNull(ConsolePrompt.formatBadge("en", "question", 0));
         assertEquals("2 Fragen", ConsolePrompt.formatBadge("de", "question", 2));
         assertEquals("3 stehen", ConsolePrompt.formatBadge("de", "stalled", 3));
         assertNotEquals(ConsolePrompt.formatBadge("de", "stalled", 3), ConsolePrompt.formatBadge("en", "stalled", 3));
         assertEquals("1 Landen fehlgeschlagen", ConsolePrompt.formatBadge("de", "landing_failed", 1));
+        assertEquals("1 Waiver-Anfrage", ConsolePrompt.formatBadge("de", "waiver", 1));
+        assertEquals("2 waiver requests", ConsolePrompt.formatBadge("en", "waiver", 2));
+    }
+
+    @Test
+    @DisplayName("the waiver keys follow the contract's kind: the old waiver_request keys are gone from both packs")
+    void waiverKeysFollowTheKind() {
+        for (var locale : List.of("en", "de")) {
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.badge.waivers"), locale);
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver"), locale);
+            assertTrue(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_plain"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.badge.waiver_requests"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_request"), locale);
+            assertFalse(MessageCatalogue.hasKey(locale, "operator.console.notice.waiver_request_plain"), locale);
+        }
     }
 
     @Test

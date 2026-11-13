@@ -144,13 +144,14 @@ class EntryFlowTest {
             var status = Map.<String, Object>of(
                                 "needs_operator", Map.of(
                                 "decision", 2,
-                                "waiver_request", 1
+                                "waiver", 1
             )
             );
-            var badges = EntryFlow.extractWaitingBadges(status);
+            var badges = EntryFlow.extractWaitingConsoleBadges("en", status);
             assertAll(
-                                () -> assertTrue(badges.contains("2 questions")),
-                                () -> assertTrue(badges.contains("1 waiver request"))
+                                () -> assertTrue(badges.stream().anyMatch(b -> "2 questions".equals(b.text())), badges.toString()),
+                                () -> assertTrue(badges.stream().anyMatch(b -> "1 waiver request".equals(b.text())
+                                                    && "waiver".equals(b.itemKind())), badges.toString())
             );
         }
     }

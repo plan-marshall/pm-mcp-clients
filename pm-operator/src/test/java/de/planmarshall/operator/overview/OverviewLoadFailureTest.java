@@ -9,9 +9,11 @@
  */
 package de.planmarshall.operator.overview;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -47,7 +49,7 @@ import org.junit.jupiter.api.io.TempDir;
 class OverviewLoadFailureTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-16T16:00:00Z"), ZoneOffset.UTC);
-    private static final String REFUSAL = "{\"error\":\"cli_only\",\"message\":\"not from an interactive terminal\"}";
+    private static final String CODE = "cli_only";
 
     @TempDir
     Path tempDir;
@@ -55,10 +57,18 @@ class OverviewLoadFailureTest {
     private RuntimeFixture fixture;
     private DumbTerminal terminal;
 
+    /** The runtime's own message of the refusal, which the level never shows. */
+    private String message;
+
+    /** The refused answer: the catalogue code and the runtime's message. */
+    private String refusal;
+
     @BeforeEach
     void setUp() throws Exception {
         fixture = RuntimeFixture.create();
         writeLiveRecord();
+        message = "raw " + Generators.letterStrings(8, 16).next();
+        refusal = "{\"error\":\"" + CODE + "\",\"message\":\"" + message + "\"}";
     }
 
     @AfterEach
@@ -76,7 +86,7 @@ class OverviewLoadFailureTest {
     void refusedProjectsReadShowsTheRefusal() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/projects".equals(request.target())) {
-                response.send(403, null, REFUSAL);
+                response.send(403, null, refusal);
             } else if ("/api/v1/machine/needs-operator".equals(request.target())) {
                 response.json(200, "{\"page\":1,\"total_pages\":1,\"has_older\":false,\"total\":0,\"items\":[]}");
             } else if ("/api/v1/status".equals(request.target())) {
@@ -97,8 +107,38 @@ class OverviewLoadFailureTest {
 
         var rows = app.stack().visibleRows();
         var text = lines(rows);
-        assertTrue(text.contains(ErrorTexts.title("en", "cli_only")), "the refusal title is missing: " + text);
-        assertFalse(text.contains("Nothing runs"), "the empty-state text must never stand for a refusal: " + text);
+        assertAll(
+                            () -> assertTrue(text.contains(ErrorTexts.title("en", CODE)), "the refusal title is missing: " + text),
+                            () -> assertTrue(text.contains(ErrorTexts.cause("en", CODE)),
+                                                "the cause is the catalogue's: " + text),
+                            () -> assertFalse(text.contains(message), "the runtime's raw message is never shown: " + text),
+                            () -> assertFalse(text.contains("Nothing runs"),
+                                                "the empty-state text must never stand for a refusal: " + text)
+        );
+    }
+
+    @Test
+    @DisplayName("a read that fails before the runtime answers shows the catalogue cause, not the failure's message")
+    void unreachableReadShowsTheCatalogueCause() throws Exception {
+        fixture.start((request, response) -> response.send(404, null, ""));
+        var context = context();
+        var runtime = context.runtime(false);
+        // The failure's own message names the socket it could not reach.
+        var socket = fixture.paths().socket().toString();
+        fixture.close();
+        fixture = null;
+
+        var app = new OverviewFullScreenApp(context, terminal, OverviewFullScreenApp.InitialSelection.DEFAULT,
+                            CLOCK, new OverviewStateStore(context.stateDirectory()), new ConsoleNoticeBuffer());
+        app.loadInitialData(runtime);
+
+        var text = lines(app.stack().visibleRows());
+        assertAll(
+                            () -> assertTrue(text.contains(ErrorTexts.cause("en", (String) null)),
+                                                "the cause is the catalogue's own: " + text),
+                            () -> assertFalse(text.contains(socket),
+                                                "the raw, unlocalised failure message is never shown: " + text)
+        );
     }
 
     @Test
@@ -112,7 +152,7 @@ class OverviewLoadFailureTest {
                                      "setup_needs_operator":false,"last_activity_at":"2026-10-16T15:36:00Z"}]}
                                     """);
             } else if ("/api/v1/machine/needs-operator".equals(request.target())) {
-                response.send(403, null, REFUSAL);
+                response.send(403, null, refusal);
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
                                     {"status":"ready","onboarded":true,"version":"0.9.0","needs_operator":{}}
@@ -130,7 +170,7 @@ class OverviewLoadFailureTest {
         app.loadInitialData(context.runtime(true));
 
         var text = lines(app.stack().visibleRows());
-        assertTrue(text.contains(ErrorTexts.title("en", "cli_only")), "the refusal is missing: " + text);
+        assertTrue(text.contains(ErrorTexts.title("en", CODE)), "the refusal is missing: " + text);
         assertTrue(text.contains("pm-mcp-clients"), "the projects keep their rows: " + text);
     }
 

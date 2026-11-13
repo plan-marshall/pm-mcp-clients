@@ -20,9 +20,13 @@ import java.nio.file.Files;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
@@ -152,6 +156,8 @@ class OverviewFullScreenAppTest {
                         """;
 
     private RuntimeFixture fixture;
+    /** The list of what waits the fixture serves, or {@code null} to leave it unserved. */
+    private volatile @Nullable String needsJson;
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
 
     @BeforeEach
@@ -173,6 +179,8 @@ class OverviewFullScreenAppTest {
                 response.json(200, ENDED_CLIENTS_JSON);
             } else if ("/api/v1/reports".equals(path)) {
                 response.json(200, "{\"unread_count\":3,\"items\":[]}");
+            } else if ("/api/v1/machine/needs-operator".equals(path) && needsJson != null) {
+                response.json(200, needsJson);
             } else {
                 response.send(404, null, "{\"error\":\"not_found\"}");
             }
@@ -243,12 +251,60 @@ class OverviewFullScreenAppTest {
     @DisplayName("categoryOf maps the resolved notice kinds to notice buffer categories")
     void categoryOf() {
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("question"));
-        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("waiver_request"));
+        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("waiver"));
+        assertEquals(ConsoleNoticeBuffer.Category.DECISION,
+                            OverviewFullScreenApp.categoryOf(EventKind.WAIVER.notice()),
+                            "a waiver's notice kind is the contract's kind waiver");
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("answered_elsewhere"));
         assertEquals(ConsoleNoticeBuffer.Category.REPORT, OverviewFullScreenApp.categoryOf("report"));
         assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf("stalled"));
         assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf("random"));
         assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf(null));
+    }
+
+    @Test
+    @DisplayName("! on a row of what waits runs exactly the command that row prints")
+    void bangOnANeedsRowRunsThePrintedCommand() throws Exception {
+        needsJson = """
+                            {"page":1,"total_pages":1,"has_newer":false,"has_older":false,"total":3,"items":[
+                              {"kind":"landing_failed","plan":{"id":"pln-landing","title":"Landing of the relay"},
+                               "since":"2026-10-20T11:00:00Z","blocks":"plan"},
+                              {"kind":"waiver","link":"/api/v1/decisions/WR-2","plan":{"id":"pln-waiver","title":"Waiver plan"},
+                               "since":"2026-10-20T11:05:00Z","blocks":"plan"},
+                              {"kind":"stalled","epic":{"id":"epc-stalled","title":"Stalled epic"},
+                               "since":"2026-10-20T11:10:00Z","blocks":"epic"}]}
+                            """;
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.loadInitialData(createContext(virtual).runtime(false));
+        var ran = new ArrayList<List<String>>();
+        app.verbRunner(args -> {
+            ran.add(List.of(args));
+            return 0;
+        });
+        var handler = app.keyHandler();
+
+        var printed = new ArrayList<String>();
+        for (var title : List.of("Landing of the relay", "Waiver plan", "Stalled epic")) {
+            app.stack().select(rowOf(app, title));
+            var item = app.selectedNeedsItem();
+            assertNotNull(item, title);
+            printed.add(OverviewFormatting.formatNeedsItemCommand(item));
+            assertTrue(handler.handle(TuiKeyAction.WAITS));
+        }
+
+        assertEquals(List.of("plan pln-landing", "answer WR-2", "epic epc-stalled"), printed);
+        assertEquals(printed, ran.stream().map(words -> String.join(" ", words)).toList(),
+                            "! runs what the row prints, and nothing else");
+    }
+
+    private static String rowOf(OverviewFullScreenApp app, String title) {
+        return app.stack().visibleRows().stream()
+                            .filter(row -> row.line().contains(title))
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError("no row names " + title + ": "
+                                                + app.stack().visibleRows()))
+                            .id();
     }
 
     @Test

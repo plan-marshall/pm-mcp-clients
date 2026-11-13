@@ -12,13 +12,18 @@ package de.planmarshall.api.message;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.api.overview.NeedsOperatorKind;
 
 @DisplayName("OverviewCatalogueTest")
 class OverviewCatalogueTest {
@@ -39,96 +44,82 @@ class OverviewCatalogueTest {
     }
 
     @Test
-    @DisplayName("should contain all specification keys from plan-overview.adoc and 15-overview.adoc")
-    void shouldContainAllSpecificationKeys() {
-        var en = MessageCatalogue.getMessages("en", "overview");
+    @DisplayName("the waiver has one word, under the contract's kind: overview.needs.waiver_request is gone from both packs")
+    void shouldNotCarryTheWaiverRequestKey() {
+        for (var locale : new String[]{"en", "de"}) {
+            var messages = MessageCatalogue.getMessages(locale, "overview");
 
-        String[] requiredKeys = {
-                "overview.running.title",
-                "overview.projects.empty",
-                "overview.project.counts",
-                "overview.project.setup",
-                "overview.project.left",
-                "overview.view.by_plan",
-                "overview.view.by_epic",
-                "overview.kind.plan",
-                "overview.kind.epic",
-                "overview.group.without_epic",
-                "overview.needs.count",
-                "overview.needs.badge",
-                "overview.needs.completion_review",
-                "overview.needs.decision",
-                "overview.needs.waiver_request",
-                "overview.needs.operator_wait",
-                "overview.needs.integrity_pause",
-                "overview.needs.stalled",
-                "overview.needs.condition",
-                "overview.needs.held",
-                "overview.needs.landing_failed",
-                "overview.needs.findings",
-                "overview.needs.setup",
-                "overview.state.running",
-                "overview.state.pausing",
-                "overview.state.paused",
-                "overview.state.waiting",
-                "overview.state.held",
-                "overview.time.running",
-                "overview.time.in_phase",
-                "overview.progress.tasks",
-                "overview.progress.plans",
-                "overview.epic.plans",
-                "overview.plan.belongs_to",
-                "overview.plan.pull_request",
-                "overview.plan.off_track",
-                "overview.group.alongside",
-                "overview.landing.removal",
-                "overview.landing.unit",
-                "overview.connection.lost",
-                "overview.fallback.ended",
-                "overview.ended.title",
-                "overview.ended.open",
-                "overview.ended.empty",
-                "overview.ended.outcome",
-                "overview.ended.epic_end",
-                "overview.ended.reason",
-                "overview.ended.time",
-                "overview.ended.page",
-                "overview.ended.newer",
-                "overview.ended.older",
-                "overview.ended.as_it_ended",
-                "operator.overview.keys.move",
-                "operator.overview.keys.open",
-                "operator.overview.keys.back",
-                "operator.overview.keys.filter",
-                "operator.overview.keys.epic",
-                "operator.overview.keys.waits",
-                "operator.overview.keys.switch_view",
-                "operator.overview.keys.help",
-                "operator.overview.keys.leave",
-                "operator.overview.keys.reload",
-                "operator.overview.keys.system",
-                "operator.overview.more_above",
-                "operator.overview.more_below",
-                "operator.overview.connected",
-                "operator.overview.meanwhile",
-                "operator.overview.meanwhile.nothing",
-                "operator.overview.where.overview",
-                "operator.overview.too_narrow",
-                "operator.overview.keys.actions",
-                "operator.overview.keys.ended",
-                "operator.overview.keys.reports",
-                "operator.overview.ended_view_chat",
-                "operator.status.ended_title",
-                "operator.status.pull_request",
-                "operator.status.reason",
-                "operator.status.runtime"
-        };
-
-        for (String key : requiredKeys) {
-            assertTrue(en.containsKey(key), "Key '" + key + "' must exist in overview.en.properties");
-            assertNotNull(en.get(key), "Value for '" + key + "' must not be null");
-            assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank");
+            assertFalse(messages.containsKey("overview.needs.waiver_request"),
+                    "overview.needs.waiver_request must not come back in the " + locale + " pack");
+            assertTrue(messages.containsKey("overview.needs.waiver"), locale);
+            assertTrue(messages.containsKey("overview.needs.other"), locale);
         }
+    }
+
+    /**
+     * The keys {@code doc/design/shared/plan-overview.adoc#texts} names but the catalogue
+     * deliberately does not carry yet: the integrity hold's word, which the design already names
+     * under its new kind, while the code and the catalogue still serve {@code integrity_pause}
+     * until the work package {@code harness-decision-log-hold-names} (doc/plans) renames it. Each
+     * entry must still be absent from both packs, so the exclusion goes once the rename lands.
+     */
+    private static final Set<String> PENDING_RENAME = Set.of("overview.needs.integrity_hold");
+
+    /**
+     * @return the keys of every text table of the two documents that define the overview's texts
+     */
+    private static List<String> specificationKeys() throws IOException {
+        var keys = new ArrayList<>(SpecificationTables.keyCells("shared/plan-overview.adoc"));
+        keys.addAll(SpecificationTables.keyCells("terminal-client/15-overview.adoc"));
+        return keys;
+    }
+
+    @Test
+    @DisplayName("should contain every key of the text tables of plan-overview.adoc and 15-overview.adoc in both packs")
+    void shouldContainAllSpecificationKeys() throws Exception {
+        var keys = specificationKeys();
+
+        assertTrue(keys.size() > 70, "the text tables of both documents must be read: " + keys);
+        assertTrue(keys.contains("overview.running.title"), keys.toString());
+        assertTrue(keys.contains("operator.status.runtime"), keys.toString());
+        assertTrue(keys.containsAll(PENDING_RENAME), "a pending key no document names any more: " + PENDING_RENAME);
+        var missing = new ArrayList<String>();
+        var stillPending = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "all");
+            for (String key : keys) {
+                var value = messages.get(key);
+                if (PENDING_RENAME.contains(key)) {
+                    if (value != null) {
+                        stillPending.add(locale + ":" + key);
+                    }
+                } else if (value == null || value.isBlank()) {
+                    missing.add(locale + ":" + key);
+                }
+            }
+        }
+        assertAll(
+                () -> assertTrue(missing.isEmpty(), "keys of the overview documents missing or blank in a pack: " + missing),
+                () -> assertTrue(stillPending.isEmpty(),
+                        "the rename landed; remove these keys from PENDING_RENAME: " + stillPending)
+        );
+    }
+
+    @Test
+    @DisplayName("every kind of what needs the operator has its overview.needs word in both packs")
+    void shouldCarryTheWordOfEveryNeedsKind() {
+        var missing = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "overview");
+            for (var kind : NeedsOperatorKind.values()) {
+                var key = "overview.needs." + kind.value();
+                var value = messages.get(key);
+                if (value == null || value.isBlank()) {
+                    missing.add(locale + ":" + key);
+                }
+            }
+        }
+        assertTrue(missing.isEmpty(), "a needs kind without its word: " + missing);
     }
 
     @Test
@@ -172,13 +163,16 @@ class OverviewCatalogueTest {
     }
 
     @Test
-    @DisplayName("should name the completion review reason in both languages")
+    @DisplayName("should name the completion review reason and the badge text in both languages")
     void shouldNameTheCompletionReviewReason() {
         assertAll(
                 () -> assertEquals("completion review",
                         MessageCatalogue.getMessages("en", "overview").get("overview.needs.completion_review")),
                 () -> assertEquals("Abschlussprüfung",
-                        MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")));
+                        MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")),
+                // The badge template is not in a text table of the overview documents; it is pinned here.
+                () -> assertTrue(MessageCatalogue.getMessages("en", "overview").containsKey("overview.needs.badge")),
+                () -> assertTrue(MessageCatalogue.getMessages("de", "overview").containsKey("overview.needs.badge")));
     }
 
     @Test

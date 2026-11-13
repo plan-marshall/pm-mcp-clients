@@ -22,15 +22,18 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.runtime.MockTiming;
+import de.planmarshall.operator.overview.OverviewFormatting;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,36 +75,51 @@ class NeedsCommandTest {
 
             assertAll(
                                 () -> assertEquals(0, exitCode, "needs should exit 0, err: " + error),
-                                () -> assertTrue(output.contains("Needs you · 18"), "expected header with 18 items: " + output),
-                                () -> assertTrue(output.contains("findings"), "should contain findings item"),
-                                () -> assertTrue(output.contains("landing failed"), "should contain landing failed item"),
-                                () -> assertTrue(output.contains("held"), "should contain held item"),
-                                () -> assertTrue(output.contains("needs a fix"), "should contain condition/needs a fix item"),
-                                () -> assertTrue(output.contains("stalled"), "should contain stalled item"),
-                                () -> assertTrue(output.contains("integrity pause"), "should contain integrity pause item"),
-                                () -> assertTrue(output.contains("waits for you"), "should contain waits for you item"),
-                                () -> assertTrue(output.contains("waiver"), "should contain waiver item"),
-                                () -> assertTrue(output.contains("decision"), "should contain decision item"),
-                                () -> assertTrue(output.contains("cleanup due"), "should contain cleanup due machine item"),
-                                () -> assertTrue(output.contains("credential"), "should contain credential machine item"),
-                                () -> assertTrue(output.contains("setup"), "should contain setup item"),
+                                () -> assertTrue(output.contains(MessageCatalogue.format("en", "operator.needs.title",
+                                                    Map.of("total", 18))), "expected header with 18 items: " + output),
+                                () -> assertTrue(output.contains("! new findings"), "should contain findings item: " + output),
+                                () -> assertTrue(output.contains("! landing failed"), "should contain landing failed item"),
+                                () -> assertTrue(output.contains("! held"), "should contain held item"),
+                                () -> assertTrue(output.contains("! needs a fix"), "should contain condition/needs a fix item"),
+                                () -> assertTrue(output.contains("! stalled"), "should contain stalled item"),
+                                () -> assertTrue(output.contains("! integrity pause"), "should contain integrity pause item"),
+                                () -> assertTrue(output.contains("! waits for you"), "should contain waits for you item"),
+                                () -> assertTrue(output.contains("! waiver"), "should contain waiver item"),
+                                () -> assertTrue(output.contains("! decision"), "should contain decision item"),
+                                () -> assertTrue(output.contains("! cleanup due"), "should contain cleanup due machine item"),
+                                () -> assertTrue(output.contains("! credential"), "should contain credential machine item"),
+                                () -> assertTrue(output.contains("! setup"), "should contain setup item"),
                                 () -> assertTrue(output.contains("cleanup"), "should contain command cleanup"),
                                 () -> assertTrue(output.contains("credentials"), "should contain command credentials"),
                                 () -> assertTrue(output.contains("project setup"), "should contain command project setup")
             );
+            // Every kind the scenario serves is named by the catalogue's own label of its row.
+            for (var kind : NeedsOperatorKind.values()) {
+                if (kind != NeedsOperatorKind.OTHER) {
+                    assertTrue(output.contains(rowLabel(kind)), "should contain the " + kind + " row: " + output);
+                }
+            }
 
             // Assert runtime order: blocking first, oldest first
-            int idxFindings = output.indexOf("findings");
-            int idxLanding = output.indexOf("landing failed");
-            int idxDecision = output.indexOf("decision");
-            int idxCleanup = output.indexOf("cleanup due");
-            int idxCredential = output.indexOf("credential");
+            int idxFindings = output.indexOf(rowLabel(NeedsOperatorKind.FINDINGS));
+            int idxLanding = output.indexOf(rowLabel(NeedsOperatorKind.LANDING_FAILED));
+            int idxDecision = output.indexOf(rowLabel(NeedsOperatorKind.DECISION));
+            int idxCleanup = output.indexOf(rowLabel(NeedsOperatorKind.CLEANUP_DUE));
+            int idxCredential = output.indexOf(rowLabel(NeedsOperatorKind.CREDENTIAL));
 
             assertTrue(idxFindings < idxLanding, "findings should precede landing failed");
             assertTrue(idxLanding < idxDecision, "landing failed should precede decision");
             assertTrue(idxDecision < idxCleanup, "blocking items should precede non-blocking machine items");
             assertTrue(idxCleanup < idxCredential, "cleanup due should precede credential (older timestamp)");
         }
+    }
+
+    /**
+     * @param kind the kind of a row
+     * @return the start of the row as the list prints it: the mark and the catalogue's label
+     */
+    private static String rowLabel(NeedsOperatorKind kind) {
+        return "! " + OverviewFormatting.formatNeedsItemKind(kind, "en");
     }
 
     @Test
@@ -218,6 +236,44 @@ class NeedsCommandTest {
         var withoutMore = new StringWriter();
         assertEquals(0, new NeedsCommand(context).executeNeeds(single, new PrintWriter(withoutMore), "en"));
         assertFalse(withoutMore.toString().contains("Show more"), withoutMore.toString());
+    }
+
+    @Test
+    @DisplayName("a page past the last one names the page and what waits, never that nothing waits")
+    void needsPageBeyondTheEnd() throws Exception {
+        var context = new OperatorContext(
+                            Map.of(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(Map.of()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null
+        );
+        var json = ("{\"page\":5,\"total_pages\":1,\"has_newer\":true,\"has_older\":false,\"total\":7,"
+                            + "\"items\":[]}").getBytes(StandardCharsets.UTF_8);
+        var requested = new AtomicReference<String>();
+        NeedsCommand.RuntimeSender sender = req -> {
+            requested.set(req.target());
+            return new HttpResponse(200, "application/json", json);
+        };
+        var command = new NeedsCommand(context);
+        command.page = 5;
+
+        var english = new StringWriter();
+        var german = new StringWriter();
+        assertEquals(0, command.executeNeeds(sender, new PrintWriter(english), "en"));
+        assertEquals(0, command.executeNeeds(sender, new PrintWriter(german), "de"));
+
+        assertAll(
+                            () -> assertEquals("Page 5 is past the end: 7 items wait on 1 page; needs shows the first.",
+                                                english.toString().strip()),
+                            () -> assertEquals("Seite 5 liegt hinter dem Ende: 7 Einträge warten auf 1 Seite; needs zeigt die erste.",
+                                                german.toString().strip()),
+                            () -> assertFalse(english.toString().contains(
+                                                                    MessageCatalogue.format("en", "operator.needs.empty", Map.of())),
+                                                english.toString()),
+                            () -> assertTrue(requested.get().endsWith("?page=5"), requested.get())
+        );
     }
 
     @Test

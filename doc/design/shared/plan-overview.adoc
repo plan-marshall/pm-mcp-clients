@@ -263,6 +263,10 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |setup
 |Einrichtung
 
+|`overview.needs.other`
+|another reason
+|anderer Grund
+
 |`overview.state.running`
 |running
 |läuft
