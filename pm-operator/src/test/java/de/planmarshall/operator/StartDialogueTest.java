@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
@@ -605,6 +606,9 @@ class StartDialogueTest {
         private static final String ENTRY = "ent-1";
         private static final int PAGE = 3;
         private static final String CHAT_STATE_TURN = "chat.turn";
+        private static final String END = "/end";
+        /** The line the dialogue prints when the chat has ended. */
+        private static final String ENDED = "The chat has ended.";
 
         private final List<String> transcript = new CopyOnWriteArrayList<>();
         private RuntimeFixture fixture;
@@ -670,7 +674,54 @@ class StartDialogueTest {
             assertAll(
                                 () -> assertTrue(rendered.contains("Stopped waiting: refine is still writing."), rendered),
                                 () -> assertFalse(rendered.contains(streaming.getFirst()), rendered),
-                                () -> assertTrue(rendered.contains("The chat has ended."), rendered));
+                                () -> assertTrue(rendered.contains(ENDED), rendered));
+        }
+
+        @Test
+        @DisplayName("an end the runtime refuses for another reason is shown, and the chat stays open")
+        void refusedEndKeepsTheChatOpen() throws Exception {
+            var refusal = Generators.letterStrings(8, 24).next();
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END) && ends.getAndIncrement() == 0) {
+                    response.json(503, "{\"message\":\"" + refusal + "\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n\n");
+
+            assertAll(
+                                () -> assertEquals(2, ends.get(), "the operator ends the chat a second time"),
+                                () -> assertTrue(rendered.contains(refusal), rendered),
+                                () -> assertEquals(1, occurrences(rendered, ENDED), rendered),
+                                () -> assertTrue(rendered.indexOf(refusal) < rendered.indexOf(ENDED),
+                                                    "the refused end says nothing of an ended chat: " + rendered));
+        }
+
+        @Test
+        @DisplayName("an end the runtime refuses because the chat has ended already ends the chat")
+        void alreadyEndedChatEnds() throws Exception {
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END)) {
+                    ends.incrementAndGet();
+                    response.json(409, "{\"error\":\"act_not_available\",\"message\":\"The chat has ended\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n");
+
+            assertAll(
+                                () -> assertEquals(1, ends.get(), rendered),
+                                () -> assertEquals(1, occurrences(rendered, ENDED), rendered));
         }
 
         private String chat(ChatResource opened, StartApi.ReplyWait wait, String input) throws Exception {

@@ -33,6 +33,7 @@ import de.planmarshall.api.decomposition.EpicDecomposition;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.RecipeRef;
 import de.planmarshall.api.start.StartStateResource;
@@ -51,6 +52,8 @@ final class StartApi {
     private static final String RECIPES = "/api/v1/recipes";
     private static final String DECOMPOSITION = "/decomposition";
     private static final String KEY_MESSAGE = "message";
+    /** The member of an error body that names its code. */
+    private static final String KEY_ERROR = "error";
     private static final String KEY_RECIPES = "recipes";
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
@@ -120,7 +123,7 @@ final class StartApi {
         if (response.status() == 200) {
             return StartStateResource.fromJson(response.bodyText());
         }
-        throw new StartActException(linkId, messageOf(response));
+        throw new StartActException(linkId, response);
     }
 
     /**
@@ -152,7 +155,7 @@ final class StartApi {
         var request = new ChatTurnRequest(text, UUID.randomUUID().toString());
         var response = send(HttpRequest.json("POST", routes.turns(), request.toJson()));
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
-            throw new StartActException(CHAT, messageOf(response));
+            throw new StartActException(CHAT, response);
         }
         var chat = chat(send(HttpRequest.get(routes.chat())));
         for (int read = 1; read < replyWait.reads() && isWriting(chat); read++) {
@@ -217,7 +220,7 @@ final class StartApi {
         if (response.status() == 200 || response.status() == 201) {
             return ChatResource.fromJson(response.bodyText());
         }
-        throw new StartActException(CHAT, messageOf(response));
+        throw new StartActException(CHAT, response);
     }
 
     /**
@@ -369,6 +372,16 @@ final class StartApi {
         }
     }
 
+    private static @Nullable ApiErrorCode codeOf(HttpResponse response) {
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+            var wire = map == null ? null : JsonTree.string(map, KEY_ERROR);
+            return wire == null ? null : ApiErrorCode.fromWireOrNull(wire);
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
     /**
      * The bound of the wait for the role's reply: the chat is read at most {@code reads} times, with
      * {@code pause} between two reads.
@@ -394,8 +407,23 @@ final class StartApi {
     static final class StartActException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
-        StartActException(String linkId, String message) {
-            super(linkId + ": " + message);
+        private final @Nullable ApiErrorCode code;
+
+        /**
+         * @param linkId   the refused act's link id
+         * @param response the runtime's refusal
+         */
+        StartActException(String linkId, HttpResponse response) {
+            super(linkId + ": " + messageOf(response));
+            this.code = codeOf(response);
+        }
+
+        /**
+         * @return the error code of the refusal's body, or {@code null} when the body carries no known one
+         */
+        @Nullable
+        ApiErrorCode code() {
+            return code;
         }
     }
 }

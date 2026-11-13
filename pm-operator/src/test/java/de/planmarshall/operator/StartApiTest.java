@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.decomposition.DecompositionInstructRequest;
 import de.planmarshall.api.decomposition.InstructAction;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -120,6 +121,28 @@ class StartApiTest {
                                                 () -> api.answerEntryChatProposal("ent-1", "T-1", false)),
                             () -> assertThrows(StartApi.StartActException.class,
                                                 () -> api.endEntryChat("ent-1")));
+    }
+
+    @Test
+    @DisplayName("a chat refusal carries the error code of its body")
+    void chatRefusalCarriesCode() throws Exception {
+        var message = Generators.letterStrings(4, 24).next();
+        serve(failure(409, "{\"error\":\"act_not_available\",\"message\":\"" + message + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.endEntryChat(ENTRY));
+
+        assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE, refused.code());
+        assertTrue(refused.getMessage().contains(message), refused.getMessage());
+    }
+
+    @Test
+    @DisplayName("a chat refusal whose body names no known code carries none")
+    void chatRefusalWithoutCode() throws Exception {
+        serve(failure(503, "{\"message\":\"" + Generators.letterStrings(4, 24).next() + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.endEntryChat(ENTRY));
+
+        assertNull(refused.code());
     }
 
     @Test

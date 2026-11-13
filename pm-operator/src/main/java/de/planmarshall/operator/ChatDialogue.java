@@ -22,6 +22,7 @@ import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
 
 /**
@@ -81,9 +82,11 @@ final class ChatDialogue {
             var answer = prompt.askInline(text("start.chat.prompt", Map.of()), STATE_SOURCES,
                                 text(KEY_OPEN, Map.of()), entryId);
             if (answer.isEmpty()) {
-                endChat(entryId);
-                prompt.raw(text(KEY_ENDED, Map.of()));
-                return;
+                if (endChat(entryId)) {
+                    prompt.raw(text(KEY_ENDED, Map.of()));
+                    return;
+                }
+                continue;
             }
             try {
                 chat = api.entryChatTurn(entryId, answer);
@@ -98,12 +101,23 @@ final class ChatDialogue {
         }
     }
 
-    /** Ends the chat; a chat the runtime has ended meanwhile is ended already. */
-    private void endChat(String entryId) throws IOException {
+    /**
+     * Ends the chat; a chat the runtime has ended meanwhile is ended already. Any other refusal is shown
+     * and leaves the chat open, so the operator can try again or go on.
+     *
+     * @return {@code true} if the chat has ended
+     */
+    private boolean endChat(String entryId) throws IOException {
         try {
             api.endEntryChat(entryId);
-        } catch (StartApi.StartActException _) {
-            // The chat ended meanwhile, with the entry's create or another device's end.
+            return true;
+        } catch (StartApi.StartActException e) {
+            if (e.code() == ApiErrorCode.ACT_NOT_AVAILABLE) {
+                // The chat ended meanwhile, with the entry's create or another device's end.
+                return true;
+            }
+            prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
+            return false;
         }
     }
 
