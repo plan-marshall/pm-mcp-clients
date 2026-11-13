@@ -782,6 +782,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   threads, unanswered items) in the question. Owner: plan-marshall (runbook lane `review-gate`, `sonar-facts`). Fifth recurrence of the
   false-count defect (PLAN-159, 32, 126, 160, 128).
 
+- `unknown` review-gate keys pass the merge (PLAN-131, #422, 2026-11-13): finalize wrote `unresolved_review_threads`,
+  `review_body_findings_total/handled` as `unknown` and merged with 8 of 10 threads unreplied and unresolved (all fixed in code; the
+  reply-and-resolve step never ran after the last fix round). The ruleset does not require thread resolution. The orchestrator replied and
+  resolved them after the merge (operator). Lessons filed in plan-marshall's store: `2026-11-13-10-003` (fail closed), `-004`
+  (review_support binary crash), `-001` (manage-status from a leaf cwd), `-002` (rebase re-gating). Owner: plan-marshall (phase-6-finalize).
+  Sixth landing in a row with a false or missing review count (PLAN-159, 32, 126, 160, 128, 131).
+
 ## Watches
 
 - PLAN-33 (running, verification) filed three findings 2026-11-10 (`rb-33-verify-cli-acts-001`…`003`, at `0913d6f3`,

@@ -37,8 +37,39 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
    - `RevokedView.test.ts` shows each reason line of the table in `entry.adoc` § `#revoked`; a new `ListenerOffView.test.ts` shows the reason line, the way back and the reconnect. Fail on a revert. Evidence order: `test-first`.
    - `npm run lint:vocabulary` reports 0 for both files (evidence order: `none`).
  - Implements: `components.adoc` § `#hierarchy`; `entry.adoc` § `#revoked`, `#listener-off`.
-3. **Browser evidence**
- - What: the three pages in a browser, desktop and phone, both locales and themes, with a revoked device and with the network listener off.
+3. **What PLAN-131 left (from the landing of PLAN-131, folded 2026-11-13 on the operator's decision)**
+ - What: read `landings/PLAN-131.md`; lines are as read at `6e8c29af`. This deliverable changes behaviour where named (the restyle constraint does not apply to it).
+   - **One reconnect.** `UnreachableView.svelte:24-49` and `ListenerOffView.svelte:24-51` copy the same interval, `isReconnecting` and `isMounted`
+     code, and `ListenerOffView.svelte:47` calls `initRuntime()` directly while `UnreachableView` uses `retryRuntime`: two initializations can run
+     side by side. Extract one reconnect helper in `lib/stores/runtime.ts`, used by both views through `retryRuntime`; one shared figure-height
+     constant replaces `FIGURE_HEIGHT = 180` in `RevokedView.svelte:14`, `ListenerOffView.svelte:22`, `UnreachableView.svelte:22`.
+   - **`shellGone`.** `+layout.svelte:236` guards a retry after the shell is gone during the catalogue wait (`Promise.race`, `:234`); no test
+     unmounts inside that window. Add the test (unmount before the wait ends; `initRuntime` is never called).
+   - **The held figure.** `heldFigure.ts:32-41` sets `requested = true` before the fetch, so one failed fetch at start disables the figure for the
+     session: retry it on the next request.
+   - **Rail bear size.** `NavRail.svelte:379` `aspect-ratio: 258 / 200` repeats `mascotFiles.ts:50`; a `NavRail.test.ts` guard compares the rule
+     with the bust's size.
+   - **Test tree.** `BrandMark.test.ts:227` reads every file under `SOURCE_DIR` as UTF-8, now including the `.webp` files (`uiIcons.test.ts:155`
+     skips them via `RASTER_IMAGE`); `walk` is copied in `BrandMark.test.ts`, `uiIcons.test.ts`, `requestLimit.test.ts`: one shared "text source
+     files" helper. `MascotFigure.test.ts:68-73` checks only size: assert the WebP signature of every mascot file and that no source or build
+     output file carries a `data:` URL (the D1 Done-when of PLAN-131). `routes/dev/components/+page.test.ts:202-225` takes the first three
+     `empty-state` nodes by page order: select them by test id.
+   - **BrandMark.** PLAN-131 dropped the runtime refusal of a colour `BrandMark` at an undelivered size (`BrandMark.svelte:~35`) for a
+     compile-time type; the spec said keep it: restore it beside the type.
+   - **Pairing hero.** The `eager` hero (`PairingView.svelte:183-185`) is fetched on phones inside a hidden wrapper: load it only where it shows.
+   - **Flaky operator test.** `NeedsItemCommandsTest.java:111` draws the epic title from `Generators.nonEmptyStrings()`, which can yield a blank
+     string; `OverviewFormatting.nameOf` (`:395-398`) then prints the id while the test expects the cleaned title. Draw a non-blank title and add a
+     deterministic blank-title case.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - Tests: one reconnect path (a test fails if `ListenerOffView` starts its own `initRuntime`); the `shellGone` window; a held-figure retry after
+     one failed fetch; the rail bear guard; the WebP signature and `data:` scan; the BrandMark runtime refusal; the dev-page fixtures by test id.
+     Each fails on a revert. Evidence order: `test-first`.
+   - `NeedsItemCommandsTest` passes with a blank-title case and a non-blank generator (evidence order: `none`).
+ - Implements: `entry.adoc` § `#unreachable`, `#listener-off`; `brand-mark-mascot.adoc` § assets.
+4. **Browser evidence**
+ - What: the four pages (pairing, revoked, listener-off, unreachable) in a browser, desktop and phone, both locales and themes, with a revoked device, with the network listener off and with the machine unreachable.
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
@@ -68,6 +99,10 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 - OBSERVED: `entry.adoc` shows no theme or language control on the pairing page; `README.adoc` § themes keeps the choice in the rail foot and the More sheet (option A), while `PLAN-85`'s spec places it on these pages — read in both documents and the batch reports
 - HYPOTHESIS: the two commands to copy are rendered by a hand-written copy button today, not by `Chip` — confirm/refute at `PairingView.svelte` § commands markup (verify-at-outline)
 - HYPOTHESIS: `ListenerOffView` already follows the `ErrorState` pattern after PLAN-45 — confirm/refute at `ListenerOffView.svelte` after PLAN-45 lands (verify-at-outline)
+- OBSERVED (re-grounded 2026-11-13 at `6e8c29af`): PLAN-131 created `ListenerOffView.test.ts` (132 lines) and a new `UnreachableView.svelte` (+ test), which
+  covers the hidden open view (`+layout.svelte:364-371`) with hand-styled `h1`/`p` as `entry.adoc` draws "a page of its own". Deliverable 2's
+  "a page that says the machine is not reachable uses the `ErrorState` pattern" applies to `UnreachableView` too: decide at outline whether
+  `ErrorState` can carry the page-of-its-own layout; if not, record it as a finding. `lint:vocabulary` covers `UnreachableView.svelte`.
 - Verify-first clause: re-read the three views after PLAN-45, PLAN-130, PLAN-131, PLAN-150 and PLAN-151 landed; take the PLAN-151 lint list as the work list.
 
 ## Expected Surface
@@ -78,7 +113,22 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 - OBSERVED: `pm-web-app/src/lib/views/RevokedView.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/RevokedView.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/ListenerOffView.svelte` — present at HEAD 1cc0e10e
-- OBSERVED: `pm-web-app/src/lib/views/ListenerOffView.test.ts` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/ListenerOffView.test.ts` — present at `6e8c29af` (PLAN-131)
+- OBSERVED: `pm-web-app/src/lib/views/UnreachableView.svelte` — present at `6e8c29af` (PLAN-131)
+- OBSERVED: `pm-web-app/src/lib/views/UnreachableView.test.ts` — present at `6e8c29af` (PLAN-131)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/routes/layout.test.ts` — present at `6e8c29af` (PLAN-131 residue; the `shellGone` test)
+- OBSERVED: `pm-web-app/src/lib/stores/heldFigure.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/stores/heldFigure.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/NavRail.svelte` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/NavRail.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/BrandMark.svelte` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/BrandMark.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/MascotFigure.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/components/uiIcons.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/routes/dev/components/+page.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsItemCommandsTest.java` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-e2e/tests/pairing.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/entry.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/pairing.en.properties` — present at HEAD 1cc0e10e
@@ -90,7 +140,7 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 
 - Depends on: `PLAN-45` landed; `PLAN-131` landed (same three views); `PLAN-150` (`CodeField`, `Chip` via PLAN-148), `PLAN-151` (the count).
 - Overlaps with:
-  - `PLAN-130`, `PLAN-131` (staged): `PairingView`, `RevokedView`, `ListenerOffView`. This plan follows both.
+  - `PLAN-130`, `PLAN-131` (shipped, #414 / #422): `PairingView`, `RevokedView`, `ListenerOffView`, `UnreachableView`. This plan follows both.
   - `PLAN-45` (running): `ListenerOffView`.
   - `PLAN-85` (parked): the pairing page and the theme controls; re-grounded on this plan (and on option A).
 - Adjacent to: `PairingQr`, `BrandMark`, `MascotFigure` (unchanged here); the terminal's entry flow.
@@ -112,3 +162,10 @@ Lane: `runbook`.
 
 The session implementing this spec touches only its own repository source and tests. It creates and edits NO file under `.plan/orchestrator/` other than its own `inbox/{sender}-{seq}` message.
 The orchestrator owns every other ledger write (`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary).
+
+## PLAN-131 Residue Fold 2026-11-13 (Amendment)
+
+From `landings/PLAN-131.md` (operator, AskUserQuestion — "All into PLAN-157"): deliverable 3 takes the reconnect duplication (and
+`ListenerOffView`'s direct `initRuntime`), the untested `shellGone` window, the held-figure retry, the rail bear guard, the test-tree items, the
+BrandMark runtime refusal, the eager pairing hero and the flaky `NeedsItemCommandsTest`; the browser evidence is now deliverable 4 and covers
+the unreachable page. Surface +16 paths. Four deliverables across `pm-web-app` and one `pm-operator` test; runbook lane (operator 2026-11-13).
