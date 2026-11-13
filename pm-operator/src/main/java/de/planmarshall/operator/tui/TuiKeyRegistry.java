@@ -710,7 +710,8 @@ public final class TuiKeyRegistry {
     /**
      * The keys of the plan view: the tree replaces the overview's open and back, and the plan adds
      * its own keys for open-all, the jump to where it is, the lane toggle, tokens, the project and
-     * epic jumps, and the completion report.
+     * epic jumps, and the completion report; the overview's keys for what waits, the system and the
+     * reports hold here as well.
      */
     private static List<Binding> planNavigation() {
         var bindings = new ArrayList<Binding>();
@@ -741,6 +742,12 @@ public final class TuiKeyRegistry {
         bindings.add(new Binding("n", TuiKeyAction.NON_LANE));
         bindings.add(new Binding("t", TuiKeyAction.TOKENS));
         bindings.add(new Binding("c", TuiKeyAction.COMPLETION));
+        // The keys of the overview hold here too (16-plan-view.adoc#full-screen-keys): what waits
+        // in the plan, and the system and reports levels, which the registry binds on every level.
+        // E and Tab do not: the registry binds them on the projects root and the project levels.
+        bindings.add(new Binding("!", TuiKeyAction.WAITS));
+        bindings.add(new Binding("S", TuiKeyAction.SYSTEM));
+        bindings.add(new Binding("R", TuiKeyAction.REPORTS));
         return bindings;
     }
 

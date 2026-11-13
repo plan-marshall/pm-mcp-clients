@@ -12,6 +12,7 @@ package de.planmarshall.operator.tui;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -245,6 +246,27 @@ class TuiScreenDriverTest {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var driver = new TuiScreenDriver(virtual.terminal(), "en");
             assertEquals(TuiScreenDriver.AMBIGUOUS_TIMEOUT_MILLIS, driver.keyMap(TuiLevel.Kind.OVERVIEW).getAmbiguousTimeout());
+        }
+    }
+
+    /**
+     * {@code doc/design/terminal-client/16-plan-view.adoc#full-screen-keys}: the keys of the
+     * overview hold on the plan view too. {@code !}, {@code S} and {@code R} apply on the plan view
+     * ({@code 15-overview.adoc#full-screen-key-registry}); {@code E} and {@code Tab} belong to the
+     * projects root and the project levels only and stay unbound there.
+     */
+    @Test
+    @DisplayName("the plan view reaches what waits, the system and the reports with the overview's keys")
+    void planViewHoldsTheOverviewsKeys() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var map = new TuiScreenDriver(virtual.terminal(), "en").keyMap(TuiLevel.Kind.PLAN);
+            assertAll(
+                                () -> assertEquals(TuiKeyAction.WAITS, map.getBound("!")),
+                                () -> assertEquals(TuiKeyAction.SYSTEM, map.getBound("S")),
+                                () -> assertEquals(TuiKeyAction.REPORTS, map.getBound("R")),
+                                () -> assertNull(map.getBound("E")),
+                                () -> assertNull(map.getBound("\t"))
+            );
         }
     }
 
