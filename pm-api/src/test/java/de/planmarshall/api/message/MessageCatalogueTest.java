@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -162,7 +163,7 @@ class MessageCatalogueTest {
 
     @ParameterizedTest(name = "phase.name.{0} is ''{0}'' in both languages")
     @DisplayName("Carries the six phase words of texts-and-languages.adoc, phases")
-    @CsvSource({"init", "refine", "outline", "plan", "execute", "finalize"})
+    @ValueSource(strings = {"init", "refine", "outline", "plan", "execute", "finalize"})
     void shouldCarryThePhaseWords(String phase) {
         var key = "phase.name." + phase;
 
@@ -173,7 +174,7 @@ class MessageCatalogueTest {
 
     @ParameterizedTest(name = "role.name.{0} is ''{0}'' in both languages")
     @DisplayName("Carries the role words of texts-and-languages.adoc, phases and roles")
-    @CsvSource({"implement", "architecture", "outline", "enrich", "decompose", "settings"})
+    @ValueSource(strings = {"implement", "architecture", "outline", "enrich", "decompose", "settings"})
     void shouldCarryTheRoleWords(String role) {
         var key = "role.name." + role;
 
