@@ -28,7 +28,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -154,15 +156,17 @@ class WebDevicesCommandTest {
                 response.json(200, """
                                     {"status":"revoked","revoked_count":3}
                                     """);
-            } else if ("/api/v1/web".equals(path) && "PUT".equals(method)) {
-                response.json(200, """
-                                    {"status":"ok"}
-                                    """);
+            } else if ("/api/v1/web/listeners/lan".equals(path) && "DELETE".equals(method)) {
+                listenerCloses.add(path);
+                response.send(204, null, "");
             } else {
                 response.send(404, null, "Not found: " + path);
             }
         });
     }
+
+    /** The listener-off acts the seeded runtime received. */
+    private final List<String> listenerCloses = new CopyOnWriteArrayList<>();
 
     @Test
     @DisplayName("lists paired devices non-interactively with formatted columns and listener status")
@@ -190,6 +194,90 @@ class WebDevicesCommandTest {
                             () -> assertTrue(output.contains("paired 2 Jun from loopback")),
                             () -> assertTrue(output.contains("last used last month")),
                             () -> assertTrue(output.contains("Network listener: on."))
+        );
+    }
+
+    @ParameterizedTest(name = "a status answered {0} shows the network listener {2}")
+    @CsvSource(delimiter = '|', value = {
+                        "200|{\"listeners\":[{\"listener\":\"loopback\",\"state\":\"open\"},{\"listener\":\"lan\",\"state\":\"closed\"}]}|off",
+                        "200|{\"listeners\":[{\"listener\":\"lan\",\"state\":\"open\",\"port\":7421}]}|on",
+                        "500|{\"error\":\"internal\"}|unknown",
+                        "200|not json|unknown",
+                        "200|{\"listeners\":[]}|unknown"})
+    @DisplayName("the network listener's state is read from the status's listeners, and an unreadable one is unknown, never on")
+    void listenerStateFollowsTheStatus(int status, String body, String state) throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(status, body);
+            } else {
+                response.json(200, "[{\"device_id\":\"dev-1\",\"label\":\"" + Generators.letterStrings(4, 8).next() + "\"}]");
+            }
+        });
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(createContext("")));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute();
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(writer.toString().contains("Network listener: " + state + "."), writer.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a direct revocation asks first: b keeps the device and sends nothing")
+    void directRevocationAsks() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deletes = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("DELETE".equals(request.method())) {
+                deletes.incrementAndGet();
+            }
+            response.json(200, "{\"status\":\"revoked\"}");
+        });
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(createContext("b\n")));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", Generators.letterStrings(4, 8).next());
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertEquals(0, deletes.get()),
+                            () -> assertFalse(writer.toString().contains("✓"), writer.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("--yes answers the revocation's question in a script")
+    void yesRevokesWithoutAsking() throws Exception {
+        seedRuntimeRoutes(true);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(createContext("")));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", "dev-3", "--yes");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(writer.toString().contains("✓ Revoked: Chrome on build-box"), writer.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("listener-off closes the network listener alone, as its act names it")
+    void listenerOffClosesTheNetworkListener() throws Exception {
+        seedRuntimeRoutes(true);
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(createContext("")));
+        cmd.setOut(new PrintWriter(new StringWriter()));
+
+        int code = cmd.execute("listener-off");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertEquals(List.of("/api/v1/web/listeners/lan"), listenerCloses)
         );
     }
 
@@ -222,7 +310,8 @@ class WebDevicesCommandTest {
     void executesDirectActions(String action, String argument, String expectedOutput) throws Exception {
         seedRuntimeRoutes(true);
 
-        var context = createContext("");
+        // a revocation asks first; Enter confirms it
+        var context = createContext("\n");
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
@@ -603,7 +692,7 @@ class WebDevicesCommandTest {
                 response.json(200, """
                                     [{"device_id":"%s","label":"%s"}]
                                     """.formatted(deviceId, label));
-            } else if ("POST".equals(request.method()) || "PUT".equals(request.method())) {
+            } else if ("DELETE".equals(request.method())) {
                 response.json(400, "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
@@ -756,7 +845,8 @@ class WebDevicesCommandTest {
         var deviceId = Generators.letterStrings(4, 8).next();
         var newLabel = Generators.letterStrings(4, 8).next();
 
-        var context = createContext("");
+        // a revocation asks first; Enter confirms it
+        var context = createContext("\n");
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));

@@ -743,17 +743,17 @@ class PmOperatorTest {
                 }
             });
 
-            assertEquals(0, run("web", "devices", "revoke", "dev-1"));
+            assertEquals(0, run("web", "devices", "revoke", "dev-1", "--yes"));
             assertTrue(out.toString().contains("✓ Revoked: dev-1"));
             assertEquals("/api/v1/web/devices/dev-1", server.awaitRequest(Duration.ofSeconds(1)).target());
 
             out.getBuffer().setLength(0);
-            assertEquals(0, run("web", "devices", "revoke", "--others"));
+            assertEquals(0, run("web", "devices", "revoke", "--others", "--yes"));
             assertTrue(out.toString().contains("✓ Revoked 1 device. No browser is paired"));
             assertEquals("/api/v1/web/devices?scope=others", server.awaitRequest(Duration.ofSeconds(1)).target());
 
             out.getBuffer().setLength(0);
-            assertEquals(0, run("web", "devices", "revoke", "--all"));
+            assertEquals(0, run("web", "devices", "revoke", "--all", "--yes"));
             assertTrue(out.toString().contains("✓ Revoked 1 device. No browser is paired"));
             assertEquals("/api/v1/web/devices?scope=all", server.awaitRequest(Duration.ofSeconds(1)).target());
         }
@@ -769,7 +769,7 @@ class PmOperatorTest {
         @DisplayName("web devices listener-off turns off network listener")
         void devicesListenerOff() throws Exception {
             var server = runtime((request, response) -> {
-                if ("/api/v1/web".equals(request.target()) && "PUT".equals(request.method())) {
+                if ("/api/v1/web/listeners/lan".equals(request.target()) && "DELETE".equals(request.method())) {
                     response.send(200, null, "");
                 } else {
                     response.send(404, null, "");
@@ -778,7 +778,9 @@ class PmOperatorTest {
 
             assertEquals(0, run("web", "devices", "listener-off"));
             assertTrue(out.toString().contains("✓ The network listener is off"));
-            assertTrue(server.awaitRequest(Duration.ofSeconds(1)).bodyText().contains("\"lan\":false"));
+            var request = server.awaitRequest(Duration.ofSeconds(1));
+            // devices.listener-off closes the network listener alone (paired-devices.adoc#listener-off)
+            assertEquals("DELETE /api/v1/web/listeners/lan", request.method() + " " + request.target());
         }
     }
 

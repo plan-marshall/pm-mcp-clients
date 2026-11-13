@@ -103,7 +103,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String COUNT = "count";
     private static final String KEEP_CURRENT = "operator.actions.key.keep_current";
     private static final String DEVICES_PATH = "/api/v1/web/devices";
-    private static final String STATUS_PATH = "/api/v1/status";
     private static final String WEB_VERB = "web";
     private static final String DEVICES_VERB = "devices";
 
@@ -282,28 +281,17 @@ public final class ConfigCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
-        var listener = listenerOff()
-                            ? "operator.settings.devices.listener_off"
-                            : "operator.settings.devices.listener_on";
+        // an unreadable status is never drawn as on (paired-devices.adoc#listener-off)
+        var listener = switch (WebCommand.networkListenerState(context.runtime(true))) {
+            case "on" -> "operator.settings.devices.listener_on";
+            case "off" -> "operator.settings.devices.listener_off";
+            default -> "devices.list.listener_unknown";
+        };
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
                                                 COUNT, devices.size(),
                                                 "listener", MessageCatalogue.format(locale, listener, Map.of()))),
                             List.of(WEB_VERB, DEVICES_VERB));
-    }
-
-    private boolean listenerOff() throws IOException {
-        var response = context.runtime(true).send(HttpRequest.get(STATUS_PATH));
-        if (response.status() != 200) {
-            return false;
-        }
-        try {
-            var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            var web = status != null ? JsonTree.object(status, "web") : null;
-            return web != null && Boolean.FALSE.equals(web.get("lan"));
-        } catch (IOException _) {
-            return false;
-        }
     }
 
     /**
