@@ -3018,14 +3018,12 @@ export class ApiClient {
     await this.request('DELETE', '/api/v1/web/devices?others');
   }
 
+  /**
+   * Closes the network listener; the loopback listener stays. A refusal reaches the caller with
+   * its code.
+   */
   public async turnOffLanListener(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/web/listeners/lan');
-    } catch (err) {
-      const msg = (err as Error)?.message;
-      if (msg !== 'HTTP 404' && msg !== 'HTTP 405') throw err;
-      await this.request('PUT', '/api/v1/web', { lan: false });
-    }
+    await this.request('DELETE', '/api/v1/web/listeners/lan');
   }
 
   public async getReports(older = false, project?: string): Promise<ReportsPage> {
@@ -3184,28 +3182,12 @@ export class ApiClient {
     return this.request<{ status: string }>('POST', '/api/v1/operator/runtime/upgrade', body);
   }
 
+  /**
+   * Withdraws the upgrade on the runtime's own route; a refusal (`not_withdrawable`, a switched
+   * link) reaches the caller with its code.
+   */
   public async withdrawUpgrade(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
-    } catch (err: unknown) {
-      // The operator channel is the runtime's own withdraw. A deployment that offers only the
-      // system route is the fallback; a refused withdraw (the links are switched) is not retried.
-      const status = (err as Error & { status?: number })?.status;
-      const message = (err as Error)?.message ?? '';
-      if (status === 409 || message.includes('not_withdrawable')) throw err;
-      const routeUnavailable =
-        status === 404 ||
-        status === 405 ||
-        message.includes('mock_no_route') ||
-        message.includes('unknown_route') ||
-        message.includes('no route');
-      if (!routeUnavailable) throw err;
-      try {
-        await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
-      } catch {
-        throw err;
-      }
-    }
+    await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
   }
 
   public async checkUpgrade(): Promise<{

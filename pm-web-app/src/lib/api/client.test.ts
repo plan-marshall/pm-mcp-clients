@@ -1016,6 +1016,175 @@ describe('ApiClient', () => {
       ]);
     },
   );
+
+  describe('acts sent to the runtime', () => {
+    type Sent = { method: string; url: string; body: unknown };
+    let sent: Sent[];
+
+    /** Answers every request with the given status and body and records what was sent. */
+    function answer(status: number, body: unknown): void {
+      sent = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        sent.push({
+          method: init?.method ?? 'GET',
+          url: url.replace('http://localhost:7420', ''),
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        });
+        return Promise.resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => body,
+        });
+      }) as unknown as typeof fetch;
+    }
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'not_withdrawable' }, 'not_withdrawable'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'withdraws an upgrade on the runtime route only and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: no second request to a route the contract does not have
+        await expect(client.withdrawUpgrade()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/operator/runtime/upgrade', body: undefined },
+        ]);
+      },
+    );
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'act_not_available' }, 'act_not_available'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'turns the network listener off on its own route and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: the listener is never re-written through PUT /api/v1/web
+        await expect(client.turnOffLanListener()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+        ]);
+      },
+    );
+
+    it('turns the network listener off with one request', async () => {
+      // Arrange
+      answer(200, {});
+
+      // Act
+      await client.turnOffLanListener();
+
+      // Assert
+      expect(sent).toEqual([
+        { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+      ]);
+    });
+
+    it('sends a machine setting and its withdrawal against the revision read', async () => {
+      // Arrange
+      answer(200, { status: 'applied', revision: 8 });
+
+      // Act
+      const changed = await client.updateMachineSetting('documents_mode', 'copy', 7);
+      await client.withdrawConsent('git_push', 8);
+
+      // Assert: MachineSettingsUpdateRequest {key, value, revision}; a withdrawal has no value
+      expect(changed).toEqual({ status: 'applied', revision: 8 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'documents_mode', value: 'copy', revision: 7 },
+        },
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'consent:git_push', value: null, revision: 8 },
+        },
+      ]);
+    });
+
+    it('returns a conflicting change of a setting instead of throwing it', async () => {
+      // Arrange
+      answer(409, { status: 'conflict', current_value: 'ask', revision: 9 });
+
+      // Act
+      const result = await client.updatePlanSettings('plan-1', 'landing', 'pr', 3);
+
+      // Assert: the screen shows the current value beside the operator's choice
+      expect(result).toEqual({ status: 'conflict', current_value: 'ask', revision: 9 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/plans/plan-1/settings',
+          body: { aspect: 'landing', value: 'pr', revision: 3 },
+        },
+      ]);
+    });
+
+    it.each([
+      ['a refusal with its code', { error: 'axis_bound' }, 'axis_bound'],
+      ['an answer without a code', {}, 'HTTP 500'],
+    ])('throws %s of a setting change other than a conflict', async (_case, body, message) => {
+      // Arrange
+      answer(500, body);
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', null, 3)).rejects.toThrow(
+        message,
+      );
+    });
+
+    it('ends a setting change in network_offline when the runtime cannot be reached', async () => {
+      // Arrange
+      const onOffline = vi.fn();
+      client.setOnOffline(onOffline);
+      globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+      // Act & Assert
+      await expect(client.updateMachineSetting('documents_mode', 'ask', 1)).rejects.toThrow(
+        'network_offline',
+      );
+      expect(onOffline).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a 401 to a setting change as the loss of the pairing', async () => {
+      // Arrange
+      localStorage.setItem('pm_device_secret', 'pmw_revoked');
+      const onRevoked = vi.fn();
+      client.setOnRevoked(onRevoked);
+      answer(401, {});
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', 'pr', 1)).rejects.toThrow(
+        'unauthorized',
+      );
+      expect(sent[0]).toMatchObject({ method: 'PUT' });
+      expect(client.isPaired()).toBe(false);
+      expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    });
+
+    it.each([
+      ['without a reason', undefined, { act: 'continue' }],
+      ['with the reason the act requires', 'superseded', { act: 'abandon', reason: 'superseded' }],
+    ])('resolves a hold %s', async (_case, reason, body) => {
+      // Arrange
+      answer(200, { status: 'resolved' });
+
+      // Act
+      await client.resolveHold('plan 1', 'hold/7', body.act, reason);
+
+      // Assert: HoldResolutionRequest {act, reason?}, ids encoded into the path
+      expect(sent).toEqual([
+        { method: 'POST', url: '/api/v1/plans/plan%201/holds/hold%2F7/resolve', body },
+      ]);
+    });
+  });
 });
 
 /**
