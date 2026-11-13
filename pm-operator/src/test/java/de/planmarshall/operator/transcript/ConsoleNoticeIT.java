@@ -29,6 +29,7 @@ import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.Assumptions;
@@ -188,7 +189,8 @@ class ConsoleNoticeIT {
 
     private static MockRuntime start() throws IOException {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
-        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(StandardScenarios.FULLY_ONBOARDED).build());
+        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(StandardScenarios.FULLY_ONBOARDED)
+                            .timing(MockTiming.ORDERED).build());
         MockMachine.recordLiveRuntime(runtime);
         return runtime;
     }

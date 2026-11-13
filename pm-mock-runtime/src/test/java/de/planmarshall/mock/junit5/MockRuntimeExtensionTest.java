@@ -42,6 +42,7 @@ import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 
 @DisplayName("MockRuntimeExtension")
@@ -80,6 +81,26 @@ class MockRuntimeExtensionTest {
             try (var exchange = client.open(HttpRequest.get("/api/v1/status"))) {
                 assertEquals(200, exchange.status());
             }
+        }
+
+        @Test
+        @DisplayName("plays events in order without a timer by default")
+        void defaultsToOrderedTiming(MockRuntime runtime, MockRuntimeConfig config) {
+            assertEquals(MockTiming.ORDERED, config.getTiming());
+            assertEquals(MockTiming.ORDERED, runtime.timing());
+        }
+    }
+
+    @Nested
+    @DisplayName("with realistic timing")
+    @EnableMockRuntime(timing = MockTiming.REALISTIC)
+    class RealisticTimingTest {
+
+        @Test
+        @DisplayName("takes the timing from the annotation")
+        void appliesTiming(MockRuntime runtime, MockRuntimeConfig config) {
+            assertEquals(MockTiming.REALISTIC, config.getTiming());
+            assertEquals(MockTiming.REALISTIC, runtime.timing());
         }
     }
 

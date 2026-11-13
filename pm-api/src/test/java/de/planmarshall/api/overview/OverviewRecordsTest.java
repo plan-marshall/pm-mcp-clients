@@ -210,7 +210,7 @@ class OverviewRecordsTest {
     @DisplayName("an ActivePlanSummary carries its queued_revision through a round-trip, and refuses a malformed one")
     void activePlanSummaryWithQueuedRevision() throws Exception {
         var planId = Generators.nonBlankStrings().next();
-        var applies = new MessageText("control.chat.applies.after_task",
+        var applies = new MessageText("chat.applies.after_task",
                 Map.of("task_id", Generators.nonBlankStrings().next()));
         var revision = new QueuedRevision(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
                 new ChatSubject(ChatSubjectKind.PLAN, planId), Generators.booleans().next(), applies);

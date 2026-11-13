@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
 import org.junit.jupiter.api.DisplayName;
@@ -177,7 +178,8 @@ class GitSourceCommandTest {
     }
 
     private static Outcome run(String scenario, @Nullable String input, String... args) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                                 .timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());

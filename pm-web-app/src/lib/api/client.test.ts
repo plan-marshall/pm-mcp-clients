@@ -978,4 +978,37 @@ describe('ApiClient', () => {
     expect(bounded?.aborted).toBe(true);
     expect(onOffline).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['plan', 'codeberg-issues', '/api/v1/plans/codeberg-issues/chat'],
+    ['epic', 'relay-hardening', '/api/v1/epics/relay-hardening/chat'],
+  ] as const)(
+    'addresses the chat of an ended %s by its own chat route, never under its project',
+    async (kind, subjectId, path) => {
+      // Arrange
+      const requested: Array<{ method: string; url: string; body: unknown }> = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        requested.push({
+          method: init?.method ?? 'GET',
+          url,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        });
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+      }) as unknown as typeof fetch;
+
+      // Act
+      await client.getEndedChat(kind, subjectId);
+      await client.acceptFollowUp(kind, subjectId, 'T-0207');
+
+      // Assert: the accept names the proposal's turn, as the route requires
+      expect(requested).toEqual([
+        { method: 'GET', url: `http://localhost:7420${path}`, body: undefined },
+        {
+          method: 'POST',
+          url: `http://localhost:7420${path}/proposal/accept`,
+          body: { turn_id: 'T-0207' },
+        },
+      ]);
+    },
+  );
 });

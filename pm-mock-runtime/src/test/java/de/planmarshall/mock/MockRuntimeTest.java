@@ -42,6 +42,7 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.runtime.Authenticator;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -235,6 +236,7 @@ class MockRuntimeTest {
         var config = MockRuntimeConfig.builder()
                 .scenario(StandardScenarios.WEB_PAIRING)
                 .webPort(0) // Ephemeral TCP port
+                .timing(MockTiming.ORDERED)
                 .build();
 
         try (var runtime = MockRuntime.start(config)) {
@@ -295,6 +297,7 @@ class MockRuntimeTest {
                     .base(tempBase)
                     .cleanupBaseOnClose(false)
                     .webPort(0)
+                    .timing(MockTiming.ORDERED)
                     .build();
             try (var runtime = MockRuntime.start(config)) {
                 firstSecret = runtime.deviceSecret();
@@ -331,6 +334,7 @@ class MockRuntimeTest {
                          .base(tempBase)
                          .cleanupBaseOnClose(false)
                          .webPort(0)
+                         .timing(MockTiming.ORDERED)
                          .build())) {
                 storedSecret = runtime.deviceSecret();
             }
@@ -342,6 +346,7 @@ class MockRuntimeTest {
                          .cleanupBaseOnClose(false)
                          .webPort(0)
                          .deviceSecret(explicitSecret)
+                         .timing(MockTiming.ORDERED)
                          .build())) {
                 assertEquals(explicitSecret, runtime.deviceSecret());
                 assertNotEquals(storedSecret, runtime.deviceSecret());
@@ -368,6 +373,7 @@ class MockRuntimeTest {
                          .scenario(StandardScenarios.WEB_PAIRING)
                          .base(tempBase)
                          .cleanupBaseOnClose(false)
+                         .timing(MockTiming.ORDERED)
                          .build())) {
                 assertFalse(runtime.deviceSecret().isBlank());
             }
@@ -378,6 +384,7 @@ class MockRuntimeTest {
                          .scenario(StandardScenarios.WEB_PAIRING)
                          .base(tempBase)
                          .cleanupBaseOnClose(false)
+                         .timing(MockTiming.ORDERED)
                          .build())) {
                 assertFalse(runtime.deviceSecret().isBlank());
                 assertEquals(runtime.deviceSecret(), Files.readString(secretFile).trim());
@@ -415,6 +422,7 @@ class MockRuntimeTest {
                     .scenario(StandardScenarios.STATUS_ONLY)
                     .base(tempBase)
                     .cleanupBaseOnClose(false)
+                    .timing(MockTiming.ORDERED)
                     .build();
 
             try (var runtime = MockRuntime.start(config)) {
@@ -470,6 +478,7 @@ class MockRuntimeTest {
         var config = MockRuntimeConfig.builder()
                 .registry(registry)
                 .initialScenario(dynamicScenario)
+                .timing(MockTiming.ORDERED)
                 .build();
 
         try (var runtime = MockRuntime.start(config)) {
@@ -502,11 +511,28 @@ class MockRuntimeTest {
     }
 
     @Test
+    @DisplayName("the scenario entry point starts ordered while a config without a timing keeps realistic")
+    void scenarioEntryPointStartsOrdered() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
+            assertEquals(MockTiming.ORDERED, runtime.timing());
+        }
+
+        var config = MockRuntimeConfig.builder()
+                .scenario(StandardScenarios.STATUS_ONLY)
+                .build();
+        assertEquals(MockTiming.REALISTIC, config.getTiming());
+        try (var runtime = MockRuntime.start(config)) {
+            assertEquals(MockTiming.REALISTIC, runtime.timing());
+        }
+    }
+
+    @Test
     @DisplayName("an ephemeral web port is reported truthfully across all engine endpoints")
     void ephemeralWebPortReportedTruthfully() throws Exception {
         var config = MockRuntimeConfig.builder()
                 .scenario(StandardScenarios.WEB_PAIRING)
                 .webPort(0)
+                .timing(MockTiming.ORDERED)
                 .build();
 
         try (var runtime = MockRuntime.start(config)) {

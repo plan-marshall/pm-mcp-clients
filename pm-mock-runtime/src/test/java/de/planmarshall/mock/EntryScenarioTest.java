@@ -47,6 +47,7 @@ import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.mock.runtime.MockTiming;
 
 @DisplayName("EntryScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -500,6 +501,7 @@ class EntryScenarioTest {
                 .webPort(0)
                 .runtimeToken(runtimeToken)
                 .deviceSecret(deviceSecret)
+                .timing(MockTiming.ORDERED)
                 .build());
     }
 

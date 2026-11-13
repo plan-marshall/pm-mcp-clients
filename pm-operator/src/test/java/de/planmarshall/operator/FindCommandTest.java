@@ -43,6 +43,7 @@ import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -98,6 +99,7 @@ class FindCommandTest {
         return MockRuntime.start(MockRuntimeConfig.builder()
                             .webPort(0)
                             .scenario(StandardScenarios.RUNNING_WORK)
+                            .timing(MockTiming.ORDERED)
                             .build());
     }
 

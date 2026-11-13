@@ -20,9 +20,11 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * A message key with its arguments, {@code {key, args}}, never a model's words: an entry of what the
- * role knows ({@code chat.knows.*}), a step of a reply ({@code chat.turn.progress}), a failed turn's
- * {@code reason}, a proposal's {@code applies} and finding, and the point a {@code queued_revision}
- * waits for ({@code chat.applies.*}).
+ * role knows ({@code chat.knows.*}), a step of a reply ({@code chat.step.*}), a failed turn's
+ * {@code reason} ({@code chat.reason.*}), a proposal's {@code applies} and finding
+ * ({@code chat.finding.*}), and the point a {@code queued_revision} waits for ({@code chat.applies.*}).
+ * The key is the runtime's; a client renders it through the rendering key {@link ChatMessageKeys} maps
+ * it to.
  * <p>
  * The arguments are a JSON object of values; an empty object is not written.
  *

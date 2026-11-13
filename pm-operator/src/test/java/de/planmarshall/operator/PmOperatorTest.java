@@ -42,6 +42,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -533,6 +534,7 @@ class PmOperatorTest {
             try (var mock = MockRuntime.start(MockRuntimeConfig.builder()
                                      .scenario(StandardScenarios.FULLY_ONBOARDED)
                                      .webPort(0)
+                                     .timing(MockTiming.ORDERED)
                                      .build())) {
                 var self = ProcessHandle.current();
                 Files.writeString(mock.paths().runtimeRecord(),

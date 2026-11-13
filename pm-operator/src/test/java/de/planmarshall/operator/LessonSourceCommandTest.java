@@ -31,6 +31,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
 import org.junit.jupiter.api.AfterEach;
@@ -152,7 +153,7 @@ class LessonSourceCommandTest {
         var lesson = "L-" + Generators.integers(1, 999).next();
 
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.START_SOURCES).build());
+                                 .scenario(StandardScenarios.START_SOURCES).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             var self = ProcessHandle.current();
             Files.createDirectories(runtime.paths().stateDir());

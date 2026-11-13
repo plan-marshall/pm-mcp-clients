@@ -28,6 +28,7 @@ import java.util.function.BooleanSupplier;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -56,7 +57,7 @@ class PmConsoleHandoffTest {
     @BeforeEach
     void startRuntime() throws IOException {
         runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                            .scenario(StandardScenarios.FULLY_ONBOARDED).build());
+                            .scenario(StandardScenarios.FULLY_ONBOARDED).timing(MockTiming.ORDERED).build());
         recordLiveRuntime(runtime);
     }
 

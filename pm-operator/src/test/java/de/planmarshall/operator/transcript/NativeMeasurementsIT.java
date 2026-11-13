@@ -32,6 +32,7 @@ import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.Assumptions;
@@ -79,7 +80,7 @@ class NativeMeasurementsIT {
         var sizeBytes = Files.size(executable);
 
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.STATUS_ONLY).build())) {
+                                 .scenario(StandardScenarios.STATUS_ONLY).timing(MockTiming.ORDERED).build())) {
             MockMachine.recordLiveRuntime(runtime);
             var environment = environment(runtime);
             var workingDirectory = Path.of("").toAbsolutePath();

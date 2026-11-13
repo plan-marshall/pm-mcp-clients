@@ -16,6 +16,7 @@ import java.util.HashMap;
 
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
 /**
@@ -36,7 +37,8 @@ final class StartTestSupport {
      * @throws Exception if the runtime or the verb fails
      */
     static Outcome run(String scenario, String input, String... args) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                                 .timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());

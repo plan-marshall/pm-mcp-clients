@@ -677,10 +677,15 @@ final class StartDialogue {
             prompt.line("start.chat.waits_title", Map.of(KEY_REASON, reason));
             return;
         }
-        state = act("chat", Map.of());
-        if (state.chat() != null) {
-            state = new ChatDialogue(api, prompt, kind, project).run(state);
+        // The chat is the entry's own chat resource (Starting Work, Chatting About the Request): it is
+        // opened on the entry's chat route, and a refusal is said and leaves the sources as they are.
+        var entryId = entry.entryId();
+        try {
+            new ChatDialogue(api, prompt, kind, project).run(entryId, api.openEntryChat(entryId));
+        } catch (StartApi.StartActException refused) {
+            prompt.raw(OutputSafety.stripControlSequences(refused.getMessage()));
         }
+        state = api.fetch(entryId);
     }
 
     // ---------------------------------------------------------------------------------------------

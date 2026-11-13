@@ -1228,28 +1228,87 @@
                   "state": "stored",
                   "trust": "trusted"
                 }
-              ],
-              "chat": {
-                "role": "refine",
-                "available": true,
-                "turns": [
-                  {
-                    "role": "operator",
-                    "text": "What did you understand, and what is unclear?",
-                    "at": "2026-10-19T10:00:00Z"
+              ]
+            },
+            "control": {
+              "chats": [
+                {
+                  "id": "C-0101",
+                  "subject": {
+                    "kind": "entry",
+                    "id": "ent-3f9a2c41"
                   },
-                  {
-                    "role": "refine",
-                    "text": "A provider that reads Codeberg issues. Unclear: comments too, and should pull requests of Codeberg follow?",
-                    "at": "2026-10-19T10:00:05Z"
-                  }
-                ],
-                "proposal": {
-                  "summary": "An addition to the description",
-                  "after": "Comments are read with the issue. Pull requests of Codeberg are out of scope for this plan.",
-                  "applies": "the description"
+                  "role": {
+                    "name": "refine",
+                    "model": "sonnet"
+                  },
+                  "scope": "entry",
+                  "state": "chat.read-back",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      }
+                    ],
+                    "as_of": "2026-10-19T10:00:05Z"
+                  },
+                  "proposal": {
+                    "turn_id": "T-0103",
+                    "reply_turn_id": "T-0102",
+                    "kind": "description",
+                    "summary": "An addition to the description",
+                    "after": "Comments are read with the issue. Pull requests of Codeberg are out of scope for this plan.",
+                    "state": "open"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0101",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "What did you understand, and what is unclear?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0102",
+                      "kind": "message",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "A provider that reads Codeberg issues. Unclear: comments too, and should pull requests of Codeberg follow?",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the stored sources"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
+                    },
+                    {
+                      "turn_id": "T-0103",
+                      "kind": "proposal",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "An addition to the description",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
+                    }
+                  ]
                 }
-              }
+              ]
             }
           }
         },
@@ -1304,13 +1363,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1352,10 +1404,6 @@
           "next": "start.chat"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.chat"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.chat"
         },
@@ -1524,13 +1572,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1584,10 +1625,6 @@
           "next": "start.documents"
         },
         "remove:src-docs-5": {
-          "method": "POST",
-          "next": "start.documents"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.documents"
         },
@@ -1690,13 +1727,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -1738,10 +1768,6 @@
           "next": "start.entry-continue"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.entry-continue"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.entry-continue"
         },
@@ -1990,11 +2016,13 @@
                 {
                   "subject_id": "codeberg-issues",
                   "subject_kind": "plan",
+                  "outcome": "cancelled",
                   "description": "Add the Codeberg issue provider on top of relay-v2. follows codeberg-issues, cancelled: replaced by relay-v2"
                 },
                 {
                   "subject_id": "relay-hardening",
                   "subject_kind": "epic",
+                  "outcome": "completed",
                   "description": "Harden the relay after the epic ended. follows relay-hardening, completed"
                 }
               ],
@@ -2057,13 +2085,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -2105,10 +2126,6 @@
           "next": "start.follow-up"
         },
         "remove:src-desc-1": {
-          "method": "POST",
-          "next": "start.follow-up"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.follow-up"
         },
@@ -2405,13 +2422,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -2445,10 +2455,6 @@
           "next": "start.lesson"
         },
         "remove:src-lesson-3": {
-          "method": "POST",
-          "next": "start.lesson"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.lesson"
         },
@@ -3568,13 +3574,6 @@
             "preselected": false
           },
           {
-            "id": "chat",
-            "rel": "consult",
-            "method": "POST",
-            "href": "/api/v1/entries/ent-3f9a2c41/links/chat",
-            "preselected": false
-          },
-          {
             "id": "start",
             "rel": "next",
             "method": "POST",
@@ -3604,10 +3603,6 @@
           "next": "start.unscreened"
         },
         "remove:src-pr-1": {
-          "method": "POST",
-          "next": "start.unscreened"
-        },
-        "chat": {
           "method": "POST",
           "next": "start.unscreened"
         },
