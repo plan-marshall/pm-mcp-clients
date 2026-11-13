@@ -10,6 +10,7 @@
 package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,6 +33,7 @@ import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OverviewStateStore;
+import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.AfterEach;
@@ -172,6 +174,36 @@ class OverviewLoadFailureTest {
         var text = lines(app.stack().visibleRows());
         assertTrue(text.contains(ErrorTexts.title("en", CODE)), "the refusal is missing: " + text);
         assertTrue(text.contains("pm-mcp-clients"), "the projects keep their rows: " + text);
+    }
+
+    @Test
+    @DisplayName("a plan opened by name that the runtime refuses leaves the overview as the root and names the refusal")
+    void refusedPlanByNameKeepsTheOverview() throws Exception {
+        var plan = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects".equals(request.target())) {
+                response.json(200, """
+                                    {"projects":[{"project_id":"pm-mcp-clients","display_name":"pm-mcp-clients",
+                                     "active_plans_count":1,"active_epics_count":0,"needs_operator_count":0,
+                                     "setup_needs_operator":false,"last_activity_at":"2026-10-16T15:36:00Z"}]}
+                                    """);
+            } else if ("/api/v1/reports".equals(request.target())) {
+                response.json(200, "{\"unread_count\":0}");
+            } else {
+                response.send(404, null, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        var context = context();
+        var app = new OverviewFullScreenApp(context, terminal, OverviewFullScreenApp.InitialSelection.plan(plan),
+                            CLOCK, new OverviewStateStore(context.stateDirectory()), new ConsoleNoticeBuffer());
+        app.loadInitialData(context.runtime(true));
+
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
+        var screen = app.buildScreen().rows();
+        assertTrue(lines(screen).contains("pm-mcp-clients"), lines(screen));
+        assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
+                            screen.getLast().line().trim());
     }
 
     private static String lines(List<TuiRow> rows) {

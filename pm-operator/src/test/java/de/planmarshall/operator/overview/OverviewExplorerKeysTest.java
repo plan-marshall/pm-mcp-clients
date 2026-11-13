@@ -364,6 +364,22 @@ class OverviewExplorerKeysTest {
         }
 
         @Test
+        @DisplayName("c on a ready project with a start still open reads that start to continue it")
+        void continueOpenStart() {
+            var entry = "ent-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            bodyOf.put(PROJECTS_PATH + "/" + ready, "{\"project_id\":\"" + ready + "\",\"display_name\":\"" + ready
+                                + "\",\"open_entries\":[{\"entry_id\":\"" + entry + "\",\"kind\":\"plan\","
+                                + "\"source_count\":1}],\"plans\":[],\"epics\":[],\"alongside_landings\":[]}");
+            select(ProjectsExplorerLevel.GROUP_FAVOURITES, ready);
+            virtual.endOfInput();
+            calls.clear();
+
+            assertTrue(keys.handle(TuiKeyAction.CONTINUE));
+
+            assertEquals(List.of("GET " + PROJECTS_PATH + "/" + ready, "GET /api/v1/entries/" + entry), calls);
+        }
+
+        @Test
         @DisplayName("c on a project being added continues its onboarding")
         void continueOnboarding() {
             selectBeingAdded();

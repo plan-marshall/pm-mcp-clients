@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,8 @@ class OverviewReportsKeysTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
     private final List<String> calls = new CopyOnWriteArrayList<>();
     private final Map<String, Integer> statusOf = new ConcurrentHashMap<>();
+    private final Map<String, String> bodyOf = new ConcurrentHashMap<>();
+    private final List<String> extraReports = new CopyOnWriteArrayList<>();
 
     private RuntimeFixture fixture;
     private VirtualScreenTerminal virtual;
@@ -123,7 +126,9 @@ class OverviewReportsKeysTest {
                                                 "project.onboarded", "refused onboarded", "20", "20"),
                             item.formatted("rep-cleanup", "\"project_id\":\"system\"",
                                                 "system.cleanup_due", "cleanup due", "10", "10"));
-        return "{\"items\":[" + String.join(",", items) + "],\"unread_count\":5,\"has_older\":false,"
+        var all = new ArrayList<>(items);
+        all.addAll(extraReports);
+        return "{\"items\":[" + String.join(",", all) + "],\"unread_count\":" + all.size() + ",\"has_older\":false,"
                             + "\"older_count\":0}";
     }
 
@@ -135,6 +140,8 @@ class OverviewReportsKeysTest {
         var status = statusOf.get(path);
         if (status != null) {
             response.json(status, "{\"error\":\"internal_fault\"}");
+        } else if (bodyOf.containsKey(path)) {
+            response.json(200, bodyOf.get(path));
         } else if ("/api/v1/projects".equals(path)) {
             response.json(200, "{\"projects\":[{\"project_id\":\"" + project + "\",\"display_name\":\"" + project
                                 + "\",\"active_plans_count\":0,\"active_epics_count\":0,\"needs_operator_count\":0,"
@@ -408,6 +415,114 @@ class OverviewReportsKeysTest {
             assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
             assertEquals(List.of(), calls);
         }
+    }
+
+    @Nested
+    @DisplayName("Enter on the report of a running plan or of an epic opens its view")
+    class PlanAndEpicDetail {
+
+        private String report(String reportId, String from, String kind) {
+            return "{\"id\":\"" + reportId + "\",\"from\":{\"project_id\":\"" + project + "\"" + from + "},\"kind\":\""
+                                + kind + "\",\"subject\":\"" + reportId + "\",\"created_at\":\"2026-10-20T11:05:00Z\","
+                                + "\"sent_at\":\"2026-10-20T11:05:00Z\"}";
+        }
+
+        private void serveProcess() {
+            bodyOf.put("/api/v1/plans/" + plan + "/process", "{\"plan_id\":\"" + plan + "\",\"title\":\"" + plan
+                                + "\",\"project\":{\"project_id\":\"" + project + "\",\"display_name\":\"" + project
+                                + "\"},\"current_phase\":\"execute\",\"phase_state\":\"running\",\"nodes\":[{\"node_id\":"
+                                + "\"execute\",\"title\":\"phase execute\",\"kind\":\"phase\",\"state\":\"running\"}],"
+                                + "\"current_position_path\":[]}");
+        }
+
+        private void serveEpic() {
+            bodyOf.put("/api/v1/epics/" + epic, "{\"epic_id\":\"" + epic + "\",\"project_id\":\"" + project
+                                + "\",\"display_name\":\"" + project + "\",\"state\":\"running\",\"auto_start\":true,"
+                                + "\"overlap_max_files\":0,\"scope\":1,\"running\":1,\"workstreams\":[{\"id\":\"WS-1\","
+                                + "\"name\":\"One\",\"open\":true,\"rows\":[{\"plan_id\":\"" + plan + "\",\"title\":\""
+                                + plan + "\",\"status\":\"running\"}]}],\"sources\":[],\"landings\":0,\"events\":[]}");
+        }
+
+        @Test
+        @DisplayName("a running plan's report opens the plan view and reads the report")
+        void planReportOpensThePlan() throws IOException {
+            extraReports.add(report("rep-started", ",\"plan_id\":\"" + plan + "\"", "plan.started"));
+            serveProcess();
+            open(Map.of());
+            selectReport("rep-started");
+
+            assertTrue(keys.handle(TuiKeyAction.OPEN));
+
+            assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
+            assertEquals(plan, app.stack().level().id());
+            assertEquals(List.of("POST /api/v1/reports/rep-started/read {}"), calls);
+        }
+
+        @Test
+        @DisplayName("a plan the runtime does not serve opens the epic of the report instead")
+        void refusedPlanOpensTheEpic() throws IOException {
+            extraReports.add(report("rep-revised", ",\"plan_id\":\"" + plan + "\",\"epic_id\":\"" + epic + "\"",
+                                "plan.revised"));
+            serveEpic();
+            open(Map.of());
+            selectReport("rep-revised");
+
+            keys.handle(TuiKeyAction.OPEN);
+
+            assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+            assertEquals(List.of("POST /api/v1/reports/rep-revised/read {}"), calls);
+        }
+
+        @Test
+        @DisplayName("an epic's report opens the epic's view when the runtime serves it, and Esc returns to the reports")
+        void epicReportOpensTheEpic() throws IOException {
+            serveEpic();
+            open(Map.of());
+            selectReport("rep-epic");
+
+            keys.handle(TuiKeyAction.OPEN);
+
+            assertEquals(TuiLevel.Kind.EPIC, app.stack().level().kind());
+            assertEquals(List.of("POST /api/v1/reports/rep-epic/read {}"), calls);
+            keys.handle(TuiKeyAction.BACK);
+            assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
+            assertTrue(!reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-epic"), reportRowIds().toString());
+        }
+
+        @Test
+        @DisplayName("a report of the machine that is no cleanup has no detail: it says so and stays unread")
+        void machineReportWithoutDetail() throws IOException {
+            extraReports.add("{\"id\":\"rep-machine\",\"from\":{\"project_id\":\"this_machine\"},\"kind\":"
+                                + "\"source.flagged\",\"subject\":\"flagged\",\"created_at\":\"2026-10-20T11:05:00Z\","
+                                + "\"sent_at\":\"2026-10-20T11:05:00Z\"}");
+            open(Map.of());
+            selectReport("rep-machine");
+
+            keys.handle(TuiKeyAction.OPEN);
+
+            assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
+            assertEquals("Failed to load reports", statusLine());
+            assertEquals(List.of(), calls);
+            assertTrue(reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-machine"));
+        }
+    }
+
+    @Test
+    @DisplayName("a report sent while another level is shown counts it and leaves that level's rows")
+    void reportArrivesBelowAnotherLevel() throws IOException {
+        open(Map.of());
+        keys.handle(TuiKeyAction.BACK);
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
+        var rows = app.stack().rows();
+        extraReports.add("{\"id\":\"rep-new\",\"from\":{\"project_id\":\"" + project + "\"},\"kind\":"
+                            + "\"project.onboarded\",\"subject\":\"new\",\"created_at\":\"2026-10-20T11:55:00Z\","
+                            + "\"sent_at\":\"2026-10-20T11:55:00Z\"}");
+
+        app.handleLiveEvent("report.sent", "{\"type\":\"report.sent\",\"report_id\":\"rep-new\"}");
+
+        assertEquals(6, app.buildScreen().reportsCount());
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
+        assertEquals(rows, app.stack().rows());
     }
 
     @Test

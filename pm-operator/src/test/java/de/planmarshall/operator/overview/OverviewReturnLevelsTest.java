@@ -30,6 +30,7 @@ import org.jline.terminal.impl.DumbTerminal;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -207,6 +208,25 @@ class OverviewReturnLevelsTest {
         assertEquals(first, app.stack().level().id());
         assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
                             app.buildScreen().rows().getLast().line().trim());
+    }
+
+    @Test
+    @DisplayName("a refresh read for another project or another level leaves the rows of the level shown")
+    void lateRefreshKeepsTheLevelShown() throws IOException {
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "," + summary(second) + "]}");
+        bodyOf.put("/api/v1/projects/" + first, detail(first));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.stack().select(first);
+        keys.handle(TuiKeyAction.OPEN);
+        var before = rowIds();
+        var other = ProjectDetailResponse.fromJson(detail(second));
+
+        app.applyRefreshedData(TuiLevel.Kind.PROJECT_BY_PLAN, second, other, null);
+        app.applyRefreshedData(TuiLevel.Kind.PROJECT_BY_EPIC, first, other, null);
+
+        assertEquals(before, rowIds());
+        assertTrue(rowIds().contains(first + "-plan"), rowIds().toString());
+        assertEquals(first, app.currentProjectId());
     }
 
     private static String endedPage(String projectId, int page, boolean hasOlder, String itemId) {

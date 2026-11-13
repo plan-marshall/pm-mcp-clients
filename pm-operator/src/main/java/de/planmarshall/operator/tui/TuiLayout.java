@@ -281,17 +281,20 @@ public final class TuiLayout {
             return List.of(text);
         }
         var rest = text;
-        while (displayWidth(rest) > width && !rest.isBlank()) {
+        while (displayWidth(rest) > width) {
+            // The cut lies within the line: the prefix that fits ends at or before its end, and
+            // the last space before that prefix's end lies before it.
             int end = endIndexForWidth(rest, width);
             int space = rest.lastIndexOf(' ', Math.max(0, end - 1));
             int cut = space > 0 ? space : end;
-            var head = rest.substring(0, Math.min(cut, rest.length())).stripTrailing();
+            var head = rest.substring(0, cut).stripTrailing();
             if (head.isEmpty()) {
+                // Only blanks or the continuation's indent fit before the next word: keep the rest
+                // as one line, which the caller's truncation cuts.
                 break;
             }
             lines.add(head);
-            rest = " ".repeat(CONTINUATION_INDENT)
-                                + rest.substring(Math.min(cut, rest.length())).stripLeading();
+            rest = " ".repeat(CONTINUATION_INDENT) + rest.substring(cut).stripLeading();
         }
         lines.add(rest);
         return List.copyOf(lines);
