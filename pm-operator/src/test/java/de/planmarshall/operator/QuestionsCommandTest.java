@@ -1168,8 +1168,8 @@ class QuestionsCommandTest {
             }
         });
 
-        // 1. ?r shows rationale and dissent, then pick 1 and confirm it: the end of the input is no answer
-        int code = executeInteractive("?r\n1\n\n", "answer", "Q-003", "-i");
+        // 1. ?r shows rationale and dissent, then pick 1: a reversible decision is sent at once
+        int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
         assertEquals(0, code, out + "\n" + err);
         var output = out.toString();
         assertTrue(output.contains("3 of 4 votes"), output);
