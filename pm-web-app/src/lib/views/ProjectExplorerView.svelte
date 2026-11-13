@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
-  import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
+  import { navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -57,8 +57,6 @@
   let isAbandoning = $state(false);
   let abandonError = $state<string | null>(null);
 
-  let unsubscribeEvents: (() => void) | null = null;
-  let unsubscribePopstate: (() => void) | null = null;
   /** The filter the last `?project=` focus set, so a popstate can clear only that one. */
   let focusedFilter: string | null = null;
 
@@ -84,7 +82,7 @@
    * is left as it is.
    */
   function focusRequestedProject(): void {
-    if (typeof window === 'undefined' || !explorer) return;
+    if (!explorer) return;
     const requested = new URLSearchParams(window.location.search).get('project');
     if (!requested) {
       // Back to the plain explorer: drop only the filter a focus set, never one the operator
@@ -111,9 +109,8 @@
     // projects must move the focus with the address.
     const onPopstate = () => focusRequestedProject();
     window.addEventListener('popstate', onPopstate);
-    unsubscribePopstate = () => window.removeEventListener('popstate', onPopstate);
 
-    unsubscribeEvents = apiClient.subscribeEvents((event) => {
+    const unsubscribeEvents = apiClient.subscribeEvents((event) => {
       if (
         event === 'project.changed' ||
         event === 'project.released' ||
@@ -122,24 +119,11 @@
         void loadExplorer();
       }
     });
-  });
 
-  onDestroy(() => {
-    if (unsubscribePopstate) {
-      unsubscribePopstate();
-      unsubscribePopstate = null;
-    }
-    if (unsubscribeEvents) {
+    return () => {
+      window.removeEventListener('popstate', onPopstate);
       unsubscribeEvents();
-      unsubscribeEvents = null;
-    }
-  });
-
-  // Watch for SSE project updates via runtimeStore
-  $effect(() => {
-    if ($runtimeStore.projectEventNotice) {
-      void loadExplorer();
-    }
+    };
   });
 
   async function handleToggleFavourite(project: EnrolledProject) {
@@ -191,8 +175,7 @@
       await loadExplorer();
     } catch (err: unknown) {
       // The refusal's own code is what tells the two cases apart; it is never printed.
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('scope_active') || msg.includes('409')) {
+      if (errorCodeOf(err) === 'scope_active') {
         unenrolError =
           $t('project.release.refused', { project: target.display_name }) +
           '. ' +
@@ -228,11 +211,11 @@
    * @param toIndex the index it takes
    */
   function moveFavourite(fromIndex: number, toIndex: number): void {
+    // Both indexes are favourites the list shows: the up and down controls are disabled at the ends
+    // and while a write is in flight, and a drop names two different favourites of the list.
     if (!explorer || isReordering) return;
-    if (toIndex < 0 || toIndex >= explorer.favourites.length || fromIndex === toIndex) return;
     const next = [...explorer.favourites];
     const [moved] = next.splice(fromIndex, 1);
-    if (!moved) return;
     next.splice(toIndex, 0, moved);
     void persistFavouriteOrder(next);
   }
@@ -448,6 +431,125 @@
   });
 </script>
 
+{#snippet projectCard(project: EnrolledProject)}
+  <div class="project-card__header">
+    <button
+      class="fav-toggle-btn"
+      class:fav-toggle-btn--active={project.is_favourite}
+      aria-label={project.is_favourite
+        ? $t('project.action.unfavourite')
+        : $t('project.action.favourite')}
+      data-advisory={project.is_favourite
+        ? $t('project.action.unfavourite.title')
+        : $t('project.action.favourite.title')}
+      onclick={() => handleToggleFavourite(project)}
+      data-testid="star-btn-{project.project_id}"
+    >
+      <Icon name={project.is_favourite ? 'act.favourite-on' : 'act.favourite'} size={16} />
+    </button>
+    <div class="project-card__identity">
+      <h3 class="project-name">{project.display_name}</h3>
+      {#if project.display_name !== project.project_id}
+        <span class="project-id mono">{project.project_id}</span>
+      {/if}
+    </div>
+  </div>
+
+  {#if project.remote_url}
+    <a href={project.remote_url} target="_blank" rel="noreferrer" class="project-remote mono text-sm">
+      {project.remote_url}
+    </a>
+  {/if}
+
+  <div class="project-card__meta">
+    <span
+      class="badge"
+      class:badge--ready={project.readiness === 'ready'}
+      class:badge--needs={project.readiness === 'setup_needs'}
+      class:badge--released={project.readiness === 'released'}
+    >
+      {#if project.readiness === 'ready'}
+        {$t('project.state.ready')}
+      {:else if project.readiness === 'released'}
+        {$t('project.state.released')}
+      {:else}
+        {$t('project.state.setup_needs', {
+          need: project.setup_needs_summary || $t('project.state.setup'),
+        })}
+      {/if}
+    </span>
+
+    {#if project.needs_operator_count > 0}
+      <span class="badge badge--warning">
+        ! {project.needs_operator_count}
+      </span>
+    {/if}
+
+    <span class="project-counts text-sm text-secondary">
+      {$t('project.explorer.counts', {
+        plans: project.active_plans_count,
+        epics: project.active_epics_count,
+      })}
+    </span>
+
+    {#if project.last_active}
+      <span class="project-last-active text-xs text-muted" title={formatMoment(project.last_active)}>
+        {formatRelative(project.last_active)}
+      </span>
+    {/if}
+  </div>
+
+  <div class="project-card__actions">
+    <button
+      class="btn-link"
+      onclick={() => navigateTo('overview')}
+      data-testid="running-work-btn-{project.project_id}"
+    >
+      {$t('project.action.running_work')}
+    </button>
+    <button
+      class="btn-link"
+      onclick={() => openSetup(project)}
+      data-testid="setup-btn-{project.project_id}"
+    >
+      {$t('project.action.setup')}
+    </button>
+    {#if project.readiness === 'setup_needs'}
+      <button
+        class="btn-link"
+        onclick={() => openProjectOnboarding(null, project.project_id)}
+        data-testid="continue-setup-btn-{project.project_id}"
+      >
+        {$t('project.action.continue_setup')}
+      </button>
+    {/if}
+    {#if !project.is_released}
+      <button
+        class="btn-link text-danger"
+        onclick={() => {
+          releaseTarget = project;
+          releaseError = null;
+        }}
+        data-testid="release-btn-{project.project_id}"
+        data-advisory={$t('project.action.release.title')}
+      >
+        {$t('project.action.release')}
+      </button>
+    {/if}
+    <button
+      class="btn-link text-danger"
+      onclick={() => {
+        unenrolTarget = project;
+        unenrolError = null;
+      }}
+      data-testid="unenrol-btn-{project.project_id}"
+      data-advisory={$t('project.action.unenrol.title')}
+    >
+      {$t('project.action.unenrol')}
+    </button>
+  </div>
+{/snippet}
+
 <div class="project-explorer" data-testid="project-explorer-view">
   <!-- Explorer Header -->
   <header class="explorer-header">
@@ -549,133 +651,7 @@
           <div class="project-grid">
             {#each filteredProjects as project (project.project_id)}
               <article class="project-card" data-testid="project-card-{project.project_id}">
-                <div class="project-card__header">
-                  <button
-                    class="fav-toggle-btn"
-                    class:fav-toggle-btn--active={project.is_favourite}
-                    aria-label={project.is_favourite
-                      ? $t('project.action.unfavourite')
-                      : $t('project.action.favourite')}
-                    data-advisory={project.is_favourite
-                      ? $t('project.action.unfavourite.title')
-                      : $t('project.action.favourite.title')}
-                    onclick={() => handleToggleFavourite(project)}
-                    data-testid="star-btn-{project.project_id}"
-                  >
-                    <Icon
-                      name={project.is_favourite ? 'act.favourite-on' : 'act.favourite'}
-                      size={16}
-                    />
-                  </button>
-                  <div class="project-card__identity">
-                    <h3 class="project-name">{project.display_name}</h3>
-                    {#if project.display_name !== project.project_id}
-                      <span class="project-id mono">{project.project_id}</span>
-                    {/if}
-                  </div>
-                </div>
-
-                {#if project.remote_url}
-                  <a
-                    href={project.remote_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    class="project-remote mono text-sm"
-                  >
-                    {project.remote_url}
-                  </a>
-                {/if}
-
-                <div class="project-card__meta">
-                  <span
-                    class="badge"
-                    class:badge--ready={project.readiness === 'ready'}
-                    class:badge--needs={project.readiness === 'setup_needs'}
-                    class:badge--released={project.readiness === 'released'}
-                  >
-                    {#if project.readiness === 'ready'}
-                      {$t('project.state.ready')}
-                    {:else if project.readiness === 'released'}
-                      {$t('project.state.released')}
-                    {:else}
-                      {$t('project.state.setup_needs', {
-                        need: project.setup_needs_summary || $t('project.state.setup'),
-                      })}
-                    {/if}
-                  </span>
-
-                  {#if project.needs_operator_count > 0}
-                    <span class="badge badge--warning">
-                      ! {project.needs_operator_count}
-                    </span>
-                  {/if}
-
-                  <span class="project-counts text-sm text-secondary">
-                    {$t('project.explorer.counts', {
-                      plans: project.active_plans_count,
-                      epics: project.active_epics_count,
-                    })}
-                  </span>
-
-                  {#if project.last_active}
-                    <span
-                      class="project-last-active text-xs text-muted"
-                      title={formatMoment(project.last_active)}
-                    >
-                      {formatRelative(project.last_active)}
-                    </span>
-                  {/if}
-                </div>
-
-                <div class="project-card__actions">
-                  <button
-                    class="btn-link"
-                    onclick={() => navigateTo('overview')}
-                    data-testid="running-work-btn-{project.project_id}"
-                  >
-                    {$t('project.action.running_work')}
-                  </button>
-                  <button
-                    class="btn-link"
-                    onclick={() => openSetup(project)}
-                    data-testid="setup-btn-{project.project_id}"
-                  >
-                    {$t('project.action.setup')}
-                  </button>
-                  {#if project.readiness === 'setup_needs'}
-                    <button
-                      class="btn-link"
-                      onclick={() => openProjectOnboarding(null, project.project_id)}
-                      data-testid="continue-setup-btn-{project.project_id}"
-                    >
-                      {$t('project.action.continue_setup')}
-                    </button>
-                  {/if}
-                  {#if !project.is_released}
-                    <button
-                      class="btn-link text-danger"
-                      onclick={() => {
-                        releaseTarget = project;
-                        releaseError = null;
-                      }}
-                      data-testid="release-btn-{project.project_id}"
-                      data-advisory={$t('project.action.release.title')}
-                    >
-                      {$t('project.action.release')}
-                    </button>
-                  {/if}
-                  <button
-                    class="btn-link text-danger"
-                    onclick={() => {
-                      unenrolTarget = project;
-                      unenrolError = null;
-                    }}
-                    data-testid="unenrol-btn-{project.project_id}"
-                    data-advisory={$t('project.action.unenrol.title')}
-                  >
-                    {$t('project.action.unenrol')}
-                  </button>
-                </div>
+                {@render projectCard(project)}
               </article>
             {/each}
           </div>
@@ -764,125 +740,7 @@
                     ↓
                   </button>
                 </div>
-                <div class="project-card__header">
-                  <button
-                    class="fav-toggle-btn fav-toggle-btn--active"
-                    aria-label={$t('project.action.unfavourite')}
-                    data-advisory={$t('project.action.unfavourite.title')}
-                    onclick={() => handleToggleFavourite(project)}
-                    data-testid="star-btn-{project.project_id}"
-                  >
-                    <Icon name="act.favourite-on" size={16} />
-                  </button>
-                  <div class="project-card__identity">
-                    <h3 class="project-name">{project.display_name}</h3>
-                    {#if project.display_name !== project.project_id}
-                      <span class="project-id mono">{project.project_id}</span>
-                    {/if}
-                  </div>
-                </div>
-
-                {#if project.remote_url}
-                  <a
-                    href={project.remote_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    class="project-remote mono text-sm"
-                  >
-                    {project.remote_url}
-                  </a>
-                {/if}
-
-                <div class="project-card__meta">
-                  <span
-                    class="badge"
-                    class:badge--ready={project.readiness === 'ready'}
-                    class:badge--needs={project.readiness === 'setup_needs'}
-                    class:badge--released={project.readiness === 'released'}
-                  >
-                    {#if project.readiness === 'ready'}
-                      {$t('project.state.ready')}
-                    {:else if project.readiness === 'released'}
-                      {$t('project.state.released')}
-                    {:else}
-                      {$t('project.state.setup_needs', {
-                        need: project.setup_needs_summary || $t('project.state.setup'),
-                      })}
-                    {/if}
-                  </span>
-
-                  {#if project.needs_operator_count > 0}
-                    <span class="badge badge--warning">
-                      ! {project.needs_operator_count}
-                    </span>
-                  {/if}
-
-                  <span class="project-counts text-sm text-secondary">
-                    {$t('project.explorer.counts', {
-                      plans: project.active_plans_count,
-                      epics: project.active_epics_count,
-                    })}
-                  </span>
-
-                  {#if project.last_active}
-                    <span
-                      class="project-last-active text-xs text-muted"
-                      title={formatMoment(project.last_active)}
-                    >
-                      {formatRelative(project.last_active)}
-                    </span>
-                  {/if}
-                </div>
-
-                <div class="project-card__actions">
-                  <button
-                    class="btn-link"
-                    onclick={() => navigateTo('overview')}
-                    data-testid="running-work-btn-{project.project_id}"
-                  >
-                    {$t('project.action.running_work')}
-                  </button>
-                  <button
-                    class="btn-link"
-                    onclick={() => openSetup(project)}
-                    data-testid="setup-btn-{project.project_id}"
-                  >
-                    {$t('project.action.setup')}
-                  </button>
-                  {#if project.readiness === 'setup_needs'}
-                    <button
-                      class="btn-link"
-                      onclick={() => openProjectOnboarding(null, project.project_id)}
-                      data-testid="continue-setup-btn-{project.project_id}"
-                    >
-                      {$t('project.action.continue_setup')}
-                    </button>
-                  {/if}
-                  {#if !project.is_released}
-                    <button
-                      class="btn-link text-danger"
-                      onclick={() => {
-                        releaseTarget = project;
-                        releaseError = null;
-                      }}
-                      data-testid="release-btn-{project.project_id}"
-                      data-advisory={$t('project.action.release.title')}
-                    >
-                      {$t('project.action.release')}
-                    </button>
-                  {/if}
-                  <button
-                    class="btn-link text-danger"
-                    onclick={() => {
-                      unenrolTarget = project;
-                      unenrolError = null;
-                    }}
-                    data-testid="unenrol-btn-{project.project_id}"
-                    data-advisory={$t('project.action.unenrol.title')}
-                  >
-                    {$t('project.action.unenrol')}
-                  </button>
-                </div>
+                {@render projectCard(project)}
               </article>
             {/each}
           </div>
@@ -896,125 +754,7 @@
           <div class="project-grid">
             {#each explorer.recent as project (project.project_id)}
               <article class="project-card" data-testid="project-card-{project.project_id}">
-                <div class="project-card__header">
-                  <button
-                    class="fav-toggle-btn"
-                    aria-label={$t('project.action.favourite')}
-                    data-advisory={$t('project.action.favourite.title')}
-                    onclick={() => handleToggleFavourite(project)}
-                    data-testid="star-btn-{project.project_id}"
-                  >
-                    <Icon name="act.favourite" size={16} />
-                  </button>
-                  <div class="project-card__identity">
-                    <h3 class="project-name">{project.display_name}</h3>
-                    {#if project.display_name !== project.project_id}
-                      <span class="project-id mono">{project.project_id}</span>
-                    {/if}
-                  </div>
-                </div>
-
-                {#if project.remote_url}
-                  <a
-                    href={project.remote_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    class="project-remote mono text-sm"
-                  >
-                    {project.remote_url}
-                  </a>
-                {/if}
-
-                <div class="project-card__meta">
-                  <span
-                    class="badge"
-                    class:badge--ready={project.readiness === 'ready'}
-                    class:badge--needs={project.readiness === 'setup_needs'}
-                    class:badge--released={project.readiness === 'released'}
-                  >
-                    {#if project.readiness === 'ready'}
-                      {$t('project.state.ready')}
-                    {:else if project.readiness === 'released'}
-                      {$t('project.state.released')}
-                    {:else}
-                      {$t('project.state.setup_needs', {
-                        need: project.setup_needs_summary || $t('project.state.setup'),
-                      })}
-                    {/if}
-                  </span>
-
-                  {#if project.needs_operator_count > 0}
-                    <span class="badge badge--warning">
-                      ! {project.needs_operator_count}
-                    </span>
-                  {/if}
-
-                  <span class="project-counts text-sm text-secondary">
-                    {$t('project.explorer.counts', {
-                      plans: project.active_plans_count,
-                      epics: project.active_epics_count,
-                    })}
-                  </span>
-
-                  {#if project.last_active}
-                    <span
-                      class="project-last-active text-xs text-muted"
-                      title={formatMoment(project.last_active)}
-                    >
-                      {formatRelative(project.last_active)}
-                    </span>
-                  {/if}
-                </div>
-
-                <div class="project-card__actions">
-                  <button
-                    class="btn-link"
-                    onclick={() => navigateTo('overview')}
-                    data-testid="running-work-btn-{project.project_id}"
-                  >
-                    {$t('project.action.running_work')}
-                  </button>
-                  <button
-                    class="btn-link"
-                    onclick={() => openSetup(project)}
-                    data-testid="setup-btn-{project.project_id}"
-                  >
-                    {$t('project.action.setup')}
-                  </button>
-                  {#if project.readiness === 'setup_needs'}
-                    <button
-                      class="btn-link"
-                      onclick={() => openProjectOnboarding(null, project.project_id)}
-                      data-testid="continue-setup-btn-{project.project_id}"
-                    >
-                      {$t('project.action.continue_setup')}
-                    </button>
-                  {/if}
-                  {#if !project.is_released}
-                    <button
-                      class="btn-link text-danger"
-                      onclick={() => {
-                        releaseTarget = project;
-                        releaseError = null;
-                      }}
-                      data-testid="release-btn-{project.project_id}"
-                      data-advisory={$t('project.action.release.title')}
-                    >
-                      {$t('project.action.release')}
-                    </button>
-                  {/if}
-                  <button
-                    class="btn-link text-danger"
-                    onclick={() => {
-                      unenrolTarget = project;
-                      unenrolError = null;
-                    }}
-                    data-testid="unenrol-btn-{project.project_id}"
-                    data-advisory={$t('project.action.unenrol.title')}
-                  >
-                    {$t('project.action.unenrol')}
-                  </button>
-                </div>
+                {@render projectCard(project)}
               </article>
             {/each}
           </div>
@@ -1033,133 +773,7 @@
           <div class="project-grid">
             {#each sortedAllProjects as project (project.project_id)}
               <article class="project-card" data-testid="project-card-{project.project_id}">
-                <div class="project-card__header">
-                  <button
-                    class="fav-toggle-btn"
-                    class:fav-toggle-btn--active={project.is_favourite}
-                    aria-label={project.is_favourite
-                      ? $t('project.action.unfavourite')
-                      : $t('project.action.favourite')}
-                    data-advisory={project.is_favourite
-                      ? $t('project.action.unfavourite.title')
-                      : $t('project.action.favourite.title')}
-                    onclick={() => handleToggleFavourite(project)}
-                    data-testid="star-btn-{project.project_id}"
-                  >
-                    <Icon
-                      name={project.is_favourite ? 'act.favourite-on' : 'act.favourite'}
-                      size={16}
-                    />
-                  </button>
-                  <div class="project-card__identity">
-                    <h3 class="project-name">{project.display_name}</h3>
-                    {#if project.display_name !== project.project_id}
-                      <span class="project-id mono">{project.project_id}</span>
-                    {/if}
-                  </div>
-                </div>
-
-                {#if project.remote_url}
-                  <a
-                    href={project.remote_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    class="project-remote mono text-sm"
-                  >
-                    {project.remote_url}
-                  </a>
-                {/if}
-
-                <div class="project-card__meta">
-                  <span
-                    class="badge"
-                    class:badge--ready={project.readiness === 'ready'}
-                    class:badge--needs={project.readiness === 'setup_needs'}
-                    class:badge--released={project.readiness === 'released'}
-                  >
-                    {#if project.readiness === 'ready'}
-                      {$t('project.state.ready')}
-                    {:else if project.readiness === 'released'}
-                      {$t('project.state.released')}
-                    {:else}
-                      {$t('project.state.setup_needs', {
-                        need: project.setup_needs_summary || $t('project.state.setup'),
-                      })}
-                    {/if}
-                  </span>
-
-                  {#if project.needs_operator_count > 0}
-                    <span class="badge badge--warning">
-                      ! {project.needs_operator_count}
-                    </span>
-                  {/if}
-
-                  <span class="project-counts text-sm text-secondary">
-                    {$t('project.explorer.counts', {
-                      plans: project.active_plans_count,
-                      epics: project.active_epics_count,
-                    })}
-                  </span>
-
-                  {#if project.last_active}
-                    <span
-                      class="project-last-active text-xs text-muted"
-                      title={formatMoment(project.last_active)}
-                    >
-                      {formatRelative(project.last_active)}
-                    </span>
-                  {/if}
-                </div>
-
-                <div class="project-card__actions">
-                  <button
-                    class="btn-link"
-                    onclick={() => navigateTo('overview')}
-                    data-testid="running-work-btn-{project.project_id}"
-                  >
-                    {$t('project.action.running_work')}
-                  </button>
-                  <button
-                    class="btn-link"
-                    onclick={() => openSetup(project)}
-                    data-testid="setup-btn-{project.project_id}"
-                  >
-                    {$t('project.action.setup')}
-                  </button>
-                  {#if project.readiness === 'setup_needs'}
-                    <button
-                      class="btn-link"
-                      onclick={() => openProjectOnboarding(null, project.project_id)}
-                      data-testid="continue-setup-btn-{project.project_id}"
-                    >
-                      {$t('project.action.continue_setup')}
-                    </button>
-                  {/if}
-                  {#if !project.is_released}
-                    <button
-                      class="btn-link text-danger"
-                      onclick={() => {
-                        releaseTarget = project;
-                        releaseError = null;
-                      }}
-                      data-testid="release-btn-{project.project_id}"
-                      data-advisory={$t('project.action.release.title')}
-                    >
-                      {$t('project.action.release')}
-                    </button>
-                  {/if}
-                  <button
-                    class="btn-link text-danger"
-                    onclick={() => {
-                      unenrolTarget = project;
-                      unenrolError = null;
-                    }}
-                    data-testid="unenrol-btn-{project.project_id}"
-                    data-advisory={$t('project.action.unenrol.title')}
-                  >
-                    {$t('project.action.unenrol')}
-                  </button>
-                </div>
+                {@render projectCard(project)}
               </article>
             {/each}
           </div>
