@@ -524,6 +524,7 @@
             <RowMenu
               items={rowMenuItems}
               label="{$t('dev.row_link.menu')} ({$t(`dev.theme.${theme}`)})"
+              visibleLabel={$t('web.common.more')}
             />
           {/snippet}
         </RowLink>
