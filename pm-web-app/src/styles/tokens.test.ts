@@ -597,6 +597,37 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(declaredRetired).toEqual([]);
     });
   });
+
+  describe('the reason tones (components-tags.adoc, reason-badge)', () => {
+    /** The two pairs a `ReasonBadge` draws: amber for every reason, red for the two that stop work. */
+    const REASON_TONE_PAIRS: Array<[string, string]> = [
+      ['--color-attention-text', '--color-attention-subtle'],
+      ['--color-danger', '--color-danger-subtle'],
+    ];
+
+    it('draws each tone from the pair audited below', () => {
+      const source = fs.readFileSync(path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'), 'utf8');
+
+      expect(source).toContain('background-color: var(--color-attention-subtle)');
+      expect(source).toContain('color: var(--color-attention-text)');
+      expect(source).toContain('background-color: var(--color-danger-subtle)');
+      expect(source).toContain('color: var(--color-danger)');
+    });
+
+    it.each(['light', 'dark'] as const)('keeps both pairs at or above 4.5:1 in the %s theme', (theme) => {
+      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
+      const failures = belowMinimum(
+        REASON_TONE_PAIRS.map(([foreground, background]) => ({
+          foreground,
+          background,
+          value: contrastRatio(palette[foreground], palette[background]),
+        })),
+        4.5,
+      );
+
+      expect(failures).toEqual([]);
+    });
+  });
 });
 
 describe('tokens.css: static scans over the source tree', () => {

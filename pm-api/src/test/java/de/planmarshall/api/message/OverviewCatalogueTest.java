@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.message;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -54,6 +55,8 @@ class OverviewCatalogueTest {
                 "overview.kind.epic",
                 "overview.group.without_epic",
                 "overview.needs.count",
+                "overview.needs.badge",
+                "overview.needs.completion_review",
                 "overview.needs.decision",
                 "overview.needs.waiver_request",
                 "overview.needs.operator_wait",
@@ -166,6 +169,16 @@ class OverviewCatalogueTest {
         assertEquals("Waiver", MessageCatalogue.format("de", "overview.needs.waiver", Map.of()));
         assertEquals("waits for you", MessageCatalogue.format("en", "overview.needs.waits_for_you", Map.of()));
         assertEquals("wartet auf dich", MessageCatalogue.format("de", "overview.needs.waits_for_you", Map.of()));
+    }
+
+    @Test
+    @DisplayName("should name the completion review reason in both languages")
+    void shouldNameTheCompletionReviewReason() {
+        assertAll(
+                () -> assertEquals("completion review",
+                        MessageCatalogue.getMessages("en", "overview").get("overview.needs.completion_review")),
+                () -> assertEquals("Abschlussprüfung",
+                        MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")));
     }
 
     @Test
