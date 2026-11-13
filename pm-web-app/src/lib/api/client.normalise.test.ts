@@ -323,6 +323,31 @@ describe('ApiClient wire normalisation', () => {
     });
   });
 
+  it('carries no proposal once the runtime has answered it', async () => {
+    respond({
+      id: 'chat-8',
+      subject: { kind: 'plan', id: 'fix-relay' },
+      role: { name: 'replan', model: 'sonnet' },
+      scope: 'plan',
+      state: 'chat.turn',
+      context: { knows: [], as_of: '2026-10-14T10:00:00Z' },
+      proposal: {
+        turn_id: 'T-0003',
+        reply_turn_id: 'T-0002',
+        kind: 'revision',
+        summary: 'a test per transport',
+        after: 'websocket and SSE',
+        state: 'accepted',
+      },
+      turns: [],
+    });
+
+    const chat = await client.getChat('fix-relay');
+
+    // Only an open proposal awaits an answer; showing an answered one would offer a refused act.
+    expect(chat.proposal).toBeNull();
+  });
+
   it('reads the role and proposal of ended work from a ChatResource', async () => {
     respond({
       id: 'chat-9',

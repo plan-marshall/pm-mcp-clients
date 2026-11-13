@@ -551,7 +551,7 @@ class PlanCommandTest {
                                 "at":"2026-10-16T10:00:00Z"},
                                {"turn_id":"T-2","kind":"message","author":"replan","status":"complete",
                                 "format":"markdown","untrusted":false,"model":"sonnet",
-                                "text":"hello plan","steps":[],"refs":[],
+                                "text":"the chat answered from the runtime","steps":[],"refs":[],
                                 "at":"2026-10-16T10:01:00Z"}]}
                             """;
         fixture.start((request, response) -> {
@@ -568,7 +568,8 @@ class PlanCommandTest {
         int code = execute("plan", "chat", "p-001", "--message", "hello plan");
         assertEquals(0, code);
         assertTrue(answered.get(), "the message was not sent as a chat turn");
-        assertTrue(out.toString().contains("hello plan"), out.toString());
+        // The reply the runtime wrote is printed; the operator's own message is not the proof.
+        assertTrue(out.toString().contains("the chat answered from the runtime"), out.toString());
     }
 
     @Test

@@ -1,9 +1,9 @@
 # Screen captures for PLAN-161: The Web and Terminal Chats Talk to the Chat Contract Again
 # name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
 #
-# The chat of a plan as the terminal renders it on the mock's `control-chat` (the running work):
-# the head with the routed role and scope, the seeded transcript, and the read-back proposal with
-# the point it applies at. The verb prints and leaves, so the capture types no keys.
+# The chat of a plan as the terminal renders it on the mock's `running-work` scenario: the head with
+# the routed role and scope, the seeded transcript, and the read-back proposal with the point it
+# applies at. The verb prints and leaves, so the capture types no keys.
 
-plan-chat-running-work-120x30-en | control-chat | - | plan chat fix-relay | - | 120x30 | en_US.UTF-8 | -
-plan-chat-running-work-120x30-de | control-chat | - | plan chat fix-relay | - | 120x30 | de_DE.UTF-8 | -
+plan-chat-running-work-120x30-en | running-work | - | plan chat fix-relay | - | 120x30 | en_US.UTF-8 | -
+plan-chat-running-work-120x30-de | running-work | - | plan chat fix-relay | - | 120x30 | de_DE.UTF-8 | -

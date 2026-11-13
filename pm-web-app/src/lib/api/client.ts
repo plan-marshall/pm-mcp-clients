@@ -1640,16 +1640,21 @@ const CHAT_AUTHOR_OPERATOR = 'operator';
 /** The kinds a turn must have to be a line of the transcript; a proposal is the panel's own. */
 const CHAT_TRANSCRIPT_KINDS = new Set(['message', 'notice']);
 
+/** The proposal state at which the runtime still takes an accept or a reject. */
+const CHAT_PROPOSAL_OPEN = 'open';
+
 /**
- * Maps a `ChatResource` to the chat the views read. This is the one place the chat wire is read:
- * the subject and the routed role flatten to the names the panels show, and a proposal's `applies`
- * is the message key the texts resolve, without its arguments.
+ * Maps a `ChatResource` to the chat the views read. This is the one place a plan's, an epic's, an
+ * entry's or ended work's chat resource is read: the subject and the routed role flatten to the
+ * names the panels show, a turn that is not a message or a notice stays out of the transcript, and
+ * only an OPEN proposal is carried — the runtime keeps an answered one in the resource, and a panel
+ * that read it would offer an answer the runtime refuses.
  *
  * @param resource the chat as the runtime writes it
  * @returns the chat the views show
  */
 export function normaliseChat(resource: WireChatResource): ChatReadBack {
-  const proposal = resource.proposal;
+  const proposal = resource.proposal?.state === CHAT_PROPOSAL_OPEN ? resource.proposal : null;
   return {
     chat_id: resource.id,
     subject_id: resource.subject.id,

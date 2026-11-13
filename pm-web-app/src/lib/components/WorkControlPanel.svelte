@@ -88,6 +88,8 @@
   let chatOpen = $state(false);
   let chatBusy = $state(false);
   let chatNotice = $state('');
+  /** Whether the notice reports a success (a follow-up start being prepared) rather than a refusal. */
+  let chatNoticeIsInfo = $state(false);
   let endedProposal = $state<ChatProposal | null>(null);
   let endedRole = $state('');
 
@@ -660,6 +662,7 @@
 
   async function openChat(): Promise<void> {
     chatNotice = '';
+    chatNoticeIsInfo = false;
     chatOpen = true;
     if (ended) {
       const proposal = await apiClient.getEndedChat(subjectKind, subjectId).catch(() => null);
@@ -738,12 +741,17 @@
     }
     chatBusy = true;
     try {
+      // The answer is the chat with the answered proposal: accepting clears the card here, since the
+      // runtime keeps the answered proposal in the resource (PLAN-161, D2).
       await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
-      // The answer is the chat, and no B1 surface names the entry it opened: the operator is told
-      // that the plan is being started and goes on from the project's starts (PLAN-161, D2).
+      endedProposal = null;
+      // No B1 surface names the entry it opened: the operator is told that the plan is being started
+      // and goes on from the project's starts.
+      chatNoticeIsInfo = true;
       chatNotice = $t('control.chat.follow_up.opened', { project: projectId });
       onChanged();
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -1139,7 +1147,11 @@
     />
   {/if}
   {#if chatNotice}
-    <p class="work-control__failure" data-testid="chat-notice" role="alert">{chatNotice}</p>
+    <p
+      class:work-control__notice={chatNoticeIsInfo}
+      class:work-control__failure={!chatNoticeIsInfo}
+      data-testid="chat-notice"
+      role={chatNoticeIsInfo ? 'status' : 'alert'}>{chatNotice}</p>
   {/if}
 {/if}
 

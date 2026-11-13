@@ -339,7 +339,7 @@ final class ActionSupport {
      * @param spec    the picocli command specification
      * @param kind    "plan" or "epic"
      * @param id      the work item ID
-     * @param message the chat message, or {@code null} to fetch history
+     * @param message the chat message to send, or {@code null} to read the chat and run its dialogue
      * @return exit code
      * @throws IOException on network or runtime error
      */

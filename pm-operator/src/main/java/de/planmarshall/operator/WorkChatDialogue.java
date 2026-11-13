@@ -18,6 +18,7 @@ import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatTurn;
+import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
 
@@ -96,7 +97,7 @@ final class WorkChatDialogue {
             dialogue.showTurn(turn);
         }
         var proposal = chat.proposal();
-        if (proposal != null) {
+        if (proposal != null && chat.hasProposal()) {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), endedChat
                                 ? "operator.actions.chat.proposed_follow_up"
                                 : "operator.actions.chat.proposed", Map.of()));
@@ -106,6 +107,10 @@ final class WorkChatDialogue {
             }
             if (proposal.after() != null) {
                 out.println("  + " + OutputSafety.stripControlSequences(proposal.after()));
+            }
+            var applies = dialogue.appliesText(proposal);
+            if (applies != null) {
+                out.println("  " + OutputSafety.stripControlSequences(applies));
             }
         }
         out.flush();
@@ -118,10 +123,11 @@ final class WorkChatDialogue {
         for (var turn : chat.turns()) {
             showTurn(turn);
         }
-        int seen = chat.turns().size();
+        var seen = lastTurnId(chat);
         boolean saidNoProposal = false;
         while (true) {
-            if (chat.proposal() != null) {
+            if (chat.hasProposal()) {
+                var proposal = chat.proposal();
                 var answer = askProposal(chat, endedChat);
                 if (answer == null) {
                     return null;
@@ -129,15 +135,17 @@ final class WorkChatDialogue {
                 if (answer) {
                     if (endedChat) {
                         prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                        return followUp(chat.proposal());
+                        return proposal == null ? null : followUp(proposal);
                     }
-                    chat = client.chatProposal(kind, subjectId, chat.proposal().turnId(), true);
+                    chat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
                     showNewTurns(chat, seen);
-                    seen = chat.turns().size();
+                    seen = lastTurnId(chat);
                     prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
                     continue;
                 }
-                chat = client.chatProposal(kind, subjectId, chat.proposal().turnId(), false);
+                chat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
+                showNewTurns(chat, seen);
+                seen = lastTurnId(chat);
                 continue;
             }
             var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
@@ -150,8 +158,8 @@ final class WorkChatDialogue {
             }
             chat = client.chatTurn(kind, subjectId, message);
             showNewTurns(chat, seen);
-            seen = chat.turns().size();
-            if (chat.proposal() == null && !saidNoProposal) {
+            seen = lastTurnId(chat);
+            if (!chat.hasProposal() && !saidNoProposal) {
                 prompt.line("operator.actions.chat.no_proposal", Map.of("subject", subjectId));
                 saidNoProposal = true;
             }
@@ -216,14 +224,38 @@ final class WorkChatDialogue {
         }
     }
 
-    private void showNewTurns(ChatResource chat, int seen) {
+    private void showNewTurns(ChatResource chat, @Nullable String seenTurnId) {
         var turns = chat.turns();
-        for (int index = seen; index < turns.size(); index++) {
+        var seen = -1;
+        if (seenTurnId != null) {
+            for (int index = 0; index < turns.size(); index++) {
+                if (turns.get(index).turnId().equals(seenTurnId)) {
+                    seen = index;
+                    break;
+                }
+            }
+        }
+        // A page that no longer holds the last turn shown is printed whole: a re-print is recoverable,
+        // a turn silently left out is not.
+        for (int index = seen + 1; index < turns.size(); index++) {
             showTurn(turns.get(index));
         }
     }
 
+    /**
+     * @param chat the chat as read
+     * @return the id of its last turn, or {@code null} where it has none
+     */
+    private static @Nullable String lastTurnId(ChatResource chat) {
+        var turns = chat.turns();
+        return turns.isEmpty() ? null : turns.getLast().turnId();
+    }
+
     private void showTurn(ChatTurn turn) {
+        if (turn.kind() == TurnKind.PROPOSAL) {
+            // The proposal is the read-back block's; a transcript line for it would say it twice.
+            return;
+        }
         var role = ROLE_OPERATOR.equals(turn.author())
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you", Map.of())
                             : OutputSafety.stripControlSequences(turn.author());

@@ -389,6 +389,9 @@ class ControlDialoguesTest {
         var text = out.toString();
         assertTrue(text.contains("Proposed change"), text);
         assertTrue(text.contains("websocket and SSE"), text);
+        // The point the proposal applies at is read from its runtime key, not printed as one.
+        assertTrue(text.contains("applies after the current task"), text);
+        assertFalse(text.contains("chat.applies."), text);
         assertTrue(text.contains("The chat is kept with p"), text);
     }
 

@@ -818,8 +818,9 @@ describe('WorkControlPanel component', () => {
       subject_kind: 'plan',
       role: 'replan',
       scope: 'plan',
-      state: 'open',
+      state: 'chat.turn',
       turns: [],
+      proposal: null,
     });
     const turn = vi.spyOn(apiClient, 'chatWithSubject').mockResolvedValue({
       chat_id: 'C-0001',
@@ -827,8 +828,18 @@ describe('WorkControlPanel component', () => {
       subject_kind: 'plan',
       role: 'replan',
       scope: 'plan',
-      state: 'turn',
-      turns: [{ role: 'operator', text: 'Can the test cover SSE?', at: 'now', untrusted: false }],
+      state: 'chat.read-back',
+      turns: [
+        { role: 'operator', text: 'Can the test cover SSE?', at: 'now', untrusted: false },
+        { role: 'replan', text: 'Yes: a second test.', at: 'now', untrusted: false },
+      ],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'a test per transport',
+        before: 'one transport',
+        after: 'websocket and SSE',
+        applies: 'chat.applies.after_task',
+      },
     });
 
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
@@ -841,6 +852,49 @@ describe('WorkControlPanel component', () => {
 
     await waitFor(() => {
       expect(turn).toHaveBeenCalledWith('fix-relay', 'Can the test cover SSE?');
+    });
+    // The reply the client read is drawn, and the proposal it made is the panel's own card.
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('Yes: a second test.');
+    expect(screen.getByTestId('chat-proposal-after')).toHaveTextContent('websocket and SSE');
+  });
+
+  it('answers the chat proposal after a message, by the proposal’s own turn', async () => {
+    vi.spyOn(apiClient, 'getChat').mockResolvedValue({
+      chat_id: 'C-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'plan',
+      state: 'chat.read-back',
+      turns: [{ role: 'operator', text: 'Add SSE', at: 'now', untrusted: false }],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'a test per transport',
+        after: 'websocket and SSE',
+      },
+    });
+    const accept = vi.spyOn(apiClient, 'answerSubjectChatProposal').mockResolvedValue({
+      chat_id: 'C-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'plan',
+      state: 'chat.turn',
+      turns: [{ role: 'operator', text: 'Add SSE', at: 'now', untrusted: false }],
+      proposal: null,
+    });
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
+
+    await waitFor(() => {
+      expect(accept).toHaveBeenCalledWith('fix-relay', 'T-0003', true);
+    });
+    // The answered proposal is gone with the answer: the runtime keeps it in the resource.
+    await waitFor(() => {
+      expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument();
     });
   });
 
