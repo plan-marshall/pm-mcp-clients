@@ -160,6 +160,16 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; list which of PLAN-123, 30, 42, 44, 48, 79 landed and re-place the edits at their new lines.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `PLAN-161` (chat bridge) adapts `WorkActionsClient.java:305-347`, `WorkChatDialogue` and `ActionSupport.java:380` to the B1 contract
+  first. This plan replaces that adaptation; re-ground D1 on what `PLAN-161` landed.
+- "the start chat ends on an empty line at `ChatDialogue.java:58-91`" is stale: `ChatDialogue` was rewritten in `a139ec62` (the
+  behaviour holds). "Delete the old chat types": `ChatReadBackResource` is used by `ActionSupport` and `WorkActionsClient` unless
+  `PLAN-161` removed it.
+- Operator-client lesson from PLAN-133: track transcript progress by turn id and status, not by a count; test against streamed timing and a
+  transcript longer than one page.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

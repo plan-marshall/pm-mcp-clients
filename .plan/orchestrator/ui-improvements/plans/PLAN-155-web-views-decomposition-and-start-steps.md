@@ -134,6 +134,16 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since. Settle each HYPOTHESIS. Re-run the lint for the four views and re-check which plan claims `EpicAdoptView` and `RecipeReadyView`.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) is knowingly broken against the mock until `PLAN-161`
+  (chat bridge) lands; `PLAN-148` marks the failing `showroom.spec.js` chat step `test.fixme`. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+- D5's chat items are stale: `ControlScenarioTest.unknownSubject` now pins `target_not_found` for the plan chat and tests the turn POST
+  code. Re-ground them at outline; drop what `a139ec62` already covers.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

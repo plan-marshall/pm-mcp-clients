@@ -789,6 +789,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   (review_support binary crash), `-001` (manage-status from a leaf cwd), `-002` (rebase re-gating). Owner: plan-marshall (phase-6-finalize).
   Sixth landing in a row with a false or missing review count (PLAN-159, 32, 126, 160, 128, 131).
 
+- PLAN-133 (#424, `a139ec62`, 2026-11-13): **the web and terminal chats broken against the mock on `main`**. The plan moved the mock to
+  the B1 chat contract and, on its own scoping (not put to the operator), left the consumers: web entry/plan/epic/review/ended-work chat,
+  the decision chat address, the terminal `plan|epic chat` (`WorkChatDialogue`). Its D5 survey ("pm-web-e2e has no chat reference") was
+  false; `showroom.spec.js:76-80` fails under `-Pe2e`, which is not in the PR gate. Operator: `PLAN-148` D6 fixmes the e2e step,
+  **`PLAN-161`** (chat bridge, new) migrates the existing calls now; `PLAN-135/137/138/140` later replace the bridge. Minors → `PLAN-134`
+  (m2 applied proposals, m3 abandon deletes transcript, m4 `playFailure` race and `indexOf("chat")`), `PLAN-140` (m5 poll ignores
+  interrupt). The spec said "16 files"; the PR changed 86 and exhausted the review budget three times. CodeRabbit did not review the merge
+  head (allowed by the one-review rule); 16/16 threads replied and resolved, 4 body items closed without a fix (2 web Majors → `PLAN-161`);
+  Sonar 0 issues, 0 hotspots. PR body checkboxes stale, no counts (seventh landing without counts in the PR body).
+- **Open Item (O10 route builders), 2026-11-13:** `ChatRoutes` has no builders for the review and decomposition chats (PLAN-133 D1 "left
+  out until O10"; the amendment's "once PLAN-132 has the route builders" never happened). No staged plan owns them plus the mock. Once the
+  N3 runtime documents name the addresses, stage a small plan (pm-api builders + mock) BEFORE `PLAN-137` D2 and `PLAN-140` D2.
+
 ## Watches
 
 - PLAN-33 (running, verification) filed three findings 2026-11-10 (`rb-33-verify-cli-acts-001`…`003`, at `0913d6f3`,

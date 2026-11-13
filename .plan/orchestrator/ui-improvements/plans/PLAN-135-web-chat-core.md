@@ -209,6 +209,12 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces` against everything that landed since; re-read the D4 and D5 chat documents (still `AGREED`); confirm the operator's answers to O1, O6, O7 (O2 is settled by D6, merged #403 `8568b56e`: the engine's side column of `PLAN-142`).
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `PLAN-161` (chat bridge) first adapts the existing `client.ts` chat calls and the views to B1 (bodies with `client_turn_id`/`turn_id`,
+  `ChatResource` reads through one normaliser). This plan replaces that adaptation and deletes it; the OBSERVED `client.ts` line refs are
+  stale since `a139ec62` (ended-work calls already migrated there) — re-ground at outline.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

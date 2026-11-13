@@ -169,6 +169,14 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 
 Re-read every named view at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; check which of PLAN-45, 51, 53, 55, 58, 59, 52 landed and adjust the call sites.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `PLAN-161` (chat bridge) first adapts the existing `client.ts` chat calls and the views to B1 (bodies with `client_turn_id`/`turn_id`,
+  `ChatResource` reads through one normaliser). This plan replaces that adaptation and deletes it; the OBSERVED `client.ts` line refs are
+  stale since `a139ec62` (ended-work calls already migrated there) — re-ground at outline.
+- D4: `getEndedChat`/`acceptFollowUp` signatures carry `subjectKind`, `turnId` since `a139ec62`.
+- D2 (review chat) and the decomposition chat need the O10 route builders in `ChatRoutes`, absent at `a139ec62`; see the epic's Open Items.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

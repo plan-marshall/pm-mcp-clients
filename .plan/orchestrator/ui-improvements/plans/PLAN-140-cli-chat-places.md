@@ -138,6 +138,15 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; list which of PLAN-123, 30, 44 landed.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `StartApi` already runs the start chat on the B1 model (`a139ec62`); the HYPOTHESIS "StartApi needs the B1 route builders" is settled true.
+  This plan still replaces its 60 s polling with stream-following and the `start.chat.*` texts; `StartChatResource` deletion stays here.
+- **m5:** the poll loop `StartApi.java:158-160` (`LockSupport.parkNanos`, up to 600 GETs) does not check the interrupt flag. The
+  replacement must stop on interrupt; one test.
+- `PLAN-161` adapts `WorkActionsClient`/`WorkChatDialogue` to B1 first; this plan and `PLAN-138` replace that adaptation.
+- D2 (review/decomposition chat) needs the O10 route builders in `ChatRoutes` (absent at `a139ec62`); see the epic's Open Items.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

@@ -128,6 +128,14 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since. Settle each HYPOTHESIS. Re-check which plan claims each modal and the operator's answer to D-10.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) is knowingly broken against the mock until `PLAN-161`
+  (chat bridge) lands; `PLAN-148` marks the failing `showroom.spec.js` chat step `test.fixme`. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

@@ -170,6 +170,21 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-45, PLAN-147, PLAN-129, PLAN-130). Settle each HYPOTHESIS. Re-check the operator's answers to D-2 and D-3
 and that `needs-and-find.adoc` § `#reasons` still lists the closed list of 13.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+Operator decision 2026-11-13 ("Fold into PLAN-148"): PLAN-133 (#424, `a139ec62`) moved the mock onto the B1 chat contract and left the
+web chat behind. `pm-web-e2e/tests/showroom.spec.js:76-80` (the entry chat step on `ent-showroom`: `source-chat`, `chat-panel`,
+`chat-proposal`, `fsynced`) now fails against the mock, and this plan's head gate runs `-Pe2e`.
+
+- **D6 (new) — the e2e chat window.** Mark ONLY that chat step `test.fixme` (split it into its own `test` if needed, so the
+  sources and file-tree checks of the same test keep running), with a comment naming `PLAN-161` (the chat bridge), which removes the mark.
+  Do not touch the web client's chat code: `PLAN-161` migrates it. Any other e2e failure at the head that traces to the chat contract gets
+  the same treatment, each listed in the pull request body. Done when: `-Pe2e` passes at the head and the pull request lists every
+  `fixme` with its owner. Evidence order: `none`.
+- Surface: `pm-web-e2e/tests/showroom.spec.js` (present at `a139ec62`).
+- Rebase onto `a139ec62`: `running-work.json` and `fully-onboarded.json` changed heavily; the scenario loader now refuses unknown chat keys
+  at load. No source of this plan's surface conflicts.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

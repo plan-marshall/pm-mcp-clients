@@ -143,6 +143,14 @@ Read first: `doc/design/shared/texts-and-languages.adoc` (§ `#keys` bullets "On
 
 Re-read every file above at the then-current HEAD. Re-run the reader inventory and `corpus surfaces`. Settle each HYPOTHESIS. Re-check the operator's answers to D-8 and D-9.
 
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) is knowingly broken against the mock until `PLAN-161`
+  (chat bridge) lands; `PLAN-148` marks the failing `showroom.spec.js` chat step `test.fixme`. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
 ## Hand-Off Command
 
 Lane: `runbook`.
