@@ -129,8 +129,10 @@ class PmConsoleTest {
                 response.json(200, "[{\"label\":\"local browser\",\"paired_by\":\"open\"}]");
             } else if ("/api/v1/plans".equals(target)) {
                 response.json(200, "[\"plan fix-relay (running)\"]");
-            } else if ("/api/v1/plans/fix-relay".equals(target)) {
-                response.json(200, "{\"id\":\"fix-relay\",\"state\":\"running\"}");
+            } else if ("/api/v1/plans/fix-relay/process".equals(target)) {
+                // plan <id> reads the plan's process resource; the runtime has no bare plan resource
+                response.json(200, "{\"plan_id\":\"fix-relay\",\"current_phase\":\"execute\","
+                                    + "\"phase_state\":\"running\",\"nodes\":[]}");
             } else if ("/api/v1/epics/storage-v2".equals(target)) {
                 response.json(200, "{\"id\":\"storage-v2\",\"state\":\"active\"}");
             } else if ("/api/v1/questions".equals(target)) {
@@ -182,7 +184,7 @@ class PmConsoleTest {
                                                 "help names every registered verb, got: " + helpVerbs(output)),
                             () -> assertTrue(output.contains("Help for status:"), "Should show help for status"),
                             () -> assertTrue(output.contains("plan fix-relay (running)"), "Should list running plan"),
-                            () -> assertTrue(output.contains("\"id\":\"fix-relay\""), "Should show plan details"),
+                            () -> assertTrue(output.contains("fix-relay · execute · running"), "Should show plan details"),
                             () -> assertTrue(output.contains("\"id\":\"storage-v2\""), "Should show epic details"),
                             () -> assertTrue(output.contains("Q-007 (pending)"), "Should show questions"),
                             () -> assertTrue(output.contains("✓ Q-007 answered: 2.") || output.contains("✓ Q-007 beantwortet: 2."), () -> "Should answer question, but was:\n" + output),

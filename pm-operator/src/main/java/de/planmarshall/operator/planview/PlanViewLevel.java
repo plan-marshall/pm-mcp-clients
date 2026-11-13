@@ -649,7 +649,14 @@ public final class PlanViewLevel {
         return taskGlyph(job.status());
     }
 
-    private static String taskGlyph(@Nullable String status) {
+    /**
+     * The glyph of a leaf task's or leaf job's status, shared by the full-screen tree and the
+     * scrollback of {@code plan <id> --print} so both draw one mapping.
+     *
+     * @param status the status as the runtime sent it, or {@code null}
+     * @return the glyph of the status; the planned glyph for a status it does not know
+     */
+    public static String taskGlyph(@Nullable String status) {
         if (status == null) {
             return NodeState.PLANNED.glyph();
         }
