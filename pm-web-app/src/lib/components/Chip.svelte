@@ -4,12 +4,13 @@
   import { t } from '../i18n';
 
   /**
-   * An id, branch or version (VD-P-05) in `--text-xs` monospace on `--color-bg-subtle`, copied on
-   * click.
+   * An id, branch or version (VD-P-05, components-tags.adoc: chip) in `--text-xs` monospace on
+   * `--color-bg-subtle`, copied on click.
    *
-   * The value is the visible label, so a chip never says what it copies twice; its advisory names
-   * the act. A refused clipboard changes nothing on screen rather than claiming a copy that did not
-   * happen, and the confirmation clears itself.
+   * The value is the visible label, so a chip never says what it copies twice; its accessible name
+   * names the act with the value (`common.chip.copy`), so a keyboard, touch or screen-reader user
+   * learns that it copies without the hover advisory. A refused clipboard changes nothing on screen
+   * rather than claiming a copy that did not happen, and the confirmation clears itself.
    */
   export let value: string;
 
@@ -77,16 +78,19 @@
   onDestroy(() => clearTimeout(resetTimer));
 </script>
 
-<button
-  type="button"
-  class="chip"
-  data-advisory={$t('web.common.copy.title')}
-  use:advisory
-  on:click={copy}
->
-  <span class="chip__value">{value}</span>
-  <span class="chip__state" aria-live="polite">{copied ? $t('web.common.copied') : ''}</span>
-</button>
+{#if value}
+  <button
+    type="button"
+    class="chip"
+    aria-label={$t('common.chip.copy', { value })}
+    data-advisory={$t('web.common.copy.title')}
+    use:advisory
+    on:click={copy}
+  >
+    <span class="chip__value">{value}</span>
+    <span class="chip__state" aria-live="polite">{copied ? $t('web.common.copied') : ''}</span>
+  </button>
+{/if}
 
 <style>
   .chip {

@@ -21,7 +21,7 @@ describe('Tabs', () => {
     render(Tabs, { props: { tabs: TABS, active: 'open', label: LABEL } });
     const tabs = screen.getAllByRole('tab');
 
-    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Open 2', 'Done', 'Failed 3']);
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Open 2', 'Done', 'Failed ! 3']);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
     expect(tabs[2]).toHaveAttribute('aria-selected', 'false');
@@ -115,7 +115,7 @@ describe('Tabs', () => {
     render(Tabs, { props: { tabs: TABS, active: 'open', label: LABEL } });
     const badges = screen.getAllByTestId('count-badge');
 
-    expect(badges.map((badge) => badge.textContent?.trim())).toEqual(['2', '3']);
+    expect(badges.map((badge) => badge.textContent?.trim())).toEqual(['2', '! 3']);
     expect(screen.getByRole('tab', { name: /Done/ }).querySelector('[data-testid]')).toBeNull();
   });
 
