@@ -231,15 +231,12 @@ public final class NeedsOperatorNotices {
      */
     private Map<String, Integer> baselineOf(NeedsOperatorSummary summary) {
         var baseline = new LinkedHashMap<String, Integer>();
-        var takenPerKind = new LinkedHashMap<NeedsOperatorKind, Integer>();
         for (var item : summary.items()) {
-            var taken = takenPerKind.getOrDefault(item.kind(), 0);
-            if (taken < shownAtStart.getOrDefault(item.kind(), 0)) {
-                takenPerKind.put(item.kind(), taken + 1);
+            if (shownAtStart.getOrDefault(item.kind(), 0) > 0) {
+                shownAtStart.merge(item.kind(), -1, Integer::sum);
                 baseline.merge(identityOf(item), 1, Integer::sum);
             }
         }
-        takenPerKind.forEach((kind, taken) -> shownAtStart.merge(kind, -taken, Integer::sum));
         return baseline;
     }
 
