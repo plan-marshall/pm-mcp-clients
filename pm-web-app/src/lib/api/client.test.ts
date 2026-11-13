@@ -130,16 +130,9 @@ describe('ApiClient', () => {
     );
   });
 
-  it('fetches message catalogue and available locales via API', async () => {
+  it('fetches a message catalogue via API', async () => {
     // Arrange
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.endsWith('/api/v1/messages')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({ locales: ['en', 'de'], areas: ['common'] }),
-        });
-      }
       if (url.endsWith('/api/v1/messages/en/common')) {
         return Promise.resolve({
           ok: true,
@@ -151,11 +144,9 @@ describe('ApiClient', () => {
     });
 
     // Act
-    const meta = await client.getAvailableMessages();
     const messages = await client.getMessages('en', 'common');
 
     // Assert
-    expect(meta.locales).toContain('en');
     expect(messages['web.common.copy']).toBe('Copy');
   });
 
@@ -167,18 +158,6 @@ describe('ApiClient', () => {
           ok: true,
           status: 200,
           json: async () => [{ id: 'Q-007', title: 'Rebase conflict', subject: 'plan fix-relay' }],
-        });
-      }
-      if (url.endsWith('/api/v1/decisions/Q-007')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            id: 'Q-007',
-            title: 'Rebase conflict',
-            subject: 'plan fix-relay',
-            parts: [],
-          }),
         });
       }
       if (url.endsWith('/api/v1/decisions/Q-007/answer') && init?.method === 'POST') {
@@ -207,7 +186,6 @@ describe('ApiClient', () => {
 
     // Act
     const list = await client.getDecisions({ project: 'pm-mcp-clients' });
-    const single = await client.getDecision('Q-007');
     const answerRes = await client.answerDecision('Q-007', { option: '2' });
     const interp = await client.interpretDecision('Q-007', 'rebase');
     const withdrawRes = await client.withdrawDecision('Q-007');
@@ -215,7 +193,6 @@ describe('ApiClient', () => {
     // Assert
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('Q-007');
-    expect(single.id).toBe('Q-007');
     expect(answerRes.ok).toBe(true);
     expect(interp.read_back_text).toBe('Rebase onto main');
     expect(withdrawRes.ok).toBe(true);
@@ -1183,6 +1160,257 @@ describe('ApiClient', () => {
       expect(sent).toEqual([
         { method: 'POST', url: '/api/v1/plans/plan%201/holds/hold%2F7/resolve', body },
       ]);
+    });
+  });
+
+  describe('event streams', () => {
+    const encoder = new TextEncoder();
+
+    /** A stream body that sends the given text and stays open, or closes after it. */
+    function sseBody(text: string, close = false): ReadableStream<Uint8Array> {
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          if (text) controller.enqueue(encoder.encode(text));
+          if (close) controller.close();
+        },
+      });
+    }
+
+    beforeEach(() => {
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    });
+
+    it.each([
+      ['an unreachable runtime', () => Promise.reject(new TypeError('Failed to fetch'))],
+      ['an answer that is no stream', () => Promise.resolve({ ok: false, status: 503 })],
+    ])(
+      'reports %s as reconnecting, gives up offline after ten attempts and connects again on Try again',
+      async (_case, answer) => {
+        // Arrange
+        vi.useFakeTimers();
+        const fetchMock = vi.fn().mockImplementation(answer);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+
+        // Act: the first attempt and the nine retries, two seconds apart
+        const off = client.subscribeEvents(() => {});
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(9 * 2000);
+
+        // Assert: the indicator names what the stream does, and the attempts stop at the limit
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+        expect(states).toEqual(['connecting', 'reconnecting', 'offline']);
+        await vi.advanceTimersByTimeAsync(10 * 2000);
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+
+        // Act: the operator's Try again
+        client.retryEventStream();
+        await vi.advanceTimersByTimeAsync(0);
+
+        // Assert: one new attempt, reported as connecting again
+        expect(fetchMock).toHaveBeenCalledTimes(11);
+        expect(states.slice(3)).toEqual(['connecting', 'reconnecting']);
+        off();
+        expect(states.at(-1)).toBe('offline');
+      },
+    );
+
+    it('does not open a second connection on Try again while the stream is live', async () => {
+      // Arrange
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 200, body: sseBody('event: a\ndata: {}\n\n') });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const listener = vi.fn();
+      const off = client.subscribeEvents(listener);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+
+      // Act
+      client.retryEventStream();
+
+      // Assert
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it.each([
+      ['device_revoked', true],
+      ['device_expired', true],
+      ['listener_closed', false],
+    ])(
+      'ends the pairing when the stream closes with %s only if the device lost it',
+      async (reason, revoked) => {
+        // Arrange
+        const onRevoked = vi.fn();
+        client.setOnRevoked(onRevoked);
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          body: sseBody(`event: stream.closed\ndata: {"reason":"${reason}"}\n\n`),
+        }) as unknown as typeof fetch;
+        const listener = vi.fn();
+
+        // Act
+        const off = client.subscribeEvents(listener);
+        await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('stream.closed', { reason }));
+
+        // Assert
+        if (revoked) {
+          await vi.waitFor(() => expect(onRevoked).toHaveBeenCalledWith({ reason }));
+          expect(client.isPaired()).toBe(false);
+          expect(states.at(-1)).toBe('offline');
+        } else {
+          expect(onRevoked).not.toHaveBeenCalled();
+          expect(client.isPaired()).toBe(true);
+          expect(states.at(-1)).toBe('connected');
+        }
+        off();
+      },
+    );
+
+    it('hands data that is no JSON on as text and skips a message without data', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: ping\n\nevent: log.line\ndata: plain text\n\n'),
+      }) as unknown as typeof fetch;
+      const listener = vi.fn();
+
+      // Act
+      const off = client.subscribeEvents(listener);
+
+      // Assert
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('log.line', 'plain text'));
+      expect(listener).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it('keeps delivering to the other listeners when one of them throws', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: report.sent\ndata: {"subject":"Plan 7"}\n\n'),
+      }) as unknown as typeof fetch;
+      const broken = vi.fn(() => {
+        throw new Error('listener failed');
+      });
+      const healthy = vi.fn();
+      const states: string[] = [];
+      client.setOnStreamState((state) => states.push(state));
+
+      // Act
+      const offBroken = client.subscribeEvents(broken);
+      const offHealthy = client.subscribeEvents(healthy);
+
+      // Assert: the failure stays with its listener and is no stream failure
+      await vi.waitFor(() =>
+        expect(healthy).toHaveBeenCalledWith('report.sent', { subject: 'Plan 7' }),
+      );
+      expect(broken).toHaveBeenCalledTimes(1);
+      expect(states.at(-1)).toBe('connected');
+      offBroken();
+      offHealthy();
+    });
+
+    it('reads the activity of one task from its own route and stops on unsubscribe', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody(
+          'event: activity.entry\ndata: {"kind":"tool"}\n\nevent: activity.note\ndata: raw\n\n',
+        ),
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act
+      const off = client.subscribeTaskActivity('plan 1', 'task/2', onEvent);
+
+      // Assert
+      await vi.waitFor(() => expect(onEvent).toHaveBeenCalledWith('activity.note', 'raw'));
+      expect(onEvent).toHaveBeenCalledWith('activity.entry', { kind: 'tool' });
+      expect(String(fetchMock.mock.calls[0][0])).toBe(
+        'http://localhost:7420/api/v1/plans/plan%201/tasks/task%2F2/activity/events',
+      );
+      const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+      off();
+      expect(signal.aborted).toBe(true);
+    });
+
+    it('opens no activity stream without a pairing and delivers nothing for a refused one', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act: once unpaired, once refused
+      localStorage.clear();
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent)();
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Assert
+      expect(onEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  it('reads the runtime figures of the system snapshot under their wire names', async () => {
+    // Arrange: the runtime part as RuntimeMetrics writes it
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        runtime: {
+          version: '0.9.1',
+          build: '2026-11-01',
+          heap_used_bytes: 100,
+          heap_max_bytes: 400,
+          resident_memory_bytes: 300,
+          measured_at: '2026-11-13T10:00:00Z',
+          socket_listener: true,
+          loopback_listener: '127.0.0.1:7420',
+          network_listener: 'off',
+          paired_devices_count: 2,
+          newer_version: '0.9.2',
+          newer_version_date: '2026-11-10',
+          newer_version_checked_at: '2026-11-13T09:00:00Z',
+          release_notes_link: 'https://example.invalid/notes',
+          upgrade_supported: true,
+          upgrade_unsupported_reason: 'none',
+        },
+      }),
+    }) as unknown as typeof fetch;
+
+    // Act
+    const { runtime } = await client.getSystemSnapshot('hour');
+
+    // Assert: the view's names carry the wire values; a listener that is off is none
+    expect(runtime).toMatchObject({
+      version: '0.9.1',
+      build_date: '2026-11-01',
+      memory_used_bytes: 100,
+      memory_max_bytes: 400,
+      memory_resident_bytes: 300,
+      cpu_percent: null,
+      cpu_measured: false,
+      disk_measured_at: '2026-11-13T10:00:00Z',
+      socket_listener: true,
+      loopback_address: '127.0.0.1:7420',
+      lan_address: null,
+      lan_devices_count: 2,
+      upgrade_available_version: '0.9.2',
+      upgrade_available_date: '2026-11-10',
+      upgrade_checked_at: '2026-11-13T09:00:00Z',
+      upgrade_release_notes_url: 'https://example.invalid/notes',
+      upgrade_possible: true,
+      upgrade_disabled_reason: 'none',
     });
   });
 });

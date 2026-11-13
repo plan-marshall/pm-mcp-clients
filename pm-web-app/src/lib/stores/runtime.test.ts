@@ -711,3 +711,61 @@ describe('the recovery of a failed start', () => {
     expect(isRuntimeRecovering()).toBe(true);
   });
 });
+
+/** The events of the runtime stream the store follows itself. */
+describe('the runtime events the store follows', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState());
+  });
+
+  it('marks the network listener closed and open again as listener.changed names it', () => {
+    // Act: ListenerChangedEvent {listener, state, port}; this browser is on the loopback listener
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'closed', port: 7421 });
+
+    // Assert: the banner changes, the loopback browser stays where it is
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: true, currentRoute: 'overview' });
+    expect(get(runtimeStore).listenerClosedAt).not.toBeNull();
+
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'open', port: 7421 });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: false, listenerClosedAt: null });
+  });
+
+  it('ignores a change of the loopback listener', () => {
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'loopback', state: 'closed', port: 7420 });
+
+    // Assert
+    expect(get(runtimeStore).isListenerClosed).toBe(false);
+  });
+
+  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+    'tells the project views that %s happened',
+    (event) => {
+      // Act
+      handleRuntimeEvent(event, { project_id: 'pm-mcp-clients' });
+
+      // Assert
+      expect(get(runtimeStore).projectEventNotice).toMatch(new RegExp(`^${event}_\\d+$`));
+    },
+  );
+
+  it.each([
+    ['onboarding.step_completed', 'getOnboardingState'],
+    ['machine.settings_changed', 'getMachineSettings'],
+  ] as const)('reads again what %s changed', async (event, read) => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    const reread = vi.spyOn(apiClient, read).mockRejectedValue(new Error('not needed'));
+
+    // Act
+    handleRuntimeEvent(event, {});
+
+    // Assert
+    await vi.waitFor(() => expect(reread).toHaveBeenCalledTimes(1));
+  });
+});

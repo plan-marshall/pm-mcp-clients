@@ -3,7 +3,6 @@ import {
   apiClient,
   type StatusResponse,
   type StateRepresentation,
-  type HypermediaLink,
   type OnboardingState,
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
@@ -664,7 +663,7 @@ const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
  * that says why, with its pairing kept.
  */
 function markListenerClosed(): void {
-  const onLoopback = typeof window === 'undefined' || loopbackHosts.has(window.location.hostname);
+  const onLoopback = loopbackHosts.has(window.location.hostname);
   const closedAt = new Date().toISOString();
   runtimeStore.update((s) => ({
     ...s,
@@ -674,10 +673,14 @@ function markListenerClosed(): void {
   }));
 }
 
-/** A listener change for the LAN listener: closed marks this browser, any other state clears it. */
+/**
+ * A listener change for the LAN listener: closed marks this browser, any other state clears it.
+ *
+ * The event names the listener in `listener` (`ListenerChangedEvent {listener, state, port}`).
+ */
 function handleListenerChanged(data: unknown): void {
-  const changed = (data || {}) as { state?: string; kind?: string };
-  if (changed.kind !== 'lan') {
+  const changed = (data || {}) as { state?: string; listener?: string };
+  if (changed.listener !== 'lan') {
     return;
   }
   if (changed.state === 'closed') {
@@ -685,20 +688,6 @@ function handleListenerChanged(data: unknown): void {
   } else {
     runtimeStore.update((s) => ({ ...s, isListenerClosed: false, listenerClosedAt: null }));
   }
-}
-
-/** A state the runtime moved to: the current state, the step, and the `onboarded` flag. */
-function handleStateTransition(data: unknown): void {
-  const stateData = data as StateRepresentation;
-  if (!stateData?.state) {
-    return;
-  }
-  runtimeStore.update((s) => ({
-    ...s,
-    currentState: stateData,
-    activeStep: deriveStepFromState(stateData.state),
-    isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
-  }));
 }
 
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
@@ -793,7 +782,6 @@ function handleLifecycleEvent(event: string, data: unknown): void {
   }
 }
 
-const STATE_TRANSITION_EVENTS = new Set(['state_transition', 'check']);
 const REPORT_EVENTS = new Set(['report.sent', 'report.read']);
 const DECISION_EVENTS = new Set(['decision.opened', 'decision.answered', 'decision.closed']);
 const LIFECYCLE_EVENTS = new Set([
@@ -810,8 +798,6 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     }
   } else if (event === 'listener.changed') {
     handleListenerChanged(data);
-  } else if (STATE_TRANSITION_EVENTS.has(event)) {
-    handleStateTransition(data);
   } else if (REPORT_EVENTS.has(event)) {
     handleReportEvent(event, data);
   } else if (DECISION_EVENTS.has(event)) {
@@ -867,19 +853,6 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
-}
-
-export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {
-  const nextRep = await apiClient.followLink(link, body);
-  if (nextRep?.state) {
-    const activeStep = deriveStepFromState(nextRep.state);
-    runtimeStore.update((s) => ({
-      ...s,
-      currentState: nextRep,
-      activeStep,
-      isOnboarded: nextRep.state === 'onboard.completed' ? true : s.isOnboarded,
-    }));
-  }
 }
 
 /**
