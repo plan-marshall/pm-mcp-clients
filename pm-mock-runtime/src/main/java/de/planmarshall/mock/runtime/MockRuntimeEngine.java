@@ -132,6 +132,7 @@ import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.WorkLocation;
+import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -10591,7 +10592,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Builds the process-tree detail of a plan the scenario lists without a route of its own. The
      * tree carries the plan's own identity, its phase list is the template's, and every phase is
      * marked from the plan's own phase and state; nothing that identifies another plan (its epic,
-     * pull request, activity, tokens, duration or project) is copied.
+     * pull request, activity, tokens, duration or project) is copied. The members the process resource
+     * always carries ({@code tokens_so_far}, {@code duration_seconds}) are the plan's own: no token
+     * measured yet and no time run.
      *
      * @param template the template representation
      * @param planId   the requested plan id
@@ -10619,8 +10622,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
         copy.put("instance_version", 1);
+        copy.put("tokens_so_far", new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false).toMap());
         copy.put("nodes", phaseNodes(template, phase, phaseState));
         copy.put("current_position_path", List.of());
+        copy.put("duration_seconds", 0L);
         return copy;
     }
 
