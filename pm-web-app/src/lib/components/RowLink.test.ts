@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createRawSnippet } from 'svelte';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import RowLink from './RowLink.svelte';
+import { AUTHORITY_FORM } from '../../test/appPathAuthorityForms';
 import { ruleOf, rulesOf, styleOf } from '../../test/templateStyle';
 
 /**
@@ -91,12 +92,15 @@ describe('RowLink', () => {
     expect(onAnchor).not.toHaveBeenCalled();
   });
 
+  it.each(AUTHORITY_FORM)('draws %j (%s) as text with no anchor', (href) => {
+    const { container } = render(RowLink, { props: { href, title: 'Fix Relay Transport' } });
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.querySelector('[href]')).toBeNull();
+    expect(container.querySelector('.row-link__title')).toHaveTextContent('Fix Relay Transport');
+  });
+
   it.each([
-    ['//evil.example/x', 'a host after two slashes'],
-    ['/\\evil.example/x', 'a host after a slash and a backslash'],
-    ['/\t/evil.example/x', 'a tab between the two slashes'],
-    ['/\n/evil.example/x', 'a line feed between the two slashes'],
-    ['/\r/evil.example/x', 'a carriage return between the two slashes'],
     ['https://evil.example/x', 'a foreign origin'],
     ['javascript:alert(1)', 'a script address'],
     ['plans/relay', 'a relative address'],
@@ -109,7 +113,9 @@ describe('RowLink', () => {
   });
 
   it('takes the hover, the pointer and the focus ring on the whole row it opens', () => {
-    expect(ruleOf(STYLE, '.row-link--opens:hover')).toContain('background-color');
+    expect(ruleOf(STYLE, '.row-link--opens:not(.row-link--current):hover')).toContain(
+      'background-color',
+    );
     expect(ruleOf(STYLE, '.row-link--opens')).toContain('cursor: pointer');
     expect(ruleOf(STYLE, '.row-link:focus-within')).toContain('box-shadow: var(--focus-ring)');
   });
@@ -121,13 +127,28 @@ describe('RowLink', () => {
 
     expect(container.querySelector('.row-link')).not.toHaveClass('row-link--opens');
     expect(ruleOf(STYLE, '.row-link')).not.toContain('cursor: pointer');
-    expect(ruleOf(STYLE, '.row-link:hover')).toBe('');
+    // No stretched target is emitted for a row that opens nothing.
+    expect(ruleOf(STYLE, '.row-link__title::after')).toBe('');
+  });
+
+  it('keeps the selected row’s ground under the pointer', () => {
+    expect(ruleOf(STYLE, '.row-link--opens:not(.row-link--current):hover')).not.toBe('');
+    expect(ruleOf(STYLE, '.row-link--opens:hover')).toBe('');
+    expect(ruleOf(STYLE, '.row-link--current')).toContain(
+      'background-color: var(--color-brand-subtle)',
+    );
   });
 
   it('stretches the title link over the row without a numeric layer', () => {
-    expect(ruleOf(STYLE, '.row-link__title::after')).toContain('position: absolute');
-    expect(ruleOf(STYLE, '.row-link__title::after')).toContain('inset: 0');
+    expect(ruleOf(STYLE, 'a.row-link__title::after')).toContain('position: absolute');
+    expect(ruleOf(STYLE, 'a.row-link__title::after')).toContain('inset: 0');
     expect(STYLE).not.toMatch(/z-index/);
+  });
+
+  it('keeps the title on one line of the fixed row', () => {
+    expect(ruleOf(STYLE, '.row-link__title')).toContain('text-overflow: ellipsis');
+    expect(ruleOf(STYLE, '.row-link__title')).toContain('white-space: nowrap');
+    expect(ruleOf(STYLE, '.row-link__title')).toContain('min-inline-size: 0');
   });
 
   it('draws the selected row on the brand-subtle ground', () => {

@@ -155,4 +155,13 @@ describe('ReasonBadge', () => {
     expect(badge).toHaveTextContent('! another reason');
     expect(badge).toHaveClass('reason-badge--attention');
   });
+
+  it('keeps an unknown reason in the attention tone even when a caller asks for danger', () => {
+    useCatalogue('en');
+    const { container } = render(ReasonBadge, {
+      props: { reason: 'teleported', tone: 'danger' },
+    });
+
+    expect(container.querySelector('.reason-badge')).toHaveClass('reason-badge--attention');
+  });
 });

@@ -78,7 +78,8 @@
     cursor: pointer;
   }
 
-  .row-link--opens:hover {
+  /* A hover never replaces the selected row's ground: the selection stays visible under the pointer. */
+  .row-link--opens:not(.row-link--current):hover {
     background-color: var(--color-bg-subtle);
   }
 
@@ -101,15 +102,18 @@
     flex: 0 0 auto;
   }
 
+  /* The title is one line of the fixed-height row: a long one is cut, never wrapped into a taller row. */
   .row-link__title {
     min-inline-size: 0;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: inherit;
     text-decoration: none;
   }
 
-  /* The title's target, stretched over the whole row. */
-  .row-link__title::after {
+  /* The title's target, stretched over the whole row; a row that opens nothing has none. */
+  a.row-link__title::after {
     content: '';
     position: absolute;
     inset: 0;

@@ -91,7 +91,9 @@
   let { reason, count = 1, tone }: Props = $props();
 
   const known = $derived(isKnownReason(reason));
-  const resolvedTone = $derived(tone ?? toneOf(reason));
+  // A reason the catalogue does not know is drawn in the attention tone, whatever tone a caller names:
+  // the fallback word is no alarm.
+  const resolvedTone = $derived(known ? (tone ?? toneOf(reason)) : 'attention');
 </script>
 
 <span class="reason-badge reason-badge--{resolvedTone}">

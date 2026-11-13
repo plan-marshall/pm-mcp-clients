@@ -7,20 +7,22 @@
 
   /**
    * A web address: `http` or `https`, its two slashes, and then a character that is no slash, no
-   * backslash and no white space. A special scheme skips every slash and backslash after it
-   * (WHATWG URL spec, "special authority ignore slashes state"), so `https:///host` and
-   * `https:\\host` name the host `host` instead of a path - a form a harmless `https://host` never
-   * takes.
+   * backslash and no white space.
+   *
+   * A special scheme skips every slash and backslash after it (WHATWG URL spec, "special authority
+   * ignore slashes state"), so `https:host`, `https:/host`, `https:///host` and `https:\\host` all
+   * name the host `host`. Only the canonical spelling is admitted: in the others what a reader sees
+   * is not the address the browser opens.
    */
   const WEB_ADDRESS = /^https?:\/\/[^/\\\s]/i;
 
   /**
    * @param href the address a caller hands in
    * @returns whether, without the white space around it, it is an absolute http or https URL
-   *   written with exactly the two slashes right after the scheme: `https:example.org`,
-   *   `https:/example.org`, `https:///example.org` and `https:\\example.org` all supply a host of
-   *   their own - a browser resolves the first two against the page's own address and reads the
-   *   last two as the host `example.org`
+   *   written with exactly the two slashes right after the scheme. `https:host`, `https:/host`,
+   *   `https:///host` and `https:\\host` are refused although a URL parser reads each of them as
+   *   the host `host`: their visible text and their destination would disagree. A C0 control
+   *   character, in front of the address or inside it, is refused too.
    */
   export function isWebAddress(href: string): boolean {
     const address = href.trim();

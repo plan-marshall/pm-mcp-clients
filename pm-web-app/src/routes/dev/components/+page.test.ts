@@ -268,8 +268,10 @@ describe('/dev/components page fixture', () => {
 
     it('draws the three conformed tags once each', () => {
       const [light] = renderThemes('en');
+      // The five tones of the status section, the row fixture's state, the selected row's and the example row's.
+      const STATUS_LABELS = 5 + 1 + 1 + 1;
 
-      expect(light.querySelectorAll('.status-label')).toHaveLength(5 + 2 + 1);
+      expect(light.querySelectorAll('.status-label')).toHaveLength(STATUS_LABELS);
       expect(light.querySelectorAll('[data-testid="count-badge"]').length).toBeGreaterThanOrEqual(3);
       expect(light.querySelectorAll('button.chip').length).toBeGreaterThanOrEqual(1);
     });
