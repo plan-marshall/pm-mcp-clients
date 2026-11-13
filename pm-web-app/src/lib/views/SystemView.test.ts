@@ -395,6 +395,23 @@ describe('SystemView component', () => {
     await waitFor(() => {
       expect(screen.getByText('Copy the command')).toBeInTheDocument();
     });
+    // The runtime.stopping event carries neither who nor when: the page invents neither.
+    const stopped = screen.getByRole('region', { name: 'Stopped runtime' });
+    expect(within(stopped).getByRole('heading')).toHaveTextContent(/^The runtime is stopped\.$/);
+  });
+
+  it('names who stopped the runtime and when, where the runtime recorded both', async () => {
+    runtimeStore.update((s) => ({
+      ...s,
+      isStopped: true,
+      stoppedInfo: { who: 'by the console', time: new Date(2026, 10, 13, 14, 12).toISOString() },
+    }));
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+
+    const stopped = await screen.findByRole('region', { name: 'Stopped runtime' });
+    expect(within(stopped).getByRole('heading')).toHaveTextContent(/^The runtime is stopped \(by the console, .*14:12\)\.$/);
   });
 
   it('remembers the window, the grouping, and the project per browser', async () => {

@@ -747,7 +747,17 @@ export function advanceLifecycleEpoch(): number {
   return lifecycleEpoch;
 }
 
-/** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
+/**
+ * @param data the payload of a `runtime.stopping` event, `{lifecycle_state, then}`
+ * @returns whether the stop is a restart: its `then` is `restart`, or the runtime already reports
+ *   itself running again
+ */
+function isRestart(data: unknown): boolean {
+  const payload = (data || {}) as { then?: string; lifecycle_state?: string };
+  return payload.then === 'restart' || payload.lifecycle_state === 'running';
+}
+
+/** The runtime's lifecycle: a drain, a withdrawn drain, a restart, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
   advanceLifecycleEpoch();
   if (event === 'runtime.draining') {
@@ -773,6 +783,10 @@ function handleLifecycleEvent(event: string, data: unknown): void {
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+  } else if (isRestart(data)) {
+    // A restart has its successor started on the same release: the drain ends, but the runtime
+    // is not stopped, so no page tells the operator to start it on the machine.
+    runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null, isStopped: false }));
   } else {
     runtimeStore.update((s) => ({
       ...s,

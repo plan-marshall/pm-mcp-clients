@@ -301,6 +301,39 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
   });
 
+  it('marks the runtime stopped when a stop that exits arrives', () => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', { lifecycle_state: 'stopped', then: 'exit' });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
+  });
+
+  it.each([
+    ['a drain that ended in a restart', { lifecycle_state: 'running', then: 'restart' }],
+    ['a restart now', { lifecycle_state: 'stopping', then: 'restart' }],
+  ])('never shows the stopped page for %s', (_case, payload) => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', payload);
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({
+      isDraining: false,
+      drainInfo: null,
+      isStopped: false,
+    });
+  });
+
   it('reads the who and remaining_count draining fields', () => {
     // Arrange
     runtimeStore.set(makeRuntimeState({ isStopped: true }));

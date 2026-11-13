@@ -63,6 +63,16 @@
   let isMounted = true;
 
   /**
+   * Who stopped the runtime and when, where the runtime recorded both; `null` otherwise, and the
+   * stopped page then says only that the runtime is stopped rather than inventing either.
+   */
+  const stoppedBy = $derived.by(() => {
+    const info = $runtimeStore.stoppedInfo;
+    const time = formatTime(info?.time, 'short', $currentLocale);
+    return info?.who && time ? { who: info.who, time } : null;
+  });
+
+  /**
    * Reads the filters the browser remembered, keeping only values this view understands.
    */
   function restoreFilters(): void {
@@ -744,7 +754,11 @@
     </div>
   {:else if $runtimeStore.isStopped}
     <div class="stopped-panel" role="region" aria-label={$t('system.stopped.region')}>
-      <h2 class="stopped-title">{$t('system.stopped.title', { who: 'operator', time: 'now' })}</h2>
+      <h2 class="stopped-title">
+        {stoppedBy
+          ? $t('system.stopped.title', { who: stoppedBy.who, time: stoppedBy.time })
+          : $t('system.stopped.title_plain')}
+      </h2>
       <p class="stopped-desc">
         {$t('system.stopped.how', { command: 'pm-operator runtime start' })}
       </p>
