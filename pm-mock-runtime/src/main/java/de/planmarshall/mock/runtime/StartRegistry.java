@@ -109,6 +109,9 @@ final class StartRegistry {
     private static final String KEY_ENDED_WORK = "ended_work";
     /** The head of every refusal of a defective ended-work fixture. */
     private static final String MALFORMED_ENDED_WORK = "Malformed facts.runtime.start." + KEY_ENDED_WORK;
+    /** The refusal of an ended item that is no object or names no subject. */
+    private static final String MALFORMED_ENDED_ITEM = MALFORMED_ENDED_WORK
+            + ": each item needs a subject_id and a recognized subject_kind";
     private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_NEED = "need";
     private static final String KEY_REASON = "reason";
@@ -406,32 +409,32 @@ final class StartRegistry {
      *
      * @param scenario the scenario
      * @param stateId  the state whose start fixture is read, may be {@code null}
-     * @throws IllegalStateException if an ended item lacks a subject id or a recognized subject kind, or
-     *                               two ended items share a subject id
+     * @throws IllegalStateException if an ended item is not an object, lacks a subject id or a recognized
+     *                               subject kind, or two ended items share a subject id
      */
     static void validateEndedWork(Scenario scenario, @Nullable String stateId) {
         endedWorkOf(startFixtureOf(scenario, stateId));
     }
 
     /**
-     * Reads the ended work of a start fixture, keyed by subject id. An ended item without a subject id
-     * or a recognized subject kind is refused, and so are two ended items with the same subject id,
-     * whatever their kind: the later one would replace the earlier one silently.
+     * Reads the ended work of a start fixture, keyed by subject id. An ended item that is not an object
+     * or has no subject id or recognized subject kind is refused, and so are two ended items with the
+     * same subject id, whatever their kind: the later one would replace the earlier one silently.
      *
      * @param fixture the state's start fixture
      * @return the ended work by subject id, in fixture order
-     * @throws IllegalStateException if an ended item lacks a subject id or a recognized subject kind, or
-     *                               two ended items share a subject id
+     * @throws IllegalStateException if an ended item is not an object, lacks a subject id or a recognized
+     *                               subject kind, or two ended items share a subject id
      */
     private static Map<String, EndedWork> endedWorkOf(Map<String, Object> fixture) {
+        requireObjectItems(fixture.get(KEY_ENDED_WORK));
         var projectId = projectOf(fixture);
         var read = new LinkedHashMap<String, EndedWork>();
         for (var object : objects(fixture.get(KEY_ENDED_WORK))) {
             var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
             var subjectKind = EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND));
             if (subjectId == null || subjectKind == null) {
-                throw new IllegalStateException(MALFORMED_ENDED_WORK
-                        + ": each item needs a subject_id and a recognized subject_kind");
+                throw new IllegalStateException(MALFORMED_ENDED_ITEM);
             }
             var ended = new EndedWork(subjectId, subjectKind, projectId, JsonTree.string(object, KEY_OUTCOME));
             if (read.putIfAbsent(subjectId, ended) != null) {
@@ -440,6 +443,25 @@ final class StartRegistry {
             }
         }
         return read;
+    }
+
+    /**
+     * Refuses an ended-work array with an element that is not an object, which {@link #objects(Object)}
+     * would skip silently; an absent or non-array value is left to the reader.
+     *
+     * @param endedWork the fixture's ended-work value, may be {@code null}
+     * @throws IllegalStateException if an element of the array is not an object
+     */
+    private static void requireObjectItems(@Nullable Object endedWork) {
+        var items = JsonTree.asArray(endedWork);
+        if (items == null) {
+            return;
+        }
+        for (var item : items) {
+            if (JsonTree.asObject(item) == null) {
+                throw new IllegalStateException(MALFORMED_ENDED_ITEM);
+            }
+        }
     }
 
     private void seedEntry(Map<String, Object> fixture) {

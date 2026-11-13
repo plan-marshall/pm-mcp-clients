@@ -1778,21 +1778,16 @@ class MockRuntimeEngineTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"without subject_id", "without subject_kind", "with an unrecognized subject_kind"})
-    @DisplayName("refuses an ended item without a subject id or a recognized subject kind at the start and at a jump")
+    @ValueSource(strings = {"without subject_id", "without subject_kind", "with an unrecognized subject_kind",
+            "with a non-object item"})
+    @DisplayName("refuses a non-object ended item or one without subject id or known kind, at start and at a jump")
     void refusesMalformedEndedWork(String defect) {
         var before = engine.currentScenario().name();
         var reference = StandardScenarios.PROJECTS_AND_START + "#start.follow-up";
         var scenario = registry.resolve(reference);
         var ended = new ArrayList<Object>(Objects.requireNonNull(JsonTree.asArray(
                 member(runtimeFixture(scenario, scenario.start()), "start").get("ended_work"))));
-        var malformed = new LinkedHashMap<String, Object>(Objects.requireNonNull(JsonTree.asObject(ended.getFirst())));
-        switch (defect) {
-            case "without subject_id" -> malformed.remove("subject_id");
-            case "without subject_kind" -> malformed.remove("subject_kind");
-            default -> malformed.put("subject_kind", "unknown-" + Generators.letterStrings(4, 10).next());
-        }
-        ended.set(0, malformed);
+        ended.set(0, malformedEndedItem(defect, Objects.requireNonNull(JsonTree.asObject(ended.getFirst()))));
         var broken = withStartRuntimeFixture(reference, runtime -> {
             var start = member(runtime, "start");
             start.put("ended_work", ended);
@@ -1807,8 +1802,8 @@ class MockRuntimeEngineTest {
         var atStart = assertThrows(IllegalStateException.class, () -> engine.switchScenario(brokenName));
         var unchanged = engine.currentScenario().name();
         engine.switchScenario(jumpName);
-        var brokenState = broken.start();
-        var atJump = assertThrows(IllegalStateException.class, () -> engine.goToState(brokenState));
+        var jumpTarget = broken.start();
+        var atJump = assertThrows(IllegalStateException.class, () -> engine.goToState(jumpTarget));
 
         var expected = "Malformed facts.runtime.start.ended_work: each item needs a subject_id and a recognized "
                 + "subject_kind";
@@ -1816,6 +1811,24 @@ class MockRuntimeEngineTest {
                 () -> assertEquals(expected, atStart.getMessage()),
                 () -> assertEquals(expected, atJump.getMessage()),
                 () -> assertEquals(before, unchanged, "the refused switch changes nothing"));
+    }
+
+    /**
+     * @param defect   the defect the ended item carries, as named by {@link #refusesMalformedEndedWork(String)}
+     * @param original a well-formed ended item
+     * @return the ended item with the defect: a copy without a member, with an unknown kind, or no object
+     */
+    private static Object malformedEndedItem(String defect, Map<String, Object> original) {
+        var malformed = new LinkedHashMap<String, Object>(original);
+        switch (defect) {
+            case "without subject_id" -> malformed.remove("subject_id");
+            case "without subject_kind" -> malformed.remove("subject_kind");
+            case "with a non-object item" -> {
+                return Generators.integers().next();
+            }
+            default -> malformed.put("subject_kind", "unknown-" + Generators.letterStrings(4, 10).next());
+        }
+        return malformed;
     }
 
     /**
