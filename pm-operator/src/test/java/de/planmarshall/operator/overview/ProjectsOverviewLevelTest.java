@@ -64,11 +64,14 @@ class ProjectsOverviewLevelTest {
     @Test
     @DisplayName("two items of one kind and one link that belong to different work get distinct row ids")
     void itemsOfOneKindAndLinkGetDistinctRowIds() {
+        // One kind, one link and one moment: only the plan the item belongs to tells the two apart,
+        // so a row id that drops the work location gives both the same id.
         var link = "/api/v1/plans/shared";
+        var since = baseInstant.minusSeconds(60);
         var first = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, link, null, null,
-                            new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
+                            new WorkLocation("plan-1", "Plan One"), since, "plan");
         var second = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, link, null, null,
-                            new WorkLocation("plan-2", "Plan Two"), baseInstant.minusSeconds(30), "plan");
+                            new WorkLocation("plan-2", "Plan Two"), since, "plan");
         var level = new ProjectsOverviewLevel(List.of(),
                             new NeedsOperatorPage(1, 1, false, false, 2, List.of(first, second)));
 

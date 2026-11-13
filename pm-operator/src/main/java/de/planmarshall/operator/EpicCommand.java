@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -466,8 +467,6 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class NextCommand implements Callable<Integer> {
         private static final String OPTION_KEY = "control.epic.next.option.";
-        private static final List<String> OPTION_KEYS = List.of(OPTION_KEY + "raise_scope",
-                            OPTION_KEY + "no_raise", OPTION_KEY + "no_input");
 
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
@@ -498,9 +497,25 @@ public final class EpicCommand implements Callable<Integer> {
          * @param built the specification picocli built for the verb
          */
         @Spec
-        void spec(CommandSpec built) {
+        void bindSpec(CommandSpec built) {
             this.spec = built;
-            built.resourceBundle(new CatalogueBundle(context.clientEnvironment().locale(), OPTION_KEYS));
+            built.resourceBundle(new CatalogueBundle(context.clientEnvironment().locale(), optionKeys()));
+        }
+
+        /**
+         * The catalogue keys of the option descriptions, read from the verb's {@code @Option}
+         * declarations, so an option added with a description key enters the catalogue bundle
+         * without a second list to keep in step.
+         *
+         * @return the description keys of the options, in declaration order
+         */
+        static List<String> optionKeys() {
+            return Arrays.stream(NextCommand.class.getDeclaredFields())
+                                .map(field -> field.getAnnotation(Option.class))
+                                .filter(Objects::nonNull)
+                                .map(Option::descriptionKey)
+                                .filter(key -> !key.isEmpty())
+                                .toList();
         }
 
         @Override

@@ -28,6 +28,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -204,6 +205,34 @@ class ConsoleNeedsNoticeTest {
                             () -> assertEquals(1, raised.size(), raised.toString()),
                             () -> assertEquals(added, raised.getFirst().place())
         );
+    }
+
+    @Test
+    @DisplayName("a negative count in the status read showed nothing: the first item is announced")
+    void negativeStatusCountShowsNothing() {
+        var key = Generators.letterStrings(4, 12).next();
+        var negative = JsonNumber.of(-(long) Generators.integers(1, 1000).next());
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", negative)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertEquals(1, raised.size(), raised.toString());
+    }
+
+    @Test
+    @DisplayName("a count beyond the int range in the status read is the largest count: nothing is announced")
+    void hugeStatusCountIsClampedToTheLargest() {
+        var key = Generators.letterStrings(4, 12).next();
+        var huge = JsonNumber.of(Integer.MAX_VALUE + (long) Generators.integers(1, 1000).next());
+        var notices = new NeedsOperatorNotices();
+        notices.seedFromStatus(Map.of("needs_operator", Map.of("credential", huge)));
+
+        var raised = notices.noticesOf("en", "needs_operator.changed", machineEvent("credential", 1,
+                            item("credential", "/api/v1/credentials/" + key)));
+
+        assertTrue(raised.isEmpty(), raised.toString());
     }
 
     private PmConsole console() {

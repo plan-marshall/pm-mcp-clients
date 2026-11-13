@@ -20,8 +20,10 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import de.planmarshall.api.display.Display;
@@ -323,6 +325,17 @@ class OverviewFormattingTest {
         assertTrue(OverviewFormatting.needsOperator(epicWithAttention));
     }
 
+    @Test
+    @DisplayName("the expected English words name every kind of the contract, and no kind it lacks")
+    void needsWordsCoverEveryKind() {
+        var missing = Arrays.stream(NeedsOperatorKind.values())
+                            .filter(kind -> !NEEDS_WORDS_EN.containsKey(kind))
+                            .toList();
+
+        assertEquals(List.of(), missing, "NEEDS_WORDS_EN lacks the expected English word of " + missing);
+        assertEquals(NeedsOperatorKind.values().length, NEEDS_WORDS_EN.size());
+    }
+
     @ParameterizedTest(name = "{0}")
     @EnumSource(NeedsOperatorKind.class)
     @DisplayName("formatNeedsItem methods cover the subject, the kind word, blocks and since of every kind")
@@ -336,8 +349,10 @@ class OverviewFormattingTest {
         assertEquals("", OverviewFormatting.formatNeedsItemKind(null, "en"));
 
         // The kind word, in the operator's language, and English for a language the catalogue lacks.
-        assertEquals(NEEDS_WORDS_EN.get(kind), OverviewFormatting.formatNeedsItemKind(kind, "en"));
-        assertEquals(NEEDS_WORDS_EN.get(kind), OverviewFormatting.formatNeedsItemKind(kind, "fr"));
+        var english = Objects.requireNonNull(NEEDS_WORDS_EN.get(kind),
+                            "NEEDS_WORDS_EN has no expected English word for " + kind);
+        assertEquals(english, OverviewFormatting.formatNeedsItemKind(kind, "en"));
+        assertEquals(english, OverviewFormatting.formatNeedsItemKind(kind, "fr"));
         var german = OverviewFormatting.formatNeedsItemKind(kind, "de");
         assertFalse(german.isBlank(), "de has no word for " + kind);
         assertFalse(german.contains("."), "a catalogue key leaked: " + german);

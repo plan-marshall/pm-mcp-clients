@@ -307,15 +307,21 @@ class FindCommandTest {
                                         return terminal;
                                     }, null);
                 var out = new StringWriter();
+                var err = new StringWriter();
 
-                PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()), "find",
-                                    "relay");
+                var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "find", "relay");
 
                 var output = out.toString();
+                // Match 2 is the running plan fix-relay. The match list names it by its title and
+                // only names its id at the end of "opens with plan fix-relay"; the plan view alone
+                // prints the plan's head line, "<plan id> · <phase> · <state>".
                 assertAll(
+                                    () -> assertEquals(0, code, "the opened view finishes: " + output + "\n" + err),
                                     () -> assertFalse(output.contains("is not offered here"),
                                                         "the chosen number reaches the reader: " + output),
                                     () -> assertTrue(output.contains(RUNNING_TITLE), output),
+                                    () -> assertTrue(output.contains("fix-relay · "),
+                                                        "the selected plan view printed its head line: " + output),
                                     () -> assertEquals(1, opened.get(),
                                                         "the opened view draws on the lent terminal: " + output)
                 );

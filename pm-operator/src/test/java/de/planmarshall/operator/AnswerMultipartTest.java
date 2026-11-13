@@ -273,6 +273,28 @@ class AnswerMultipartTest {
         assertEquals(reading, body.get("words"), postedBodies.get(0));
     }
 
+    @Test
+    @DisplayName("a clarified reading without read-back text keeps the operator's reply in the answer")
+    void clarifiedReplyKeptWithoutReadBackText() throws Exception {
+        var unclearWords = words();
+        var question = words();
+        var reply = words();
+        var interpreted = new ArrayList<String>();
+        serveOwnWords(interpreted, words -> words.equals(unclearWords)
+                            ? "{\"interpretation_type\":\"unclear\",\"clarification_question\":\"%s\"}".formatted(question)
+                            : "{\"interpretation_type\":\"own_option\"}");
+
+        var code = run("w\n" + unclearWords + "\n" + reply + "\n\n", "answer", "Q-001", "-i");
+
+        assertEquals(0, code, err.toString());
+        assertEquals(List.of(unclearWords, unclearWords + ". " + reply), interpreted);
+        assertEquals(1, postedBodies.size(), postedBodies.toString());
+        var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
+        var posted = String.valueOf(body.get("words"));
+        assertTrue(posted.contains(reply), postedBodies.get(0));
+        assertEquals(unclearWords + ". " + reply, posted, postedBodies.get(0));
+    }
+
     /** Free words an operator types: letters only, so no word is read as a key of the dialogue. */
     private static String words() {
         return Generators.letterStrings(4, 10).next() + " " + Generators.letterStrings(4, 10).next();

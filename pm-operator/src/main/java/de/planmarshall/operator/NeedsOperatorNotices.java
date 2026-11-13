@@ -71,6 +71,9 @@ public final class NeedsOperatorNotices {
 
     private static final String MACHINE = "machine";
 
+    /** The member that counts what waits, in the status read and in the event's payload. */
+    private static final String NEEDS_OPERATOR_KEY = "needs_operator";
+
     /** The last summary read per place, keyed by the place the event carries. */
     private final Map<String, Map<String, Integer>> lastSeen = new ConcurrentHashMap<>();
 
@@ -103,7 +106,7 @@ public final class NeedsOperatorNotices {
     public void seedFromStatus(Map<String, Object> status) {
         Objects.requireNonNull(status, "status");
         var shown = new LinkedHashMap<NeedsOperatorKind, Integer>();
-        if (status.get("needs_operator") instanceof Map<?, ?> needs) {
+        if (status.get(NEEDS_OPERATOR_KEY) instanceof Map<?, ?> needs) {
             for (var entry : needs.entrySet()) {
                 var count = countOf(entry.getValue());
                 if (count > 0) {
@@ -125,7 +128,7 @@ public final class NeedsOperatorNotices {
         }
         if (value instanceof JsonNumber jsonNumber) {
             try {
-                return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, jsonNumber.longValue()));
+                return Math.clamp(jsonNumber.longValue(), 0, Integer.MAX_VALUE);
             } catch (NumberFormatException _) {
                 return 0;
             }
@@ -191,9 +194,9 @@ public final class NeedsOperatorNotices {
 
     private static @Nullable NeedsOperatorSummary summaryOf(Map<String, Object> event) {
         var payload = ConsoleNotice.payloadOf(event);
-        var raw = JsonTree.asObject(payload.get("needs_operator"));
+        var raw = JsonTree.asObject(payload.get(NEEDS_OPERATOR_KEY));
         if (raw == null) {
-            raw = JsonTree.asObject(event.get("needs_operator"));
+            raw = JsonTree.asObject(event.get(NEEDS_OPERATOR_KEY));
         }
         if (raw == null) {
             return null;

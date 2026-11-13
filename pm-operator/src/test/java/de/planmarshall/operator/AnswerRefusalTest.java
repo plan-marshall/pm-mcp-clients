@@ -175,6 +175,27 @@ class AnswerRefusalTest {
     }
 
     @Test
+    @DisplayName("a supporting vote with the summary's reason is never named as the dissenter")
+    void dissentNeverNamesSupporter() throws Exception {
+        var supporter = text();
+        var dissenter = text();
+        var summary = text();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target())) {
+                response.json(200, sharedReasonEnvelope(supporter, dissenter, summary));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
+
+        assertEquals(3, code);
+        assertTrue(out.toString().contains("Against it (" + dissenter + "): " + summary), out.toString());
+        assertFalse(out.toString().contains("Against it (" + supporter + ")"), out.toString());
+    }
+
+    @Test
     @DisplayName("with --plan a 404 on the answer sends nothing to the unscoped path")
     void scopedNotFoundStaysScoped() throws Exception {
         var planId = text();
@@ -276,6 +297,33 @@ class AnswerRefusalTest {
                               }]
                             }
                             """.formatted(summary, firstVoter, firstReason, dissenter, summary);
+    }
+
+    /**
+     * The recommended option carries the summary and a supporting vote whose reason is the summary,
+     * listed before the dissenting vote of the other option, which gives the same reason.
+     */
+    private static String sharedReasonEnvelope(String supporter, String dissenter, String summary) {
+        return """
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
+                              "scope": "plan", "blocks": "plan", "reversibility": "reversible",
+                              "parts": [{
+                                "part_id": "1", "question": "Which strategy?", "recommendation": "1",
+                                "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
+                                "options": [
+                                  {"key": "1", "label": "Rebase",
+                                   "quorum_support": {"band": "clear_majority", "votes_count": 2, "total_votes": 3,
+                                     "models_count": 2, "dissent_summary": "%s",
+                                     "votes": [{"role": "%s", "model": "gpt-4o", "reason": "%s"}]}},
+                                  {"key": "2", "label": "Merge",
+                                   "quorum_support": {"band": "clear_majority", "votes_count": 1, "total_votes": 3,
+                                     "models_count": 1,
+                                     "votes": [{"role": "%s", "model": "gpt-4o", "reason": "%s"}]}}
+                                ]
+                              }]
+                            }
+                            """.formatted(summary, supporter, summary, dissenter, summary);
     }
 
     private static String planEnvelope() {

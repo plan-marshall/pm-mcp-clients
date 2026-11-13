@@ -134,14 +134,28 @@ final class DialogueHarness implements AutoCloseable {
             throw new IllegalStateException("GET /mock/acts answered " + response.status()
                                 + ": " + response.bodyText());
         }
-        var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+        return actsOf(response.bodyText());
+    }
+
+    /**
+     * Reads the acts of one {@code GET /mock/acts} answer. An act that carried no body — the member
+     * is absent, as the mock leaves it on every act that is not a decision act, or {@code null} —
+     * reads with the empty body, as {@link Act} and the mock's README state.
+     *
+     * @param json the answer's body
+     * @return the acts, oldest first
+     * @throws IOException if the answer is no JSON
+     */
+    static List<Act> actsOf(String json) throws IOException {
+        var body = JsonTree.asObject(JsonTree.parse(json));
         var acts = new ArrayList<Act>();
         if (body != null && body.get("acts") instanceof List<?> entries) {
             for (var entry : entries) {
                 var map = JsonTree.asObject(entry);
                 if (map != null) {
+                    var actBody = JsonTree.string(map, "body");
                     acts.add(new Act(JsonTree.string(map, "method"), JsonTree.string(map, "path"),
-                                        JsonTree.string(map, "state"), JsonTree.string(map, "body")));
+                                        JsonTree.string(map, "state"), actBody == null ? "" : actBody));
                 }
             }
         }

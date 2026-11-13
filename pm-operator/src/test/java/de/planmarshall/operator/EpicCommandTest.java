@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -20,7 +21,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -31,9 +34,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import picocli.CommandLine;
+import picocli.CommandLine.Model.OptionSpec;
 
 @DisplayName("EpicCommand")
 @EnableGeneratorController
@@ -515,6 +522,30 @@ class EpicCommandTest {
                                                     "Ask nothing: without --raise-scope or --no-raise, a full scope stops here",
                                                     String.join(" ", spec.findOption("--no-input").description()))
             );
+        }
+
+        @ParameterizedTest(name = "locale {0}")
+        @ValueSource(strings = {"en_US.UTF-8", "de_DE.UTF-8"})
+        @DisplayName("every description key an option declares is in the catalogue bundle")
+        void everyOptionKeyInBundle(String language) {
+            var environment = new HashMap<>(fixture.environment());
+            environment.put("LANG", language);
+            var context = new OperatorContext(environment, tempDir, true);
+            var spec = new CommandLine(new EpicCommand.NextCommand(context)).getCommandSpec();
+            var declared = spec.options().stream()
+                                .map(OptionSpec::descriptionKey)
+                                .filter(key -> key != null && !key.isEmpty())
+                                .toList();
+            var bundle = spec.resourceBundle();
+
+            assertFalse(declared.isEmpty(), "NextCommand declares no description key");
+            assertNotNull(bundle, "no catalogue bundle is set");
+            List<Executable> checks = declared.stream()
+                                .<Executable>map(key -> () -> assertTrue(bundle.containsKey(key),
+                                                    "option description key not in the catalogue bundle: " + key))
+                                .toList();
+            assertAll(checks);
+            assertEquals(Set.copyOf(declared), Set.copyOf(EpicCommand.NextCommand.optionKeys()));
         }
     }
 

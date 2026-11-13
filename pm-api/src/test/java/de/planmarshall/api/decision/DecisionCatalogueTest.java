@@ -16,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,9 @@ import de.planmarshall.api.message.MessageCatalogue;
 
 @DisplayName("Decision Message Catalogue Tests (UC-PLN-2)")
 class DecisionCatalogueTest {
+
+    /** The position the German project fallback must read in: {@code {project}} after "von" or "in". */
+    private static final Pattern VON_IN_PROJECT = Pattern.compile("\\b(?:von|in) \\{project\\}");
 
     @Test
     @DisplayName("decisions area contains expected keys in en and de")
@@ -92,6 +98,39 @@ class DecisionCatalogueTest {
         var sentence = MessageCatalogue.format("de", key, withFallback);
 
         assertEquals(expected, sentence);
+    }
+
+    /**
+     * The inventory of {@link #germanProjectTemplates()} is derived from the German pack, not kept
+     * by hand: every template of the {@code decisions} pack whose value puts {@code {project}} after
+     * "von" or "in" (the predicate {@link #VON_IN_PROJECT}, the position in which the fallback "dem
+     * Projekt" must read as a dative) has a case, and every case names such a template. A new
+     * template of that shape without a case fails here with its key named. Every {@code {project}}
+     * the pack carries today stands in that position.
+     */
+    @Test
+    @DisplayName("every German template with the project after von or in has a case, and every case is one")
+    void germanProjectTemplatesAreDerivedFromThePack() {
+        var derived = new TreeSet<String>();
+        for (var entry : MessageCatalogue.getMessages("de", "decisions").entrySet()) {
+            if (VON_IN_PROJECT.matcher(entry.getValue()).find()) {
+                derived.add(entry.getKey());
+            }
+        }
+        var cased = germanProjectTemplates()
+                .map(arguments -> (String) arguments.get()[0])
+                .collect(Collectors.toCollection(TreeSet::new));
+
+        var withoutCase = new TreeSet<>(derived);
+        withoutCase.removeAll(cased);
+        var stale = new TreeSet<>(cased);
+        stale.removeAll(derived);
+
+        assertAll(
+                () -> assertFalse(derived.isEmpty(), "the German decisions pack must be read"),
+                () -> assertTrue(withoutCase.isEmpty(), "templates with {project} after von/in without a case: " + withoutCase),
+                () -> assertTrue(stale.isEmpty(), "cases that name no template with {project} after von/in: " + stale)
+        );
     }
 
     static Stream<Arguments> germanProjectTemplates() {

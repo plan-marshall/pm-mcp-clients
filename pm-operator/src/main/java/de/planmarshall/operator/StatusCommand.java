@@ -29,6 +29,7 @@ import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.AlongsideLanding;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.overview.ProjectSummary;
@@ -346,10 +347,7 @@ final class StatusCommand implements Callable<Integer> {
     private void renderPlanRow(PrintWriter out, ActivePlanSummary plan, String baseIndent, String locale) {
         String marker;
         if (plan.needsOperatorCount() != null && plan.needsOperatorCount() > 0) {
-            var kind = plan.needsOperatorKind() != null
-                                ? MessageCatalogue.format(locale, "overview.needs." + plan.needsOperatorKind(), Map.of())
-                                : "attention";
-            marker = String.format("! %-8s ", kind);
+            marker = String.format("! %-8s ", needsLabel(locale, plan.needsOperatorKind()));
         } else {
             marker = "           ";
         }
@@ -394,10 +392,29 @@ final class StatusCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * The label a row of the tree names its needs kind by: the runtime's word is resolved to the
+     * contract's kind first ({@link NeedsOperatorKind#fromWireOrOther}, which reads the aliases
+     * {@code waiver_request} and {@code operator_wait} and answers {@code other} for a word this
+     * version does not know), and the label is the catalogue's text of that kind, never the wire
+     * word and never a key built from it (shared/texts-and-languages.adoc).
+     *
+     * @param locale the interface locale
+     * @param kind   the runtime's needs kind, or {@code null} when it names none
+     * @return the catalogue's label of the resolved kind, or {@code attention} when no kind is named
+     */
+    private static String needsLabel(String locale, @Nullable String kind) {
+        if (kind == null) {
+            return "attention";
+        }
+        var resolved = NeedsOperatorKind.fromWireOrOther(kind);
+        return MessageCatalogue.format(locale, "overview.needs." + resolved.value(), Map.of());
+    }
+
     private void renderProjectByEpic(PrintWriter out, ProjectDetailResponse detail, String locale) {
         for (var epic : detail.epics()) {
             String epicMarker = epic.needsOperatorCount() != null && epic.needsOperatorCount() > 0
-                                ? String.format("! %-8s ", epic.needsOperatorKind() != null ? OutputSafety.stripControlSequences(epic.needsOperatorKind()) : "attention")
+                                ? String.format("! %-8s ", needsLabel(locale, epic.needsOperatorKind()))
                                 : "           ";
             var epicTitle = OutputSafety.stripControlSequences(epic.title());
             var plansCount = MessageCatalogue.format(locale, "overview.epic.plans", Map.of(

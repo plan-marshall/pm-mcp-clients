@@ -16,6 +16,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 
 /**
  * Formats the terminal client prompt: {@code pm › } when normal,
@@ -33,6 +34,7 @@ public final class ConsolePrompt {
     private static final String DEFAULT_LOCALE = "en";
     private static final String BADGE_QUESTIONS = "operator.console.badge.questions";
     private static final String BADGE_WAIVERS = "operator.console.badge.waivers";
+    static final String BADGE_FALLBACK = "operator.console.badge.fallback";
     private static final String COUNT = "count";
 
     private ConsolePrompt() {
@@ -102,10 +104,24 @@ public final class ConsolePrompt {
         if (count <= 0) {
             return null;
         }
-        var key = switch (kind) {
+        return MessageCatalogue.format(locale, badgeKey(kind),
+                            Map.of(COUNT, count, "kind", kindWord(locale, kind)));
+    }
+
+    /**
+     * The catalogue key of the badge of a kind: every kind of the contract has its own badge, read
+     * by its canonical word and by the specification's aliases ({@code question} beside
+     * {@code decision}, {@code operator_wait} beside {@code waits_for_you}); a word this version does
+     * not know reads the fallback badge, which names the kind by its shared word.
+     *
+     * @param kind the item kind
+     * @return the badge key of the kind, or {@link #BADGE_FALLBACK} for a kind this version does not know
+     */
+    static String badgeKey(String kind) {
+        return switch (kind) {
             case "decision", "question" -> BADGE_QUESTIONS;
             case "waiver" -> BADGE_WAIVERS;
-            case "operator_wait" -> "operator.console.badge.operator_waits";
+            case "waits_for_you", "operator_wait" -> "operator.console.badge.operator_waits";
             case "integrity_pause" -> "operator.console.badge.integrity_pauses";
             case "stalled" -> "operator.console.badge.stalled";
             case "condition" -> "operator.console.badge.conditions";
@@ -115,21 +131,26 @@ public final class ConsolePrompt {
             case "setup" -> "operator.console.badge.setup_needs";
             case "credential" -> "operator.console.badge.credential";
             case "cleanup_due" -> "operator.console.badge.cleanup_due";
-            default -> "operator.console.badge.fallback";
+            default -> BADGE_FALLBACK;
         };
-        return MessageCatalogue.format(locale, key, Map.of(COUNT, count, "kind", kindWord(locale, kind)));
     }
 
     /**
+     * The word a fallback badge names its kind by: the runtime's word is resolved to the contract's
+     * kind first ({@link NeedsOperatorKind#fromWireOrOther}, which reads the aliases and answers
+     * {@code other} for a word this version does not know), and the word is the catalogue's text of
+     * that kind (shared/texts-and-languages.adoc). The key is built from the resolved kind only, so a
+     * runtime word that happens to name another key of the pack ({@code title}, {@code count}) reads
+     * as another reason, never as that key's text.
+     *
      * @param locale the interface locale
      * @param kind   the item kind
-     * @return the shared word of the kind ({@code overview.needs.<kind>}), or the word of a reason
-     *         this version does not know ({@code overview.needs.other}) — never the wire word
+     * @return the shared word of the resolved kind ({@code overview.needs.<kind>}), or the word of a
+     *         reason this version does not know ({@code overview.needs.other}) — never the wire word
      */
     private static String kindWord(String locale, String kind) {
-        var key = "overview.needs." + kind;
-        return MessageCatalogue.format(locale, MessageCatalogue.hasKey(locale, key) ? key : "overview.needs.other",
-                            Map.of());
+        var resolved = NeedsOperatorKind.fromWireOrOther(kind);
+        return MessageCatalogue.format(locale, "overview.needs." + resolved.value(), Map.of());
     }
 
     /**

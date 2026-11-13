@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.Collections;
 import java.util.List;
 
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("ConsolePrompt")
 class ConsolePromptTest {
 
@@ -145,6 +148,21 @@ class ConsolePromptTest {
             assertAll(
                                 () -> assertEquals("1 another reason", badge),
                                 () -> assertFalse(badge.contains("quota_exhausted"), badge)
+            );
+        }
+
+        @Test
+        @DisplayName("names a kind that happens to name another catalogue key as another reason")
+        void kindNamingAnotherKeyReadsAsAnotherReason() {
+            var title = ConsolePrompt.formatBadge("title", 1);
+            var generated = "zz" + Generators.letterStrings(6, 12).next();
+            var unknown = ConsolePrompt.formatBadge(generated, 1);
+
+            assertAll(
+                                () -> assertEquals("1 another reason", title),
+                                () -> assertFalse(title.contains("What waits"), title),
+                                () -> assertEquals("1 another reason", unknown),
+                                () -> assertFalse(unknown.contains(generated), unknown)
             );
         }
 

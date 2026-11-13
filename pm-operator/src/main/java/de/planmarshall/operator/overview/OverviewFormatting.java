@@ -44,7 +44,10 @@ public final class OverviewFormatting {
     private static final String CMD_PLANS = "plans";
     private static final String CMD_PLAN = "plan";
     private static final String CMD_EPIC = "epic";
-    private static final String CMD_PROJECT = "project";
+    /** The word {@code project}: the verb of a project command and the name of a project argument. */
+    private static final String PROJECT = "project";
+    /** The kind {@code setup} and the sub-verb that opens a project's setup. */
+    private static final String KIND_SETUP = "setup";
     private static final String NEEDS_BADGE_KEY = "overview.needs.badge";
     private static final String STATE_UNKNOWN_KEY = "state.unknown";
     private static final String COMMON_KIND_PREFIX = "common.kind.";
@@ -69,7 +72,7 @@ public final class OverviewFormatting {
      * @return {@code true} if any plan/epic or project setup needs the operator
      */
     public static boolean needsOperator(ProjectSummary project) {
-        Objects.requireNonNull(project, "project");
+        Objects.requireNonNull(project, PROJECT);
         return project.needsOperatorCount() > 0 || project.setupNeedsOperator();
     }
 
@@ -80,7 +83,7 @@ public final class OverviewFormatting {
      * @return attention count ({@code >= 0})
      */
     public static int projectAttentionCount(ProjectSummary project) {
-        Objects.requireNonNull(project, "project");
+        Objects.requireNonNull(project, PROJECT);
         if (project.needsOperatorCount() > 0) {
             return project.needsOperatorCount();
         }
@@ -175,7 +178,7 @@ public final class OverviewFormatting {
             case "held" -> "overview.needs.held";
             case "landing_failed" -> "overview.needs.landing_failed";
             case "findings" -> "overview.needs.findings";
-            case "setup" -> "overview.needs.setup";
+            case KIND_SETUP -> "overview.needs.setup";
             case "credential" -> "overview.needs.credential";
             case "cleanup_due" -> "overview.needs.cleanup_due";
             case "other" -> "overview.needs.other";
@@ -466,7 +469,7 @@ public final class OverviewFormatting {
         return switch (item.kind()) {
             case DECISION, WAIVER -> decisionCommand(item.link());
             case FINDINGS -> epicId != null ? List.of(CMD_EPIC, "findings", epicId) : List.of("reports");
-            case SETUP -> projId != null ? List.of(CMD_PROJECT, "setup", projId) : List.of(CMD_PROJECT, "setup");
+            case SETUP -> projId != null ? List.of(PROJECT, KIND_SETUP, projId) : List.of(PROJECT, KIND_SETUP);
             case CREDENTIAL -> List.of("credentials");
             case CLEANUP_DUE -> List.of("cleanup");
             case HELD, LANDING_FAILED -> epicOrPlanCommand(planId, epicId);

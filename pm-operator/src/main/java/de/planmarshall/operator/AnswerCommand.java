@@ -1012,12 +1012,13 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     /**
-     * The voter of a dissent summary: the vote whose reason is the summary names it; only when no
-     * reason matches does the first disagreeing vote with a reason stand in.
+     * The voter of a dissent summary: the disagreeing vote whose reason is the summary names it; only
+     * when no disagreeing reason matches does the first disagreeing vote with a reason stand in. A
+     * vote for the recommended option is never the voter, even when it carries the same reason.
      */
     private static @Nullable Dissent dissentForSummary(DecisionPart part, DecisionOption recommendedOpt,
                         String summary) {
-        var matched = allVotes(part).stream()
+        var matched = disagreeingVotes(part, recommendedOpt).stream()
                             .filter(vote -> vote.reason() != null && vote.reason().trim().equalsIgnoreCase(summary.trim()))
                             .map(vote -> new Dissent(vote.role(), summary))
                             .findFirst();
@@ -1050,10 +1051,7 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private static @Nullable Dissent dissentFromVoteReason(DecisionPart part, DecisionOption recommendedOpt) {
-        return part.options().stream()
-                            .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
-                            .filter(opt -> opt.quorumSupport() != null)
-                            .flatMap(opt -> opt.quorumSupport().votes().stream())
+        return disagreeingVotes(part, recommendedOpt).stream()
                             .filter(vote -> vote.reason() != null && !vote.reason().isBlank())
                             .findFirst()
                             .map(vote -> new Dissent(vote.role(), vote.reason()))
@@ -1067,8 +1065,10 @@ public final class AnswerCommand implements Callable<Integer> {
                             .findFirst().orElse(null);
     }
 
-    private static List<QuorumVote> allVotes(DecisionPart part) {
+    /** The votes attached to every option other than the recommended one: the votes against it. */
+    private static List<QuorumVote> disagreeingVotes(DecisionPart part, DecisionOption recommendedOpt) {
         return part.options().stream()
+                            .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
                             .map(DecisionOption::quorumSupport)
                             .filter(Objects::nonNull)
                             .flatMap(support -> support.votes().stream())
@@ -1430,6 +1430,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 return null;
             }
             var interp = interpret(session, envelope, wordsInput);
+            var interpretedWords = wordsInput;
             if (interp.interpretationType() == InterpretationType.UNCLEAR) {
                 var question = interp.clarificationQuestion();
                 if (question == null) {
@@ -1437,13 +1438,14 @@ public final class AnswerCommand implements Callable<Integer> {
                     printUnclear(session, locale);
                     continue;
                 }
-                var clarifiedInterp = clarified(session, envelope, wordsInput, question, locale);
-                if (clarifiedInterp == null) {
+                var clarification = clarified(session, envelope, wordsInput, question, locale);
+                if (clarification == null) {
                     return null;
                 }
-                interp = clarifiedInterp;
+                interp = clarification.interpretation();
+                interpretedWords = clarification.words();
             }
-            var readBack = readBack(session, envelope, interp, wordsInput, locale);
+            var readBack = readBack(session, envelope, interp, interpretedWords, locale);
             if (!readBack.repeat()) {
                 return readBack.answer();
             }
@@ -1454,7 +1456,8 @@ public final class AnswerCommand implements Callable<Integer> {
                         DecisionInterpretation interp, String wordsInput, String locale) {
         var out = session.out();
         out.println();
-        var reading = Objects.requireNonNullElse(interp.readBackText(), wordsInput);
+        var readBackText = interp.readBackText();
+        final String reading = readBackText != null ? readBackText : wordsInput;
         out.println(MessageCatalogue.format(locale, "decision.readback.understood",
                             Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
         while (true) {
@@ -1478,16 +1481,24 @@ public final class AnswerCommand implements Callable<Integer> {
         }
     }
 
-    private @Nullable DecisionInterpretation clarified(DialogueSession session, DecisionEnvelope envelope,
+    /**
+     * A clarified reading: the interpretation and the words it was actually made from, the original
+     * words with the operator's reply, so the read-back never drops the reply.
+     */
+    private record Clarification(DecisionInterpretation interpretation, String words) {
+    }
+
+    private @Nullable Clarification clarified(DialogueSession session, DecisionEnvelope envelope,
                         String words, String question, String locale) throws IOException {
         session.out().println(MessageCatalogue.format(locale, "decision.clarify.asks", Map.of(
                             ROLE_KEY, "interpret",
                             "question", TerminalSanitizer.sanitizeLine(question)
         )));
         var reply = readLineSafe(session.reader(), getMessage(locale, "operator.decision.reply_prompt") + " › ");
-        var clarifiedInterp = interpret(session, envelope, words + ". " + reply.trim());
+        var combinedWords = words + ". " + reply.trim();
+        var clarifiedInterp = interpret(session, envelope, combinedWords);
         if (clarifiedInterp.interpretationType() != InterpretationType.UNCLEAR) {
-            return clarifiedInterp;
+            return new Clarification(clarifiedInterp, combinedWords);
         }
         printUnclear(session, locale);
         return null;
