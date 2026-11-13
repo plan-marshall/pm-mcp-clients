@@ -167,4 +167,8 @@ describe('RowLink', () => {
     expect(ruleOf(STYLE, '.row-link__title')).toContain('min-inline-size: 0');
     expect(ruleOf(STYLE, '.row-link__tags')).toContain('flex-wrap: wrap');
   });
+
+  it('keeps a copy chip in the tags slot above the stretched target', () => {
+    expect(ruleOf(STYLE, '.row-link__tags :global(.chip)')).toContain('position: relative');
+  });
 });

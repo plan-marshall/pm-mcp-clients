@@ -102,6 +102,9 @@ describe('ExternalLink', () => {
     ['https:/\t/host', 'a tab between the two slashes'],
     ['\u0000https://example.org', 'a leading NUL control character'],
     ['\u0001https://example.org/x', 'a leading start-of-heading control character'],
+    ['\thttps://example.org', 'a leading tab'],
+    ['\nhttps://example.org', 'a leading line feed'],
+    ['\rhttps://example.org/x', 'a leading carriage return'],
     ['https:///evil.example/x', 'a host behind a third slash'],
     ['https://\\\\evil.example/x', 'a host behind two backslashes'],
   ])('refuses %j (%s)', (href, _why) => {

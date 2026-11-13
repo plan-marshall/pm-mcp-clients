@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { render } from '@testing-library/svelte';
 import ReasonBadge, { REASONS, toneOf } from './ReasonBadge.svelte';
 import { currentLocale, messagesStore } from '../i18n';
@@ -154,6 +156,21 @@ describe('ReasonBadge', () => {
 
     expect(badge).toHaveTextContent('! another reason');
     expect(badge).toHaveClass('reason-badge--attention');
+  });
+
+  it('carries the runtime reasons of NeedsOperatorKind, plus the completion review', () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../../../../pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorKind.java',
+      ),
+      'utf8',
+    );
+    const wire = Array.from(source.matchAll(/^\s{4}[A-Z_]+\(['"]([a-z_]+)['"]\)/gm))
+      .map((match) => match[1])
+      .filter((value) => value !== 'other');
+
+    expect([...REASONS]).toEqual([...wire, 'completion_review']);
   });
 
   it('keeps an unknown reason in the attention tone even when a caller asks for danger', () => {

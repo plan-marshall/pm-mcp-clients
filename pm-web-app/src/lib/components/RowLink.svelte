@@ -131,6 +131,14 @@
   }
 
   /*
+   * A copy chip stands in the row's tags slot with a box of its own above the stretched target, so a
+   * click on it copies instead of opening the row.
+   */
+  .row-link__tags :global(.chip) {
+    position: relative;
+  }
+
+  /*
    * The controls lie above the link's stretched target: a positioned box paints after the target in
    * document order, so the row menu, the favourite and the chip stay targets of their own. No numeric
    * layer is written here; the layer tokens are owned elsewhere.

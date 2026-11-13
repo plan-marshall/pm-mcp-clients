@@ -22,11 +22,15 @@
    *   written with exactly the two slashes right after the scheme. `https:host`, `https:/host`,
    *   `https:///host` and `https:\\host` are refused although a URL parser reads each of them as
    *   the host `host`: their visible text and their destination would disagree. A C0 control
-   *   character, in front of the address or inside it, is refused too.
+   *   character is refused wherever it stands, a leading tab or line feed included; only trailing
+   *   white space is tolerated, because it is invisible and changes no address.
    */
   export function isWebAddress(href: string): boolean {
+    if (CONTROL_CHARACTER.test(href.trimEnd())) {
+      return false;
+    }
     const address = href.trim();
-    if (CONTROL_CHARACTER.test(address) || !WEB_ADDRESS.test(address)) {
+    if (!WEB_ADDRESS.test(address)) {
       return false;
     }
     try {
@@ -63,7 +67,7 @@
 
   /** The address that was checked and is rendered: the one without the white space around it. */
   const address = $derived(href.trim());
-  const safe = $derived(isWebAddress(address));
+  const safe = $derived(isWebAddress(href));
 </script>
 
 {#if safe}

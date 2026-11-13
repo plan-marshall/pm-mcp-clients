@@ -1,53 +1,48 @@
 <script lang="ts" module>
-  /** The six phases of a plan (shared/texts-and-languages.adoc, Phases and Roles). */
-  export type Phase = 'init' | 'refine' | 'outline' | 'plan' | 'execute' | 'finalize';
-
-  /** The phases in the workflow's order. */
-  export const PHASES: readonly Phase[] = Object.freeze([
-    'init',
-    'refine',
-    'outline',
-    'plan',
-    'execute',
-    'finalize',
-  ]);
-
   /**
-   * The catalogue key of each phase's word. Every key is a literal here, and `MessageCatalogueTest`
-   * of `pm-api` asserts it in both languages; the web catalogue guard cannot see a key passed as a
-   * variable.
+   * The catalogue key of each phase's word — the one definition the type, the list and the lookup
+   * come from. Every key is a literal here, and `MessageCatalogueTest` of `pm-api` asserts it in both
+   * languages; the web catalogue guard cannot see a key passed as a variable.
    */
-  export const PHASE_WORD_KEYS: Readonly<Record<Phase, string>> = Object.freeze({
+  const PHASE_WORDS = {
     init: 'phase.name.init',
     refine: 'phase.name.refine',
     outline: 'phase.name.outline',
     plan: 'phase.name.plan',
     execute: 'phase.name.execute',
     finalize: 'phase.name.finalize',
-  });
+  } as const;
 
-  /** The roles the runtime sends as the asking role of a decision, as the shipped scenarios do. */
-  export type Role = 'implement' | 'architecture' | 'outline' | 'enrich' | 'decompose' | 'settings';
+  /** The six phases of a plan (shared/texts-and-languages.adoc, Phases and Roles). */
+  export type Phase = keyof typeof PHASE_WORDS;
 
-  /** The roles whose words the catalogue carries. */
-  export const ROLES: readonly Role[] = Object.freeze([
-    'implement',
-    'architecture',
-    'outline',
-    'enrich',
-    'decompose',
-    'settings',
-  ]);
+  /** The phases in the workflow's order. */
+  export const PHASES: readonly Phase[] = Object.freeze(Object.keys(PHASE_WORDS) as Phase[]);
 
-  /** The catalogue key of each role's word; it equals the English word in both languages. */
-  export const ROLE_WORD_KEYS: Readonly<Record<Role, string>> = Object.freeze({
+  /** The catalogue key of each phase's word. */
+  export const PHASE_WORD_KEYS: Readonly<Record<Phase, string>> = PHASE_WORDS;
+
+  /**
+   * The catalogue key of each role's word; it equals the English word in both languages. The roles
+   * are the ones the shipped scenarios send as the asking role of a decision.
+   */
+  const ROLE_WORDS = {
     implement: 'role.name.implement',
     architecture: 'role.name.architecture',
     outline: 'role.name.outline',
     enrich: 'role.name.enrich',
     decompose: 'role.name.decompose',
     settings: 'role.name.settings',
-  });
+  } as const;
+
+  /** The roles whose words the catalogue carries. */
+  export type Role = keyof typeof ROLE_WORDS;
+
+  /** The roles in the order the scenarios name them. */
+  export const ROLES: readonly Role[] = Object.freeze(Object.keys(ROLE_WORDS) as Role[]);
+
+  /** The catalogue key of each role's word. */
+  export const ROLE_WORD_KEYS: Readonly<Record<Role, string>> = ROLE_WORDS;
 
   /**
    * @param value a phase a caller hands in

@@ -1,9 +1,22 @@
 <script lang="ts" module>
+  /**
+   * The catalogue key of each marker's word — the one definition the type, the list and the mappings
+   * come from. Every key is a literal here, and `MessageCatalogueTest` of `pm-api` asserts it in both
+   * languages; the web catalogue guard cannot see a key passed as a variable.
+   */
+  const MARKER_WORDS = {
+    recommended: 'common.marker.recommended',
+    default: 'common.marker.default',
+    this_one: 'common.marker.this_one',
+  } as const;
+
   /** The three properties a marker names (components-tags.adoc, markers). */
-  export type MarkerKind = 'recommended' | 'default' | 'this_one';
+  export type MarkerKind = keyof typeof MARKER_WORDS;
 
   /** The markers, in the order the design names them. */
-  export const MARKERS: readonly MarkerKind[] = Object.freeze(['recommended', 'default', 'this_one']);
+  export const MARKERS: readonly MarkerKind[] = Object.freeze(
+    Object.keys(MARKER_WORDS) as MarkerKind[],
+  );
 
   /** The neutral UI icon of each marker; the word tells the three apart. */
   export const MARKER_ICONS: Readonly<Record<MarkerKind, string>> = Object.freeze({
@@ -12,16 +25,8 @@
     this_one: 'state.dot',
   });
 
-  /**
-   * The catalogue key of each marker's word. Every key is a literal here, and
-   * `MessageCatalogueTest` of `pm-api` asserts it in both languages; the web catalogue guard cannot
-   * see a key passed as a variable.
-   */
-  export const MARKER_WORD_KEYS: Readonly<Record<MarkerKind, string>> = Object.freeze({
-    recommended: 'common.marker.recommended',
-    default: 'common.marker.default',
-    this_one: 'common.marker.this_one',
-  });
+  /** The catalogue key of each marker's word. */
+  export const MARKER_WORD_KEYS: Readonly<Record<MarkerKind, string>> = MARKER_WORDS;
 </script>
 
 <script lang="ts">
