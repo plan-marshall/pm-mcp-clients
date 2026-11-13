@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -692,7 +693,7 @@ class ProjectCommandTest {
                             ? env : Map.of();
         assertAll(
                             () -> assertEquals(0, code, out.toString()),
-                            () -> assertTrue(parsed != null, body),
+                            () -> assertNotNull(parsed, body),
                             () -> assertTrue(buildEnvironment.containsKey("PM_MCP_BASE"), body),
                             () -> assertEquals(Path.of(checkout).toAbsolutePath().toString(),
                                                 String.valueOf(parsed.get("path")), body),

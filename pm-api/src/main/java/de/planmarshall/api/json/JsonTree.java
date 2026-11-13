@@ -40,7 +40,7 @@ public class JsonTree {
     private static final JsonFactory FACTORY = new JsonFactory();
 
     /** The source text of an integral JSON number: digits only, no sign, no decimal point, no exponent. */
-    private static final Pattern INTEGRAL_LITERAL = Pattern.compile("[0-9]+");
+    private static final Pattern INTEGRAL_LITERAL = Pattern.compile("\\d+");
     private static final JsonFactory ASCII_FACTORY = JsonFactory.builder()
             .enable(JsonWriteFeature.ESCAPE_NON_ASCII).build();
 
@@ -418,28 +418,30 @@ public class JsonTree {
             return null;
         }
         var raw = object.get(name);
-        final long value;
-        if (raw instanceof JsonNumber(String text)) {
-            if (!INTEGRAL_LITERAL.matcher(text).matches()) {
-                return null;
-            }
-            try {
-                value = Long.parseLong(text);
-            } catch (NumberFormatException _) {
-                return null;
-            }
-        } else if (raw instanceof Integer integer) {
-            value = integer;
-        } else if (raw instanceof Long longValue) {
-            value = longValue;
-        } else if (raw instanceof Short shortValue) {
-            value = shortValue;
-        } else if (raw instanceof Byte byteValue) {
-            value = byteValue;
-        } else {
+        final Long value = switch (raw) {
+            case JsonNumber(String text) -> integralText(text);
+            case Integer integer -> integer.longValue();
+            case Long longValue -> longValue;
+            case Short shortValue -> shortValue.longValue();
+            case Byte byteValue -> byteValue.longValue();
+            case null, default -> null;
+        };
+        return value != null && value >= 1 && value <= Integer.MAX_VALUE ? value.intValue() : null;
+    }
+
+    /**
+     * @param text the source text of a JSON number
+     * @return the value, or {@code null} when the text is no integer literal or does not fit a {@code long}
+     */
+    private static @Nullable Long integralText(String text) {
+        if (!INTEGRAL_LITERAL.matcher(text).matches()) {
             return null;
         }
-        return value >= 1 && value <= Integer.MAX_VALUE ? (int) value : null;
+        try {
+            return Long.parseLong(text);
+        } catch (NumberFormatException _) {
+            return null;
+        }
     }
 
     /**

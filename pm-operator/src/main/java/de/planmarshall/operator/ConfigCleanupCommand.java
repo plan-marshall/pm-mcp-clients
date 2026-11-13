@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
-
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -134,7 +133,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         }
         if (!changes.isEmpty()) {
             durations.putAll(changes);
-            return record(out, locale, settings, durations, changes);
+            return write(out, locale, settings, durations, changes);
         }
         if (!context.isInteractiveTerminal() || noInput) {
             printRows(out, locale, durations);
@@ -259,37 +258,53 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             out.flush();
             var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.durations.keep",
                                 Map.of("range", "1-" + kinds.size())), DURATIONS_STATE, "durations", null);
-            if (answer == null || answer.isBlank() || "k".equalsIgnoreCase(answer)
+            if (answer.isBlank() || "k".equalsIgnoreCase(answer)
                                 || ChoicePrompt.isLeave(locale, answer)) {
-                if (changes.isEmpty()) {
-                    return 0;
-                }
-                return record(out, locale, settings, durations, changes);
+                return changes.isEmpty() ? 0 : write(out, locale, settings, durations, changes);
             }
-            if ("?".equals(answer)) {
-                out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
-                continue;
-            }
-            var chosen = kindOf(kinds, answer);
-            if (chosen == null) {
-                out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered",
-                                    Map.of("input", answer, "offered", "1-" + kinds.size())));
-                continue;
-            }
-            var days = askDays(prompt, locale, chosen);
-            if (days != null) {
-                durations.put(chosen, days);
-                changes.put(chosen, days);
-            }
+            changeOne(prompt, out, locale, kinds, answer, durations, changes);
         }
     }
 
-    private @Nullable Integer askDays(StartPrompt prompt, String locale, String kind) throws IOException {
+    /**
+     * Applies one answer of the editor: {@code ?} explains, a number or a kind name asks its days,
+     * and an answer naming neither says what is offered.
+     *
+     * @param prompt    the dialogue's prompt
+     * @param out       the verb's writer
+     * @param locale    the interface locale
+     * @param kinds     the kinds the editor offers
+     * @param answer    the operator's line
+     * @param durations the durations being edited
+     * @param changes   the changes taken so far
+     * @throws IOException on transport failure
+     */
+    private void changeOne(StartPrompt prompt, PrintWriter out, String locale, List<String> kinds,
+                        String answer, Map<String, Integer> durations, Map<String, Integer> changes)
+                        throws IOException {
+        if ("?".equals(answer)) {
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
+            return;
+        }
+        var chosen = kindOf(kinds, answer);
+        if (chosen == null) {
+            out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered",
+                                Map.of("input", answer, "offered", "1-" + kinds.size())));
+            return;
+        }
+        var days = askDays(prompt, locale, chosen);
+        if (days != null) {
+            durations.put(chosen, days);
+            changes.put(chosen, days);
+        }
+    }
+
+    private @Nullable Integer askDays(StartPrompt prompt, String locale, String kind) {
         var out = spec.commandLine().getOut();
         while (true) {
             var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.ask_days",
                                 Map.of("min", minimumOf(kind))), DURATIONS_STATE, kind, null);
-            if (answer == null || answer.isBlank()) {
+            if (answer.isBlank()) {
                 return null;
             }
             var days = parseDays(answer);
@@ -301,7 +316,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         }
     }
 
-    private int record(PrintWriter out, String locale, MachineSettingsRecord settings,
+    private int write(PrintWriter out, String locale, MachineSettingsRecord settings,
                         Map<String, Integer> durations, Map<String, Integer> changes) throws IOException {
         if (!yes) {
             if (!context.isInteractiveTerminal() || noInput) {
@@ -330,10 +345,10 @@ final class ConfigCleanupCommand implements Callable<Integer> {
 
     private int recordMachine(PrintWriter out, String locale, MachineSettingsRecord settings,
                         Map<String, Integer> durations) throws IOException {
-        var record = new CleanupDurations(daysOf(durations, KIND_PLANS), daysOf(durations, KIND_EPICS),
+        var recordDurations = new CleanupDurations(daysOf(durations, KIND_PLANS), daysOf(durations, KIND_EPICS),
                             daysOf(durations, KIND_LOGS), daysOf(durations, KIND_REPORTS),
                             daysOf(durations, KIND_UNENROLLED), daysOf(durations, KIND_REMIND));
-        var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, record.toJson(),
+        var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, recordDurations.toJson(),
                             settings.revision());
         var response = context.runtime(true).send(
                             HttpRequest.json("PUT", ConfigCommand.MACHINE_SETTINGS_PATH, request.toJson()));

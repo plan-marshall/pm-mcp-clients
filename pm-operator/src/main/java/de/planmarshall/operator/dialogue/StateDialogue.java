@@ -73,6 +73,8 @@ public final class StateDialogue {
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
+    private static final String ONBOARD_COMPLETED = "onboard.completed";
+    private static final String PROJECT_COMPLETED = "project.completed";
 
     /** The step every project state of the checkout phase names. */
     private static final String CHECKOUT_STEP = "checkout";
@@ -125,8 +127,8 @@ public final class StateDialogue {
          * @return whether this state ends the dialogue
          */
         public boolean isFinal() {
-            return COMPLETED_KIND.equals(kind) || "onboard.completed".equals(stateId)
-                                || "project.completed".equals(stateId);
+            return COMPLETED_KIND.equals(kind) || ONBOARD_COMPLETED.equals(stateId)
+                                || PROJECT_COMPLETED.equals(stateId);
         }
 
         /**
@@ -317,7 +319,7 @@ public final class StateDialogue {
         if ("onboard.mode".equals(frame.stateId())) {
             return modeContent(frame);
         }
-        if ("onboard.completed".equals(frame.stateId())) {
+        if (ONBOARD_COMPLETED.equals(frame.stateId())) {
             return List.of(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
         }
         var lines = new ArrayList<String>();
@@ -533,7 +535,7 @@ public final class StateDialogue {
      *         labelled fallback where the state has no text at all
      */
     public static String titleOf(String locale, Frame frame) {
-        if ("project.completed".equals(frame.stateId())) {
+        if (PROJECT_COMPLETED.equals(frame.stateId())) {
             var project = projectNameOf(frame.facts());
             if (project != null) {
                 // The last frame says which project is ready, not just that one is.
@@ -683,7 +685,7 @@ public final class StateDialogue {
         if (aspects.contains(OnboardingAspect.PROVIDERS) && (stateId.startsWith("github.") || stateId.startsWith("sonar."))) {
             return "providers";
         }
-        return "onboard.completed".equals(stateId) ? DONE : null;
+        return ONBOARD_COMPLETED.equals(stateId) ? DONE : null;
     }
 
     /**

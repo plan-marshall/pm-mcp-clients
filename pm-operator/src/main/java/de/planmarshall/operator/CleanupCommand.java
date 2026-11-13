@@ -73,6 +73,9 @@ public final class CleanupCommand implements Callable<Integer> {
     /** The width of the title column; a longer title is cut rather than shifting the columns. */
     private static final int TITLE_WIDTH = 18;
 
+    /** The catalogue key of the "no such item" refusal the three lookups share. */
+    private static final String NOT_IN_JOB = "operator.cleanup.not_in_job";
+
     /** The word an item's end carries in front of the runtime's date. */
     private static final String ENDED_PREFIX = "ended ";
 
@@ -528,7 +531,7 @@ public final class CleanupCommand implements Callable<Integer> {
             var item = findItem(items, raw);
             if (item == null) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.cleanup.not_in_job", Map.of("item", raw)));
+                                    NOT_IN_JOB, Map.of("item", raw)));
                 out.flush();
                 return null;
             }
@@ -1019,7 +1022,7 @@ public final class CleanupCommand implements Callable<Integer> {
             return;
         }
         for (var unknown : toggleLeftOut(items, leftOut, answer)) {
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.not_in_job", Map.of("id", unknown)));
+            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("id", unknown)));
         }
         out.flush();
     }
@@ -1066,7 +1069,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var item = findItem(items, answer);
         if (item == null) {
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.not_in_job", Map.of("id", answer)));
+            out.println(MessageCatalogue.format(locale, NOT_IN_JOB, Map.of("id", answer)));
             out.flush();
             return;
         }

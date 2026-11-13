@@ -257,7 +257,7 @@ class EntryRecordsTest {
 
     @Test
     @DisplayName("OnboardingProgress refuses a steps value that is no exact integer rather than truncating it")
-    void onboardingProgressRefusesATruncatingStepsValue() throws Exception {
+    void onboardingProgressRefusesATruncatingStepsValue() {
         assertAll(
                 () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
                         OnboardingProgress.fromJson(

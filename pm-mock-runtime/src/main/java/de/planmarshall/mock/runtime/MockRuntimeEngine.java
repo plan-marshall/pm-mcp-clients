@@ -3972,11 +3972,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
         var body = new LinkedHashMap<String, Object>();
-        body.put(KEY_STATE, completed ? "project.completed" : "project.identity");
+        body.put(KEY_STATE, completed ? PROJECT_SETUP_COMPLETED : PROJECT_SETUP_IDENTITY);
         body.put(KEY_STEP, completed ? 10 : 2);
         body.put(KEY_TOTAL_STEPS, 10);
         if (completed) {
-            body.put(FIXTURE_SUMMARY, "the project is ready");
+            body.put(FIXTURE_SUMMARY, entryId + PROJECT_SETUP_READY_SUFFIX);
             body.put(KEY_LINKS, Map.of());
             return body;
         }
