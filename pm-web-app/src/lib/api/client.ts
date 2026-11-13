@@ -3753,13 +3753,17 @@ export class ApiClient {
     operatorTurnId: string,
   ): Promise<ChatReadBack> {
     const bound = Date.now() + ApiClient.CHAT_REPLY_BOUND_MS;
-    for (;;) {
+    // One read per call and the next read chained after the pause: the bound caps how often it
+    // recurs, and no read waits inside a loop.
+    const read = async (): Promise<ChatReadBack> => {
       const resource = await this.request<WireChatResource>('GET', chatPath);
       if (chatReplySettled(resource, operatorTurnId) || Date.now() >= bound) {
         return normaliseChat(resource);
       }
       await new Promise((resolve) => setTimeout(resolve, ApiClient.CHAT_READ_INTERVAL_MS));
-    }
+      return read();
+    };
+    return read();
   }
 
   /**

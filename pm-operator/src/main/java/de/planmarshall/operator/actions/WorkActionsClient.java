@@ -62,6 +62,8 @@ public final class WorkActionsClient {
     private static final Duration CHAT_REPLY_BOUND = Duration.ofSeconds(20);
     /** The pause between two reads of a chat whose reply is still being written. */
     private static final long CHAT_READ_PAUSE = 250L;
+    /** The suffix that names a chat's refusal after the subject kind, one spelling for every act. */
+    private static final String CHAT = " chat";
 
     private final OperatorContext context;
 
@@ -316,7 +318,7 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ChatResource chat(String kind, String id) throws IOException {
-        return readChat(chatRoutes(kind, id), kind + " chat");
+        return readChat(chatRoutes(kind, id), kind + CHAT);
     }
 
     /**
@@ -340,7 +342,7 @@ public final class WorkActionsClient {
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", routes.turns(), JsonTree.write(request.toMap())));
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
-            throw new OperatorRefusedException(kind + " chat turn", response);
+            throw new OperatorRefusedException(kind + CHAT + " turn", response);
         }
         var accepted = ChatTurnAccepted.fromJson(response.bodyText());
         return awaitReply(routes, accepted.turnId(), kind);
@@ -362,7 +364,7 @@ public final class WorkActionsClient {
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             accept ? routes.accept() : routes.reject(), answer));
         if (response.status() != 200) {
-            throw new OperatorRefusedException(kind + " chat proposal", response);
+            throw new OperatorRefusedException(kind + CHAT + " proposal", response);
         }
         return ChatResource.fromJson(response.bodyText());
     }
@@ -393,7 +395,7 @@ public final class WorkActionsClient {
     private ChatResource awaitReply(ChatRoutes routes, String operatorTurnId, String kind)
                         throws IOException {
         var bound = System.nanoTime() + CHAT_REPLY_BOUND.toNanos();
-        var chat = readChat(routes, kind + " chat");
+        var chat = readChat(routes, kind + CHAT);
         while (!replySettled(chat, operatorTurnId) && System.nanoTime() < bound) {
             if (Thread.currentThread().isInterrupted()) {
                 return chat;
@@ -404,7 +406,7 @@ public final class WorkActionsClient {
                 Thread.currentThread().interrupt();
                 return chat;
             }
-            chat = readChat(routes, kind + " chat");
+            chat = readChat(routes, kind + CHAT);
         }
         return chat;
     }
