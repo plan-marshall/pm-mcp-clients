@@ -944,9 +944,47 @@ describe('WorkControlPanel component', () => {
     });
     expect(apiClient.getEndedChat).toHaveBeenCalledWith('plan', 'codeberg-issues');
     // No B1 surface names the entry the accept opened, so the operator is told a start is prepared.
-    expect(await screen.findByTestId('chat-notice')).toHaveTextContent(
+    const notice = await screen.findByTestId('chat-notice');
+    expect(notice).toHaveTextContent(
       'A new plan is being started in pm-mcp-clients with this description',
     );
+    // The answered proposal is gone, and the success is a status rather than a refusal.
+    expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument();
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice.className).toContain('work-control__notice');
+  });
+
+  it('reports a refused follow-up as a failure, not as the success it follows', async () => {
+    vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
+      subject_id: 'codeberg-issues',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'archive',
+      available: true,
+      proposal: {
+        turn_id: 'T-0207',
+        summary: 'A follow-up plan',
+        after: 'Add the Codeberg issue provider on top of relay-v2.',
+        applies: 'a new plan',
+      },
+    });
+    vi.spyOn(apiClient, 'acceptFollowUp').mockRejectedValue(new Error('conflict'));
+
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'codeberg-issues',
+        subjectKind: 'plan',
+        projectId: 'pm-mcp-clients',
+        ended: true,
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
+
+    const notice = await screen.findByTestId('chat-notice');
+    expect(notice).toHaveAttribute('role', 'alert');
+    expect(notice.className).toContain('work-control__failure');
   });
 
   it('accepts no follow-up whose proposal was read without its turn', async () => {

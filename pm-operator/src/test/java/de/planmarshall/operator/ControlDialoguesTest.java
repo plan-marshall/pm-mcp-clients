@@ -177,6 +177,18 @@ class ControlDialoguesTest {
                            "state":"open"}}
                         """;
 
+    private static final String CHAT_ANSWERED_PROPOSAL = """
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Add SSE","steps":[],"refs":[],
+                            "at":"2026-10-16T10:00:00Z"}],
+                         "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"revision",
+                           "summary":"a test per transport","after":"websocket and SSE",
+                           "state":"accepted"}}
+                        """;
+
     private static final String SETTINGS = """
                         {"plan_id":"p","revision":7,"values":[
                           {"aspect":"landing","value":"landing.pull-request","origin":"project",
@@ -412,6 +424,40 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("an answered proposal is not read back again: the chat asks for a message")
+    void chatAnsweredProposalAsksForAMessage() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat")) {
+                response.json(200, CHAT_PROPOSAL);
+            } else if (path.endsWith("/proposal/accept")) {
+                response.json(200, CHAT_ANSWERED_PROPOSAL);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("\n\n");
+        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        var text = out.toString();
+        // The read-back is drawn once, and the answered proposal is not offered a second time.
+        assertEquals(1, times(text, "Proposed change"), text);
+        assertTrue(text.contains("The chat is kept with p"), text);
+    }
+
+    /**
+     * @param text the drawn transcript
+     * @param part the text to count
+     * @return how often the transcript carries the part
+     */
+    private static int times(String text, String part) {
+        var count = 0;
+        var index = text.indexOf(part);
+        while (index >= 0) {
+            count++;
+            index = text.indexOf(part, index + part.length());
+        }
+        return count;
+    }    @Test
     @DisplayName("a setting is applied and a conflict keeps the current value")
     void settingsConflict() throws Exception {
         serve((request, response) -> {

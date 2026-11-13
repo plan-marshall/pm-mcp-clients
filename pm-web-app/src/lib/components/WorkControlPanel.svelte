@@ -686,6 +686,7 @@
     try {
       chat = await apiClient.chatWithSubject(chatSubject, text);
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -703,6 +704,7 @@
       chat = await apiClient.answerSubjectChatProposal(chatSubject, turnId, accept);
       onChanged();
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -726,6 +728,7 @@
       chat = null;
       endedProposal = null;
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
