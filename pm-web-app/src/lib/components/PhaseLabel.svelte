@@ -13,8 +13,9 @@
   ]);
 
   /**
-   * The catalogue key of each phase's word. Every key is written as a literal, so the catalogue
-   * guard finds it and checks that both languages carry it.
+   * The catalogue key of each phase's word. Every key is a literal here, and `MessageCatalogueTest`
+   * of `pm-api` asserts it in both languages; the web catalogue guard cannot see a key passed as a
+   * variable.
    */
   export const PHASE_WORD_KEYS: Readonly<Record<Phase, string>> = Object.freeze({
     init: 'phase.name.init',

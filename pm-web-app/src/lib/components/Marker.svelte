@@ -13,8 +13,9 @@
   });
 
   /**
-   * The catalogue key of each marker's word. Every key is written as a literal, so the catalogue
-   * guard finds it and checks that both languages carry it.
+   * The catalogue key of each marker's word. Every key is a literal here, and
+   * `MessageCatalogueTest` of `pm-api` asserts it in both languages; the web catalogue guard cannot
+   * see a key passed as a variable.
    */
   export const MARKER_WORD_KEYS: Readonly<Record<MarkerKind, string>> = Object.freeze({
     recommended: 'common.marker.recommended',
@@ -44,7 +45,12 @@
   let { kind, label }: Props = $props();
 </script>
 
-<span class="marker" data-marker={kind} aria-label={label || undefined}>
+<span
+  class="marker"
+  data-marker={kind}
+  role={label ? 'note' : undefined}
+  aria-label={label || undefined}
+>
   <Icon name={MARKER_ICONS[kind]} size={16} />
   <span class="marker__word">{$t(MARKER_WORD_KEYS[kind])}</span>
 </span>

@@ -108,10 +108,20 @@ describe('RowLink', () => {
     expect(container.querySelector('.row-link__title')).toHaveTextContent('Fix Relay Transport');
   });
 
-  it('takes the hover, the pointer and the focus ring on the whole row', () => {
-    expect(ruleOf(STYLE, '.row-link:hover')).toContain('background-color');
-    expect(ruleOf(STYLE, '.row-link')).toContain('cursor: pointer');
+  it('takes the hover, the pointer and the focus ring on the whole row it opens', () => {
+    expect(ruleOf(STYLE, '.row-link--opens:hover')).toContain('background-color');
+    expect(ruleOf(STYLE, '.row-link--opens')).toContain('cursor: pointer');
     expect(ruleOf(STYLE, '.row-link:focus-within')).toContain('box-shadow: var(--focus-ring)');
+  });
+
+  it('lifts and points on no row that opens nothing', () => {
+    const { container } = render(RowLink, {
+      props: { href: '//evil.example/x', title: 'Fix Relay Transport' },
+    });
+
+    expect(container.querySelector('.row-link')).not.toHaveClass('row-link--opens');
+    expect(ruleOf(STYLE, '.row-link')).not.toContain('cursor: pointer');
+    expect(ruleOf(STYLE, '.row-link:hover')).toBe('');
   });
 
   it('stretches the title link over the row without a numeric layer', () => {

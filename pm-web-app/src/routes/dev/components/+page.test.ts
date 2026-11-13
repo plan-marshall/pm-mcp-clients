@@ -214,7 +214,8 @@ describe('/dev/components page fixture', () => {
     expect(block?.querySelectorAll('[data-testid="brand-mark"]')).toHaveLength(0);
   });
 
-  it.each(['light', 'dark'])('draws the all-clear bust on the calm empty state only, in the %s block', (theme) => {    render(DevComponentsPage);
+  it.each(['light', 'dark'])('draws the all-clear bust on the calm empty state only, in the %s block', (theme) => {
+    render(DevComponentsPage);
     const block = document.querySelector(`[data-theme="${theme}"]`);
     // In page order: the data table's empty slot, the calm empty state, the icon empty state.
     const [tableEmpty, calm, iconEmpty] = Array.from(

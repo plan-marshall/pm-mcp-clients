@@ -40,14 +40,14 @@
   export type ReasonTone = 'attention' | 'danger';
 
   /**
-   * The reasons drawn in the danger tone. The wire value of the integrity pause is
-   * `integrity_pause` (`NeedsOperatorKind`); `integrity_hold` is the design's older spelling and is
-   * accepted too, so a caller that still names it gets the same tone.
+   * The reasons drawn in the danger tone: the two that mean the work cannot go on as it is
+   * (`components-tags.adoc`, reason-badge). The wire value of the integrity pause is
+   * `integrity_pause` (`NeedsOperatorKind`); a reason outside {@link REASONS} draws the catalogue's
+   * fallback word in the attention tone, never this one.
    */
   export const DANGER_REASONS: readonly string[] = Object.freeze([
     'landing_failed',
     'integrity_pause',
-    'integrity_hold',
   ]);
 
   /**
@@ -94,7 +94,7 @@
   const resolvedTone = $derived(tone ?? toneOf(reason));
 </script>
 
-<span class="reason-badge reason-badge--{resolvedTone}" data-reason={reason}>
+<span class="reason-badge reason-badge--{resolvedTone}">
   {#if known}
     {$t('overview.needs.badge', { count, reason: $t(`overview.needs.${reason}`) })}
   {:else}

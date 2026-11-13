@@ -41,6 +41,7 @@
 
 <div
   class="row-link"
+  class:row-link--opens={opens}
   class:row-link--current={current}
   class:row-link--compact={compact}
   aria-current={current ? 'true' : undefined}
@@ -70,10 +71,14 @@
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--color-text-primary);
+  }
+
+  /* Only the row that opens an object is interactive: a block that opens nothing gets no lift. */
+  .row-link--opens {
     cursor: pointer;
   }
 
-  .row-link:hover {
+  .row-link--opens:hover {
     background-color: var(--color-bg-subtle);
   }
 

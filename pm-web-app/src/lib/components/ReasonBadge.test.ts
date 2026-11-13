@@ -146,4 +146,13 @@ describe('ReasonBadge', () => {
     expect(badge).toHaveClass('reason-badge--attention');
     expect(badge.textContent).not.toContain('teleported');
   });
+
+  it('draws the superseded spelling of the integrity hold as an unknown reason, never in red', () => {
+    useCatalogue('en');
+    const { container } = render(ReasonBadge, { props: { reason: 'integrity_hold' } });
+    const badge = container.querySelector('.reason-badge') as HTMLElement;
+
+    expect(badge).toHaveTextContent('! another reason');
+    expect(badge).toHaveClass('reason-badge--attention');
+  });
 });

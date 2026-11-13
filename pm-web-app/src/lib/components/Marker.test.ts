@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
-import { render } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import Marker, { MARKERS } from './Marker.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -49,9 +49,9 @@ describe('Marker', () => {
     ['de', 'Primary desktop'],
   ] as const)('names the option it marks in %s', (locale, label) => {
     useCatalogue(locale);
-    const { container } = render(Marker, { props: { kind: 'this_one', label } });
+    render(Marker, { props: { kind: 'this_one', label } });
 
-    expect(container.querySelector('.marker')).toHaveAttribute('aria-label', label);
+    expect(screen.getByRole('note', { name: label })).toBeInTheDocument();
   });
 
   it('draws no fill, no border and no brand colour', () => {

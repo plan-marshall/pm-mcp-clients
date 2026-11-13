@@ -22,8 +22,8 @@ function useCatalogue(locale: 'en' | 'de'): void {
 
 describe('CountBadge', () => {
   it('draws the number in the neutral fill by default', () => {
-    render(CountBadge, { props: { count: 3 } });
-    const badge = document.querySelector('.count-badge');
+    const { container } = render(CountBadge, { props: { count: 3 } });
+    const badge = container.querySelector('.count-badge');
 
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(badge?.className).toContain('count-badge--neutral');
