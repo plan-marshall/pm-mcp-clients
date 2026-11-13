@@ -124,12 +124,12 @@ class StatusPlanRowKindTest {
 
     @ParameterizedTest(name = "{0} reads as {1}")
     @CsvSource({
-            "waiver_request, waiver",
-            "operator_wait, waits for you",
-            "title, another reason"
+                        "waiver_request, waiver",
+                        "operator_wait, waits for you",
+                        "title, another reason"
     })
     @DisplayName("names the plan row's kind by the resolved kind's label")
-    void planRowNamesTheResolvedKind(String wireKind, String expectedLabel) throws IOException {
+    void planRowNamesTheResolvedKind(String wireKind, String expectedLabel) throws Exception {
         serve(wireKind);
 
         var code = run("status");
@@ -146,12 +146,12 @@ class StatusPlanRowKindTest {
 
     @ParameterizedTest(name = "{0} reads as {1}")
     @CsvSource({
-            "waiver_request, waiver",
-            "operator_wait, waits for you",
-            "title, another reason"
+                        "waiver_request, waiver",
+                        "operator_wait, waits for you",
+                        "title, another reason"
     })
     @DisplayName("names the epic row's kind by the resolved kind's label")
-    void epicRowNamesTheResolvedKind(String wireKind, String expectedLabel) throws IOException {
+    void epicRowNamesTheResolvedKind(String wireKind, String expectedLabel) throws Exception {
         serve(wireKind);
 
         var code = run("status", "--by-epic");
@@ -168,7 +168,7 @@ class StatusPlanRowKindTest {
 
     @Test
     @DisplayName("names a kind this version does not know as another reason, never by its word")
-    void unknownKindReadsAsAnotherReason() throws IOException {
+    void unknownKindReadsAsAnotherReason() throws Exception {
         var unknown = "zz" + Generators.letterStrings(8, 14).next();
         serve(unknown);
 

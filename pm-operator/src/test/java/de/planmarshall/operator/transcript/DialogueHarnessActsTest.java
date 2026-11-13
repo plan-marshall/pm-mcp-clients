@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,7 +50,7 @@ class DialogueHarnessActsTest {
 
     @Test
     @DisplayName("an act without a body member reads with the empty body, an act with one with its text")
-    void absentBodyReadsEmpty() throws IOException {
+    void absentBodyReadsEmpty() throws Exception {
         var path = "/api/v1/plans/" + Generators.letterStrings(4, 12).next() + "/pause";
         var decisionPath = "/api/v1/decisions/" + Generators.letterStrings(4, 12).next();
         var state = Generators.letterStrings(4, 12).next();
@@ -67,7 +66,7 @@ class DialogueHarnessActsTest {
 
     @Test
     @DisplayName("an act whose body member is null reads with the empty body")
-    void nullBodyReadsEmpty() throws IOException {
+    void nullBodyReadsEmpty() throws Exception {
         var path = "/api/v1/decisions/" + Generators.letterStrings(4, 12).next();
         var state = Generators.letterStrings(4, 12).next();
         var act = act(path, state);
@@ -80,7 +79,7 @@ class DialogueHarnessActsTest {
 
     @Test
     @DisplayName("an answer without acts reads as no act")
-    void noActs() throws IOException {
+    void noActs() throws Exception {
         assertEquals(List.of(), DialogueHarness.actsOf(answer(List.of())));
     }
 }

@@ -76,7 +76,7 @@ class OverviewCatalogueTest {
 
     @Test
     @DisplayName("should contain every key of the text tables of plan-overview.adoc and 15-overview.adoc in both packs")
-    void shouldContainAllSpecificationKeys() throws IOException {
+    void shouldContainAllSpecificationKeys() throws Exception {
         var keys = specificationKeys();
 
         assertTrue(keys.size() > 70, "the text tables of both documents must be read: " + keys);
