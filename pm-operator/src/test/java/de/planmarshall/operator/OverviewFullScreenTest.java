@@ -236,6 +236,23 @@ class OverviewFullScreenTest {
                         }
                         """;
 
+    // The process of the project's first plan, which Enter on its row opens as the plan view.
+    private static final String CONSOLE_HISTORY_PROCESS_JSON = """
+                        {"plan_id":"pln-console-history","title":"Console history of answers",
+                          "project":{"project_id":"pm-mcp-clients","display_name":"pm-mcp-clients"},
+                          "current_phase":"refine","phase_state":"waiting_for_you","duration_seconds":600,
+                          "needs_operator":true,
+                          "tokens_so_far":{"total":0,"input":0,"output":0,"floor":false,
+                            "tasks_total":0,"tasks_measured":0,"none_yet":true,"not_measured":false},
+                          "nodes":[
+                            {"node_id":"init","title":"phase init","kind":"phase","state":"done",
+                             "duration_seconds":60},
+                            {"node_id":"refine","title":"phase refine","kind":"phase",
+                             "state":"waiting_for_operator","duration_seconds":540,
+                             "waits_for":"your decision"}],
+                          "current_position_path":["refine"]}
+                        """;
+
     private RuntimeFixture fixture;
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
     private final AtomicReference<FakeRuntimeServer.EventStream> activeStream = new AtomicReference<>();
@@ -280,6 +297,8 @@ class OverviewFullScreenTest {
                 } else {
                     response.json(200, ENDED_CLIENTS_PAGE1_JSON);
                 }
+            } else if ("/api/v1/plans/pln-console-history/process".equals(path)) {
+                response.json(200, CONSOLE_HISTORY_PROCESS_JSON);
             } else if ("/api/v1/reports".equals(path)) {
                 response.json(200, "{\"unread_count\":3,\"items\":[]}");
             } else if ("/api/v1/events".equals(path)) {
@@ -747,9 +766,11 @@ class OverviewFullScreenTest {
             virtual.type("?");
             delay(50L);
 
-            // Drill down into first plan with Enter
+            // Drill down into first plan with Enter: the plan view of the served process, with the
+            // node that waits for the operator
             virtual.type("\r");
-            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pln-console-history")));
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pln-console-history"))
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("your decision")));
 
             // Return with Esc
             virtual.type("\u001b");
