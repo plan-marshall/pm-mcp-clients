@@ -562,4 +562,477 @@ describe('SystemView component', () => {
 
     expect(get(runtimeStore).isDraining).toBe(true);
   });
+
+  describe('the acts on the runtime and the upgrade', () => {
+    /** The snapshot of a runtime with no newer version known, so its bar offers Check now. */
+    const currentSnapshot: SystemSnapshot = {
+      ...mockSnapshot,
+      runtime: { ...mockSnapshot.runtime, upgrade_available_version: undefined },
+    };
+
+    /** Renders the view and waits until the runtime's upgrade is in the given step. */
+    async function renderUpgrading(step: string): Promise<void> {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await waitFor(() => expect(eventHandler).not.toBeNull());
+      eventHandler?.('runtime.upgrading', {
+        version: '0.10.0',
+        installed: '0.9.1',
+        step,
+        withdrawable: true,
+      });
+      await screen.findByTestId('upgrade-steps');
+    }
+
+    it.each([
+      ['not_withdrawable', 'Too late to withdraw the upgrade; the links are switched.'],
+      [
+        'act_not_available',
+        'The upgrade could not be withdrawn: Reload the view and choose an act the state offers.',
+      ],
+      // A refusal without a code is no "too late": only the runtime's code says the links switched.
+      ['HTTP 409', 'The upgrade could not be withdrawn: Action failed.'],
+    ])('answers a withdraw refused with %s by its own sentence', async (refusal, sentence) => {
+      vi.spyOn(apiClient, 'withdrawUpgrade').mockRejectedValue(new Error(refusal));
+      await renderUpgrading('fetch');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Withdraw the upgrade' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(sentence);
+      expect(screen.getByTestId('upgrade-steps')).toBeInTheDocument();
+    });
+
+    it('offers no withdraw once the links are switched, and hurries a waiting upgrade', async () => {
+      const upgradeSpy = vi
+        .spyOn(apiClient, 'upgradeRuntime')
+        .mockResolvedValue({ status: 'upgrading' });
+      await renderUpgrading('wait');
+
+      expect(screen.queryByRole('button', { name: 'Withdraw the upgrade' })).toBeNull();
+      await fireEvent.click(screen.getByRole('button', { name: 'Upgrade now' }));
+
+      expect(upgradeSpy).toHaveBeenCalledWith('0.10.0', 'now');
+      await waitFor(() =>
+        expect(screen.getByTestId('upgrade-step-stop')).toHaveClass('upgrade-step--running'),
+      );
+      expect(screen.getByTestId('upgrade-step-wait')).toHaveClass('upgrade-step--done');
+      expect(screen.queryByRole('button', { name: 'Upgrade now' })).toBeNull();
+    });
+
+    it("shows the refusal's sentence when hurrying the upgrade fails", async () => {
+      vi.spyOn(apiClient, 'upgradeRuntime').mockRejectedValue(new Error('act_not_available'));
+      await renderUpgrading('wait');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Upgrade now' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Reload the view and choose an act the state offers.',
+      );
+      expect(screen.getByRole('button', { name: 'Upgrade now' })).toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        'verify',
+        undefined,
+        'The upgrade to 0.10.0 failed while verify: no space. 0.9.1 keeps running; nothing was changed.',
+      ],
+      [
+        'start',
+        '0.9.1',
+        '0.10.0 did not start: no space. 0.9.1 was restored and runs again; running work goes on from its last committed state.',
+      ],
+      ['start', undefined, 'Neither 0.10.0 nor 0.9.1 started: no space.'],
+    ])(
+      'says what a failure at %s (restored %s) left running',
+      async (step, restored, sentence) => {
+        vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+        render(SystemView);
+        await waitFor(() => expect(eventHandler).not.toBeNull());
+
+        eventHandler?.('runtime.upgrade_failed', {
+          version: '0.10.0',
+          installed: '0.9.1',
+          step,
+          reason: 'no space',
+          ...(restored ? { restored } : {}),
+        });
+
+        expect(await screen.findByTestId('upgrade-failed')).toHaveTextContent(sentence);
+      },
+    );
+
+    it('dismisses a failed upgrade and offers the upgrade again', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await waitFor(() => expect(eventHandler).not.toBeNull());
+      eventHandler?.('runtime.upgrade_failed', { version: '0.10.0', step: 'fetch', reason: 'x' });
+      await screen.findByTestId('upgrade-failed');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+      expect(screen.queryByTestId('upgrade-failed')).toBeNull();
+      expect(screen.getByRole('heading', { name: '0.10.0 is available.' })).toBeInTheDocument();
+    });
+
+    it('reports a consented upgrade the runtime refuses as failed while fetching', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      const upgradeSpy = vi
+        .spyOn(apiClient, 'upgradeRuntime')
+        .mockRejectedValue(new Error('act_not_available'));
+      render(SystemView);
+      await waitFor(() =>
+        expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+      );
+      await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+      await screen.findByTestId('upgrade-consent');
+
+      await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Upgrade now' }));
+
+      expect(upgradeSpy).toHaveBeenCalledWith('0.10.0', 'now');
+      expect(await screen.findByTestId('upgrade-failed')).toHaveTextContent(
+        'The upgrade to 0.10.0 failed while fetch: Reload the view and choose an act the state offers',
+      );
+    });
+
+    it('closes the consent on Not now without sending anything', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      const upgradeSpy = vi.spyOn(apiClient, 'upgradeRuntime');
+      render(SystemView);
+      await waitFor(() =>
+        expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+      );
+      await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+      await screen.findByTestId('upgrade-consent');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+      expect(screen.queryByTestId('upgrade-consent')).toBeNull();
+      expect(upgradeSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [0, 'No worktree has uncommitted changes'],
+      [2, '2 worktrees have uncommitted changes'],
+    ])('lists %s dirty worktrees among the checks before upgrading', async (count, line) => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue({
+        ...mockSnapshot,
+        runtime: { ...mockSnapshot.runtime, dirty_worktrees: count },
+      });
+      render(SystemView);
+      await waitFor(() =>
+        expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+      );
+
+      await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+
+      expect(await screen.findByTestId('upgrade-check-list')).toHaveTextContent(line);
+    });
+
+    it('disables the upgrade of an installation the runtime cannot upgrade and says why', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue({
+        ...mockSnapshot,
+        runtime: {
+          ...mockSnapshot.runtime,
+          upgrade_possible: false,
+          upgrade_disabled_reason: 'PM_MCP_HOME is set',
+        },
+      });
+      render(SystemView);
+
+      expect(
+        await screen.findByText(
+          'This installation is not upgraded by the runtime: PM_MCP_HOME is set.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Upgrade…' })).toBeDisabled();
+    });
+
+    it.each([
+      [undefined, 'Update check completed.'],
+      [new Error('act_not_available'), 'Could not check for a newer version: Reload the view'],
+    ])('checks for a newer version and reports the outcome (%s)', async (failure, line) => {
+      const snapshotSpy = vi
+        .spyOn(apiClient, 'getSystemSnapshot')
+        .mockResolvedValue(currentSnapshot);
+      const checkSpy = vi.spyOn(apiClient, 'checkUpgrade');
+      if (failure) checkSpy.mockRejectedValue(failure);
+      else checkSpy.mockResolvedValue({ current_version: '0.9.1' });
+      render(SystemView);
+      await screen.findByText('newer version not checked');
+      const readsBefore = snapshotSpy.mock.calls.length;
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Check now' }));
+
+      expect(await screen.findByRole(failure ? 'alert' : 'status')).toHaveTextContent(line);
+      expect(snapshotSpy.mock.calls.length).toBe(failure ? readsBefore : readsBefore + 1);
+    });
+
+    it('restarts now with its own note and confirmation', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(currentSnapshot);
+      const stopSpy = vi
+        .spyOn(apiClient, 'stopRuntime')
+        .mockResolvedValue({ lifecycle_state: 'stopping' });
+      render(SystemView);
+      await fireEvent.click(await screen.findByRole('button', { name: 'Restart…' }));
+
+      expect(screen.getByText('Every client connects again by itself.')).toBeInTheDocument();
+      await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Restart now' }));
+
+      expect(stopSpy).toHaveBeenCalledWith('now', 'restart');
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(get(runtimeStore).isStopped).toBe(false);
+    });
+
+    it('shows the stopped page after a stop now, and keeps the runtime running on Keep', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(currentSnapshot);
+      const stopSpy = vi
+        .spyOn(apiClient, 'stopRuntime')
+        .mockResolvedValue({ lifecycle_state: 'stopped' });
+      render(SystemView);
+
+      await fireEvent.click(await screen.findByRole('button', { name: 'Stop…' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Keep it running' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(stopSpy).not.toHaveBeenCalled();
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Stop…' }));
+      await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Stop now' }));
+
+      expect(stopSpy).toHaveBeenCalledWith('now');
+      expect(await screen.findByRole('region', { name: 'Stopped runtime' })).toBeInTheDocument();
+    });
+  });
+
+  describe('the stopped page', () => {
+    const originalClipboard = navigator.clipboard;
+
+    afterEach(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: originalClipboard,
+        configurable: true,
+      });
+    });
+
+    /** @param writeText the clipboard writer the test hands the view */
+    async function renderStopped(writeText: (text: string) => Promise<void>): Promise<void> {
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      runtimeStore.update((s) => ({ ...s, isStopped: true }));
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await screen.findByRole('button', { name: 'Copy the command' });
+    }
+
+    it('copies the start command and confirms the copy', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      await renderStopped(writeText);
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the command' }));
+
+      expect(writeText).toHaveBeenCalledWith('pm-operator runtime start');
+      expect(await screen.findByText('Copied to clipboard.')).toBeInTheDocument();
+    });
+
+    it('claims no copy the clipboard refused', async () => {
+      const writeText = vi.fn().mockRejectedValue(new Error('NotAllowedError'));
+      await renderStopped(writeText);
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the command' }));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(screen.queryByText('Copied to clipboard.')).toBeNull();
+    });
+  });
+
+  describe('the live figures and the filters', () => {
+    it.each(['system.metrics', 'runtime.draining', 'runtime.drain_withdrawn'])(
+      'reads the snapshot again on %s',
+      async (event) => {
+        const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+        render(SystemView);
+        await screen.findByText('System');
+        await waitFor(() => expect(eventHandler).not.toBeNull());
+        const readsBefore = fetchSpy.mock.calls.length;
+
+        eventHandler?.(event, {});
+
+        await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(readsBefore + 1));
+      },
+    );
+
+    it('drops the remembered project when the project list cannot be read', async () => {
+      localStorage.setItem(
+        'pm_system_filters',
+        JSON.stringify({ window: 'hour', groupBy: 'model', project: 'pm-mcp-clients' }),
+      );
+      vi.spyOn(apiClient, 'getProjectExplorer').mockRejectedValue(new ClientError('timeout'));
+      const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+      render(SystemView);
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenLastCalledWith('hour', undefined));
+      expect(screen.queryByTestId('system-project-filter')).toBeNull();
+    });
+
+    it('marks the runtime offline when the snapshot cannot reach it, and retries', async () => {
+      const fetchSpy = vi
+        .spyOn(apiClient, 'getSystemSnapshot')
+        .mockRejectedValueOnce(new ClientError('network_offline'))
+        .mockResolvedValue(mockSnapshot);
+      render(SystemView);
+
+      const failure = await screen.findByTestId('system-error');
+      expect(get(runtimeStore).isOffline).toBe(true);
+
+      await fireEvent.click(within(failure).getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(screen.queryByTestId('system-error')).toBeNull());
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('sums the models per role, keeping an unmeasured role apart', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await screen.findByText('claude:opus-4.5');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+
+      const implementer = screen.getByText('implementer', { selector: 'strong.mono' }).closest('tr');
+      expect(implementer).not.toBeNull();
+      // 118 + 12 calls; the unmeasured gpt-5 calls do not hide the measured tokens of sonnet.
+      expect(within(implementer as HTMLElement).getByText('130')).toBeInTheDocument();
+      expect(implementer).toHaveTextContent('1 error');
+      expect(screen.getByText('planner', { selector: 'strong.mono' })).toBeInTheDocument();
+    });
+
+    it('says when nothing runs, no worker is active, and no model was called', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue({
+        ...mockSnapshot,
+        work: { ...mockSnapshot.work, plans_by_state: {}, epics_by_state: {} },
+        workers: [],
+        models: [],
+      });
+      render(SystemView);
+
+      expect(await screen.findAllByText('none running')).toHaveLength(2);
+      expect(screen.getByText('No active workers.')).toBeInTheDocument();
+      expect(screen.getByText('No model calls in this window.')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['Last hour', 'hour'],
+      ['Today', 'today'],
+      ['7 days', '7d'],
+    ])('reads the window %s and names it above the models', async (label, wire) => {
+      localStorage.setItem(
+        'pm_system_filters',
+        JSON.stringify({ window: wire === 'hour' ? 'today' : 'hour', groupBy: 'model', project: '' }),
+      );
+      const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      const group = await screen.findByRole('group', { name: /window/i });
+
+      await fireEvent.click(within(group).getByRole('button', { name: label }));
+
+      expect(fetchSpy).toHaveBeenLastCalledWith(wire, undefined);
+      const heading = screen.getByRole('heading', { name: 'Models' }).parentElement;
+      expect(heading).toHaveTextContent(label);
+      expect(heading).not.toHaveTextContent(/\b7d\b/);
+    });
+
+    it('reads the snapshot again on Refresh and switches the models back per model', async () => {
+      const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await screen.findByText('claude:opus-4.5');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Refresh system view' }));
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+      expect(screen.queryByText('claude:opus-4.5')).toBeNull();
+      await fireEvent.click(screen.getByRole('button', { name: 'Per model' }));
+      expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
+      // The workers' table and the models' table both head their column Model again.
+      expect(screen.getAllByRole('columnheader', { name: 'Model' })).toHaveLength(2);
+    });
+
+    it('shows the release notes of a newer version as text with an inert link', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue({
+        ...mockSnapshot,
+        runtime: {
+          ...mockSnapshot.runtime,
+          upgrade_release_notes_summary: '<b>faster relay</b>',
+          upgrade_release_notes_url: '/api/v1/system/release-notes?version=0.10.0',
+        },
+      });
+      render(SystemView);
+
+      expect(await screen.findByText('<b>faster relay</b>')).toBeInTheDocument();
+      const links = screen.getAllByRole('link', { name: 'Release notes' });
+      expect(links).toHaveLength(2);
+      for (const link of links) {
+        expect(link).toHaveAttribute('href', '/api/v1/system/release-notes?version=0.10.0');
+        expect(link).toHaveAttribute('rel', 'noreferrer');
+      }
+    });
+
+    it('opens the consent from the Upgrade act of the runtime card too', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await waitFor(() =>
+        expect(screen.getAllByRole('button', { name: 'Upgrade…' })).toHaveLength(2),
+      );
+
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Upgrade…' })[1]);
+
+      expect(await screen.findByTestId('upgrade-consent')).toHaveTextContent(
+        'Upgrade 0.9.1 to 0.10.0?',
+      );
+    });
+
+    it('shows a figure the runtime did not measure as not available, never as zero', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue({
+        ...mockSnapshot,
+        runtime: {
+          version: '0.9.1',
+          cpu_percent: null,
+          cpu_measured: false,
+          socket_listener: true,
+          loopback_address: null,
+          lan_address: null,
+          upgrade_possible: false,
+        },
+        work: { ...mockSnapshot.work, recovering_projects: ['pm-mcp-core'] },
+      });
+      render(SystemView);
+
+      const memory = await screen.findByText(/^memory /);
+      expect(memory).toHaveTextContent(
+        'memory not available in use of not available · not available resident',
+      );
+      expect(screen.getByText(/^machine store /)).toHaveTextContent(
+        'machine store not available · not available free on its disk · measured not available',
+      );
+      expect(screen.queryByText(/0 B/)).toBeNull();
+      expect(screen.getByText('not measured on this platform')).toBeInTheDocument();
+      expect(screen.getByText(/loopback off/)).toHaveTextContent('network off');
+      expect(screen.getByText('newer version not checked')).toBeInTheDocument();
+      expect(screen.getByText(/recovering: pm-mcp-core/)).toBeInTheDocument();
+    });
+
+    it('opens the overview on the epics an epic figure counts', async () => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+
+      await fireEvent.click(
+        await screen.findByRole('button', { name: /running epics in the overview/i }),
+      );
+
+      expect(get(runtimeStore)).toMatchObject({ currentRoute: 'overview', overviewFocus: 'epics' });
+    });
+  });
 });

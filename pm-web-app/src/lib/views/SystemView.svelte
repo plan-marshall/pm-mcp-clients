@@ -66,7 +66,6 @@
    * Reads the filters the browser remembered, keeping only values this view understands.
    */
   function restoreFilters(): void {
-    if (typeof window === 'undefined') return;
     try {
       const raw = window.localStorage.getItem(SYSTEM_FILTERS_KEY);
       if (!raw) return;
@@ -91,7 +90,6 @@
 
   /** Writes the filters to the browser, so the next visit opens where this one was. */
   function persistFilters(): void {
-    if (typeof window === 'undefined') return;
     try {
       window.localStorage.setItem(
         SYSTEM_FILTERS_KEY,
@@ -191,7 +189,6 @@
    * @param data its payload
    */
   function handleSystemEvent(event: string, data: unknown): void {
-    if (!isMounted) return;
     if (
       event === 'system.metrics' ||
       event === 'runtime.draining' ||
@@ -333,9 +330,9 @@
       await apiClient.withdrawUpgrade();
       upgradePhase = 'withdrawn';
     } catch (err: unknown) {
-      // The refusal's own code picks the sentence; it is never printed.
-      const message = err instanceof Error ? err.message : '';
-      if (message.includes('not_withdrawable') || message.includes('409')) {
+      // The refusal's own code picks the sentence; it is never printed. Only `not_withdrawable`
+      // means the links are switched: another refusal, or a bare HTTP status, is not "too late".
+      if (errorCodeOf(err) === 'not_withdrawable') {
         actionError = $t('system.upgrade.too_late');
       } else {
         actionError = $t('system.upgrade.withdraw_failed', {
@@ -408,8 +405,6 @@
       case 'upgrade':
         openUpgradeConsent();
         return;
-      default:
-        return;
     }
   }
 
@@ -456,14 +451,34 @@
     }
   }
 
-  function copyCommand(text: string) {
-    if (navigator?.clipboard) {
-      void navigator.clipboard.writeText(text);
-      actionSuccess = $t('system.action.copied');
-      setTimeout(() => {
-        actionSuccess = '';
-      }, 3000);
+  /**
+   * Copies the start command; the confirmation is shown only once the browser took it, so a
+   * refused clipboard claims no copy that did not happen.
+   *
+   * @param text the command to copy
+   */
+  async function copyCommand(text: string): Promise<void> {
+    if (!navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      return;
     }
+    actionSuccess = $t('system.action.copied');
+    setTimeout(() => {
+      actionSuccess = '';
+    }, 3000);
+  }
+
+  /**
+   * A size the runtime measured, or `not available` where it sent none: an unmeasured figure is
+   * never shown as `0 B` (system.adoc, The Requests: `unavailable` where it is not measured).
+   *
+   * @param bytes the measured size, absent when not measured
+   * @returns the text of the figure
+   */
+  function bytesFigure(bytes: number | undefined): string {
+    return bytes === undefined ? $t('system.figure.unavailable') : formatBytes(bytes);
   }
 
   // Derived filtered models
@@ -735,7 +750,7 @@
       </p>
       <div class="copy-box">
         <code class="mono">{$t('system.stopped.command')}</code>
-        <Button variant="secondary" onclick={() => copyCommand('pm-operator runtime start')}>
+        <Button variant="secondary" onclick={() => void copyCommand('pm-operator runtime start')}>
           {$t('system.stopped.copy')}
         </Button>
       </div>
@@ -837,11 +852,9 @@
             <span class="metric-label">{$t('system.runtime.field.memory')}</span>
             <span class="metric-value">
               {$t('system.runtime.memory', {
-                used: formatBytes(snapshot.runtime.memory_used_bytes || 0),
-                max: formatBytes(snapshot.runtime.memory_max_bytes || 0),
-                resident: snapshot.runtime.memory_resident_bytes
-                  ? formatBytes(snapshot.runtime.memory_resident_bytes)
-                  : $t('system.figure.unavailable'),
+                used: bytesFigure(snapshot.runtime.memory_used_bytes),
+                max: bytesFigure(snapshot.runtime.memory_max_bytes),
+                resident: bytesFigure(snapshot.runtime.memory_resident_bytes),
               })}
             </span>
           </div>
@@ -861,8 +874,8 @@
             <span class="metric-label">{$t('system.runtime.field.store')}</span>
             <span class="metric-value">
               {$t('system.runtime.store', {
-                size: formatBytes(snapshot.runtime.machine_store_bytes || 0),
-                free: formatBytes(snapshot.runtime.disk_free_bytes || 0),
+                size: bytesFigure(snapshot.runtime.machine_store_bytes),
+                free: bytesFigure(snapshot.runtime.disk_free_bytes),
                 time:
                   formatTime(snapshot.runtime.disk_measured_at, 'short', $currentLocale) ||
                   $t('system.figure.unavailable'),
@@ -1081,7 +1094,7 @@
           <div class="models-title-row">
             <h2 id="heading-models" class="card-title">{$t('system.models.title')}</h2>
             <span class="text-muted text-sm">
-              {$t('system.models.window', { window: selectedWindow })}
+              {$t('system.models.window', { window: selectedWindow === '7d' ? 'week' : selectedWindow })}
             </span>
           </div>
 
