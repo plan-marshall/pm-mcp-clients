@@ -1140,6 +1140,17 @@ class QuestionsCommandTest {
                                                 "total_votes": 4,
                                                 "models_count": 3,
                                                 "dissent_summary": "stale data risk",
+                                                "votes": []
+                                              }
+                                            },
+                                            {
+                                              "key": "2",
+                                              "label": "No cache",
+                                              "quorum_support": {
+                                                "band": "no_consensus",
+                                                "votes_count": 1,
+                                                "total_votes": 4,
+                                                "models_count": 1,
                                                 "votes": [
                                                   {"role": "reviewer-b", "reason": "stale data risk"}
                                                 ]
@@ -1157,9 +1168,9 @@ class QuestionsCommandTest {
             }
         });
 
-        // 1. ?r shows rationale and dissent, then pick 1
-        int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
-        assertEquals(0, code);
+        // 1. ?r shows rationale and dissent, then pick 1 and confirm it: the end of the input is no answer
+        int code = executeInteractive("?r\n1\n\n", "answer", "Q-003", "-i");
+        assertEquals(0, code, out + "\n" + err);
         var output = out.toString();
         assertTrue(output.contains("3 of 4 votes"), output);
         assertTrue(output.contains("Against it (reviewer-b): stale data risk"), output);
