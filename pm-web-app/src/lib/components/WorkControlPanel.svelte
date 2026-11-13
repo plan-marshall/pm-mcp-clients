@@ -21,7 +21,7 @@
     type PlanSettingsRecord,
     type WorkActions,
   } from '../api/client';
-  import { navigateTo, openCompletionReport } from '../stores/runtime';
+  import { openCompletionReport } from '../stores/runtime';
 
   interface SettingsConflict {
     aspect: string;
@@ -690,9 +690,14 @@
   }
 
   async function answerProposal(accept: boolean): Promise<void> {
+    // The answer names the proposal the operator saw, by its own turn.
+    const turnId = chat?.proposal?.turn_id;
+    if (!turnId) {
+      return;
+    }
     chatBusy = true;
     try {
-      chat = await apiClient.answerSubjectChatProposal(chatSubject, accept);
+      chat = await apiClient.answerSubjectChatProposal(chatSubject, turnId, accept);
       onChanged();
     } catch (err: unknown) {
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
@@ -724,7 +729,7 @@
     }
   }
 
-  /** Opens the start on the follow-up plan the ended work's chat proposed. */
+  /** Accepts the follow-up plan the ended work's chat proposed. */
   async function startFollowUp(): Promise<void> {
     // Accept names the proposal the operator saw; a proposal read without its turn cannot be named.
     const turnId = endedProposal?.turn_id;
@@ -733,12 +738,10 @@
     }
     chatBusy = true;
     try {
-      const result = await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
-      const entryId = result.start?.entry?.entry_id;
-      chatOpen = false;
-      if (entryId) {
-        navigateTo('start', { projectId, entryId });
-      }
+      await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
+      // The answer is the chat, and no B1 surface names the entry it opened: the operator is told
+      // that the plan is being started and goes on from the project's starts (PLAN-161, D2).
+      chatNotice = $t('control.chat.follow_up.opened', { project: projectId });
       onChanged();
     } catch (err: unknown) {
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });

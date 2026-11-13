@@ -1,4 +1,4 @@
-import { ClientError } from './errors';
+import { ClientError, isClientError } from './errors';
 
 export interface PairingResponse {
   device_secret: string;
@@ -1580,18 +1580,136 @@ export interface ChatProposal {
   applies?: string | null;
 }
 
-export interface StartChatResource {
-  entry_id: string;
-  role: string;
+/** The message keys of a step, a reason, a finding, or what the role knows, as the runtime sends them. */
+interface WireMessageText {
+  key: string;
+  args?: Record<string, string>;
+}
+
+/** One turn of a chat as the runtime writes it (`ChatTurn` of the B1 contract). */
+interface WireChatTurn {
+  turn_id: string;
+  kind: string;
+  author: string;
+  status: string;
+  format: string;
+  untrusted: boolean;
+  model?: string | null;
+  text: string;
+  steps: WireMessageText[];
+  refs: unknown[];
+  at: string;
+  reason?: WireMessageText | null;
+  lines?: unknown[];
+}
+
+/** The change a chat's role proposes, as the runtime writes it (`ChatProposal` of the B1 contract). */
+interface WireChatProposal {
+  turn_id: string;
+  reply_turn_id: string;
+  kind: string;
+  summary: string;
+  applies?: WireMessageText | null;
+  before?: string | null;
+  after?: string | null;
+  state: string;
+  finding?: WireMessageText | null;
+}
+
+/** A chat as the runtime writes it (`ChatResource`): the answer of every chat route but a turn. */
+interface WireChatResource {
+  id: string;
+  subject: { kind: string; id: string };
+  role: { name: string; model: string };
   scope: string;
-  available: boolean;
-  disabled_reason_key?: string | null;
-  chat_id?: string | null;
-  state?: string | null;
-  turns: ChatTurn[];
-  proposal?: ChatProposal | null;
-  transcript: string;
-  transcript_path?: string | null;
+  state: string;
+  context: { knows: WireMessageText[]; as_of: string };
+  proposal?: WireChatProposal | null;
+  turns: WireChatTurn[];
+  before?: string | null;
+}
+
+/** The `202` answer of `POST …/chat/turns`: the id of the operator's recorded turn. */
+interface WireChatTurnAccepted {
+  turn_id: string;
+}
+
+/** The author of the operator's own turns, as the runtime writes it. */
+const CHAT_AUTHOR_OPERATOR = 'operator';
+
+/** The kinds a turn must have to be a line of the transcript; a proposal is the panel's own. */
+const CHAT_TRANSCRIPT_KINDS = new Set(['message', 'notice']);
+
+/**
+ * Maps a `ChatResource` to the chat the views read. This is the one place the chat wire is read:
+ * the subject and the routed role flatten to the names the panels show, and a proposal's `applies`
+ * is the message key the texts resolve, without its arguments.
+ *
+ * @param resource the chat as the runtime writes it
+ * @returns the chat the views show
+ */
+export function normaliseChat(resource: WireChatResource): ChatReadBack {
+  const proposal = resource.proposal;
+  return {
+    chat_id: resource.id,
+    subject_id: resource.subject.id,
+    subject_kind: resource.subject.kind,
+    role: resource.role.name,
+    scope: resource.scope,
+    state: resource.state,
+    turns: resource.turns
+      .filter((turn) => CHAT_TRANSCRIPT_KINDS.has(turn.kind))
+      .map((turn) => ({
+        role: turn.author,
+        text: turn.text,
+        at: turn.at,
+        untrusted: turn.untrusted,
+      })),
+    proposal: proposal
+      ? {
+          turn_id: proposal.turn_id,
+          summary: proposal.summary,
+          before: proposal.before ?? null,
+          after: proposal.after ?? '',
+          applies: proposal.applies?.key ?? null,
+        }
+      : null,
+  };
+}
+
+/**
+ * Maps a chat about ended work to the follow-up it offers, through {@link normaliseChat}.
+ *
+ * @param resource the ended work's chat as the runtime writes it
+ * @returns the follow-up the ended work offers
+ */
+function normaliseFollowUp(resource: WireChatResource): FollowUpProposal {
+  const chat = normaliseChat(resource);
+  return {
+    subject_id: chat.subject_id,
+    subject_kind: chat.subject_kind as StartKind,
+    role: chat.role,
+    scope: chat.scope,
+    available: true,
+    proposal: chat.proposal ?? null,
+  };
+}
+
+/**
+ * Tells whether the role's reply to the operator's turn has settled.
+ *
+ * @param resource the chat as read
+ * @param operatorTurnId the operator's turn the reply answers
+ * @returns `true` once a turn after it is no longer being written
+ */
+function chatReplySettled(resource: WireChatResource, operatorTurnId: string): boolean {
+  const answered = resource.turns.findIndex((turn) => turn.turn_id === operatorTurnId);
+  if (answered < 0) {
+    return false;
+  }
+  return resource.turns
+    .slice(answered + 1)
+    .some((turn) => turn.author !== CHAT_AUTHOR_OPERATOR && turn.status !== 'streaming');
 }
 
 export interface StartRefusal {
@@ -1606,7 +1724,6 @@ export interface StartRefusal {
 export interface StartState {
   entry?: StartEntryResource;
   ready?: StartReadyResource;
-  chat?: StartChatResource;
   refusal?: StartRefusal;
   adoption_failure?: AdoptionFailure;
   recipes?: RecipeRef[];
@@ -2084,6 +2201,17 @@ export class ApiClient {
    */
   private static readonly CHECK_TIMEOUT_MS = 30_000;
 
+  /**
+   * How long a chat turn waits for the role's reply before the chat is shown as it stands.
+   *
+   * A turn is answered `202` before the role writes, so the client reads the chat until the reply
+   * turn is complete; the bound keeps a reply that never completes from holding the view.
+   */
+  private static readonly CHAT_REPLY_BOUND_MS = 20_000;
+
+  /** The pause between two reads of a chat whose reply is still being written. */
+  private static readonly CHAT_READ_INTERVAL_MS = 250;
+
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
@@ -2342,46 +2470,54 @@ export class ApiClient {
   }
 
   /**
+   * Opens the entry's chat on its `ChatRoutes` address, or reads the open one it already holds.
+   *
+   * @param entryId the entry's id
+   * @returns the chat, with its transcript and its proposal where it has one
+   */
+  public async openEntryChat(entryId: string): Promise<ChatReadBack> {
+    return normaliseChat(
+      await this.request<WireChatResource>('POST', ApiClient.entryChatPath(entryId)),
+    );
+  }
+
+  /**
+   * Sends the operator's message and reads the chat on until the role's reply is complete.
+   *
    * @param entryId the entry's id
    * @param text the operator's message
-   * @returns the entry's new representation, with the role's answer and a proposal where it has one
+   * @returns the chat, with the role's answer and a proposal where it has one
    */
-  public async chatTurn(entryId: string, text: string): Promise<StartStateResource> {
-    return this.request<StartStateResource>(
-      'POST',
-      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/turns`,
-      { text },
-    );
+  public async chatTurn(entryId: string, text: string): Promise<ChatReadBack> {
+    return this.sendChatTurn(ApiClient.entryChatPath(entryId), text);
   }
 
   /**
    * Ends the entry's chat before the work is created or the entry is abandoned.
    *
    * @param entryId the entry's id
-   * @returns the entry's new representation, with the transcript complete
+   * @returns the chat after it was closed
    */
-  public async endEntryChat(entryId: string): Promise<StartStateResource> {
-    return this.request<StartStateResource>(
-      'POST',
-      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/end`,
-      {},
+  public async endEntryChat(entryId: string): Promise<ChatReadBack> {
+    return normaliseChat(
+      await this.request<WireChatResource>('POST', `${ApiClient.entryChatPath(entryId)}/end`),
     );
   }
 
   /**
-   * Accepts or rejects the chat's proposal.
+   * Accepts or rejects the chat's proposal, named by the proposal's own turn.
    *
    * @param entryId the entry's id
+   * @param turnId the turn of the proposal the operator saw
    * @param accept `true` to store the proposed description, `false` to discard it
-   * @returns the entry's new representation
+   * @returns the chat after the answer
    */
-  public async answerChatProposal(entryId: string, accept: boolean): Promise<StartStateResource> {
-    const suffix = accept ? 'accept' : 'reject';
-    return this.request<StartStateResource>(
-      'POST',
-      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/proposal/${suffix}`,
-      {},
-    );
+  public async answerChatProposal(
+    entryId: string,
+    turnId: string,
+    accept: boolean,
+  ): Promise<ChatReadBack> {
+    return this.answerChatProposalAt(ApiClient.entryChatPath(entryId), turnId, accept);
   }
 
   /**
@@ -2430,9 +2566,11 @@ export class ApiClient {
     subjectId: string,
   ): Promise<FollowUpProposal | null> {
     try {
-      return await this.request<FollowUpProposal>(
-        'GET',
-        ApiClient.endedChatPath(subjectKind, subjectId),
+      return normaliseFollowUp(
+        await this.request<WireChatResource>(
+          'GET',
+          ApiClient.endedChatPath(subjectKind, subjectId),
+        ),
       );
     } catch {
       return null;
@@ -2442,20 +2580,25 @@ export class ApiClient {
   /**
    * Accepts the follow-up plan the ended work's chat proposed, which opens its start.
    *
+   * The answer is the chat, not the opened entry: the B1 contract names no entry here, so the
+   * operator is told that a new plan is being started and goes on from the project's starts.
+   *
    * @param subjectKind whether the ended work is a plan or an epic
    * @param subjectId the ended plan or epic
    * @param turnId the turn of the proposal the operator saw and accepts
-   * @returns the opened entry
+   * @returns the chat after the answer
    */
   public async acceptFollowUp(
     subjectKind: 'plan' | 'epic',
     subjectId: string,
     turnId: string,
-  ): Promise<StartStateResource> {
-    return this.request<StartStateResource>(
-      'POST',
-      `${ApiClient.endedChatPath(subjectKind, subjectId)}/proposal/accept`,
-      { turn_id: turnId },
+  ): Promise<ChatReadBack> {
+    return normaliseChat(
+      await this.request<WireChatResource>(
+        'POST',
+        `${ApiClient.endedChatPath(subjectKind, subjectId)}/proposal/accept`,
+        { turn_id: turnId },
+      ),
     );
   }
 
@@ -3469,57 +3612,36 @@ export class ApiClient {
    * @returns the planning role's chat about it
    */
   public async getChat(subjectId: string): Promise<ChatReadBack> {
-    if (subjectId.startsWith('epic:')) {
-      const epicId = subjectId.slice('epic:'.length);
-      return this.request<ChatReadBack>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/chat`);
-    }
-    return this.request<ChatReadBack>('GET', `/api/v1/plans/${encodeURIComponent(subjectId)}/chat`);
-  }
-
-  /**
-   * @param subjectId a plan or an epic
-   * @param text the operator's message
-   * @returns the chat with the role's answer
-   */
-  public async chatWithSubject(subjectId: string, text: string): Promise<ChatReadBack> {
-    if (subjectId.startsWith('epic:')) {
-      const epicId = subjectId.slice('epic:'.length);
-      return this.request<ChatReadBack>(
-        'POST',
-        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/turns`,
-        { text },
-      );
-    }
-    return this.request<ChatReadBack>(
-      'POST',
-      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/turns`,
-      { text },
+    return normaliseChat(
+      await this.request<WireChatResource>('GET', ApiClient.subjectChatPath(subjectId)),
     );
   }
 
   /**
+   * Sends the operator's message and reads the chat on until the role's reply is complete.
+   *
    * @param subjectId a plan or an epic
+   * @param text the operator's message
+   * @returns the chat, with the role's answer
+   */
+  public async chatWithSubject(subjectId: string, text: string): Promise<ChatReadBack> {
+    return this.sendChatTurn(ApiClient.subjectChatPath(subjectId), text);
+  }
+
+  /**
+   * Accepts or rejects the open proposal, named by the proposal's own turn.
+   *
+   * @param subjectId a plan or an epic
+   * @param turnId the turn of the proposal the operator saw
    * @param accept `true` to apply the proposal, `false` to drop it
    * @returns the chat after the answer
    */
   public async answerSubjectChatProposal(
     subjectId: string,
+    turnId: string,
     accept: boolean,
   ): Promise<ChatReadBack> {
-    const suffix = accept ? 'accept' : 'reject';
-    if (subjectId.startsWith('epic:')) {
-      const epicId = subjectId.slice('epic:'.length);
-      return this.request<ChatReadBack>(
-        'POST',
-        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/proposal/${suffix}`,
-        {},
-      );
-    }
-    return this.request<ChatReadBack>(
-      'POST',
-      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/proposal/${suffix}`,
-      {},
-    );
+    return this.answerChatProposalAt(ApiClient.subjectChatPath(subjectId), turnId, accept);
   }
 
   /**
@@ -3527,22 +3649,119 @@ export class ApiClient {
    * @returns the chat after it was closed
    */
   public async endChat(subjectId: string): Promise<ChatReadBack> {
-    if (subjectId.startsWith('epic:')) {
-      const epicId = subjectId.slice('epic:'.length);
-      return this.request<ChatReadBack>(
+    return normaliseChat(
+      await this.request<WireChatResource>(
         'POST',
-        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/end`,
-        {},
-      );
-    }
-    return this.request<ChatReadBack>(
-      'POST',
-      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/end`,
-      {},
+        `${ApiClient.subjectChatPath(subjectId)}/end`,
+      ),
     );
   }
 
   /**
+   * @param subjectId a plan, or an epic addressed as `epic:<id>`
+   * @returns the `ChatRoutes` address of its chat
+   */
+  private static subjectChatPath(subjectId: string): string {
+    if (subjectId.startsWith('epic:')) {
+      const epicId = subjectId.slice('epic:'.length);
+      return `/api/v1/epics/${encodeURIComponent(epicId)}/chat`;
+    }
+    return `/api/v1/plans/${encodeURIComponent(subjectId)}/chat`;
+  }
+
+  /**
+   * @param entryId the entry's id
+   * @returns the `ChatRoutes` address of its chat
+   */
+  private static entryChatPath(entryId: string): string {
+    return `/api/v1/entries/${encodeURIComponent(entryId)}/chat`;
+  }
+
+  /**
+   * Sends a message on the chat's turns, then reads the chat until the reply turn is complete.
+   *
+   * The message carries the client's own `client_turn_id`, drawn once per send: the runtime
+   * answers `202 {turn_id}` at once, and a repeat with the same id records nothing again, so a
+   * retried send never posts the message twice. Progress follows the turn's id and status, never a
+   * count of turns, because the reply is written into the transcript as it streams.
+   *
+   * @param chatPath the chat's `ChatRoutes` address
+   * @param text the operator's message
+   * @returns the chat once the reply is complete, or as it stands at the bound
+   */
+  private async sendChatTurn(chatPath: string, text: string): Promise<ChatReadBack> {
+    const clientTurnId = crypto.randomUUID();
+    const accepted = await this.postChatTurn(chatPath, text, clientTurnId);
+    return this.readChatUntilReply(chatPath, accepted.turn_id);
+  }
+
+  /**
+   * @param chatPath the chat's `ChatRoutes` address
+   * @param text the operator's message
+   * @param clientTurnId the client's own id of this message, reused on the retry
+   * @returns the accepted turn
+   */
+  private async postChatTurn(
+    chatPath: string,
+    text: string,
+    clientTurnId: string,
+  ): Promise<WireChatTurnAccepted> {
+    const body = { text, client_turn_id: clientTurnId };
+    try {
+      return await this.request<WireChatTurnAccepted>('POST', `${chatPath}/turns`, body);
+    } catch (error) {
+      // A send whose answer was lost is retried with the same id: the runtime answers the turn it
+      // already recorded instead of recording the message again.
+      if (!isClientError(error) || (error.code !== 'network_offline' && error.code !== 'timeout')) {
+        throw error;
+      }
+      return this.request<WireChatTurnAccepted>('POST', `${chatPath}/turns`, body);
+    }
+  }
+
+  /**
+   * @param chatPath the chat's `ChatRoutes` address
+   * @param turnId the proposal's turn
+   * @param accept whether to accept the proposal
+   * @returns the chat after the answer
+   */
+  private async answerChatProposalAt(
+    chatPath: string,
+    turnId: string,
+    accept: boolean,
+  ): Promise<ChatReadBack> {
+    const suffix = accept ? 'accept' : 'reject';
+    return normaliseChat(
+      await this.request<WireChatResource>('POST', `${chatPath}/proposal/${suffix}`, {
+        turn_id: turnId,
+      }),
+    );
+  }
+
+  /**
+   * @param chatPath the chat's `ChatRoutes` address
+   * @param operatorTurnId the operator's turn the reply answers
+   * @returns the chat once the reply turn is complete, or as it stands at the bound
+   */
+  private async readChatUntilReply(
+    chatPath: string,
+    operatorTurnId: string,
+  ): Promise<ChatReadBack> {
+    const bound = Date.now() + ApiClient.CHAT_REPLY_BOUND_MS;
+    for (;;) {
+      const resource = await this.request<WireChatResource>('GET', chatPath);
+      if (chatReplySettled(resource, operatorTurnId) || Date.now() >= bound) {
+        return normaliseChat(resource);
+      }
+      await new Promise((resolve) => setTimeout(resolve, ApiClient.CHAT_READ_INTERVAL_MS));
+    }
+  }
+
+  /**
+   * The decision's chat stays unaddressed: a decision carries its scope, but not the subject id
+   * the `ChatRoutes` address needs, and this client invents no route. The view shows its notice
+   * until a plan names the address.
+   *
    * @param decisionId the decision
    * @returns the planning role's chat about it
    */

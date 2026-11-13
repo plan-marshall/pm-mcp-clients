@@ -993,7 +993,12 @@ describe('ApiClient', () => {
           url,
           body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
         });
-        return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () =>
+            chatResource({ subject: { kind, id: subjectId }, scope: kind }),
+        });
       }) as unknown as typeof fetch;
 
       // Act
@@ -1011,4 +1016,340 @@ describe('ApiClient', () => {
       ]);
     },
   );
+});
+
+/**
+ * @param overrides the members this test changes
+ * @returns a `ChatResource` as the runtime writes it
+ */
+function chatResource(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'chat-1',
+    subject: { kind: 'entry', id: 'ent-showroom' },
+    role: { name: 'refine', model: 'sonnet' },
+    scope: 'entry',
+    state: 'chat.read-back',
+    context: { knows: [{ key: 'chat.knows.description' }], as_of: '2026-10-14T10:00:00Z' },
+    proposal: {
+      turn_id: 'T-0003',
+      reply_turn_id: 'T-0002',
+      kind: 'description',
+      summary: 'a description with fsynced',
+      applies: { key: 'chat.applies.after_task', args: { task_id: 'TASK-3' } },
+      before: 'the description before',
+      after: 'the description with fsynced',
+      state: 'open',
+    },
+    turns: [
+      {
+        turn_id: 'T-0001',
+        kind: 'message',
+        author: 'operator',
+        status: 'complete',
+        format: 'plain',
+        untrusted: false,
+        text: 'add fsynced',
+        steps: [],
+        refs: [],
+        at: '2026-10-14T10:00:00Z',
+      },
+      {
+        turn_id: 'T-0002',
+        kind: 'message',
+        author: 'refine',
+        status: 'complete',
+        format: 'markdown',
+        untrusted: false,
+        model: 'sonnet',
+        text: 'The description with fsynced',
+        steps: [],
+        refs: [],
+        at: '2026-10-14T10:00:05Z',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe('ApiClient chat on the B1 contract', () => {
+  let client: ApiClient;
+  let requested: Array<{ method: string; url: string; body: unknown }>;
+
+  beforeEach(() => {
+    localStorage.clear();
+    client = new ApiClient('http://localhost:7420');
+    requested = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * @param answers the body to answer the nth request with
+   * @param status the HTTP status of every answer
+   */
+  function respondWith(answers: unknown[], status = 200): void {
+    let next = 0;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      requested.push({
+        method: init?.method ?? 'GET',
+        url,
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+      });
+      const body = answers[Math.min(next, answers.length - 1)];
+      next += 1;
+      return Promise.resolve({ ok: true, status, json: async () => body });
+    }) as unknown as typeof fetch;
+  }
+
+  it('opens a start entry chat on its ChatRoutes address and reads a ChatResource', async () => {
+    // Arrange
+    respondWith([chatResource()], 201);
+
+    // Act
+    const chat = await client.openEntryChat('ent-showroom');
+
+    // Assert: the B1 body of the answer becomes the chat the views read
+    expect(requested).toEqual([
+      {
+        method: 'POST',
+        url: 'http://localhost:7420/api/v1/entries/ent-showroom/chat',
+        body: undefined,
+      },
+    ]);
+    expect(chat.chat_id).toBe('chat-1');
+    expect(chat.subject_id).toBe('ent-showroom');
+    expect(chat.subject_kind).toBe('entry');
+    expect(chat.role).toBe('refine');
+    expect(chat.turns.map((turn) => turn.role)).toEqual(['operator', 'refine']);
+    expect(chat.proposal?.turn_id).toBe('T-0003');
+    expect(chat.proposal?.after).toBe('the description with fsynced');
+  });
+
+  it('sends a turn with a client_turn_id and reads on until the reply turn is complete', async () => {
+    // Arrange: the first read still shows the reply streaming, the second shows it complete.
+    const operatorTurn = {
+      turn_id: 'T-0011',
+      kind: 'message',
+      author: 'operator',
+      status: 'complete',
+      format: 'plain',
+      untrusted: false,
+      text: 'add fsynced',
+      steps: [],
+      refs: [],
+      at: '2026-10-14T10:00:00Z',
+    };
+    const streaming = chatResource({
+      turns: [
+        operatorTurn,
+        {
+          turn_id: 'T-0012',
+          kind: 'message',
+          author: 'refine',
+          status: 'streaming',
+          format: 'markdown',
+          untrusted: false,
+          model: 'sonnet',
+          text: 'The desc',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:01Z',
+        },
+      ],
+      proposal: null,
+    });
+    const complete = chatResource({
+      turns: [
+        operatorTurn,
+        {
+          turn_id: 'T-0012',
+          kind: 'message',
+          author: 'refine',
+          status: 'complete',
+          format: 'markdown',
+          untrusted: false,
+          model: 'sonnet',
+          text: 'The description with fsynced',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:02Z',
+        },
+      ],
+      proposal: null,
+    });
+    respondWith([{ turn_id: 'T-0011' }, streaming, complete], 202);
+    vi.useFakeTimers();
+
+    // Act
+    const pending = client.chatTurn('ent-showroom', 'add fsynced');
+    await vi.advanceTimersByTimeAsync(5000);
+    const chat = await pending;
+
+    // Assert: the message carries the client's own turn id, and the read follows the turn
+    expect(requested[0]).toMatchObject({
+      method: 'POST',
+      url: 'http://localhost:7420/api/v1/entries/ent-showroom/chat/turns',
+      body: { text: 'add fsynced' },
+    });
+    const sentBody = requested[0]?.body as Record<string, unknown>;
+    expect(sentBody['client_turn_id']).toEqual(expect.any(String));
+    expect(String(sentBody['client_turn_id']).length).toBeGreaterThan(0);
+    expect(requested.slice(1).map((call) => call.url)).toEqual([
+      'http://localhost:7420/api/v1/entries/ent-showroom/chat',
+      'http://localhost:7420/api/v1/entries/ent-showroom/chat',
+    ]);
+    expect(chat.turns.map((turn) => turn.text)).toContain('The description with fsynced');
+  });
+
+  it('sends the client_turn_id again when the same message is retried', async () => {
+    // Arrange: the first answer is lost, so the second send repeats the same message
+    const bodies: unknown[] = [];
+    let call = 0;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      void url;
+      call += 1;
+      if (init?.method === 'POST') {
+        bodies.push(init?.body);
+      }
+      if (call === 1) {
+        return Promise.reject(new Error('Failed to fetch'));
+      }
+      if (call === 2) {
+        return Promise.resolve({
+          ok: true,
+          status: 202,
+          json: async () => ({ turn_id: 'T-0001' }),
+        }) as unknown as Promise<Response>;
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => chatResource(),
+      }) as unknown as Promise<Response>;
+    }) as unknown as typeof fetch;
+
+    // Act
+    const chat = await client.chatTurn('ent-showroom', 'add fsynced');
+
+    // Assert: one client turn id for the message, so the runtime records it once
+    const first = JSON.parse(String(bodies[0])) as { client_turn_id: string };
+    const second = JSON.parse(String(bodies[1])) as { client_turn_id: string };
+    expect(second.client_turn_id).toBe(first.client_turn_id);
+    expect(chat.chat_id).toBe('chat-1');
+  });
+
+  it('answers an entry chat proposal with the proposal turn_id', async () => {
+    // Arrange
+    respondWith([chatResource()]);
+
+    // Act
+    await client.answerChatProposal('ent-showroom', 'T-0003', true);
+
+    // Assert
+    expect(requested).toEqual([
+      {
+        method: 'POST',
+        url: 'http://localhost:7420/api/v1/entries/ent-showroom/chat/proposal/accept',
+        body: { turn_id: 'T-0003' },
+      },
+    ]);
+  });
+
+  it('ends a start entry chat on the B1 end act', async () => {
+    // Arrange
+    respondWith([chatResource({ state: 'chat.end' })]);
+
+    // Act
+    await client.endEntryChat('ent-showroom');
+
+    // Assert
+    expect(requested).toEqual([
+      {
+        method: 'POST',
+        url: 'http://localhost:7420/api/v1/entries/ent-showroom/chat/end',
+        body: undefined,
+      },
+    ]);
+  });
+
+  it.each([
+    ['plan', 'fix-relay', '/api/v1/plans/fix-relay/chat'],
+    ['epic', 'epic:relay-hardening', '/api/v1/epics/relay-hardening/chat'],
+  ] as const)(
+    'reads and writes the chat of a %s on its ChatRoutes address',
+    async (kind, subjectId, path) => {
+      // Arrange
+      respondWith([chatResource({ subject: { kind, id: subjectId }, scope: kind })]);
+
+      // Act
+      await client.getChat(subjectId);
+      await client.answerSubjectChatProposal(subjectId, 'T-0031', false);
+      await client.endChat(subjectId);
+
+      // Assert: the proposal's answer names the turn, the end carries no body
+      expect(requested).toEqual([
+        { method: 'GET', url: `http://localhost:7420${path}`, body: undefined },
+        {
+          method: 'POST',
+          url: `http://localhost:7420${path}/proposal/reject`,
+          body: { turn_id: 'T-0031' },
+        },
+        { method: 'POST', url: `http://localhost:7420${path}/end`, body: undefined },
+      ]);
+    },
+  );
+
+  it('sends a plan chat turn with a client_turn_id', async () => {
+    // Arrange
+    respondWith([
+      { turn_id: 'T-0041' },
+      chatResource({
+        subject: { kind: 'plan', id: 'fix-relay' },
+        turns: [
+          {
+            turn_id: 'T-0041',
+            kind: 'message',
+            author: 'operator',
+            status: 'complete',
+            format: 'plain',
+            untrusted: false,
+            text: 'why is it held?',
+            steps: [],
+            refs: [],
+            at: '2026-10-14T10:00:00Z',
+          },
+          {
+            turn_id: 'T-0042',
+            kind: 'message',
+            author: 'replan',
+            status: 'complete',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'It waits for the scope.',
+            steps: [],
+            refs: [],
+            at: '2026-10-14T10:00:02Z',
+          },
+        ],
+        proposal: null,
+      }),
+    ]);
+
+    // Act
+    await client.chatWithSubject('fix-relay', 'why is it held?');
+
+    // Assert
+    expect(requested[0]).toMatchObject({
+      method: 'POST',
+      url: 'http://localhost:7420/api/v1/plans/fix-relay/chat/turns',
+      body: { text: 'why is it held?' },
+    });
+    expect((requested[0]?.body as Record<string, unknown>)['client_turn_id']).toEqual(
+      expect.any(String),
+    );
+  });
 });

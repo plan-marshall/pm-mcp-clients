@@ -3,6 +3,7 @@
   import { t } from '../i18n';
   import {
     apiClient,
+    type ChatReadBack,
     type EpicDecomposition,
     type LocalChangesPreview,
     type ProjectSummary,
@@ -72,6 +73,8 @@
   let lessons: UnclaimedLessonSummary[] = [];
 
   let chatOpen = false;
+  /** The entry's chat, read from its own `ChatRoutes` address rather than from the start state. */
+  let chat: ChatReadBack | null = null;
 
   let readyTitle = '';
   let readyId = '';
@@ -101,7 +104,6 @@
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
-  $: chat = state?.chat ?? null;
   $: recipes = state?.recipes ?? [];
   $: currentProject = entry?.project_id ?? projectId ?? '';
 
@@ -467,9 +469,21 @@
       chatOpen = true;
       return;
     }
-    const result = await act('chat');
-    if (result?.chat) {
+    const target = entry?.entry_id;
+    if (!target) return;
+    const generation = entryGeneration;
+    busy = true;
+    try {
+      // The chat is its own resource now: it is opened on its route, not by an act of the entry.
+      const opened = await apiClient.openEntryChat(target);
+      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+        return;
+      chat = opened;
       chatOpen = true;
+    } catch (e) {
+      actionError = messageOf(e);
+    } finally {
+      busy = false;
     }
   }
 
@@ -491,10 +505,11 @@
     const generation = entryGeneration;
     busy = true;
     try {
-      const resource = await apiClient.chatTurn(target, text);
-      if (accepts(resource, target, generation)) {
-        apply(resource);
-      }
+      // The turn is answered at once; the client reads on until the reply turn is complete.
+      const answered = await apiClient.chatTurn(target, text);
+      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+        return;
+      chat = answered;
     } catch (e) {
       actionError = messageOf(e);
     } finally {
@@ -508,11 +523,11 @@
     const generation = entryGeneration;
     busy = true;
     try {
-      const resource = await apiClient.endEntryChat(target);
-      if (accepts(resource, target, generation)) {
-        apply(resource);
-        chatOpen = false;
-      }
+      const closed = await apiClient.endEntryChat(target);
+      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+        return;
+      chat = closed;
+      chatOpen = false;
     } catch (e) {
       actionError = messageOf(e);
     } finally {
@@ -522,14 +537,18 @@
 
   async function answerProposal(accept: boolean): Promise<void> {
     const target = entry?.entry_id;
-    if (!target) return;
+    const turnId = chat?.proposal?.turn_id;
+    if (!target || !turnId) return;
     const generation = entryGeneration;
     busy = true;
     try {
-      const resource = await apiClient.answerChatProposal(target, accept);
-      if (accepts(resource, target, generation)) {
-        apply(resource);
-      }
+      // The answer names the proposal the operator saw, by its own turn.
+      const answered = await apiClient.answerChatProposal(target, turnId, accept);
+      if (destroyed || generation !== entryGeneration || (entryId !== null && target !== entryId))
+        return;
+      chat = answered;
+      // An accepted proposal stores the description, so the entry is read again.
+      await refresh();
     } catch (e) {
       actionError = messageOf(e);
     } finally {
@@ -547,7 +566,7 @@
 
   async function create(): Promise<void> {
     if (!entry?.entry_id) return;
-    if (chat && chat.state !== 'end') {
+    if (chat && chat.state !== 'chat.end' && chat.state !== 'chat.carried') {
       await endChat();
     }
     const body: Record<string, unknown> = { title: readyTitle };
@@ -563,7 +582,7 @@
   }
 
   async function abandon(): Promise<void> {
-    if (chat && chat.state !== 'end') {
+    if (chat && chat.state !== 'chat.end' && chat.state !== 'chat.carried') {
       await endChat();
     }
     await act('abandon');

@@ -844,7 +844,7 @@ describe('WorkControlPanel component', () => {
     });
   });
 
-  it('offers a chat about ended work and opens the start of its follow-up', async () => {
+  it('offers a chat about ended work and tells that its follow-up start is being prepared', async () => {
     vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
       subject_id: 'codeberg-issues',
       subject_kind: 'plan',
@@ -859,18 +859,14 @@ describe('WorkControlPanel component', () => {
       },
     });
     const accept = vi.spyOn(apiClient, 'acceptFollowUp').mockResolvedValue({
-      start: {
-        entry: {
-          entry_id: 'ent-3f9a2c41',
-          kind: 'plan',
-          project_id: 'pm-mcp-clients',
-          state: 'start.sources',
-          sources: [],
-          kind_offers: [],
-          can_continue: true,
-          chat_available: true,
-        },
-      },
+      chat_id: 'C-0002',
+      subject_id: 'codeberg-issues',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'archive',
+      state: 'chat.turn',
+      turns: [],
+      proposal: null,
     });
 
     render(WorkControlPanel, {
@@ -893,7 +889,10 @@ describe('WorkControlPanel component', () => {
       expect(accept).toHaveBeenCalledWith('plan', 'codeberg-issues', 'T-0207');
     });
     expect(apiClient.getEndedChat).toHaveBeenCalledWith('plan', 'codeberg-issues');
-    expect(window.location.pathname).toBe('/entries/ent-3f9a2c41');
+    // No B1 surface names the entry the accept opened, so the operator is told a start is prepared.
+    expect(await screen.findByTestId('chat-notice')).toHaveTextContent(
+      'A new plan is being started in pm-mcp-clients with this description',
+    );
   });
 
   it('accepts no follow-up whose proposal was read without its turn', async () => {
