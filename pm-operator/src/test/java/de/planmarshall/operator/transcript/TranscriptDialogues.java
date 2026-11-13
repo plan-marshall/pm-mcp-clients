@@ -17,6 +17,7 @@ import java.util.Map;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmConsole;
 import de.planmarshall.operator.TranscriptVerbRunner;
 
@@ -60,7 +61,7 @@ final class TranscriptDialogues {
      */
     static Dialogue status() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.RUNNING_WORK).build());
+                                 .scenario(StandardScenarios.RUNNING_WORK).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -81,7 +82,7 @@ final class TranscriptDialogues {
      */
     static Dialogue webPair() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.WEB_PAIRING).build());
+                                 .scenario(StandardScenarios.WEB_PAIRING).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -102,7 +103,7 @@ final class TranscriptDialogues {
      */
     static Dialogue planView() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.PLAN_VIEW).build());
+                                 .scenario(StandardScenarios.PLAN_VIEW).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -124,7 +125,7 @@ final class TranscriptDialogues {
      */
     static Dialogue controlEpic() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.RUNNING_WORK).build());
+                                 .scenario(StandardScenarios.RUNNING_WORK).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -145,7 +146,7 @@ final class TranscriptDialogues {
      */
     static Dialogue consoleStatus() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.STATUS_ONLY).build());
+                                 .scenario(StandardScenarios.STATUS_ONLY).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -188,7 +189,7 @@ final class TranscriptDialogues {
 
     private static Dialogue consoleSettings(Clock clock, String language, String name) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.ONBOARDING).build());
+                                 .scenario(StandardScenarios.ONBOARDING).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime, language), runtime.base().getParent(), clock);
@@ -212,7 +213,7 @@ final class TranscriptDialogues {
      */
     static Dialogue startPlan() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.START_SOURCES).build());
+                                 .scenario(StandardScenarios.START_SOURCES).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
@@ -233,7 +234,7 @@ final class TranscriptDialogues {
      */
     static Dialogue startPlanNoInput() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.START_SOURCES).build());
+                                 .scenario(StandardScenarios.START_SOURCES).timing(MockTiming.ORDERED).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());

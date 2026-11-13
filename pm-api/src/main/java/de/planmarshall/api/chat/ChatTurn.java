@@ -35,9 +35,9 @@ import de.planmarshall.api.json.JsonTree;
  * @param status    the turn's status
  * @param format    the format of its text
  * @param untrusted whether the turn came from outside the machine
- * @param model     the model of a role's turn, or {@code null}
+ * @param model     the model of a role's turn, {@code null} for the operator's
  * @param text      the turn's text (so far), may be empty
- * @param steps     the steps the role reported, as message keys
+ * @param steps     the steps the role reported, as message keys, none for the operator's turn
  * @param refs      the references the turn names
  * @param at        the instant of the turn, ISO-8601
  * @param reason    the reason of a failed turn, present exactly when the status is {@code failed}
@@ -111,8 +111,9 @@ public record ChatTurn(
      * @param reason    the reason, required for {@code failed} and refused otherwise
      * @param lines     the lines, {@code null} read as none, refused for every kind but {@code notice}
      * @throws IllegalArgumentException if a member is blank, a reason or lines are missing or present
-     *                                  against the status or kind, or an operator's turn, an untrusted
-     *                                  turn or a notice is not {@code plain}
+     *                                  against the status or kind, an operator's turn carries a model or
+     *                                  steps, or an operator's turn, an untrusted turn or a notice is not
+     *                                  {@code plain}
      */
     public ChatTurn {
         Objects.requireNonNull(turnId, FIELD_TURN_ID);
@@ -134,9 +135,25 @@ public record ChatTurn(
         if (kind != TurnKind.NOTICE && !lines.isEmpty()) {
             throw new IllegalArgumentException("only a notice carries lines");
         }
+        requireOperatorTurnRule(author, model, steps);
         if (format != TurnFormat.PLAIN
                 && (AUTHOR_OPERATOR.equals(author) || untrusted || kind == TurnKind.NOTICE)) {
             throw new IllegalArgumentException("an operator's turn, an untrusted turn and a notice are always plain");
+        }
+    }
+
+    /**
+     * The one rule of an operator's turn, for the transcript's turn and for {@code chat.turn.started}
+     * alike: the operator's own message runs on no model and reports no steps.
+     *
+     * @param author the turn's author
+     * @param model  the turn's model, or {@code null}
+     * @param steps  the turn's steps
+     * @throws IllegalArgumentException if the author is the operator and a model or a step is present
+     */
+    static void requireOperatorTurnRule(String author, @Nullable String model, List<MessageText> steps) {
+        if (AUTHOR_OPERATOR.equals(author) && (model != null || !steps.isEmpty())) {
+            throw new IllegalArgumentException("an operator's turn carries no model and no steps");
         }
     }
 

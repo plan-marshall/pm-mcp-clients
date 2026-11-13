@@ -19,7 +19,7 @@ import de.cuioss.tools.logging.LogRecordModel;
  * <p>
  * One holder serves this module, the module that logs; the messages are documented in the
  * module's {@code README.adoc}. Identifiers follow the range allocation of the CUI logging
- * standard: the {@code ERROR} messages use 200 to 299.
+ * standard: the {@code WARN} messages use 100 to 199, the {@code ERROR} messages 200 to 299.
  */
 @UtilityClass
 public final class MockRuntimeLogMessages {
@@ -28,6 +28,24 @@ public final class MockRuntimeLogMessages {
      * The component prefix of every identifier of this module.
      */
     public static final String PREFIX = "MOCK";
+
+    /**
+     * The {@code WARN} messages of the mock runtime.
+     */
+    @UtilityClass
+    public static final class WARN {
+
+        /**
+         * Logged when a proposal accepted in a chat is applied but its subject's resource cannot take it:
+         * the entry is no longer open, the work is not known to have ended, or the epic has no
+         * decomposition. The resource stays as it was.
+         */
+        public static final LogRecord CHAT_PROPOSAL_NOT_APPLIED = LogRecordModel.builder()
+                .template("The applied %s proposal of the chat about %s %s changed nothing")
+                .prefix(PREFIX)
+                .identifier(100)
+                .build();
+    }
 
     /**
      * The {@code ERROR} messages of the mock runtime.

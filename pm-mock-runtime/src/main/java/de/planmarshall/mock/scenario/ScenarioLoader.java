@@ -26,6 +26,14 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.chat.ChatEndedEvent;
+import de.planmarshall.api.chat.ChatMessageKeys;
+import de.planmarshall.api.chat.ChatProposalEvent;
+import de.planmarshall.api.chat.ChatTurnCompletedEvent;
+import de.planmarshall.api.chat.ChatTurnDeltaEvent;
+import de.planmarshall.api.chat.ChatTurnProgressEvent;
+import de.planmarshall.api.chat.ChatTurnStartedEvent;
+import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.designer.WorkflowCatalogue;
 import de.planmarshall.api.designer.WorkflowUnit;
@@ -57,7 +65,9 @@ import de.planmarshall.api.system.SystemSnapshot;
  * refused with the file, the state or route, and the offending field. Every state's
  * {@code representation} must be a valid {@link OperatorStateResource}: a scenario cannot declare a
  * state the operator contract does not allow, and every member the specification names is validated
- * against the {@code pm-api} codecs.
+ * against the {@code pm-api} codecs. A chat event a state plays is checked against the closed
+ * catalogue: its name is one of the {@code chat.*} events, its payload reads through the event's
+ * {@code pm-api} record, and every message key it carries maps to a rendering key.
  */
 @UtilityClass
 public class ScenarioLoader {
@@ -65,18 +75,25 @@ public class ScenarioLoader {
     /** Default classpath directory for scenario files. */
     public static final String SCENARIOS_RESOURCE_DIR = "scenarios/";
 
+    /** The member of a state and of a route that holds its representation. */
+    private static final String FIELD_REPRESENTATION = "representation";
+    /** The member of a route and of a link that holds its HTTP status. */
+    private static final String FIELD_STATUS = "status";
+
     private static final Set<String> ROOT_FIELDS = Set.of(
             "format_version", "name", "description", "start", "pairing_code", "routes", "states");
     private static final Set<String> STATE_FIELDS = Set.of(
-            "representation", "links", "events", "auto");
-    private static final Set<String> ROUTE_FIELDS = Set.of("status", "representation", "headers");
+            FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
+    private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
     private static final Set<String> LINK_FIELDS = Set.of(
-            "method", "href", "status", "next", "delay_ms", "error");
+            "method", "href", FIELD_STATUS, "next", "delay_ms", "error");
     private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
     private static final Set<String> AUTO_FIELDS = Set.of("after_ms", "next");
 
     /** The engine-only fixture object a state's facts may carry. */
     private static final String RUNTIME_FIXTURE = "runtime";
+    /** The prefix of every chat event's name. */
+    private static final String CHAT_EVENT_PREFIX = "chat.";
 
     /**
      * Loads a scenario from a classpath resource or file system.
@@ -252,12 +269,12 @@ public class ScenarioLoader {
             @SuppressWarnings("unchecked")
             var typedRoute = (Map<String, Object>) routeMap;
             rejectUnknownFields(typedRoute, ROUTE_FIELDS, scenario, null, "routes." + routeKey);
-            var rep = routeMap.get("representation");
+            var rep = routeMap.get(FIELD_REPRESENTATION);
             if (!(rep instanceof Map<?, ?>) && !(rep instanceof List<?>)) {
-                throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
+                throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                         "route representation must be a JSON object or a list");
             }
-            var status = asInt(routeMap.get("status"), 200);
+            var status = asInt(routeMap.get(FIELD_STATUS), 200);
             validateRouteRepresentation(routeKey, rep, status, scenario);
             result.put(routeKey, new RouteDefinition(rep, status));
         }
@@ -279,9 +296,9 @@ public class ScenarioLoader {
             rejectUnknownFields(stateMap, STATE_FIELDS, scenario, stateId, "");
 
             // representation
-            var representation = stateMap.get("representation");
+            var representation = stateMap.get(FIELD_REPRESENTATION);
             if (!(representation instanceof Map<?, ?>)) {
-                throw new ScenarioValidationException(scenario, stateId, "representation",
+                throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
                         "state representation must be a JSON object");
             }
 
@@ -294,11 +311,44 @@ public class ScenarioLoader {
             // auto
             var auto = parseAuto(stateMap.get("auto"), scenario, stateId);
 
+            // chat failures
+            var chatFailures = parseChatFailures(stateMap.get("chat_failures"), scenario, stateId);
+
             validateOperatorState(representation, links, events, scenario, stateId);
 
-            states.put(stateId, new StateDefinition(representation, links, events, auto));
+            states.put(stateId, new StateDefinition(representation, links, events, auto, chatFailures));
         }
         return states;
+    }
+
+    /**
+     * Reads the chat failures a state arms, the same failures {@code POST /mock/inject} takes; a
+     * failure of an unknown name, or with a member its kind does not take, fails the load.
+     */
+    private static List<StateDefinition.ChatFailure> parseChatFailures(@Nullable Object failuresObj, String scenario,
+            String stateId) {
+        if (failuresObj == null) {
+            return List.of();
+        }
+        if (!(failuresObj instanceof List<?> list)) {
+            throw new ScenarioValidationException(scenario, stateId, "chat_failures",
+                    "chat_failures must be an array");
+        }
+        var failures = new ArrayList<StateDefinition.ChatFailure>();
+        for (var i = 0; i < list.size(); i++) {
+            var failure = JsonTree.asObject(list.get(i));
+            if (failure == null) {
+                throw new ScenarioValidationException(scenario, stateId, "chat_failures[" + i + "]",
+                        "a chat failure must be an object");
+            }
+            try {
+                failures.add(StateDefinition.ChatFailure.fromMap(failure));
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, stateId, "chat_failures[" + i + "]", e.getMessage());
+            }
+        }
+        return failures;
     }
 
     /**
@@ -321,7 +371,7 @@ public class ScenarioLoader {
             List<EventDefinition> events, String scenario, String stateId) {
         var representationMap = JsonTree.asObject(representation);
         if (representationMap == null) {
-            throw new ScenarioValidationException(scenario, stateId, "representation",
+            throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
                     "the representation must be an operator state object");
         }
         var stateMap = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_STATE));
@@ -334,7 +384,7 @@ public class ScenarioLoader {
         try {
             state = OperatorStateResource.fromMap(representationMap);
         } catch (IOException e) {
-            throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
+            throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION, e.getMessage());
         }
 
         var facts = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_FACTS));
@@ -386,11 +436,86 @@ public class ScenarioLoader {
         envelope.put(EventEnvelope.FIELD_EVENT, name);
         envelope.put(EventEnvelope.FIELD_ID, index + 1);
         envelope.put(EventEnvelope.FIELD_DATA, event.data());
+        EventEnvelope read;
         try {
-            EventEnvelope.fromMap(envelope);
+            read = EventEnvelope.fromMap(envelope);
         } catch (IOException e) {
             throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
                     "the event is no envelope: " + e.getMessage());
+        }
+        if (name.startsWith(CHAT_EVENT_PREFIX)) {
+            validateChatEvent(name, read.payload(), index, scenario, stateId);
+        }
+    }
+
+    /**
+     * Validates a chat event against the closed catalogue: the name is one of the {@code chat.*} names of
+     * {@link EventName}, the payload reads through the event's {@code pm-api} record, and every message
+     * key the payload carries is one {@link ChatMessageKeys} maps.
+     *
+     * @param name     the event's name
+     * @param payload  the event's payload, the members of its data beside the envelope's own
+     * @param index    the event's position in the state's events
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void validateChatEvent(String name, Map<String, Object> payload, int index, String scenario,
+            String stateId) {
+        var field = "events[" + index + "].data";
+        Map<String, Object> read;
+        try {
+            read = readChatEvent(name, payload);
+        } catch (IOException e) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the payload does not read as " + name + ": " + e.getMessage());
+        }
+        var unmapped = new ArrayList<String>();
+        collectUnmappedKeys(read, unmapped);
+        if (!unmapped.isEmpty()) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "message keys that map to no rendering key: " + unmapped);
+        }
+    }
+
+    /**
+     * Reads a chat event through its {@code pm-api} record. The name is a catalogue member already, as
+     * {@link #validateOperatorEvent} refuses every other name before the payload is read.
+     *
+     * @return the payload as the event's record writes it
+     * @throws IOException if the payload does not read through the record, or no record reads the event
+     */
+    private static Map<String, Object> readChatEvent(String name, Map<String, Object> payload)
+            throws IOException {
+        return switch (EventName.fromWire(name)) {
+            case CHAT_TURN_STARTED -> ChatTurnStartedEvent.fromMap(payload).toMap();
+            case CHAT_TURN_DELTA -> ChatTurnDeltaEvent.fromMap(payload).toMap();
+            case CHAT_TURN_PROGRESS -> ChatTurnProgressEvent.fromMap(payload).toMap();
+            case CHAT_TURN_COMPLETED -> ChatTurnCompletedEvent.fromMap(payload).toMap();
+            case CHAT_PROPOSAL -> ChatProposalEvent.fromMap(payload).toMap();
+            case CHAT_ENDED -> ChatEndedEvent.fromMap(payload).toMap();
+            default -> throw new IOException("no chat record reads " + name);
+        };
+    }
+
+    /**
+     * Collects every message key of a payload, the {@code key} member of a message text anywhere in it,
+     * that {@link ChatMessageKeys} does not map. The arguments of a message text are values, not message
+     * texts: an object among them with a member named {@code key} is not read as another message key.
+     */
+    private static void collectUnmappedKeys(@Nullable Object value, List<String> unmapped) {
+        if (value instanceof Map<?, ?> map && map.get(MessageText.FIELD_KEY) instanceof String key) {
+            if (!ChatMessageKeys.maps(key)) {
+                unmapped.add(key);
+            }
+            map.forEach((name, member) -> {
+                if (!MessageText.FIELD_ARGS.equals(name)) {
+                    collectUnmappedKeys(member, unmapped);
+                }
+            });
+        } else if (value instanceof Map<?, ?> map) {
+            map.values().forEach(member -> collectUnmappedKeys(member, unmapped));
+        } else if (value instanceof List<?> list) {
+            list.forEach(member -> collectUnmappedKeys(member, unmapped));
         }
     }
 
@@ -425,7 +550,7 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, stateId, "links." + linkName + ".delay_ms",
                         "delay_ms cannot be negative");
             }
-            var status = asInt(linkMap.get("status"), 200);
+            var status = asInt(linkMap.get(FIELD_STATUS), 200);
             var error = JsonTree.string(linkMap, "error");
             if (error != null && ApiErrorCode.fromWireOrNull(error) == null) {
                 throw new ScenarioValidationException(scenario, stateId, "links." + linkName + ".error",
@@ -565,7 +690,7 @@ public class ScenarioLoader {
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException e) {
-            throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
+            throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                     "representation does not decode with the pm-api codec: " + e.getMessage());
         }
     }

@@ -29,6 +29,7 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.Assumptions;
@@ -79,7 +80,8 @@ final class DialogueHarness implements AutoCloseable {
      */
     static DialogueHarness start(String scenario) throws IOException {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
-        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).recordActBodies(true).build());
+        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).recordActBodies(true)
+                            .timing(MockTiming.ORDERED).build());
         try {
             MockMachine.recordLiveRuntime(runtime);
             return new DialogueHarness(runtime);

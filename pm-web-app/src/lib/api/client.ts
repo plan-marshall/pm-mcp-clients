@@ -1572,6 +1572,8 @@ export interface ChatTurn {
 }
 
 export interface ChatProposal {
+  /** The proposal's turn, which accept and reject name. */
+  turn_id?: string;
   summary: string;
   before?: string | null;
   after: string;
@@ -2406,17 +2408,31 @@ export class ApiClient {
   }
 
   /**
+   * The chat of ended work is addressed like the running work's: by the plan's or the epic's own
+   * chat route, never under its project.
+   *
+   * @param subjectKind whether the ended work is a plan or an epic
+   * @param subjectId the ended plan or epic
+   * @returns the path of its chat
+   */
+  private static endedChatPath(subjectKind: 'plan' | 'epic', subjectId: string): string {
+    const family = subjectKind === 'epic' ? 'epics' : 'plans';
+    return `/api/v1/${family}/${encodeURIComponent(subjectId)}/chat`;
+  }
+
+  /**
+   * @param subjectKind whether the ended work is a plan or an epic
    * @param subjectId an ended plan or epic
    * @returns the follow-up chat the ended work offers, or `null` where it offers none
    */
   public async getEndedChat(
-    projectId: string,
+    subjectKind: 'plan' | 'epic',
     subjectId: string,
   ): Promise<FollowUpProposal | null> {
     try {
       return await this.request<FollowUpProposal>(
         'GET',
-        `/api/v1/projects/${encodeURIComponent(projectId)}/ended/${encodeURIComponent(subjectId)}/chat`,
+        ApiClient.endedChatPath(subjectKind, subjectId),
       );
     } catch {
       return null;
@@ -2424,17 +2440,22 @@ export class ApiClient {
   }
 
   /**
-   * Opens the follow-up entry of an accepted proposal.
+   * Accepts the follow-up plan the ended work's chat proposed, which opens its start.
    *
-   * @param projectId the project the follow-up starts in
+   * @param subjectKind whether the ended work is a plan or an epic
    * @param subjectId the ended plan or epic
+   * @param turnId the turn of the proposal the operator saw and accepts
    * @returns the opened entry
    */
-  public async acceptFollowUp(projectId: string, subjectId: string): Promise<StartStateResource> {
+  public async acceptFollowUp(
+    subjectKind: 'plan' | 'epic',
+    subjectId: string,
+    turnId: string,
+  ): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
-      `/api/v1/projects/${encodeURIComponent(projectId)}/ended/${encodeURIComponent(subjectId)}/chat/accept`,
-      { project_id: projectId },
+      `${ApiClient.endedChatPath(subjectKind, subjectId)}/proposal/accept`,
+      { turn_id: turnId },
     );
   }
 

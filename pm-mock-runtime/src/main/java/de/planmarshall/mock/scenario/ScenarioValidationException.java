@@ -11,14 +11,17 @@ package de.planmarshall.mock.scenario;
 
 import java.util.Objects;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Thrown when a scenario file violates the scenario format specification.
  */
 public final class ScenarioValidationException extends RuntimeException {
 
     private final String scenario;
-    private final String state;
-    private final String field;
+    private final @Nullable String state;
+    private final @Nullable String field;
 
     /**
      * @param scenario the scenario name or file path
@@ -26,14 +29,16 @@ public final class ScenarioValidationException extends RuntimeException {
      * @param field    the field name, or {@code null}
      * @param message  the violation description
      */
-    public ScenarioValidationException(String scenario, String state, String field, String message) {
+    public ScenarioValidationException(String scenario, @Nullable String state, @Nullable String field,
+            String message) {
         super(formatMessage(scenario, state, field, message));
         this.scenario = Objects.requireNonNull(scenario, "scenario");
         this.state = state;
         this.field = field;
     }
 
-    private static String formatMessage(String scenario, String state, String field, String message) {
+    private static String formatMessage(String scenario, @Nullable String state, @Nullable String field,
+            String message) {
         var sb = new StringBuilder("Scenario '").append(scenario).append("'");
         if (state != null) {
             sb.append(", state '").append(state).append("'");
@@ -51,12 +56,12 @@ public final class ScenarioValidationException extends RuntimeException {
     }
 
     /** @return the state name, or {@code null} if file-level */
-    public String state() {
+    public @Nullable String state() {
         return state;
     }
 
     /** @return the field name, or {@code null} */
-    public String field() {
+    public @Nullable String field() {
         return field;
     }
 }

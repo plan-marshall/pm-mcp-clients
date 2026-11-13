@@ -16,13 +16,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -204,6 +208,70 @@ class ScenarioLoaderTest {
     }
 
     @Test
+    @DisplayName("reads the custom status of a route and of a link")
+    void readsCustomRouteAndLinkStatus() {
+        var routeStatus = Generators.integers(201, 299).next();
+        var linkStatus = Generators.integers(201, 299).next();
+        var json = """
+                {
+                  "format_version": 1,
+                  "name": "custom-status",
+                  "start": "initial",
+                  "routes": { "GET /api/v1/ping": { "status": %1$d, "representation": { "pong": true } } },
+                  "states": {
+                    "initial": {
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "links": [
+                          { "id": "go", "rel": "submit", "method": "POST",
+                            "href": "/api/v1/go", "params": {} }
+                        ]
+                      },
+                      "links": {
+                        "go": { "method": "POST", "href": "/api/v1/go", "next": "initial", "status": %2$d }
+                      }
+                    }
+                  }
+                }
+                """.formatted(routeStatus, linkStatus);
+
+        var scenario = ScenarioLoader.load(json, "custom-status.json");
+
+        var route = scenario.route("GET", "/api/v1/ping");
+        assertNotNull(route);
+        assertEquals(routeStatus, route.status());
+        var initial = scenario.state("initial");
+        assertNotNull(initial);
+        var link = initial.links().get("go");
+        assertNotNull(link);
+        assertEquals(linkStatus, link.status());
+    }
+
+    @Test
+    @DisplayName("names no state for a file-level violation and the state for a state-level one")
+    void namesStateOnlyForStateLevelViolation() {
+        var fileLevel = """
+                {"format_version":1,"name":"file-level","start":"absent",
+                 "states":{"initial":{"representation":{}}}}
+                """;
+        var stateLevel = """
+                {"format_version":1,"name":"state-level","start":"a",
+                 "states":{"a":{"representation":{},"retry":true}}}
+                """;
+
+        var fileEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(fileLevel, "file-level.json"));
+        var stateEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(stateLevel, "state-level.json"));
+
+        assertNull(fileEx.state());
+        assertEquals("start", fileEx.field());
+        assertEquals("a", stateEx.state());
+        assertEquals("retry", stateEx.field());
+    }
+
+    @Test
     @DisplayName("rejects dangling next in links")
     void rejectsDanglingLinkNext() {
         var json = """
@@ -365,6 +433,206 @@ class ScenarioLoaderTest {
                 () -> ScenarioLoader.load(json, "closed-error.json"));
         assertEquals("links.go.error", ex.field());
         assertTrue(ex.getMessage().contains("not_a_code"));
+    }
+
+    @Test
+    @DisplayName("loads a state naming chat failures, in order and with their members")
+    void loadsChatFailures() {
+        var status = Generators.integers(400, 599).next();
+        var delayMs = Generators.integers(1, 5_000).next();
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]},"chat_failures":[
+                  {"failure":"lost"},
+                  {"failure":"http_error","status":%d,"code":"scope_not_found"},
+                  {"failure":"slow","delay_ms":%d},
+                  {"failure":"slow"}]}}}
+                """.formatted(status, delayMs);
+
+        var failures = Objects.requireNonNull(ScenarioLoader.load(json, "chat-failures.json").state("a"))
+                .chatFailures();
+
+        assertEquals(List.of(
+                StateDefinition.ChatFailure.of(StateDefinition.ChatFailure.Kind.LOST),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.HTTP_ERROR, status,
+                        "scope_not_found", 0),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.SLOW, 0, null, delayMs),
+                new StateDefinition.ChatFailure(StateDefinition.ChatFailure.Kind.SLOW, 0, null,
+                        StateDefinition.ChatFailure.DEFAULT_DELAY_MS)), failures);
+    }
+
+    @Test
+    @DisplayName("a state without chat_failures arms none")
+    void noChatFailures() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a","states":{"a":{"representation":{"scope":{"kind":"machine"},
+                 "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        assertTrue(Objects.requireNonNull(ScenarioLoader.load(json, "no-failures.json").state("a"))
+                .chatFailures().isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[{\"failure\":\"no-%s\"}]",
+            "[{\"failure\":\"lost\",\"%s\":1}]",
+            "[{\"failure\":\"http_error\",\"status\":503}]",
+            "[\"%s\"]"})
+    @DisplayName("refuses an unknown chat failure or one a member does not fit, naming the entry")
+    void rejectsUnknownChatFailure(String failures) {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":%s}}}
+                """.formatted(failures.formatted(Generators.letterStrings(4, 10).next()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "bad-failure.json"));
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(StateDefinition.ChatFailure.Kind.class)
+    @DisplayName("refuses a chat failure whose code is present but not a string, for every kind, naming the entry")
+    void rejectsNonStringChatFailureCode(StateDefinition.ChatFailure.Kind kind) {
+        var status = kind == StateDefinition.ChatFailure.Kind.HTTP_ERROR
+                ? ",\"status\":" + Generators.integers(400, 599).next()
+                : "";
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":[
+                  {"failure":"%s"%s,"code":%d}]}}}
+                """.formatted(kind.wireValue(), status, Generators.integers(1, 999).next());
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "non-string-code.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+        assertTrue(ex.getMessage().contains("code is a string"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("refuses chat_failures that are not an array")
+    void rejectsChatFailuresNotAnArray() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":{"failure":"lost"}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "bad-failures.json"));
+        assertEquals("chat_failures", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses an http_error status that would wrap into 400-599 when narrowed to an int")
+    void rejectsWrappingChatFailureStatus() {
+        var status = Generators.integers(400, 599).next();
+        // 2^32 above the status: the low 32 bits are the status itself.
+        var wrapping = (1L << 32) + status;
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"chat_failures":[
+                  {"failure":"http_error","status":%d,"code":"scope_not_found"}]}}}
+                """.formatted(wrapping);
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "wrapping-status.json"));
+        assertEquals("a", ex.state());
+        assertEquals("chat_failures[0]", ex.field());
+    }
+
+    /**
+     * A scenario whose one state plays one event, its data the envelope's own members followed by the
+     * given payload members.
+     */
+    private static String stateWithEvent(String event, String payloadMembers) {
+        return """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]},
+                  "events":[{"after_ms":1,"event":"%1$s","data":{"event":"%1$s","at":"2026-11-10T18:00:00Z",
+                   "scope":{"kind":"machine"},%2$s}}]}}}
+                """.formatted(event, payloadMembers.strip());
+    }
+
+    private static String lowerLetters() {
+        return Generators.letterStrings(4, 10).next().toLowerCase();
+    }
+
+    @Test
+    @DisplayName("loads a state that plays a chat event of the catalogue with a mapped message key")
+    void loadsChatEvent() {
+        var chatId = lowerLetters();
+        var turnId = lowerLetters();
+        var target = lowerLetters();
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"chat.step.read","args":{"target":"%s"}}
+                """.formatted(chatId, turnId, target));
+
+        var events = Objects.requireNonNull(ScenarioLoader.load(json, "chat-event.json").state("a")).events();
+
+        assertEquals(1, events.size());
+        assertEquals("chat.turn.progress", events.getFirst().event());
+    }
+
+    @Test
+    @DisplayName("loads a chat event whose message key takes an argument object with a member named key")
+    void loadsChatEventWithKeyNamedArgument() {
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"chat.step.read","args":{"detail":{"key":"%s"}}}
+                """.formatted(lowerLetters(), lowerLetters(), lowerLetters()));
+
+        var events = Objects.requireNonNull(ScenarioLoader.load(json, "key-named-argument.json").state("a"))
+                .events();
+
+        assertEquals(1, events.size());
+        assertEquals("chat.turn.progress", events.getFirst().event());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event name the catalogue does not hold before its payload is read")
+    void rejectsUnknownChatEvent() {
+        var json = stateWithEvent("chat.turn." + lowerLetters(), """
+                "chat_id":"%s","turn_id":"%s","text":"%s"
+                """.formatted(lowerLetters(), lowerLetters(), lowerLetters()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "unknown-chat-event.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].event", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event whose payload does not read through its pm-api record")
+    void rejectsMalformedChatEventPayload() {
+        var json = stateWithEvent("chat.turn.delta", """
+                "chat_id":"%s","turn_id":"%s"
+                """.formatted(lowerLetters(), lowerLetters()));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "malformed-chat-event.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].data", ex.field());
+    }
+
+    @Test
+    @DisplayName("refuses a chat event carrying a message key that maps to no rendering key")
+    void rejectsUnmappedChatMessageKey() {
+        var unmapped = "chat.step." + lowerLetters();
+        var json = stateWithEvent("chat.turn.progress", """
+                "chat_id":"%s","turn_id":"%s","step":{"key":"%s"}
+                """.formatted(lowerLetters(), lowerLetters(), unmapped));
+
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "unmapped-chat-key.json"));
+
+        assertEquals("a", ex.state());
+        assertEquals("events[0].data", ex.field());
+        assertTrue(ex.getMessage().contains(unmapped), ex.getMessage());
     }
 
     @Test

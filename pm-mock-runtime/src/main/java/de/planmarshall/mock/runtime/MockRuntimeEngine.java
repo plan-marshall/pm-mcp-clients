@@ -45,12 +45,14 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.ProposalKind;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
-import de.planmarshall.api.control.ChatReadBackResource;
-import de.planmarshall.api.control.ChatState;
-import de.planmarshall.api.control.ChatTurnResource;
 import de.planmarshall.api.control.DecompositionCheck;
 import de.planmarshall.api.control.DecompositionPlan;
 import de.planmarshall.api.control.DecompositionResource;
@@ -179,6 +181,7 @@ import de.planmarshall.api.source.lesson.LessonRetirementNotice;
 import de.planmarshall.api.source.lesson.PremiseEvidenceKind;
 import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
 import de.planmarshall.api.start.ConfinedRoot;
+import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.IntakeDraft;
 import de.planmarshall.api.start.PlanStartResult;
@@ -209,6 +212,7 @@ import de.planmarshall.mock.http.MockConfigRoutes;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
+import de.planmarshall.mock.junit5.MockRuntimeLogMessages;
 import de.planmarshall.mock.scenario.LinkDefinition;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
@@ -220,6 +224,8 @@ import de.planmarshall.mock.scenario.StateDefinition;
  */
 @SuppressWarnings("java:S1075")
 public final class MockRuntimeEngine implements AutoCloseable {
+
+    private static final CuiLogger LOGGER = new CuiLogger(MockRuntimeEngine.class);
 
     private static final String KEY_ERROR = "error";
     private static final String KEY_MESSAGE = "message";
@@ -309,10 +315,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_ENTRIES_PREFIX = "/api/v1/entries/";
     private static final String SEGMENT_EVENTS = "/events";
     private static final String SEGMENT_LINKS = "/links/";
-    private static final String SEGMENT_ENTRY_CHAT = "/chat";
-    private static final String SEGMENT_ENTRY_CHAT_TURNS = SEGMENT_ENTRY_CHAT + "/turns";
-    private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
     private static final String ACTION_ACCEPT = "accept";
     private static final String ACTION_PAUSE = "pause";
     private static final String ACTION_ABANDON = "abandon";
@@ -328,11 +330,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
     private static final String SEGMENT_PROJECT_FILES = "/files";
-    private static final String PATH_ENDED = "/api/v1/projects/";
     private static final String PATH_EPICS = "/api/v1/epics";
     private static final String PROJECT_ROUTE_PREFIX = "GET /api/v1/projects/";
     private static final String SEGMENT_ENDED = "/ended";
@@ -354,8 +353,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_EPIC_TITLE = "epic_title";
     private static final String KEY_DISPLAY_NAME = "display_name";
     private static final String KEY_PULL_REQUEST = "pull_request_number";
-    private static final String SEGMENT_ENDED_CHAT = "/ended/";
-    private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_ENROLLED = "project_not_enrolled";
     private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
     private static final String ERR_TARGET_NOT_FOUND = "target_not_found";
@@ -417,7 +414,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LINKS = "links";
     private static final String KEY_HREF = "href";
     private static final String KEY_PARAMS = "params";
-    private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_INTERFACE = "interface";
@@ -510,7 +506,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
-    private static final String MESSAGE_NO_CHAT = "No chat for ";
     private static final String MESSAGE_CLEANUP_JOB_NOT_FOUND = "Cleanup job not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
@@ -804,12 +799,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, Integer> controlSettingsRevisions = new LinkedHashMap<>();
     private final Map<String, Map<String, PlanSettingsValue>> controlSettings = new LinkedHashMap<>();
     private final Map<String, EpicResource> controlEpics = new LinkedHashMap<>();
-    private final Map<String, ChatReadBackResource> controlChats = new LinkedHashMap<>();
     private final Map<String, ReviewResource> controlReviews = new LinkedHashMap<>();
     private final Map<String, ArchiveCheck> controlArchiveChecks = new LinkedHashMap<>();
 
     private final Object decompositionLock = new Object();
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
+
+    /** Every chat of the mock, on the routes {@link de.planmarshall.api.chat.ChatRoutes} builds. */
+    private final ChatRegistry chatRegistry;
+
+    /** The one timing seam scenario events and a chat's reply are played through. */
+    private final EventTiming eventTiming;
 
     /**
      * Creates an engine that keeps no decision body in its act log.
@@ -832,16 +832,81 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
             boolean recordActBodies) {
+        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC);
+    }
+
+    /**
+     * @param registry        the scenario registry
+     * @param scenario        the initial scenario
+     * @param runtimeToken    the accepted runtime token on the Unix domain socket
+     * @param deviceSecret    the accepted device secret on the web port
+     * @param recordActBodies whether {@code /mock/acts} records decision request bodies
+     * @param timing          how scenario events and a chat's reply are played
+     */
+    public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
+            boolean recordActBodies, MockTiming timing) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.recordActBodies = recordActBodies;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
+        this.eventTiming = new EventTiming(timing, scheduler);
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
             broadcastEvent(event.name(), event.data());
         });
+        this.chatRegistry = new ChatRegistry(event -> broadcastEvent(event.name(), scopedPayload(event)),
+                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal);
         setScenario(scenario);
+    }
+
+    /**
+     * The hook through which a proposal applied in a chat changes its subject's resource: an entry's
+     * description replaces the entry's description, and a change to an epic's staged rows or to its
+     * decomposition draft moves the epic's decomposition on by one revision, and a follow-up plan of
+     * ended work opens the start of a new plan in the ended work's project with that description stored.
+     * A plan's revision is accepted and queued, never applied here. A proposal its subject's resource
+     * cannot take (an entry no longer open, no ended work, no decomposition of the epic) changes nothing
+     * and is logged as {@link MockRuntimeLogMessages.WARN#CHAT_PROPOSAL_NOT_APPLIED}.
+     *
+     * @param applied the applied proposal
+     */
+    private void applyChatProposal(ChatRegistry.AppliedProposal applied) {
+        var subject = applied.subject();
+        var changed = true;
+        if (subject.kind() == ChatSubjectKind.ENTRY && applied.kind() == ProposalKind.DESCRIPTION) {
+            changed = startRegistry.applyDescription(subject.id(), applied.after());
+        } else if (applied.kind() == ProposalKind.FOLLOW_UP) {
+            changed = startRegistry.openFollowUp(subject.id(), applied.after());
+        } else if (subject.kind() == ChatSubjectKind.EPIC
+                && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
+            synchronized (decompositionLock) {
+                changed = decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(
+                        cut.epicId(), cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings())) != null;
+            }
+        }
+        if (!changed) {
+            LOGGER.warn(MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED, applied.kind().wireValue(),
+                    subject.kind().wireValue(), subject.id());
+        }
+    }
+
+    /**
+     * @return how scenario events and a chat's reply are played
+     */
+    public MockTiming timing() {
+        return eventTiming.timing();
+    }
+
+    /**
+     * Replaces the worker writing the reply of a chat: the reply is announced again and restarts from
+     * the working line. The seam {@code /mock/inject} plays a replaced worker through.
+     *
+     * @param subject what the chat is about
+     * @return {@code true} if a reply was being written and restarts
+     */
+    public boolean replaceChatWorker(ChatSubject subject) {
+        return chatRegistry.replaceWorker(subject);
     }
 
     /**
@@ -860,6 +925,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
+        StartRegistry.validateEndedWork(scenario, scenario.start());
         validateStateFacts(scenario, scenario.start());
         this.currentScenario.set(scenario);
         this.currentStateId.set(scenario.start());
@@ -871,8 +937,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         configRoutes.clear();
         seedStateFixtures();
         designer.init(scenario);
-        transitionTo(scenario.start());
+        // The reset goes first: it clears every ring buffer, and under ordered timing the start state
+        // plays its events inline, so a reset after them would throw them away. The previous state's
+        // scheduled events are cancelled before it, so none of them lands after the reset.
+        cancelPendingTasks();
         broadcastReset();
+        transitionTo(scenario.start());
     }
 
     /**
@@ -887,8 +957,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.fixtureStateId.set(currentScenario.get().start());
         seedStateFixtures();
         designer.init(currentScenario.get());
-        transitionTo(currentScenario.get().start());
+        // The reset goes first, as in a scenario switch: the start state's ordered events must survive it.
+        cancelPendingTasks();
         broadcastReset();
+        transitionTo(currentScenario.get().start());
     }
 
     /**
@@ -906,6 +978,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
+        initDefaultChats();
         initDefaultDecomposition();
         initDefaultLessonSource();
     }
@@ -1327,6 +1400,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture != null) {
             validateFixtureMembers(fixture);
         }
+        StartRegistry.validateEndedWork(scenario, stateId);
         validateStateFacts(scenario, stateId);
         var operatorDecisions = openOperatorCreatedDecisionIds();
         var previousStateId = this.fixtureStateId.get();
@@ -1421,12 +1495,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
-        // Schedule events; a drain event belongs to the drain running when it was scheduled.
+        // The chat failures the state names, each played once by the next chat request or reply.
+        chatRegistry.arm(stateDef.chatFailures());
+
+        // Play events through the timing seam; a drain event belongs to the drain running when it was
+        // played.
         for (var eventDef : stateDef.events()) {
             var drain = drainGeneration.get();
-            var task = scheduler.schedule(() -> broadcastScheduledEvent(eventDef.event(), eventDef.data(), drain),
-                    eventDef.afterMs(), TimeUnit.MILLISECONDS);
-            pendingTasks.add(task);
+            var task = eventTiming.play(() -> broadcastScheduledEvent(eventDef.event(), eventDef.data(), drain),
+                    eventDef.afterMs());
+            if (task != null) {
+                pendingTasks.add(task);
+            }
         }
 
         // Schedule auto transition
@@ -1566,6 +1646,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         deliverEvent(event, data);
+        var payload = payloadOf(data);
+        recordEndedWork(event, payload);
+        chatRegistry.observe(event, payload);
+    }
+
+    /**
+     * Tells the start of a plan or an epic that ended while the runtime runs, with the project its scope
+     * names, so the follow-up plan its chat proposes opens a start as for seeded ended work.
+     *
+     * @param event   the event name
+     * @param payload the event payload
+     */
+    private void recordEndedWork(String event, Map<String, Object> payload) {
+        if (!EventName.SCOPE_ENDED.wire().equals(event)) {
+            return;
+        }
+        var projectId = scopeOf(event, payload).projectId();
+        var outcome = stringMember(payload, KEY_OUTCOME);
+        var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId != null) {
+            startRegistry.endWork(EntryKind.PLAN, planId, projectId, outcome);
+        }
+        var epicId = stringMember(payload, KEY_EPIC_ID);
+        if (epicId != null) {
+            startRegistry.endWork(EntryKind.EPIC, epicId, projectId, outcome);
+        }
     }
 
     /**
@@ -1634,6 +1740,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
         readyStreams.remove(stream);
         pendingFrames.remove(stream);
         replayPlans.remove(stream);
+    }
+
+    /**
+     * A chat event's payload with the scope of the chat's subject under the envelope's reserved
+     * {@code scope} member, so the event goes to that subject's stream; the envelope takes the member
+     * out of the event's data again.
+     */
+    private static Map<String, Object> scopedPayload(ChatRegistry.ChatEvent event) {
+        var payload = new LinkedHashMap<String, Object>(event.data());
+        payload.put(EventEnvelope.FIELD_SCOPE, event.scope().toMap());
+        return payload;
     }
 
     private static Map<String, Object> payloadOf(Object data) {
@@ -1796,7 +1913,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 1. Control endpoints under /mock/
         if (path.startsWith("/mock/")) {
-            handleControlRequest(request, response);
+            if (!chatRegistry.handleInject(request, response)) {
+                handleControlRequest(request, response);
+            }
             return;
         }
 
@@ -1828,14 +1947,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         //    domain defaults: a scenario definition is never shadowed by a Java fixture, and an
         //    operator link under /links/ is always served as the scenario declares it.
         var route = activeRoute(request.method(), path);
-        if (!isLiveDomainPath(path)) {
-            if (handleStateLink(request, response)) {
-                return;
-            }
-            if (route != null) {
-                handleRouteWithDynamicStatus(route, path, response);
-                return;
-            }
+        if (!isLiveDomainPath(path) && handleStateLinkOrRoute(request, response, route)) {
+            return;
         }
 
         // 6. Dynamic routes of the domain areas.
@@ -1844,16 +1957,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 7. A live path no domain handler claimed falls back to the scenario's link or route.
-        if (handleStateLink(request, response)) {
-            return;
-        }
-        if (route != null) {
-            handleRouteWithDynamicStatus(route, path, response);
+        if (handleStateLinkOrRoute(request, response, route)) {
             return;
         }
 
         // 8. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    /**
+     * Serves a request through the active state's scenario link, or else through the scenario's static
+     * route of the request.
+     *
+     * @param request  the request
+     * @param response the response
+     * @param route    the scenario's static route of the request, or {@code null}
+     * @return {@code true} if the link or the route answered the request
+     * @throws IOException on I/O error
+     */
+    private boolean handleStateLinkOrRoute(MockHttpRequest request, MockHttpResponse response,
+            @Nullable RouteDefinition route) throws IOException {
+        if (handleStateLink(request, response)) {
+            return true;
+        }
+        if (route != null) {
+            handleRouteWithDynamicStatus(route, request.path(), response);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -1913,6 +2044,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleConfigRoutes(request, response)
                 || handleEnrolmentRoutes(request, response)
                 || refuseTamperedEnrolment(request, response)
+                || chatRegistry.handle(request, response)
                 || handleDesignerRoutes(request, response, isWeb)
                 || handleProjectExplorerRoutes(request, response)
                 || handleProjectOverviewRoutes(request, response)
@@ -2916,7 +3048,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Seeds the stateful control fixtures from the active scenario's runtime fixture. The fixture is
      * declared by the scenario ({@code facts.runtime.control}) so a case state shows its own plans,
-     * epics, holds, settings, and chats; a scenario that declares none has no control state.
+     * epics, holds, and settings; a scenario that declares none has no control state. Its chats are
+     * seeded by {@link #initDefaultChats()}.
      */
     private void initDefaultControl() {
         synchronized (controlLock) {
@@ -2932,7 +3065,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlSettingsRevisions.clear();
             controlSettings.clear();
             controlEpics.clear();
-            controlChats.clear();
             controlReviews.clear();
             controlArchiveChecks.clear();
 
@@ -2953,7 +3085,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlSettingsRevisions.putAll(seed.settingsRevisions());
             controlSettings.putAll(seed.settings());
             controlEpics.putAll(seed.epics());
-            controlChats.putAll(seed.chats());
             controlReviews.putAll(seed.reviews());
             controlArchiveChecks.putAll(seed.archiveChecks());
         }
@@ -2976,7 +3107,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     Map<String, Integer> settingsRevisions,
     Map<String, Map<String, PlanSettingsValue>> settings,
     Map<String, EpicResource> epics,
-    Map<String, ChatReadBackResource> chats,
     Map<String, ReviewResource> reviews,
     Map<String, ArchiveCheck> archiveChecks) {
     }
@@ -3074,15 +3204,45 @@ public final class MockRuntimeEngine implements AutoCloseable {
             settings.put(planId, values);
         }
 
-        var chats = new LinkedHashMap<String, ChatReadBackResource>();
-        for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
-            var record = readFixture(() -> ChatReadBackResource.fromMap(chat), "facts.runtime.control.chats");
-            chats.put(record.subjectId(), record);
-        }
-
         return new ControlSeed(planStates, pausePoints, planEpics, epicStates, epicAuto, epicScope,
-                epicRunning, epicOverlap, holds, settingsRevisions, settings, epics, chats, reviews,
-                archiveChecks);
+                epicRunning, epicOverlap, holds, settingsRevisions, settings, epics, reviews, archiveChecks);
+    }
+
+    /**
+     * @param control the control fixture
+     * @return the chats the fixture declares under {@code chats}, each as {@code GET …/chat} reads it
+     * @throws IllegalStateException if a chat does not read, or two chats share a subject or an id: the
+     *                               registry holds one chat per subject, so the later one would replace
+     *                               the earlier one silently
+     */
+    private static List<ChatResource> readChatSeeds(Map<String, Object> control) {
+        var chats = new ArrayList<ChatResource>();
+        var subjects = new HashSet<ChatSubject>();
+        var ids = new HashSet<String>();
+        for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
+            var read = readFixture(() -> ChatResource.fromMap(chat), "facts.runtime.control.chats");
+            if (!subjects.add(read.subject())) {
+                throw new IllegalStateException("Malformed facts.runtime.control.chats: the subject "
+                        + read.subject().kind().wireValue() + " '" + read.subject().id() + "' has two chats");
+            }
+            if (!ids.add(read.id())) {
+                throw new IllegalStateException("Malformed facts.runtime.control.chats: the chat id '"
+                        + read.id() + "' is named twice");
+            }
+            chats.add(read);
+        }
+        return chats;
+    }
+
+    /**
+     * Seeds every chat from the active state: the chats of its control fixture, and the ended work
+     * the start fixture names, whose chats are about the archived record. Runs after the start
+     * registry is seeded, so the ended work is the state's.
+     */
+    private void initDefaultChats() {
+        var control = fixtureObject(startRuntimeFixture(), FIXTURE_CONTROL);
+        var chats = control != null ? readChatSeeds(control) : List.<ChatResource>of();
+        chatRegistry.seed(new ChatRegistry.Seed(chats, startRegistry.endedSubjects()));
     }
 
     private static String reviewKey(String epicId, String register) {
@@ -3118,6 +3278,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var control = fixtureObject(fixture, FIXTURE_CONTROL);
         if (control != null) {
             readControlSeed(control);
+            readChatSeeds(control);
         }
         for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
             DecisionEnvelope.fromMap(entry);
@@ -3789,8 +3950,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             throws IOException {
         var path = request.path();
         if (handleStartEntryRoutes(request, response)
-                || handleStartProjectRoutes(request, response, isWeb)
-                || handleStartEndedRoutes(request, response)) {
+                || handleStartProjectRoutes(request, response, isWeb)) {
             return true;
         }
         if ("GET".equals(request.method()) && PATH_RECIPES.equals(path)) {
@@ -3835,49 +3995,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return false;
     }
 
-    private boolean handleStartEndedRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var path = request.path();
-        var method = request.method();
-        if (!path.startsWith(PATH_ENDED) || !path.contains(SEGMENT_ENDED_CHAT)) {
-            return false;
-        }
-        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
-            var subjectId = endedSubjectId(path.substring(PATH_ENDED.length()),
-                    SEGMENT_ENTRY_CHAT.length());
-            if (subjectId == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
-                        "No ended work is named"));
-                return true;
-            }
-            handleEndedChat(response, subjectId);
-            return true;
-        }
-        if (METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
-            var rest = path.substring(PATH_ENDED.length());
-            var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-            var projectId = marker > 0 ? rest.substring(0, marker) : null;
-            var subjectId = endedSubjectId(rest, SEGMENT_ENDED_CHAT_ACCEPT.length());
-            if (projectId == null || subjectId == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
-                        "No ended work is named"));
-                return true;
-            }
-            handleAcceptFollowUp(response, projectId, subjectId);
-            return true;
-        }
-        return false;
-    }
-
-    private static @Nullable String endedSubjectId(String rest, int suffixLength) {
-        var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-        var start = marker + SEGMENT_ENDED_CHAT.length();
-        var end = rest.length() - suffixLength;
-        if (marker <= 0 || end <= start) {
-            return null;
-        }
-        return rest.substring(start, end);
-    }
-
     /**
      * Serves the top-level entry routes (UC-STA-1..5): the entry itself, its events, the operator
      * acts of its states, its chat, and the confined file listing. An entry is addressed by its id
@@ -3896,9 +4013,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var rest = path.substring(PATH_ENTRIES_PREFIX.length());
         if (rest.isEmpty() || rest.endsWith(SEGMENT_EVENTS)) {
             return false;
-        }
-        if (handleEntryChatRoutes(request, response, rest)) {
-            return true;
         }
         var entryId = rest;
         String act = null;
@@ -4015,39 +4129,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return body;
     }
 
-    private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
-            throws IOException {
-        if (!METHOD_POST.equals(request.method())) {
-            return false;
-        }
-        if (rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
-            handleEntryChatTurn(request, response, rest, SEGMENT_ENTRY_CHAT_TURNS);
-            return true;
-        }
-        if (rest.endsWith(SEGMENT_ENTRY_CHAT_END)) {
-            handleEntryChatEnd(response, rest, SEGMENT_ENTRY_CHAT_END);
-            return true;
-        }
-        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT)) {
-            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT, true);
-            return true;
-        }
-        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT)) {
-            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT, false);
-            return true;
-        }
-        return false;
-    }
-
-    private void handleEntryChatEnd(MockHttpResponse response, String rest, String suffix) throws IOException {
-        var state = startRegistry.endChat(rest.substring(0, rest.length() - suffix.length()));
-        if (state == null) {
-            sendEntryNotFound(response, rest.substring(0, rest.length() - suffix.length()));
-            return;
-        }
-        response.json(200, state.toMap());
-    }
-
     private void handleOpenEntry(MockHttpRequest request, MockHttpResponse response, String projectId)
             throws IOException {
         if (!gateAllows(projectId, response)) {
@@ -4096,41 +4177,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleEntryChatTurn(MockHttpRequest request, MockHttpResponse response, String rest,
-            String suffix) throws IOException {
-        var entryId = rest.substring(0, rest.length() - suffix.length());
-        var text = JsonTree.string(readBodyObject(request), KEY_TEXT);
-        if (text == null || text.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A chat turn carries its text"));
-            return;
-        }
-        try {
-            var state = startRegistry.chatTurn(entryId, text);
-            if (state == null) {
-                sendEntryNotFound(response, entryId);
-                return;
-            }
-            response.json(200, state.toMap());
-        } catch (StartRegistry.ActRefused refused) {
-            response.json(409, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
-        }
-    }
-
-    private void handleEntryChatProposal(MockHttpResponse response, String rest, String suffix, boolean accept)
-            throws IOException {
-        var entryId = rest.substring(0, rest.length() - suffix.length());
-        try {
-            var state = startRegistry.chatProposal(entryId, accept);
-            if (state == null) {
-                sendEntryNotFound(response, entryId);
-                return;
-            }
-            response.json(200, state.toMap());
-        } catch (StartRegistry.ActRefused refused) {
-            response.json(409, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
-        }
-    }
-
     private void handleProjectFiles(MockHttpRequest request, MockHttpResponse response, String projectId,
             boolean isWeb) throws IOException {
         var rootWire = queryParameter(request, "root");
@@ -4151,27 +4197,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var status = ERR_LOOPBACK_ONLY.equals(refused.error()) ? 403 : 400;
             response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
         }
-    }
-
-    private void handleEndedChat(MockHttpResponse response, String subjectId) throws IOException {
-        var chat = startRegistry.endedChat(subjectId);
-        if (chat == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
-                    "No ended work with the id " + subjectId));
-            return;
-        }
-        response.json(200, chat.toMap());
-    }
-
-    private void handleAcceptFollowUp(MockHttpResponse response, String projectId, String subjectId)
-            throws IOException {
-        var state = startRegistry.acceptFollowUp(projectId, subjectId);
-        if (state == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
-                    "No ended work with the id " + subjectId));
-            return;
-        }
-        response.json(201, state.toMap());
     }
 
     private static @Nullable String queryParameter(MockHttpRequest request, String name) {
@@ -4858,26 +4883,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
-            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            handleGetChat(response, controlSubjectId(path, prefix, SEGMENT_ENTRY_CHAT));
-            return true;
-        }
-
-        if (isPlan && METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
-            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX,
-                    SEGMENT_ENTRY_CHAT_TURNS));
-            return true;
-        }
-
-        if (isPlan && METHOD_POST.equals(method) && (path.endsWith("/chat/proposal/accept")
-                || path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT))) {
-            var accept = path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT);
-            var suffix = accept ? SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT : SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT;
-            handleChatProposal(response, controlSubjectId(path, PATH_PLANS_PREFIX, suffix), accept);
-            return true;
-        }
-
         if ("GET".equals(method) && isEpic) {
             var epicId = path.substring(PATH_EPICS_PREFIX.length());
             if (!epicId.isEmpty() && !epicId.contains("/")) {
@@ -5291,59 +5296,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         return new DecompositionResource(cut.epicId(), cut.status().wireValue(), cut.revision(), workstreams,
                 checks);
-    }
-
-    private void handleGetChat(MockHttpResponse response, String subjectId) throws IOException {
-        synchronized (controlLock) {
-            var chat = controlChats.get(subjectId);
-            if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + subjectId));
-                return;
-            }
-            response.json(200, chat.toMap());
-        }
-    }
-
-    private void handleChatTurn(MockHttpRequest request, MockHttpResponse response, String planId)
-            throws IOException {
-        var body = readBodyMap(request);
-        var text = body.get(FIELD_TEXT) instanceof String value ? value : "";
-        synchronized (controlLock) {
-            var chat = controlChats.get(planId);
-            if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
-                return;
-            }
-            var at = Instant.now().toString();
-            var turns = new ArrayList<>(chat.turns());
-            turns.add(new ChatTurnResource(ChatTurnResource.ROLE_OPERATOR, text, at, false));
-            turns.add(new ChatTurnResource(chat.role(),
-                    "I have read the plan; say what should change, or ask on.", at, false));
-            var updated = new ChatReadBackResource(chat.chatId(), chat.subjectId(), chat.subjectKind(),
-                    chat.role(), chat.scope(), ChatState.TURN.wireValue(), turns, null);
-            controlChats.put(planId, updated);
-            response.json(200, updated.toMap());
-        }
-    }
-
-    private void handleChatProposal(MockHttpResponse response, String planId, boolean accept) throws IOException {
-        synchronized (controlLock) {
-            var chat = controlChats.get(planId);
-            if (chat == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_MESSAGE, MESSAGE_NO_CHAT + planId));
-                return;
-            }
-            if (!chat.hasProposal()) {
-                response.json(409, Map.of(KEY_ERROR, "no_proposal",
-                        KEY_MESSAGE, "No open proposal for " + planId));
-                return;
-            }
-            var state = accept ? ChatState.APPLY.wireValue() : ChatState.TURN.wireValue();
-            var updated = new ChatReadBackResource(chat.chatId(), chat.subjectId(), chat.subjectKind(),
-                    chat.role(), chat.scope(), state, chat.turns(), null);
-            controlChats.put(planId, updated);
-            response.json(200, updated.toMap());
-        }
     }
 
     private static @Nullable String queryValue(MockHttpRequest request, String name) {
@@ -7155,6 +7107,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             } catch (IOException | RuntimeException _) {
                 // Ignore parse errors from broadcast body
             }
+        }
+        // A chat event plays another device: the chat registry applies it and sends it on the chat's stream.
+        if (chatRegistry.handleBroadcast(event, data, response)) {
+            return;
         }
         applyStateEffectOf(event, data);
         broadcastEvent(event, data);
@@ -10267,7 +10223,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * The payload of {@code decision.answered}: the channel is the one the answer carried, and an absent
-     * channel stays absent, never read as {@code cli}; an absent device is written as the empty name.
+     * channel stays absent, never read as {@code cli}; the device likewise is written only when the
+     * answer carried one, so a client renders an answer without a device through the variant without one.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
             @Nullable String device) {
@@ -10277,7 +10234,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (channel != null) {
             payload.put("channel", channel);
         }
-        payload.put("device", device != null ? device : "");
+        if (device != null) {
+            payload.put("device", device);
+        }
         return payload;
     }
 

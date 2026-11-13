@@ -2269,74 +2269,274 @@
               ],
               "chats": [
                 {
-                  "chat_id": "C-0001",
-                  "subject_id": "fix-relay",
-                  "subject_kind": "plan",
-                  "role": "replan",
+                  "id": "C-0001",
+                  "subject": {
+                    "kind": "plan",
+                    "id": "fix-relay"
+                  },
+                  "role": {
+                    "name": "replan",
+                    "model": "sonnet"
+                  },
                   "scope": "plan",
-                  "state": "read-back",
-                  "turns": [
-                    {
-                      "role": "operator",
-                      "text": "Can the cursor test also cover the SSE transport?",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
-                    },
-                    {
-                      "role": "replan",
-                      "text": "Yes. TASK-4 tests one transport only; I propose a second test.",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
-                    }
-                  ],
+                  "state": "chat.read-back",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      }
+                    ],
+                    "as_of": "2026-10-14T10:00:00Z"
+                  },
                   "proposal": {
+                    "turn_id": "T-0003",
+                    "reply_turn_id": "T-0002",
+                    "kind": "revision",
                     "summary": "a test per transport",
+                    "applies": {
+                      "key": "chat.applies.after_task",
+                      "args": {
+                        "task_id": "TASK-3"
+                      }
+                    },
                     "before": "TASK-4  cursor write order: a test for the websocket transport",
                     "after": "TASK-4  cursor write order: a test per transport, websocket and SSE",
-                    "applies": "after the current task"
-                  }
-                },
-                {
-                  "chat_id": "C-0002",
-                  "subject_id": "relay-hardening",
-                  "subject_kind": "epic",
-                  "role": "decompose",
-                  "scope": "epic",
-                  "state": "turn",
+                    "state": "open"
+                  },
                   "turns": [
                     {
-                      "role": "operator",
-                      "text": "Why does relay-docs wait?",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
+                      "turn_id": "T-0001",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Can the cursor test also cover the SSE transport?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
                     },
                     {
-                      "role": "decompose",
-                      "text": "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
+                      "turn_id": "T-0002",
+                      "kind": "message",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "Yes. TASK-4 tests one transport only; I propose a second test.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0003",
+                      "kind": "proposal",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "a test per transport",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
                     }
                   ]
                 },
                 {
-                  "chat_id": "C-0003",
-                  "subject_id": "docs-typo",
-                  "subject_kind": "plan",
-                  "role": "replan",
-                  "scope": "archive",
-                  "state": "open",
+                  "id": "C-0002",
+                  "subject": {
+                    "kind": "epic",
+                    "id": "relay-hardening"
+                  },
+                  "role": {
+                    "name": "decompose",
+                    "model": "sonnet"
+                  },
+                  "scope": "epic",
+                  "state": "chat.turn",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      }
+                    ],
+                    "as_of": "2026-10-14T10:00:00Z"
+                  },
                   "turns": [
                     {
-                      "role": "operator",
-                      "text": "Why was it cancelled?",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
+                      "turn_id": "T-0004",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Why does relay-docs wait?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
                     },
                     {
-                      "role": "replan",
+                      "turn_id": "T-0005",
+                      "kind": "message",
+                      "author": "decompose",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "C-0003",
+                  "subject": {
+                    "kind": "plan",
+                    "id": "docs-typo"
+                  },
+                  "role": {
+                    "name": "replan",
+                    "model": "sonnet"
+                  },
+                  "scope": "archive",
+                  "state": "chat.turn",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.other",
+                        "args": {
+                          "outcome": "cancelled"
+                        }
+                      }
+                    ],
+                    "as_of": "2026-10-14T10:00:00Z"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0006",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Why was it cancelled?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0007",
+                      "kind": "message",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
                       "text": "You cancelled it: replaced by relay-v2.",
-                      "at": "2026-10-14T10:00:00Z",
-                      "untrusted": false
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-14T10:00:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "C-0004",
+                  "subject": {
+                    "kind": "entry",
+                    "id": "ent-showroom"
+                  },
+                  "role": {
+                    "name": "refine",
+                    "model": "sonnet"
+                  },
+                  "scope": "entry",
+                  "state": "chat.read-back",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      }
+                    ],
+                    "as_of": "2026-10-19T10:00:05Z"
+                  },
+                  "proposal": {
+                    "turn_id": "T-0010",
+                    "reply_turn_id": "T-0009",
+                    "kind": "description",
+                    "summary": "An addition to the description",
+                    "after": "The cursor is written before acknowledging and fsynced; each transport has a test.",
+                    "state": "open"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0008",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Keep the cursor write ordered, with a test per transport.",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0009",
+                      "kind": "message",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "A plan that writes the cursor before acknowledging, tested over websocket and SSE. Unclear: whether the fsync belongs in this plan.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
+                    },
+                    {
+                      "turn_id": "T-0010",
+                      "kind": "proposal",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "An addition to the description",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-19T10:00:05Z"
                     }
                   ]
                 }
@@ -3024,28 +3224,7 @@
                   ]
                 }
               ],
-              "entry_id": "ent-showroom",
-              "chat": {
-                "role": "refine",
-                "available": true,
-                "turns": [
-                  {
-                    "role": "operator",
-                    "text": "Keep the cursor write ordered, with a test per transport.",
-                    "at": "2026-10-19T10:00:00Z"
-                  },
-                  {
-                    "role": "refine",
-                    "text": "A plan that writes the cursor before acknowledging, tested over websocket and SSE. Unclear: whether the fsync belongs in this plan.",
-                    "at": "2026-10-19T10:00:05Z"
-                  }
-                ],
-                "proposal": {
-                  "summary": "An addition to the description",
-                  "after": "The cursor is written before acknowledging and fsynced; each transport has a test.",
-                  "applies": "the description"
-                }
-              }
+              "entry_id": "ent-showroom"
             },
             "designer": {
               "runtime_version": "0.9.0",

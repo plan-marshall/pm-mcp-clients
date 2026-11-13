@@ -33,6 +33,7 @@ import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpServer;
 import de.planmarshall.mock.runtime.MockRuntimeEngine;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 
@@ -112,24 +113,35 @@ public final class MockRuntime implements AutoCloseable {
     }
 
     /**
-     * Starts a mock runtime instance with the default configuration and default scenario.
+     * Starts a mock runtime instance with the default scenario and {@link MockTiming#ORDERED} timing.
+     * <p>
+     * This entry point serves tests: scenario events and a chat's reply are played at once and in
+     * order, so a test asserts a sequence without waiting on time. A {@link MockRuntimeConfig} built
+     * without a timing keeps {@link MockTiming#REALISTIC}; start with such a config for realistic
+     * timing.
      *
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
     public static MockRuntime start() throws IOException {
-        return start(MockRuntimeConfig.builder().build());
+        return start(MockRuntimeConfig.builder().timing(MockTiming.ORDERED).build());
     }
 
     /**
-     * Starts a mock runtime instance for the given scenario name.
+     * Starts a mock runtime instance for the given scenario name with {@link MockTiming#ORDERED}
+     * timing.
+     * <p>
+     * This entry point serves tests: scenario events and a chat's reply are played at once and in
+     * order, so a test asserts a sequence without waiting on time. A {@link MockRuntimeConfig} built
+     * without a timing keeps {@link MockTiming#REALISTIC}; start with such a config for realistic
+     * timing.
      *
      * @param scenario the initial scenario name or path
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
     public static MockRuntime start(String scenario) throws IOException {
-        return start(MockRuntimeConfig.builder().scenario(scenario).build());
+        return start(MockRuntimeConfig.builder().scenario(scenario).timing(MockTiming.ORDERED).build());
     }
 
     @SuppressWarnings({"java:S5443", "java:S7467"})
@@ -204,7 +216,8 @@ public final class MockRuntime implements AutoCloseable {
         }
 
         // 3. Initialize engine
-        var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret, config.isRecordActBodies());
+        var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret, config.isRecordActBodies(),
+                config.getTiming());
 
         // 4. Start Unix domain socket listener
         MockHttpServer unixServer;
@@ -382,6 +395,13 @@ public final class MockRuntime implements AutoCloseable {
      */
     public Scenario currentScenario() {
         return engine.currentScenario();
+    }
+
+    /**
+     * @return how scenario events and a chat's reply are played
+     */
+    public MockTiming timing() {
+        return engine.timing();
     }
 
     /**

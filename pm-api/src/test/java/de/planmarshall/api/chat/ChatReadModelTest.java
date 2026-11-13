@@ -45,23 +45,23 @@ class ChatReadModelTest {
     private static final String GOLDEN_CHAT = """
             {"id":"chat-7","subject":{"kind":"plan","id":"fix-relay"},
              "role":{"name":"replan","model":"opus"},"scope":"plan","state":"chat.read-back",
-             "context":{"knows":[{"key":"control.chat.knows.plan","args":{"id":"fix-relay"}}],
+             "context":{"knows":[{"key":"chat.knows.phase","args":{"phase":"execute"}}],
                         "as_of":"2026-11-10T18:00:00Z"},
              "proposal":{"turn_id":"t-3","reply_turn_id":"t-2","kind":"revision","summary":"Split TASK-4",
-                         "applies":{"key":"control.chat.applies.after_task","args":{"task_id":"TASK-3"}},
+                         "applies":{"key":"chat.applies.after_task","args":{"task_id":"TASK-3"}},
                          "before":"one task","after":"two tasks","state":"open"},
              "turns":[
               {"turn_id":"t-1","kind":"message","author":"operator","status":"complete","format":"plain",
                "untrusted":false,"text":"Split TASK-4","steps":[],"refs":[],"at":"2026-11-10T18:01:00Z"},
               {"turn_id":"t-2","kind":"message","author":"replan","status":"complete","format":"markdown",
-               "untrusted":false,"model":"opus","text":"Done.","steps":[{"key":"control.chat.step.reading"}],
+               "untrusted":false,"model":"opus","text":"Done.","steps":[{"key":"chat.step.read","args":{"target":"TASK-4"}}],
                "refs":[{"kind":"task","id":"TASK-4"}],"at":"2026-11-10T18:02:00Z"},
               {"turn_id":"t-4","kind":"message","author":"replan","status":"failed","format":"markdown",
                "untrusted":false,"text":"Half","steps":[],"refs":[],"at":"2026-11-10T18:03:00Z",
-               "reason":{"key":"control.chat.reason.lost"}},
+               "reason":{"key":"chat.reason.lost"}},
               {"turn_id":"t-5","kind":"notice","author":"runtime","status":"complete","format":"plain",
                "untrusted":false,"text":"","steps":[],"refs":[],"at":"2026-11-10T18:04:00Z",
-               "lines":[{"key":"control.chat.line.task_done","args":{"task_id":"TASK-3"},
+               "lines":[{"key":"chat.line.task_ended","args":{"task_id":"TASK-3","outcome":"done"},
                          "refs":[{"kind":"task","id":"TASK-3"},{"kind":"file","id":"a/B.java:12"},
                                  {"kind":"decision","id":"fix-relay/Q-1"},{"kind":"plan","id":"fix-relay"},
                                  {"kind":"hold","id":"H-1"},
@@ -100,16 +100,17 @@ class ChatReadModelTest {
     }
 
     private static NarrativeLine line() {
-        return new NarrativeLine("control.chat.line.task_done", Map.of("task_id", id()), refsOfEachKind(), id());
+        return new NarrativeLine("chat.line.task_ended", Map.of("task_id", id(), "outcome", "done"), refsOfEachKind(),
+                id());
     }
 
     private static ChatTurn turn(TurnKind kind, TurnStatus status, List<NarrativeLine> lines) {
-        var reason = status == TurnStatus.FAILED ? message("control.chat.reason.too_long") : null;
+        var reason = status == TurnStatus.FAILED ? message("chat.reason.too_long") : null;
         var author = id();
         var untrusted = Generators.booleans().next();
         var format = plainOnly(kind, author, untrusted) ? TurnFormat.PLAIN : TurnFormat.MARKDOWN;
         return new ChatTurn(id(), kind, author, status, format, untrusted, id(),
-                id(), List.of(message("control.chat.step.reading"), message("control.chat.step.writing")),
+                id(), List.of(message("chat.step.read"), message("chat.step.search")),
                 refsOfEachKind(), id(), reason, lines);
     }
 
@@ -122,15 +123,15 @@ class ChatReadModelTest {
     }
 
     private static ChatProposal proposal(ProposalState state) {
-        var finding = state == ProposalState.REFUSED ? message("control.chat.proposal.refused") : null;
-        return new ChatProposal(id(), id(), ProposalKind.REVISION, id(), message("control.chat.applies.on_start"),
+        var finding = state == ProposalState.REFUSED ? message("chat.finding.lapsed") : null;
+        return new ChatProposal(id(), id(), ProposalKind.REVISION, id(), message("chat.applies.on_start"),
                 id(), id(), state, finding);
     }
 
     private static ChatContext context(int size) {
         var knows = new ArrayList<MessageText>();
         for (var i = 0; i < size; i++) {
-            knows.add(message("control.chat.knows.plan"));
+            knows.add(message("chat.knows.decision"));
         }
         return new ChatContext(knows, id());
     }
@@ -166,7 +167,7 @@ class ChatReadModelTest {
                 () -> assertTrue(chat.proposal().isOpen()),
                 () -> assertEquals(4, chat.turns().size()),
                 () -> assertTrue(chat.turns().getFirst().isOperator()),
-                () -> assertEquals(MessageText.of("control.chat.reason.lost"), chat.turns().get(2).reason()),
+                () -> assertEquals(MessageText.of("chat.reason.lost"), chat.turns().get(2).reason()),
                 () -> assertEquals(6, chat.turns().get(3).lines().getFirst().refs().size()),
                 () -> assertEquals(TurnRef.ofAct("resume", new ChatSubject(ChatSubjectKind.PLAN, "fix-relay")),
                         chat.turns().get(3).lines().getFirst().refs().get(5)));
@@ -292,8 +293,8 @@ class ChatReadModelTest {
         @Test
         @DisplayName("a message text round-trips with and without arguments; an invalid key is refused")
         void messageText() {
-            var withArgs = new MessageText("control.chat.knows.plan", Map.of("id", id(), "title", id()));
-            var bare = MessageText.of("control.chat.knows.epic");
+            var withArgs = new MessageText("chat.knows.decision", Map.of("id", id(), "title", id()));
+            var bare = MessageText.of("chat.knows.description");
 
             assertAll(
                     () -> assertEquals(withArgs, MessageText.fromJson(withArgs.toJson())),
@@ -307,7 +308,7 @@ class ChatReadModelTest {
         @Test
         @DisplayName("a context round-trips with none, one, many and a duplicate; absent knows reads as none")
         void contextRoundTrips() throws Exception {
-            var duplicate = message("control.chat.knows.plan");
+            var duplicate = message("chat.knows.decision");
             var contexts = List.of(context(0), context(1), context(3),
                     new ChatContext(List.of(duplicate, duplicate), id()));
             for (var context : contexts) {
@@ -328,10 +329,10 @@ class ChatReadModelTest {
         void queuedRevision() throws Exception {
             for (var kind : List.of(ChatSubjectKind.PLAN, ChatSubjectKind.DECISION)) {
                 var revision = new QueuedRevision(id(), id(), subject(kind), Generators.booleans().next(),
-                        message("control.chat.applies.after_task"));
+                        message("chat.applies.after_task"));
                 assertEquals(revision, QueuedRevision.fromJson(revision.toJson()));
             }
-            var applies = message("control.chat.applies.on_start");
+            var applies = message("chat.applies.on_start");
             var chatId = id();
             var turnId = id();
             var epic = subject(ChatSubjectKind.EPIC);
@@ -393,16 +394,16 @@ class ChatReadModelTest {
         void narrativeLine() throws Exception {
             var duplicate = ref(RefKind.TASK);
             var lines = List.of(line(),
-                    new NarrativeLine("control.chat.line.started", null, List.of(), id()),
-                    new NarrativeLine("control.chat.line.started", Map.of(), List.of(duplicate, duplicate), id()));
+                    new NarrativeLine("chat.line.row_started", null, List.of(), id()),
+                    new NarrativeLine("chat.line.row_started", Map.of(), List.of(duplicate, duplicate), id()));
             for (var line : lines) {
                 assertEquals(line, NarrativeLine.fromJson(line.toJson()));
             }
             var at = id();
 
             assertAll(
-                    () -> assertEquals(new NarrativeLine("control.chat.line.started", null, null, at),
-                            NarrativeLine.fromMap(Map.of("key", "control.chat.line.started", "at", at))),
+                    () -> assertEquals(new NarrativeLine("chat.line.row_started", null, null, at),
+                            NarrativeLine.fromMap(Map.of("key", "chat.line.row_started", "at", at))),
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new NarrativeLine("bad", null, null, at)),
                     () -> assertThrows(JsonFormatException.class,
@@ -457,7 +458,7 @@ class ChatReadModelTest {
             assertAll(
                     () -> assertThrows(JsonFormatException.class, () -> ChatTurn.fromMap(without(failed, "reason"))),
                     () -> assertThrows(JsonFormatException.class,
-                            () -> ChatTurn.fromMap(with(complete, "reason", MessageText.of("control.chat.x").toMap()))),
+                            () -> ChatTurn.fromMap(with(complete, "reason", MessageText.of("chat.reason.lost").toMap()))),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurn.fromMap(with(complete, "lines", List.of(line().toMap())))),
                     () -> assertThrows(IllegalArgumentException.class,
@@ -500,6 +501,32 @@ class ChatReadModelTest {
 
             assertEquals(turn, ChatTurn.fromJson(turn.toJson()));
         }
+
+        @Test
+        @DisplayName("an operator's turn with a model or steps is refused, as chat.turn.started refuses it")
+        void operatorTurnCarriesNoModelOrSteps() {
+            var operator = new ChatTurn(id(), TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                    TurnFormat.PLAIN, false, null, id(), null, null, id(), null, null);
+            var map = operator.toMap();
+            var turnId = id();
+            var model = id();
+            var text = id();
+            var at = id();
+            var steps = List.of(message("chat.step.read"));
+
+            assertAll(
+                    () -> assertEquals(operator, ChatTurn.fromJson(operator.toJson())),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurn(turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                                    TurnFormat.PLAIN, false, model, text, null, null, at, null, null)),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new ChatTurn(turnId, TurnKind.MESSAGE, ChatTurn.AUTHOR_OPERATOR, TurnStatus.COMPLETE,
+                                    TurnFormat.PLAIN, false, null, text, steps, null, at, null, null)),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurn.fromMap(with(map, "model", model))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ChatTurn.fromMap(with(map, "steps", List.of(steps.getFirst().toMap())))));
+        }
     }
 
     @Nested
@@ -530,7 +557,7 @@ class ChatReadModelTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatProposal.fromMap(without(refused, "finding"))),
                     () -> assertThrows(JsonFormatException.class, () -> ChatProposal.fromMap(
-                            with(bare.toMap(), "finding", MessageText.of("control.chat.x").toMap()))),
+                            with(bare.toMap(), "finding", MessageText.of("chat.finding.lapsed").toMap()))),
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatProposal.fromMap(without(bare.toMap(), "summary"))));
         }

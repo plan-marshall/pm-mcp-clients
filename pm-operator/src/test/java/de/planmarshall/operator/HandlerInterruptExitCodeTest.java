@@ -42,6 +42,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -110,7 +111,7 @@ class HandlerInterruptExitCodeTest {
     @DisplayName("the starting dialogue: its sources prompt interrupted leaves with 130")
     void startingDialogueInterrupt() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                                 .scenario(StandardScenarios.START_SOURCES).build())) {
+                                 .scenario(StandardScenarios.START_SOURCES).timing(MockTiming.ORDERED).build())) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());
             environment.put("LANG", "en_US.UTF-8");

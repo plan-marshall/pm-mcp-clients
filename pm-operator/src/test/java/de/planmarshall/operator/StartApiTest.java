@@ -10,16 +10,25 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.decomposition.DecompositionInstructRequest;
 import de.planmarshall.api.decomposition.InstructAction;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -35,19 +44,24 @@ import org.junit.jupiter.api.Test;
  * expects it, and the endpoints that answer a benign absence return the documented value.
  */
 @DisplayName("start contract client")
+@EnableGeneratorController
 class StartApiTest {
 
     private static final String PROJECT = "/api/v1/projects/pm-mcp-clients";
     private static final String DECOMPOSITION = PROJECT + "/epics/relay-hardening/decomposition";
+    private static final String ENTRY = "ent-1";
+    private static final String CHAT_TURN = "chat.turn";
 
     private RuntimeFixture fixture;
+    private OperatorContext context;
     private StartApi api;
 
     @BeforeEach
     void setUp() throws IOException {
         fixture = RuntimeFixture.create();
         PmOperatorTest.writeLiveRecord(fixture);
-        api = new StartApi(new OperatorContext(fixture.environment(), fixture.base().getParent(), true));
+        context = new OperatorContext(fixture.environment(), fixture.base().getParent(), true);
+        api = new StartApi(context);
     }
 
     @AfterEach
@@ -93,15 +107,144 @@ class StartApiTest {
     }
 
     @Test
-    @DisplayName("chat turn, proposal, and end report a refusal")
+    @DisplayName("the entry chat's open, turn, proposal answer, and end report a refusal")
     void chatRefused() throws Exception {
         serve(failure(409, "{\"message\":\"no chat\"}"));
         assertAll(
                             () -> assertThrows(StartApi.StartActException.class,
-                                                () -> api.chatTurn("ent-1", "hello")),
+                                                () -> api.openEntryChat("ent-1")),
                             () -> assertThrows(StartApi.StartActException.class,
-                                                () -> api.chatProposal("ent-1", true)),
-                            () -> assertThrows(OperatorRefusedException.class, () -> api.endChat("ent-1")));
+                                                () -> api.entryChatTurn("ent-1", "hello")),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.answerEntryChatProposal("ent-1", "T-1", true)),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.answerEntryChatProposal("ent-1", "T-1", false)),
+                            () -> assertThrows(StartApi.StartActException.class,
+                                                () -> api.endEntryChat("ent-1")));
+    }
+
+    @Test
+    @DisplayName("a chat refusal carries the error code of its body")
+    void chatRefusalCarriesCode() throws Exception {
+        var message = Generators.letterStrings(4, 24).next();
+        serve(failure(409, "{\"error\":\"act_not_available\",\"message\":\"" + message + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.endEntryChat(ENTRY));
+
+        assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE, refused.code());
+        assertTrue(refused.getMessage().contains(message), refused.getMessage());
+    }
+
+    @Test
+    @DisplayName("a chat refusal whose body names no known code carries none")
+    void chatRefusalWithoutCode() throws Exception {
+        serve(failure(503, "{\"message\":\"" + Generators.letterStrings(4, 24).next() + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.endEntryChat(ENTRY));
+
+        assertNull(refused.code());
+    }
+
+    @Test
+    @DisplayName("a reply still written is read again until it is written")
+    void entryChatTurnWaitsForTheReply() throws Exception {
+        var text = Generators.letterStrings(8, 24).next();
+        var reads = new AtomicInteger();
+        serve((request, response) -> {
+            if ("POST".equals(request.method())) {
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else if (reads.incrementAndGet() < 3) {
+                response.json(200, chatJson("chat.reply", "streaming", ""));
+            } else {
+                response.json(200, chatJson(CHAT_TURN, "complete", text));
+            }
+        });
+        var waiting = new StartApi(context, new StartApi.ReplyWait(5, Duration.ZERO));
+        var chat = waiting.entryChatTurn(ENTRY, Generators.letterStrings(4, 12).next());
+        assertAll(
+                            () -> assertEquals(3, reads.get()),
+                            () -> assertFalse(StartApi.isWriting(chat)),
+                            () -> assertEquals(text, chat.turns().getLast().text()));
+    }
+
+    @Test
+    @DisplayName("the wait for a reply ends after its reads, with the reply still written")
+    void entryChatTurnWaitIsBounded() throws Exception {
+        var reads = new AtomicInteger();
+        serve((request, response) -> {
+            if ("POST".equals(request.method())) {
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else {
+                reads.incrementAndGet();
+                response.json(200, chatJson(CHAT_TURN, "streaming", ""));
+            }
+        });
+        var waiting = new StartApi(context, new StartApi.ReplyWait(3, Duration.ZERO));
+        var chat = waiting.entryChatTurn(ENTRY, Generators.letterStrings(4, 12).next());
+        assertAll(
+                            () -> assertEquals(3, reads.get()),
+                            () -> assertTrue(StartApi.isWriting(chat)));
+    }
+
+    @Test
+    @DisplayName("accept and reject post the proposal's turn to the entry chat's proposal routes")
+    void proposalAnswerCarriesTheTurn() throws Exception {
+        var turnId = "T-" + Generators.integers(1, 9999).next();
+        var posted = new CopyOnWriteArrayList<String>();
+        serve((request, response) -> {
+            posted.add(request.target() + " " + request.bodyText());
+            response.json(200, chatJson(CHAT_TURN, "complete", "done"));
+        });
+        api.answerEntryChatProposal(ENTRY, turnId, true);
+        api.answerEntryChatProposal(ENTRY, turnId, false);
+        var body = "{\"turn_id\":\"" + turnId + "\"}";
+        assertEquals(List.of(ChatRoutes.entry(ENTRY).accept() + " " + body,
+                            ChatRoutes.entry(ENTRY).reject() + " " + body), posted);
+    }
+
+    @Test
+    @DisplayName("the page before a turn is read on the entry chat's page route, and a refusal is reported")
+    void entryChatPageReadsBeforeTheTurn() throws Exception {
+        var turnId = "T-" + Generators.integers(1, 9999).next();
+        var text = Generators.letterStrings(8, 24).next();
+        var read = new CopyOnWriteArrayList<String>();
+        serve((request, response) -> {
+            read.add(request.method() + " " + request.target());
+            if (read.size() == 1) {
+                response.json(200, chatJson(CHAT_TURN, "complete", text));
+            } else {
+                response.json(409, "{\"message\":\"no chat\"}");
+            }
+        });
+        var page = api.entryChatPage(ENTRY, turnId);
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.entryChatPage(ENTRY, turnId));
+        assertAll(
+                            () -> assertEquals("GET " + ChatRoutes.entry(ENTRY).page(turnId), read.getFirst()),
+                            () -> assertEquals(text, page.turns().getLast().text()),
+                            () -> assertTrue(refused.getMessage().contains("no chat"), refused.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a reply wait reads at least once and pauses no negative time")
+    void replyWaitBounds() {
+        var negative = Duration.ofMillis(-1);
+        assertAll(
+                            () -> assertThrows(IllegalArgumentException.class,
+                                                () -> new StartApi.ReplyWait(0, Duration.ZERO)),
+                            () -> assertThrows(IllegalArgumentException.class,
+                                                () -> new StartApi.ReplyWait(1, negative)));
+    }
+
+    /** A chat of the entry with one reply of the role in the given state and status. */
+    private static String chatJson(String state, String status, String text) {
+        return """
+                            {"id":"C-1","subject":{"kind":"entry","id":"ent-1"},
+                            "role":{"name":"refine","model":"sonnet"},"scope":"entry","state":"%s",
+                            "context":{"knows":[{"key":"chat.knows.description"}],"as_of":"2026-10-19T10:00:05Z"},
+                            "turns":[{"turn_id":"T-2","kind":"message","author":"refine","status":"%s",
+                            "format":"markdown","untrusted":false,"model":"sonnet","text":"%s","steps":[],
+                            "refs":[],"at":"2026-10-19T10:00:05Z"}]}
+                            """.formatted(state, status, text);
     }
 
     @Test

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,7 @@ class ChatEventsTest {
     private static final String GOLDEN_ROLE_STARTED = """
             {"chat_id":"chat-7","turn_id":"t-2","kind":"message","author":"replan","format":"markdown",
              "untrusted":false,"model":"opus",
-             "context":{"knows":[{"key":"control.chat.knows.plan","args":{"id":"fix-relay"}}],
+             "context":{"knows":[{"key":"chat.knows.decision","args":{"id":"D-2"}}],
                         "as_of":"2026-11-10T18:00:00Z"}}
             """;
 
@@ -60,7 +61,7 @@ class ChatEventsTest {
             """;
 
     private static final String GOLDEN_PROGRESS = """
-            {"chat_id":"chat-7","turn_id":"t-2","step":{"key":"control.chat.step.reading",
+            {"chat_id":"chat-7","turn_id":"t-2","step":{"key":"chat.step.read",
              "args":{"target":"TASK-4"}}}
             """;
 
@@ -72,19 +73,19 @@ class ChatEventsTest {
 
     private static final String GOLDEN_FAILED = """
             {"chat_id":"chat-7","turn_id":"t-4","kind":"message","status":"failed","untrusted":false,
-             "text":"Half","refs":[],"reason":{"key":"control.chat.reason.too_long","args":{"bound":"64000"}}}
+             "text":"Half","refs":[],"reason":{"key":"chat.reason.too_long"}}
             """;
 
     private static final String GOLDEN_NOTICE = """
             {"chat_id":"chat-7","turn_id":"t-5","kind":"notice","status":"complete","untrusted":false,
              "text":"","refs":[],
-             "lines":[{"key":"control.chat.line.task_done","args":{"task_id":"TASK-3"},
+             "lines":[{"key":"chat.line.task_ended","args":{"task_id":"TASK-3","outcome":"done"},
                        "refs":[{"kind":"task","id":"TASK-3"}],"at":"2026-11-10T18:03:30Z"}]}
             """;
 
     private static final String GOLDEN_PROPOSAL = """
             {"chat_id":"chat-7","turn_id":"t-3","reply_turn_id":"t-2","kind":"revision","state":"refused",
-             "finding":{"key":"control.chat.proposal.refused","args":{"check":"overlap"}}}
+             "finding":{"key":"chat.finding.check_failed","args":{"reason":"overlap"}}}
             """;
 
     private static final String GOLDEN_ENDED = """
@@ -94,7 +95,7 @@ class ChatEventsTest {
     private static final String GOLDEN_REVISION_QUEUED = """
             {"plan_id":"fix-relay","queued_revision":{"chat_id":"chat-7","turn_id":"t-3",
              "subject":{"kind":"plan","id":"fix-relay"},"chat_open":true,
-             "applies":{"key":"control.chat.applies.after_task","args":{"task_id":"TASK-3"}}}}
+             "applies":{"key":"chat.applies.after_task","args":{"task_id":"TASK-3"}}}}
             """;
 
     private static final String GOLDEN_REVISION_LEFT = """
@@ -114,7 +115,7 @@ class ChatEventsTest {
     }
 
     private static ChatContext context() {
-        return new ChatContext(List.of(message("control.chat.knows.plan")), id());
+        return new ChatContext(List.of(message("chat.knows.decision")), id());
     }
 
     private static Map<String, Object> with(Map<String, Object> map, String key, Object value) {
@@ -130,9 +131,9 @@ class ChatEventsTest {
     }
 
     private static ChatTurnCompletedEvent completed(TurnKind kind, TurnStatus status) {
-        var reason = status == TurnStatus.FAILED ? message("control.chat.reason.lost") : null;
+        var reason = status == TurnStatus.FAILED ? message("chat.reason.lost") : null;
         var lines = kind == TurnKind.NOTICE
-                ? List.of(new NarrativeLine("control.chat.line.task_done", Map.of("task_id", id()),
+                ? List.of(new NarrativeLine("chat.line.task_ended", Map.of("task_id", id(), "outcome", "done"),
                 List.of(TurnRef.of(RefKind.TASK, id())), id()))
                 : List.<NarrativeLine>of();
         return new ChatTurnCompletedEvent(id(), id(), kind, status, flag(), id(),
@@ -140,7 +141,7 @@ class ChatEventsTest {
     }
 
     private static ChatProposalEvent proposal(ProposalState state) {
-        var finding = state == ProposalState.REFUSED ? message("control.chat.proposal.refused") : null;
+        var finding = state == ProposalState.REFUSED ? message("chat.finding.changed_since") : null;
         return new ChatProposalEvent(id(), id(), id(), ProposalKind.REVISION, state, finding);
     }
 
@@ -177,6 +178,29 @@ class ChatEventsTest {
         var written = codec.roundTrip(golden);
 
         assertEquals(JsonTree.parse(golden), JsonTree.parse(written), name);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("goldenPayloads")
+    @DisplayName("every message key of a golden payload is a runtime key with a rendering key")
+    void goldenMessageKeysAreMapped(String name, String golden) throws Exception {
+        var keys = new ArrayList<String>();
+        collectKeys(JsonTree.parse(golden), keys);
+
+        for (var key : keys) {
+            assertTrue(ChatMessageKeys.maps(key), name + ": " + key);
+        }
+    }
+
+    private static void collectKeys(Object node, List<String> keys) {
+        if (node instanceof Map<?, ?> map) {
+            if (map.get(MessageText.FIELD_KEY) instanceof String key) {
+                keys.add(key);
+            }
+            map.values().forEach(value -> collectKeys(value, keys));
+        } else if (node instanceof List<?> list) {
+            list.forEach(value -> collectKeys(value, keys));
+        }
     }
 
     @Test
@@ -284,8 +308,8 @@ class ChatEventsTest {
         void roundTrips() {
             var delta = new ChatTurnDeltaEvent(id(), id(), id());
             var empty = new ChatTurnDeltaEvent(id(), id(), "");
-            var progress = new ChatTurnProgressEvent(id(), id(), message("control.chat.step.reading"));
-            var bare = new ChatTurnProgressEvent(id(), id(), MessageText.of("control.chat.step.writing"));
+            var progress = new ChatTurnProgressEvent(id(), id(), message("chat.step.read"));
+            var bare = new ChatTurnProgressEvent(id(), id(), MessageText.of("chat.step.check"));
 
             assertAll(
                     () -> assertEquals(delta, ChatTurnDeltaEvent.fromJson(delta.toJson())),
@@ -359,7 +383,7 @@ class ChatEventsTest {
                     () -> assertThrows(JsonFormatException.class,
                             () -> ChatTurnCompletedEvent.fromMap(without(failed, "reason"))),
                     () -> assertThrows(JsonFormatException.class, () -> ChatTurnCompletedEvent.fromMap(
-                            with(complete, "reason", MessageText.of("control.chat.reason.lost").toMap()))),
+                            with(complete, "reason", MessageText.of("chat.reason.lost").toMap()))),
                     () -> assertThrows(IllegalArgumentException.class,
                             () -> new ChatTurnCompletedEvent(chatId, turnId, TurnKind.MESSAGE, TurnStatus.FAILED,
                                     false, text, null, null, null)));
@@ -465,7 +489,7 @@ class ChatEventsTest {
         @DisplayName("a plan with and without a queued revision round-trips; an absent one is not written")
         void roundTrips() {
             var revision = new QueuedRevision(id(), id(), new ChatSubject(ChatSubjectKind.DECISION, id()), flag(),
-                    MessageText.of("control.chat.applies.on_start"));
+                    MessageText.of("chat.applies.on_start"));
             var queued = new PlanRevisionQueuedEvent(id(), revision);
             var left = new PlanRevisionQueuedEvent(id(), null);
 

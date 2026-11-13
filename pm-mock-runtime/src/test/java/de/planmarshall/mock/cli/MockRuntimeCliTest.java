@@ -19,18 +19,24 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 
 @DisplayName("MockRuntimeCli")
 @EnableGeneratorController
@@ -68,6 +74,30 @@ class MockRuntimeCliTest {
     }
 
     @Test
+    @DisplayName("--help names every timing MockTiming takes")
+    void helpNamesEveryTiming() {
+        var result = MockRuntimeCli.parse(new String[]{"--help"}, out, err);
+
+        assertEquals(0, result.exitCode());
+        assertTrue(stdout().contains("--timing <" + String.join("|", MockTiming.wireValues()) + ">"), stdout());
+    }
+
+    static Stream<String> valuedOptionNames() {
+        return Arrays.stream(MockRuntimeCli.ValuedOption.values()).flatMap(option -> option.names().stream());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("valuedOptionNames")
+    @DisplayName("refuses every valued option given without a value, without reading past the arguments")
+    void valuedOptionWithoutValue(String option) {
+        var result = MockRuntimeCli.parse(new String[]{option}, out, err, Map.of());
+
+        assertEquals(2, result.exitCode());
+        assertNull(result.config());
+        assertTrue(stderr().contains("Error: missing argument for " + option), stderr());
+    }
+
+    @Test
     @DisplayName("-h prints usage and exits with 0")
     void shortHelpFlag() {
         var result = MockRuntimeCli.parse(new String[]{"-h"}, out, err);
@@ -87,6 +117,39 @@ class MockRuntimeCliTest {
         assertEquals(StandardScenarios.STATUS_ONLY, config.getScenario());
         assertNull(config.getBase());
         assertEquals(7420, config.getWebPort());
+        assertEquals(MockTiming.REALISTIC, config.getTiming(), "without --timing, events play in realistic time");
+    }
+
+    @ParameterizedTest(name = "--timing {0}")
+    @EnumSource(MockTiming.class)
+    @DisplayName("parses --timing into the configuration")
+    void timingOption(MockTiming timing) {
+        var result = MockRuntimeCli.parse(new String[]{"--timing", timing.wireValue()}, out, err, Map.of());
+
+        assertEquals(0, result.exitCode());
+        assertTrue(result.isSuccess());
+        assertEquals(timing, result.config().getTiming());
+    }
+
+    @Test
+    @DisplayName("refuses a --timing value that names no timing, naming the values it takes")
+    void invalidTiming() {
+        var unknown = "t" + Generators.letterStrings(4, 10).next().toLowerCase();
+
+        var result = MockRuntimeCli.parse(new String[]{"--timing", unknown}, out, err, Map.of());
+
+        assertEquals(2, result.exitCode());
+        assertNull(result.config());
+        assertTrue(stderr().contains("invalid timing: " + unknown), stderr());
+        assertTrue(stderr().contains("realistic, ordered"), stderr());
+    }
+
+    @Test
+    @DisplayName("names --timing in the usage")
+    void timingInUsage() {
+        MockRuntimeCli.parse(new String[]{"--help"}, out, err);
+
+        assertTrue(stdout().contains("--timing <realistic|ordered>"), stdout());
     }
 
     @Test
@@ -188,6 +251,7 @@ class MockRuntimeCliTest {
         assertEquals(2, MockRuntimeCli.parse(new String[]{"-t"}, out, err).exitCode());
         assertEquals(2, MockRuntimeCli.parse(new String[]{"--device-secret"}, out, err).exitCode());
         assertEquals(2, MockRuntimeCli.parse(new String[]{"-d"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"--timing"}, out, err).exitCode());
     }
 
     @Test
@@ -257,6 +321,7 @@ class MockRuntimeCliTest {
         var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.STATUS_ONLY, "-p", "0"}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
+        assertTrue(stdout().contains("Timing:             realistic"), stdout());
         assertTrue(stdout().contains("Pairing Code:       KXQB-MRTN"));
         // The development URL names the machine, not localhost, so a phone can reach it.
         assertTrue(

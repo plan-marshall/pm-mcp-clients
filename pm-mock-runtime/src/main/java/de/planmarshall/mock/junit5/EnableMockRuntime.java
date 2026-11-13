@@ -22,6 +22,7 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 
 /**
  * JUnit 5 annotation that enables, configures, and manages the lifecycle of a
@@ -125,4 +126,13 @@ public @interface EnableMockRuntime {
      * @return {@code true} if base directory should be removed on shutdown
      */
     boolean cleanupBaseOnClose() default true;
+
+    /**
+     * How scenario events and a chat's reply are played. A test entry point defaults to
+     * {@link MockTiming#ORDERED}: every event at once and in order, so a test asserts a sequence
+     * without waiting on time; {@link MockTiming#REALISTIC} plays each after its delay.
+     *
+     * @return the timing
+     */
+    MockTiming timing() default MockTiming.ORDERED;
 }

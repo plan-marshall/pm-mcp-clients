@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -31,6 +32,13 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.chat.ProposalAnswerRequest;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorLink;
@@ -45,9 +53,9 @@ import de.planmarshall.api.start.SourceKind;
 import de.planmarshall.api.start.SourceKindOffer;
 import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.SourceTrust;
-import de.planmarshall.api.start.StartChatResource;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
@@ -200,32 +208,66 @@ class StartContractTest {
         void chatAvailability() throws Exception {
             try (var runtime = MockRuntime.start(state("start.chat"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
-                assertTrue(state.chat().available());
-                assertNull(state.chat().disabledReasonKey());
-                assertTrue(state.chat().routedByKind(EntryKind.PLAN));
+                assertTrue(state.entry().chatAvailable());
+                assertNull(state.entry().chatDisabledReason());
+                assertNull(state.chat(), "the entry's chat is served on its own routes");
             }
         }
 
         @Test
-        @DisplayName("chat is absent for a recipe")
+        @DisplayName("chat is not offered for a recipe")
         void chatAbsentForRecipe() throws Exception {
             try (var runtime = MockRuntime.start(state("start.recipe"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
-                assertNull(state.chat(), "a recipe's start offers no chat");
+                assertFalse(state.entry().chatAvailable(), "a recipe's start offers no chat");
+                assertNull(state.chat());
             }
         }
 
         @Test
-        @DisplayName("the follow-up plan opens at start.sources with the ended work named in its description")
-        void followUpPlan() throws Exception {
+        @DisplayName("the chat about ended work is addressed like the running work, not under the project")
+        void followUpChat() throws Exception {
             try (var runtime = MockRuntime.start(state("start.follow-up"))) {
-                var opened = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/projects/pm-mcp-clients/ended/codeberg-issues/ended/accept", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(201, opened.status());
+                var auth = "Bearer " + runtime.token();
+                var underProject = client(runtime).send(HttpRequest.get(
+                        "/api/v1/projects/pm-mcp-clients/ended/codeberg-issues/chat")
+                        .withHeader("Authorization", auth));
+                assertEquals(404, underProject.status());
 
-                var state = StartStateResource.fromJson(opened.bodyText());
+                var opened = client(runtime).send(HttpRequest.json("POST",
+                        ChatRoutes.endedPlan("codeberg-issues").chat(), "")
+                        .withHeader("Authorization", auth));
+                assertEquals(201, opened.status(), opened.bodyText());
+                assertEquals(ChatScopeKind.ARCHIVE, ChatResource.fromJson(opened.bodyText()).scope());
+            }
+        }
+
+        @Test
+        @DisplayName("the accepted follow-up plan opens at start.sources with the ended work named in its description")
+        void followUpPlan() throws Exception {
+            var routes = ChatRoutes.endedPlan("codeberg-issues");
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.follow-up"))
+                         .timing(MockTiming.ORDERED).build())) {
+                var auth = "Bearer " + runtime.token();
+                assertEquals(201, client(runtime).send(HttpRequest.json("POST", routes.chat(), "")
+                        .withHeader("Authorization", auth)).status());
+                for (var message = 0; message < 2; message++) {
+                    var turn = new ChatTurnRequest(Generators.letterStrings(4, 40).next(),
+                            Generators.letterStrings(12, 16).next());
+                    assertEquals(ChatTurnAccepted.HTTP_STATUS, client(runtime).send(HttpRequest.json("POST",
+                            routes.turns(), turn.toJson()).withHeader("Authorization", auth)).status());
+                }
+                var chat = ChatResource.fromJson(client(runtime).send(HttpRequest.get(routes.chat())
+                        .withHeader("Authorization", auth)).bodyText());
+                var proposal = Objects.requireNonNull(chat.proposal(), "the second reply proposes a follow-up plan");
+
+                var accepted = client(runtime).send(HttpRequest.json("POST", routes.accept(),
+                        new ProposalAnswerRequest(proposal.turnId()).toJson()).withHeader("Authorization", auth));
+                assertEquals(200, accepted.status(), accepted.bodyText());
+
+                var state = fetch(runtime, "ent-3f9a2c42");
                 assertEquals(StartState.SOURCES, state.state());
+                assertEquals(EntryKind.PLAN, state.entry().kind());
                 assertTrue(state.entry().sources().getFirst().reference().contains("codeberg-issues"));
             }
         }
@@ -479,15 +521,19 @@ class StartContractTest {
     }
 
     @Test
-    @DisplayName("the chat resource carries the routed role and its transcript state")
+    @DisplayName("the entry's chat carries the routed role and round-trips through its codec")
     void chatResource() throws Exception {
         try (var runtime = MockRuntime.start(state("start.chat"))) {
-            var chat = fetch(runtime, "ent-3f9a2c41").chat();
+            var response = client(runtime).send(HttpRequest.get(ChatRoutes.entry("ent-3f9a2c41").chat())
+                    .withHeader("Authorization", "Bearer " + runtime.token()));
+            assertEquals(200, response.status(), response.bodyText());
+            var chat = ChatResource.fromJson(response.bodyText());
             assertAll(
-                    () -> assertEquals("refine", chat.role().value()),
-                    () -> assertEquals("request", chat.scope().value()),
-                    () -> assertEquals("with_entry", chat.transcript().wireValue()));
-            assertEquals(chat, StartChatResource.fromJson(chat.toJson()));
+                    () -> assertEquals(ChatSubjectKind.ENTRY, chat.subject().kind()),
+                    () -> assertEquals("ent-3f9a2c41", chat.subject().id()),
+                    () -> assertEquals("refine", chat.role().name()),
+                    () -> assertEquals(ChatScopeKind.ENTRY, chat.scope()));
+            assertEquals(chat, ChatResource.fromJson(chat.toJson()));
         }
     }
 

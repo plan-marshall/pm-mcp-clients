@@ -36,6 +36,7 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 
 /**
@@ -226,13 +227,14 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
 
     private MockRuntimeConfig createConfig(@Nullable EnableMockRuntime annotation) {
         if (annotation == null) {
-            return MockRuntimeConfig.builder().build();
+            return MockRuntimeConfig.builder().timing(MockTiming.ORDERED).build();
         }
 
         var builder = MockRuntimeConfig.builder()
                 .scenario(annotation.scenario())
                 .webPort(annotation.webPort())
-                .cleanupBaseOnClose(annotation.cleanupBaseOnClose());
+                .cleanupBaseOnClose(annotation.cleanupBaseOnClose())
+                .timing(annotation.timing());
 
         if (!annotation.token().isBlank()) {
             builder.runtimeToken(annotation.token());

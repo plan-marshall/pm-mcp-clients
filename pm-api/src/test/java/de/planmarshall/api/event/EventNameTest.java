@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
@@ -63,6 +64,28 @@ class EventNameTest {
         var streams = EventName.ACTIVITY.streams();
 
         assertThrows(UnsupportedOperationException.class, () -> streams.add(EventStream.RUNTIME));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("streamControlEvents")
+    @DisplayName("a stream-control event is sent on every stream, so a stream added later is covered")
+    void streamControlOnEveryStream(String wire, EventName name) {
+        assertEquals(EnumSet.allOf(EventStream.class), EnumSet.copyOf(name.streams()), wire);
+    }
+
+    static Stream<Arguments> streamControlEvents() {
+        return Stream.of(Arguments.of("reset", EventName.RESET), Arguments.of("stream.closed", EventName.STREAM_CLOSED));
+    }
+
+    @Test
+    @DisplayName("an empty stream set is refused, and a set given is kept as given")
+    void emptyStreamSetIsRefused() {
+        var empty = EnumSet.noneOf(EventStream.class);
+        var given = EnumSet.of(EventStream.PLAN, EventStream.ENTRY);
+
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class, () -> EventName.requireStreams(empty)),
+                () -> assertEquals(given, EventName.requireStreams(given)));
     }
 
     @Test

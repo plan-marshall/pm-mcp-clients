@@ -37,6 +37,7 @@ import de.planmarshall.api.testsupport.VerificationResults;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 import de.planmarshall.operator.tui.TuiKeyRegistry;
 import de.planmarshall.operator.tui.TuiLevel;
@@ -91,7 +92,7 @@ class TuiCapabilityIT {
         if (runtime != null) {
             runtime.close();
         }
-        runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).timing(MockTiming.ORDERED).build());
         MockMachine.recordLiveRuntime(runtime);
     }
 

@@ -11,33 +11,63 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.http.MockHttpRequest;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
  * The terminal starting dialogue against the contract's mock runtime: the direct verbs with their
  * arguments and with {@code --no-input}, the interactive source list, the ready step, a recipe,
- * an epic with its decomposition, and the start chat.
+ * an epic with its decomposition, and the start chat announced as unavailable before a source is stored.
  */
 @DisplayName("starting dialogue")
+@EnableGeneratorController
 class StartDialogueTest {
 
     private static final String PROJECT = "pm-mcp-clients";
+    private static final String LANG = "LANG";
+    private static final String ENGLISH = "en_US.UTF-8";
+    /** The state whose entry has a stored description and a seeded chat with an open proposal. */
+    private static final String START_CHAT = StandardScenarios.PROJECTS_AND_START + "#start.chat";
+    private static final String CHAT_ENTRY = "ent-3f9a2c41";
+    /** The turn of the proposal the seeded chat holds open. */
+    private static final String SEEDED_PROPOSAL = "T-0103";
+    /** The text of the role's second reply in the mock's scripted conversation, the first one sent here. */
+    private static final String REPLY = "Here is what I would change.";
+    /** The summary of the proposal that reply makes about the entry's description. */
+    private static final String NEW_PROPOSAL = "Make the request more precise.";
 
     @Test
     @DisplayName("plan add applies its arguments and starts without asking")
@@ -93,19 +123,6 @@ class StartDialogueTest {
         assertAll(
                             () -> assertTrue(rendered.contains("relay-hardening has started"), rendered),
                             () -> assertTrue(rendered.toLowerCase().contains("decomposition"), rendered));
-    }
-
-    @Test
-    @DisplayName("h opens the start chat, an empty line ends it, and the plan starts")
-    void chatThenStart() throws Exception {
-        var rendered = run(StandardScenarios.START_SOURCES,
-                            "d\nAdd a Codeberg provider\n\nh\nWhat did you understand?\n\n\n\n",
-                            "plan", "add", "--project", PROJECT);
-        assertAll(
-                            () -> assertTrue(rendered.contains("Chat"), rendered),
-                            () -> assertTrue(rendered.contains("Understood:"), rendered),
-                            () -> assertTrue(rendered.contains("The chat has ended"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
     @Test
@@ -212,10 +229,11 @@ class StartDialogueTest {
     }
 
     private static String renderEntry(String scenario, String entryId) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build())) {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                                 .timing(MockTiming.ORDERED).build())) {
             recordLiveRuntime(runtime);
             var environment = new HashMap<>(runtime.environment());
-            environment.put("LANG", "en_US.UTF-8");
+            environment.put(LANG, ENGLISH);
             var context = new OperatorContext(environment, runtime.base().getParent(), true);
             var state = new StartApi(context).fetch(entryId);
             var buffer = new StringWriter();
@@ -236,19 +254,6 @@ class StartDialogueTest {
                             () -> assertTrue(rendered.contains("relay-hardening has started"), rendered),
                             () -> assertTrue(rendered.contains("Decomposition"), rendered),
                             () -> assertTrue(rendered.contains("committed"), rendered));
-    }
-
-    @Test
-    @DisplayName("a proposed addition is read back, accepted, and stored")
-    void chatProposalAccepted() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\n\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("Comments are read with the issue"), rendered),
-                            () -> assertTrue(rendered.contains("description stored"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
     @Test
@@ -351,18 +356,6 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("a rejected chat proposal is not stored")
-    void chatProposalRejected() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\nr\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("The chat has ended"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
-    }
-
-    @Test
     @DisplayName("the decomposition can be drafted again and left")
     void decompositionDraftAgain() throws Exception {
         var rendered = run(StandardScenarios.START_EPIC,
@@ -434,6 +427,92 @@ class StartDialogueTest {
     }
 
     @Test
+    @DisplayName("h opens the entry's chat on its chat route and reads its transcript")
+    void chatOpensAndReads() throws Exception {
+        var rendered = run(START_CHAT, "h\nx\n\nq\n",
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        assertAll(
+                            () -> assertTrue(rendered.contains("What did you understand, and what is unclear?"),
+                                                rendered),
+                            () -> assertTrue(rendered.contains("A provider that reads Codeberg issues"), rendered),
+                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a message in the entry's chat is taken and the role's reply is read with it")
+    void chatSendsAMessage() throws Exception {
+        var message = Generators.letterStrings(8, 16).next();
+        var rendered = run(START_CHAT, String.join("\n", "h", "x", message, "x", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var echoed = rendered.indexOf(message);
+        assertAll(
+                            () -> assertTrue(echoed >= 0, rendered),
+                            () -> assertTrue(rendered.indexOf(REPLY, echoed) > echoed,
+                                                "the role's reply follows the message: " + rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a reply the runtime writes over time is shown once written, with its proposal")
+    void chatWaitsForTheWrittenReply() throws Exception {
+        var message = Generators.letterStrings(8, 16).next();
+        var outcome = runWithCode(MockTiming.REALISTIC, null, START_CHAT,
+                            String.join("\n", "h", "x", message, "x", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        var reply = rendered.indexOf(REPLY, rendered.indexOf(message));
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(reply > 0, "the written reply is shown: " + rendered),
+                            () -> assertTrue(rendered.indexOf(NEW_PROPOSAL, reply) > reply,
+                                                "the reply's proposal is read back: " + rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("Enter accepts the open proposal with its turn and stores the description")
+    void chatAcceptsTheProposal() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED, null, START_CHAT, String.join("\n", "h", "", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(outcome.posted(ChatRoutes.entry(CHAT_ENTRY).accept())
+                                                .contains("\"turn_id\":\"" + SEEDED_PROPOSAL + "\"")),
+                            () -> assertFalse(outcome.wasPosted(ChatRoutes.entry(CHAT_ENTRY).reject())));
+    }
+
+    @Test
+    @DisplayName("r rejects the open proposal with its turn and stores nothing")
+    void chatRejectsTheProposal() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED, null, START_CHAT, String.join("\n", "h", "r", "", "q", ""),
+                            "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertFalse(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(outcome.posted(ChatRoutes.entry(CHAT_ENTRY).reject())
+                                                .contains("\"turn_id\":\"" + SEEDED_PROPOSAL + "\"")),
+                            () -> assertFalse(outcome.wasPosted(ChatRoutes.entry(CHAT_ENTRY).accept())));
+    }
+
+    @Test
+    @DisplayName("a chat the runtime refuses to open is said, and the sources stay as they are")
+    void chatOpenRefused() throws Exception {
+        var outcome = runWithCode(MockTiming.ORDERED,
+                            "{\"failure\":\"http_error\",\"status\":409,\"code\":\"invalid_arguments\"}", START_CHAT,
+                            "h\nq\n", "plan", "add", "--project", PROJECT, "--entry", CHAT_ENTRY);
+        var rendered = outcome.rendered();
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), rendered),
+                            () -> assertTrue(rendered.contains("Injected failure: invalid_arguments"), rendered),
+                            () -> assertFalse(rendered.contains("A provider that reads Codeberg issues"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
     @DisplayName("a failed adoption can go back to the offer")
     void epicAdoptionBack() throws Exception {
         var rendered = run(StandardScenarios.START_EPIC_ADOPT, "b\nq\n",
@@ -459,17 +538,6 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("an invalid answer at a proposal changes nothing")
-    void chatProposalInvalidAnswer() throws Exception {
-        var rendered = run(StandardScenarios.START_CHAT,
-                            "h\nWhat about comments?\nz\n\n\n\n",
-                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
-        assertAll(
-                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
-                            () -> assertTrue(rendered.contains("has started"), rendered));
-    }
-
-    @Test
     @DisplayName("copy and move together are refused before the entry opens")
     void copyAndMoveConflict() throws Exception {
         var outcome = runWithCode(StandardScenarios.START_SOURCES, null,
@@ -487,11 +555,25 @@ class StartDialogueTest {
     }
 
     private static Outcome runWithCode(String scenario, String input, String... args) throws Exception {
-        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        return runWithCode(MockTiming.ORDERED, null, scenario, input, args);
+    }
+
+    /**
+     * @param timing  how the mock plays the role's reply
+     * @param failure the chat failure armed before the verb runs, as {@code POST /mock/inject} takes it,
+     *                or {@code null}
+     */
+    private static Outcome runWithCode(MockTiming timing, String failure, String scenario, String input,
+                        String... args) throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                                 .timing(timing).build());
              var driver = TerminalTestDriver.create()) {
             recordLiveRuntime(runtime);
+            if (failure != null) {
+                assertEquals(200, runtime.client().send(HttpRequest.json("POST", "/mock/inject", failure)).status());
+            }
             var environment = new HashMap<>(runtime.environment());
-            environment.put("LANG", "en_US.UTF-8");
+            environment.put(LANG, ENGLISH);
             environment.put("USER", "operator");
             driver.project(environment, runtime.base().getParent());
             if (input == null) {
@@ -500,7 +582,7 @@ class StartDialogueTest {
                 driver.type(input);
             }
             var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
-            return new Outcome(code, driver.render());
+            return new Outcome(code, driver.render(), runtime.requests());
         }
     }
 
@@ -513,6 +595,204 @@ class StartDialogueTest {
                             StandardCharsets.UTF_8);
     }
 
-    private record Outcome(int code, String rendered) {
+    /**
+     * The start chat dialogue against a runtime stub whose chat serves its transcript in pages of three
+     * turns, so a transcript longer than a page is reached with one message.
+     */
+    @Nested
+    @DisplayName("chat over a paged transcript")
+    class PagedChat {
+
+        private static final String ENTRY = "ent-1";
+        private static final int PAGE = 3;
+        private static final String CHAT_STATE_TURN = "chat.turn";
+        private static final String END = "/end";
+        /** The line the dialogue prints when the chat has ended. */
+        private static final String ENDED = "The chat has ended.";
+
+        private final List<String> transcript = new CopyOnWriteArrayList<>();
+        private RuntimeFixture fixture;
+
+        @BeforeEach
+        void setUp() throws IOException {
+            fixture = RuntimeFixture.create();
+            PmOperatorTest.writeLiveRecord(fixture);
+        }
+
+        @AfterEach
+        void tearDown() throws IOException {
+            fixture.close();
+        }
+
+        @Test
+        @DisplayName("the newest reply is shown when the transcript outgrows a page, and no turn twice")
+        void newestReplyBeyondOnePage() throws Exception {
+            var opening = texts(PAGE);
+            var replies = texts(PAGE + 2);
+            transcript.addAll(opening);
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/turns")) {
+                    transcript.addAll(replies);
+                    response.json(202, "{\"turn_id\":\"T-" + transcript.size() + "\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO),
+                                Generators.letterStrings(8, 16).next() + "\n\n");
+
+            var shown = new ArrayList<>(opening);
+            shown.addAll(replies);
+            assertAll(
+                                () -> assertTrue(rendered.contains(replies.getLast()), "the newest reply: " + rendered),
+                                () -> assertEquals(List.of(), shown.stream()
+                                                                        .filter(text -> occurrences(rendered, text) != 1).toList(),
+                                                    "every turn exactly once: " + rendered));
+        }
+
+        @Test
+        @DisplayName("a reply wait that runs out says the terminal stopped waiting and shows nothing written yet")
+        void exhaustedWaitIsSaid() throws Exception {
+            var opening = texts(1);
+            var streaming = texts(1);
+            transcript.addAll(opening);
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/turns")) {
+                    transcript.addAll(streaming);
+                    response.json(202, "{\"turn_id\":\"T-2\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), "chat.reply", true));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(2, Duration.ZERO),
+                                Generators.letterStrings(8, 16).next() + "\n\n");
+
+            assertAll(
+                                () -> assertTrue(rendered.contains("Stopped waiting: refine is still writing."), rendered),
+                                () -> assertFalse(rendered.contains(streaming.getFirst()), rendered),
+                                () -> assertTrue(rendered.contains(ENDED), rendered));
+        }
+
+        @Test
+        @DisplayName("an end the runtime refuses for another reason is shown, and the chat stays open")
+        void refusedEndKeepsTheChatOpen() throws Exception {
+            var refusal = Generators.letterStrings(8, 24).next();
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END) && ends.getAndIncrement() == 0) {
+                    response.json(503, "{\"message\":\"" + refusal + "\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n\n");
+
+            assertAll(
+                                () -> assertEquals(2, ends.get(), "the operator ends the chat a second time"),
+                                () -> assertTrue(rendered.contains(refusal), rendered),
+                                () -> assertEquals(1, occurrences(rendered, ENDED), rendered),
+                                () -> assertTrue(rendered.indexOf(refusal) < rendered.indexOf(ENDED),
+                                                    "the refused end says nothing of an ended chat: " + rendered));
+        }
+
+        @Test
+        @DisplayName("an end the runtime refuses because the chat has ended already ends the chat")
+        void alreadyEndedChatEnds() throws Exception {
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END)) {
+                    ends.incrementAndGet();
+                    response.json(409, "{\"error\":\"act_not_available\",\"message\":\"The chat has ended\"}");
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n");
+
+            assertAll(
+                                () -> assertEquals(1, ends.get(), rendered),
+                                () -> assertEquals(1, occurrences(rendered, ENDED), rendered));
+        }
+
+        private String chat(ChatResource opened, StartApi.ReplyWait wait, String input) throws Exception {
+            try (var driver = TerminalTestDriver.create()) {
+                var environment = new HashMap<>(fixture.environment());
+                environment.put(LANG, ENGLISH);
+                driver.project(environment, fixture.base().getParent());
+                driver.type(input);
+                var prompt = new StartPrompt(driver.context(), driver.writer(), "en", false);
+                new ChatDialogue(new StartApi(driver.context(), wait), prompt, EntryKind.PLAN, PROJECT)
+                                    .run(ENTRY, opened);
+                return driver.render();
+            }
+        }
+
+        private static List<String> texts(int count) {
+            var texts = new ArrayList<String>();
+            for (var i = 0; i < count; i++) {
+                texts.add(Generators.letterStrings(10, 20).next() + "x" + i);
+            }
+            return texts;
+        }
+
+        private static int occurrences(String rendered, String text) {
+            var count = 0;
+            for (var at = rendered.indexOf(text); at >= 0; at = rendered.indexOf(text, at + text.length())) {
+                count++;
+            }
+            return count;
+        }
+
+        /**
+         * The page the target asks for: the newest {@value #PAGE} turns, or with {@code ?before=T-n} the
+         * {@value #PAGE} turns before turn {@code n}; turn {@code n} is the n-th of the transcript.
+         */
+        private String pageOf(String target, String state, boolean lastStreaming) {
+            var marker = target.indexOf("?before=T-");
+            var end = marker < 0 ? transcript.size() : Integer.parseInt(target.substring(marker + 10)) - 1;
+            var start = Math.max(0, end - PAGE);
+            var turns = new ArrayList<String>();
+            for (var i = start; i < end; i++) {
+                var status = lastStreaming && i == transcript.size() - 1 ? "streaming" : "complete";
+                turns.add("""
+                                    {"turn_id":"T-%d","kind":"message","author":"refine","status":"%s",\
+                                    "format":"markdown","untrusted":false,"model":"sonnet","text":"%s","steps":[],\
+                                    "refs":[],"at":"2026-10-19T10:00:05Z"}""".formatted(i + 1, status, transcript.get(i)));
+            }
+            var before = start > 0 ? ",\"before\":\"T-" + (start + 1) + "\"" : "";
+            return """
+                                {"id":"C-1","subject":{"kind":"entry","id":"%s"},\
+                                "role":{"name":"refine","model":"sonnet"},"scope":"entry","state":"%s",\
+                                "context":{"knows":[{"key":"chat.knows.description"}],"as_of":"2026-10-19T10:00:05Z"},\
+                                "turns":[%s]%s}""".formatted(ENTRY, state, String.join(",", turns), before);
+        }
+    }
+
+    private record Outcome(int code, String rendered, List<MockHttpRequest> requests) {
+
+        /** @return the body of the one request posted to the path, failing when there is none */
+        String posted(String path) {
+            return requests.stream()
+                                .filter(request -> "POST".equals(request.method()) && path.equals(request.path()))
+                                .map(MockHttpRequest::bodyText)
+                                .findFirst()
+                                .orElseThrow(() -> new AssertionError("nothing was posted to " + path));
+        }
+
+        /** @return whether anything was posted to the path */
+        boolean wasPosted(String path) {
+            return requests.stream().anyMatch(request -> "POST".equals(request.method())
+                                && path.equals(request.path()));
+        }
     }
 }

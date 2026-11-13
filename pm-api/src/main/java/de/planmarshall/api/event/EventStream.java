@@ -21,39 +21,44 @@ import org.jspecify.annotations.Nullable;
  * stream and a task's activity stream. Each {@link EventName} declares the streams it is sent on
  * through {@link EventName#streams()}.
  * <p>
+ * The six streams of a scope are tied to their {@link EventScopeKind} ({@link #scopeKind()},
+ * {@link #of(EventScopeKind)}), so the two lists cannot drift apart unnoticed.
+ * <p>
  * The list is closed and fails closed: a letter that is not a member is refused by
  * {@link #fromWire(String)}.
  */
 public enum EventStream {
 
     /** The runtime-wide stream. */
-    RUNTIME("R"),
+    RUNTIME("R", EventScopeKind.RUNTIME),
 
     /** A plan's stream. */
-    PLAN("P"),
+    PLAN("P", EventScopeKind.PLAN),
 
     /** An epic's stream. */
-    EPIC("E"),
+    EPIC("E", EventScopeKind.EPIC),
 
     /** A project's workspace scope's stream. */
-    WORKSPACE("W"),
+    WORKSPACE("W", EventScopeKind.WORKSPACE),
 
     /** The machine scope's stream. */
-    MACHINE("M"),
+    MACHINE("M", EventScopeKind.MACHINE),
 
     /** An entry's stream. */
-    ENTRY("N"),
+    ENTRY("N", EventScopeKind.ENTRY),
 
     /** The reports stream. */
-    REPORTS("Rep"),
+    REPORTS("Rep", null),
 
     /** A task's activity stream. */
-    ACTIVITY("A");
+    ACTIVITY("A", null);
 
     private final String wire;
+    private final @Nullable EventScopeKind scopeKind;
 
-    EventStream(String wire) {
+    EventStream(String wire, @Nullable EventScopeKind scopeKind) {
         this.wire = wire;
+        this.scopeKind = scopeKind;
     }
 
     /**
@@ -61,6 +66,28 @@ public enum EventStream {
      */
     public String wire() {
         return wire;
+    }
+
+    /**
+     * @return the kind of scope this stream is the stream of, or {@code null} for the reports and the
+     *         activity stream, which belong to no {@link EventScopeKind}
+     */
+    public @Nullable EventScopeKind scopeKind() {
+        return scopeKind;
+    }
+
+    /**
+     * @param kind a kind of scope
+     * @return the stream of that kind of scope; every {@link EventScopeKind} has exactly one
+     */
+    public static EventStream of(EventScopeKind kind) {
+        Objects.requireNonNull(kind, "kind");
+        for (var stream : values()) {
+            if (stream.scopeKind == kind) {
+                return stream;
+            }
+        }
+        throw new IllegalStateException("No event stream for scope kind " + kind.wire());
     }
 
     /**

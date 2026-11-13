@@ -39,6 +39,7 @@ import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.overview.OverviewFormatting;
 import de.planmarshall.operator.overview.ProjectsOverviewLevel;
 
@@ -65,6 +66,7 @@ class NeedsOneCountTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK)
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(
@@ -141,6 +143,7 @@ class NeedsOneCountTest {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .webPort(0)
                                  .scenario(StandardScenarios.RUNNING_WORK)
+                                 .timing(MockTiming.ORDERED)
                                  .build())) {
             var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
             var context = new OperatorContext(

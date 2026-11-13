@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +23,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -32,10 +34,17 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatStatus;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
+import de.planmarshall.api.chat.ProposalAnswerRequest;
+import de.planmarshall.api.chat.ProposalState;
 import de.planmarshall.api.config.ConfigOrigin;
-import de.planmarshall.api.control.ChatRole;
-import de.planmarshall.api.control.ChatScope;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.ProcessTree;
@@ -60,7 +69,7 @@ import de.planmarshall.api.start.StartPlanRequest;
 import de.planmarshall.api.start.StartRefusalReason;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
-import de.planmarshall.api.start.StartTranscriptState;
+import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
@@ -71,6 +80,8 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 class StartScenarioTest {
 
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+    private static final String ENTRY_ID = "ent-3f9a2c41";
+    private static final ChatRoutes ENTRY_CHAT = ChatRoutes.entry(ENTRY_ID);
 
     private static String state(String stateId) {
         return SCENARIO + "#" + stateId;
@@ -753,77 +764,73 @@ class StartScenarioTest {
     class Chat {
 
         @Test
-        @DisplayName("start-chat serves the transcript, its proposal, and the routed role")
+        @DisplayName("start-chat serves the entry's chat with its proposal and routed role, not in the entry")
         void chatScenario() throws Exception {
             try (var runtime = MockRuntime.start(state("start.chat"))) {
-                var state = fetch(runtime, "ent-3f9a2c41");
+                var state = fetch(runtime, ENTRY_ID);
+                assertTrue(state.entry().chatAvailable());
+                assertNull(state.chat(), "an entry's state carries no chat member");
 
-                var chat = state.chat();
-                assertNotNull(chat);
-                assertEquals(ChatRole.REFINE, chat.role());
-                assertEquals(ChatScope.REQUEST, chat.scope());
-                assertTrue(chat.available());
-                assertEquals(2, chat.turns().size());
-                assertNotNull(chat.proposal());
-                assertEquals(StartTranscriptState.WITH_ENTRY, chat.transcript());
+                var chat = entryChat(runtime);
+                assertEquals("refine", chat.role().name());
+                assertEquals(ChatScopeKind.ENTRY, chat.scope());
+                assertEquals(ChatStatus.READ_BACK, chat.state());
+                assertEquals(3, chat.turns().size());
+                assertTrue(chat.hasProposal());
 
-                var accepted = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/chat/proposal/accept", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, accepted.status());
-                var afterAccept = StartStateResource.fromJson(accepted.bodyText());
-                assertNull(afterAccept.chat().proposal());
-                assertEquals(2, afterAccept.entry().sourceCount(),
-                        "the accepted addition is stored as a description");
+                var accepted = post(runtime, ENTRY_CHAT.accept(),
+                        new ProposalAnswerRequest(Objects.requireNonNull(chat.proposal()).turnId()).toJson());
+                assertEquals(200, accepted.status(), accepted.bodyText());
+                var afterAccept = ChatResource.fromJson(accepted.bodyText());
+                assertFalse(afterAccept.hasProposal());
+                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(afterAccept.proposal()).state());
             }
         }
 
         @Test
-        @DisplayName("a chat turn is answered by the routed role and a create ends the chat before it moves")
+        @DisplayName("a chat turn is answered by the routed role, and creating the entry ends its open chat")
         void chatTurnAndCreate() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.chat"))) {
-                var turnText = Generators.letterStrings(4, 12).next();
-                var turn = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/chat/turns",
-                        JsonTree.write(Map.of("text", turnText)))
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, turn.status());
-                var state = StartStateResource.fromJson(turn.bodyText());
-                assertEquals(4, state.chat().turns().size());
-                assertEquals("refine", state.chat().turns().get(3).role());
+            // Ordered timing plays the reply to its end before the message's 202 arrives.
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
+                         .timing(MockTiming.ORDERED).build())) {
+                var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
+                        Generators.letterStrings(8, 12).next());
+                var turn = post(runtime, ENTRY_CHAT.turns(), message.toJson());
+                assertEquals(ChatTurnAccepted.HTTP_STATUS, turn.status(), turn.bodyText());
+                var chat = entryChat(runtime);
+                // The role's second reply of the scripted conversation proposes a new description, a turn of
+                // its own that replaces the seeded proposal.
+                assertEquals(6, chat.turns().size());
+                assertEquals(message.text(), chat.turns().get(3).text());
+                assertEquals("refine", chat.turns().get(4).author());
+                assertEquals(chat.turns().get(5).turnId(), Objects.requireNonNull(chat.proposal()).turnId());
 
-                var rejected = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/chat/proposal/reject", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, rejected.status());
-                assertNull(StartStateResource.fromJson(rejected.bodyText()).chat().proposal());
+                var proposalTurnId = Objects.requireNonNull(chat.proposal()).turnId();
+                var rejected = post(runtime, ENTRY_CHAT.reject(), new ProposalAnswerRequest(proposalTurnId).toJson());
+                assertEquals(200, rejected.status(), rejected.bodyText());
+                assertFalse(ChatResource.fromJson(rejected.bodyText()).hasProposal());
+                assertNotEquals(ChatStatus.END, entryChat(runtime).state(), "the chat is open before the create");
 
-                var ended = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/chat/end", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, ended.status());
-
-                var created = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/create", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                // Nothing but the create ends the chat: the entry is closed by its plan's start.
+                var created = post(runtime, "/api/v1/entries/" + ENTRY_ID + "/links/create", "{}");
                 assertEquals(200, created.status());
-                var createdState = StartStateResource.fromJson(created.bodyText());
-                assertEquals(StartTranscriptState.MOVED, createdState.chat().transcript(),
-                        "the transcript moves with the source directory");
-                assertTrue(createdState.chat().transcriptPath().startsWith("plans/"));
+                assertNull(StartStateResource.fromJson(created.bodyText()).chat());
+                assertEquals(ChatStatus.END, entryChat(runtime).state());
             }
         }
 
         @Test
-        @DisplayName("an abandoned entry deletes its transcript")
-        void abandonDeletesTranscript() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.chat"))) {
-                var abandoned = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/abandon", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
+        @DisplayName("abandoning the entry ends its routed chat, and the entry answers without a chat member")
+        void abandonEndsTheChat() throws Exception {
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
+                         .timing(MockTiming.ORDERED).build())) {
+                assertNotEquals(ChatStatus.END, entryChat(runtime).state(), "the chat is open before the act");
+
+                var abandoned = post(runtime, "/api/v1/entries/" + ENTRY_ID + "/links/abandon", "{}");
+
                 assertEquals(200, abandoned.status());
-                assertEquals(StartTranscriptState.DELETED,
-                        StartStateResource.fromJson(abandoned.bodyText()).chat().transcript());
+                assertNull(StartStateResource.fromJson(abandoned.bodyText()).chat());
+                assertEquals(ChatStatus.END, entryChat(runtime).state());
             }
         }
 
@@ -831,51 +838,59 @@ class StartScenarioTest {
         @DisplayName("an epic's entry routes its chat to decompose")
         void epicChatRoutesToDecompose() throws Exception {
             try (var runtime = MockRuntime.start(state("start.epic"))) {
-                var opened = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-5c1b7d20/links/chat", "{}")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, opened.status());
-                assertEquals(ChatRole.DECOMPOSE,
-                        StartStateResource.fromJson(opened.bodyText()).chat().role());
+                var opened = post(runtime, ChatRoutes.entry("ent-5c1b7d20").chat(), "");
+                assertEquals(201, opened.status(), opened.bodyText());
+                assertEquals("decompose", ChatResource.fromJson(opened.bodyText()).role().name());
             }
         }
     }
 
     @Nested
-    @DisplayName("The follow-up plan of ended work")
+    @DisplayName("The chat about ended work")
     class FollowUp {
 
         @Test
-        @DisplayName("start-follow-up opens a plan's entry from an ended plan and from an ended epic")
+        @DisplayName("start-follow-up opens a chat about an ended plan and an ended epic, and the epic's accepted"
+                + " follow-up plan opens a plan's entry")
         void followUpScenario() throws Exception {
-            try (var runtime = MockRuntime.start(state("start.follow-up"))) {
-                var auth = "Bearer " + runtime.token();
+            var epicRoutes = ChatRoutes.endedEpic("relay-hardening");
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.follow-up"))
+                         .timing(MockTiming.ORDERED).build())) {
+                var plan = post(runtime, ChatRoutes.endedPlan("codeberg-issues").chat(), "");
+                assertEquals(201, plan.status(), plan.bodyText());
+                var planChat = ChatResource.fromJson(plan.bodyText());
+                assertEquals("replan", planChat.role().name());
+                assertEquals(ChatScopeKind.ARCHIVE, planChat.scope());
 
-                var plan = client(runtime).send(HttpRequest.get(
-                        "/api/v1/projects/pm-mcp-clients/ended/codeberg-issues/chat")
-                        .withHeader("Authorization", auth));
-                assertEquals(200, plan.status());
-                var planChat = JsonTree.asObject(JsonTree.parse(plan.bodyText()));
-                assertEquals("replan", JsonTree.string(planChat, "role"));
-                assertEquals("archive", JsonTree.string(planChat, "scope"));
-                assertNotNull(JsonTree.object(planChat, "proposal"));
+                var epic = post(runtime, epicRoutes.chat(), "");
+                assertEquals(201, epic.status(), epic.bodyText());
+                var epicChat = ChatResource.fromJson(epic.bodyText());
+                assertEquals("decompose", epicChat.role().name());
+                assertEquals(ChatScopeKind.ARCHIVE, epicChat.scope());
 
-                var opened = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/projects/pm-mcp-clients/ended/codeberg-issues/ended/accept", "{}")
-                        .withHeader("Authorization", auth));
-                assertEquals(201, opened.status());
+                for (var message = 0; message < 2; message++) {
+                    var turn = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
+                            Generators.letterStrings(8, 12).next());
+                    var sent = post(runtime, epicRoutes.turns(), turn.toJson());
+                    assertEquals(ChatTurnAccepted.HTTP_STATUS, sent.status(), sent.bodyText());
+                }
+                var proposed = ChatResource.fromJson(client(runtime).send(HttpRequest.get(epicRoutes.chat())
+                        .withHeader("Authorization", "Bearer " + runtime.token())).bodyText());
+                var proposal = Objects.requireNonNull(proposed.proposal(), "the epic's chat proposes a follow-up");
+                var accepted = post(runtime, epicRoutes.accept(),
+                        new ProposalAnswerRequest(proposal.turnId()).toJson());
+                assertEquals(200, accepted.status(), accepted.bodyText());
+                assertEquals(ProposalState.APPLIED,
+                        Objects.requireNonNull(ChatResource.fromJson(accepted.bodyText()).proposal()).state());
+
+                var opened = client(runtime).send(HttpRequest.get("/api/v1/entries/ent-3f9a2c42")
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, opened.status(), opened.bodyText());
                 var state = StartStateResource.fromJson(opened.bodyText());
                 assertEquals(StartState.SOURCES, state.state());
+                assertEquals(EntryKind.PLAN, state.entry().kind());
                 assertEquals(1, state.entry().sourceCount());
-                assertTrue(state.entry().sources().getFirst().reference()
-                        .contains("follows codeberg-issues"));
-
-                var epic = client(runtime).send(HttpRequest.get(
-                        "/api/v1/projects/pm-mcp-clients/ended/relay-hardening/chat")
-                        .withHeader("Authorization", auth));
-                assertEquals(200, epic.status());
-                assertEquals("decompose", JsonTree.string(
-                        JsonTree.asObject(JsonTree.parse(epic.bodyText())), "role"));
+                assertTrue(state.entry().sources().getFirst().reference().contains("follows relay-hardening"));
             }
         }
     }
@@ -937,6 +952,18 @@ class StartScenarioTest {
 
     private static UnixSocketHttpClient client(MockRuntime runtime) {
         return new UnixSocketHttpClient(runtime.socketPath());
+    }
+
+    private static HttpResponse post(MockRuntime runtime, String path, String body) throws Exception {
+        return client(runtime).send(HttpRequest.json("POST", path, body)
+                .withHeader("Authorization", "Bearer " + runtime.token()));
+    }
+
+    private static ChatResource entryChat(MockRuntime runtime) throws Exception {
+        var response = client(runtime).send(HttpRequest.get(ENTRY_CHAT.chat())
+                .withHeader("Authorization", "Bearer " + runtime.token()));
+        assertEquals(200, response.status(), response.bodyText());
+        return ChatResource.fromJson(response.bodyText());
     }
 
     private static StartStateResource fetch(MockRuntime runtime, String entryId) throws Exception {
