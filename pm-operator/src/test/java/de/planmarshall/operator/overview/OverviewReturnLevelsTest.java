@@ -326,6 +326,104 @@ class OverviewReturnLevelsTest {
         assertEquals(second, app.currentProjectId());
     }
 
+    private static String endedReport(String reportId, String projectId, String planId) {
+        return "{\"id\":\"" + reportId + "\",\"from\":{\"project_id\":\"" + projectId + "\",\"plan_id\":\"" + planId
+                            + "\"},\"kind\":\"plan.ended\",\"subject\":\"ended\",\"created_at\":\"2026-10-20T11:00:00Z\","
+                            + "\"sent_at\":\"2026-10-20T11:00:00Z\"}";
+    }
+
+    private static String completion(String planId, String projectId) {
+        return "{\"plan_id\":\"" + planId + "\",\"title\":\"" + planId + "\",\"from\":{\"project_id\":\"" + projectId
+                            + "\",\"plan_id\":\"" + planId + "\"},\"outcome\":\"merged\",\"started_at\":\"2026-10-20T08:00:00Z\","
+                            + "\"ended_at\":\"2026-10-20T11:50:00Z\",\"deliverables\":[],\"replanning_records\":[],"
+                            + "\"decision_records\":[]}";
+    }
+
+    @Test
+    @DisplayName("Esc to a completion report under another one names its own plan and belongs to its own project")
+    void completionLevelKeepsItsReport() throws IOException {
+        var firstPlan = first + "-plan";
+        var secondPlan = second + "-plan";
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/reports", "{\"items\":[" + endedReport("rep-1", first, firstPlan) + ","
+                            + endedReport("rep-2", second, secondPlan) + "],\"unread_count\":2,\"has_older\":false,"
+                            + "\"older_count\":0}");
+        bodyOf.put("/api/v1/plans/" + firstPlan + "/completion", completion(firstPlan, first));
+        bodyOf.put("/api/v1/plans/" + secondPlan + "/completion", completion(secondPlan, second));
+        open(OverviewFullScreenApp.InitialSelection.DEFAULT);
+        keys.handle(TuiKeyAction.REPORTS);
+        app.stack().select(ReportsLevel.REPORT_PREFIX + "rep-1");
+        keys.handle(TuiKeyAction.OPEN);
+        assertEquals(TuiLevel.Kind.PLAN_COMPLETION, app.stack().level().kind());
+        keys.handle(TuiKeyAction.REPORTS);
+        app.stack().select(ReportsLevel.REPORT_PREFIX + "rep-2");
+        keys.handle(TuiKeyAction.OPEN);
+        assertEquals(secondPlan, app.stack().level().id());
+        assertEquals(second, app.currentProjectId());
+
+        keys.handle(TuiKeyAction.BACK);
+        keys.handle(TuiKeyAction.BACK);
+
+        assertEquals(TuiLevel.Kind.PLAN_COMPLETION, app.stack().level().kind());
+        assertEquals(firstPlan, app.stack().level().id());
+        assertEquals(first, app.currentProjectId());
+        var header = app.buildScreen().breadcrumb();
+        assertTrue(header.contains(firstPlan), header);
+        assertFalse(header.contains(secondPlan), header);
+    }
+
+    private static String processWithTask(String planId, String projectId, String taskId) {
+        return "{\"plan_id\":\"" + planId + "\",\"title\":\"" + planId + "\",\"project\":{\"project_id\":\"" + projectId
+                            + "\",\"display_name\":\"" + projectId + "\"},\"current_phase\":\"execute\","
+                            + "\"phase_state\":\"running\",\"nodes\":[{\"node_id\":\"execute\",\"title\":\"phase execute\","
+                            + "\"kind\":\"phase\",\"state\":\"running\",\"leaf_tasks\":[{\"task_id\":\"" + taskId
+                            + "\",\"role\":\"implement\",\"harness\":\"claude\",\"model\":\"sonnet\",\"attempt\":1,"
+                            + "\"status\":\"running\",\"duration_seconds\":60,\"tokens_so_far\":100}]}],"
+                            + "\"current_position_path\":[\"execute\",\"" + taskId + "\"]}";
+    }
+
+    private static String activity(String taskId) {
+        return "{\"task_id\":\"" + taskId + "\",\"role\":\"implement\",\"harness\":\"claude\",\"model\":\"sonnet\","
+                            + "\"attempt\":1,\"duration_seconds\":60,\"tokens_so_far\":100,\"entries\":[]}";
+    }
+
+    @Test
+    @DisplayName("Esc to a task's activity under another one names that task, and a reload keeps it")
+    void activityLevelKeepsItsTask() throws IOException {
+        var firstPlan = first + "-plan";
+        var secondPlan = second + "-plan";
+        var firstTask = first + "-task";
+        var secondTask = second + "-task";
+        bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
+        bodyOf.put("/api/v1/plans/" + firstPlan + "/process", processWithTask(firstPlan, first, firstTask));
+        bodyOf.put("/api/v1/plans/" + secondPlan + "/process", processWithTask(secondPlan, second, secondTask));
+        bodyOf.put("/api/v1/plans/" + firstPlan + "/tasks/" + firstTask + "/activity", activity(firstTask));
+        bodyOf.put("/api/v1/plans/" + secondPlan + "/tasks/" + secondTask + "/activity", activity(secondTask));
+        bodyOf.put("/api/v1/reports", "{\"items\":[{\"id\":\"rep-1\",\"from\":{\"project_id\":\"" + second
+                            + "\",\"plan_id\":\"" + secondPlan + "\"},\"kind\":\"project.onboarded\",\"subject\":\"onboarded\","
+                            + "\"created_at\":\"2026-10-20T11:00:00Z\",\"sent_at\":\"2026-10-20T11:00:00Z\"}],"
+                            + "\"unread_count\":1,\"has_older\":false,\"older_count\":0}");
+        open(OverviewFullScreenApp.InitialSelection.plan(firstPlan));
+        keys.handle(TuiKeyAction.OPEN);
+        assertEquals(TuiLevel.Kind.PLAN_ACTIVITY, app.stack().level().kind());
+        keys.handle(TuiKeyAction.REPORTS);
+        app.stack().select(ReportsLevel.REPORT_PREFIX + "rep-1");
+        keys.handle(TuiKeyAction.OPEN);
+        assertEquals(secondPlan, app.stack().level().id());
+        keys.handle(TuiKeyAction.OPEN);
+        assertEquals(secondPlan + "/" + secondTask, app.stack().level().id());
+
+        keys.handle(TuiKeyAction.BACK);
+        keys.handle(TuiKeyAction.BACK);
+        keys.handle(TuiKeyAction.BACK);
+        keys.handle(TuiKeyAction.RELOAD);
+
+        assertEquals(firstPlan + "/" + firstTask, app.stack().level().id());
+        var header = app.buildScreen().breadcrumb();
+        assertTrue(header.contains(firstTask), header);
+        assertFalse(header.contains(secondTask), header);
+    }
+
     private void openEpicOfPlan() throws IOException {
         var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
         var plan = first + "-plan";

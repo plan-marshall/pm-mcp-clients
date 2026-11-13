@@ -231,11 +231,14 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
     private final AtomicReference<ReportsLevel> currentReports = new AtomicReference<>();
     private final AtomicReference<SystemLevel> currentSystem = new AtomicReference<>();
-    // The model of every project, ended work, plan and epic level the stack holds, by the level's
-    // id: Esc returns to a level whose model the level above replaced in the fields above.
+    // The model of every project, ended work, plan, activity, completion and epic level the stack
+    // holds, by the level's id: Esc returns to a level whose model the level above replaced in the
+    // fields above.
     private final Map<String, ProjectDetailResponse> projectDetails = new ConcurrentHashMap<>();
     private final Map<String, EndedWorkLevel> endedLevels = new ConcurrentHashMap<>();
     private final Map<String, PlanViewLevel> planViews = new ConcurrentHashMap<>();
+    private final Map<String, WorkerActivityLevel> activities = new ConcurrentHashMap<>();
+    private final Map<String, PlanCompletionLevel> completions = new ConcurrentHashMap<>();
     private final Map<String, EpicViewLevel> epicViews = new ConcurrentHashMap<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
     private volatile @Nullable String pendingAnswerPlanId;
@@ -1313,33 +1316,22 @@ public final class OverviewFullScreenApp {
     @Nullable
     String currentProjectId() {
         var lvl = stack.level();
-        if (lvl == null) {
+        var id = lvl != null ? lvl.id() : null;
+        if (id == null) {
+            // No level, or a root: neither belongs to a project the view holds.
             return null;
         }
+        // The model the view registered under the level's own id, never one a level above it
+        // opened in between. A completion report opened from the reports has no plan view below it,
+        // or one of another plan: its own report names its project.
         return switch (lvl.kind()) {
-            case EPIC -> {
-                var view = currentEpicView.get();
-                yield view != null && view.epicId().equals(lvl.id()) ? view.projectId() : null;
-            }
-            case PLAN -> {
-                var view = currentPlanView.get();
-                yield view != null && view.planId().equals(lvl.id()) ? view.projectId() : null;
-            }
-            case PLAN_COMPLETION -> {
-                // A completion report opened from the reports has no plan view below it, or one of
-                // another plan: its own report names its project.
-                var completion = currentCompletion.get();
-                yield completion != null && completion.planId().equals(lvl.id())
-                                    ? completion.report().from().projectId() : null;
-            }
-            case PROJECT_BY_PLAN, PROJECT_BY_EPIC -> {
-                var detail = currentProjectDetail.get();
-                yield detail != null && detail.projectId().equals(lvl.id()) ? detail.projectId() : null;
-            }
-            case ENDED -> {
-                var ended = currentEndedLevel.get();
-                yield ended != null && ended.projectId().equals(lvl.id()) ? ended.projectId() : null;
-            }
+            case EPIC -> Optional.ofNullable(epicViews.get(id)).map(EpicViewLevel::projectId).orElse(null);
+            case PLAN -> Optional.ofNullable(planViews.get(id)).map(PlanViewLevel::projectId).orElse(null);
+            case PLAN_COMPLETION -> Optional.ofNullable(completions.get(id))
+                                .map(completion -> completion.report().from().projectId()).orElse(null);
+            case PROJECT_BY_PLAN, PROJECT_BY_EPIC -> Optional.ofNullable(projectDetails.get(id))
+                                .map(ProjectDetailResponse::projectId).orElse(null);
+            case ENDED -> Optional.ofNullable(endedLevels.get(id)).map(EndedWorkLevel::projectId).orElse(null);
             default -> null;
         };
     }
@@ -2649,10 +2641,11 @@ public final class OverviewFullScreenApp {
                     return false;
                 }
                 var activity = new WorkerActivityLevel(planId, view.nodeIdOfTask(taskId), TaskActivity.fromJson(response.bodyText()));
+                var levelId = planId + "/" + taskId;
                 currentActivity.set(activity);
+                activities.put(levelId, activity);
                 activityFollow.set(true);
-                var level = TuiLevel.of(TuiLevel.Kind.PLAN_ACTIVITY, planId + "/" + taskId,
-                                    activity.breadcrumb());
+                var level = TuiLevel.of(TuiLevel.Kind.PLAN_ACTIVITY, levelId, activity.breadcrumb());
                 var rows = activity.rows(locale);
                 stack.push(level, rows, rows.isEmpty() ? null : rows.getLast().id());
                 return true;
@@ -2671,6 +2664,7 @@ public final class OverviewFullScreenApp {
                 var report = PlanCompletionReport.fromJson(response.bodyText());
                 var levelModel = new PlanCompletionLevel(report);
                 currentCompletion.set(levelModel);
+                completions.put(planId, levelModel);
                 stack.push(TuiLevel.of(TuiLevel.Kind.PLAN_COMPLETION, planId, levelModel.breadcrumb(locale)),
                                     levelModel.rows(locale), null);
                 return true;
@@ -2748,16 +2742,6 @@ public final class OverviewFullScreenApp {
             if (parent != null) {
                 stack.select(parent);
             }
-        }
-
-        private void planExpandAll() {
-            var view = currentPlanView.get();
-            var selected = stack.selected();
-            if (view == null) {
-                return;
-            }
-            view.expandAll(selected != null ? selected.id() : null);
-            refreshPlanRows();
         }
 
         private void planJumpToWhere() {
@@ -3162,8 +3146,8 @@ public final class OverviewFullScreenApp {
 
         /**
          * Makes the model of the level Esc returned to the one the keys and the header read: a
-         * level above it may have opened another project, plan or epic of the same kind and
-         * replaced the model while the level kept its own rows.
+         * level above it may have opened another project, plan, task activity, completion report or
+         * epic of the same kind and replaced the model while the level kept its own rows.
          *
          * @param lvl the level the view returned to
          */
@@ -3183,6 +3167,8 @@ public final class OverviewFullScreenApp {
                 }
                 case ENDED -> Optional.ofNullable(endedLevels.get(id)).ifPresent(currentEndedLevel::set);
                 case PLAN -> Optional.ofNullable(planViews.get(id)).ifPresent(currentPlanView::set);
+                case PLAN_ACTIVITY -> Optional.ofNullable(activities.get(id)).ifPresent(currentActivity::set);
+                case PLAN_COMPLETION -> Optional.ofNullable(completions.get(id)).ifPresent(currentCompletion::set);
                 case EPIC -> Optional.ofNullable(epicViews.get(id)).ifPresent(currentEpicView::set);
                 default -> {
                     // The other levels keep one model each, or none.
