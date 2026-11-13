@@ -612,6 +612,240 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(screen.getByTestId('place-retry')).toBeInTheDocument();
   });
 
+  /** Validates the open text and opens the placement's target choice. */
+  async function openPlacement(): Promise<void> {
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+  }
+
+  it('lists the landing in the project and names the placed unit by its frontmatter', async () => {
+    const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'pm-mcp-clients',
+      status: 'landed',
+      steps: ['written', 'committed', 'landed'],
+      author: 'Oliver Wolff',
+      release: '0.9.0',
+      digest: 'sha256:placed',
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+
+    await fireEvent.click(screen.getByRole('radio', { name: /In the project pm-mcp-clients/ }));
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    const done = await screen.findByTestId('designer-place-done');
+    expect(placeSpy).toHaveBeenCalledWith(
+      'pm-mcp-clients',
+      'phase-6-finalize',
+      expect.objectContaining({ unit_name: 'phase-6-finalize' }),
+    );
+    // The lines of the landing stay readable once it has landed.
+    const steps = Array.from(
+      screen.getByTestId('designer-landing').querySelectorAll('li'),
+      (item) => item.textContent?.trim(),
+    );
+    expect(steps).toEqual([
+      'written to .marshall/config/phase-6-finalize.pmwf',
+      'committed',
+      'landed: in force from now on',
+    ]);
+    // The result names the display name and the modification date of what was placed, never the
+    // runtime's release.
+    const today = new Date().toISOString().slice(0, 10);
+    expect(done).toHaveTextContent(`Placed: Finalize by Oliver Wolff, ${today} · sha256:placed`);
+  });
+
+  it('names the author the placed text carries when the answer names none', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'machine',
+      status: 'landed',
+      steps: ['written'],
+      digest: 'sha256:placed',
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('frontmatter-author'), {
+      target: { value: 'Ada Lovelace' },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    const done = await screen.findByTestId('designer-place-done');
+    expect(done).toHaveTextContent('by Ada Lovelace,');
+    expect(done).not.toHaveTextContent('you');
+  });
+
+  it('opens the conflict card for the refusal conflict only, not for a code that names one', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockRejectedValue(
+      new Error('enrolment_root_conflict'),
+    );
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    expect(await screen.findByTestId('designer-place-failed')).toHaveTextContent(
+      'The landing failed:',
+    );
+    expect(screen.queryByTestId('designer-place-conflict')).not.toBeInTheDocument();
+  });
+
+  it('says a text equal to the unit at that level is not placed and offers no Place', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // The machine has no copy, so the comparison is against the project's copy in force.
+    expect(await screen.findByText(/against the project's copy/)).toBeInTheDocument();
+    expect(
+      screen.getByText('The text is the same as the unit at this level: nothing to place.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('place-confirm')).not.toBeInTheDocument();
+  });
+
+  it('marks each line of the difference with its glyph, not with colour alone', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const edited = finalizeText
+      .replace('name: Finalize', 'name: Settled')
+      .replace('  done -> finalize.archive-plan\n', '');
+    await fireEvent.input(screen.getByTestId('workflow-text'), { target: { value: edited } });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    const diff = await screen.findByTestId('designer-diff');
+    const glyphOf = (label: string): string[] =>
+      Array.from(diff.querySelectorAll(`[aria-label="${label}"] .diff-kind`), (glyph) =>
+        String(glyph.textContent),
+      );
+    expect(glyphOf('changed line')).toEqual(['~']);
+    expect(glyphOf('removed line')).toEqual(['−']);
+    expect(glyphOf('unchanged line').every((glyph) => glyph === '')).toBe(true);
+  });
+
+  it('places again on Try again after a refused landing', async () => {
+    const placeSpy = vi
+      .spyOn(apiClient, 'placeWorkflowUnit')
+      .mockRejectedValueOnce(new Error('internal_fault'));
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+    await fireEvent.click(await screen.findByTestId('place-retry'));
+
+    expect(await screen.findByTestId('designer-place-done')).toHaveTextContent('Placed:');
+    expect(placeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks the browser to keep the page only while the draft changed', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const leave = (): Event => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event;
+    };
+
+    expect(leave().defaultPrevented).toBe(false);
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state extra\n` },
+    });
+    expect(leave().defaultPrevented).toBe(true);
+  });
+
+  it.each([
+    ['names the runtime as author', 'plan-marshall', 'Ada Lovelace'],
+    ['names its own author', 'Grace Hopper', 'Grace Hopper'],
+  ])(
+    'writes the remembered author into a unit that %s on its first edit',
+    async (_case, author, expected) => {
+      localStorage.setItem('pm_designer_author', 'Ada Lovelace');
+      const authored = finalizeText.replace('type: subworkflow', `type: subworkflow\nauthor: ${author}`);
+      vi.spyOn(apiClient, 'getWorkflows').mockResolvedValue([
+        { ...units[0], levels: [{ ...units[0].levels[0], text: authored }] },
+      ]);
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(authored));
+
+      await fireEvent.input(screen.getByTestId('workflow-text'), {
+        target: { value: `${authored}state extra\n` },
+      });
+
+      expect(editorText()).toContain(`author: ${expected}`);
+      expect(screen.getByTestId('frontmatter-author')).toHaveValue(expected);
+    },
+  );
+
+  it('shows the structure as the runtime read it: the unit name, the states and their calls', async () => {
+    vi.spyOn(apiClient, 'validateWorkflow').mockResolvedValue({
+      ...validResult,
+      structure: {
+        display_name: '',
+        entries: [],
+        exits: [],
+        states: [
+          {
+            id: 'finalize.review',
+            kind: 'state',
+            outcomes: ['done -> finalize.archive-plan'],
+            calls: ['git.commit_and_push'],
+          },
+        ],
+      },
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+
+    const pane = screen.getByTestId('structure-pane');
+    await waitFor(() => expect(pane).toHaveTextContent('↳ git.commit_and_push'));
+    expect(pane).toHaveTextContent('phase-6-finalize');
+    expect(pane).not.toHaveTextContent('→');
+    expect(pane).not.toHaveTextContent('◂');
+  });
+
+  it('keeps the line numbers beside the text as it scrolls', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const editor = screen.getByTestId('workflow-text');
+
+    editor.scrollTop = 42;
+    await fireEvent.scroll(editor);
+
+    expect(screen.getByTestId('designer-gutter').scrollTop).toBe(42);
+  });
+
+  it('titles the composed process after the project it was composed for', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await fireEvent.click(await screen.findByTestId('preview-button'));
+
+    expect(screen.getByTestId('composed-preview')).toHaveTextContent(
+      'If a plan started now in pm-mcp-clients',
+    );
+    await fireEvent.click(screen.getByTestId('preview-close'));
+    expect(screen.queryByTestId('composed-preview')).not.toBeInTheDocument();
+  });
+
   it('is read only at phone width while Validate stays offered', async () => {
     const original = window.matchMedia;
     window.matchMedia = vi.fn().mockReturnValue({
