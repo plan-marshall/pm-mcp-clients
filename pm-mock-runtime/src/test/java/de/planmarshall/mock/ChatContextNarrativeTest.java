@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatSubject;
+import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.ChatTurnCompletedEvent;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.ChatTurnStartedEvent;
@@ -91,7 +93,7 @@ class ChatContextNarrativeTest {
                 var knows = chat.context().knows();
                 assertAll("what the role is given of session-log",
                         () -> assertEquals(List.of("chat.knows.description", "chat.knows.tasks",
-                                "chat.knows.phase", "chat.knows.version"),
+                                        "chat.knows.phase", "chat.knows.version"),
                                 knows.stream().map(MessageText::key).toList()),
                         () -> assertEquals("3", String.valueOf(knows.get(1).args().get(KEY_COUNT))),
                         () -> assertEquals("execute", knows.get(2).args().get(KEY_PHASE)),
@@ -144,7 +146,7 @@ class ChatContextNarrativeTest {
                 assertAll("one notice of five lines",
                         () -> assertEquals(1, notices.size(), String.valueOf(notices)),
                         () -> assertEquals(List.of("chat.line.task_ended", "chat.line.phase_changed",
-                                "chat.line.decision_opened", "chat.line.hold_opened", "chat.line.hold_cleared"),
+                                        "chat.line.decision_opened", "chat.line.hold_opened", "chat.line.hold_cleared"),
                                 notices.getFirst().lines().stream().map(NarrativeLine::key).toList()),
                         () -> assertTrue(notices.getFirst().lines().get(0).refs().stream()
                                 .anyMatch(ref -> ref.kind() == RefKind.TASK), "the task is referenced"),
@@ -220,7 +222,7 @@ class ChatContextNarrativeTest {
                 .map(known -> String.valueOf(known.args().get(KEY_PHASE))).orElse("");
     }
 
-    private static List<de.planmarshall.api.chat.ChatTurn> noticesOf(ChatResource chat) {
+    private static List<ChatTurn> noticesOf(ChatResource chat) {
         return chat.turns().stream().filter(turn -> turn.kind() == TurnKind.NOTICE).toList();
     }
 

@@ -939,8 +939,8 @@ final class ChatRegistry {
         }
         var aboutTheSubject = chat.subject.equals(subject)
                 || (chat.subject.kind() == ChatSubjectKind.DECISION
-                        && subject.kind() == ChatSubjectKind.PLAN
-                        && chat.subject.id().startsWith(subject.id() + "/"));
+                && subject.kind() == ChatSubjectKind.PLAN
+                && chat.subject.id().startsWith(subject.id() + "/"));
         return aboutTheSubject ? line : null;
     }
 

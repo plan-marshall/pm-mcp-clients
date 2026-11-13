@@ -146,7 +146,7 @@ final class ChatScripts {
     private static Reply laterReply(ChatSubjectKind subject, String subjectId) {
         var refs = subject == ChatSubjectKind.PLAN
                 ? List.of(TurnRef.of(RefKind.HOLD, HOLD_ID),
-                        TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
+                TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
                 : List.<TurnRef>of();
         return new Reply(LATER_TEXT, TurnFormat.MARKDOWN, false, List.of(), refs, null);
     }

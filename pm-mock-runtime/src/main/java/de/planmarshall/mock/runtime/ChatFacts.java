@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import java.util.List;
 
+
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatOrigin;
@@ -67,7 +68,8 @@ interface ChatFacts {
      * @param planId the plan's id
      * @return the plan's queued revision, or {@code null} when none is queued
      */
-    @Nullable QueuedRevision queuedRevision(String planId);
+    @Nullable
+    QueuedRevision queuedRevision(String planId);
 
     /**
      * Records the revision accepted in a chat as the plan's {@code queued_revision}.
