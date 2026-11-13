@@ -1352,4 +1352,60 @@ describe('ApiClient chat on the B1 contract', () => {
       expect.any(String),
     );
   });
+
+  it('stops reading at the bound while the reply keeps streaming', async () => {
+    // Arrange: every read still shows the reply being written.
+    const streaming = chatResource({
+      turns: [
+        {
+          turn_id: 'T-0071',
+          kind: 'message',
+          author: 'operator',
+          status: 'complete',
+          format: 'plain',
+          untrusted: false,
+          text: 'add fsynced',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:00Z',
+        },
+        {
+          turn_id: 'T-0072',
+          kind: 'message',
+          author: 'refine',
+          status: 'streaming',
+          format: 'markdown',
+          untrusted: false,
+          model: 'sonnet',
+          text: 'The desc',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:01Z',
+        },
+      ],
+      proposal: null,
+    });
+    respondWith([{ turn_id: 'T-0071' }, streaming]);
+    vi.useFakeTimers();
+
+    // Act
+    const pending = client.chatTurn('ent-showroom', 'add fsynced');
+    await vi.advanceTimersByTimeAsync(25_000);
+    const chat = await pending;
+
+    // Assert: the bound ends the wait and the chat is returned as it stands.
+    expect(chat.turns.map((turn) => turn.text)).toContain('The desc');
+  });
+
+  it('reports no ended-work follow-up when the chat cannot be read', async () => {
+    // Arrange: the runtime refuses the read.
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'target_not_found' }),
+    }) as unknown as typeof fetch;
+
+    // Act & Assert
+    expect(await client.getEndedChat('plan', 'codeberg-issues')).toBeNull();
+  });
 });

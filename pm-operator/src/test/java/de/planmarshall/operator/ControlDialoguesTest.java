@@ -177,6 +177,18 @@ class ControlDialoguesTest {
                            "state":"open"}}
                         """;
 
+    private static final String CHAT_STREAMING = """
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.reply",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Can the test cover SSE?","steps":[],
+                            "refs":[],"at":"2026-10-16T10:00:00Z"},
+                           {"turn_id":"T-2","kind":"message","author":"replan","status":"streaming",
+                            "format":"markdown","untrusted":false,"model":"sonnet","text":"Yes, I",
+                            "steps":[],"refs":[],"at":"2026-10-16T10:01:00Z"}]}
+                        """;
+
     private static final String CHAT_ANSWERED_PROPOSAL = """
                         {"id":"C-1","subject":{"kind":"plan","id":"p"},
                          "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
@@ -442,6 +454,38 @@ class ControlDialoguesTest {
         // The read-back is drawn once, and the answered proposal is not offered a second time.
         assertEquals(1, times(text, "Proposed change"), text);
         assertTrue(text.contains("The chat is kept with p"), text);
+    }
+
+    @Test
+    @DisplayName("a chart turn follows the reply until its turn stops streaming")
+    void chatFollowsTheStreamingReply() throws Exception {
+        var reads = new AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+                // The first read still shows the reply being written; the next one has it complete.
+                response.json(200, reads.incrementAndGet() < 3 ? CHAT_STREAMING : CHAT);
+            } else if (path.endsWith("/chat/turns")) {
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var client = new WorkActionsClient(context);
+        var chat = client.chatTurn("plan", "p", "Can the test cover SSE?");
+        assertEquals(2, chat.turns().size());
+        assertTrue(reads.get() >= 3, "the reply was not read again while it streamed: " + reads.get());
+    }
+
+    @Test
+    @DisplayName("a chat without a proposal, and a proposal without an applies point, render")
+    void chatRenderWithoutProposalOrApplies() throws Exception {
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatResource.fromJson(CHAT));
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatResource.fromJson(CHAT_ENDED));
+        var text = out.toString();
+        assertTrue(text.contains("Yes, I propose a second test."), text);
+        assertTrue(text.contains("Proposed follow-up plan"), text);
+        assertFalse(text.contains("chat.applies."), text);
     }
 
     /**
