@@ -73,6 +73,9 @@ public final class StateDialogue {
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
+    private static final String ONBOARD_COMPLETED = "onboard.completed";
+    private static final String PROJECT_COMPLETED = "project.completed";
+    private static final String TOTAL_PARAM = "total";
 
     /** The step every project state of the checkout phase names. */
     private static final String CHECKOUT_STEP = "checkout";
@@ -125,8 +128,8 @@ public final class StateDialogue {
          * @return whether this state ends the dialogue
          */
         public boolean isFinal() {
-            return COMPLETED_KIND.equals(kind) || "onboard.completed".equals(stateId)
-                                || "project.completed".equals(stateId);
+            return COMPLETED_KIND.equals(kind) || ONBOARD_COMPLETED.equals(stateId)
+                                || PROJECT_COMPLETED.equals(stateId);
         }
 
         /**
@@ -190,7 +193,7 @@ public final class StateDialogue {
      * @param prompts creates the strict choice prompt of one state, by its state id
      * @param aspects the machine onboarding aspects
      */
-    public StateDialogue(Source source, PrintWriter out, String locale,
+    StateDialogue(Source source, PrintWriter out, String locale,
                         Function<String, ChoicePrompt> prompts,
                         List<OnboardingAspect> aspects) {
         this.source = Objects.requireNonNull(source, "source");
@@ -294,9 +297,16 @@ public final class StateDialogue {
         if (frame.step() < 1 || frame.totalSteps() < 1) {
             return title;
         }
+        var name = stepName(frame);
+        if (name.isEmpty()) {
+            // A state of an aspect the run does not inject names no step: the overview lists the
+            // injected aspects only, and "Done" is reserved for the run's own last state.
+            return MessageCatalogue.format(locale, "onboard.state.step_line_unnamed", Map.of(
+                                STEP_FIELD, frame.step(), TOTAL_PARAM, frame.totalSteps(), "title", title));
+        }
         return MessageCatalogue.format(locale, "onboard.state.step_line", Map.of(
-                            STEP_FIELD, frame.step(), "total", frame.totalSteps(),
-                            "name", stepName(frame), "title", title));
+                            STEP_FIELD, frame.step(), TOTAL_PARAM, frame.totalSteps(),
+                            "name", name, "title", title));
     }
 
     /**
@@ -310,7 +320,7 @@ public final class StateDialogue {
         if ("onboard.mode".equals(frame.stateId())) {
             return modeContent(frame);
         }
-        if ("onboard.completed".equals(frame.stateId())) {
+        if (ONBOARD_COMPLETED.equals(frame.stateId())) {
             return List.of(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
         }
         var lines = new ArrayList<String>();
@@ -323,7 +333,7 @@ public final class StateDialogue {
 
     private List<String> modeContent(Frame frame) {
         var lines = new ArrayList<String>();
-        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of("total", frame.totalSteps())));
+        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of(TOTAL_PARAM, frame.totalSteps())));
         addStepOverview(lines);
         return lines;
     }
@@ -526,7 +536,7 @@ public final class StateDialogue {
      *         labelled fallback where the state has no text at all
      */
     public static String titleOf(String locale, Frame frame) {
-        if ("project.completed".equals(frame.stateId())) {
+        if (PROJECT_COMPLETED.equals(frame.stateId())) {
             var project = projectNameOf(frame.facts());
             if (project != null) {
                 // The last frame says which project is ready, not just that one is.
@@ -623,14 +633,16 @@ public final class StateDialogue {
 
     /**
      * @param frame the state
-     * @return the name of the step the state belongs to
+     * @return the name of the step the state belongs to, or the empty string where the run's aspect
+     *         list does not carry the state's aspect
      */
     String stepName(Frame frame) {
         var stateId = frame.stateId();
         if (stateId.startsWith(PROJECT_PREFIX)) {
             return stepText("project.step." + projectStepOf(stateId));
         }
-        return stepText(STEP_KEY_PREFIX + machineStepOf(stateId));
+        var suffix = machineStepOf(stateId);
+        return suffix == null ? "" : stepText(STEP_KEY_PREFIX + suffix);
     }
 
     private String stepText(String key) {
@@ -661,8 +673,10 @@ public final class StateDialogue {
 
     /**
      * @param stateId the machine onboarding state
-     * @return the catalogue suffix of its step name
+     * @return the catalogue suffix of its step name, or {@code null} where the run's aspect list does
+     *         not carry the state's aspect and the state is not the run's own last one
      */
+    @Nullable
     String machineStepOf(String stateId) {
         for (var aspect : aspects) {
             if (stateId.startsWith(aspect.wireValue() + ".")) {
@@ -672,7 +686,7 @@ public final class StateDialogue {
         if (aspects.contains(OnboardingAspect.PROVIDERS) && (stateId.startsWith("github.") || stateId.startsWith("sonar."))) {
             return "providers";
         }
-        return DONE;
+        return ONBOARD_COMPLETED.equals(stateId) ? DONE : null;
     }
 
     /**

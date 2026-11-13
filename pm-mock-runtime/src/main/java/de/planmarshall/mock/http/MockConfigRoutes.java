@@ -55,6 +55,9 @@ public final class MockConfigRoutes {
     private static final String CONFLICT = "conflict";
     private static final String ASPECT_OWNED = "aspect_owned";
 
+    /** The keys an aspect owns, and the one family a project's own value writes at its level. */
+    private static final String CLEANUP_KEY_PREFIX = "cleanup.";
+
     /** The levels an operator may write, from the one catalogue that defines them. */
     private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
             .map(ConfigOrigin::fromWire)
@@ -161,7 +164,7 @@ public final class MockConfigRoutes {
     private synchronized void put(MockHttpResponse response, ConfigOrigin level, String key,
             ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
             Map<String, String> planProjects) throws IOException {
-        if (isAspectOwned(key)) {
+        if (isAspectOwnedAt(level, key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
         }
@@ -179,7 +182,7 @@ public final class MockConfigRoutes {
     private synchronized void delete(MockHttpResponse response, ConfigOrigin level, String key,
             ConfigValueChange change, @Nullable String scope, Map<String, Object> machineValues,
             Map<String, String> planProjects) throws IOException {
-        if (isAspectOwned(key)) {
+        if (isAspectOwnedAt(level, key)) {
             response.json(409, Map.of(KEY_ERROR, ASPECT_OWNED));
             return;
         }
@@ -451,5 +454,20 @@ public final class MockConfigRoutes {
      */
     static boolean isAspectOwned(String key) {
         return AspectOwnedKeys.isAspectOwned(key);
+    }
+
+    /**
+     * @param level the level the change addresses
+     * @param key   the key a change addresses
+     * @return whether an aspect owns the key at that level; a cleanup duration's PROJECT value is
+     *         written by {@code config cleanup --project}, the aspect verb that owns it, while the
+     *         machine's own value stays the machine settings' alone
+     */
+    static boolean isAspectOwnedAt(ConfigOrigin level, String key) {
+        if (!AspectOwnedKeys.isAspectOwned(key)) {
+            return false;
+        }
+        return !(key.startsWith(CLEANUP_KEY_PREFIX)
+                && (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM));
     }
 }

@@ -881,8 +881,6 @@ public final class PmConsole {
     }
 
     /**
-     * Sends one desktop notification for an event that puts something in front of the operator: the
-                        /**
      * Sends the desktop notification of one notice, where the terminal supports one, and the bell
      * everywhere else ({@code 04-console.adoc#notifications}): the scope and the kind, never the
      * text of a question, and never the item's own content.

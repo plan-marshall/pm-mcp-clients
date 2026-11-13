@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.entry;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -252,6 +253,26 @@ class EntryRecordsTest {
         assertEquals(OnboardingProgress.complete(), OnboardingProgress.fromJson(
                 "{\"state\":\"onboard.completed\",\"step\":7,\"steps\":7,\"completed\":true}"));
         assertEquals(OnboardingProgress.DEFAULT_STEPS, OnboardingProgress.notStarted().steps());
+    }
+
+    @Test
+    @DisplayName("OnboardingProgress refuses a steps value that is no exact integer rather than truncating it")
+    void onboardingProgressRefusesATruncatingStepsValue() {
+        assertAll(
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":3.9}")
+                                .steps()),
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":\"12\"}")
+                                .steps()),
+                () -> assertEquals(OnboardingProgress.DEFAULT_STEPS,
+                        OnboardingProgress.fromJson(
+                                "{\"state\":\"harness.choose\",\"step\":1,\"steps\":1e1}")
+                                .steps()),
+                () -> assertEquals(9, OnboardingProgress.fromJson(
+                        "{\"state\":\"harness.choose\",\"step\":1,\"steps\":9}").steps()));
     }
 
     @Test

@@ -46,6 +46,7 @@ public final class AspectOwnedKeys {
         map.put(ROLES, ROLES);
         map.put(ROLES + ".", ROLES);
         map.put("sources.documents_mode", "documents");
+        map.put("cleanup.", "cleanup");
         return Collections.unmodifiableMap(map);
     }
 

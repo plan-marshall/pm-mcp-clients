@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -27,11 +29,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupItemEntry;
@@ -48,6 +53,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("CleanupCommand")
 class CleanupCommandTest {
 
@@ -400,8 +406,8 @@ class CleanupCommandTest {
     void cleanupIgnoreRejectsExclude() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         int code = execute("cleanup", "--ignore", "--exclude", "plan:foo");
-        assertEquals(1, code);
-        assertTrue(err.toString().contains("--exclude is for --delete only"));
+        assertEquals(2, code);
+        assertTrue(err.toString().contains("--exclude goes with --delete only."), err.toString());
     }
 
     @Test
@@ -823,5 +829,275 @@ class CleanupCommandTest {
                             () -> assertTrue(output.contains("Only a plan and an epic open"), output),
                             () -> assertTrue(output.contains("relay-docs"), output)
         );
+    }
+
+    /** A job whose one project carries {@code count} plan items. */
+    private static CleanupJob jobOf(int count) {
+        var items = new ArrayList<CleanupItemEntry>();
+        long bytes = 0L;
+        for (int i = 1; i <= count; i++) {
+            var id = String.format("item-%02d", i);
+            items.add(new CleanupItemEntry(id, "plan", id, "merged", "12 Sep", 1024L, 0, 0, null));
+            bytes += 1024L;
+        }
+        var project = new CleanupProjectItem("pm-mcp-clients", count, 0, 0, 0, bytes, items);
+        var summary = new CleanupSummary(count, 0, 0, 0, 0, bytes, 0, "today 03:00", "tomorrow 03:00");
+        return new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(project), Map.of());
+    }
+
+    private CleanupCommand commandOver(ArrayDeque<String> answers, ArrayDeque<String> freeText, boolean interactive) {
+        return new CleanupCommand(
+                            new OperatorContext(fixture.environment(), tempDir, interactive),
+                            (state, leave, writer) -> new ChoicePrompt(new BufferedReader(
+                                                                    new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                new PrintWriter(out), "en", state).leaveLabel(leave),
+                            (question, state, writer) -> freeText.poll());
+    }
+
+    @Test
+    @DisplayName("a delete the runtime refused as already decided prints the decision taken")
+    void decidedJobShowsTheDecisionTaken() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/delete")) {
+                response.send(409, null,
+                                    "{\"error\":\"cleanup_decided\",\"job_id\":\"cln-0007\","
+                                                        + "\"decision\":\"delete\",\"who\":\"the web app (iPad)\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--delete", "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains(
+                                                "This cleanup was decided in the web app (iPad): deleted."), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("--exclude of an id the job does not carry is refused and nothing is sent")
+    void unknownExcludeIsRefused() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        var deletes = new AtomicInteger();
+        var unknown = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/delete")) {
+                deletes.incrementAndGet();
+                response.json(200, "{\"status\":\"deleted\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--delete", "--exclude", unknown, "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."),
+                                                out.toString()),
+                            () -> assertEquals(0, deletes.get(), "no delete was sent")
+        );
+    }
+
+    @Test
+    @DisplayName("a delete answered by neither a terminal nor --yes stops at the confirmation")
+    void deleteWithoutATerminalAndWithoutYesStops() {
+        var preview = new CleanupCommand.DeletePreview(11, 2, 29, 5, 1, 1806906163L);
+        var command = new CleanupCommand(new OperatorContext(fixture.environment(), tempDir, false));
+
+        int code = command.previewThenStop(new PrintWriter(out), preview, 1);
+
+        assertAll(
+                            () -> assertEquals(3, code),
+                            () -> assertTrue(out.toString().contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?"),
+                                                out.toString()),
+                            () -> assertTrue(out.toString().contains("Needs a choice: --yes"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("25 items on a 20-item page: the page names the five left and the 25th stays addressable")
+    void aPageOfTwentyNamesTheRestAndKeepsItAddressable() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        var posted = new AtomicReference<String>("");
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/delete")) {
+                posted.set(request.bodyText());
+                response.json(200, "{\"status\":\"deleted\",\"freed_bytes\":0}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var command = commandOver(new ArrayDeque<>(List.of("x\n", "d\n", "y\n")),
+                            new ArrayDeque<>(List.of("25")), true);
+
+        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("20) ▸ item-20"), output),
+                            () -> assertFalse(output.contains("21) ▸ item-21"), output),
+                            () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output),
+                            () -> assertTrue(posted.get().contains("\"item-25\""), posted.get())
+        );
+    }
+
+    @Test
+    @DisplayName("r posts the reminder to the job the operator saw")
+    void remindFromTheDialoguePostsTheJobId() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        var targets = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            targets.add(request.target());
+            if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_after_days\":3}");
+            } else {
+                response.json(200, JsonTree.write(job.toMap()));
+            }
+        });
+        var command = commandOver(new ArrayDeque<>(List.of("r\n")), new ArrayDeque<>(), true);
+
+        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(targets.contains("/api/v1/system/cleanup/cln-0007/remind"), targets.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("i posts the keep to the job the operator saw")
+    void ignoreFromTheDialoguePostsTheJobId() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        var targets = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            targets.add(request.target());
+            if (request.target().endsWith("/ignore")) {
+                response.json(200, "{\"status\":\"done\",\"decision\":\"ignore\"}");
+            } else {
+                response.json(200, JsonTree.write(job.toMap()));
+            }
+        });
+        var command = commandOver(new ArrayDeque<>(List.of("i\n")), new ArrayDeque<>(), true);
+
+        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(targets.contains("/api/v1/system/cleanup/cln-0007/ignore"), targets.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("o on a plan and on an epic opens the work by its id")
+    void dialogueOpensAPlanAndAnEpic() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var targets = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            targets.add(request.target());
+            response.json(200, "{\"plan_id\":\"x\",\"epic_id\":\"x\",\"nodes\":[]}");
+        });
+        var items = List.of(
+                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null),
+                            new CleanupItemEntry("relay-auth", "epic", "relay-auth", "completed", "10 Sep", 1L, 0, 0, null));
+        var freeText = new ArrayDeque<>(List.of("1", "2"));
+        var command = new CleanupCommand(new OperatorContext(fixture.environment(), tempDir, false),
+                            (state, leave, writer) -> new ChoicePrompt(new BufferedReader(new StringReader("q\n")),
+                                                new PrintWriter(out), "en", state),
+                            (question, state, writer) -> freeText.poll());
+
+        command.openItem(new PrintWriter(out), new PrintWriter(err), items);
+        command.openItem(new PrintWriter(out), new PrintWriter(err), items);
+
+        assertAll(
+                            () -> assertTrue(targets.contains("/api/v1/plans/fix-relay/process"), targets.toString()),
+                            () -> assertTrue(targets.stream().anyMatch(target -> target.contains("relay-auth")),
+                                                targets.toString()),
+                            () -> assertFalse(out.toString().contains("is no item of the open cleanup"),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("an uppercase kind prefix names the same item")
+    void anUppercaseKindPrefixNamesTheItem() {
+        var item = new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null);
+        var leftOut = new LinkedHashSet<String>();
+
+        var unknown = CleanupCommand.toggleLeftOut(List.of(item), leftOut, "PLAN:fix-relay");
+
+        assertAll(
+                            () -> assertTrue(unknown.isEmpty(), unknown.toString()),
+                            () -> assertEquals(Set.of("fix-relay"), leftOut),
+                            () -> assertEquals("fix-relay", CleanupCommand.workId(
+                                                new CleanupItemEntry("PLAN:fix-relay", "plan", "fix-relay",
+                                                                    "merged", "12 Sep", 1L, 0, 0, null)))
+        );
+    }
+
+    @Test
+    @DisplayName("the delete preview subtracts a logs entry, a read-reports entry and an unenrolled project")
+    void deletePreviewBeyondAPlanItem() {
+        var logs = new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, null);
+        var reports = new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, null);
+        var unenrolled = new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", null, null,
+                            1181116000L, 0, 0, null);
+        var project = new CleanupProjectItem("pm-mcp-clients", 0, 0, 14, 3, 32505856L, List.of(logs, reports));
+        var unenrolledGroup = new CleanupProjectItem("unenrolled", 0, 0, 0, 0, 1181116000L, List.of(unenrolled));
+        var summary = new CleanupSummary(0, 0, 40, 5, 1, 1213621856L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary,
+                            List.of(project, unenrolledGroup), Map.of());
+
+        var preview = CleanupCommand.deletePreview(job,
+                            List.of("logs-relay-docs", "reports-clients", "legacy-portal"));
+
+        assertAll(
+                            () -> assertEquals(26, preview.logs()),
+                            () -> assertEquals(2, preview.reports()),
+                            () -> assertEquals(0, preview.projects()),
+                            () -> assertEquals(0L, preview.freedBytes())
+        );
+    }
+
+    @Test
+    @DisplayName("the leave-out mark never pushes a line past 80 columns, and a long title is cut")
+    void theMarkAndTheTitleFitTheWidth() {
+        var item = new CleanupItemEntry("x", "plan", "a-title-far-longer-than-eighteen",
+                            "merged (#214)", "12 Sep", 88080384L, 6, 0, null);
+        var project = new CleanupProjectItem("pm-mcp-clients", 1, 0, 6, 0, 88080384L, List.of(item));
+        var summary = new CleanupSummary(1, 0, 6, 0, 0, 88080384L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(project), Map.of());
+
+        for (var locale : List.of("en", "de")) {
+            var environment = fixture.environment();
+            var context = new OperatorContext(environment, tempDir, true,
+                                new ClientEnvironment(locale, false, List.of(), Map.of()));
+            var writer = new StringWriter();
+            new CleanupCommand(context).printJob(new PrintWriter(writer), job, Set.of("x"));
+            var output = writer.toString();
+            assertAll(
+                                () -> assertTrue(output.contains("✎"), output),
+                                () -> assertTrue(output.lines()
+                                                                        .filter(line -> line.stripLeading().matches("(?s)[0-9✎…].*"))
+                                                                        .allMatch(line -> line.length() <= 80),
+                                                    () -> "a line exceeds 80 columns: " + output),
+                                () -> assertFalse(output.contains("a-title-far-longer-than-eighteen"), output)
+            );
+        }
     }
 }

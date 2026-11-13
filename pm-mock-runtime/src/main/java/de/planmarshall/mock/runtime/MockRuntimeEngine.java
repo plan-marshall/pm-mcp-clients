@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -729,6 +730,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
     private CleanupDurations cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
     private final List<CleanupResidue> cleanupResidues = new ArrayList<>();
+
+    /** The build environment the terminal client last sent with a project onboarding. */
+    private Map<String, String> lastBuildEnvironment = Map.of();
     private final Object projectsLock = new Object();
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
@@ -3906,6 +3910,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (entryId.isEmpty() || entryId.contains("/")) {
             return false;
         }
+        if (handleProjectOnboardingEntry(request, response, entryId, act)) {
+            return true;
+        }
         if ("GET".equals(request.method()) && act == null) {
             var state = startRegistry.find(entryId);
             if (state == null) {
@@ -3920,6 +3927,92 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Serves a project onboarding's entry: the being-added run a {@code POST
+     * /api/v1/project-onboardings} opened, addressed at {@code /api/v1/entries/{entry_id}} with its
+     * link surface ({@code 01-processes-and-transport.adoc#event-streams}).
+     *
+     * @param request  the request
+     * @param response the response to write
+     * @param entryId  the entry the request addresses
+     * @param act      the link the request sends, or {@code null} for a read
+     * @return whether this request was one of a project onboarding's entry routes
+     * @throws IOException on write failure
+     */
+    private boolean handleProjectOnboardingEntry(MockHttpRequest request, MockHttpResponse response,
+            String entryId, @Nullable String act) throws IOException {
+        synchronized (projectsLock) {
+            var being = beingAddedProjects.stream()
+                    .filter(candidate -> candidate.continueLink() != null
+                            && candidate.continueLink()
+                            .contains(PATH_ENTRIES_PREFIX + entryId + "/"))
+                    .findFirst()
+                    .orElse(null);
+            if (being == null) {
+                return false;
+            }
+            if ("GET".equals(request.method()) && act == null) {
+                response.json(200, projectOnboardingEntryState(entryId, false));
+                return true;
+            }
+            if (METHOD_POST.equals(request.method()) && "set".equals(act)) {
+                var enrolled = new EnrolledProject(
+                        being.checkoutPath().contains("/")
+                                ? being.checkoutPath().substring(being.checkoutPath().lastIndexOf('/') + 1)
+                                : being.checkoutPath(),
+                        being.checkoutPath(),
+                        null,
+                        ProjectReadiness.READY,
+                        null,
+                        0,
+                        0,
+                        0,
+                        Instant.now(),
+                        false,
+                        false);
+                beingAddedProjects.remove(being);
+                enrolledProjects.removeIf(candidate -> candidate.projectId().equals(enrolled.projectId()));
+                enrolledProjects.add(enrolled);
+                broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "enrolled", enrolled.projectId()));
+                response.json(200, projectOnboardingEntryState(entryId, true));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param id the onboarding's own id
+     * @return the entry id as a path segment, so a checkout whose name carries a space keeps one id
+     */
+    private static String encodedEntryId(String id) {
+        return "ent-" + URLEncoder.encode(id, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    /**
+     * @param entryId   the onboarding's entry
+     * @param completed whether the run reached its last state
+     * @return the state the entry reports
+     */
+    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_STATE, completed ? PROJECT_SETUP_COMPLETED : PROJECT_SETUP_IDENTITY);
+        body.put(KEY_STEP, completed ? 10 : 2);
+        body.put(KEY_TOTAL_STEPS, 10);
+        if (completed) {
+            body.put(FIXTURE_SUMMARY, entryId + PROJECT_SETUP_READY_SUFFIX);
+            body.put(KEY_LINKS, Map.of());
+            return body;
+        }
+        body.put("id", entryId);
+        body.put("name", entryId);
+        body.put("pilot", false);
+        body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
+        return body;
     }
 
     private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
@@ -8840,12 +8933,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleStartProjectOnboarding(MockHttpRequest request, MockHttpResponse response) throws IOException {
         String path = "~/git/new-project";
+        Map<String, String> buildEnvironment = Map.of();
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
                     if (parsed.get("path") instanceof String p) path = p;
                     else if (parsed.get("checkout_path") instanceof String cp) path = cp;
+                    if (parsed.get("build_environment") instanceof Map<?, ?> env) {
+                        var captured = new LinkedHashMap<String, String>();
+                        env.forEach((key, value) -> captured.put(String.valueOf(key), String.valueOf(value)));
+                        buildEnvironment = captured;
+                    }
                 }
             } catch (IOException _) {
                 // ignore malformed payload
@@ -8860,14 +8959,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     STEP_IDENTITY,
                     2,
                     10,
-                    "/api/v1/entries/ent-" + id + "/continue",
-                    "/api/v1/entries/ent-" + id + SUFFIX_ABANDON
+                    PATH_ENTRIES_PREFIX + encodedEntryId(id) + "/continue",
+                    PATH_ENTRIES_PREFIX + encodedEntryId(id) + SUFFIX_ABANDON
             );
             beingAddedProjects.add(beingAdded);
+            lastBuildEnvironment = buildEnvironment;
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",
-                    KEY_PROJECT_ID, id,
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
                     "continue_link", beingAdded.continueLink(),
@@ -8875,6 +8974,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "step_number", 2,
                     KEY_TOTAL_STEPS, 10
             ));
+        }
+    }
+
+    /**
+     * @return the build environment the terminal client sent with the last project onboarding
+     */
+    public Map<String, String> lastBuildEnvironment() {
+        synchronized (projectsLock) {
+            return Map.copyOf(lastBuildEnvironment);
         }
     }
 

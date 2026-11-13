@@ -59,7 +59,8 @@ import picocli.CommandLine.Spec;
                                         ConfigCommand.ProvidersCommand.class,
                                         ConfigCommand.PlanDefaultsCommand.class,
                                         ConfigCommand.ConsentsCommand.class,
-                                        ConfigCommand.DocumentsCommand.class
+                                        ConfigCommand.DocumentsCommand.class,
+                                        ConfigCleanupCommand.class
                     })
 @OperatorVerb
 @SuppressWarnings("java:S1075")
@@ -203,7 +204,8 @@ public final class ConfigCommand implements Callable<Integer> {
     /** The widest label column: a longer label is shortened, so the value column stays narrow. */
     private static final int LABEL_COLUMN = 24;
 
-    private @Nullable MachineSettingsRecord readSettingsQuiet() throws IOException {
+    @Nullable
+    MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
         if (response.status() != 200) {
             return null;
@@ -251,7 +253,7 @@ public final class ConfigCommand implements Callable<Integer> {
                             MessageCatalogue.format(locale, "operator.settings.cleanup.value", Map.of(
                                                 "days", settings.cleanupDurations().plansAfterDays(),
                                                 "remind", settings.cleanupDurations().remindAfterDays())),
-                            List.of(CLEANUP)));
+                            List.of(CONFIG_VERB, CLEANUP)));
         return List.copyOf(items);
     }
 
@@ -419,7 +421,7 @@ public final class ConfigCommand implements Callable<Integer> {
      * @return the values it carries
      * @throws IOException when the body is neither a list of values nor one value
      */
-    private static List<ConfigValueResource> parseValues(String body) throws IOException {
+    static List<ConfigValueResource> parseValues(String body) throws IOException {
         var parsed = JsonTree.parse(body);
         var elements = JsonTree.asArray(parsed);
         if (elements != null) {
@@ -603,7 +605,7 @@ public final class ConfigCommand implements Callable<Integer> {
      * @param doneLine  the line a written change prints
      * @param failedKey the catalogue key that names a refused change
      */
-    private record Change(PrintWriter out, PrintWriter err, String locale, String readPath, String writePath,
+    record Change(PrintWriter out, PrintWriter err, String locale, String readPath, String writePath,
     String key, String doneLine, String failedKey) {
     }
 
@@ -620,8 +622,8 @@ public final class ConfigCommand implements Callable<Integer> {
      * @return the exit code
      * @throws IOException on transport failure
      */
-    private static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
-                        @Nullable String value, boolean noInput) throws IOException {
+    static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
+                        @Nullable Object value, boolean noInput) throws IOException {
         long revision;
         try {
             revision = revisionOf(context, change.readPath(), change.key());
@@ -672,14 +674,14 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     private static HttpResponse sendChange(OperatorContext context, boolean deletion, String writePath,
-                        @Nullable String value, long revision) throws IOException {
+                        @Nullable Object value, long revision) throws IOException {
         var body = deletion ? ConfigValueChange.deletion(revision).toJson()
                             : new ConfigValueChange(value, revision).toJson();
         return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
     }
 
     private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
-                        @Nullable String value, boolean noInput, ConfigValueResource current) throws IOException {
+                        @Nullable Object value, boolean noInput, ConfigValueResource current) throws IOException {
         var rendered = renderedValue(change.locale(), current);
         if (noInput) {
             change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
