@@ -1824,3 +1824,648 @@ describe('ApiClient chat on the B1 contract', () => {
     expect(await client.getEndedChat('plan', 'codeberg-issues')).toBeNull();
   });
 });
+
+/** One act of the client: the call, and the request it must send. */
+type RouteRow = [
+  name: string,
+  call: (client: ApiClient) => Promise<unknown>,
+  method: string,
+  path: string,
+  body: unknown,
+];
+
+/**
+ * The routes the client sends its acts and reads to. Each row is a route the mock runtime serves
+ * (its route constants) or the pm-api contract names; the request's method, path and body are the
+ * contract the runtime reads, so a changed segment, a lost optional parameter or a wrong body is
+ * caught here before the runtime refuses it.
+ */
+describe('ApiClient routes', () => {
+  let client: ApiClient;
+  let sent: { url: string; method: string; body: unknown }[];
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_secret');
+    client = new ApiClient('http://localhost:7420');
+    sent = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      sent.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+      });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const rows: RouteRow[] = [
+    ['getDevices', (c) => c.getDevices(), 'GET', '/api/v1/web/devices', undefined],
+    [
+      'renameDevice',
+      (c) => c.renameDevice('dev 1', 'Laptop'),
+      'PUT',
+      '/api/v1/web/devices/dev%201',
+      { label: 'Laptop' },
+    ],
+    [
+      'revokeDevice',
+      (c) => c.revokeDevice('dev-1'),
+      'DELETE',
+      '/api/v1/web/devices/dev-1',
+      undefined,
+    ],
+    [
+      'revokeOtherDevices',
+      (c) => c.revokeOtherDevices(),
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+    ],
+    [
+      'stepOnboarding',
+      (c) => c.stepOnboarding('next', { language: 'de' }),
+      'POST',
+      '/api/v1/onboarding/step',
+      { link: 'next', language: 'de' },
+    ],
+    ['startOnboardingAuto', (c) => c.startOnboardingAuto(), 'POST', '/api/v1/onboarding/auto', {}],
+    ['getRecipes for the machine', (c) => c.getRecipes(), 'GET', '/api/v1/recipes', undefined],
+    [
+      'getRecipes for a project',
+      (c) => c.getRecipes('pm mcp'),
+      'GET',
+      '/api/v1/recipes?project=pm%20mcp',
+      undefined,
+    ],
+    [
+      'openEntry',
+      (c) => c.openEntry('p-1', { kind: 'plan' } as never),
+      'POST',
+      '/api/v1/projects/p-1/entries',
+      { kind: 'plan' },
+    ],
+    ['getEntry', (c) => c.getEntry('e-1'), 'GET', '/api/v1/entries/e-1', undefined],
+    [
+      'actEntry without a body',
+      (c) => c.actEntry('e-1', 'chat'),
+      'POST',
+      '/api/v1/entries/e-1/links/chat',
+      {},
+    ],
+    [
+      'actEntry with a body',
+      (c) => c.actEntry('e-1', 'choose:fix', { recipe: 'fix' }),
+      'POST',
+      '/api/v1/entries/e-1/links/choose:fix',
+      { recipe: 'fix' },
+    ],
+    [
+      'chatTurn',
+      (c) => c.chatTurn('e-1', 'hello'),
+      'POST',
+      '/api/v1/entries/e-1/chat/turns',
+      { text: 'hello' },
+    ],
+    ['endEntryChat', (c) => c.endEntryChat('e-1'), 'POST', '/api/v1/entries/e-1/chat/end', {}],
+    [
+      'answerChatProposal accepted',
+      (c) => c.answerChatProposal('e-1', true),
+      'POST',
+      '/api/v1/entries/e-1/chat/proposal/accept',
+      {},
+    ],
+    [
+      'answerChatProposal rejected',
+      (c) => c.answerChatProposal('e-1', false),
+      'POST',
+      '/api/v1/entries/e-1/chat/proposal/reject',
+      {},
+    ],
+    [
+      'listProjectFiles at the checkout root',
+      (c) => c.listProjectFiles('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=checkout',
+      undefined,
+    ],
+    [
+      'listProjectFiles below the home',
+      (c) => c.listProjectFiles('p-1', 'home', 'docs'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=home&path=docs',
+      undefined,
+    ],
+    [
+      'startPlan',
+      (c) => c.startPlan({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/plans/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'startEpic',
+      (c) => c.startEpic({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'getDecomposition',
+      (c) => c.getDecomposition('p-1', 'ep-1'),
+      'GET',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition',
+      undefined,
+    ],
+    [
+      'checkDecomposition',
+      (c) => c.checkDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/check',
+      {},
+    ],
+    [
+      'instructDecomposition',
+      (c) => c.instructDecomposition('p-1', 'ep-1', { action: 'split' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/instruct',
+      { action: 'split' },
+    ],
+    [
+      'commitDecomposition',
+      (c) => c.commitDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/commit',
+      {},
+    ],
+    [
+      'getUnclaimedLessons',
+      (c) => c.getUnclaimedLessons('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/lessons',
+      undefined,
+    ],
+    [
+      'checkLessonPremise',
+      (c) => c.checkLessonPremise('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/premise-check',
+      {},
+    ],
+    [
+      'claimLesson',
+      (c) => c.claimLesson('p-1', 'l-1', true),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/claim',
+      { use_anyway: true },
+    ],
+    [
+      'retireLesson without a reason',
+      (c) => c.retireLesson('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      {},
+    ],
+    [
+      'retireLesson with a reason',
+      (c) => c.retireLesson('p-1', 'l-1', 'stale'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      { reason: 'stale' },
+    ],
+    [
+      'observePullRequest',
+      (c) => c.observePullRequest('p-1', '#214'),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/observe',
+      { pr_url: '#214' },
+    ],
+    [
+      'adoptPullRequest',
+      (c) => c.adoptPullRequest({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/adopt',
+      { project_id: 'p-1' },
+    ],
+    [
+      'previewLocalChanges',
+      (c) => c.previewLocalChanges('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/local-changes/preview',
+      undefined,
+    ],
+    [
+      'captureLocalChanges',
+      (c) => c.captureLocalChanges('p-1', 'pv-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/local-changes/capture',
+      { project_id: 'p-1', preview_id: 'pv-1', confirmed: true },
+    ],
+    [
+      'setCredential',
+      (c) => c.setCredential('github', 'ghp_x'),
+      'PUT',
+      '/api/v1/credentials/github',
+      { secret: 'ghp_x' },
+    ],
+    ['getProjects', (c) => c.getProjects(), 'GET', '/api/v1/projects', undefined],
+    [
+      'getProjectExplorer',
+      (c) => c.getProjectExplorer(),
+      'GET',
+      '/api/v1/projects?all=true',
+      undefined,
+    ],
+    [
+      'toggleFavourite',
+      (c) => c.toggleFavourite('p-1', true),
+      'PUT',
+      '/api/v1/projects/p-1/favourite',
+      { favourite: true },
+    ],
+    [
+      'startProjectOnboarding',
+      (c) => c.startProjectOnboarding('/src/new'),
+      'POST',
+      '/api/v1/project-onboardings',
+      { path: '/src/new' },
+    ],
+    [
+      'releaseProject by default',
+      (c) => c.releaseProject('p-1'),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: false },
+    ],
+    [
+      'releaseProject forced',
+      (c) => c.releaseProject('p-1', 'moved', true),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: true, reason: 'moved' },
+    ],
+    ['unenrolProject', (c) => c.unenrolProject('p-1'), 'POST', '/api/v1/projects/p-1/unenrol', {}],
+    [
+      'abandonOnboarding by its id',
+      (c) => c.abandonOnboarding('onb 1'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb%201',
+      undefined,
+    ],
+    [
+      'abandonOnboarding by its link',
+      (c) => c.abandonOnboarding('/api/v1/project-onboardings/onb-1/abandon'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb-1/abandon',
+      undefined,
+    ],
+    [
+      'getProjectDetail',
+      (c) => c.getProjectDetail('p-1'),
+      'GET',
+      '/api/v1/projects/p-1',
+      undefined,
+    ],
+    [
+      'getEndedWork on its first page',
+      (c) => c.getEndedWork('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=1',
+      undefined,
+    ],
+    [
+      'getEndedWork on a later page',
+      (c) => c.getEndedWork('p-1', 3),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=3',
+      undefined,
+    ],
+    [
+      'getReports older of a project',
+      (c) => c.getReports(true, 'p-1'),
+      'GET',
+      '/api/v1/reports?older=true&project=p-1',
+      undefined,
+    ],
+    ['markReportRead', (c) => c.markReportRead('rep-1'), 'POST', '/api/v1/reports/rep-1/read', {}],
+    [
+      'getDecisions of a plan',
+      (c) => c.getDecisions({ project: 'p-1', plan: 'fix' }),
+      'GET',
+      '/api/v1/decisions?project=p-1&plan=fix',
+      undefined,
+    ],
+    [
+      'answerDecision of a plan',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never, 'fix'),
+      'POST',
+      '/api/v1/plans/fix/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'answerDecision of the machine',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never),
+      'POST',
+      '/api/v1/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'getSystemSnapshot of a window and project',
+      (c) => c.getSystemSnapshot('today', 'p-1'),
+      'GET',
+      '/api/v1/system?window=today&project=p-1',
+      undefined,
+    ],
+    [
+      'getSystemSnapshot by default',
+      (c) => c.getSystemSnapshot(),
+      'GET',
+      '/api/v1/system',
+      undefined,
+    ],
+    [
+      'stopRuntime after a drain',
+      (c) => c.stopRuntime('drain'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: false, drain: true },
+    ],
+    [
+      'stopRuntime now and restart',
+      (c) => c.stopRuntime('now', 'restart'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: true, drain: false, then: 'restart' },
+    ],
+    [
+      'upgradeRuntime by default',
+      (c) => c.upgradeRuntime(),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'drain' },
+    ],
+    [
+      'upgradeRuntime to a version now',
+      (c) => c.upgradeRuntime('0.10.0', 'now'),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'now', version: '0.10.0' },
+    ],
+    [
+      'executeCleanup of every item',
+      (c) => c.executeCleanup('cln-1'),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: [] },
+    ],
+    [
+      'executeCleanup leaving items out',
+      (c) => c.executeCleanup('cln-1', ['a']),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of items',
+      (c) => c.releaseKeptCleanup(['a']),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of none named',
+      (c) => c.releaseKeptCleanup(),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: [] },
+    ],
+    [
+      'releaseKeptCleanup of all',
+      (c) => c.releaseKeptCleanup(undefined, true),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { all: true },
+    ],
+    [
+      'getPlanProcess',
+      (c) => c.getPlanProcess('fix'),
+      'GET',
+      '/api/v1/plans/fix/process',
+      undefined,
+    ],
+    [
+      'getTaskActivity',
+      (c) => c.getTaskActivity('fix', 'TASK-3'),
+      'GET',
+      '/api/v1/plans/fix/tasks/TASK-3/activity',
+      undefined,
+    ],
+    [
+      'getEpicProcess',
+      (c) => c.getEpicProcess('relay'),
+      'GET',
+      '/api/v1/epics/relay/process',
+      undefined,
+    ],
+    ['getEpicResource', (c) => c.getEpicResource('relay'), 'GET', '/api/v1/epics/relay', undefined],
+    [
+      'getEpicReview',
+      (c) => c.getEpicReview('relay', 'watches'),
+      'GET',
+      '/api/v1/epics/relay/review?register=watches',
+      undefined,
+    ],
+    [
+      'keepReviewItem',
+      (c) => c.keepReviewItem('relay', 'findings', 'F-1', 'watch'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/keep',
+      { register: 'findings', as: 'watch' },
+    ],
+    [
+      'dropReviewItem',
+      (c) => c.dropReviewItem('relay', 'findings', 'F-1', 'done'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/drop',
+      { register: 'findings', reason: 'done' },
+    ],
+    [
+      'promoteReviewItem for a first draft',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings' },
+    ],
+    [
+      'promoteReviewItem with an instruction',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1', 'smaller'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings', instruction: 'smaller' },
+    ],
+    [
+      'editReviewItem',
+      (c) => c.editReviewItem('relay', 'watches', 'W-1', 'add a rule'),
+      'POST',
+      '/api/v1/epics/relay/review/items/W-1/edit',
+      { register: 'watches', instruction: 'add a rule' },
+    ],
+    [
+      'acceptReviewReadBack',
+      (c) => c.acceptReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/accept',
+      { register: 'watches' },
+    ],
+    [
+      'discardReviewReadBack',
+      (c) => c.discardReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/discard',
+      { register: 'watches' },
+    ],
+    [
+      'stageReviewPlan',
+      (c) => c.stageReviewPlan('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/plan/stage',
+      { register: 'findings' },
+    ],
+    [
+      'commitReview',
+      (c) => c.commitReview('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/commit',
+      { register: 'findings' },
+    ],
+    ['getChat of a plan', (c) => c.getChat('fix'), 'GET', '/api/v1/plans/fix/chat', undefined],
+    [
+      'getChat of an epic',
+      (c) => c.getChat('epic:relay'),
+      'GET',
+      '/api/v1/epics/relay/chat',
+      undefined,
+    ],
+    [
+      'chatWithSubject of a plan',
+      (c) => c.chatWithSubject('fix', 'why?'),
+      'POST',
+      '/api/v1/plans/fix/chat/turns',
+      { text: 'why?' },
+    ],
+    [
+      'chatWithSubject of an epic',
+      (c) => c.chatWithSubject('epic:relay', 'why?'),
+      'POST',
+      '/api/v1/epics/relay/chat/turns',
+      { text: 'why?' },
+    ],
+    [
+      'answerSubjectChatProposal of a plan',
+      (c) => c.answerSubjectChatProposal('fix', true),
+      'POST',
+      '/api/v1/plans/fix/chat/proposal/accept',
+      {},
+    ],
+    [
+      'answerSubjectChatProposal of an epic',
+      (c) => c.answerSubjectChatProposal('epic:relay', false),
+      'POST',
+      '/api/v1/epics/relay/chat/proposal/reject',
+      {},
+    ],
+    ['endChat of a plan', (c) => c.endChat('fix'), 'POST', '/api/v1/plans/fix/chat/end', {}],
+    [
+      'endChat of an epic',
+      (c) => c.endChat('epic:relay'),
+      'POST',
+      '/api/v1/epics/relay/chat/end',
+      {},
+    ],
+    [
+      'getDecisionChat',
+      (c) => c.getDecisionChat('Q-7'),
+      'GET',
+      '/api/v1/decisions/Q-7/chat',
+      undefined,
+    ],
+    [
+      'decisionChatTurn',
+      (c) => c.decisionChatTurn('Q-7', 'and then?'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/turns',
+      { text: 'and then?' },
+    ],
+    [
+      'answerDecisionChatProposal accepted',
+      (c) => c.answerDecisionChatProposal('Q-7', true),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/accept',
+      {},
+    ],
+    [
+      'answerDecisionChatProposal rejected',
+      (c) => c.answerDecisionChatProposal('Q-7', false),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/reject',
+      {},
+    ],
+    [
+      'endDecisionChat',
+      (c) => c.endDecisionChat('Q-7'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/end',
+      {},
+    ],
+    [
+      'applyPlanAction without a body',
+      (c) => c.applyPlanAction('fix', 'pause'),
+      'POST',
+      '/api/v1/plans/fix/actions/pause',
+      {},
+    ],
+    [
+      'applyPlanAction with a body',
+      (c) => c.applyPlanAction('fix', 'abandon', { reason: 'r' }),
+      'POST',
+      '/api/v1/plans/fix/actions/abandon',
+      { reason: 'r' },
+    ],
+    [
+      'applyEpicAction without a body',
+      (c) => c.applyEpicAction('relay', 'auto'),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      {},
+    ],
+    [
+      'applyEpicAction with a body',
+      (c) => c.applyEpicAction('relay', 'auto', { on: true }),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      { on: true },
+    ],
+    [
+      'getPlanSettings',
+      (c) => c.getPlanSettings('fix'),
+      'GET',
+      '/api/v1/plans/fix/settings',
+      undefined,
+    ],
+  ];
+
+  it.each(rows)(
+    '%s sends its request to the runtime route',
+    async (_name, call, method, path, body) => {
+      // Act
+      await call(client);
+
+      // Assert: one request, to the route, with the method and the body the runtime reads
+      expect(sent).toEqual([{ url: `http://localhost:7420${path}`, method, body }]);
+    },
+  );
+});

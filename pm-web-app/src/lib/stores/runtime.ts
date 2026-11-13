@@ -214,7 +214,7 @@ let recoveryStops = 0;
  *   since then wins over the late failure, so no timer outlives the shell that ended the retry
  */
 function startRecovery(stopsAtStart: number): void {
-  if (recovery !== null || stopsAtStart !== recoveryStops || typeof window === 'undefined') return;
+  if (recovery !== null || stopsAtStart !== recoveryStops) return;
   recovery = setInterval(() => void retryRuntime(), RECONNECT_INTERVAL_MS);
 }
 
@@ -227,7 +227,11 @@ export function stopRuntimeRecovery(): void {
   }
 }
 
-/** @returns whether a retry of the initialization is owed and its timer runs */
+/**
+ * A test hook: no view reads it; the store's tests observe the retry timer through it.
+ *
+ * @returns whether a retry of the initialization is owed and its timer runs
+ */
 export function isRuntimeRecovering(): boolean {
   return recovery !== null;
 }
@@ -255,7 +259,7 @@ interface RouteMark {
 /** @returns where the person stands now */
 function routeMark(): RouteMark {
   return {
-    path: typeof window !== 'undefined' ? window.location.pathname : '/',
+    path: window.location.pathname,
     route: get(runtimeStore).currentRoute,
   };
 }
@@ -312,9 +316,6 @@ function dropCodeFragment(): void {
 }
 
 export async function checkUrlHashForCode(): Promise<boolean> {
-  if (typeof window === 'undefined') {
-    return false;
-  }
   const match = /code=([^&]+)/.exec(window.location.hash);
   if (!match?.[1]) {
     return false;
@@ -471,7 +472,7 @@ function drainInfoOf(
 
 export async function initRuntime(): Promise<void> {
   const stopsAtStart = recoveryStops;
-  if (typeof window !== 'undefined' && !hashListenerRegistered) {
+  if (!hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
       void checkUrlHashForCode();
     });
@@ -522,7 +523,7 @@ export async function initRuntime(): Promise<void> {
 
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
-  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const requested = matchPath(window.location.pathname);
   const mark = routeMark();
 
   if (!isPaired) {
@@ -826,7 +827,7 @@ export async function pairBrowser(code: string): Promise<void> {
     typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
   // Pairing is the main path into the app, so it applies the same landing rule as a reload. A
   // deep link opened with the code keeps its route and its identifiers.
-  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const requested = matchPath(window.location.pathname);
   const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
 
   // The recorded interface language is settled before the shell first renders, so the app never
@@ -959,7 +960,7 @@ export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
 export function goBack(): boolean {
   const previous = navigationStack.pop();
   if (!previous) {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    if (window.history.length > 1) {
       window.history.back();
       return true;
     }
@@ -994,9 +995,6 @@ export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
  * @param replace `true` to replace the current entry instead of pushing one
  */
 export function syncUrl(path: string, replace: boolean): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
   // The address is the same only when path and query both match: a plain path must drop a stale
   // query (a report's plan, a project in the explorer) rather than leave it in the bar.
   if (`${window.location.pathname}${window.location.search}` === path) {
@@ -1029,9 +1027,6 @@ export function replaceDesignerProject(projectId: string | null): void {
  * @returns the route taken, or `null` when the path names none
  */
 export function adoptRouteFromLocation(): AppRoute | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
   const match = matchPath(window.location.pathname);
   if (match) {
     runtimeStore.update((s) => ({
@@ -1287,9 +1282,6 @@ export function openOnboardingStep(step: number): void {
  * @returns the step the address bar names, or `null` when it names none
  */
 function requestedOnboardingStepFromUrl(): number | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
   const requested = Number.parseInt(
     new URLSearchParams(window.location.search).get('step') ?? '',
     10,

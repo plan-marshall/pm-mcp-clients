@@ -81,7 +81,10 @@ describe('ApiClient wire normalisation', () => {
             output_tokens: 30,
             unmeasured_tasks: 1,
             is_floor: true,
-            details: { input: 70, cache_read: 0, cache_write: 0, output: 30, reasoning: 0 },
+            // TokenBreakdownItem writes the role's pin as `details` and the raw figures as
+            // `components`.
+            details: 'claude:opus-5.5 · high',
+            components: { input: 70, cache_read: 0, cache_write: 0, output: 30, reasoning: 0 },
           },
         ],
         by_role: [],
@@ -105,6 +108,7 @@ describe('ApiClient wire normalisation', () => {
       output: 30,
       unmeasured: 1,
       floor: true,
+      harness_model: 'claude:opus-5.5 · high',
     });
     expect(report.token_usage?.by_phase[0].components?.input).toBe(70);
   });

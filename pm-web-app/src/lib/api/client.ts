@@ -825,9 +825,11 @@ function normaliseTokenBreakdown(raw: unknown): TokenBreakdownItem {
     output: number('output', 'output_tokens'),
     unmeasured: number('unmeasured', 'unmeasured_tasks'),
     floor: line['floor'] === true || line['is_floor'] === true,
-    harness_model: text('harness_model'),
+    // The record writes the role's pin (`claude:opus-5.5 · high`) as `details`; the raw token
+    // components travel as `components` of their own.
+    harness_model: text('harness_model', 'details'),
     effort: text('effort'),
-    components: (line['components'] ?? line['details']) as TokenComponentRecord | undefined,
+    components: line['components'] as TokenComponentRecord | undefined,
   };
 }
 
