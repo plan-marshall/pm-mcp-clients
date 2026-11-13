@@ -477,6 +477,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_CHANNEL = "channel";
     private static final String CHANNEL_WEB = "web";
     private static final String CHANNEL_CLI = "cli";
+    /** The member the chat registry marks its own announcements with; it never reaches the wire. */
+    private static final String INTERNAL_KEY = "$internal";
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
     private static final String FIXTURE_REPORTS = "reports";
@@ -1010,12 +1012,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public @Nullable QueuedRevision queuedRevision(String planId) {
         synchronized (controlLock) {
-            var queued = planQueuedRevisions.get(planId);
-            if (queued == null) {
-                return null;
-            }
-            // A chat is open until it ends; the chats say so, and the map holds the last answer.
-            return queued;
+            return planQueuedRevisions.get(planId);
         }
     }
 
@@ -2007,6 +2004,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void deliverEvent(String event, Object data) {
         var payload = payloadOf(data);
+        // The registry's own markers stay off the wire: a client reads the event the catalogue defines.
+        payload.remove(INTERNAL_KEY);
         var scope = scopeOf(event, payload);
 
         var targets = streamTargetsOf(event, scope, payload);
@@ -10530,11 +10529,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
+        DecisionEnvelope answered;
         synchronized (decisionsLock) {
-            openDecisions.remove(decisionId);
+            answered = openDecisions.remove(decisionId);
         }
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
-                answerReq.channel(), answerReq.device()));
+                answerReq.channel(), answerReq.device(), extractPlan(answered)));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
@@ -10559,11 +10559,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             chosen = "1";
         }
 
+        DecisionEnvelope answered;
         synchronized (decisionsLock) {
-            openDecisions.remove(decisionId);
+            answered = openDecisions.remove(decisionId);
         }
 
-        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(), answerReq.device()));
+        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(),
+                answerReq.device(), extractPlan(answered)));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
@@ -10578,10 +10580,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * answer carried one, so a client renders an answer without a device through the variant without one.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
-            @Nullable String device) {
+            @Nullable String device, @Nullable String planId) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", decisionId);
         payload.put("answer", answer);
+        if (planId != null) {
+            payload.put(KEY_PLAN_ID, planId);
+        }
         if (channel != null) {
             payload.put("channel", channel);
         }

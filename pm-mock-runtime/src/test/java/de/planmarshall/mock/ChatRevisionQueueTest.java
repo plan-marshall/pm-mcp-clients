@@ -122,7 +122,31 @@ class ChatRevisionQueueTest {
                             () -> assertNotNull(row.get(QUEUED_REVISION), "the overview's plan row carries it"));
                     var announced = planRevisionQueued(stream.events(), accepted.id(), proposal.turnId());
                     assertEquals(proposal.turnId(), Objects.requireNonNull(announced.queuedRevision()).turnId());
+                    assertActivityChanged(stream.events());
                 }
+            }
+        }
+
+        @Test
+        @DisplayName("refuses it at the boundary where the plan moved on meanwhile")
+        void refusesAtTheBoundary() throws Exception {
+            var routes = ChatRoutes.plan(PLAN);
+            try (var runtime = ordered(CHAT_STATE)) {
+                open(runtime, routes);
+                var proposal = propose(runtime, routes);
+                answer(runtime, routes.accept(), proposal);
+                // The plan takes a version of its own before the boundary: the queued revision no
+                // longer applies against the plan as it is then.
+                broadcast(runtime, "instance.changed", Map.of(PLAN_ID, PLAN, INSTANCE_VERSION, 2));
+
+                broadcast(runtime, "task.ended", Map.of(PLAN_ID, PLAN, TASK_ID, "TASK-4", STATUS, "done"));
+
+                assertAll("the refused revision",
+                        () -> assertEquals(ProposalState.REFUSED,
+                                Objects.requireNonNull(read(runtime, routes).proposal()).state()),
+                        () -> assertEquals("chat.finding.check_failed",
+                                Objects.requireNonNull(read(runtime, routes).proposal()).finding().key()),
+                        () -> assertNull(process(runtime).get(QUEUED_REVISION), "the queue is empty"));
             }
         }
 
@@ -251,6 +275,33 @@ class ChatRevisionQueueTest {
                 assertEquals(ProposalState.OPEN,
                         Objects.requireNonNull(read(runtime, decisionRoutes).proposal()).state(),
                         "a refused accept leaves the proposal open, so its reject is taken");
+
+                var rejected = post(runtime, decisionRoutes.reject(),
+                        new ProposalAnswerRequest(decisionProposal.turnId()).toJson());
+                assertEquals(200, rejected.status(), rejected.bodyText());
+                assertEquals(ProposalState.REJECTED,
+                        Objects.requireNonNull(ChatResource.fromJson(rejected.bodyText()).proposal()).state());
+            }
+        }
+
+        @Test
+        @DisplayName("lapses the waiting proposal where the plan leaves the window, which wins over the conflict")
+        void lapsedWinsWhereBothHold() throws Exception {
+            var planRoutes = ChatRoutes.plan(PLAN);
+            var decisionRoutes = ChatRoutes.planDecision(PLAN, DECISION);
+            try (var runtime = ordered(decisionScenario())) {
+                open(runtime, planRoutes);
+                var planProposal = propose(runtime, planRoutes);
+                answer(runtime, planRoutes.accept(), planProposal);
+
+                broadcast(runtime, "phase.changed", Map.of(PLAN_ID, PLAN, KEY_PHASE, "refine"));
+
+                assertAll("the window closed before the conflict",
+                        () -> assertEquals(ProposalState.LAPSED,
+                                Objects.requireNonNull(read(runtime, decisionRoutes).proposal()).state()),
+                        () -> assertNull(process(runtime).get(QUEUED_REVISION), "the queue is empty"),
+                        () -> assertEquals(ProposalState.LAPSED,
+                                Objects.requireNonNull(read(runtime, planRoutes).proposal()).state()));
             }
         }
     }
@@ -436,6 +487,20 @@ class ChatRevisionQueueTest {
             if (PLAN.equals(event.planId()) && event.queuedRevision() != null
                     && turnId.equals(event.queuedRevision().turnId())) {
                 return event;
+            }
+        }
+    }
+
+    /**
+     * Reads the stream until the plan's {@code activity.changed}, which the queued revision announces.
+     */
+    private static void assertActivityChanged(SseReader events) throws IOException {
+        while (true) {
+            var seen = events.next();
+            assertNotNull(seen, "the stream ended");
+            if ("activity.changed".equals(seen.event())
+                    && PLAN.equals(String.valueOf(payloadOf(seen.data()).get(PLAN_ID)))) {
+                return;
             }
         }
     }

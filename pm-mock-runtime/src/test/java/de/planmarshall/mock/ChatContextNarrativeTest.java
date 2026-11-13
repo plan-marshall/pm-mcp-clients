@@ -76,6 +76,7 @@ class ChatContextNarrativeTest {
     private static final String TASK_ID = "task_id";
     private static final String STATUS = "status";
     private static final String KEY_ID = "id";
+    private static final String KEY_KIND = "kind";
     private static final String KEY_BLOCKS = "blocks";
     private static final String HOLD_ID = "hold_id";
     private static final String KEY_REASON = "reason";
@@ -192,6 +193,41 @@ class ChatContextNarrativeTest {
                         STATUS, "done"));
 
                 assertTrue(read(runtime, routes).turns().isEmpty(), "ended work has no narrative");
+            }
+        }
+
+        @Test
+        @DisplayName("a line after a reply is a new notice, not the one before the reply")
+        void aNewNoticeAfterAReply() throws Exception {
+            var routes = ChatRoutes.plan(PLAN);
+            try (var runtime = ordered(CHAT_STATE)) {
+                open(runtime, routes);
+                broadcast(runtime, "task.ended", Map.of(PLAN_ID, PLAN, TASK_ID, "TASK-1", STATUS, "done"));
+                send(runtime, routes);
+                broadcast(runtime, "task.ended", Map.of(PLAN_ID, PLAN, TASK_ID, "TASK-2", STATUS, "done"));
+
+                var notices = noticesOf(read(runtime, routes));
+                assertAll("two notices around a reply",
+                        () -> assertEquals(2, notices.size(), String.valueOf(notices)),
+                        () -> assertEquals(2, notices.stream().mapToInt(notice -> notice.lines().size()).sum()));
+            }
+        }
+
+        @Test
+        @DisplayName("reads the subject of a catalogue-shaped event from the scope the event declares")
+        void catalogueShapedEvent() throws Exception {
+            var routes = ChatRoutes.plan(PLAN);
+            try (var runtime = ordered(CHAT_STATE)) {
+                open(runtime, routes);
+                // The catalogue's decision.answered names the decision and the envelope's scope, not a plan_id.
+                broadcast(runtime, "decision.answered", Map.of(KEY_ID, "Q-7", "channel", "web", "device", "dev-1",
+                        "scope", Map.of(KEY_KIND, "plan", KEY_ID, PLAN)));
+
+                var notices = noticesOf(read(runtime, routes));
+                assertAll("the line of a catalogue-shaped event",
+                        () -> assertEquals(1, notices.size(), String.valueOf(notices)),
+                        () -> assertEquals("chat.line.decision_answered",
+                                notices.getFirst().lines().getFirst().key()));
             }
         }
 

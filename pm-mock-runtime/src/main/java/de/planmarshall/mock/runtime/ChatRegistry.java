@@ -94,9 +94,15 @@ import de.planmarshall.mock.scenario.StateDefinition.ChatFailure;
  * {@code chat.turn.completed} with the whole text; while it plays, the chat is in {@code chat.reply} and
  * takes no message. A stop ends the reply with its text so far, a replaced worker restarts it from the
  * working line, and {@code chat.ended} names what ended a chat: the operator, a decision's carried
- * proposal, a decision answered elsewhere, the subject's end, or the entry's close. Every event goes on
- * the stream of the chat's subject and on {@code /api/v1/events}. Every message key the registry writes
- * is one {@link de.planmarshall.api.chat.ChatMessageKeys} maps.
+ * proposal, a decision answered elsewhere, or the subject's end; the start of an entry's work ends its
+ * chat and abandoning the entry deletes the transcript with it. Every event goes on the stream of the
+ * chat's subject and on {@code /api/v1/events}. Every message key the registry writes is one
+ * {@link de.planmarshall.api.chat.ChatMessageKeys} maps.
+ * <p>
+ * The subject's narrative reaches the transcript as {@code notice} turns ({@code chat.turn.completed}
+ * carrying {@code lines[]}) between the role's replies: several lines that come between two replies are
+ * one notice, and a line that arises while a reply is written is held until that reply ends, whether it
+ * completed, failed or was stopped ({@code state-catalogue.adoc#chat-narrative}).
  * <p>
  * The state is seeded from the active state ({@link #seed(Seed)}) and lives in memory; a scenario
  * switch or a reset re-seeds it.
@@ -205,7 +211,8 @@ final class ChatRegistry {
     private static final String ACTIVITY_PAUSING = "pausing";
     private static final String ACTIVITY_PAUSED = "paused";
     private static final String ACTIVITY_RUNNING = "running";
-    private static final String KEY_QUEUED_REVISION_MARKER = "revision_queued";
+    /** A member the registry marks its own announcements with, which never reaches the wire. */
+    private static final String INTERNAL_KEY = "$internal";
 
     /**
      * The {@code pm-api} record each chat event of the catalogue is read through, keyed by its
@@ -236,6 +243,8 @@ final class ChatRegistry {
     private final Map<ChatSubject, @Nullable String> endedWork = new LinkedHashMap<>();
     /** The plan's instance version each queued revision was accepted against, by plan id. */
     private final Map<String, Integer> queuedBaseVersions = new LinkedHashMap<>();
+    /** The last activity a chat's narrative reported, by plan id, so a repeated one writes no line. */
+    private final Map<String, String> lastActivities = new LinkedHashMap<>();
     private final Set<String> usedChatIds = new HashSet<>();
     private final Set<String> usedTurnIds = new HashSet<>();
     /** The armed failures the next chat requests play, oldest first. */
@@ -507,7 +516,8 @@ final class ChatRegistry {
             return;
         }
         play.schedule(timing, at + READING_PACE_MS, () -> playStep(chat, play, () -> {
-            chat.updateReply(play.turnId(), turn -> withCompletion(turn, text, script.refs()));
+            var refs = offeredRefs(chat.subject, script.refs());
+            chat.updateReply(play.turnId(), turn -> withCompletion(turn, text, refs));
             chat.endPlay();
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
             var events = new ArrayList<ChatEvent>();
@@ -541,6 +551,19 @@ final class ChatRegistry {
         var lines = new ArrayList<>(chat.heldLines);
         chat.heldLines.clear();
         return notice(chat, address, lines);
+    }
+
+    /**
+     * @param subject the chat's subject
+     * @param refs    the references a scripted reply names
+     * @return the references, without an act the subject does not offer
+     *         ({@code state-catalogue.adoc#chat-names-acts})
+     */
+    private List<TurnRef> offeredRefs(ChatSubject subject, List<TurnRef> refs) {
+        return refs.stream()
+                .filter(ref -> ref.kind() != RefKind.ACT || facts.offersAct(Objects.requireNonNull(ref.subject()),
+                        Objects.requireNonNull(ref.act())))
+                .toList();
     }
 
     /**
@@ -616,7 +639,7 @@ final class ChatRegistry {
 
     private static ChatEvent proposalEvent(Chat chat, EventScope stream, ChatProposal proposal) {
         return new ChatEvent(ChatProposalEvent.EVENT_NAME, stream, new ChatProposalEvent(chat.id, proposal.turnId(),
-                proposal.replyTurnId(), proposal.kind(), proposal.state(), null).toMap());
+                proposal.replyTurnId(), proposal.kind(), proposal.state(), proposal.finding()).toMap());
     }
 
     /**
@@ -662,9 +685,13 @@ final class ChatRegistry {
             chat.endPlay();
             chat.state = chat.idleState();
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
-            return List.of(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(
+            var events = new ArrayList<ChatEvent>();
+            events.add(event(play.address(), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(
                     chat.id, turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
                     List.of()).toMap()));
+            // The reply ended, failed or stopped: the lines held for it are written after it.
+            events.addAll(flushHeldLines(chat, play.address()));
+            return events;
         });
     }
 
@@ -798,10 +825,11 @@ final class ChatRegistry {
         }
         switch (event) {
             case EVENT_DECISION_ANSWERED -> {
-                var decisionId = JsonTree.string(payload, KEY_ID);
-                if (decisionId != null) {
+                var answeredDecision = decisionId(payload);
+                if (answeredDecision != null) {
                     endWhere(subject -> subject.kind() == ChatSubjectKind.DECISION
-                            && subject.id().endsWith("/" + decisionId), ChatEndedEvent.EndedBy.ANSWERED_ELSEWHERE);
+                                    && subject.id().endsWith("/" + answeredDecision),
+                            ChatEndedEvent.EndedBy.ANSWERED_ELSEWHERE);
                 }
             }
             case EVENT_SCOPE_ENDED -> {
@@ -898,7 +926,7 @@ final class ChatRegistry {
      * @param at    the instant of the event
      * @return the line, or {@code null}
      */
-    private static @Nullable NarrativeLine narrativeLine(String event, Map<String, Object> payload, Chat chat,
+    private @Nullable NarrativeLine narrativeLine(String event, Map<String, Object> payload, Chat chat,
             String at) {
         if (chat.scope == ChatScopeKind.ARCHIVE || chat.state.isEnded()) {
             return null;
@@ -908,13 +936,13 @@ final class ChatRegistry {
                     line("phase_changed", args(KEY_PHASE, JsonTree.string(payload, KEY_PHASE)), List.of(), at));
             case EVENT_TASK_ENDED -> about(chat, planOrEpic(payload), taskEndedLine(payload, at));
             case EVENT_DECISION_OPENED -> about(chat, planOrEpic(payload), new NarrativeLine(
-                    LINE_PREFIX + "decision_opened", args2(KEY_ID, JsonTree.string(payload, KEY_ID), "blocks",
+                    LINE_PREFIX + "decision_opened", args2(KEY_ID, decisionId(payload), "blocks",
                     blocksThePlan(payload) ? "yes" : "no"),
-                    ref(RefKind.DECISION, JsonTree.string(payload, KEY_ID)), at));
+                    ref(RefKind.DECISION, decisionId(payload)), at));
             case EVENT_DECISION_ANSWERED -> about(chat, planOrEpic(payload), decisionAnsweredLine(payload, at));
             case EVENT_DECISION_CLOSED -> about(chat, planOrEpic(payload), new NarrativeLine(
-                    LINE_PREFIX + "decision_closed", args2(KEY_ID, JsonTree.string(payload, KEY_ID), "reason",
-                    JsonTree.string(payload, "outcome")), ref(RefKind.DECISION, JsonTree.string(payload, KEY_ID)),
+                    LINE_PREFIX + "decision_closed", args2(KEY_ID, decisionId(payload), "reason",
+                    JsonTree.string(payload, "outcome")), ref(RefKind.DECISION, decisionId(payload)),
                     at));
             case EVENT_HOLD_OPENED -> about(chat, planOrEpic(payload),
                     holdLine("hold_opened", payload, at));
@@ -946,15 +974,52 @@ final class ChatRegistry {
 
     /**
      * @param payload the event's payload
-     * @return the plan or the epic the event is about, or {@code null}
+     * @return the plan or the epic the event is about: the id its payload names, else the subject its
+     *         declared scope names, else its {@code subject} record
      */
     private static @Nullable ChatSubject planOrEpic(Map<String, Object> payload) {
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            planId = scopedId(payload, "plan");
+        }
         if (planId != null) {
             return new ChatSubject(ChatSubjectKind.PLAN, planId);
         }
         var epicId = JsonTree.string(payload, KEY_EPIC_ID);
+        if (epicId == null) {
+            epicId = scopedId(payload, "epic");
+        }
         return epicId == null ? null : new ChatSubject(ChatSubjectKind.EPIC, epicId);
+    }
+
+    /**
+     * @param payload the event's payload
+     * @param kind    the scope kind to read
+     * @return the id the payload's declared scope names for that kind, or {@code null}
+     */
+    private static @Nullable String scopedId(Map<String, Object> payload, String kind) {
+        var scope = JsonTree.asObject(payload.get("scope"));
+        if (scope == null || !kind.equals(JsonTree.string(scope, "kind"))) {
+            return null;
+        }
+        var id = JsonTree.string(scope, "id");
+        return id != null ? id : JsonTree.string(scope, "project_id");
+    }
+
+    /**
+     * @param payload the event's payload
+     * @return the decision's id as the event names it, or {@code null}
+     */
+    private static @Nullable String decisionId(Map<String, Object> payload) {
+        var id = JsonTree.string(payload, KEY_ID);
+        if (id == null) {
+            id = JsonTree.string(payload, "decision_id");
+        }
+        if (id == null) {
+            var decision = JsonTree.asObject(payload.get("decision"));
+            id = decision == null ? null : JsonTree.string(decision, KEY_ID);
+        }
+        return id;
     }
 
     private static NarrativeLine taskEndedLine(Map<String, Object> payload, String at) {
@@ -969,7 +1034,7 @@ final class ChatRegistry {
     }
 
     private static NarrativeLine decisionAnsweredLine(Map<String, Object> payload, String at) {
-        var id = Objects.requireNonNullElse(JsonTree.string(payload, KEY_ID), "");
+        var id = Objects.requireNonNullElse(decisionId(payload), "");
         var channel = JsonTree.string(payload, "channel");
         var device = JsonTree.string(payload, "device");
         var args = new LinkedHashMap<String, Object>();
@@ -1000,12 +1065,19 @@ final class ChatRegistry {
                 id.isBlank() ? List.of() : List.of(TurnRef.of(RefKind.HOLD, id)), at);
     }
 
-    private static @Nullable NarrativeLine activityLine(Map<String, Object> payload, String at) {
-        if (payload.containsKey(KEY_QUEUED_REVISION_MARKER)) {
-            return null;
-        }
+    private @Nullable NarrativeLine activityLine(Map<String, Object> payload, String at) {
         var planId = Objects.requireNonNullElse(JsonTree.string(payload, KEY_PLAN_ID), "");
         var activity = Objects.requireNonNullElse(JsonTree.string(payload, KEY_ACTIVITY), "");
+        var previous = lastActivities.get(planId);
+        lastActivities.put(planId, activity);
+        if (payload.containsKey(INTERNAL_KEY)) {
+            // The registry's own announcement of the plan's row: no narrative line.
+            return null;
+        }
+        if (activity.equals(previous)) {
+            // The plan's activity was reported as it already was: no line, whatever the event says.
+            return null;
+        }
         var channel = JsonTree.string(payload, "channel");
         var device = JsonTree.string(payload, "device");
         var args = new LinkedHashMap<String, Object>();
@@ -1081,7 +1153,7 @@ final class ChatRegistry {
      */
     private List<ChatEvent> revisionAtBoundary(String event, Map<String, Object> payload) {
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
-        if (planId == null || event.startsWith(LINE_PREFIX)) {
+        if (planId == null) {
             return List.of();
         }
         var events = new ArrayList<ChatEvent>();
@@ -1219,9 +1291,7 @@ final class ChatRegistry {
         var payload = new LinkedHashMap<String, Object>();
         payload.put(KEY_PLAN_ID, planId);
         payload.put(KEY_ACTIVITY, activity);
-        // The event announces the plan's row moving with its queued revision; it is no pause or start
-        // of the plan, so it carries no narrative line.
-        payload.put(KEY_QUEUED_REVISION_MARKER, true);
+        payload.put(INTERNAL_KEY, true);
         if (point != null) {
             payload.put("point", point);
         }
@@ -1278,6 +1348,8 @@ final class ChatRegistry {
      */
     private List<ChatEvent> endChat(Chat chat, ChatStatus state, ChatEndedEvent.EndedBy endedBy) {
         chat.cancelPlay();
+        // An ended chat has no transcript to write the held narrative into.
+        chat.heldLines.clear();
         chat.turns.replaceAll(turn -> turn.status() == TurnStatus.STREAMING
                 ? withText(turn, turn.text(), TurnStatus.STOPPED)
                 : turn);
@@ -1392,7 +1464,11 @@ final class ChatRegistry {
         var event = event(address, ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
                 stopped.turnId(), stopped.kind(), TurnStatus.STOPPED, stopped.untrusted(), stopped.text(),
                 stopped.refs(), null, List.of()).toMap());
-        return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(event), null);
+        var events = new ArrayList<ChatEvent>();
+        events.add(event);
+        // The reply ended: the narrative lines that waited for it are written after it.
+        events.addAll(flushHeldLines(chat, address));
+        return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.copyOf(events), null);
     }
 
     private Outcome answer(Address address, MockHttpRequest request, boolean accept) {
@@ -1416,6 +1492,17 @@ final class ChatRegistry {
         }
         if (!proposal.turnId().equals(answer.turnId())) {
             return refused(ApiErrorCode.CONFLICT, "The proposal " + answer.turnId() + " is not the open one");
+        }
+        if (accept && proposal.kind() == ProposalKind.REVISION && proposal.applies() == null) {
+            return refused(ApiErrorCode.INVALID_ARGUMENTS, "The revision names no point it applies at");
+        }
+        if (accept && proposal.kind() == ProposalKind.REVISION && chat.planId == null) {
+            // Another subject's proposal is refused by its own checks: no plan means no revision window.
+            chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
+                    proposal.summary(), proposal.applies(), proposal.before(), proposal.after(),
+                    ProposalState.REFUSED, MessageText.of(FINDING_CHECK_FAILED));
+            return new Outcome(200, chat.toResource(chat.turns.size()).toMap(),
+                    List.of(proposalEvent(chat, address.stream(), chat.proposal)), null);
         }
         if (accept && proposal.kind() == ProposalKind.REVISION && chat.planId != null) {
             var refusal = revisionRefusal(chat, proposal);
