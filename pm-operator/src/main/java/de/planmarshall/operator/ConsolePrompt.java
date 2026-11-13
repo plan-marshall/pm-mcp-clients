@@ -35,6 +35,7 @@ public final class ConsolePrompt {
     private static final String BADGE_QUESTIONS = "operator.console.badge.questions";
     private static final String BADGE_WAIVERS = "operator.console.badge.waivers";
     static final String BADGE_FALLBACK = "operator.console.badge.fallback";
+    private static final String QUESTION_WORD = "question";
     private static final String COUNT = "count";
 
     private ConsolePrompt() {
@@ -109,30 +110,46 @@ public final class ConsolePrompt {
     }
 
     /**
-     * The catalogue key of the badge of a kind: every kind of the contract has its own badge, read
-     * by its canonical word and by the specification's aliases ({@code question} beside
-     * {@code decision}, {@code operator_wait} beside {@code waits_for_you}); a word this version does
-     * not know reads the fallback badge, which names the kind by its shared word.
+     * The catalogue key of the badge of a kind: every kind of the contract has its own badge. The
+     * word is resolved to the contract's kind first, so the badge reads every word
+     * {@link NeedsOperatorKind#fromValue} reads, and in addition the console's word {@code question}
+     * for a decision; a word this version does not know reads the fallback badge,
+     * which names the kind by its shared word.
      *
      * @param kind the item kind
      * @return the badge key of the kind, or {@link #BADGE_FALLBACK} for a kind this version does not know
      */
     static String badgeKey(String kind) {
-        return switch (kind) {
-            case "decision", "question" -> BADGE_QUESTIONS;
-            case "waiver" -> BADGE_WAIVERS;
-            case "waits_for_you", "operator_wait" -> "operator.console.badge.operator_waits";
-            case "integrity_pause" -> "operator.console.badge.integrity_pauses";
-            case "stalled" -> "operator.console.badge.stalled";
-            case "condition" -> "operator.console.badge.conditions";
-            case "held" -> "operator.console.badge.held";
-            case "landing_failed" -> "operator.console.badge.landing_failed";
-            case "findings" -> "operator.console.badge.findings";
-            case "setup" -> "operator.console.badge.setup_needs";
-            case "credential" -> "operator.console.badge.credential";
-            case "cleanup_due" -> "operator.console.badge.cleanup_due";
-            default -> BADGE_FALLBACK;
+        return switch (badgeKind(kind)) {
+            case DECISION -> BADGE_QUESTIONS;
+            case WAIVER -> BADGE_WAIVERS;
+            case WAITS_FOR_YOU -> "operator.console.badge.operator_waits";
+            case INTEGRITY_PAUSE -> "operator.console.badge.integrity_pauses";
+            case STALLED -> "operator.console.badge.stalled";
+            case CONDITION -> "operator.console.badge.conditions";
+            case HELD -> "operator.console.badge.held";
+            case LANDING_FAILED -> "operator.console.badge.landing_failed";
+            case FINDINGS -> "operator.console.badge.findings";
+            case SETUP -> "operator.console.badge.setup_needs";
+            case CREDENTIAL -> "operator.console.badge.credential";
+            case CLEANUP_DUE -> "operator.console.badge.cleanup_due";
+            case OTHER -> BADGE_FALLBACK;
         };
+    }
+
+    /**
+     * The kind a badge is selected by: the console word {@code question} is not a word of the
+     * contract and is read as a {@link NeedsOperatorKind#DECISION} here; every other word is
+     * resolved by {@link NeedsOperatorKind#fromWireOrOther}.
+     *
+     * @param kind the item kind
+     * @return the resolved kind, {@link NeedsOperatorKind#OTHER} for a word this version does not know
+     */
+    private static NeedsOperatorKind badgeKind(String kind) {
+        if (QUESTION_WORD.equalsIgnoreCase(kind.trim())) {
+            return NeedsOperatorKind.DECISION;
+        }
+        return NeedsOperatorKind.fromWireOrOther(kind);
     }
 
     /**

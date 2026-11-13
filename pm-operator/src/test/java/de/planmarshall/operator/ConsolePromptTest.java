@@ -12,17 +12,22 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.overview.NeedsOperatorKind;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 @EnableGeneratorController
 @DisplayName("ConsolePrompt")
@@ -195,6 +200,67 @@ class ConsolePromptTest {
             assertAll(
                                 () -> assertFalse(badge.contains("\u001b"), badge),
                                 () -> assertTrue(badge.contains("parent"), badge)
+            );
+        }
+    }
+
+    /**
+     * The badge key is derived from {@link NeedsOperatorKind}: every word the enum reads as a kind
+     * reads that kind's badge, so the badges cannot drift from the contract's kinds and aliases.
+     */
+    @Nested
+    @DisplayName("badge key derived from the contract's kind")
+    class BadgeKeyDerivation {
+
+        @Test
+        @DisplayName("the alias waiver_request reads the waiver badge in both languages")
+        void waiverRequestReadsTheWaiverBadge() {
+            assertAll(
+                                () -> assertEquals(ConsolePrompt.badgeKey("waiver"), ConsolePrompt.badgeKey("waiver_request")),
+                                () -> assertEquals("2 waiver requests", ConsolePrompt.formatBadge("en", "waiver_request", 2)),
+                                () -> assertEquals(ConsolePrompt.formatBadge("en", "waiver", 1),
+                                                    ConsolePrompt.formatBadge("en", "waiver_request", 1)),
+                                () -> assertEquals(ConsolePrompt.formatBadge("en", "waiver", 2),
+                                                    ConsolePrompt.formatBadge("en", "waiver_request", 2)),
+                                () -> assertEquals(ConsolePrompt.formatBadge("de", "waiver", 1),
+                                                    ConsolePrompt.formatBadge("de", "waiver_request", 1)),
+                                () -> assertEquals(ConsolePrompt.formatBadge("de", "waiver", 2),
+                                                    ConsolePrompt.formatBadge("de", "waiver_request", 2))
+            );
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(value = NeedsOperatorKind.class, mode = EnumSource.Mode.EXCLUDE, names = "OTHER")
+        @DisplayName("every kind of the contract has a badge of its own, by its wire word and by its name")
+        void everyKindHasItsOwnBadge(NeedsOperatorKind kind) {
+            assertAll(
+                                () -> assertNotEquals(ConsolePrompt.BADGE_FALLBACK, ConsolePrompt.badgeKey(kind.value()),
+                                                    kind.value()),
+                                () -> assertEquals(ConsolePrompt.badgeKey(kind.value()), ConsolePrompt.badgeKey(kind.name()),
+                                                    kind.name())
+            );
+        }
+
+        @Test
+        @DisplayName("a wire word in another case or with surrounding blanks reads the badge of the canonical word")
+        void caseAndBlanksReadTheCanonicalBadge() {
+            var kinds = Arrays.stream(NeedsOperatorKind.values())
+                                .filter(kind -> kind != NeedsOperatorKind.OTHER)
+                                .toArray(NeedsOperatorKind[]::new);
+            var canonical = Generators.fixedValues(kinds).next().value();
+            var cased = new StringBuilder();
+            for (var letter : canonical.toCharArray()) {
+                cased.append(Generators.booleans().next() ? Character.toUpperCase(letter) : letter);
+            }
+            var blanks = " ".repeat(Generators.integers(1, 3).next());
+            var variant = blanks + cased + blanks;
+
+            assertAll(
+                                () -> assertEquals(ConsolePrompt.badgeKey(canonical), ConsolePrompt.badgeKey(variant), variant),
+                                () -> assertEquals(ConsolePrompt.formatBadge("en", canonical, 2),
+                                                    ConsolePrompt.formatBadge("en", variant, 2), variant),
+                                () -> assertEquals(ConsolePrompt.formatBadge("de", canonical, 2),
+                                                    ConsolePrompt.formatBadge("de", variant, 2), variant)
             );
         }
     }
