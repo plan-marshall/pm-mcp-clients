@@ -207,14 +207,17 @@ public final class ConfigCommand implements Callable<Integer> {
     @Nullable
     MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
-        if (response.status() != 200) {
+        if (response.status() == 404) {
             return null;
         }
-        try {
-            return MachineSettingsRecord.fromJson(response.bodyText());
-        } catch (IOException _) {
-            return null;
+        if (response.status() == 200) {
+            try {
+                return MachineSettingsRecord.fromJson(response.bodyText());
+            } catch (IOException _) {
+                throw new OperatorRefusedException("config", response);
+            }
         }
+        throw new OperatorRefusedException("config", response);
     }
 
     /**
@@ -773,7 +776,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var path = OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan);
             var response = context.runtime(true).send(HttpRequest.get(path));
             if (response.status() != 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
+                out.println(MessageCatalogue.format(locale, "operator.config.settings_failed",
                                     Map.of(STATUS, response.status())));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
@@ -1248,7 +1251,15 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             var owner = new ConfigCommand(context);
-            var settings = owner.readSettingsQuiet();
+            MachineSettingsRecord settings;
+            try {
+                settings = owner.readSettingsQuiet();
+            } catch (OperatorRefusedException e) {
+                out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                    Map.of(STATUS, e.status() > 0 ? String.valueOf(e.status()) : "unreachable")));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             if (settings == null) {
                 out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
                                     Map.of(STATUS, "unreachable")));
@@ -1386,7 +1397,14 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             var owner = new ConfigCommand(context);
-            var settings = owner.readSettingsQuiet();
+            MachineSettingsRecord settings;
+            try {
+                settings = owner.readSettingsQuiet();
+            } catch (OperatorRefusedException e) {
+                out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             if (settings == null) {
                 out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
                 out.flush();

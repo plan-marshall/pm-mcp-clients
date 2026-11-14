@@ -15,6 +15,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
@@ -196,5 +202,46 @@ class MessageCatalogueTest {
                 () -> assertEquals("Standard", de.get("common.marker.default")),
                 () -> assertEquals("this one", en.get("common.marker.this_one")),
                 () -> assertEquals("dieses Gerät", de.get("common.marker.this_one")));
+    }
+
+    @Test
+    @DisplayName("no message pack has duplicate keys")
+    void shouldHaveNoDuplicateKeysInAnyMessagePack() throws Exception {
+        var duplicates = new ArrayList<String>();
+        for (String area : MessageCatalogue.SUPPORTED_AREAS) {
+            for (String locale : List.of("en", "de")) {
+                var path = "messages/" + area + "." + locale + ".properties";
+                try (var stream = getClass().getClassLoader().getResourceAsStream(path)) {
+                    assertNotNull(stream, "Missing resource: " + path);
+                    try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                        var seen = new HashSet<String>();
+                        String line;
+                        int lineNo = 0;
+                        while ((line = reader.readLine()) != null) {
+                            lineNo++;
+                            var trimmed = line.trim();
+                            if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("!")) {
+                                continue;
+                            }
+                            int separatorIdx = -1;
+                            for (int i = 0; i < trimmed.length(); i++) {
+                                char c = trimmed.charAt(i);
+                                if ((c == '=' || c == ':') && (i == 0 || trimmed.charAt(i - 1) != '\\')) {
+                                    separatorIdx = i;
+                                    break;
+                                }
+                            }
+                            if (separatorIdx > 0) {
+                                var key = trimmed.substring(0, separatorIdx).trim();
+                                if (!seen.add(key)) {
+                                    duplicates.add(path + ":" + lineNo + " duplicate key: " + key);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(duplicates.isEmpty(), "Duplicate keys found in message packs:\n" + String.join("\n", duplicates));
     }
 }

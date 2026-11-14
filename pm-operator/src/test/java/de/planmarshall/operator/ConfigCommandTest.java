@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -33,6 +34,7 @@ import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -1235,7 +1237,8 @@ class ConfigCommandTest {
         int code = execute("config", "language");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
-                            () -> assertTrue(err.toString().contains("The run of language failed"), err.toString()));
+                            () -> assertTrue(err.toString().contains("✗"), err.toString()),
+                            () -> assertTrue(err.toString().contains("the machine settings are not reachable"), err.toString()));
     }
 
     @Test
@@ -1399,4 +1402,39 @@ class ConfigCommandTest {
                          "links":[{"id":"no","rel":"alt","method":"POST","href":"/api/v1/onboarding/harness/decline"},
                                   {"id":"yes","rel":"next","method":"POST","href":"/api/v1/onboarding/harness/scan","preselected":true}]}
                         """;
+
+    @Test
+    @DisplayName("an unreachable aspect run prints the refusal to err and exits 1")
+    void unreachableAspectRunPrintsRefusal() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, """
+                                    {
+                                      "state": {
+                                        "state_id": "unrelated.state",
+                                        "kind": "operator_wait"
+                                      },
+                                      "total_steps": 1,
+                                      "links": []
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language");
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("✗"), err.toString());
+        assertFalse(err.toString().contains("reported no state"), err.toString());
+    }
+
+    @Test
+    @DisplayName("cleanup value renders singular for 1 day in en and de")
+    void cleanupValueSingular() {
+        assertEquals("1 day, reminder 1 day",
+                MessageCatalogue.format("en", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+        assertEquals("1 Tag, Erinnerung 1 Tag",
+                MessageCatalogue.format("de", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+    }
 }

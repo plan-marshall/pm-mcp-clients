@@ -28,6 +28,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -125,5 +126,28 @@ class ReadVerbExitCodesTest {
         int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
 
         assertEquals(1, code, label + " stdout: " + out + " stderr: " + err);
+    }
+
+    @Test
+    @DisplayName("config exits 1 when only the settings read is refused")
+    void onlySettingsRefusedExitsOne() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.send(403, "application/json", "{\"error\":\"forbidden\"}");
+            } else if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]),
+                                                new ByteArrayOutputStream()),
+                            null);
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), new String[]{"config"});
+        assertEquals(1, code, "stdout: " + out + " stderr: " + err);
     }
 }
