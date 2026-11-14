@@ -39,7 +39,7 @@ Gekoppelte Geräte · Die Browser, die auf dieser Maschine handeln können
     2) Safari on iPad   gekoppelt 20. Mai von network   zuletzt benutzt <ago>
     3) Chrome on build-box   gekoppelt 2. Juni von loopback   zuletzt benutzt <ago>
 
-  Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: on.
+  Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: an.
 pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › config consents
 Die Zustimmungen, die du dir gemerkt hast
     1) nach Harnesses suchen    scan_harnesses

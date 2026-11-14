@@ -218,7 +218,7 @@ class QuestionsCommandTest {
     void answerShowDetails() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
             } else {
                 response.send(404, null, "");
             }
@@ -244,7 +244,7 @@ class QuestionsCommandTest {
     void answerNoInputWithoutOption() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target())) {
-                response.json(200, "{\"title\":\"Question\"}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Question\"}");
             } else {
                 response.send(404, null, "");
             }
