@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -771,6 +772,23 @@ class ReportRecordsTest {
         }
 
         @Test
+        @DisplayName("should refuse a fractional count held as a number built in memory, and read a whole one")
+        void shouldRefuseAFractionalCountHeldAsANumber() throws Exception {
+            var whole = Generators.integers(0, 100).next();
+            var fraction = whole + 0.5;
+
+            var page = ReportsPage.fromMap(Map.of("unread_count", (double) whole, "older_count", (double) whole));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ReportsPage.fromMap(Map.of("unread_count", fraction))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ReportsPage.fromMap(Map.of("older_count", fraction))),
+                    () -> assertEquals(whole, page.unreadCount()),
+                    () -> assertEquals(whole, page.olderCount()));
+        }
+
+        @Test
         @DisplayName("should refuse a count with a fraction, JSON that is neither page nor list, and skip a list's non-object")
         void shouldRefuseMalformedShapes() throws Exception {
             var id = Generators.nonBlankStrings().next();
@@ -817,6 +835,23 @@ class ReportRecordsTest {
                     () -> assertFalse(item.isSentLater()),
                     () -> assertEquals(shown, item.created()),
                     () -> assertEquals(shown, item.sent()));
+        }
+
+        @Test
+        @DisplayName("should write the created and sent times it kept as text back as that text")
+        void shouldKeepDisplayTimesWhenSerialized() throws Exception {
+            var created = "today " + Generators.integers(10, 23).next() + ":00";
+            var sent = "Tuesday " + Generators.integers(10, 23).next() + ":10";
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created", created, "sent", sent));
+
+            var again = ReportItem.fromMap(item.toMap());
+
+            assertAll(
+                    () -> assertEquals(sent, item.toMap().get("sent_at")),
+                    () -> assertEquals(created, again.created()),
+                    () -> assertEquals(sent, again.sent()),
+                    () -> assertNull(again.sentAt()));
         }
 
         @Test
@@ -1001,6 +1036,20 @@ class ReportRecordsTest {
     class CompletionReading {
 
         @Test
+        @DisplayName("should write an end time that is no instant back as its text, so reading it again keeps it")
+        void shouldKeepATextualEndTimeWhenSerialized() throws Exception {
+            var ended = "yesterday " + Generators.integers(10, 23).next() + ":40";
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", "p", "ended_at", ended));
+
+            var again = PlanCompletionReport.fromMap(report.toMap());
+
+            assertAll(
+                    () -> assertEquals(ended, report.toMap().get("ended_at")),
+                    () -> assertEquals(ended, again.ended()),
+                    () -> assertNull(again.endedAt()));
+        }
+
+        @Test
         @DisplayName("should take the plan id from the short member and refuse a report without one")
         void shouldReadOrRefuseThePlanId() throws Exception {
             var plan = Generators.nonBlankStrings().next();
@@ -1162,6 +1211,12 @@ class ReportRecordsTest {
             Object read(Map<String, Object> object) throws Exception;
         }
 
+        /** The count a parsed record holds for the member under test. */
+        @FunctionalInterface
+        interface CountOf {
+            long of(Object record);
+        }
+
         static Stream<Arguments> countMembers() {
             RecordReader usage = TokenUsageRecord::fromMap;
             RecordReader row = TokenBreakdownItem::fromMap;
@@ -1169,27 +1224,40 @@ class ReportRecordsTest {
             RecordReader waste = TokenWasteRecord::fromMap;
             RecordReader report = PlanCompletionReport::fromMap;
             return Stream.of(
-                    Arguments.of("usage total_tokens", usage, "{\"total_tokens\":%s}"),
-                    Arguments.of("usage coverage workers", usage, "{\"coverage\":{\"workers\":%s}}"),
-                    Arguments.of("usage legacy waste total", usage, "{\"waste\":{\"total\":%s}}"),
-                    Arguments.of("row tokens", row, "{\"label\":\"execute\",\"tokens\":%s}"),
-                    Arguments.of("usage row unmeasured", usage, "{\"by_role\":[{\"label\":\"r\",\"unmeasured\":%s}]}"),
-                    Arguments.of("components input", components, "{\"input\":%s}"),
-                    Arguments.of("row components reasoning", row, "{\"label\":\"x\",\"components\":{\"reasoning\":%s}}"),
-                    Arguments.of("waste tokens", waste, "{\"waste_class\":\"retries\",\"tokens\":%s}"),
+                    Arguments.of("usage total_tokens", usage, "{\"total_tokens\":%s}",
+                            (CountOf) r -> ((TokenUsageRecord) r).totalTokens()),
+                    Arguments.of("usage coverage workers", usage, "{\"coverage\":{\"workers\":%s}}",
+                            (CountOf) r -> ((TokenUsageRecord) r).workersCount()),
+                    Arguments.of("usage legacy waste total", usage, "{\"waste\":{\"total\":%s}}",
+                            (CountOf) r -> ((TokenUsageRecord) r).totalWasteTokens()),
+                    Arguments.of("row tokens", row, "{\"label\":\"execute\",\"tokens\":%s}",
+                            (CountOf) r -> ((TokenBreakdownItem) r).tokens()),
+                    Arguments.of("usage row unmeasured", usage, "{\"by_role\":[{\"label\":\"r\",\"unmeasured\":%s}]}",
+                            (CountOf) r -> ((TokenUsageRecord) r).byRole().getFirst().unmeasuredTasksCount()),
+                    Arguments.of("components input", components, "{\"input\":%s}",
+                            (CountOf) r -> Objects.requireNonNull(((TokenComponentRecord) r).inputTokens())),
+                    Arguments.of("row components reasoning", row, "{\"label\":\"x\",\"components\":{\"reasoning\":%s}}",
+                            (CountOf) r -> Objects.requireNonNull(((TokenBreakdownItem) r).components()).reasoning()),
+                    Arguments.of("waste tokens", waste, "{\"waste_class\":\"retries\",\"tokens\":%s}",
+                            (CountOf) r -> ((TokenWasteRecord) r).tokens()),
                     Arguments.of("usage waste record share", usage,
-                            "{\"waste_records\":[{\"waste_class\":\"retries\",\"share_percent\":%s}]}"),
-                    Arguments.of("report paused_seconds", report, "{\"plan_id\":\"p\",\"paused_seconds\":%s}"),
+                            "{\"waste_records\":[{\"waste_class\":\"retries\",\"share_percent\":%s}]}",
+                            (CountOf) r -> ((TokenUsageRecord) r).wasteRecords().getFirst().sharePercent()),
+                    Arguments.of("report paused_seconds", report, "{\"plan_id\":\"p\",\"paused_seconds\":%s}",
+                            (CountOf) r -> ((PlanCompletionReport) r).pausedSeconds()),
                     Arguments.of("report pull_request_number", report,
-                            "{\"plan_id\":\"p\",\"pull_request_number\":%s}"),
+                            "{\"plan_id\":\"p\",\"pull_request_number\":%s}",
+                            (CountOf) r -> Objects.requireNonNull(((PlanCompletionReport) r).pullRequestNumber())),
                     Arguments.of("report token usage", report,
-                            "{\"plan_id\":\"p\",\"token_usage\":{\"output_tokens\":%s}}"));
+                            "{\"plan_id\":\"p\",\"token_usage\":{\"output_tokens\":%s}}",
+                            (CountOf) r -> ((PlanCompletionReport) r).tokenUsage().outputTokens()));
         }
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("countMembers")
         @DisplayName("should refuse a count with a fraction instead of truncating it")
-        void shouldRefuseACountWithAFraction(String member, RecordReader reader, String template) throws Exception {
+        void shouldRefuseACountWithAFraction(String member, RecordReader reader, String template, CountOf count)
+                throws Exception {
             var fraction = Generators.integers(0, 1_000_000).next() + ".5";
             var object = JsonTree.asObject(JsonTree.parse(template.formatted(fraction)));
 
@@ -1199,12 +1267,15 @@ class ReportRecordsTest {
         @ParameterizedTest(name = "{0}")
         @MethodSource("countMembers")
         @DisplayName("should read a whole count written with a zero fraction as that count")
-        void shouldReadAWholeCountWithAZeroFraction(String member, RecordReader reader, String template)
-                throws Exception {
-            var whole = Generators.integers(0, 1_000_000).next() + ".0";
-            var object = JsonTree.asObject(JsonTree.parse(template.formatted(whole)));
+        void shouldReadAWholeCountWithAZeroFraction(String member, RecordReader reader, String template,
+                CountOf count) throws Exception {
+            var whole = Generators.integers(0, 1_000_000).next();
+            var object = JsonTree.asObject(JsonTree.parse(template.formatted(whole + ".0")));
 
-            assertNotNull(reader.read(object), member);
+            var record = reader.read(object);
+
+            assertNotNull(record, member);
+            assertEquals(whole.longValue(), count.of(record), member);
         }
 
         @Test

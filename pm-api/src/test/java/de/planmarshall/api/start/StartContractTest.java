@@ -678,6 +678,9 @@ class StartContractTest {
                 "unscreened,unscreened,try_again,true",
                 "screening,-,-,true",
                 "flagged,flagged,accept_untrusted,false",
+                "checking,-,accept_untrusted,true",
+                "fetching,-,accept_untrusted,true",
+                "screening,-,accept_untrusted,true",
                 "unscreened,unscreened,accept_untrusted,false",
                 "stored,clean,-,false"})
         @DisplayName("Continue waits for every source that is not stored, screened, or accepted")

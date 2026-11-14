@@ -514,6 +514,24 @@ class DecisionsScenarioTest {
     }
 
     @Test
+    @DisplayName("refuses a waiver action that is neither waive, decline nor later, and grants nothing")
+    void waiverWithAnUnknownActionIsRefused() throws Exception {
+        try (var runtime = MockRuntime.start(STATE)) {
+            var unknown = Generators.letterStrings(1, 8).next().toLowerCase();
+            var action = "waive".equals(unknown) || "decline".equals(unknown) || "later".equals(unknown)
+                    ? unknown + "x" : unknown;
+
+            var refused = post(runtime, "/api/v1/decisions/WR-2/answer",
+                    JsonTree.write(Map.of("action", action, "reason", Generators.letterStrings(4, 12).next())));
+
+            assertEquals(400, refused.status());
+            assertEquals("invalid_arguments",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.body())), "error"));
+            assertEquals(200, get(runtime, "/api/v1/decisions/WR-2").status(), "the request stays open");
+        }
+    }
+
+    @Test
     @DisplayName("keeps a decision added at runtime")
     void addedDecision() throws Exception {
         try (var runtime = MockRuntime.start(STATE)) {

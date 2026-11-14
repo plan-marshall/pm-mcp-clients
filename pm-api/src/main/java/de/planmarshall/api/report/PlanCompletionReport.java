@@ -185,7 +185,12 @@ public record PlanCompletionReport(
         if (pullRequestUrl != null) map.put(FIELD_PR_URL, pullRequestUrl);
         if (reason != null) map.put(FIELD_REASON, reason);
         if (startedAt != null) map.put(FIELD_STARTED_AT, startedAt.toString());
-        if (endedAt != null) map.put(FIELD_ENDED_AT, endedAt.toString());
+        if (endedAt != null) {
+            map.put(FIELD_ENDED_AT, endedAt.toString());
+        } else if (rawEnded != null) {
+            // the end time as the runtime wrote it: no instant is invented, and none is lost
+            map.put(FIELD_ENDED_AT, rawEnded);
+        }
         map.put(FIELD_DURATION_SECONDS, durationSeconds);
         map.put(FIELD_PAUSED_SECONDS, pausedSeconds);
         if (pausedBy != null) map.put(FIELD_PAUSED_BY, pausedBy);

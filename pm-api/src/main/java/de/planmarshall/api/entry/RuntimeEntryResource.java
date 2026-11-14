@@ -244,8 +244,9 @@ public record RuntimeEntryResource(
         var listeners = new ArrayList<ListenerResource>(2);
         var loopbackOpen = Boolean.TRUE.equals(JsonTree.bool(web, FIELD_OPEN))
                 || Boolean.TRUE.equals(JsonTree.bool(web, FIELD_ENABLED));
-        var loopbackPort = JsonTree.integer(web, FIELD_PORT);
+        var loopbackPort = portOf(web, FIELD_PORT);
         var lanOpen = Boolean.TRUE.equals(JsonTree.bool(web, FIELD_LAN));
+        var lanPort = portOf(web, FIELD_LAN_PORT);
         try {
             listeners.add(new ListenerResource(
                     ListenerKind.LOOPBACK,
@@ -257,7 +258,7 @@ public record RuntimeEntryResource(
             listeners.add(new ListenerResource(
                     ListenerKind.LAN,
                     lanOpen ? ListenerState.OPEN : ListenerState.CLOSED,
-                    JsonTree.integer(web, FIELD_LAN_PORT),
+                    lanPort,
                     null,
                     lanOpen ? JsonTree.string(web, FIELD_LAN_FINGERPRINT) : null));
         } catch (IllegalArgumentException e) {
@@ -265,5 +266,16 @@ public record RuntimeEntryResource(
             throw new JsonFormatException("Invalid web listener in RuntimeEntryResource: " + e.getMessage(), e);
         }
         return listeners;
+    }
+
+    /**
+     * Reads a port the legacy {@code web} object names: absent is no port, and a present value must be an
+     * exact whole number of a TCP port, never narrowed or wrapped into another one.
+     */
+    private static @Nullable Integer portOf(Map<String, Object> web, String field) throws IOException {
+        if (web.get(field) == null) {
+            return null;
+        }
+        return (int) JsonTree.integralNumber(web, field, 0, 65_535);
     }
 }

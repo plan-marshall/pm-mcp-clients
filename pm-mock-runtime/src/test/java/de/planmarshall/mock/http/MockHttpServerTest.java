@@ -93,7 +93,7 @@ class MockHttpServerTest {
     }
 
     @Test
-    @DisplayName("answers a handler failure as valid JSON that carries the failure's message unchanged")
+    @DisplayName("answers a handler failure as valid JSON with a fixed message, never the failure's own text")
     void failureMessageIsValidJson() throws Exception {
         var message = Generators.letterStrings(2, 6).next() + "\\path \"quoted\"\n"
                 + Generators.letterStrings(2, 6).next();
@@ -106,7 +106,8 @@ class MockHttpServerTest {
             var body = JsonTree.asObject(JsonTree.parse(response.substring(response.indexOf("\r\n\r\n") + 4)));
             assertNotNull(body, "the error body is a JSON object");
             assertEquals(ApiErrorCode.INTERNAL_FAULT.wire(), JsonTree.string(body, "error"));
-            assertEquals(message, JsonTree.string(body, "message"));
+            assertEquals("The runtime failed on the request", JsonTree.string(body, "message"));
+            assertFalse(response.contains("quoted"), "the failure's text is not sent: " + response);
         }
     }
 

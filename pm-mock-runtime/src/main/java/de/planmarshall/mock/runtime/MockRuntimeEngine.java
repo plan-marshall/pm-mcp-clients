@@ -1931,6 +1931,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on I/O error
      */
     public void dispatch(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        try {
+            route(request, response, isWeb);
+        } catch (InvalidBodyException _) {
+            if (!response.isCommitted()) {
+                response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
+                        KEY_MESSAGE, "The request body is not valid JSON"));
+            }
+        }
+    }
+
+    private void route(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
 
         // 1. Control endpoints under /mock/
@@ -4647,8 +4658,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (request.body().length == 0) {
             return new LinkedHashMap<>();
         }
-        var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-        return parsed != null ? new LinkedHashMap<>(parsed) : new LinkedHashMap<>();
+        try {
+            var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+            return parsed != null ? new LinkedHashMap<>(parsed) : new LinkedHashMap<>();
+        } catch (IOException e) {
+            throw new InvalidBodyException(e);
+        }
+    }
+
+    /** A request body that is no JSON: the request is refused {@code invalid_arguments}, not a fault of the runtime. */
+    private static final class InvalidBodyException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        InvalidBodyException(IOException cause) {
+            super("The request body is no JSON", cause);
+        }
     }
 
     private static String deriveTitle(@Nullable String title, @Nullable String objective, @Nullable String issue,
@@ -10224,12 +10248,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
+        // an action that is neither of the two acts is refused: it never grants the waiver by default
+        var waiving = "waive".equalsIgnoreCase(action);
+        if (!waiving && !"decline".equalsIgnoreCase(action)) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
+                    KEY_MESSAGE, "A waiver request is answered by waive, decline or later."));
+            return;
+        }
         var reason = answerReq.reason();
         if (reason == null || reason.isBlank()) {
             response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
             return;
         }
-        var outcome = "decline".equalsIgnoreCase(action) ? "declined" : "waived";
+        var outcome = waiving ? "waived" : "declined";
         synchronized (decisionsLock) {
             openDecisions.remove(decisionId);
         }
@@ -10489,6 +10520,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean knowsEpic(String epicId) {
         var detailRoute = activeRoute("GET", PATH_EPICS_PREFIX + epicId);
         if (detailRoute != null && detailRoute.status() < 400) {
+            return true;
+        }
+        // an epic a start flow created has no detail route and no control entry, but it exists
+        if (startedEpics.containsKey(epicId)) {
             return true;
         }
         synchronized (controlLock) {

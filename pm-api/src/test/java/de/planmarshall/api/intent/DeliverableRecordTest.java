@@ -90,7 +90,9 @@ class DeliverableRecordTest {
         var file = Map.<String, Object>of("path", text(), "intent", "rename");
         return Stream.of(
                 Arguments.of("an affected file of an unknown intent", "affected_files", List.of(file)),
-                Arguments.of("a blank criterion", "satisfies", List.of(" ")));
+                Arguments.of("a blank criterion", "satisfies", List.of(" ")),
+                Arguments.of("a present null dependency list", "depends_on", null),
+                Arguments.of("a present null criterion list", "satisfies", null));
     }
 
     @ParameterizedTest(name = "{0}")

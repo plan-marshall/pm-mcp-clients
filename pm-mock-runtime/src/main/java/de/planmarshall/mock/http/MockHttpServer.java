@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.jspecify.annotations.Nullable;
 
+import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.ApiErrorCode;
 
@@ -45,6 +46,11 @@ import de.planmarshall.api.resource.ApiErrorCode;
  * both Unix domain sockets and loopback TCP addresses.
  */
 public final class MockHttpServer implements AutoCloseable {
+
+    private static final CuiLogger LOGGER = new CuiLogger(MockHttpServer.class);
+
+    /** The one text of a fault the runtime cannot attribute to the request. */
+    private static final String FAULT_MESSAGE = "The runtime failed on the request";
 
     private final ServerSocketChannel server;
     private final MockHttpHandler handler;
@@ -183,8 +189,10 @@ public final class MockHttpServer implements AutoCloseable {
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException e) {
+            // what failed stays in the log: a message may carry a path or other detail the client must not read
+            LOGGER.debug(e, "A handler failed on %s %s", request.method(), request.path());
             if (!response.isCommitted()) {
-                sendInternalFault(response, Objects.requireNonNullElse(e.getMessage(), ""));
+                sendInternalFault(response, FAULT_MESSAGE);
             }
         }
     }

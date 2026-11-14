@@ -194,7 +194,12 @@ public record SourceResource(
      * @return {@code true} if the source still blocks <em>Continue</em>
      */
     public boolean blocksContinue() {
-        return !state.settled() && disposition != UnscreenedDisposition.ACCEPT_UNTRUSTED;
+        if (state.settled()) {
+            return false;
+        }
+        // only a flagged or unscreened source can be accepted; one still in progress or failed blocks
+        var acceptable = state == SourceState.FLAGGED || state == SourceState.UNSCREENED;
+        return !(acceptable && disposition == UnscreenedDisposition.ACCEPT_UNTRUSTED);
     }
 
     /**

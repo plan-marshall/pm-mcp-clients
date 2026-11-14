@@ -464,7 +464,7 @@ class StartContractTest {
                         JsonTree.write(Map.of("kind", "kind-" + Generators.letterStrings(4, 10).next())))
                         .withHeader("Authorization", auth));
                 var unknownMode = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/documents_mode:"
+                        "/api/v1/entries/ent-3f9a2c41/links/documents_mode:unknown-"
                                 + Generators.letterStrings(4, 10).next().toLowerCase(), "{}")
                         .withHeader("Authorization", auth));
                 var notOffered = client(runtime).send(HttpRequest.json("POST",

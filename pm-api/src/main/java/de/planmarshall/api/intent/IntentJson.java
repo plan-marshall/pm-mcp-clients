@@ -286,10 +286,10 @@ final class IntentJson {
      * @param min    the inclusive lower bound of every element
      * @param max    the inclusive upper bound of every element
      * @return the numbers, never {@code null}
-     * @throws IOException if a present value is not an array of in-range integral numbers
+     * @throws IOException if a present value, a present {@code null} included, is not an array of in-range integral numbers
      */
     static List<Integer> readInts(Map<String, Object> object, String key, int min, int max) throws IOException {
-        if (object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));

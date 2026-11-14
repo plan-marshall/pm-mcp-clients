@@ -1492,6 +1492,10 @@ class MockRuntimeEngineTest {
                 assertTrue(names.indexOf(EVENT_DRAINING) >= 0 && names.indexOf(EVENT_DRAINING) < names.indexOf(marker),
                         "the drain started before the state's event was due: " + names);
             }
+        } finally {
+            // a start that failed before the engine took the scheduler must not leave it held
+            release.countDown();
+            scheduler.shutdownNow();
         }
     }
 
@@ -1771,6 +1775,10 @@ class MockRuntimeEngineTest {
                 assertFalse(remainingItems(live, bearer).contains(staleItem),
                         "the withdrawn drain's event must not overwrite the replacement drain");
             }
+        } finally {
+            // a start that failed before the engine took the scheduler must not leave it held
+            release.countDown();
+            scheduler.shutdownNow();
         }
     }
 

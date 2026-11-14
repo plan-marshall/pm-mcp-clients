@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +33,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -434,6 +437,29 @@ class EntryRecordsTest {
         assertEquals(ListenerState.OPEN, resource.listeners().get(1).state());
         assertEquals(7421, resource.listeners().get(1).port());
         assertEquals("4F:1A:9C", resource.listeners().get(1).fingerprint());
+    }
+
+    @ParameterizedTest(name = "the {0} of the legacy web object")
+    @ValueSource(strings = {"port", "lan_port"})
+    @DisplayName("RuntimeEntryResource refuses a legacy port beyond the range, a fraction, a text, and one that wraps to a valid port")
+    void runtimeEntryResourceRefusesAMalformedLegacyPort(String member) {
+        var wrapsToAValidPort = (1L << 32) + Generators.integers(1024, 65_535).next();
+        var beyond = 65_536 + Generators.integers(0, 1_000).next();
+        var fraction = Generators.integers(1024, 65_535).next() + 0.5;
+        var text = Generators.nonBlankStrings().next();
+
+        assertAll(
+                () -> assertThrows(JsonFormatException.class, () -> legacyWeb(member, wrapsToAValidPort)),
+                () -> assertThrows(JsonFormatException.class, () -> legacyWeb(member, beyond)),
+                () -> assertThrows(JsonFormatException.class, () -> legacyWeb(member, fraction)),
+                () -> assertThrows(JsonFormatException.class, () -> legacyWeb(member, text)));
+    }
+
+    private static RuntimeEntryResource legacyWeb(String member, Object value) throws IOException {
+        var web = new LinkedHashMap<String, Object>(Map.of("enabled", true, "lan", true, "port", 7420,
+                "lan_port", 7421));
+        web.put(member, value);
+        return RuntimeEntryResource.fromJson(JsonTree.write(Map.of("status", "ready", "web", web)));
     }
 
     @Test

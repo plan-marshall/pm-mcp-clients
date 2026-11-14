@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.ConfigOrigin;
@@ -90,9 +91,9 @@ public record OperatorStateResource(
     private static final Set<String> KNOWN_STATE_FIELDS = Set.of(
             FIELD_STATE_ID, FIELD_NODE_ID, FIELD_KIND, FIELD_LEVEL);
 
-    /** The configuration levels a state's {@code level} may name. */
-    private static final Set<ConfigOrigin> CONFIG_LEVELS =
-            Set.of(ConfigOrigin.MACHINE, ConfigOrigin.PROJECT, ConfigOrigin.PLAN);
+    /** The configuration levels a state's {@code level} may name: those an operator may write. */
+    private static final Set<ConfigOrigin> CONFIG_LEVELS = ConfigOrigin.operatorLevels().stream()
+            .map(ConfigOrigin::fromWire).collect(Collectors.toUnmodifiableSet());
 
     public OperatorStateResource {
         Objects.requireNonNull(scope, FIELD_SCOPE);

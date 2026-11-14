@@ -176,8 +176,13 @@ public record ReportItem(
             map.put(FIELD_SUBJECT_PARAMS, subjectParams);
         }
         if (body != null) map.put(FIELD_BODY, body);
-        map.put(FIELD_CREATED_AT, createdAt.toString());
-        if (sentAt != null) map.put(FIELD_SENT_AT, sentAt.toString());
+        // a time the runtime wrote as display text stays that text: no instant is invented for it
+        map.put(FIELD_CREATED_AT, rawCreated != null ? rawCreated : createdAt.toString());
+        if (sentAt != null) {
+            map.put(FIELD_SENT_AT, sentAt.toString());
+        } else if (rawSent != null) {
+            map.put(FIELD_SENT_AT, rawSent);
+        }
         if (readAt != null) map.put(FIELD_READ_AT, readAt.toString());
         if (readChannel != null) map.put(FIELD_READ_CHANNEL, readChannel);
         if (readDevice != null) map.put(FIELD_READ_DEVICE, readDevice);
