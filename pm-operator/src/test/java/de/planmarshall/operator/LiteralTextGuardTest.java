@@ -62,7 +62,10 @@ class LiteralTextGuardTest {
                         "PlanSettingsDialogue.java",
                         "OperatorActions.java",
                         "ProjectCommand.java",
-                        "FindCommand.java");
+                        "FindCommand.java",
+                        "AnswerCommand.java",
+                        "CleanupCommand.java",
+                        "RuntimeCommand.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(

@@ -212,7 +212,7 @@ public final class CleanupCommand implements Callable<Integer> {
             // q left the dialogue: what it printed says that nothing was sent
             return 0;
         } catch (RuntimeUnavailableException _) {
-            out.println("runtime   not running");
+            out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.status_not_running"));
             out.flush();
             return 0;
         }
@@ -223,19 +223,21 @@ public final class CleanupCommand implements Callable<Integer> {
         var res = runtime.send(HttpRequest.get("/api/v1/system/cleanup/kept"));
         if (res.status() == 200) {
             var items = CleanupKeptItem.parseList(res.bodyText());
+            var locale = context.clientEnvironment().locale();
             if (items.isEmpty()) {
-                out.println(MessageCatalogue.get("system.cleanup.kept.none"));
+                out.println(MessageCatalogue.get(locale, "system.cleanup.kept.none"));
             } else {
-                out.printf("Kept for good · %d%n", items.size());
+                out.println(MessageCatalogue.format(locale, "operator.cleanup.kept_header", Map.of("count", items.size())));
                 int idx = 1;
                 for (var item : items) {
                     var glyph = glyphForKind(item.kind());
                     var title = OutputSafety.stripControlSequences(item.title());
-                    var how = "ignored".equalsIgnoreCase(item.how())
-                                        ? "ignored " + OutputSafety.stripControlSequences(item.keptAt())
-                                        : "left out of a delete " + OutputSafety.stripControlSequences(item.keptAt());
                     var who = OutputSafety.stripControlSequences(item.who());
-                    out.printf("  %d) %s %-32s %s · %s%n", idx++, glyph, title, how, who);
+                    var how = MessageCatalogue.format(locale, "system.cleanup.kept.why",
+                                        Map.of("how", item.how(),
+                                                "time", OutputSafety.stripControlSequences(item.keptAt()),
+                                                "who", who));
+                    out.printf("  %d) %s %-32s %s%n", idx++, glyph, title, how);
                 }
             }
             out.flush();
@@ -248,12 +250,13 @@ public final class CleanupCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
         var resKept = runtime.send(HttpRequest.get("/api/v1/system/cleanup/kept"));
         var keptItems = CleanupKeptItem.parseList(resKept.bodyText());
+        var locale = context.clientEnvironment().locale();
 
         if (all) {
             if (!yes) {
                 if (noInput) {
-                    out.printf("Give all %d kept items back to the cleanup?%n", keptItems.size());
-                    out.println("Needs a choice: --yes");
+                    out.println(MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of("count", keptItems.size())));
+                    out.println(MessageCatalogue.format(locale, "operator.common.needs_choice", Map.of("option", "--yes")));
                     out.flush();
                     return 3;
                 }
@@ -261,7 +264,7 @@ public final class CleanupCommand implements Callable<Integer> {
             var putBody = JsonTree.write(Map.of("item_ids", List.of()));
             var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
             if (res.status() == 200) {
-                out.printf("✓ %d items go back to the cleanup; due at the next check where past its duration.%n", keptItems.size());
+                out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of("count", keptItems.size())));
                 out.flush();
                 return 0;
             }
@@ -296,7 +299,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var putBody = JsonTree.write(Map.of("item_ids", remainingIds));
         var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
         if (res.status() == 200) {
-            out.printf("✓ %d items go back to the cleanup; due at the next check where past its duration.%n", countReleased);
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of("count", countReleased)));
             out.flush();
             return 0;
         }
@@ -450,10 +453,11 @@ public final class CleanupCommand implements Callable<Integer> {
         var jobRes = context.runtime(true).send(HttpRequest.get(CLEANUP_API));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
         if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
+            var locale = context.clientEnvironment().locale();
             var nextCheck = parsed != null && parsed.get("next_check_at") != null
                                 ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
                                 : "tomorrow 03:00";
-            out.printf("Nothing is due. The next check is %s.%n", nextCheck);
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.none", Map.of("time", nextCheck)));
             out.flush();
             return null;
         }
@@ -465,10 +469,11 @@ public final class CleanupCommand implements Callable<Integer> {
         var jobRes = runtime.send(HttpRequest.get(CLEANUP_API));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
         if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
+            var locale = context.clientEnvironment().locale();
             var nextCheck = parsed != null && parsed.get("next_check_at") != null
                                 ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
                                 : "tomorrow 03:00";
-            out.printf("Nothing is due. The next check is %s.%n", nextCheck);
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.none", Map.of("time", nextCheck)));
             out.flush();
             return 0;
         }
@@ -506,7 +511,7 @@ public final class CleanupCommand implements Callable<Integer> {
     int previewThenStop(PrintWriter out, DeletePreview preview, int unchecked) {
         out.println(previewText(preview, unchecked));
         printWholeJobNote(out);
-        out.println("Needs a choice: --yes");
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice", Map.of("option", "--yes")));
         out.flush();
         return 3;
     }
@@ -569,19 +574,20 @@ public final class CleanupCommand implements Callable<Integer> {
 
         var parsed = JsonTree.asObject(JsonTree.parse(res.bodyText()));
         if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
+            var locale = context.clientEnvironment().locale();
             var nextCheck = parsed != null && parsed.get("next_check_at") != null
                                 ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
                                 : "tomorrow 03:00";
             int keptCount = JsonTree.integer(parsed, "kept_count") != null
                                 ? JsonTree.integer(parsed, "kept_count") : 2;
-            out.printf("Cleanup · Nothing is due. The next check is %s.%n", nextCheck);
-            out.printf("Kept for good %d (cleanup --kept) · durations 30 days, reminder 3 days%n", keptCount);
-            out.println("Removed by itself · last sweep today 03:00");
-            out.println("  temporary files                       214 · 340 MB");
-            out.println("  worker directories of ended jobs       18 · 1.2 GB");
-            out.println("  stale locks, fenced generations         3");
-            out.println("  old rows of the workspace             612");
-            out.println("  retired lesson bodies                   4");
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.none_header", Map.of("time", nextCheck)));
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.footer", Map.of("count", keptCount)));
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.residue_header", Map.of("time", "today 03:00")));
+            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.temp"));
+            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.workers"));
+            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.locks"));
+            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.rows"));
+            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.lessons"));
             out.flush();
             return 0;
         }
@@ -691,18 +697,22 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the printed items, in their numbering order
      */
     List<CleanupItemEntry> printJob(PrintWriter out, CleanupJob job, Set<String> leftOut) {
+        var locale = context.clientEnvironment().locale();
         var items = new ArrayList<CleanupItemEntry>();
-        out.printf("Cleanup %s · due since %s%n", job.jobId(), OutputSafety.stripControlSequences(job.dueSince()));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.job_header",
+                            Map.of("id", job.jobId(), "time", OutputSafety.stripControlSequences(job.dueSince()))));
         var s = job.summary();
-        out.printf("Summary   %d plans · %d epics · %d logs · %d read reports · %d unenrolled project%n",
-                            s.plansCount(), s.epicsCount(), s.logsCount(), s.reportsCount(), s.projectsCount());
-        out.printf("          frees %s%n", SystemCommand.formatBytes(s.freedBytes()));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.summary",
+                            Map.of("plans", s.plansCount(), "epics", s.epicsCount(), "logs", s.logsCount(),
+                                                "reports", s.reportsCount(), "projects", s.projectsCount())));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.summary_frees",
+                            Map.of("size", SystemCommand.formatBytes(s.freedBytes()))));
         printWholeJobActionNote(out);
 
         int itemIndex = 1;
         for (var prj : job.projectItems()) {
             var isUnenrolled = isUnenrolled(prj.projectId());
-            out.println(isUnenrolled ? "Unenrolled projects"
+            out.println(isUnenrolled ? MessageCatalogue.get(locale, "operator.cleanup.durations.kind.unenrolled")
                                 : OutputSafety.stripControlSequences(prj.projectId()));
             int shown = 0;
             for (var item : prj.items()) {
@@ -718,8 +728,8 @@ public final class CleanupCommand implements Callable<Integer> {
             }
         }
 
-        out.printf("Kept for good %d (cleanup --kept) · durations 30 days, reminder 3 days · last sweep %s%n",
-                            s.keptForGoodCount(), OutputSafety.stripControlSequences(s.lastSweepAt()));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.footer_sweep",
+                            Map.of("count", s.keptForGoodCount(), "time", OutputSafety.stripControlSequences(s.lastSweepAt()))));
         out.flush();
         return items;
     }
@@ -906,9 +916,10 @@ public final class CleanupCommand implements Callable<Integer> {
             return deleteRefused(out, res.bodyText());
         }
         if (res.status() == 200) {
-            out.printf("✓ Deleted %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project; %s freed.%n",
-                                preview.plans(), preview.epics(), preview.logs(), preview.reports(),
-                                preview.projects(), SystemCommand.formatBytes(preview.freedBytes()));
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.cleanup.deleted_summary",
+                                Map.of("plans", preview.plans(), "epics", preview.epics(), "logs", preview.logs(),
+                                                    "reports", preview.reports(), "projects", preview.projects(),
+                                                    "size", SystemCommand.formatBytes(preview.freedBytes()))));
             out.flush();
             return 0;
         }
@@ -934,7 +945,7 @@ public final class CleanupCommand implements Callable<Integer> {
             out.flush();
             return 1;
         }
-        out.println("The runtime is stopping; nothing new starts.");
+        out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.cleanup.runtime_stopping"));
         out.flush();
         return 1;
     }

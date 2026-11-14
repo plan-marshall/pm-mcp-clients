@@ -173,6 +173,17 @@ public final class MessageCatalogue {
     }
 
     /**
+     * Retrieves a message template in the specified locale without parameter substitution.
+     *
+     * @param locale the requested locale
+     * @param key    the message key
+     * @return the message string
+     */
+    public static String get(String locale, String key) {
+        return format(locale, key, Map.of());
+    }
+
+    /**
      * Formats a message template in the default locale.
      *
      * @param key    the message key
