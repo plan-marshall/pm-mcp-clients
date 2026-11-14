@@ -615,16 +615,16 @@
 
       <h3 class="dev__section-title">{$t('intent.tab.title')}</h3>
       <div class="dev__grid" data-testid="intent-fixture">
-        <Card title={$t('intent.tab.title')} titleLevel={4}>
+        <Card>
           <PlanIntentPanel
             planId={INTENT_PLAN_ID}
             {deliverableHref}
           />
         </Card>
-        <Card title={$t('intent.outline.title')} titleLevel={4}>
+        <Card>
           <OutlinePanel planId={INTENT_PLAN_ID} {criterionHref} />
         </Card>
-        <Card title={$t('intent.builder.title')} titleLevel={4}>
+        <Card>
           <BuilderCheckList check={builderCheck} />
         </Card>
       </div>
