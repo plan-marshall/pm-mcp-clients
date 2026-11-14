@@ -199,7 +199,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("knows an epic a start flow created: its process is not refused as an unknown epic")
     void startedEpicIsKnown() throws Exception {
-        try (var runtime = MockRuntime.start(state("start.sources"))) {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var title = Generators.letterStrings(4, 10).next().toLowerCase();
@@ -212,7 +212,8 @@ class StartScenarioTest {
             var process = client.send(HttpRequest.get("/api/v1/epics/" + epicId + "/process")
                     .withHeader("Authorization", auth));
 
-            assertFalse(process.bodyText().contains("Epic not found"), process.bodyText());
+            assertEquals(200, process.status(), process.bodyText());
+            assertEquals(epicId, JsonTree.string(JsonTree.asObject(JsonTree.parse(process.bodyText())), "epic_id"));
         }
     }
 

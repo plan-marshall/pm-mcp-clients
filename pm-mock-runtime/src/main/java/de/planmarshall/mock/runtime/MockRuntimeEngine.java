@@ -385,6 +385,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String ITEM_TOKEN_USAGE = "token-usage";
     private static final String KIND_READ_REPORTS = "read_reports";
     private static final String KEY_ANSWER = "answer";
+    private static final String ACTION_WAIVE = "waive";
+    /** The acts a waiver request is answered with: the one definition the handler and its tests read. */
+    public static final Set<String> WAIVER_ACTIONS = Set.of(ACTION_WAIVE, "decline", "later");
     /** How a kept item came to be kept: the job was ignored. */
     private static final String KEPT_IGNORE = "ignore";
     private static final String PATH_ENROL = "/api/v1/enrol";
@@ -5066,20 +5069,25 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (request.body().length == 0) {
             return new LinkedHashMap<>();
         }
+        Map<String, Object> parsed;
         try {
-            var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-            return parsed != null ? new LinkedHashMap<>(parsed) : new LinkedHashMap<>();
+            parsed = JsonTree.asObject(JsonTree.parse(request.body()));
         } catch (IOException e) {
-            throw new InvalidBodyException(e);
+            throw new InvalidBodyException("The request body is no JSON", e);
         }
+        if (parsed == null) {
+            // a body that is JSON but no object ([], a number, null) is refused like malformed JSON
+            throw new InvalidBodyException("The request body is no JSON object", null);
+        }
+        return new LinkedHashMap<>(parsed);
     }
 
     /** A request body that is no JSON: the request is refused {@code invalid_arguments}, not a fault of the runtime. */
     private static final class InvalidBodyException extends IOException {
         private static final long serialVersionUID = 1L;
 
-        InvalidBodyException(IOException cause) {
-            super("The request body is no JSON", cause);
+        InvalidBodyException(String message, @Nullable IOException cause) {
+            super(message, cause);
         }
     }
 
@@ -10699,14 +10707,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private void handleWaiverAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
-        var action = answerReq.action() != null ? answerReq.action() : (answerReq.option() != null ? answerReq.option() : "waive");
+        var action = answerReq.action() != null ? answerReq.action() : answerReq.option();
         if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
-        // an action that is neither of the two acts is refused: it never grants the waiver by default
-        var waiving = "waive".equalsIgnoreCase(action);
-        if (!waiving && !"decline".equalsIgnoreCase(action)) {
+        // an action that is not one of the acts, an absent one included, is refused: a waiver is never
+        // granted by default
+        var normalized = action == null ? "" : action.toLowerCase(Locale.ROOT);
+        if (!WAIVER_ACTIONS.contains(normalized)) {
             response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "A waiver request is answered by waive, decline or later."));
             return;
@@ -10716,7 +10725,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
             return;
         }
-        var outcome = waiving ? "waived" : "declined";
+        var outcome = ACTION_WAIVE.equals(normalized) ? "waived" : "declined";
         DecisionEnvelope answered;
         synchronized (decisionsLock) {
             answered = openDecisions.remove(decisionId);
@@ -11166,7 +11175,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
         copy.put(KEY_INSTANCE_VERSION, 1);
-        copy.put("tokens_so_far", new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false).toMap());
+        copy.put(KEY_TOKENS_SO_FAR, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false).toMap());
         copy.put(KEY_NODES, phaseNodes(template, phase, phaseState));
         copy.put("current_position_path", List.of());
         copy.put("duration_seconds", 0L);

@@ -1214,7 +1214,7 @@ class ReportRecordsTest {
         /** The count a parsed record holds for the member under test. */
         @FunctionalInterface
         interface CountOf {
-            long of(Object record);
+            long of(Object parsed);
         }
 
         static Stream<Arguments> countMembers() {
@@ -1272,10 +1272,10 @@ class ReportRecordsTest {
             var whole = Generators.integers(0, 1_000_000).next();
             var object = JsonTree.asObject(JsonTree.parse(template.formatted(whole + ".0")));
 
-            var record = reader.read(object);
+            var parsed = reader.read(object);
 
-            assertNotNull(record, member);
-            assertEquals(whole.longValue(), count.of(record), member);
+            assertNotNull(parsed, member);
+            assertEquals(whole.longValue(), count.of(parsed), member);
         }
 
         @Test

@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**

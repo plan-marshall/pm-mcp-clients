@@ -44,6 +44,7 @@ import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.mock.runtime.MockRuntimeEngine;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("DecisionsScenario (UC-PLN-2)")
@@ -520,11 +521,24 @@ class DecisionsScenarioTest {
     void waiverWithAnUnknownActionIsRefused() throws Exception {
         try (var runtime = MockRuntime.start(STATE)) {
             var unknown = Generators.letterStrings(1, 8).next().toLowerCase();
-            var action = "waive".equals(unknown) || "decline".equals(unknown) || "later".equals(unknown)
-                    ? unknown + "x" : unknown;
+            var action = MockRuntimeEngine.WAIVER_ACTIONS.contains(unknown) ? unknown + "x" : unknown;
 
             var refused = post(runtime, "/api/v1/decisions/WR-2/answer",
                     JsonTree.write(Map.of("action", action, "reason", Generators.letterStrings(4, 12).next())));
+
+            assertEquals(400, refused.status());
+            assertEquals("invalid_arguments",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.body())), "error"));
+            assertEquals(200, get(runtime, "/api/v1/decisions/WR-2").status(), "the request stays open");
+        }
+    }
+
+    @Test
+    @DisplayName("refuses a waiver answer that names no action, and grants nothing")
+    void waiverWithoutAnActionIsRefused() throws Exception {
+        try (var runtime = MockRuntime.start(STATE)) {
+            var refused = post(runtime, "/api/v1/decisions/WR-2/answer",
+                    JsonTree.write(Map.of("reason", Generators.letterStrings(4, 12).next())));
 
             assertEquals(400, refused.status());
             assertEquals("invalid_arguments",
