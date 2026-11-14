@@ -10,7 +10,7 @@ The modules of this repository are listed only in the link:../../../plan-marshal
 [#packages]
 == Packages
 
-The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` row names its reason. Dependencies are named by package id, a package of another repository as `<repository>` / `<id>`. A package serves a roadmap milestone or the client-work track: the client work built against the mock runtime (the mock runtime, the two clients, and their test infrastructure) serves the link:epic-clients.adoc[client-work epic], and the milestone that delivers the runtime a client view needs carries the integration of that view with the real runtime (link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap]). The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
+The status of a package is `open`, `in progress`, `blocked`, `done` or `dropped`; an `in progress` row names the plans that carry it, and a `dropped` row names its reason. Dependencies are named by package id, a package of another repository as `<repository>` / `<id>`. A package serves a roadmap milestone or the client-work track: the client work built against the mock runtime (the mock runtime, the two clients, and their test infrastructure) serves the link:epic-clients.adoc[client-work epic], and the milestone that delivers the runtime a client view needs carries the integration of that view with the real runtime (link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap]). The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
 
 [cols="3,4,1,3,2",options="header"]
 |===
@@ -413,7 +413,7 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 
 |link:plan-changes.adoc[`plan-changes`]
 |A plan's changes, file by file and hunk by hunk, read only in both clients, and a different model in a worker's activity
-|`open`
+|`in progress` (`PLAN-162`..`PLAN-164`)
 |`overview-order-and-size`
 |Milestone 10; client work
 
