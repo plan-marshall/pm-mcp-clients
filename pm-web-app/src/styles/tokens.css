@@ -64,6 +64,13 @@
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 1280px;
 
+  /* Layer tokens (PLAN-149, components.adoc § #layers) */
+  --layer-sticky: 1;
+  --layer-bar: 20;
+  --layer-menu: 30;
+  --layer-toast: 90;
+  --layer-dialog: 100;
+
   /* VD-P-02 colour palette, light (the default) */
   --color-bg-app: #F7F7F5;
   --color-bg-rail: #EFEFEB;

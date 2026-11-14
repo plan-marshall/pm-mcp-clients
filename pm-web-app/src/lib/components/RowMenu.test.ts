@@ -593,9 +593,12 @@ describe('RowMenu component', () => {
       const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
       const listRules = rulesOf(style, '.row-menu__list').join(';');
       const bottomBarStyle = styleOf(path.resolve(__dirname, '../shell/BottomBar.svelte'));
-      const barLayer = Number(/z-index:\s*(\d+)/.exec(bottomBarStyle)?.[1]);
-      const menuLayer = Number(/z-index:\s*(\d+)/.exec(listRules)?.[1]);
+      const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf8');
+      const barLayer = Number(/--layer-bar:\s*(\d+)/.exec(tokensCss)?.[1]);
+      const menuLayer = Number(/--layer-menu:\s*(\d+)/.exec(tokensCss)?.[1]);
 
+      expect(listRules).toContain('z-index: var(--layer-menu)');
+      expect(bottomBarStyle).toContain('z-index: var(--layer-bar)');
       expect(barLayer).toBeGreaterThan(0);
       expect(menuLayer).toBeGreaterThan(barLayer);
       const aboveRules = rulesOf(style, '.row-menu__list--above').join(';');

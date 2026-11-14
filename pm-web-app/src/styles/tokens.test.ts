@@ -32,6 +32,37 @@ const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
   path.normalize('lib/components/PairingQr.svelte'), // High-contrast black/white scannable QR modules
 ]);
 
+/**
+ * Allowlisted modals and views that still draw their own z-index layer,
+ * each mapped to the part or plan that removes it.
+ */
+const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
+  [path.normalize('lib/components/FindingsReviewModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/HoldResolutionModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/ConfinedFilePicker.svelte')]: 'the V parts',
+  [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/StartWorkModal.svelte')]: 'the V parts',
+  [path.normalize('lib/views/EpicDecompositionView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/SystemView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/CleanupView.svelte')]: 'the V parts',
+  [path.normalize('lib/components/PlanSettingsModal.svelte')]: 'PLAN-55',
+  [path.normalize('lib/components/GitSourceIntakeModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/views/ProjectOnboardingView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/MachineSettingsView.svelte')]: 'PLAN-60',
+  [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
+};
+
+const LAYER_TOKENS: Record<string, number> = {
+  '--layer-sticky': 1,
+  '--layer-bar': 20,
+  '--layer-menu': 30,
+  '--layer-toast': 90,
+  '--layer-dialog': 100,
+};
+
 /** The colour palette of VD-P-02, with the two tuned brand values and the two tokens the proposal does not name documented in `theme-readability.adoc`. */
 const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-bg-app': { dark: '#0E1116', light: '#F7F7F5' },
@@ -493,6 +524,27 @@ describe('tokens.css: the design system v2 contract', () => {
     });
   });
 
+  describe('layer tokens', () => {
+    it.each(Object.entries(LAYER_TOKENS))('declares the layer token %s with value %i', (token, value) => {
+      expect(Number(themes.root[token])).toBe(value);
+    });
+
+    it('asserts the layer token order: sticky < bar < menu < toast < dialog', () => {
+      const sticky = Number(themes.root['--layer-sticky']);
+      const bar = Number(themes.root['--layer-bar']);
+      const menu = Number(themes.root['--layer-menu']);
+      const toast = Number(themes.root['--layer-toast']);
+      const dialog = Number(themes.root['--layer-dialog']);
+
+      expect(menu).toBeGreaterThan(bar); // menu above bar
+      expect(toast).toBeLessThan(dialog); // toast below dialog
+      expect(sticky).toBeLessThan(bar);
+      expect(bar).toBeLessThan(menu);
+      expect(menu).toBeLessThan(toast);
+      expect(toast).toBeLessThan(dialog);
+    });
+  });
+
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
     it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
@@ -720,6 +772,52 @@ describe('tokens.css: static scans over the source tree', () => {
         for (const literal of literals) {
           if (line.includes(literal)) {
             violations.push({ file: path.relative(srcDir, file), line: idx + 1, literal });
+          }
+        }
+      });
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('ensures every allowlisted z-index file has a valid reason', () => {
+    for (const [file, reason] of Object.entries(ALLOWLISTED_Z_INDEX_FILES)) {
+      expect(typeof reason).toBe('string');
+      expect(reason.trim().length, `Allowlisted file ${file} lost its removal reason`).toBeGreaterThan(0);
+    }
+  });
+
+  it('ensures no numeric z-index exists outside the allowlist', () => {
+    const srcDir = path.resolve(__dirname, '..');
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']);
+    const zIndexRegex = /z-index\s*:\s*(-?\d+)\b/g;
+    const violations: { file: string; line: number; value: string; snippet: string }[] = [];
+
+    for (const file of sourceFiles) {
+      const relPath = path.normalize(path.relative(srcDir, file));
+      const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
+
+      const lines = fs.readFileSync(file, 'utf8').split('\n');
+      lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        if (
+          trimmed.startsWith('/*') ||
+          trimmed.startsWith('//') ||
+          trimmed.startsWith('*') ||
+          trimmed.startsWith('<!--')
+        ) {
+          return;
+        }
+
+        let match;
+        while ((match = zIndexRegex.exec(line)) !== null) {
+          if (!isAllowlisted) {
+            violations.push({
+              file: relPath,
+              line: idx + 1,
+              value: match[1],
+              snippet: trimmed,
+            });
           }
         }
       });

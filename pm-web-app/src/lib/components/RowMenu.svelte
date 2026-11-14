@@ -257,8 +257,8 @@
     position: absolute;
     inset-block-start: calc(100% + var(--space-1));
     inset-inline-end: 0;
-    /* A popup layer: above the sticky chrome of the phone frame (20), below a dialog (50). */
-    z-index: 30;
+    /* A popup layer: above the sticky chrome of the phone frame, below a dialog. */
+    z-index: var(--layer-menu);
     display: flex;
     flex-direction: column;
     min-inline-size: 180px;

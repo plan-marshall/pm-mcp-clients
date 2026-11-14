@@ -271,7 +271,7 @@
     position: absolute;
     inset-block-start: calc(100% + var(--space-1));
     inset-inline-end: 0;
-    z-index: 10;
+    z-index: var(--layer-menu);
     display: flex;
     flex-direction: column;
     min-inline-size: 180px;
