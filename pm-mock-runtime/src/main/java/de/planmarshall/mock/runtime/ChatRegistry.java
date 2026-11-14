@@ -1364,7 +1364,7 @@ final class ChatRegistry {
         payload.put(KEY_ACTIVITY, activity);
         payload.put(INTERNAL_KEY, true);
         if (point != null) {
-            payload.put("point", point);
+            payload.put(ARG_POINT, point);
         }
         return new ChatEvent(EVENT_ACTIVITY_CHANGED, new EventScope(EventScopeKind.PLAN, planId, null), payload);
     }

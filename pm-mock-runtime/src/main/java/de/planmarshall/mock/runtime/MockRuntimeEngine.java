@@ -472,6 +472,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_ARG_COUNT = "count";
     private static final String KNOWS_ARG_PHASE = "phase";
     private static final String KNOWS_ARG_VERSION = "version";
+    private static final String ACTIVITY_RUNNING = "running";
     private static final String KEY_PHASE_STATE = "phase_state";
     private static final String KEY_CURRENT_PHASE = "current_phase";
     private static final String KEY_INSTANCE_VERSION = "instance_version";
@@ -1010,7 +1011,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public String activity(String planId) {
         synchronized (controlLock) {
-            return controlPlanStates.getOrDefault(planId, "running");
+            return controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         }
     }
 
@@ -1167,7 +1168,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var phase = planPhases.get(planId);
             if (phase != null) {
                 copy.put(KEY_PHASE, phase);
-                copy.put("current_phase", phase);
+                copy.put(KEY_CURRENT_PHASE, phase);
             }
             var activity = planActivities.get(planId);
             if (activity != null) {
@@ -1994,7 +1995,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     planActivities.put(planId, activity);
                 }
             } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
-                var version = JsonTree.integer(payload, "instance_version");
+                var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
                 if (version != null) {
                     planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
                 }
@@ -3479,7 +3480,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
             }
             var state = JsonTree.string(plan, "state");
-            planStates.put(planId, state != null ? state : "running");
+            planStates.put(planId, state != null ? state : ACTIVITY_RUNNING);
             var epicId = JsonTree.string(plan, "epic_id");
             if (epicId != null) {
                 planEpics.put(planId, epicId);
@@ -3504,10 +3505,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
             }
             var state = JsonTree.string(epic, "state");
-            epicStates.put(epicId, state != null ? state : "running");
+            epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
             epicScope.put(epicId, intMember(epic, "scope"));
-            epicRunning.put(epicId, intMember(epic, "running"));
+            epicRunning.put(epicId, intMember(epic, ACTIVITY_RUNNING));
             epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
             var resource = fixtureObject(epic, "resource",
@@ -5084,7 +5085,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private WorkActions buildPlanActions(String planId) {
-        var state = controlPlanStates.getOrDefault(planId, "running");
+        var state = controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         var epicId = controlPlanEpics.get(planId);
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
@@ -5120,7 +5121,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private WorkActions buildEpicActions(String epicId) {
-        var state = controlEpicStates.getOrDefault(epicId, "running");
+        var state = controlEpicStates.getOrDefault(epicId, ACTIVITY_RUNNING);
         var actions = new ArrayList<ActionAvailability>();
         if ("ended".equals(state)) {
             actions.add(ActionAvailability.enabled("chat"));
@@ -5323,10 +5324,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     event = new PlanControlEvent(eventName, planId, "pausing", point, null).toMap();
                 }
                 case ACTION_START -> {
-                    controlPlanStates.put(planId, "running");
+                    controlPlanStates.put(planId, ACTIVITY_RUNNING);
                     controlPlanPausePoints.remove(planId);
                     eventName = PlanControlEvent.EVENT_RESUMED;
-                    event = new PlanControlEvent(eventName, planId, "running", null, null).toMap();
+                    event = new PlanControlEvent(eventName, planId, ACTIVITY_RUNNING, null, null).toMap();
                 }
                 case ACTION_CANCEL, ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
@@ -5461,7 +5462,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
                 if ("held".equals(controlPlanStates.get(planId))) {
-                    controlPlanStates.put(planId, "running");
+                    controlPlanStates.put(planId, ACTIVITY_RUNNING);
                 }
                 broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
                         hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
@@ -5705,7 +5706,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
                         ReportKind.PLAN_STARTED,
                         "relay-token-store started by relay-hardening (2 of 3 at once)",
-                        Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
+                        Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, ACTIVITY_RUNNING, 2, "scope", 3, "by", "epic"),
                         null,
                         Instant.parse(CONST_TIME_11_21),
                         Instant.parse(CONST_TIME_11_21),
@@ -6183,7 +6184,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     KEY_ERROR, "plan_running",
                     KEY_MESSAGE, planId + " is running; its completion report follows when it ends",
                     "plan", planId,
-                    KEY_STATE, "running"
+                    KEY_STATE, ACTIVITY_RUNNING
             ));
             return;
         }
@@ -6418,7 +6419,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private static boolean ended(@Nullable Object row) {
         var map = JsonTree.asObject(row);
-        return map != null && "ended".equals(JsonTree.string(map, "phase_state"));
+        return map != null && STATE_ENDED.equals(JsonTree.string(map, KEY_PHASE_STATE));
     }
 
     /**
@@ -9637,14 +9638,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         int tasksQueued;
         int activeProjects;
         if (projectFilter != null && !projectFilter.isBlank()) {
-            plansByState = Map.of("running", 2, "waiting_for_you", 1);
-            epicsByState = Map.of("running", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 2, "waiting_for_you", 1);
+            epicsByState = Map.of(ACTIVITY_RUNNING, 1);
             tasksRunning = 2;
             tasksQueued = 3;
             activeProjects = 1;
         } else {
-            plansByState = Map.of("running", 3, "waiting_for_you", 1, "held", 1, "paused", 2);
-            epicsByState = Map.of("running", 1, "waiting_for_you", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 3, "waiting_for_you", 1, "held", 1, "paused", 2);
+            epicsByState = Map.of(ACTIVITY_RUNNING, 1, "waiting_for_you", 1);
             tasksRunning = 4;
             tasksQueued = 6;
             activeProjects = 3;
@@ -9955,12 +9956,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 drainGeneration.incrementAndGet();
                 drainRemainingItems.set(List.of());
                 broadcastEvent("runtime.drain_withdrawn", Map.of(
-                        KEY_LIFECYCLE_STATE, "running",
+                        KEY_LIFECYCLE_STATE, ACTIVITY_RUNNING,
                         KEY_STATUS, "drain_withdrawn"
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", "running"
+                        "lifecycle_state", ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
@@ -10022,7 +10023,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", "running"
+                        "lifecycle_state", ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
@@ -10857,7 +10858,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             summary.put(KEY_TITLE, started.title());
             summary.put("project", started.projectId());
             summary.put(KEY_PHASE, PHASE_EXECUTE);
-            summary.put("state", "running");
+            summary.put("state", ACTIVITY_RUNNING);
             return summary;
         }
         var listRoute = activeRoute("GET", PATH_PLANS);
@@ -10925,7 +10926,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "shipped", "merged", "landed" -> STATE_DONE;
+            case "shipped", STATE_MERGED, "landed" -> STATE_DONE;
             default -> status;
         };
     }
@@ -10968,7 +10969,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static Map<String, Object> synthesizedPlan(@Nullable Map<?, ?> template, String planId,
             Map<String, Object> summary) {
         var phase = summaryText(summary, KEY_PHASE, PHASE_EXECUTE);
-        var phaseState = summaryText(summary, "state", "running");
+        var phaseState = summaryText(summary, "state", ACTIVITY_RUNNING);
         var copy = new LinkedHashMap<String, Object>();
         copy.put(KEY_PLAN_ID, planId);
         copy.put(KEY_TITLE, summaryText(summary, KEY_TITLE, planId));
@@ -10980,12 +10981,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (summary.get("epic") instanceof Map<?, ?> epicRef) {
             copy.put("epic", epicRef);
         }
-        copy.put("current_phase", phase);
-        copy.put("phase_state", phaseState);
+        copy.put(KEY_CURRENT_PHASE, phase);
+        copy.put(KEY_PHASE_STATE, phaseState);
         if ("waiting_for_you".equals(phaseState)) {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
-        copy.put("instance_version", 1);
+        copy.put(KEY_INSTANCE_VERSION, 1);
         copy.put(KEY_NODES, phaseNodes(template, phase, phaseState));
         copy.put("current_position_path", List.of());
         return copy;
@@ -11028,7 +11029,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return the state of a phase a plan without a template names
      */
     private static String phaseFallbackState(String phaseState) {
-        return "running".equals(phaseState) ? "running" : "waiting_for_operator";
+        return ACTIVITY_RUNNING.equals(phaseState) ? ACTIVITY_RUNNING : "waiting_for_operator";
     }
 
     /**
@@ -11082,7 +11083,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return "done";
         }
         if (index == current) {
-            return "running".equals(phaseState) ? "running" : "waiting_for_operator";
+            return ACTIVITY_RUNNING.equals(phaseState) ? ACTIVITY_RUNNING : "waiting_for_operator";
         }
         return "planned";
     }
