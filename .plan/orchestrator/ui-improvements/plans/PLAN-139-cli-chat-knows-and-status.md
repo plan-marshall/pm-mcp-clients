@@ -159,3 +159,12 @@ Lane: `runbook`.
 
 The session touches only its own repository source and tests and creates NO file under `.plan/orchestrator/` other than its
 own `inbox/{sender}-{seq}` message; the orchestrator owns every other ledger write.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`):
+- The re-grounding verdict ":111-116 unverifiable" is now **corroborated**. `queued_revision` is on the plan and on
+  `ActivePlanSummary`.
+- Known mock bug: `plan.paused` (state `pausing`) is narrated as `paused`. Fix routed to PLAN-140 D-R134.
+- The scenario files carry no narrative yet; PLAN-140 D-R134 adds it. Until then, the PTY test drives events
+  through `/mock/broadcast`.

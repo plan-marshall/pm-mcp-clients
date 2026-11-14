@@ -120,6 +120,13 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 8 contradicted: all seven now carry @EnableGeneratorController: Answer* x4 since 98cea294 (#426); CleanupCommandTest, StateDialogueTest, DialogueSourceTest since 56e1ad37 (#425)
 - About 102 of 149 test classes remain without `@EnableGeneratorController` (47 done: #426, #425, #358). The HOLD on PLAN-97 is cleared (#358); `EnrolCommandTest`, `StartCommandTest`, `OnboardCommandTest` remain with no command in main. The 2026-11-13 amendment is partly wrong: `NeedsCommandTest`/`NeedsIT` lack the annotation, `DrainCommandTest` builds bounds from production constants, `ActionMenusTest` has no German assertion.
 
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- `pm-operator` branch coverage stands at 81.8 % against the 80 % gate (#432's measurement, `-Pcoverage` alone). Add targeted tests
+  for the least covered branches, chosen for behaviour, not for lines; report the before/after in the pull request.
+- `-Pcoverage,integration-tests` in ONE invocation under-reports (the agent is prepared twice and the second run overwrites
+  `jacoco.exec`: 63 % instead of 94.2 %). Measure coverage with `-Pcoverage` alone, and state that in this plan's verification.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

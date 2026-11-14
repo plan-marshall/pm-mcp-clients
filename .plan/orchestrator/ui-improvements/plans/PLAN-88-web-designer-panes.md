@@ -112,3 +112,10 @@ sole sanctioned write mechanism are stated in
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Pane layout:** dropped (not designed; the AGREED `process-designer.adoc` § Layout stands). The plan is the D1 component sweep of the designer only.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-149` and `PLAN-150` (no navigation-engine dependency).
+- Nothing is implemented yet (`designer.back` at `designer.en.properties:85`).
+- The pane layout is dropped.
+- The Expected Surface is repeated; merge it.

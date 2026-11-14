@@ -245,3 +245,12 @@ The session implementing this spec touches only its own repository source and te
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the D1 foundation part with KindMark and Link is PLAN-147; the tags and RowLink are PLAN-148.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Every gate is met: D6 (`PLAN-141`, #403), `KindMark`/`Link` (`PLAN-147`, #420), `PLAN-45` and `PLAN-129` shipped. It can be emitted now.
+- Running alongside `PLAN-149` is allowed (operator, 2026-11-14). They share `ReportsView.svelte`, `routes/dev/components/+page.svelte` and `doc/design/web-app/components.adoc`; the second to land rebases.
+- Re-ground at outline:
+  - Claims 4 and 7 are contradicted: `ResizeObserver` is only in `MascotFigure`, and `KindMark`/`Link` already exist.
+  - Re-run `corpus surfaces` (the Expected Surface is at `1cc0e10e`).
+  - Re-read the width tables in `navigation.adoc:118-155`.

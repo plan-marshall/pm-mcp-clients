@@ -214,3 +214,9 @@ Expected Surface (when restarted; the parked rule above still holds until then):
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the views package part that restyles FindingsReviewModal is PLAN-156; this plan keeps only its first-open-item logic and runs after it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-144`, `PLAN-146` (`EpicIntentPanel`) and `PLAN-156` (`FindingsReviewModal` first).
+- Re-ground at outline: `PLAN-47` landed (`actions/byState`, `ActionBar`), so claim 1 is contradicted.
+- `EpicView` is not in the `pageWidth` list.

@@ -229,3 +229,15 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - `AnswerCommand` line refs are stale since `98cea294` (no `chat` yet: the PLAN-140 premise holds). `EpicCommand` chat now at `:699`,
   `PlanCommand` chat at `:799`, `ActionSupport.chat` at `:350-386`. The EOF contract (`StartPrompt.StartLeftException`) and the
   `readOwnWords`/`clarified` path are shared with the answer verb.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). Of the states named at :70-73, these exist in the mock:
+- conflict (`chat.finding.changed_since`);
+- already queued;
+- lapsed.
+
+"The role says no change yet" does not exist: the scripted replies propose at index 1. Script that state in this
+plan's tests, or route it to PLAN-140 D-R134.
+
+A REFUSED proposal stays rejectable (operator, 2026-11-14), so the dialogue offers reject on it.

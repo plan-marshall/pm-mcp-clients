@@ -250,3 +250,9 @@ The session implementing this spec touches only its own repository source and te
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: KindMark and Link are PLAN-147; RowLink is PLAN-148.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-142` and `PLAN-143` land (D6 met, `PLAN-130` shipped).
+- Re-ground at outline: claim 6 is stale, since `KindMark`, `Link` and `RowLink` exist.
+- It overlaps `PLAN-49` and `PLAN-85` on `NavRail`/`chrome.spec`; 144 goes first.

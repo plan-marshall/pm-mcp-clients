@@ -151,3 +151,9 @@ phone shows the onboarding without the icon.
 
 - Done when (added): the onboarding header shows `BrandMark` (colour, `28` px) beside the wordmark below `768` px as well, with one
   mark per screen; a component or e2e test at a phone width fails when the mark is missing.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-60` and `PLAN-150`, in the same wave as `PLAN-66`. D3 is met (PLAN-130/131).
+- Re-ground at outline: the brand icon is 28 px on phones (PLAN-130 residue).
+- There is a second Expected Surface block after the Write-Boundary; merge it.

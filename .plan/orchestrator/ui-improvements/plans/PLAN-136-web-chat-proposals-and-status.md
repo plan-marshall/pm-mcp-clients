@@ -229,3 +229,23 @@ are now optional (PLAN-132, `572dc739`), but `DecisionView.svelte:375-381` (`clo
 an absent device to "—". Carry "absent stays absent" to this consumer: no channel names no channel, no device selects the
 `decision_answered_no_device` wording (`work-actions-chat-texts.adoc:17`). Done when a `DecisionView.test.ts` case for each absence
 fails on revert. Expected surface added: `pm-web-app/src/lib/views/DecisionView.svelte`, `pm-web-app/src/lib/views/DecisionView.test.ts`.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). The facts this plan builds on:
+- The mock emits **notice turns** and `chat.turn.started.context`.
+- The plan and its overview row carry `queued_revision`.
+- Refusals arrive as `chat.finding.changed_since`, `already_queued` and `check_failed`.
+
+Two things are still open, and the operator decided both on 2026-11-14. PLAN-140 D-R134 takes them:
+- REFUSED stays **rejectable**: the UI offers reject on a refused proposal.
+- Conflict and lapse get a catalogue line, emitted as a notice (named first in pm-mcp-core `state-catalogue.adoc`).
+
+The scenario files carry no narrative and no decision chat yet; PLAN-140 D-R134 adds them. Until then, the browser
+check drives events through `/mock/broadcast`. Re-ground :38-44 and :69-77 against `7adb56c2`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-135` lands.
+- Re-ground at outline: the Overview rows have no second-line slot (claim 5).
+- The scenario files carry no narrative until `PLAN-140` D-R134; until then, drive the browser check through `/mock/broadcast`.

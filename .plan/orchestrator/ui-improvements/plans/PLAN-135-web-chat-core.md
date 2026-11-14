@@ -259,6 +259,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 10 contradicted: No plan or epic route sits on TriagePage: only ReportsView uses it (:956); TriagePage has no side/sideOpen/onHideSide; PLAN-142/144 not landed
 - KindMark, Link, ExternalLink, PrChip, Compose, FormStatus and RowLink exist (#420, #427): D1 shrinks to what is missing. No chat place sits on a template yet (PLAN-142 not landed).
 
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- **`chat.ended` refreshes the entry (operator: "Refresh the entry").** `StartView` refreshes the entry on the entry stream's events
+  only; `chat.turn.*` and `chat.proposal` go to the chat's own read and `chat.ended` refreshes nothing. On `chat.ended` re-read the entry
+  (state and offered acts); a test drives the event and sees the re-read.
+- `client.test.ts` lost its chat rows in #432's rebase: check that the dedicated chat tests cover the EPIC and the REJECT variants of the
+  subject chat routes, and add what is missing.
+
 ## Hand-Off Command
 
 Lane: `runbook`.
@@ -283,3 +291,16 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus is PLAN-147; the side column is decided by PLAN-141 (D6).
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). The transcript now receives `notice` turns (cumulative lines,
+possibly re-completed under the same turn id) and `chat.turn.started.context`. The core renderer must ignore or
+render them without breaking, even if this plan lands before PLAN-136.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-142` and `PLAN-144` D4 (plan and epic routes on the engine). Met: `PLAN-130`, `PLAN-132` to `PLAN-134`, `PLAN-147`, and O1/O2/O6/O7.
+- Re-ground at outline: there is no chat place on `TriagePage` yet (claim 10).
+- It carries residue from `PLAN-161`, the `#432` finding and `PLAN-134` (see the amendments above).
+- The `marked` dependency is operator-approved.

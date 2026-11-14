@@ -239,3 +239,12 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the views package parts this plan waits for are PLAN-155 (decomposition and start sub-steps) and PLAN-156 (modals and pickers).
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed without fixtures (#428). D3's decision chat and the start chat need these, which PLAN-140
+D-R134 adds:
+- a seeded decision chat;
+- epic and entry knows and narrative in `running-work.json` and `fully-onboarded.json`.
+
+Sequence D3 after that, or drive the events through `/mock/broadcast`.
