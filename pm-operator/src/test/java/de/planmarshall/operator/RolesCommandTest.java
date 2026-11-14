@@ -142,7 +142,7 @@ class RolesCommandTest {
         fixture.start((request, response) -> response.json(500, "{\"code\":\"internal_fault\"}"));
 
         assertEquals(1, execute("", "roles", "list"));
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertTrue(err.toString().contains("The runtime hit an unexpected fault"), err.toString());
     }
 
     @Test

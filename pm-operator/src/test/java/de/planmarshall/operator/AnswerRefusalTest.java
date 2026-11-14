@@ -44,8 +44,6 @@ import org.junit.jupiter.api.io.TempDir;
 @EnableGeneratorController
 class AnswerRefusalTest {
 
-    private static final String REFUSED = "refused by the runtime";
-
     @TempDir
     Path tempDir;
 
@@ -85,7 +83,7 @@ class AnswerRefusalTest {
         var code = run("en", "x\n\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -111,7 +109,7 @@ class AnswerRefusalTest {
         var code = run("en", ("w\n" + words + "\n\n").getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -121,8 +119,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-999", "later");
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
     }
 
     @Test
@@ -212,8 +210,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", planId);
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
         assertTrue(targets.stream().noneMatch(t -> t.contains("/api/v1/questions/")), targets.toString());
     }
 
@@ -226,7 +224,7 @@ class AnswerRefusalTest {
         var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -246,6 +244,176 @@ class AnswerRefusalTest {
 
         assertEquals(3, code, err.toString());
         assertTrue(out.toString().contains("Choose: 9999999999, 2"), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal conflict renders decision as it stands and exits 1 in English")
+    void conflictRefusalEnglish() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(409, "{\"error\":\"conflict\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Question Q-001"), out.toString());
+        assertTrue(out.toString().contains("Something changed in the meantime: the decision was updated."), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal conflict renders decision as it stands and exits 1 in German")
+    void conflictRefusalGerman() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(409, "{\"error\":\"conflict\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("de", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Frage Q-001"), out.toString());
+        assertTrue(out.toString().contains("In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert."), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal already_answered renders decision as it stands and exits 1 in English")
+    void alreadyAnsweredRefusalEnglish() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(409, "{\"error\":\"already_answered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Question Q-001"), out.toString());
+        assertTrue(out.toString().contains("The question was already answered elsewhere."), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal already_answered renders decision as it stands and exits 1 in German")
+    void alreadyAnsweredRefusalGerman() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(409, "{\"error\":\"already_answered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("de", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Frage Q-001"), out.toString());
+        assertTrue(out.toString().contains("Die Frage wurde bereits an anderer Stelle beantwortet."), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal invalid_answer renders decision as it stands and exits 1 in English")
+    void invalidAnswerRefusalEnglish() throws Exception {
+        var reason = text();
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(400, "{\"error\":\"invalid_answer\",\"message\":\"%s\"}".formatted(reason));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Question Q-001"), out.toString());
+        assertTrue(out.toString().contains("This answer does not fit the part: " + reason), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal invalid_answer renders decision as it stands and exits 1 in German")
+    void invalidAnswerRefusalGerman() throws Exception {
+        var reason = text();
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(400, "{\"error\":\"invalid_answer\",\"message\":\"%s\"}".formatted(reason));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("de", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Frage Q-001"), out.toString());
+        assertTrue(out.toString().contains("Diese Antwort passt nicht zu dem Teil: " + reason), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal dependency_unanswered renders decision as it stands and exits 1 in English")
+    void dependencyUnansweredRefusalEnglish() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(400, "{\"error\":\"dependency_unanswered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Question Q-001"), out.toString());
+        assertTrue(out.toString().contains("Answer part 1 first."), out.toString());
+    }
+
+    @Test
+    @DisplayName("decision refusal dependency_unanswered renders decision as it stands and exits 1 in German")
+    void dependencyUnansweredRefusalGerman() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(400, "{\"error\":\"dependency_unanswered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = run("de", new byte[0], "answer", "Q-001", "1");
+
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Frage Q-001"), out.toString());
+        assertTrue(out.toString().contains("Beantworte zuerst Teil 1."), out.toString());
     }
 
     private void assertGerman(String expected, String... args) {

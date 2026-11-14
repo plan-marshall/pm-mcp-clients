@@ -344,7 +344,7 @@ class PlanCommandTest {
 
         int code = execute("plan", "p-missing");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Plan p-missing not found."));
+        assertTrue(out.toString().contains("This entry does not exist"));
     }
 
     @Test
@@ -708,7 +708,7 @@ class PlanCommandTest {
 
         int code = execute("plan", "report", "non-existent");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Plan non-existent not found."));
+        assertTrue(out.toString().contains("This entry does not exist"));
     }
 
     @Test

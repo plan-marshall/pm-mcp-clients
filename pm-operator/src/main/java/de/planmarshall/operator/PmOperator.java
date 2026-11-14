@@ -185,6 +185,16 @@ public final class PmOperator implements Callable<Integer> {
                 err.flush();
                 return ose.exitCode();
             }
+            if (exception instanceof OperatorRefusedException ore) {
+                if (ore.exitCode() == 4) {
+                    err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(ore.getMessage()));
+                    err.flush();
+                    return 4;
+                }
+                RefusalRenderer.render(err, context.locale(), ore);
+                err.flush();
+                return ore.exitCode();
+            }
             err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(exception.getMessage()));
             err.flush();
             return EXIT_FAILURE;

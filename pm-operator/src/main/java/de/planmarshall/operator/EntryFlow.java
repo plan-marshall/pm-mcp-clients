@@ -297,7 +297,7 @@ public final class EntryFlow {
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
         } catch (OperatorRefusedException e) {
-            out.println(e.getMessage());
+            RefusalRenderer.render(out, locale, e);
             out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));

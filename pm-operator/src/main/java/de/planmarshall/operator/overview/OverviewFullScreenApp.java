@@ -306,6 +306,9 @@ public final class OverviewFullScreenApp {
 
         var runtime = context.runtime(true);
         loadInitialData(runtime);
+        if (initialSelection.plan() != null && currentPlanView.get() == null) {
+            return null;
+        }
 
         noticeBuffer.activate();
         Thread sseThread = startEventListener();

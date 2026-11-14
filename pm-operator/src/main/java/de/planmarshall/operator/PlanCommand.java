@@ -31,6 +31,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessNode;
@@ -149,8 +150,7 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
                 if (response.status() == 404) {
-                    out.printf("Task %s or plan %s not found.%n", activity, planId);
-                    out.flush();
+                    RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                     return 1;
                 }
                 throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
@@ -181,8 +181,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             throw new OperatorRefusedException("plan " + planId, response);
@@ -866,8 +865,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 1;
             }
             if (response.status() == 404) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             if (response.status() == 200) {
@@ -1270,8 +1268,7 @@ public final class PlanCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var settings = loadSettings();
             if (settings == null) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
 

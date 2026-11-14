@@ -25,6 +25,7 @@ import de.planmarshall.api.decomposition.StagedPlanRecord;
 import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -74,8 +75,7 @@ public final class DecomposeCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var cut = DecompositionSupport.load(context, DecompositionSupport.project(project), epicId);
         if (cut == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
+            RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         if (instruction != null && !instruction.isBlank()) {
@@ -83,8 +83,7 @@ public final class DecomposeCommand implements Callable<Integer> {
             cut = DecompositionSupport.instruct(context, DecompositionSupport.project(project), epicId,
                                 requested);
             if (cut == null) {
-                out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
         }
@@ -128,8 +127,7 @@ final class ReviewCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(project);
         var cut = DecompositionSupport.check(context, projectId, epicId);
         if (cut == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
+            RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         DecompositionSupport.printTree(out, cut);
@@ -221,15 +219,13 @@ final class InstructCommand implements Callable<Integer> {
         }
         var before = DecompositionSupport.load(context, projectId, epicId);
         if (before == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
+            RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         var requested = new DecompositionInstructRequest(plan, instruction, resolvedAction);
         var after = DecompositionSupport.instruct(context, projectId, epicId, requested);
         if (after == null) {
-            out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
-            out.flush();
+            RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         DecompositionSupport.printReadBack(out, before, after, plan);

@@ -39,6 +39,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 
 import picocli.CommandLine.Command;
@@ -319,7 +320,11 @@ public final class AnswerCommand implements Callable<Integer> {
             laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
             var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
             if (!isAccepted(laterResponse.status())) {
-                throw new OperatorRefusedException("later " + questionId, laterResponse);
+                var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
+                if (laterEnvelope != null && isDecisionRefusal(refusal.code())) {
+                    return handleDecisionRefusal(out, laterEnvelope, refusal, locale);
+                }
+                throw refusal;
             }
             out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
                                 ID_KEY, questionId,
@@ -343,7 +348,11 @@ public final class AnswerCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            throw new OperatorRefusedException("withdraw " + questionId, resp);
+            var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
+            if (withdrawEnvelope != null && isDecisionRefusal(refusal.code())) {
+                return handleDecisionRefusal(out, withdrawEnvelope, refusal, locale);
+            }
+            throw refusal;
         }
 
         if (effectiveAction != null
@@ -393,7 +402,11 @@ public final class AnswerCommand implements Callable<Integer> {
             printAnswerSuccess(out, envelope, effectiveAction, locale);
             return 0;
         }
-        throw new OperatorRefusedException("answer " + questionId, response);
+        var refusal = new OperatorRefusedException("answer " + questionId, response);
+        if (envelope != null && isDecisionRefusal(refusal.code())) {
+            return handleDecisionRefusal(out, envelope, refusal, locale);
+        }
+        throw refusal;
     }
 
     /**
@@ -763,19 +776,36 @@ public final class AnswerCommand implements Callable<Integer> {
                 return result.exitCode().getAsInt();
             }
             progress = result.progress();
-            if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
-                return submitAnswers(session, envelope, parts, answers, progress.note());
+            try {
+                if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
+                    return submitAnswers(session, envelope, parts, answers, progress.note());
+                }
+                var confirm = confirmAnswers(session, envelope, parts, answers);
+                if (confirm.submit()) {
+                    return submitAnswers(session, envelope, parts, answers, progress.note());
+                }
+                var reopenIndex = confirm.reopenIndex();
+                if (reopenIndex == null) {
+                    return confirm.exitCode();
+                }
+                progress = new Progress(reopenIndex, progress.note());
+                answers.keySet().removeIf(key -> key >= reopenIndex);
+            } catch (OperatorRefusedException refused) {
+                if (refused.code() == ApiErrorCode.INVALID_ANSWER || refused.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
+                    var wire = refused.code().wire();
+                    var reason = refused.serverMessage() != null ? refused.serverMessage() : "";
+                    session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
+                            "reason", reason,
+                            "n", 1
+                    )));
+                    session.out().flush();
+                    continue;
+                }
+                if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
+                    return handleDecisionRefusal(session.out(), envelope, refused, session.locale());
+                }
+                throw refused;
             }
-            var confirm = confirmAnswers(session, envelope, parts, answers);
-            if (confirm.submit()) {
-                return submitAnswers(session, envelope, parts, answers, progress.note());
-            }
-            var reopenIndex = confirm.reopenIndex();
-            if (reopenIndex == null) {
-                return confirm.exitCode();
-            }
-            progress = new Progress(reopenIndex, progress.note());
-            answers.keySet().removeIf(key -> key >= reopenIndex);
         }
     }
 
@@ -1628,6 +1658,27 @@ public final class AnswerCommand implements Callable<Integer> {
             return "operator.decision.confirm_title_parts";
         }
         return "operator.decision.confirm_title";
+    }
+
+    private static boolean isDecisionRefusal(@Nullable ApiErrorCode code) {
+        return code == ApiErrorCode.CONFLICT
+                || code == ApiErrorCode.ALREADY_ANSWERED
+                || code == ApiErrorCode.INVALID_ANSWER
+                || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
+    }
+
+    private int handleDecisionRefusal(PrintWriter out, DecisionEnvelope envelope,
+            OperatorRefusedException refusal, String locale) {
+        printDecisionDetail(out, envelope, locale);
+        var wire = refusal.code() != null ? refusal.code().wire() : "conflict";
+        var key = "decision.refused." + wire;
+        var reason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
+        out.println(MessageCatalogue.format(locale, key, Map.of(
+                "reason", reason,
+                "n", 1
+        )));
+        out.flush();
+        return 1;
     }
 
     private static String getMessage(String locale, String key) {
