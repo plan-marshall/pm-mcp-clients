@@ -24,6 +24,8 @@
         <sonar.test.inclusions>**/*.test.ts,**/*.test.js</sonar.test.inclusions>
         <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
         <sonar.cpd.exclusions>**/*</sonar.cpd.exclusions>
+        <!-- Written by the profile coverage (npm run test:coverage, vite.config.ts test.coverage) -->
+        <sonar.javascript.lcov.reportPaths>${project.basedir}/target/coverage/lcov.info</sonar.javascript.lcov.reportPaths>
     </properties>
 
     <build>
@@ -178,4 +180,29 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- The unit tests with the V8 coverage of Vitest: the npm-test execution runs test:coverage in
+             place of test:ci, so the tests run once and the default build measures nothing. The lcov
+             report lands in target/coverage, where sonar.javascript.lcov.reportPaths reads it. -->
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>npm-test</id>
+                                <configuration>
+                                    <arguments>run test:coverage</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

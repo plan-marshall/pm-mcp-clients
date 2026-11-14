@@ -20,7 +20,6 @@
     completedStepNumbers,
     requestedOnboardingStep,
   } from '../stores/runtime';
-  import type { HypermediaLink } from '../api/client';
 
   let isSubmitting = false;
   let selectedStep: number | null = null;
@@ -62,29 +61,25 @@
 
   $: offeredLinks = getLinks(currentState);
 
+  /**
+   * A link the state offers. A step is taken by naming the link's id on the onboarding's one
+   * step resource, so the link's own href is never followed and not kept.
+   */
   interface OfferedLink {
     id: string;
-    link: HypermediaLink;
     isPrimary: boolean;
   }
 
-  /**
-   * Reads the links a state offers, keeping the order the runtime reported and normalising
-   * each href to a path this app may follow.
-   */
+  /** Reads the links a state offers, keeping the order the runtime reported. */
   function getLinks(state: typeof currentState): OfferedLink[] {
     if (!state) return [];
     const rawLinks = onboardingState?.links ?? state.links ?? state._links;
     if (!rawLinks || typeof rawLinks !== 'object') return [];
 
-    return Object.entries(rawLinks).map(([id, val], index, arr) => {
-      let link: HypermediaLink = typeof val === 'string' ? { href: val } : { ...val };
-      if (!link.href || !link.href.startsWith('/') || link.href.startsWith('//')) {
-        link = { ...link, href: `/${(link.href ?? '').replace(/^[/.]+/, '')}` };
-      }
-      const isPrimary = index === arr.length - 1;
-      return { id, link, isPrimary };
-    });
+    return Object.keys(rawLinks).map((id, index, arr) => ({
+      id,
+      isPrimary: index === arr.length - 1,
+    }));
   }
 
   /** The label of a link, from the catalogue; a link without a key keeps its id. */
@@ -102,14 +97,17 @@
     return undefined;
   }
 
-  async function handleLinkClick(id: string, link: HypermediaLink, body: Record<string, unknown> = {}) {
+  /**
+   * Takes the step a link names; a refused step leaves the state as it is (the store's own rule).
+   *
+   * @param id the link's id
+   * @param body what the step records
+   */
+  async function handleLinkClick(id: string, body: Record<string, unknown> = {}) {
     if (isSubmitting) return;
     isSubmitting = true;
     try {
       await stepOnboarding(id, body);
-      void link;
-    } catch {
-      // A refused step leaves the state as it is.
     } finally {
       isSubmitting = false;
     }
@@ -130,14 +128,14 @@
       ? (linkBy('remember', 'yes') ?? offeredLinks[offeredLinks.length - 1])
       : (linkBy('yes', 'remember') ?? offeredLinks[offeredLinks.length - 1]);
     if (target) {
-      void handleLinkClick(target.id, target.link, { remember });
+      void handleLinkClick(target.id, { remember });
     }
   }
 
   function handleConsentDecline() {
     const target = linkBy('no', 'decline') ?? offeredLinks[0];
     if (target) {
-      void handleLinkClick(target.id, target.link, { remember: false });
+      void handleLinkClick(target.id, { remember: false });
     }
   }
 
@@ -355,11 +353,11 @@
             <p class="model-working__note">{$t('common.model.leave_note')}</p>
             {#if offeredLinks.length > 0}
               <div class="state-card__actions">
-                {#each offeredLinks as { id, link }}
+                {#each offeredLinks as { id }}
                   <Button
                     variant="secondary"
                     loading={isSubmitting}
-                    on:click={() => handleLinkClick(id, link)}
+                    on:click={() => handleLinkClick(id)}
                   >
                     {$t('common.model.continue_without')}
                   </Button>
@@ -385,11 +383,11 @@
 
             <div class="state-card__actions">
               {#if offeredLinks.length > 0}
-                {#each offeredLinks as { id, link, isPrimary }}
+                {#each offeredLinks as { id, isPrimary }}
                   <Button
                     variant={isPrimary ? 'primary' : 'secondary'}
                     loading={isSubmitting}
-                    on:click={() => handleLinkClick(id, link)}
+                    on:click={() => handleLinkClick(id)}
                   >
                     {#if id === 'auto'}
                       {$t('onboard.mode.auto')}
@@ -407,8 +405,7 @@
                 <Button
                   variant="primary"
                   loading={isSubmitting}
-                  on:click={() =>
-                    void handleLinkClick('begin', { href: '/api/v1/onboarding/language' })}
+                  on:click={() => void handleLinkClick('begin')}
                 >
                   {$t('onboard.mode.guided')}
                 </Button>
@@ -432,7 +429,7 @@
               onRecord={(choice) => {
                 const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
                 if (target) {
-                  void handleLinkClick(target.id, target.link, {
+                  void handleLinkClick(target.id, {
                     language_interface: choice.interface,
                     language_model: choice.model === 'same' ? choice.interface : choice.model,
                   });
@@ -452,7 +449,7 @@
               busy={isSubmitting}
               onCheck={() => {
                 const target = linkBy('choose', 'check') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -478,11 +475,11 @@
               {/if}
             </dl>
             <div class="state-card__actions">
-              {#each offeredLinks as { id, link, isPrimary }}
+              {#each offeredLinks as { id, isPrimary }}
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
+                  on:click={() => handleLinkClick(id)}
                 >
                   {linkLabel(id)}
                 </Button>
@@ -505,11 +502,11 @@
               </p>
             {/if}
             <div class="state-card__actions">
-              {#each offeredLinks as { id, link, isPrimary }}
+              {#each offeredLinks as { id, isPrimary }}
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
+                  on:click={() => handleLinkClick(id)}
                 >
                   {linkLabel(id)}
                 </Button>
@@ -529,7 +526,7 @@
               busy={isSubmitting}
               onRecord={() => {
                 const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -546,7 +543,7 @@
               busy={isSubmitting}
               onRecord={() => {
                 const target = linkBy('accept', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -563,7 +560,7 @@
               busy={isSubmitting}
               onRecord={(choice) => {
                 const target = linkBy(String(choice), 'os', 'file') ?? offeredLinks[0];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -580,7 +577,7 @@
               busy={isSubmitting}
               onRecord={() => {
                 const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -612,11 +609,11 @@
               {/if}
             </dl>
             <div class="state-card__actions">
-              {#each offeredLinks as { id, link, isPrimary }}
+              {#each offeredLinks as { id, isPrimary }}
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
+                  on:click={() => handleLinkClick(id)}
                 >
                   {linkLabel(id)}
                 </Button>
@@ -641,7 +638,7 @@
               busy={isSubmitting}
               onRecord={() => {
                 const target = linkBy('accept', 'set') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) void handleLinkClick(target.id);
               }}
             />
           </div>
@@ -671,11 +668,11 @@
               </tbody>
             </table>
             <div class="state-card__actions">
-              {#each offeredLinks as { id, link, isPrimary }}
+              {#each offeredLinks as { id, isPrimary }}
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
+                  on:click={() => handleLinkClick(id)}
                 >
                   {linkLabel(id)}
                 </Button>
@@ -708,11 +705,11 @@
               {#if offeredLinks.length === 0}
                 <p class="state-card__next">{$t('onboard.state.no_links')}</p>
               {:else}
-                {#each offeredLinks as { id, link, isPrimary }}
+                {#each offeredLinks as { id, isPrimary }}
                   <Button
                     variant={isPrimary ? 'primary' : 'secondary'}
                     loading={isSubmitting}
-                    on:click={() => handleLinkClick(id, link)}
+                    on:click={() => handleLinkClick(id)}
                   >
                     {linkLabel(id)}
                   </Button>

@@ -825,9 +825,11 @@ function normaliseTokenBreakdown(raw: unknown): TokenBreakdownItem {
     output: number('output', 'output_tokens'),
     unmeasured: number('unmeasured', 'unmeasured_tasks'),
     floor: line['floor'] === true || line['is_floor'] === true,
-    harness_model: text('harness_model'),
+    // The record writes the role's pin (`claude:opus-5.5 · high`) as `details`; the raw token
+    // components travel as `components` of their own.
+    harness_model: text('harness_model', 'details'),
     effort: text('effort'),
-    components: (line['components'] ?? line['details']) as TokenComponentRecord | undefined,
+    components: line['components'] as TokenComponentRecord | undefined,
   };
 }
 
@@ -2293,18 +2295,17 @@ export class ApiClient {
     this.onStreamStateCallback?.(state);
   }
 
+  // The app renders in the browser only (`ssr = false` in the root layout), so `localStorage` is
+  // always there when a method of the client runs.
   public getSecret(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_SECRET);
   }
 
   public getLabel(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_LABEL);
   }
 
   public getDeviceId(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_DEVICE_ID);
   }
 
@@ -2313,7 +2314,6 @@ export class ApiClient {
   }
 
   public clearAuth(): void {
-    if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY_SECRET);
     localStorage.removeItem(STORAGE_KEY_DEVICE_ID);
     localStorage.removeItem(STORAGE_KEY_LABEL);
@@ -2344,17 +2344,11 @@ export class ApiClient {
     }
 
     const data = await this.readBody<PairingResponse>(res, undefined, deadline);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
-      localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
-      localStorage.setItem(STORAGE_KEY_LABEL, data.label);
-    }
+    localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
+    localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
+    localStorage.setItem(STORAGE_KEY_LABEL, data.label);
 
     return data;
-  }
-
-  public async getAvailableMessages(): Promise<{ locales: string[]; areas: string[] }> {
-    return this.request<{ locales: string[]; areas: string[] }>('GET', '/api/v1/messages');
   }
 
   public async getMessages(locale: string, area = 'all'): Promise<Record<string, string>> {
@@ -2633,14 +2627,6 @@ export class ApiClient {
       `/api/v1/projects/${encodeURIComponent(request.project_id)}/epics/start`,
       request,
     );
-  }
-
-  public async draftIntake(request: {
-    project_id: string;
-    prompt?: string;
-    sources?: SourceInput[];
-  }): Promise<IntakeDraft> {
-    return this.request<IntakeDraft>('POST', '/api/v1/intake/draft', request);
   }
 
   private decompositionPath(projectId: string, epicId: string): string {
@@ -3018,14 +3004,12 @@ export class ApiClient {
     await this.request('DELETE', '/api/v1/web/devices?others');
   }
 
+  /**
+   * Closes the network listener; the loopback listener stays. A refusal reaches the caller with
+   * its code.
+   */
   public async turnOffLanListener(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/web/listeners/lan');
-    } catch (err) {
-      const msg = (err as Error)?.message;
-      if (msg !== 'HTTP 404' && msg !== 'HTTP 405') throw err;
-      await this.request('PUT', '/api/v1/web', { lan: false });
-    }
+    await this.request('DELETE', '/api/v1/web/listeners/lan');
   }
 
   public async getReports(older = false, project?: string): Promise<ReportsPage> {
@@ -3097,14 +3081,6 @@ export class ApiClient {
     const qs = q.toString();
     if (qs) path += `?${qs}`;
     return this.request<DecisionEnvelope[]>('GET', path);
-  }
-
-  public async getDecision(id: string, plan?: string): Promise<DecisionEnvelope> {
-    const safeQid = encodeURIComponent(id);
-    const path = plan
-      ? `/api/v1/plans/${encodeURIComponent(plan)}/decisions/${safeQid}`
-      : `/api/v1/decisions/${safeQid}`;
-    return this.request<DecisionEnvelope>('GET', path);
   }
 
   public async answerDecision(
@@ -3184,28 +3160,12 @@ export class ApiClient {
     return this.request<{ status: string }>('POST', '/api/v1/operator/runtime/upgrade', body);
   }
 
+  /**
+   * Withdraws the upgrade on the runtime's own route; a refusal (`not_withdrawable`, a switched
+   * link) reaches the caller with its code.
+   */
   public async withdrawUpgrade(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
-    } catch (err: unknown) {
-      // The operator channel is the runtime's own withdraw. A deployment that offers only the
-      // system route is the fallback; a refused withdraw (the links are switched) is not retried.
-      const status = (err as Error & { status?: number })?.status;
-      const message = (err as Error)?.message ?? '';
-      if (status === 409 || message.includes('not_withdrawable')) throw err;
-      const routeUnavailable =
-        status === 404 ||
-        status === 405 ||
-        message.includes('mock_no_route') ||
-        message.includes('unknown_route') ||
-        message.includes('no route');
-      if (!routeUnavailable) throw err;
-      try {
-        await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
-      } catch {
-        throw err;
-      }
-    }
+    await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
   }
 
   public async checkUpgrade(): Promise<{
@@ -3259,10 +3219,6 @@ export class ApiClient {
   ): Promise<{ released_count: number }> {
     const body = all ? { all: true } : { item_ids: itemIds || [] };
     return this.request<{ released_count: number }>('PUT', '/api/v1/system/cleanup/kept', body);
-  }
-
-  public async getCleanupDurations(): Promise<CleanupDurations> {
-    return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
   /**
@@ -4204,11 +4160,10 @@ export class ApiClient {
         });
 
         if (res.status === 401) {
-          // The stream always carries the secret, so this is a genuine auth loss.
-          if (secret) {
-            this.clearAuth();
-            this.onRevokedCallback?.('unauthorized');
-          }
+          // The stream always carries the secret (connect returns without one), so this is a
+          // genuine auth loss.
+          this.clearAuth();
+          this.onRevokedCallback?.('unauthorized');
           abortAll();
           onState?.('offline');
           return;
@@ -4265,7 +4220,6 @@ export class ApiClient {
         }
       } catch {
         currentReader = undefined;
-        if (internalController.signal.aborted) return;
         if (active && !internalController.signal.aborted) {
           reconnect();
         }
@@ -4325,14 +4279,11 @@ function handleSseMessage(
   try {
     const parsed = JSON.parse(eventData);
     onEvent(eventType, parsed);
-    if (eventType === 'stream.closed') {
-      if (parsed.reason === 'device_revoked' || parsed.reason === 'device_expired') {
-        onRevoke(parsed);
-        return true;
-      }
-    }
-    if (eventType === 'web_device_revoked') {
-      onRevoke(parsed.reason || parsed);
+    if (
+      eventType === 'stream.closed' &&
+      (parsed.reason === 'device_revoked' || parsed.reason === 'device_expired')
+    ) {
+      onRevoke(parsed);
       return true;
     }
   } catch {

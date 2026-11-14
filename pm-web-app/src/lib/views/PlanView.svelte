@@ -123,8 +123,8 @@
 
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
+      // The runtime stream's events that change a plan's process (`EventName`).
       if (
-        event === 'plan.changed' ||
         event === 'activity.changed' ||
         event === 'phase.changed' ||
         event === 'task.off_track' ||
@@ -399,29 +399,28 @@
     };
   }
 
-  function jumpToCurrentPosition() {
-    if (!plan) return;
-    const path = plan.current_position_path || [];
+  /** Opens the path to the current position and selects what runs there; offered with a plan. */
+  function jumpToCurrentPosition(current: ProcessTree) {
+    const path = current.current_position_path;
     const nextExp = { ...expandedNodes };
     for (const p of path) {
       nextExp[p] = true;
     }
     expandedNodes = nextExp;
 
-    const running = findRunningTask(plan.nodes);
+    const running = findRunningTask(current.nodes);
     if (running) {
       selection = { kind: 'task', taskId: running.task_id };
     } else {
-      const runningNode = findRunningNode(plan.nodes);
+      const runningNode = findRunningNode(current.nodes);
       if (runningNode) {
         selection = { kind: 'node', nodeId: runningNode.node_id };
       }
     }
-    if (typeof document !== 'undefined') {
-      const el = document.querySelector('.node-item--running, .node-item--waiting');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    // The app renders in the browser only (`ssr = false` in the root layout).
+    const el = document.querySelector('.node-item--running, .node-item--waiting');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -433,8 +432,13 @@
     });
   }
 
-  function formatTokensLine(tokens?: ProcessTokens | null, loc: Locale = 'en'): string {
-    if (!tokens || tokens.none_yet) {
+  /**
+   * @param tokens the plan's tokens, which the process resource always carries
+   * @param loc the interface language
+   * @returns the tokens line
+   */
+  function formatTokensLine(tokens: ProcessTokens, loc: Locale): string {
+    if (tokens.none_yet) {
       return $t('plan.view.tokens_none');
     }
     if (tokens.not_measured) {
@@ -663,7 +667,7 @@
             onclick={() => openProject(plan!.project.project_id)}
             data-testid="breadcrumb-project"
           >
-            {plan.project?.display_name || plan.project?.project_id || 'project'}
+            {plan.project.display_name || plan.project.project_id}
           </button>
           {#if plan.epic}
             <span class="breadcrumb-sep">›</span>
@@ -692,7 +696,7 @@
           </Button>
           <Button
             variant="secondary"
-            onclick={jumpToCurrentPosition}
+            onclick={() => jumpToCurrentPosition(plan!)}
             data-testid="jump-btn"
             data-advisory={$t('plan.path.jump.title')}
           >
@@ -794,7 +798,7 @@
       <div class="plan-tokens mono" data-testid="plan-tokens">
         <span class="tokens-label">{$t('plan.view.tokens')}</span>
         <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
-        {#if plan.tokens_so_far && !plan.tokens_so_far.none_yet}
+        {#if !plan.tokens_so_far.none_yet}
           <button
             class="tokens-toggle"
             aria-expanded={showTokenBreakdown}
@@ -809,7 +813,7 @@
         {/if}
       </div>
 
-      {#if showTokenBreakdown && plan.tokens_so_far}
+      {#if showTokenBreakdown}
         <div class="token-breakdown" id="plan-token-breakdown" data-testid="token-breakdown">
           {#if isLoadingBreakdown}
             <div class="token-breakdown__empty">
@@ -971,7 +975,9 @@
                         <span class="task-id font-semibold">{task.task_id}</span>
                         <span class="task-role">{task.role}</span>
                         <span class="task-model">{task.harness} {task.model}</span>
-                        <span class="task-attempt">attempt {task.attempt}</span>
+                        <span class="task-attempt"
+                          >{$t('plan.node.attempt', { attempt: task.attempt })}</span
+                        >
                         <span class="task-status badge badge--state badge--state-{task.status}"
                           >{displayState('task', task.status, $t)}</span
                         >
@@ -1032,7 +1038,9 @@
                   <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
                   <span class="task-role-tag">{taskActivity.role}</span>
                   <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
-                  <span class="task-meta">attempt {taskActivity.attempt}</span>
+                  <span class="task-meta" data-testid="activity-attempt"
+                    >{$t('plan.node.attempt', { attempt: taskActivity.attempt })}</span
+                  >
                 </div>
                 <div class="task-metrics mono">
                   <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span>
@@ -1083,8 +1091,10 @@
                               >{stripControlSequences(entry.tool_target)}</span
                             >
                             {#if entry.tool_failed}
-                              <span class="badge badge--danger"
-                                >{displayState('task', 'failed', $t)} · {entry.size || ''}</span
+                              <span class="badge badge--danger" data-testid="tool-failed"
+                                >{entry.size
+                                  ? $t('plan.activity.kind.tool_failed', { size: entry.size })
+                                  : displayState('task', 'failed', $t)}</span
                               >
                             {/if}
                           </div>

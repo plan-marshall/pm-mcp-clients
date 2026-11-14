@@ -224,38 +224,4 @@
       gap: var(--space-1);
     }
   }
-
-  .defaults-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .defaults-list__row {
-    display: grid;
-    grid-template-columns: 10rem 1fr;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .defaults-list__row dt {
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-
-  .defaults-list__row dd {
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-  }
-
-  @media (max-width: 768px) {
-    .defaults-list__row {
-      grid-template-columns: 1fr;
-      gap: var(--space-1);
-    }
-  }
 </style>

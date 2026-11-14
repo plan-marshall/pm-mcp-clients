@@ -1,23 +1,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
-import { ClientError } from '../api/errors';
+import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
   checkUrlHashForCode,
+  deriveStepFromState,
   handleRuntimeEvent,
   initRuntime,
   isRuntimeRecovering,
   landingRoute,
   navigateTo,
+  openEpicDecomposition,
   openStartPage,
   pairBrowser,
+  pushRoute,
   RECONNECT_INTERVAL_MS,
   replaceDesignerProject,
+  retryEventStream,
   retryRuntime,
   routeParamsOf,
   runtimeStore,
+  startOnboardingAuto,
   stopRuntimeRecovery,
+  storeCredential,
+  updateMachineSetting,
+  withdrawConsent,
+  type AppRoute,
+  type RevokedInfo,
+  type RouteParams,
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 
@@ -288,6 +299,39 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).isStopped).toBe(false);
     expect(get(runtimeStore).isDraining).toBe(true);
     expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
+  });
+
+  it('marks the runtime stopped when a stop that exits arrives', () => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', { lifecycle_state: 'stopped', then: 'exit' });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
+  });
+
+  it.each([
+    ['a drain that ended in a restart', { lifecycle_state: 'running', then: 'restart' }],
+    ['a restart now', { lifecycle_state: 'stopping', then: 'restart' }],
+  ])('never shows the stopped page for %s', (_case, payload) => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', payload);
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({
+      isDraining: false,
+      drainInfo: null,
+      isStopped: false,
+    });
   });
 
   it('reads the who and remaining_count draining fields', () => {
@@ -709,5 +753,342 @@ describe('the recovery of a failed start', () => {
     await initRuntime();
 
     expect(isRuntimeRecovering()).toBe(true);
+  });
+});
+
+/** The events of the runtime stream the store follows itself. */
+describe('the runtime events the store follows', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState());
+  });
+
+  it('marks the network listener closed and open again as listener.changed names it', () => {
+    // Act: ListenerChangedEvent {listener, state, port}; this browser is on the loopback listener
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'closed', port: 7421 });
+
+    // Assert: the banner changes, the loopback browser stays where it is
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: true, currentRoute: 'overview' });
+    expect(get(runtimeStore).listenerClosedAt).not.toBeNull();
+
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'open', port: 7421 });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: false, listenerClosedAt: null });
+  });
+
+  it('ignores a change of the loopback listener', () => {
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'loopback', state: 'closed', port: 7420 });
+
+    // Assert
+    expect(get(runtimeStore).isListenerClosed).toBe(false);
+  });
+
+  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+    'tells the project views that %s happened',
+    (event) => {
+      // Act
+      handleRuntimeEvent(event, { project_id: 'pm-mcp-clients' });
+
+      // Assert
+      expect(get(runtimeStore).projectEventNotice).toMatch(new RegExp(`^${event}_\\d+$`));
+    },
+  );
+
+  it.each([
+    ['onboarding.step_completed', 'getOnboardingState'],
+    ['machine.settings_changed', 'getMachineSettings'],
+  ] as const)('reads again what %s changed', async (event, read) => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    const reread = vi.spyOn(apiClient, read).mockRejectedValue(new Error('not needed'));
+
+    // Act
+    handleRuntimeEvent(event, {});
+
+    // Assert
+    await vi.waitFor(() => expect(reread).toHaveBeenCalledTimes(1));
+  });
+});
+
+/** The pairing, the revocation and the stream's Try again, as the shell sees them in the store. */
+describe('the pairing state the store keeps', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/pair');
+    runtimeStore.set(makeRuntimeState());
+  });
+
+  afterEach(() => {
+    stopRuntimeRecovery();
+  });
+
+  it('keeps the code and shows the refusal when the runtime refuses it', async () => {
+    // Arrange: an unpaired browser opens a pairing link whose code the runtime refuses
+    window.history.replaceState(null, '', '/pair#code=KXQB-MRTN');
+    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('invalid_code'));
+
+    // Act
+    const redeemed = await checkUrlHashForCode();
+
+    // Assert: the pairing page names the refusal, and the code stays for the person to read
+    expect(redeemed).toBe(false);
+    expect(get(runtimeStore).pairingFailed).toBe(true);
+    expect(window.location.hash).toBe('#code=KXQB-MRTN');
+  });
+
+  it.each([
+    ['a reason', 'unauthorized', { reason: 'unauthorized' }],
+    [
+      'the revocation record',
+      { reason: 'revoked_by_operator', revoked_by: 'the console' },
+      { reason: 'revoked_by_operator', revoked_by: 'the console' },
+    ],
+  ] as const)(
+    'shows the revoked page when the client reports %s',
+    async (_kind, info, expected) => {
+      // Arrange: the store hands the client its revocation hook when it starts
+      const hook = vi.spyOn(apiClient, 'setOnRevoked');
+      await initRuntime();
+      const onRevoked = hook.mock.calls[0][0] as unknown as (info: string | RevokedInfo) => void;
+
+      // Act
+      onRevoked(info);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({
+        isPaired: false,
+        isRevoked: true,
+        revokedReason: expected.reason,
+        revokedInfo: expected,
+        currentRoute: 'revoked',
+      });
+    },
+  );
+
+  it('reconnects the stream at once and reads the runtime again on Try again', async () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState({ streamState: 'offline' }));
+    const retry = vi.spyOn(apiClient, 'retryEventStream').mockImplementation(() => {});
+    const status = vi.spyOn(apiClient, 'getStatus');
+    const shown: string[] = [];
+    const unsubscribe = runtimeStore.subscribe((s) => shown.push(s.streamState));
+
+    // Act
+    retryEventStream();
+    unsubscribe();
+
+    // Assert: the indicator says it connects, the stream is retried, and the start runs again
+    expect(shown.slice(0, 2)).toEqual(['offline', 'connecting']);
+    expect(retry).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('pair'));
+    expect(status).not.toHaveBeenCalled();
+  });
+});
+
+/** The onboarding's step bar follows the state the runtime reports. */
+describe('the onboarding step of a state', () => {
+  it.each([
+    [undefined, 1],
+    ['onboard.mode', 1],
+    ['onboard.entry', 1],
+    ['language.choose', 1],
+    ['harness.choose', 2],
+    ['models.choose', 3],
+    ['catalogue.review', 3],
+    ['roles.assign', 4],
+    ['store.choose', 5],
+    ['providers.verify', 6],
+    ['defaults.review', 7],
+    ['plans.defaults', 7],
+    ['onboard.completed', 8],
+    ['onboard.summary', 1],
+  ] as [string | undefined, number][])('places %s on step %i', (state, step) => {
+    expect(deriveStepFromState(state)).toBe(step);
+  });
+
+  it('applies the state the automatic run reports, and keeps it when the run is refused', async () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState());
+    const auto = vi
+      .spyOn(apiClient, 'startOnboardingAuto')
+      .mockResolvedValueOnce({ state: 'roles.assign' } as never)
+      .mockRejectedValueOnce(new Error('act_not_available'));
+
+    // Act
+    await startOnboardingAuto();
+
+    // Assert
+    expect(get(runtimeStore).activeStep).toBe(4);
+    expect(get(runtimeStore).completedSteps).toBe(3);
+
+    // Act: a refused run changes nothing
+    await startOnboardingAuto();
+
+    // Assert
+    expect(auto).toHaveBeenCalledTimes(2);
+    expect(get(runtimeStore).activeStep).toBe(4);
+  });
+});
+
+/** The route a view opens, and the identifiers the store keeps for it. */
+describe('the identifiers a route carries', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/overview');
+    runtimeStore.set(
+      makeRuntimeState({
+        startProjectId: 'shown-project',
+        selectedPlanId: 'shown-plan',
+        selectedEpicId: 'shown-epic',
+      }),
+    );
+  });
+
+  it.each([
+    ['start', { projectId: 'p-1', entryId: 'e-1' }, { startProjectId: 'p-1', startEntryId: 'e-1' }],
+    [
+      'plan',
+      { planId: 'fix', taskId: 'TASK-3' },
+      { selectedPlanId: 'fix', selectedTaskId: 'TASK-3' },
+    ],
+    ['epic', { epicId: 'relay' }, { selectedEpicId: 'relay' }],
+    ['decomposition', { epicId: 'relay' }, { selectedEpicId: 'relay' }],
+    ['reports', { reportPlanId: 'fix' }, { selectedReportDetailPlanId: 'fix' }],
+    ['decisions', { decisionId: 'Q-7' }, { selectedDecisionId: 'Q-7' }],
+    ['projects', { explorerProjectId: 'p-1' }, { selectedProjectId: 'p-1' }],
+    ['designer', { projectId: 'p-1' }, { designerProjectId: 'p-1' }],
+  ] as [AppRoute, RouteParams, Record<string, unknown>][])(
+    'opens %s with the identifiers it names',
+    (route, params, expected) => {
+      // Act
+      pushRoute(route, params);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({ currentRoute: route, ...expected });
+    },
+  );
+
+  it.each([
+    ['start', { startProjectId: 'shown-project', startEntryId: null }],
+    ['plan', { selectedPlanId: 'shown-plan', selectedTaskId: null }],
+    ['epic', { selectedEpicId: 'shown-epic' }],
+    ['reports', { selectedReportDetailPlanId: null }],
+    ['decisions', { selectedDecisionId: null }],
+    ['projects', { selectedProjectId: null }],
+    ['designer', { designerProjectId: null }],
+  ] as [AppRoute, Record<string, unknown>][])(
+    'opens %s without identifiers on the one shown, or on none',
+    (route, expected) => {
+      // Act
+      pushRoute(route);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({ currentRoute: route, ...expected });
+    },
+  );
+
+  it('opens an epic decomposition under the project it belongs to', () => {
+    // Act
+    openEpicDecomposition('relay', 'pm-mcp-clients');
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({
+      currentRoute: 'decomposition',
+      selectedEpicId: 'relay',
+      selectedProjectId: 'pm-mcp-clients',
+    });
+  });
+});
+
+/** The machine settings a screen changes, against the revision the store read. */
+describe('the machine settings the store writes', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.restoreAllMocks();
+    runtimeStore.set(makeRuntimeState({ machineSettings: { revision: 4 } as never }));
+  });
+
+  it('reports a token the runtime refused, and reads nothing back', async () => {
+    // Arrange
+    const refusal = new Error('cli_only');
+    vi.spyOn(apiClient, 'setCredential').mockRejectedValue(refusal);
+    const reread = vi.spyOn(apiClient, 'getMachineSettings');
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new');
+
+    // Assert
+    expect(result).toEqual({
+      ok: false,
+      cause: actFailureReason(refusal, ''),
+      kindFailed: false,
+      refreshFailed: false,
+    });
+    expect(reread).not.toHaveBeenCalled();
+  });
+
+  it('records the kind of a replaced token against the revision it read', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    const kind = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({ revision: 5 } as never);
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new', 'pat');
+
+    // Assert
+    expect(kind).toHaveBeenCalledWith('credential:github', 'pat', 4);
+    expect(result).toEqual({ ok: true, cause: '', kindFailed: false, refreshFailed: false });
+    expect(get(runtimeStore).machineSettings?.revision).toBe(5);
+  });
+
+  it('keeps a stored token when its kind and the read-back fail', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    vi.spyOn(apiClient, 'updateMachineSetting').mockRejectedValue(new Error('conflict'));
+    vi.spyOn(apiClient, 'getMachineSettings').mockRejectedValue(new Error('network_offline'));
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new', 'pat');
+
+    // Assert
+    expect(result).toEqual({ ok: true, cause: '', kindFailed: true, refreshFailed: true });
+  });
+
+  it('answers nothing when the runtime refuses a setting read at no revision', async () => {
+    // Arrange: the store has read no settings yet, so the change applies to revision 0
+    runtimeStore.set(makeRuntimeState({ machineSettings: null }));
+    const update = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockRejectedValue(new Error('conflict'));
+
+    // Act
+    const result = await updateMachineSetting('documents_mode', 'copy');
+
+    // Assert
+    expect(result).toBeNull();
+    expect(update).toHaveBeenCalledWith('documents_mode', 'copy', 0);
+  });
+
+  it('answers nothing when the runtime refuses a consent withdrawal', async () => {
+    // Arrange
+    const withdraw = vi
+      .spyOn(apiClient, 'withdrawConsent')
+      .mockRejectedValue(new Error('conflict'));
+
+    // Act
+    const result = await withdrawConsent('telemetry');
+
+    // Assert
+    expect(result).toBeNull();
+    expect(withdraw).toHaveBeenCalledWith('telemetry', 4);
   });
 });

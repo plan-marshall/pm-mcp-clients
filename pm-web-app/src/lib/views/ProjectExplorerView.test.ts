@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -305,7 +305,8 @@ describe('ProjectExplorerView component', () => {
   });
 
   it('handles unenrolment safety check refusal on active work', async () => {
-    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('409 scope_active'));
+    // A daemon refusal carries its wire code as the message, as `httpError` keeps it.
+    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('scope_active'));
 
     render(ProjectExplorerView);
 
@@ -323,6 +324,381 @@ describe('ProjectExplorerView component', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('unenrol-error-banner')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('unenrol-error-banner')).toHaveTextContent(
+      'pm-mcp-clients cannot be unenrolled while work runs. End them first, or release the project, which ends them.',
+    );
+  });
+
+  it.each([
+    [new Error('HTTP 409 scope_active'), 'Failed to unenrol project'],
+    [new ClientError('timeout'), 'Try again; if it keeps taking this long'],
+  ])('reads an unenrol refusal by its code only (%s)', async (failure, text) => {
+    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(failure);
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId('unenrol-btn-pm-mcp-clients'));
+
+    await fireEvent.click(screen.getByTestId('confirm-unenrol-btn'));
+
+    const banner = await screen.findByTestId('unenrol-error-banner');
+    expect(banner).toHaveTextContent(text);
+    expect(banner).not.toHaveTextContent('cannot be unenrolled while work runs');
+  });
+
+  it('unenrols a project and reads the explorer again', async () => {
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId('unenrol-btn-pm-mcp-clients'));
+
+    await fireEvent.click(screen.getByTestId('confirm-unenrol-btn'));
+
+    await waitFor(() => expect(screen.queryByTestId('unenrol-modal')).toBeNull());
+    expect(apiClient.unenrolProject).toHaveBeenCalledWith('pm-mcp-clients');
+    expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks a recent project that is a favourite as one, and its star removes it', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      recent: [{ ...mockExplorer.recent[0], is_favourite: true }],
+    });
+    render(ProjectExplorerView);
+
+    const star = await screen.findByTestId('star-btn-plan-marshall');
+
+    expect(star).toHaveAttribute('aria-label', 'Remove from favourites');
+    expect(star.querySelector('[data-icon="act.favourite-on"]')).not.toBeNull();
+    await fireEvent.click(star);
+    expect(apiClient.toggleFavourite).toHaveBeenCalledWith('plan-marshall', false);
+  });
+
+  it('reads the explorer once when it opens after a project event', async () => {
+    runtimeStore.update((state) => ({ ...state, projectEventNotice: 'pm-mcp-clients changed' }));
+
+    render(ProjectExplorerView);
+    await screen.findByTestId('section-favourites');
+
+    expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+    'reads the explorer again once on %s',
+    async (event) => {
+      let emit: (name: string) => void = () => {};
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+        emit = (name) => handler(name, {});
+        return () => {};
+      });
+      render(ProjectExplorerView);
+      await screen.findByTestId('section-favourites');
+
+      emit('report.sent');
+      emit(event);
+
+      await waitFor(() => expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2));
+    },
+  );
+
+  it.each([
+    ['release-btn-pm-mcp-clients', 'release-modal', 'cancel-release-btn'],
+    ['unenrol-btn-pm-mcp-clients', 'unenrol-modal', 'cancel-unenrol-btn'],
+    ['abandon-onboarding-btn', 'abandon-modal', 'cancel-abandon-btn'],
+  ])('closes the dialog of %s without acting', async (opener, modal, cancel) => {
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId(opener));
+    expect(screen.getByTestId(modal)).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId(cancel));
+
+    expect(screen.queryByTestId(modal)).toBeNull();
+    expect(apiClient.releaseProject).not.toHaveBeenCalled();
+    expect(apiClient.unenrolProject).not.toHaveBeenCalled();
+    expect(apiClient.abandonOnboarding).not.toHaveBeenCalled();
+  });
+
+  it('releases without a reason when none is given', async () => {
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId('release-btn-pm-mcp-clients'));
+
+    await fireEvent.click(screen.getByTestId('confirm-release-btn'));
+
+    await waitFor(() => expect(screen.queryByTestId('release-modal')).toBeNull());
+    expect(apiClient.releaseProject).toHaveBeenCalledWith('pm-mcp-clients', undefined);
+  });
+
+  it('abandons a run that names no abandon link by its checkout and says why it failed', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      being_added: [{ ...mockExplorer.being_added[0], abandon_link: undefined }],
+    });
+    vi.spyOn(apiClient, 'abandonOnboarding').mockRejectedValue(new Error('not a code'));
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId('abandon-onboarding-btn'));
+
+    await fireEvent.click(screen.getByTestId('confirm-abandon-btn'));
+
+    expect(await screen.findByText('Failed to abandon onboarding')).toBeInTheDocument();
+    expect(apiClient.abandonOnboarding).toHaveBeenCalledWith('~/git/cui-parent');
+  });
+
+  it('says no project matches and clears the filter', async () => {
+    render(ProjectExplorerView);
+    const input = await screen.findByTestId('project-filter-input');
+    await fireEvent.input(input, { target: { value: 'nothing-like-this' } });
+
+    expect(await screen.findByText("No projects match 'nothing-like-this'.")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
+
+    expect(input).toHaveValue('');
+    expect(screen.getByTestId('section-favourites')).toBeInTheDocument();
+  });
+
+  it('names a matched project by its id where its name differs', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      all_projects: [{ ...mockExplorer.all_projects[1], display_name: 'CUI HTTP' }],
+    });
+    render(ProjectExplorerView);
+    const input = await screen.findByTestId('project-filter-input');
+
+    await fireEvent.input(input, { target: { value: 'cui' } });
+
+    const card = await screen.findByTestId('project-card-cui-http');
+    expect(card).toHaveTextContent('CUI HTTP');
+    expect(card).toHaveTextContent('cui-http');
+  });
+
+  it('lists all projects in the served order when sorted by use', async () => {
+    render(ProjectExplorerView);
+    const select = await screen.findByTestId('project-sort-select');
+
+    await fireEvent.change(select, { target: { value: 'most_used' } });
+
+    const section = screen.getByTestId('section-all-projects');
+    expect(section).toHaveTextContent('All projects (most used)');
+    const cards = section.querySelectorAll('[data-testid^="project-card-"]');
+    expect([...cards].map((card) => card.getAttribute('data-testid'))).toEqual([
+      'project-card-API-Sheriff',
+      'project-card-cui-http',
+      'project-card-legacy-portal',
+    ]);
+  });
+
+  it('opens running work from a project card', async () => {
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('running-work-btn-API-Sheriff'));
+
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+  });
+
+  it.each([
+    ['text that names no favourite', { dataTransfer: { getData: () => 'not-a-favourite' } }],
+    ['the favourite itself', { dataTransfer: { getData: () => 'pm-mcp-clients' } }],
+    ['nothing at all', {}],
+  ])('ignores a drop of %s', async (_case, init) => {
+    render(ProjectExplorerView);
+    const target = await screen.findByTestId('project-card-pm-mcp-clients');
+
+    await fireEvent.drop(target, init);
+
+    expect(apiClient.reorderFavouriteProjects).not.toHaveBeenCalled();
+  });
+
+  it('drags a favourite as a move carrying its id, onto a card that accepts it', async () => {
+    render(ProjectExplorerView);
+    const card = await screen.findByTestId('project-card-pm-mcp-core');
+    const dataTransfer = { setData: vi.fn(), effectAllowed: 'all' };
+
+    await fireEvent.dragStart(card, { dataTransfer });
+    const accepted = await fireEvent.dragOver(screen.getByTestId('project-card-pm-mcp-clients'));
+
+    expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'pm-mcp-core');
+    expect(dataTransfer.effectAllowed).toBe('move');
+    expect(accepted).toBe(false);
+  });
+
+  it('holds the order controls while a new order is written', async () => {
+    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockReturnValue(new Promise(() => {}));
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('favourite-down-pm-mcp-clients'));
+
+    expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeDisabled();
+    expect(screen.getByTestId('favourite-down-pm-mcp-core')).toBeDisabled();
+    await fireEvent.drop(screen.getByTestId('project-card-pm-mcp-core'), {
+      dataTransfer: { getData: () => 'pm-mcp-clients' },
+    });
+    expect(apiClient.reorderFavouriteProjects).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the filter empty when the address names a project the explorer does not hold', async () => {
+    window.history.replaceState(null, '', '/projects?project=gone-project');
+    render(ProjectExplorerView);
+
+    await screen.findByTestId('section-favourites');
+
+    expect(screen.getByTestId('project-filter-input')).toHaveValue('');
+  });
+
+  it('stops listening to project events and address steps once it is closed', async () => {
+    const unsubscribe = vi.fn();
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(unsubscribe);
+    const removed = vi.spyOn(window, 'removeEventListener');
+    const { unmount } = render(ProjectExplorerView);
+    await screen.findByTestId('section-favourites');
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(removed).toHaveBeenCalledWith('popstate', expect.any(Function));
+    removed.mockRestore();
+  });
+
+  it('draws the error pattern when a later read of the explorer fails', async () => {
+    let emit: (name: string) => void = () => {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      emit = (name) => handler(name, {});
+      return () => {};
+    });
+    render(ProjectExplorerView);
+    await screen.findByTestId('section-favourites');
+    vi.mocked(apiClient.getProjectExplorer).mockRejectedValueOnce(new ClientError('timeout'));
+
+    emit('project.changed');
+
+    expect(await screen.findByTestId('explorer-error')).toHaveTextContent(
+      'The request took too long',
+    );
+    expect(screen.queryByTestId('section-favourites')).toBeNull();
+  });
+
+  it('shows a run being added without the empty word when no project is enrolled yet', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      favourites: [],
+      recent: [],
+      all_projects: [],
+    });
+    render(ProjectExplorerView);
+
+    expect(await screen.findByTestId('section-being-added')).toBeInTheDocument();
+    expect(screen.queryByTestId('empty-projects-state')).toBeNull();
+    expect(screen.queryByTestId('section-favourites')).toBeNull();
+    expect(screen.queryByTestId('section-recent')).toBeNull();
+    expect(screen.queryByTestId('section-all-projects')).toBeNull();
+  });
+
+  it('names the setup a project needs, or that it needs its setup', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      recent: [{ ...mockExplorer.recent[0], setup_needs_summary: undefined }],
+    });
+    render(ProjectExplorerView);
+
+    const card = await screen.findByTestId('project-card-plan-marshall');
+
+    expect(card).toHaveTextContent('setup needs: setup');
+    expect(card).toHaveTextContent('! 1');
+  });
+
+  describe('the setup drawer', () => {
+    it('shows the values of the project it was last opened for', async () => {
+      let releaseFirst: (value: unknown) => void = () => {};
+      vi.spyOn(apiClient, 'getProjectSettings')
+        .mockImplementationOnce(() => new Promise((resolve) => (releaseFirst = resolve)) as never)
+        .mockResolvedValueOnce({
+          project_id: 'pm-mcp-core',
+          revision: 3,
+          values: [{ aspect: 'core.value', value: 'core', origin: 'project' }],
+        });
+      render(ProjectExplorerView);
+      await fireEvent.click(await screen.findByTestId('setup-btn-pm-mcp-clients'));
+      await fireEvent.click(screen.getByTestId('close-setup-btn'));
+      await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-core'));
+      await screen.findByTestId('setting-input-core.value');
+
+      await act(async () => {
+        releaseFirst({
+          project_id: 'pm-mcp-clients',
+          revision: 7,
+          values: [{ aspect: 'landing', value: 'landing.main', origin: 'team' }],
+        });
+      });
+
+      expect(screen.getByTestId('setup-drawer')).toHaveAccessibleName('Setup of pm-mcp-core');
+      expect(screen.queryByTestId('setting-input-landing')).toBeNull();
+    });
+
+    /** Opens the drawer of pm-mcp-clients once its values are read. */
+    async function openDrawer(): Promise<void> {
+      render(ProjectExplorerView);
+      await fireEvent.click(await screen.findByTestId('setup-btn-pm-mcp-clients'));
+      await screen.findByTestId('setup-drawer');
+    }
+
+    it.each([
+      ['its close button', () => fireEvent.click(screen.getByTestId('close-setup-btn'))],
+      ['the backdrop', () => fireEvent.click(screen.getByTestId('setup-drawer-backdrop'))],
+    ])('closes with %s', async (_name, close) => {
+      await openDrawer();
+
+      await close();
+
+      expect(screen.queryByTestId('setup-drawer')).toBeNull();
+    });
+
+    it('stays open on a click inside it', async () => {
+      await openDrawer();
+
+      await fireEvent.click(screen.getByTestId('setup-drawer'));
+
+      expect(screen.getByTestId('setup-drawer')).toBeInTheDocument();
+    });
+
+    it('says a value was saved and reads the values again', async () => {
+      await openDrawer();
+      await screen.findByTestId('save-setting-landing');
+
+      await fireEvent.click(screen.getByTestId('save-setting-landing'));
+
+      expect(await screen.findByTestId('setup-notice')).toHaveTextContent('Saved.');
+      expect(apiClient.getProjectSettings).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      ['refused', () => Promise.resolve({ applied: false, conflict: false, revision: 7 })],
+      ['failed', () => Promise.reject(new ClientError('timeout'))],
+    ])('says a value was not saved when the write is %s', async (_case, write) => {
+      vi.spyOn(apiClient, 'saveProjectSettings').mockImplementation(write);
+      await openDrawer();
+      await screen.findByTestId('save-setting-landing');
+
+      await fireEvent.click(screen.getByTestId('save-setting-landing'));
+
+      expect(await screen.findByTestId('setup-update-error')).toHaveTextContent(
+        'The value could not be saved',
+      );
+      expect(screen.queryByTestId('setup-notice')).toBeNull();
+    });
+
+    it('offers a free value as a text field and says when there is none', async () => {
+      vi.spyOn(apiClient, 'getProjectSettings')
+        .mockResolvedValueOnce({
+          project_id: 'pm-mcp-clients',
+          revision: 7,
+          values: [{ aspect: 'sonar.key', value: null, origin: 'project' }],
+        })
+        .mockResolvedValueOnce({ project_id: 'pm-mcp-core', revision: 1, values: [] });
+      await openDrawer();
+
+      const field = await screen.findByTestId('setting-input-sonar.key');
+      expect(field.tagName).toBe('INPUT');
+      expect(field).toHaveValue('');
+      expect(screen.getByText('from project')).toBeInTheDocument();
+
+      await fireEvent.click(screen.getByTestId('close-setup-btn'));
+      await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-core'));
+      expect(await screen.findByText('This project records no value of its own.')).toBeInTheDocument();
     });
   });
 

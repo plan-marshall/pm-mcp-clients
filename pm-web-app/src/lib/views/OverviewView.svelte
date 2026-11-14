@@ -51,6 +51,8 @@
   let hasShownProjects = false;
   /** The code of a failed detail read, which `ErrorState` resolves to its words. */
   let detailError: string | null = null;
+  /** The code of a failed read of the ended-work page, or `null`. */
+  let endedError: string | null = null;
 
   let unsubscribeEvents: (() => void) | null = null;
   /** The plan or epic whose actions the operator opened from its row. */
@@ -66,7 +68,7 @@
    * @returns the identifier the list and the filter use
    */
   function planKeyOf(plan: ActivePlanSummary): string {
-    return plan.plan_id || (plan as ActivePlanSummary & { planId?: string }).planId || '';
+    return plan.plan_id;
   }
 
   /**
@@ -74,7 +76,7 @@
    * @returns the identifier the list and the filter use
    */
   function epicKeyOf(epic: ActiveEpicSummary): string {
-    return epic.epic_id || (epic as ActiveEpicSummary & { epicId?: string }).epicId || '';
+    return epic.epic_id;
   }
 
   /**
@@ -192,44 +194,44 @@
 
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
+  // The app renders in the browser only (`ssr = false` in the root layout), so the view reaches
+  // `localStorage` without asking whether a window exists.
   onMount(async () => {
-    if (typeof window !== 'undefined') {
-      const savedMode = localStorage.getItem('pm_overview_view_mode');
-      if (savedMode === 'plan' || savedMode === 'epic') {
-        viewMode = savedMode;
-      }
-      // A figure of the system view asked for the plans or the epics; consume it once.
-      const focus = get(runtimeStore).overviewFocus;
-      if (focus === 'plans') {
-        viewMode = 'plan';
-        runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
-      } else if (focus === 'epics') {
-        viewMode = 'epic';
-        runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
-      }
-      const savedProj = localStorage.getItem('pm_overview_selected_project');
-      if (savedProj) {
-        selectedProjectId = savedProj;
-      }
-      // A view that opened the plan or the project came back to Running Work returns to the
-      // section it left: Ended Work, on the page it showed.
-      showEnded = localStorage.getItem('pm_overview_show_ended') === '1';
-      const savedEndedPage = Number.parseInt(
-        localStorage.getItem('pm_overview_ended_page') ?? '',
-        10,
-      );
-      if (Number.isInteger(savedEndedPage) && savedEndedPage > 0) {
-        currentEndedPage = savedEndedPage;
-      }
-      // The store names the project another view opened one step ago; it wins over the one this
-      // browser last selected.
-      const fromStore = get(runtimeStore).selectedProjectId;
-      if (fromStore) {
-        selectedProjectId = fromStore;
-        // The store names a project another view opened one step ago. Consume it once, so a
-        // later visit falls back to the browser's own selection rather than snapping back.
-        runtimeStore.update((s) => ({ ...s, selectedProjectId: null }));
-      }
+    const savedMode = localStorage.getItem('pm_overview_view_mode');
+    if (savedMode === 'plan' || savedMode === 'epic') {
+      viewMode = savedMode;
+    }
+    // A figure of the system view asked for the plans or the epics; consume it once.
+    const focus = get(runtimeStore).overviewFocus;
+    if (focus === 'plans') {
+      viewMode = 'plan';
+      runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+    } else if (focus === 'epics') {
+      viewMode = 'epic';
+      runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+    }
+    const savedProj = localStorage.getItem('pm_overview_selected_project');
+    if (savedProj) {
+      selectedProjectId = savedProj;
+    }
+    // A view that opened the plan or the project came back to Running Work returns to the
+    // section it left: Ended Work, on the page it showed.
+    showEnded = localStorage.getItem('pm_overview_show_ended') === '1';
+    const savedEndedPage = Number.parseInt(
+      localStorage.getItem('pm_overview_ended_page') ?? '',
+      10,
+    );
+    if (Number.isInteger(savedEndedPage) && savedEndedPage > 0) {
+      currentEndedPage = savedEndedPage;
+    }
+    // The store names the project another view opened one step ago; it wins over the one this
+    // browser last selected.
+    const fromStore = get(runtimeStore).selectedProjectId;
+    if (fromStore) {
+      selectedProjectId = fromStore;
+      // The store names a project another view opened one step ago. Consume it once, so a
+      // later visit falls back to the browser's own selection rather than snapping back.
+      runtimeStore.update((s) => ({ ...s, selectedProjectId: null }));
     }
 
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
@@ -346,12 +348,11 @@
     selectedProjectId = projectId;
     showEnded = false;
     endedPage = null;
+    endedError = null;
     currentEndedPage = 1;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pm_overview_selected_project', projectId);
-      localStorage.setItem('pm_overview_show_ended', '0');
-      localStorage.setItem('pm_overview_ended_page', '1');
-    }
+    localStorage.setItem('pm_overview_selected_project', projectId);
+    localStorage.setItem('pm_overview_show_ended', '0');
+    localStorage.setItem('pm_overview_ended_page', '1');
     void loadProjectDetail(projectId);
   }
 
@@ -359,10 +360,8 @@
    * Remembers the Ended Work section while the operator opens one of its plans or reports.
    */
   function rememberEndedState() {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pm_overview_show_ended', showEnded ? '1' : '0');
-      localStorage.setItem('pm_overview_ended_page', String(currentEndedPage));
-    }
+    localStorage.setItem('pm_overview_show_ended', showEnded ? '1' : '0');
+    localStorage.setItem('pm_overview_ended_page', String(currentEndedPage));
   }
 
   /**
@@ -400,9 +399,7 @@
 
   function setViewMode(mode: 'plan' | 'epic') {
     viewMode = mode;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pm_overview_view_mode', mode);
-    }
+    localStorage.setItem('pm_overview_view_mode', mode);
   }
 
   async function openEndedWork() {
@@ -419,12 +416,14 @@
     currentEndedPage = 1;
     endedRequestGeneration += 1;
     endedPage = null;
+    endedError = null;
     rememberEndedState();
   }
 
   async function loadEndedWork(projectId: string, page: number) {
     const requestGeneration = ++endedRequestGeneration;
     isLoadingEnded = true;
+    endedError = null;
     try {
       const res = await apiClient.getEndedWork(projectId, page);
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
@@ -433,8 +432,10 @@
         rememberEndedState();
       }
     } catch (err: unknown) {
+      // A page that could not be read is a failure with its code, never "no ended work".
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = null;
+        endedError = errorCodeOf(err);
       }
     } finally {
       if (requestGeneration === endedRequestGeneration) {
@@ -471,88 +472,82 @@
   }
 
   function getPlanPhase(p: ActivePlanSummary): string {
-    return p.current_phase || '';
+    return p.current_phase;
   }
 
   function getPlanState(p: ActivePlanSummary): string {
     // The wire value stays as the contract sends it: the display layer names it, and the badge
-    // class matches both spellings (`badge--state-waiting_for_you`).
-    return p.phase_state || 'running';
+    // class matches both spellings (`badge--state-waiting_for_you`). The contract always sends it.
+    return p.phase_state;
   }
 
-  // The overview endpoints answer with the snake_case spelling of the API contract or with the
-  // camelCase one. The contract types declare the snake_case keys, so the accessors read the
-  // alternate spelling through one typed alias instead of a per-site cast.
-  type CamelCaseAliases = {
-    needsOperatorCount?: number | null;
-    needsOperatorKind?: string | null;
-    tasksTotal?: number;
-    tasksDone?: number;
-    epicTitle?: string | null;
-    epicId?: string | null;
-    offTrackSignal?: string | null;
-    pullRequestNumber?: number | null;
-    pullRequestUrl?: string | null;
-    phaseEnteredAt?: string | null;
-    runningPlansCount?: number;
-    stagedPlansCount?: number;
-    planId?: string;
-  };
-
-  function withAliases<T extends object>(value: T): T & CamelCaseAliases {
-    return value as T & CamelCaseAliases;
-  }
+  // The overview endpoints answer in the snake_case spelling of the API contract only
+  // (`ActivePlanSummary`, `ActiveEpicSummary` of pm-api), so the accessors read those keys.
 
   function planIdOf(plan: ActivePlanSummary): string {
-    return plan.plan_id || withAliases(plan).planId || '';
+    return plan.plan_id;
   }
 
   function epicIdOf(epic: ActiveEpicSummary): string {
-    return epic.epic_id || withAliases(epic).epicId || '';
+    return epic.epic_id;
   }
 
   function getNeedsOperatorCount(item: ActivePlanSummary | ActiveEpicSummary): number {
-    return item.needs_operator_count ?? withAliases(item).needsOperatorCount ?? 0;
+    return item.needs_operator_count ?? 0;
   }
 
   function getNeedsOperatorKind(item: ActivePlanSummary | ActiveEpicSummary): string {
-    return item.needs_operator_kind ?? withAliases(item).needsOperatorKind ?? '';
+    return item.needs_operator_kind ?? '';
+  }
+
+  /**
+   * The reason badge of a row (components-tags, ReasonBadge): one catalogue key with the count and
+   * the reason's word; the `!` comes from the catalogue. A row that names no reason reads `other`.
+   *
+   * @param item the plan or epic that needs the operator
+   * @returns the badge's text
+   */
+  function needsBadge(item: ActivePlanSummary | ActiveEpicSummary): string {
+    return $t('overview.needs.badge', {
+      count: getNeedsOperatorCount(item),
+      reason: $t(`overview.needs.${getNeedsOperatorKind(item) || 'other'}`),
+    });
   }
 
   function getPlanTasksTotal(p: ActivePlanSummary): number {
-    return p.tasks_total ?? withAliases(p).tasksTotal ?? 0;
+    return p.tasks_total ?? 0;
   }
 
   function getPlanTasksDone(p: ActivePlanSummary): number {
-    return p.tasks_done ?? withAliases(p).tasksDone ?? 0;
+    return p.tasks_done ?? 0;
   }
 
   function getPlanEpicTitle(p: ActivePlanSummary): string {
-    return p.epic_title || withAliases(p).epicTitle || p.epic_id || withAliases(p).epicId || '';
+    return p.epic_title || p.epic_id || '';
   }
 
   function getPlanOffTrack(p: ActivePlanSummary): string {
-    return p.off_track_signal || withAliases(p).offTrackSignal || '';
+    return p.off_track_signal || '';
   }
 
   function getPlanPrNumber(p: ActivePlanSummary): number | null {
-    return p.pull_request_number ?? withAliases(p).pullRequestNumber ?? null;
+    return p.pull_request_number ?? null;
   }
 
   function getPlanPrUrl(p: ActivePlanSummary): string {
-    return p.pull_request_url || withAliases(p).pullRequestUrl || '#';
+    return p.pull_request_url || '#';
   }
 
   function getPlanPhaseEnteredAt(p: ActivePlanSummary): string | null {
-    return p.phase_entered_at || withAliases(p).phaseEnteredAt || null;
+    return p.phase_entered_at || null;
   }
 
   function getEpicRunningCount(e: ActiveEpicSummary): number {
-    return e.running_plans_count ?? withAliases(e).runningPlansCount ?? 0;
+    return e.running_plans_count;
   }
 
   function getEpicStagedCount(e: ActiveEpicSummary): number {
-    return e.staged_plans_count ?? withAliases(e).stagedPlansCount ?? 0;
+    return e.staged_plans_count;
   }
 
   function formatProjectCounts(p: ProjectSummary): string {
@@ -671,6 +666,15 @@
         {#if isLoadingEnded}
           <div class="ended-loading">
             <Skeleton shape="card" rows={3} label={$t('overview.ended.loading')} />
+          </div>
+        {:else if endedError !== null}
+          <div data-testid="overview-ended-error">
+            <ErrorState
+              code={endedError}
+              actionLabel={$t('common.action.retry')}
+              onAct={() => void loadEndedWork(selectedProjectId ?? '', currentEndedPage)}
+              titleLevel={3}
+            />
           </div>
         {:else if !endedPage || endedPage.items.length === 0}
           <p class="empty-text">
@@ -945,18 +949,14 @@
 
                       <div class="work-card__badges">
                         {#if getNeedsOperatorCount(plan) > 0}
-                          <span class="badge badge--attention">
-                            ! {getNeedsOperatorKind(plan)
-                              ? $t('overview.needs.' + getNeedsOperatorKind(plan))
-                              : 'attention'}
+                          <span class="badge badge--attention" data-testid="needs-badge-{plan.plan_id}">
+                            {needsBadge(plan)}
                           </span>
                         {/if}
-                        {#if getPlanPhase(plan)}
-                          <span class="badge badge--phase">
-                            <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                            {getPlanPhase(plan)}
-                          </span>
-                        {/if}
+                        <span class="badge badge--phase">
+                          <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                          {getPlanPhase(plan)}
+                        </span>
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
                           {displayState('plan', getPlanState(plan), $t)}
                         </span>
@@ -1053,8 +1053,11 @@
 
                       <div class="work-card__badges">
                         {#if getNeedsOperatorCount(epic) > 0}
-                          <span class="badge badge--attention">
-                            ! {getNeedsOperatorKind(epic) || 'attention'}
+                          <span
+                            class="badge badge--attention"
+                            data-testid="needs-badge-epic-{epicIdOf(epic)}"
+                          >
+                            {needsBadge(epic)}
                           </span>
                         {/if}
                         <span class="badge badge--counts">
@@ -1085,12 +1088,10 @@
                             >
                               {childPlan.title}
                             </button>
-                            {#if getPlanPhase(childPlan)}
-                              <span class="badge badge--phase">
-                                <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
-                                {getPlanPhase(childPlan)}
-                              </span>
-                            {/if}
+                            <span class="badge badge--phase">
+                              <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
+                              {getPlanPhase(childPlan)}
+                            </span>
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
                               {displayState('plan', getPlanState(childPlan), $t)}
                             </span>
@@ -1112,10 +1113,10 @@
                 {/each}
 
                 <!-- Without Epic Section -->
-                {#if filteredPlans.some((p) => !p.epic_id && !withAliases(p).epicId)}
+                {#if filteredPlans.some((p) => !p.epic_id)}
                   <div class="without-epic-section">
                     <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
-                    {#each filteredPlans.filter((p) => !p.epic_id && !withAliases(p).epicId) as plan}
+                    {#each filteredPlans.filter((p) => !p.epic_id) as plan}
                       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                       <div
                         class="work-card work-card--plan"
@@ -1137,18 +1138,12 @@
                           </div>
                           <div class="work-card__badges">
                             {#if getNeedsOperatorCount(plan) > 0}
-                              <span class="badge badge--attention">
-                                ! {getNeedsOperatorKind(plan)
-                                  ? $t('overview.needs.' + getNeedsOperatorKind(plan))
-                                  : 'attention'}
-                              </span>
+                              <span class="badge badge--attention">{needsBadge(plan)}</span>
                             {/if}
-                            {#if getPlanPhase(plan)}
-                              <span class="badge badge--phase">
-                                <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                                {getPlanPhase(plan)}
-                              </span>
-                            {/if}
+                            <span class="badge badge--phase">
+                              <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                              {getPlanPhase(plan)}
+                            </span>
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
                               {displayState('plan', getPlanState(plan), $t)}
                             </span>

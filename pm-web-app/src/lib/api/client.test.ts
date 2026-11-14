@@ -130,16 +130,9 @@ describe('ApiClient', () => {
     );
   });
 
-  it('fetches message catalogue and available locales via API', async () => {
+  it('fetches a message catalogue via API', async () => {
     // Arrange
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.endsWith('/api/v1/messages')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({ locales: ['en', 'de'], areas: ['common'] }),
-        });
-      }
       if (url.endsWith('/api/v1/messages/en/common')) {
         return Promise.resolve({
           ok: true,
@@ -151,11 +144,9 @@ describe('ApiClient', () => {
     });
 
     // Act
-    const meta = await client.getAvailableMessages();
     const messages = await client.getMessages('en', 'common');
 
     // Assert
-    expect(meta.locales).toContain('en');
     expect(messages['web.common.copy']).toBe('Copy');
   });
 
@@ -167,18 +158,6 @@ describe('ApiClient', () => {
           ok: true,
           status: 200,
           json: async () => [{ id: 'Q-007', title: 'Rebase conflict', subject: 'plan fix-relay' }],
-        });
-      }
-      if (url.endsWith('/api/v1/decisions/Q-007')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            id: 'Q-007',
-            title: 'Rebase conflict',
-            subject: 'plan fix-relay',
-            parts: [],
-          }),
         });
       }
       if (url.endsWith('/api/v1/decisions/Q-007/answer') && init?.method === 'POST') {
@@ -207,7 +186,6 @@ describe('ApiClient', () => {
 
     // Act
     const list = await client.getDecisions({ project: 'pm-mcp-clients' });
-    const single = await client.getDecision('Q-007');
     const answerRes = await client.answerDecision('Q-007', { option: '2' });
     const interp = await client.interpretDecision('Q-007', 'rebase');
     const withdrawRes = await client.withdrawDecision('Q-007');
@@ -215,7 +193,6 @@ describe('ApiClient', () => {
     // Assert
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('Q-007');
-    expect(single.id).toBe('Q-007');
     expect(answerRes.ok).toBe(true);
     expect(interp.read_back_text).toBe('Rebase onto main');
     expect(withdrawRes.ok).toBe(true);
@@ -1016,6 +993,426 @@ describe('ApiClient', () => {
       ]);
     },
   );
+
+  describe('acts sent to the runtime', () => {
+    type Sent = { method: string; url: string; body: unknown };
+    let sent: Sent[];
+
+    /** Answers every request with the given status and body and records what was sent. */
+    function answer(status: number, body: unknown): void {
+      sent = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        sent.push({
+          method: init?.method ?? 'GET',
+          url: url.replace('http://localhost:7420', ''),
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        });
+        return Promise.resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => body,
+        });
+      }) as unknown as typeof fetch;
+    }
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'not_withdrawable' }, 'not_withdrawable'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'withdraws an upgrade on the runtime route only and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: no second request to a route the contract does not have
+        await expect(client.withdrawUpgrade()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/operator/runtime/upgrade', body: undefined },
+        ]);
+      },
+    );
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'act_not_available' }, 'act_not_available'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'turns the network listener off on its own route and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: the listener is never re-written through PUT /api/v1/web
+        await expect(client.turnOffLanListener()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+        ]);
+      },
+    );
+
+    it('turns the network listener off with one request', async () => {
+      // Arrange
+      answer(200, {});
+
+      // Act
+      await client.turnOffLanListener();
+
+      // Assert
+      expect(sent).toEqual([
+        { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+      ]);
+    });
+
+    it('sends a machine setting and its withdrawal against the revision read', async () => {
+      // Arrange
+      answer(200, { status: 'applied', revision: 8 });
+
+      // Act
+      const changed = await client.updateMachineSetting('documents_mode', 'copy', 7);
+      await client.withdrawConsent('git_push', 8);
+
+      // Assert: MachineSettingsUpdateRequest {key, value, revision}; a withdrawal has no value
+      expect(changed).toEqual({ status: 'applied', revision: 8 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'documents_mode', value: 'copy', revision: 7 },
+        },
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'consent:git_push', value: null, revision: 8 },
+        },
+      ]);
+    });
+
+    it('returns a conflicting change of a setting instead of throwing it', async () => {
+      // Arrange
+      answer(409, { status: 'conflict', current_value: 'ask', revision: 9 });
+
+      // Act
+      const result = await client.updatePlanSettings('plan-1', 'landing', 'pr', 3);
+
+      // Assert: the screen shows the current value beside the operator's choice
+      expect(result).toEqual({ status: 'conflict', current_value: 'ask', revision: 9 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/plans/plan-1/settings',
+          body: { aspect: 'landing', value: 'pr', revision: 3 },
+        },
+      ]);
+    });
+
+    it.each([
+      ['a refusal with its code', { error: 'axis_bound' }, 'axis_bound'],
+      ['an answer without a code', {}, 'HTTP 500'],
+    ])('throws %s of a setting change other than a conflict', async (_case, body, message) => {
+      // Arrange
+      answer(500, body);
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', null, 3)).rejects.toThrow(
+        message,
+      );
+    });
+
+    it('ends a setting change in network_offline when the runtime cannot be reached', async () => {
+      // Arrange
+      const onOffline = vi.fn();
+      client.setOnOffline(onOffline);
+      globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+      // Act & Assert
+      await expect(client.updateMachineSetting('documents_mode', 'ask', 1)).rejects.toThrow(
+        'network_offline',
+      );
+      expect(onOffline).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a 401 to a setting change as the loss of the pairing', async () => {
+      // Arrange
+      localStorage.setItem('pm_device_secret', 'pmw_revoked');
+      const onRevoked = vi.fn();
+      client.setOnRevoked(onRevoked);
+      answer(401, {});
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', 'pr', 1)).rejects.toThrow(
+        'unauthorized',
+      );
+      expect(sent[0]).toMatchObject({ method: 'PUT' });
+      expect(client.isPaired()).toBe(false);
+      expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    });
+
+    it.each([
+      ['without a reason', undefined, { act: 'continue' }],
+      ['with the reason the act requires', 'superseded', { act: 'abandon', reason: 'superseded' }],
+    ])('resolves a hold %s', async (_case, reason, body) => {
+      // Arrange
+      answer(200, { status: 'resolved' });
+
+      // Act
+      await client.resolveHold('plan 1', 'hold/7', body.act, reason);
+
+      // Assert: HoldResolutionRequest {act, reason?}, ids encoded into the path
+      expect(sent).toEqual([
+        { method: 'POST', url: '/api/v1/plans/plan%201/holds/hold%2F7/resolve', body },
+      ]);
+    });
+  });
+
+  describe('event streams', () => {
+    const encoder = new TextEncoder();
+
+    /** A stream body that sends the given text and stays open, or closes after it. */
+    function sseBody(text: string, close = false): ReadableStream<Uint8Array> {
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          if (text) controller.enqueue(encoder.encode(text));
+          if (close) controller.close();
+        },
+      });
+    }
+
+    beforeEach(() => {
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    });
+
+    it.each([
+      ['an unreachable runtime', () => Promise.reject(new TypeError('Failed to fetch'))],
+      ['an answer that is no stream', () => Promise.resolve({ ok: false, status: 503 })],
+    ])(
+      'reports %s as reconnecting, gives up offline after ten attempts and connects again on Try again',
+      async (_case, answer) => {
+        // Arrange
+        vi.useFakeTimers();
+        const fetchMock = vi.fn().mockImplementation(answer);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+
+        // Act: the first attempt and the nine retries, two seconds apart
+        const off = client.subscribeEvents(() => {});
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(9 * 2000);
+
+        // Assert: the indicator names what the stream does, and the attempts stop at the limit
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+        expect(states).toEqual(['connecting', 'reconnecting', 'offline']);
+        await vi.advanceTimersByTimeAsync(10 * 2000);
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+
+        // Act: the operator's Try again
+        client.retryEventStream();
+        await vi.advanceTimersByTimeAsync(0);
+
+        // Assert: one new attempt, reported as connecting again
+        expect(fetchMock).toHaveBeenCalledTimes(11);
+        expect(states.slice(3)).toEqual(['connecting', 'reconnecting']);
+        off();
+        expect(states.at(-1)).toBe('offline');
+      },
+    );
+
+    it('does not open a second connection on Try again while the stream is live', async () => {
+      // Arrange
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 200, body: sseBody('event: a\ndata: {}\n\n') });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const listener = vi.fn();
+      const off = client.subscribeEvents(listener);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+
+      // Act
+      client.retryEventStream();
+
+      // Assert
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it.each([
+      ['device_revoked', true],
+      ['device_expired', true],
+      ['listener_closed', false],
+    ])(
+      'ends the pairing when the stream closes with %s only if the device lost it',
+      async (reason, revoked) => {
+        // Arrange
+        const onRevoked = vi.fn();
+        client.setOnRevoked(onRevoked);
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          body: sseBody(`event: stream.closed\ndata: {"reason":"${reason}"}\n\n`),
+        }) as unknown as typeof fetch;
+        const listener = vi.fn();
+
+        // Act
+        const off = client.subscribeEvents(listener);
+        await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('stream.closed', { reason }));
+
+        // Assert
+        if (revoked) {
+          await vi.waitFor(() => expect(onRevoked).toHaveBeenCalledWith({ reason }));
+          expect(client.isPaired()).toBe(false);
+          expect(states.at(-1)).toBe('offline');
+        } else {
+          expect(onRevoked).not.toHaveBeenCalled();
+          expect(client.isPaired()).toBe(true);
+          expect(states.at(-1)).toBe('connected');
+        }
+        off();
+      },
+    );
+
+    it('hands data that is no JSON on as text and skips a message without data', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: ping\n\nevent: log.line\ndata: plain text\n\n'),
+      }) as unknown as typeof fetch;
+      const listener = vi.fn();
+
+      // Act
+      const off = client.subscribeEvents(listener);
+
+      // Assert
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('log.line', 'plain text'));
+      expect(listener).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it('keeps delivering to the other listeners when one of them throws', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: report.sent\ndata: {"subject":"Plan 7"}\n\n'),
+      }) as unknown as typeof fetch;
+      const broken = vi.fn(() => {
+        throw new Error('listener failed');
+      });
+      const healthy = vi.fn();
+      const states: string[] = [];
+      client.setOnStreamState((state) => states.push(state));
+
+      // Act
+      const offBroken = client.subscribeEvents(broken);
+      const offHealthy = client.subscribeEvents(healthy);
+
+      // Assert: the failure stays with its listener and is no stream failure
+      await vi.waitFor(() =>
+        expect(healthy).toHaveBeenCalledWith('report.sent', { subject: 'Plan 7' }),
+      );
+      expect(broken).toHaveBeenCalledTimes(1);
+      expect(states.at(-1)).toBe('connected');
+      offBroken();
+      offHealthy();
+    });
+
+    it('reads the activity of one task from its own route and stops on unsubscribe', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody(
+          'event: activity.entry\ndata: {"kind":"tool"}\n\nevent: activity.note\ndata: raw\n\n',
+        ),
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act
+      const off = client.subscribeTaskActivity('plan 1', 'task/2', onEvent);
+
+      // Assert
+      await vi.waitFor(() => expect(onEvent).toHaveBeenCalledWith('activity.note', 'raw'));
+      expect(onEvent).toHaveBeenCalledWith('activity.entry', { kind: 'tool' });
+      expect(String(fetchMock.mock.calls[0][0])).toBe(
+        'http://localhost:7420/api/v1/plans/plan%201/tasks/task%2F2/activity/events',
+      );
+      const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+      off();
+      expect(signal.aborted).toBe(true);
+    });
+
+    it('opens no activity stream without a pairing and delivers nothing for a refused one', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act: once unpaired, once refused
+      localStorage.clear();
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent)();
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Assert
+      expect(onEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  it('reads the runtime figures of the system snapshot under their wire names', async () => {
+    // Arrange: the runtime part as RuntimeMetrics writes it
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        runtime: {
+          version: '0.9.1',
+          build: '2026-11-01',
+          heap_used_bytes: 100,
+          heap_max_bytes: 400,
+          resident_memory_bytes: 300,
+          measured_at: '2026-11-13T10:00:00Z',
+          socket_listener: true,
+          loopback_listener: '127.0.0.1:7420',
+          network_listener: 'off',
+          paired_devices_count: 2,
+          newer_version: '0.9.2',
+          newer_version_date: '2026-11-10',
+          newer_version_checked_at: '2026-11-13T09:00:00Z',
+          release_notes_link: 'https://example.invalid/notes',
+          upgrade_supported: true,
+          upgrade_unsupported_reason: 'none',
+        },
+      }),
+    }) as unknown as typeof fetch;
+
+    // Act
+    const { runtime } = await client.getSystemSnapshot('hour');
+
+    // Assert: the view's names carry the wire values; a listener that is off is none
+    expect(runtime).toMatchObject({
+      version: '0.9.1',
+      build_date: '2026-11-01',
+      memory_used_bytes: 100,
+      memory_max_bytes: 400,
+      memory_resident_bytes: 300,
+      cpu_percent: null,
+      cpu_measured: false,
+      disk_measured_at: '2026-11-13T10:00:00Z',
+      socket_listener: true,
+      loopback_address: '127.0.0.1:7420',
+      lan_address: null,
+      lan_devices_count: 2,
+      upgrade_available_version: '0.9.2',
+      upgrade_available_date: '2026-11-10',
+      upgrade_checked_at: '2026-11-13T09:00:00Z',
+      upgrade_release_notes_url: 'https://example.invalid/notes',
+      upgrade_possible: true,
+      upgrade_disabled_reason: 'none',
+    });
+  });
 });
 
 /**
@@ -1426,4 +1823,583 @@ describe('ApiClient chat on the B1 contract', () => {
     // Act & Assert
     expect(await client.getEndedChat('plan', 'codeberg-issues')).toBeNull();
   });
+});
+
+/** One act of the client: the call, and the request it must send. */
+type RouteRow = [
+  name: string,
+  call: (client: ApiClient) => Promise<unknown>,
+  method: string,
+  path: string,
+  body: unknown,
+];
+
+/**
+ * The routes the client sends its acts and reads to. Each row is a route the mock runtime serves
+ * (its route constants) or the pm-api contract names; the request's method, path and body are the
+ * contract the runtime reads, so a changed segment, a lost optional parameter or a wrong body is
+ * caught here before the runtime refuses it.
+ */
+describe('ApiClient routes', () => {
+  let client: ApiClient;
+  let sent: { url: string; method: string; body: unknown }[];
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_secret');
+    client = new ApiClient('http://localhost:7420');
+    sent = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      sent.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+      });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const rows: RouteRow[] = [
+    ['getDevices', (c) => c.getDevices(), 'GET', '/api/v1/web/devices', undefined],
+    [
+      'renameDevice',
+      (c) => c.renameDevice('dev 1', 'Laptop'),
+      'PUT',
+      '/api/v1/web/devices/dev%201',
+      { label: 'Laptop' },
+    ],
+    [
+      'revokeDevice',
+      (c) => c.revokeDevice('dev-1'),
+      'DELETE',
+      '/api/v1/web/devices/dev-1',
+      undefined,
+    ],
+    [
+      'revokeOtherDevices',
+      (c) => c.revokeOtherDevices(),
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+    ],
+    [
+      'stepOnboarding',
+      (c) => c.stepOnboarding('next', { language: 'de' }),
+      'POST',
+      '/api/v1/onboarding/step',
+      { link: 'next', language: 'de' },
+    ],
+    ['startOnboardingAuto', (c) => c.startOnboardingAuto(), 'POST', '/api/v1/onboarding/auto', {}],
+    ['getRecipes for the machine', (c) => c.getRecipes(), 'GET', '/api/v1/recipes', undefined],
+    [
+      'getRecipes for a project',
+      (c) => c.getRecipes('pm mcp'),
+      'GET',
+      '/api/v1/recipes?project=pm%20mcp',
+      undefined,
+    ],
+    [
+      'openEntry',
+      (c) => c.openEntry('p-1', { kind: 'plan' } as never),
+      'POST',
+      '/api/v1/projects/p-1/entries',
+      { kind: 'plan' },
+    ],
+    ['getEntry', (c) => c.getEntry('e-1'), 'GET', '/api/v1/entries/e-1', undefined],
+    [
+      'actEntry without a body',
+      (c) => c.actEntry('e-1', 'chat'),
+      'POST',
+      '/api/v1/entries/e-1/links/chat',
+      {},
+    ],
+    [
+      'actEntry with a body',
+      (c) => c.actEntry('e-1', 'choose:fix', { recipe: 'fix' }),
+      'POST',
+      '/api/v1/entries/e-1/links/choose:fix',
+      { recipe: 'fix' },
+    ],
+    [
+      'listProjectFiles at the checkout root',
+      (c) => c.listProjectFiles('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=checkout',
+      undefined,
+    ],
+    [
+      'listProjectFiles below the home',
+      (c) => c.listProjectFiles('p-1', 'home', 'docs'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=home&path=docs',
+      undefined,
+    ],
+    [
+      'startPlan',
+      (c) => c.startPlan({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/plans/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'startEpic',
+      (c) => c.startEpic({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'getDecomposition',
+      (c) => c.getDecomposition('p-1', 'ep-1'),
+      'GET',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition',
+      undefined,
+    ],
+    [
+      'checkDecomposition',
+      (c) => c.checkDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/check',
+      {},
+    ],
+    [
+      'instructDecomposition',
+      (c) => c.instructDecomposition('p-1', 'ep-1', { action: 'split' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/instruct',
+      { action: 'split' },
+    ],
+    [
+      'commitDecomposition',
+      (c) => c.commitDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/commit',
+      {},
+    ],
+    [
+      'getUnclaimedLessons',
+      (c) => c.getUnclaimedLessons('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/lessons',
+      undefined,
+    ],
+    [
+      'checkLessonPremise',
+      (c) => c.checkLessonPremise('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/premise-check',
+      {},
+    ],
+    [
+      'claimLesson',
+      (c) => c.claimLesson('p-1', 'l-1', true),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/claim',
+      { use_anyway: true },
+    ],
+    [
+      'retireLesson without a reason',
+      (c) => c.retireLesson('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      {},
+    ],
+    [
+      'retireLesson with a reason',
+      (c) => c.retireLesson('p-1', 'l-1', 'stale'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      { reason: 'stale' },
+    ],
+    [
+      'observePullRequest',
+      (c) => c.observePullRequest('p-1', '#214'),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/observe',
+      { pr_url: '#214' },
+    ],
+    [
+      'adoptPullRequest',
+      (c) => c.adoptPullRequest({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/adopt',
+      { project_id: 'p-1' },
+    ],
+    [
+      'previewLocalChanges',
+      (c) => c.previewLocalChanges('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/local-changes/preview',
+      undefined,
+    ],
+    [
+      'captureLocalChanges',
+      (c) => c.captureLocalChanges('p-1', 'pv-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/local-changes/capture',
+      { project_id: 'p-1', preview_id: 'pv-1', confirmed: true },
+    ],
+    [
+      'setCredential',
+      (c) => c.setCredential('github', 'ghp_x'),
+      'PUT',
+      '/api/v1/credentials/github',
+      { secret: 'ghp_x' },
+    ],
+    ['getProjects', (c) => c.getProjects(), 'GET', '/api/v1/projects', undefined],
+    [
+      'getProjectExplorer',
+      (c) => c.getProjectExplorer(),
+      'GET',
+      '/api/v1/projects?all=true',
+      undefined,
+    ],
+    [
+      'toggleFavourite',
+      (c) => c.toggleFavourite('p-1', true),
+      'PUT',
+      '/api/v1/projects/p-1/favourite',
+      { favourite: true },
+    ],
+    [
+      'startProjectOnboarding',
+      (c) => c.startProjectOnboarding('/src/new'),
+      'POST',
+      '/api/v1/project-onboardings',
+      { path: '/src/new' },
+    ],
+    [
+      'releaseProject by default',
+      (c) => c.releaseProject('p-1'),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: false },
+    ],
+    [
+      'releaseProject forced',
+      (c) => c.releaseProject('p-1', 'moved', true),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: true, reason: 'moved' },
+    ],
+    ['unenrolProject', (c) => c.unenrolProject('p-1'), 'POST', '/api/v1/projects/p-1/unenrol', {}],
+    [
+      'abandonOnboarding by its id',
+      (c) => c.abandonOnboarding('onb 1'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb%201',
+      undefined,
+    ],
+    [
+      'abandonOnboarding by its link',
+      (c) => c.abandonOnboarding('/api/v1/project-onboardings/onb-1/abandon'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb-1/abandon',
+      undefined,
+    ],
+    [
+      'getProjectDetail',
+      (c) => c.getProjectDetail('p-1'),
+      'GET',
+      '/api/v1/projects/p-1',
+      undefined,
+    ],
+    [
+      'getEndedWork on its first page',
+      (c) => c.getEndedWork('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=1',
+      undefined,
+    ],
+    [
+      'getEndedWork on a later page',
+      (c) => c.getEndedWork('p-1', 3),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=3',
+      undefined,
+    ],
+    [
+      'getReports older of a project',
+      (c) => c.getReports(true, 'p-1'),
+      'GET',
+      '/api/v1/reports?older=true&project=p-1',
+      undefined,
+    ],
+    ['markReportRead', (c) => c.markReportRead('rep-1'), 'POST', '/api/v1/reports/rep-1/read', {}],
+    [
+      'getDecisions of a plan',
+      (c) => c.getDecisions({ project: 'p-1', plan: 'fix' }),
+      'GET',
+      '/api/v1/decisions?project=p-1&plan=fix',
+      undefined,
+    ],
+    [
+      'answerDecision of a plan',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never, 'fix'),
+      'POST',
+      '/api/v1/plans/fix/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'answerDecision of the machine',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never),
+      'POST',
+      '/api/v1/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'getSystemSnapshot of a window and project',
+      (c) => c.getSystemSnapshot('today', 'p-1'),
+      'GET',
+      '/api/v1/system?window=today&project=p-1',
+      undefined,
+    ],
+    [
+      'getSystemSnapshot by default',
+      (c) => c.getSystemSnapshot(),
+      'GET',
+      '/api/v1/system',
+      undefined,
+    ],
+    [
+      'stopRuntime after a drain',
+      (c) => c.stopRuntime('drain'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: false, drain: true },
+    ],
+    [
+      'stopRuntime now and restart',
+      (c) => c.stopRuntime('now', 'restart'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: true, drain: false, then: 'restart' },
+    ],
+    [
+      'upgradeRuntime by default',
+      (c) => c.upgradeRuntime(),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'drain' },
+    ],
+    [
+      'upgradeRuntime to a version now',
+      (c) => c.upgradeRuntime('0.10.0', 'now'),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'now', version: '0.10.0' },
+    ],
+    [
+      'executeCleanup of every item',
+      (c) => c.executeCleanup('cln-1'),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: [] },
+    ],
+    [
+      'executeCleanup leaving items out',
+      (c) => c.executeCleanup('cln-1', ['a']),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of items',
+      (c) => c.releaseKeptCleanup(['a']),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of none named',
+      (c) => c.releaseKeptCleanup(),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: [] },
+    ],
+    [
+      'releaseKeptCleanup of all',
+      (c) => c.releaseKeptCleanup(undefined, true),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { all: true },
+    ],
+    [
+      'getPlanProcess',
+      (c) => c.getPlanProcess('fix'),
+      'GET',
+      '/api/v1/plans/fix/process',
+      undefined,
+    ],
+    [
+      'getTaskActivity',
+      (c) => c.getTaskActivity('fix', 'TASK-3'),
+      'GET',
+      '/api/v1/plans/fix/tasks/TASK-3/activity',
+      undefined,
+    ],
+    [
+      'getEpicProcess',
+      (c) => c.getEpicProcess('relay'),
+      'GET',
+      '/api/v1/epics/relay/process',
+      undefined,
+    ],
+    ['getEpicResource', (c) => c.getEpicResource('relay'), 'GET', '/api/v1/epics/relay', undefined],
+    [
+      'getEpicReview',
+      (c) => c.getEpicReview('relay', 'watches'),
+      'GET',
+      '/api/v1/epics/relay/review?register=watches',
+      undefined,
+    ],
+    [
+      'keepReviewItem',
+      (c) => c.keepReviewItem('relay', 'findings', 'F-1', 'watch'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/keep',
+      { register: 'findings', as: 'watch' },
+    ],
+    [
+      'dropReviewItem',
+      (c) => c.dropReviewItem('relay', 'findings', 'F-1', 'done'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/drop',
+      { register: 'findings', reason: 'done' },
+    ],
+    [
+      'promoteReviewItem for a first draft',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings' },
+    ],
+    [
+      'promoteReviewItem with an instruction',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1', 'smaller'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings', instruction: 'smaller' },
+    ],
+    [
+      'editReviewItem',
+      (c) => c.editReviewItem('relay', 'watches', 'W-1', 'add a rule'),
+      'POST',
+      '/api/v1/epics/relay/review/items/W-1/edit',
+      { register: 'watches', instruction: 'add a rule' },
+    ],
+    [
+      'acceptReviewReadBack',
+      (c) => c.acceptReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/accept',
+      { register: 'watches' },
+    ],
+    [
+      'discardReviewReadBack',
+      (c) => c.discardReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/discard',
+      { register: 'watches' },
+    ],
+    [
+      'stageReviewPlan',
+      (c) => c.stageReviewPlan('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/plan/stage',
+      { register: 'findings' },
+    ],
+    [
+      'commitReview',
+      (c) => c.commitReview('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/commit',
+      { register: 'findings' },
+    ],
+    [
+      'getDecisionChat',
+      (c) => c.getDecisionChat('Q-7'),
+      'GET',
+      '/api/v1/decisions/Q-7/chat',
+      undefined,
+    ],
+    [
+      'decisionChatTurn',
+      (c) => c.decisionChatTurn('Q-7', 'and then?'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/turns',
+      { text: 'and then?' },
+    ],
+    [
+      'answerDecisionChatProposal accepted',
+      (c) => c.answerDecisionChatProposal('Q-7', true),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/accept',
+      {},
+    ],
+    [
+      'answerDecisionChatProposal rejected',
+      (c) => c.answerDecisionChatProposal('Q-7', false),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/reject',
+      {},
+    ],
+    [
+      'endDecisionChat',
+      (c) => c.endDecisionChat('Q-7'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/end',
+      {},
+    ],
+    [
+      'applyPlanAction without a body',
+      (c) => c.applyPlanAction('fix', 'pause'),
+      'POST',
+      '/api/v1/plans/fix/actions/pause',
+      {},
+    ],
+    [
+      'applyPlanAction with a body',
+      (c) => c.applyPlanAction('fix', 'abandon', { reason: 'r' }),
+      'POST',
+      '/api/v1/plans/fix/actions/abandon',
+      { reason: 'r' },
+    ],
+    [
+      'applyEpicAction without a body',
+      (c) => c.applyEpicAction('relay', 'auto'),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      {},
+    ],
+    [
+      'applyEpicAction with a body',
+      (c) => c.applyEpicAction('relay', 'auto', { on: true }),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      { on: true },
+    ],
+    [
+      'getPlanSettings',
+      (c) => c.getPlanSettings('fix'),
+      'GET',
+      '/api/v1/plans/fix/settings',
+      undefined,
+    ],
+  ];
+
+  it.each(rows)(
+    '%s sends its request to the runtime route',
+    async (_name, call, method, path, body) => {
+      // Act
+      await call(client);
+
+      // Assert: one request, to the route, with the method and the body the runtime reads
+      expect(sent).toEqual([{ url: `http://localhost:7420${path}`, method, body }]);
+    },
+  );
 });

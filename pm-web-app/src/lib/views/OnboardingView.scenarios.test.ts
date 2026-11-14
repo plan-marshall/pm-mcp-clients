@@ -298,6 +298,89 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.queryByText(/[$€£]/)).not.toBeInTheDocument();
   });
 
+  it.each([
+    [
+      'the roles by their accept link',
+      {
+        state: 'roles.review',
+        roles: [{ role: 'implement', harness_id: 'claude', model_id: 'sonnet-5.5' }],
+        links: {
+          back: { href: '/api/v1/onboarding/roles/back', next: 'catalogue.select' },
+          accept: { href: '/api/v1/onboarding/roles/accept', next: 'store.choose' },
+        },
+      },
+      'roles-record',
+      'accept',
+    ],
+    [
+      'the chosen store by its own link',
+      {
+        state: 'store.choose',
+        stores: [
+          { kind: 'os', name: 'Keychain', available: true },
+          { kind: 'file', name: 'File', available: true, recommended: true },
+        ],
+        links: {
+          os: { href: '/api/v1/onboarding/store/os', next: 'providers.select' },
+          file: { href: '/api/v1/onboarding/store/file', next: 'providers.select' },
+        },
+      },
+      'store-record',
+      'file',
+    ],
+    [
+      'the plan defaults by their accept link',
+      {
+        state: 'defaults.review',
+        landing: 'pull_request',
+        method: 'squash',
+        asking: 'ask',
+        links: {
+          back: { href: '/api/v1/onboarding/defaults/back', next: 'providers.select' },
+          accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' },
+        },
+      },
+      'defaults-record',
+      'accept',
+    ],
+  ])('records %s', async (_case, partial, button, link) => {
+    arrange(onboardingState(partial as Partial<OnboardingState>));
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'onboard.completed' }));
+    render(OnboardingView);
+
+    await fireEvent.click(await screen.findByTestId(button));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith(link, {}));
+  });
+
+  it('shows the provider that failed with its cause and fix, and tries again by its link', async () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be reached',
+        provider: 'github',
+        cause: 'the token was refused',
+        fix: 'gh auth login',
+        links: { retry: { href: '/api/v1/onboarding/providers/retry', next: 'providers.select' } },
+      } as Partial<OnboardingState>),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'providers.select' }));
+    render(OnboardingView);
+
+    expect(await screen.findByText('github')).toBeInTheDocument();
+    expect(screen.getByText('the token was refused')).toBeInTheDocument();
+    expect(screen.getByText('gh auth login')).toBeInTheDocument();
+    const [retry] = screen
+      .getAllByRole('button')
+      .filter((candidate) => candidate.closest('.state-card__actions'));
+    await fireEvent.click(retry);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({

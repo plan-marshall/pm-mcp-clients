@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
@@ -735,9 +735,7 @@ describe('DecisionView component', () => {
     expect(screen.queryByTestId('notify-banner')).not.toBeInTheDocument();
 
     captured.handler?.('decision.opened', {
-      ...costlyDecision,
-      id: 'dec-arrived',
-      subject: 'epic relay-hardening',
+      decision: { ...costlyDecision, id: 'dec-arrived', subject: 'epic relay-hardening' },
     });
 
     expect(await screen.findByTestId('notify-banner')).toHaveTextContent(
@@ -765,10 +763,9 @@ describe('DecisionView component', () => {
     const groups = screen.getAllByRole('radiogroup');
     await fireEvent.click(groups[0].querySelector('input[value="1"]')!);
 
-    captured.handler?.('decision.opened', {
-      ...multipartDecision,
-      revision: 2,
-      change: 'the migration part changed',
+    captured.handler?.('decision.changed', {
+      decision: { ...multipartDecision, revision: 2 },
+      change_summary: 'the migration part changed',
     });
 
     expect(await screen.findByTestId('decision-revised-dec-multipart')).toHaveTextContent(
@@ -914,7 +911,7 @@ describe('DecisionView component', () => {
     });
     render(DecisionView);
     await screen.findByText('Select merge strategy');
-    captured.handler?.('decision.opened', mockDecision);
+    captured.handler?.('decision.opened', { decision: mockDecision });
     expect(await screen.findByTestId('notify-banner')).toBeInTheDocument();
 
     await typeFilter('nothing-matches-this');
@@ -999,7 +996,7 @@ describe('DecisionView component', () => {
       await screen.findByText('fix-relay asks for a waiver');
 
       // Act: the decision arrives in a later event.
-      emit('decision.opened', mockDecision);
+      emit('decision.opened', { decision: mockDecision });
 
       // Assert
       await waitFor(() => expect(scrolled).toContain(cardOf('dec-101')));
@@ -1042,7 +1039,7 @@ describe('DecisionView component', () => {
 
       // The route stops naming a decision, then the decision arrives in a later event.
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: null }));
-      emit('decision.opened', mockDecision);
+      emit('decision.opened', { decision: mockDecision });
 
       // Assert: the stale request cannot mark it any more.
       await screen.findByText('Select merge strategy');
@@ -1084,6 +1081,594 @@ describe('DecisionView component', () => {
       // Assert: the mark does not come back with the card.
       await screen.findByText('Select merge strategy');
       expect(cardOf('dec-101')).not.toHaveAttribute('aria-current');
+    });
+  });
+
+  describe('the live events of the decision catalogue', () => {
+    /** @returns the emitter of the event handler the view registered */
+    function captureEvents(): (event: string, data?: unknown) => void {
+      let handler: ((event: string, data?: unknown) => void) | null = null;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((registered) => {
+        handler = registered as (event: string, data?: unknown) => void;
+        return () => {};
+      });
+      return (event, data) => act(() => handler?.(event, data));
+    }
+
+    const arrived: DecisionEnvelope = {
+      ...mockDecision,
+      id: 'dec-303',
+      title: 'Pick the release train',
+      parts: mockDecision.parts.map((part) => ({ ...part, question: 'Which train?' })),
+    };
+
+    it('shows a decision that arrives with decision.opened without reading the list again', async () => {
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.opened', { event: 'decision.opened', decision: arrived });
+
+      expect(await screen.findByText('Pick the release train')).toBeInTheDocument();
+      expect(screen.getByText('3 open')).toBeInTheDocument();
+      expect(apiClient.getDecisions).toHaveBeenCalledTimes(1);
+    });
+
+    it('says a decision changed when decision.opened carries a newer revision', async () => {
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.opened', { decision: { ...mockDecision, revision: 2 } });
+
+      expect(await screen.findByTestId('decision-revised-dec-101')).toHaveTextContent(
+        'The decision changed: the decision was revised. Please answer again.',
+      );
+    });
+
+    it('adds a changed decision the list does not hold yet', async () => {
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.changed', { decision: arrived, change_summary: 'a new option' });
+
+      expect(await screen.findByText('Pick the release train')).toBeInTheDocument();
+      expect(screen.queryByTestId('decision-revised-dec-303')).toBeNull();
+    });
+
+    it.each(['decision.opened', 'decision.changed'])(
+      'reads the list again when %s names no decision',
+      async (event) => {
+        const emit = captureEvents();
+        render(DecisionView);
+        await screen.findByText('Select merge strategy');
+
+        await emit(event, { event });
+
+        await waitFor(() => expect(apiClient.getDecisions).toHaveBeenCalledTimes(2));
+      },
+    );
+
+    it.each(['decision.answered', 'decision.closed'])(
+      'reads the list again when %s names no decision',
+      async (event) => {
+        const emit = captureEvents();
+        render(DecisionView);
+        await screen.findByText('Select merge strategy');
+
+        await emit(event, {});
+
+        await waitFor(() => expect(apiClient.getDecisions).toHaveBeenCalledTimes(2));
+      },
+    );
+
+    it('keeps the list and shows the failed reload above it', async () => {
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      vi.mocked(apiClient.getDecisions).mockRejectedValueOnce(new ClientError('timeout'));
+
+      await emit('decision.opened', {});
+
+      expect(await screen.findByTestId('decisions-error')).toHaveTextContent(
+        'The request took too long',
+      );
+      expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    });
+
+    it('drops a decision decision.closed names, and a dismissed notice goes', async () => {
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.closed', { id: 'dec-101', outcome: 'withdrawn' });
+      await emit('decision.answered', { id: 'WR-001', answer: 'waive' });
+
+      await waitFor(() => expect(screen.queryByText('Select merge strategy')).toBeNull());
+      expect(screen.getByTestId('decision-notices')).toHaveTextContent('Decided: waive');
+      await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(screen.queryByTestId('decision-notices')).toBeNull();
+    });
+
+    describe('while the decision’s chat is open', () => {
+      /** Renders the view and opens the chat of dec-101. */
+      async function openTheChat(): Promise<(event: string, data?: unknown) => void> {
+        const emit = captureEvents();
+        vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+        render(DecisionView);
+        await fireEvent.click(await screen.findByText('chat about it first'));
+        await screen.findByTestId('chat-transcript');
+        return emit;
+      }
+
+      it.each([
+        [
+          { id: 'dec-101', outcome: 'withdrawn', reason: 'the revision dropped the step' },
+          'dec-101 is closed: the revision removed the need for it (the revision dropped the step); the chat has ended with it.',
+        ],
+        [
+          { id: 'dec-101', outcome: 'withdrawn' },
+          'dec-101 is closed: the revision removed the need for it (The decision was withdrawn.); the chat has ended with it.',
+        ],
+        [{ id: 'dec-101', outcome: 'answered' }, 'dec-101 is answered; the chat has ended with it.'],
+      ])('ends the chat with the line of the closing outcome %o', async (payload, line) => {
+        const emit = await openTheChat();
+
+        await emit('decision.closed', payload);
+
+        // The decision leaves the list, so the line that ends its chat stands where it stood.
+        expect(screen.queryByTestId('chat-panel')).toBeNull();
+        expect(screen.queryByText('Select merge strategy')).toBeNull();
+        expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
+      });
+
+      it.each([
+        [
+          { id: 'dec-101', answer: 'rebase', channel: 'cli', device: 'terminal-01' },
+          'dec-101 was answered in the console (terminal-01); the chat has ended.',
+        ],
+        [
+          { id: 'dec-101', answer: 'rebase', channel: 'web' },
+          'dec-101 was answered in the web app (—); the chat has ended.',
+        ],
+        [
+          { id: 'dec-101', answer: 'rebase' },
+          'dec-101 is answered; the chat has ended with it.',
+        ],
+      ])('names where an answer elsewhere came from only as the event says %o', async (payload, line) => {
+        const emit = await openTheChat();
+
+        await emit('decision.answered', payload);
+
+        expect(screen.queryByTestId('chat-panel')).toBeNull();
+        expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
+      });
+
+      it('sends a message and shows the reply', async () => {
+        await openTheChat();
+        vi.spyOn(apiClient, 'decisionChatTurn').mockResolvedValue({
+          ...decisionChat,
+          turns: [
+            ...decisionChat.turns,
+            { role: 'implement', text: 'The pull request is rebased too.', at: '2026-10-14T10:01:00Z', untrusted: false },
+          ],
+        });
+
+        await fireEvent.input(screen.getByTestId('chat-input'), {
+          target: { value: 'And the open pull request?' },
+        });
+        await fireEvent.click(screen.getByTestId('chat-send'));
+
+        expect(apiClient.decisionChatTurn).toHaveBeenCalledWith('dec-101', 'And the open pull request?');
+        await waitFor(() =>
+          expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
+            'The pull request is rebased too.',
+          ),
+        );
+      });
+
+      it('says why a message found no chat', async () => {
+        await openTheChat();
+
+        await fireEvent.input(screen.getByTestId('chat-input'), { target: { value: 'Hello?' } });
+        await fireEvent.click(screen.getByTestId('chat-send'));
+
+        expect(await screen.findByTestId('decision-chat-notice')).toHaveTextContent(
+          'No chat is available for this decision:',
+        );
+        expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+      });
+
+      it('rejects a proposal without taking its words', async () => {
+        await openTheChat();
+        vi.spyOn(apiClient, 'answerDecisionChatProposal').mockResolvedValue({
+          ...decisionChat,
+          proposal: undefined,
+        });
+
+        await fireEvent.click(screen.getByTestId('chat-reject'));
+
+        expect(apiClient.answerDecisionChatProposal).toHaveBeenCalledWith('dec-101', false);
+        await waitFor(() => expect(screen.queryByTestId('chat-proposal')).toBeNull());
+        expect(apiClient.interpretDecision).not.toHaveBeenCalled();
+      });
+
+      it('says why a proposal could not be answered', async () => {
+        await openTheChat();
+
+        await fireEvent.click(screen.getByTestId('chat-accept'));
+
+        expect(await screen.findByTestId('decision-chat-notice')).toHaveTextContent(
+          'No chat is available for this decision:',
+        );
+      });
+
+      it.each([
+        ['ends the chat with the runtime', () => fireEvent.click(screen.getByTestId('chat-end'))],
+        ['closes the panel on Escape', () => fireEvent.keyDown(window, { key: 'Escape' })],
+      ])('%s and gives the decision its answers back', async (_name, close) => {
+        await openTheChat();
+        expect(screen.getByDisplayValue('rebase')).toBeDisabled();
+
+        await close();
+
+        await waitFor(() => expect(screen.queryByTestId('chat-panel')).toBeNull());
+        expect(screen.getByDisplayValue('rebase')).not.toBeDisabled();
+        expect(screen.queryByTestId('decision-chat-notice')).toBeNull();
+      });
+    });
+
+    it('says the chat is not available when it cannot be opened', async () => {
+      render(DecisionView);
+
+      await fireEvent.click(await screen.findByText('chat about it first'));
+
+      expect(await screen.findByTestId('decision-chat-notice')).toHaveTextContent(
+        'No chat is available for this decision:',
+      );
+      expect(screen.queryByTestId('chat-panel')).toBeNull();
+    });
+  });
+
+  describe('desktop notifications', () => {
+    /** The notifications the view fired, by title. */
+    let fired: string[];
+
+    /**
+     * Installs a browser notification API with the given permission.
+     *
+     * @param permission the permission the browser reports
+     * @param request what asking for the permission does
+     */
+    function installNotifications(
+      permission: NotificationPermission,
+      request: () => Promise<NotificationPermission> = async () => permission,
+    ): void {
+      fired = [];
+      class FakeNotification {
+        static permission = permission;
+        static requestPermission = vi.fn(request);
+        constructor(title: string) {
+          fired.push(title);
+        }
+      }
+      vi.stubGlobal('Notification', FakeNotification);
+    }
+
+    /** @param state the visibility the document reports */
+    function setVisibility(state: DocumentVisibilityState): void {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+    }
+
+    /** @returns the emitter of the event handler the view registered */
+    function captureEvents(): (event: string, data?: unknown) => Promise<void> {
+      let handler: ((event: string, data?: unknown) => void) | null = null;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((registered) => {
+        handler = registered as (event: string, data?: unknown) => void;
+        return () => {};
+      });
+      return (event, data) => act(() => handler?.(event, data));
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    });
+
+    it.each([
+      ['epic relay-hardening', false, 'Epic relay-hardening asks a decision'],
+      ['setup of pm-mcp-clients', false, 'The setup of pm-mcp-clients asks a decision'],
+      ['start in pm-web', false, 'The start in pm-web asks a decision'],
+      ['plan fix-relay', false, 'fix-relay asks a decision'],
+      ['plan fix-relay', true, 'fix-relay asks for a waiver'],
+    ])(
+      'names the subject %s (waiver %s) in the notification of a background tab',
+      async (subject, isWaiver, title) => {
+        localStorage.setItem('pm_decision_notify', 'granted');
+        installNotifications('granted');
+        setVisibility('hidden');
+        const emit = captureEvents();
+        render(DecisionView);
+        await screen.findByText('Select merge strategy');
+
+        await emit('decision.opened', {
+          decision: { ...mockDecision, id: 'dec-404', subject, is_waiver: isWaiver },
+        });
+
+        expect(fired).toEqual([title]);
+        expect(screen.queryByTestId('notify-banner')).toBeNull();
+      },
+    );
+
+    it('fires no notification while the tab is in front', async () => {
+      localStorage.setItem('pm_decision_notify', 'granted');
+      installNotifications('granted');
+      setVisibility('visible');
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.opened', { decision: { ...mockDecision, id: 'dec-404' } });
+
+      expect(fired).toEqual([]);
+    });
+
+    it('asks no more once the browser itself says no', async () => {
+      installNotifications('denied');
+      setVisibility('hidden');
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      await emit('decision.opened', { decision: { ...mockDecision, id: 'dec-404' } });
+
+      expect(screen.queryByTestId('notify-banner')).toBeNull();
+      expect(fired).toEqual([]);
+    });
+
+    it.each([
+      [
+        'granted',
+        async () => 'granted' as NotificationPermission,
+        'The web app notifies you while the tab is in the background.',
+        'granted',
+      ],
+      [
+        'denied',
+        async () => 'denied' as NotificationPermission,
+        'Notifications stay off; the open decisions stay in the tab title and in the list.',
+        'denied',
+      ],
+      [
+        'refused',
+        async (): Promise<NotificationPermission> => {
+          throw new Error('blocked');
+        },
+        'The browser did not allow notifications.',
+        'denied',
+      ],
+    ])(
+      'records the answer of the browser prompt when it is %s',
+      async (_case, request, message, stored) => {
+        installNotifications('default', request);
+        const emit = captureEvents();
+        render(DecisionView);
+        await screen.findByText('Select merge strategy');
+        await emit('decision.opened', { decision: { ...mockDecision, id: 'dec-404' } });
+
+        await fireEvent.click(await screen.findByRole('button', { name: 'Allow notifications' }));
+
+        expect(await screen.findByTestId('notify-message')).toHaveTextContent(message);
+        expect(screen.queryByTestId('notify-banner')).toBeNull();
+        expect(localStorage.getItem('pm_decision_notify')).toBe(stored);
+      },
+    );
+
+    it('says the browser offers no notifications when it has none', async () => {
+      vi.stubGlobal('Notification', undefined);
+      const emit = captureEvents();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      await emit('decision.opened', { decision: { ...mockDecision, id: 'dec-404' } });
+
+      await fireEvent.click(await screen.findByRole('button', { name: 'Allow notifications' }));
+
+      expect(await screen.findByTestId('notify-message')).toHaveTextContent(
+        'The browser did not allow notifications.',
+      );
+      expect(localStorage.getItem('pm_decision_notify')).toBe('denied');
+    });
+  });
+
+  describe('a failed act', () => {
+    const sentence = 'Try again; if it keeps taking this long, check that the runtime is running.';
+
+    it('says why a waiver answer failed and keeps the request', async () => {
+      vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+      render(DecisionView);
+      await fireEvent.input(await screen.findByPlaceholderText('Give your reason first.'), {
+        target: { value: 'The gate is wrong for generated code' },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+
+      expect(apiClient.answerDecision).toHaveBeenCalledWith('WR-001', {
+        action: 'decline',
+        reason: 'The gate is wrong for generated code',
+      });
+      expect(await screen.findByText(sentence)).toBeInTheDocument();
+      expect(screen.getByText('fix-relay asks for a waiver')).toBeInTheDocument();
+    });
+
+    it('says why none fits failed and keeps the decision', async () => {
+      vi.spyOn(apiClient, 'withdrawDecision').mockRejectedValue(new ClientError('timeout'));
+      render(DecisionView);
+
+      await fireEvent.click(await screen.findByText(/none fits: let the plan think again/));
+
+      expect(await screen.findByText(sentence)).toBeInTheDocument();
+      expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    });
+
+    it('says why an own-words answer failed and keeps the decision', async () => {
+      vi.spyOn(apiClient, 'answerDecision').mockRejectedValue(new ClientError('timeout'));
+      render(DecisionView);
+      await fireEvent.click(await screen.findByText('in my own words'));
+      await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+        target: { value: 'Use rebase please' },
+      });
+      await fireEvent.click(screen.getByText('Read back'));
+
+      await fireEvent.click(await screen.findByText('Correct'));
+
+      expect(await screen.findByText(sentence)).toBeInTheDocument();
+      expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    });
+  });
+
+  describe('an answer in own words', () => {
+    /** Renders the view and reads back the words of dec-101. */
+    async function readBack(): Promise<void> {
+      render(DecisionView);
+      await fireEvent.click(await screen.findByText('in my own words'));
+      await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+        target: { value: 'Use rebase please' },
+      });
+      await fireEvent.click(screen.getByText('Read back'));
+      await screen.findByText('I understood: Rebase onto main');
+    }
+
+    it('goes back to the words to edit them', async () => {
+      await readBack();
+
+      await fireEvent.click(screen.getByText('edit my words'));
+
+      expect(screen.getByPlaceholderText('State your decision in your own words…')).toHaveValue(
+        'Use rebase please',
+      );
+      expect(screen.queryByText('I understood: Rebase onto main')).toBeNull();
+    });
+
+    it('goes back to the options instead', async () => {
+      await readBack();
+
+      await fireEvent.click(screen.getByText('choose an option instead'));
+
+      expect(screen.queryByText('I understood: Rebase onto main')).toBeNull();
+      expect(screen.queryByPlaceholderText('State your decision in your own words…')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+    });
+
+    it('names the role at work while the words are read', async () => {
+      vi.spyOn(apiClient, 'interpretDecision').mockReturnValue(new Promise(() => {}));
+      render(DecisionView);
+      await fireEvent.click(await screen.findByText('in my own words'));
+      await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+        target: { value: 'Use rebase please' },
+      });
+
+      await fireEvent.click(screen.getByText('Read back'));
+
+      expect(await screen.findByText('outline is reading your answer')).toBeInTheDocument();
+    });
+  });
+
+  it('waits for the part a dependency names by its id', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+      {
+        ...multipartDecision,
+        parts: [
+          { ...multipartDecision.parts[0], part_id: 'store' },
+          { ...multipartDecision.parts[1], part_id: 'migration', dependency: 'store' },
+        ],
+      },
+    ]);
+    render(DecisionView);
+    expect(await screen.findByText('Answer part 1 first.')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getAllByRole('radiogroup')[0].querySelector('input[value="2"]')!);
+
+    expect(await screen.findByTestId('part-dependency-dec-multipart')).toHaveTextContent(
+      'depends on part 1: One database for the machine',
+    );
+  });
+
+  it('asks nothing when the browser storage cannot be read', async () => {
+    const readItem = localStorage.getItem.bind(localStorage);
+    const getItem = vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => {
+      if (key === 'pm_decision_notify') throw new Error('storage disabled');
+      return readItem(key);
+    });
+    onTestFinished(() => getItem.mockRestore());
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await act(() =>
+      captured.handler?.('decision.opened', { decision: { ...mockDecision, id: 'dec-404' } }),
+    );
+
+    expect(screen.getByText('3 open')).toBeInTheDocument();
+    expect(screen.queryByTestId('notify-banner')).toBeNull();
+  });
+
+  describe('the waiver card', () => {
+    it('shows only what the request names, with the catalogue words for the rest', async () => {
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+        {
+          ...mockWaiver,
+          asking_phase: undefined,
+          waiver_gate: undefined,
+          waiver_result: undefined,
+          delivered_at: '2026-10-14T10:00:00Z',
+        },
+      ]);
+      render(DecisionView);
+
+      const card = (await screen.findByText('fix-relay asks for a waiver')).closest(
+        'article',
+      ) as HTMLElement;
+
+      expect(within(card).getByText('Quality gate')).toBeInTheDocument();
+      expect(within(card).getByText('Gate failed')).toBeInTheDocument();
+      expect(within(card).getByText('implement')).toBeInTheDocument();
+      expect(card).not.toHaveTextContent('execute');
+      expect(card).toHaveTextContent('the plan waits for your answer, since');
+    });
+  });
+
+  describe('later', () => {
+    it.each([
+      ['the decision', 'later', 'Select merge strategy'],
+      ['the waiver request', 'Later', 'fix-relay asks for a waiver'],
+    ])('leaves %s open and in the list, and sends nothing', async (_kind, label, title) => {
+      render(DecisionView);
+      await screen.findByText(title);
+
+      await fireEvent.click(screen.getByRole('button', { name: label }));
+
+      expect(screen.getByText(title)).toBeInTheDocument();
+      expect(screen.getByText('2 open')).toBeInTheDocument();
+      expect(apiClient.answerDecision).not.toHaveBeenCalled();
+      expect(apiClient.withdrawDecision).not.toHaveBeenCalled();
+    });
+
+    it('drops the mark the command palette gave the decision it leaves', async () => {
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+      const card = () => document.querySelector('[data-decision-id="dec-101"]');
+      await waitFor(() => expect(card()).toHaveAttribute('aria-current', 'true'));
+
+      await fireEvent.click(screen.getByRole('button', { name: 'later' }));
+
+      expect(card()).not.toHaveAttribute('aria-current');
+      expect(card()).toHaveTextContent('How should the branch be updated?');
     });
   });
 });
