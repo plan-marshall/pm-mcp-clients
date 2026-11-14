@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import fs from 'node:fs';
@@ -279,5 +279,91 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(style).toContain('animation: triage-page-shift var(--duration-base)');
     const reduced = style.slice(style.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toContain('animation: none');
+  });
+});
+
+describe('the side column of the chat', () => {
+  /**
+   * Renders the engine with the chat beside it.
+   *
+   * @param container the container's width in px
+   * @param sideOpen whether the chat is open
+   * @param onHideSide the act the side column reports
+   * @param withUp whether a page leaves its Up act for the first visible column
+   */
+  async function renderSide(
+    container: number,
+    sideOpen = true,
+    onHideSide = () => {},
+    withUp = false,
+  ) {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen,
+        onHideSide,
+        withUp,
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), container, 800);
+    await tick();
+  }
+
+  it('draws no side column while the chat is closed', async () => {
+    await renderSide(1048, false);
+
+    expect(screen.queryByTestId('side-column')).toBeNull();
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+  });
+
+  it('docks the chat at 480 px where the window keeps its column', async () => {
+    await renderSide(1048);
+
+    expect(Number.parseFloat(screen.getByTestId('side-column').style.inlineSize)).toBe(480);
+    expect(screen.getByTestId('triage-detail').style.inlineSize).toBe('520px');
+  });
+
+  it('narrows the chat to 400 px where 480 would cost the window a column', async () => {
+    await renderSide(960);
+
+    expect(Number.parseFloat(screen.getByTestId('side-column').style.inlineSize)).toBe(400);
+    expect(Number.parseFloat(screen.getByTestId('triage-detail').style.inlineSize)).toBe(512);
+  });
+
+  it('lets the chat take the space where the object and the chat do not fit', async () => {
+    await renderSide(792);
+
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+    expect(columns()).toHaveLength(0);
+  });
+
+  it('hides the chat on its own act and on Escape', async () => {
+    const onHideSide = vi.fn();
+    await renderSide(1048, true, onHideSide);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Hide the chat' }));
+    expect(onHideSide).toHaveBeenCalledOnce();
+
+    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: 'Escape' });
+    expect(onHideSide).toHaveBeenCalledTimes(2);
+  });
+
+  it('takes the whole screen on a phone, the bottom bar included', async () => {
+    await renderSide(390);
+
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+  });
+
+  it('leaves the head of the first visible column for the page that fills it', async () => {
+    await renderSide(1216, false, () => {}, true);
+
+    const first = columns()[0];
+
+    expect(first.querySelector('.triage-page__up')).not.toBeNull();
+    expect(first).toHaveTextContent('Up');
   });
 });

@@ -3,9 +3,10 @@
 
   /**
    * A test fixture for the column engine: a chain of levels, each column's body a heading and a
-   * text the test hands in, the object column's body separately, an optional pinned row and an
-   * optional field to hold the focus. It is the position a view draws itself in — not a component of
-   * the page. The texts arrive as props, so the catalogue guard sees no literal copy in a screen.
+   * text the test hands in, the object column's body separately, an optional pinned row, an
+   * optional field to hold the focus, and the side column of the chat with its acts. It is the
+   * position a view draws itself in — not a component of the page. The texts arrive as props, so the
+   * catalogue guard sees no literal copy in a screen.
    */
   interface Props {
     levels: Level[];
@@ -15,6 +16,10 @@
     withObject?: boolean;
     pinned?: PinnedRow | null;
     fieldLabel?: string;
+    sideBody?: string;
+    sideOpen?: boolean;
+    withUp?: boolean;
+    onHideSide?: () => void;
   }
 
   let {
@@ -25,6 +30,10 @@
     withObject = true,
     pinned = null,
     fieldLabel = '',
+    sideBody = '',
+    sideOpen = false,
+    withUp = false,
+    onHideSide = () => {},
   }: Props = $props();
 
   /**
@@ -49,4 +58,22 @@
   <p class="fixture-object">{objectBody || bodyOf(level)}</p>
 {/snippet}
 
-<TriagePage {levels} {label} {pinned} column={columnPane} object={withObject ? objectPane : undefined} />
+{#snippet sidePane()}
+  <p class="fixture-side">{sideBody}</p>
+{/snippet}
+
+{#snippet upPane()}
+  <p class="fixture-up">Up</p>
+{/snippet}
+
+<TriagePage
+  {levels}
+  {label}
+  {pinned}
+  column={columnPane}
+  object={withObject ? objectPane : undefined}
+  side={sideBody ? sidePane : undefined}
+  {sideOpen}
+  {onHideSide}
+  up={withUp ? upPane : undefined}
+/>
