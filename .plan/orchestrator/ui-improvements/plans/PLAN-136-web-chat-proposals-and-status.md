@@ -108,9 +108,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
    - `PlanView.test.ts` and the overview test assert the line in each of the cases above and its removal on each exit (evidence order: `test-first`).
    - Browser check (Playwright MCP) on `running-work` shows the proposal card with its diff (accept, reject, an older-version refusal,
      an already-queued refusal, a lapse), a notice turn folded and unfolded, a status card, and the plan head's line; German and English,
-     light and dark, at `1440` and `390` px; baseline and after snapshots and screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read,
-     never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+     light and dark, at `1440` and `390` px; baseline and after snapshots and screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -123,7 +121,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
   worktree did not start.
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
 - The merge rule: merge only when every thread has a reply and is resolved, every review body is answered and some head has had one
-  CodeRabbit review; counts stated from `ci pr comments`; merge on the operator's word only; commits end with
+  CodeRabbit review; counts stated from `ci pr comments`; the run merges itself once the gates hold (no further operator word); commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -134,13 +132,21 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 ## Claim Labels
 
 - OBSERVED: `components-chat.adoc:53` knows only "Refused for an older version"; the already-queued variant is only in `chat.adoc:107` — read at `doc/design/web-app/components-chat.adoc:53`; `doc/design/web-app/chat.adoc:107`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: components-chat.adoc:53 has only the older-version refusal; the already-queued variant is only in chat.adoc:107
 - OBSERVED: `chat.adoc` § `#notices` has no line for `control.chat.follow_up.opened` (it appears in `work-actions.adoc` § `#chat-ended`) — read at `doc/design/web-app/chat.adoc:96-109`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: chat.adoc has no control.chat.follow_up.opened (only follow_up.start :145); the line is in work-actions.adoc:468
 - OBSERVED: `PlanView.svelte` listens for `plan.changed` and other names outside the catalogue — read at `pm-web-app/src/lib/views/PlanView.svelte:122-133`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:126-132 listens plan.changed, activity.changed, phase.changed, task.off_track, project.work_ended (plan.changed is not in EventName)
 - OBSERVED: no `--color-diff-removed` or `--color-diff-added` token exists — `git grep -n "color-diff" -- pm-web-app/src` is empty at `1cc0e10e`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep color-diff in pm-web-app/src is empty at HEAD
 - HYPOTHESIS: the plan view's head renders through `WorkControlPanel` and `ActionBar` (PLAN-47), so the queued-revision line is a part of the head slot of `PlanView.svelte` — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-web-app/src/lib/components/WorkControlPanel.svelte` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-header (PlanView:654-881) holds WorkControlPanel (:784) which renders ActionBar (WorkControlPanel:824,828); no ObjectPage head slot involved
 - HYPOTHESIS: the overview row has a slot for a second line of text beside the state — confirm/refute at `pm-web-app/src/lib/views/OverviewView.svelte` § plan row (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Plan rows (OverviewView:1074-1107 nested, :1120-1157 without-epic) hold title and badges only; no second-line text slot exists today | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: a hold has a store or resource the status card can read without a view of its own — confirm/refute at `pm-web-app/src/lib/api/client.ts` § holds and `pm-web-app/src/lib/stores/runtime.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: getPlanHolds(planId) (client.ts:3888) is a resource a status card can read; runtime.ts holds no hold store
 - Verify-first clause: re-read `chat.adoc` § `#proposal` and § `#notices` at the current HEAD before scoping; a notice added since is added here.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural re-read of chat.adoc #proposal/#notices; nothing to settle by reading
 
 ## Expected Surface
 
@@ -162,6 +168,11 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 - OBSERVED: `doc/design/web-app/components-chat.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/web-app/chat.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at `1cc0e10e`
+- OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/DecisionView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -178,6 +189,17 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 ## Re-Grounding at Restart
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; check which of PLAN-45, 55, 62 landed.
+
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+- `control.chat.follow_up.opened` ("go on with its sources") is shown by the bridge with no path to the start: reword it until the contract Open Item lands. Notices with empty text must not draw an empty line.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 5 contradicted: Plan rows (OverviewView:1074-1107 nested, :1120-1157 without-epic) hold title and badges only; no second-line text slot exists today
+- Overview plan rows have no second-line slot (`OverviewView:1074-1157`).
 
 ## Hand-Off Command
 
@@ -207,3 +229,23 @@ are now optional (PLAN-132, `572dc739`), but `DecisionView.svelte:375-381` (`clo
 an absent device to "—". Carry "absent stays absent" to this consumer: no channel names no channel, no device selects the
 `decision_answered_no_device` wording (`work-actions-chat-texts.adoc:17`). Done when a `DecisionView.test.ts` case for each absence
 fails on revert. Expected surface added: `pm-web-app/src/lib/views/DecisionView.svelte`, `pm-web-app/src/lib/views/DecisionView.test.ts`.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). The facts this plan builds on:
+- The mock emits **notice turns** and `chat.turn.started.context`.
+- The plan and its overview row carry `queued_revision`.
+- Refusals arrive as `chat.finding.changed_since`, `already_queued` and `check_failed`.
+
+Two things are still open, and the operator decided both on 2026-11-14. PLAN-140 D-R134 takes them:
+- REFUSED stays **rejectable**: the UI offers reject on a refused proposal.
+- Conflict and lapse get a catalogue line, emitted as a notice (named first in pm-mcp-core `state-catalogue.adoc`).
+
+The scenario files carry no narrative and no decision chat yet; PLAN-140 D-R134 adds them. Until then, the browser
+check drives events through `/mock/broadcast`. Re-ground :38-44 and :69-77 against `7adb56c2`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-135` lands.
+- Re-ground at outline: the Overview rows have no second-line slot (claim 5).
+- The scenario files carry no narrative until `PLAN-140` D-R134; until then, drive the browser check through `/mock/broadcast`.

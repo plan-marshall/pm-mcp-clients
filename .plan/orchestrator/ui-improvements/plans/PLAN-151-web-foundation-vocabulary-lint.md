@@ -54,7 +54,6 @@ Read first: `doc/design/web-app/components.adoc` (§ `#rules`, `#vocabulary`, `#
  - Skills: pm-dev-frontend:javascript
  - Done when:
    - `./mvnw -pl pm-web-app verify` prints the warnings and exits green (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -68,22 +67,32 @@ Read first: `doc/design/web-app/components.adoc` (§ `#rules`, `#vocabulary`, `#
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: `eslint.config.js` configures ESLint, typescript-eslint, prettier and security only; no Svelte plugin is in `devDependencies`, and no `stylelint` is present — read at `pm-web-app/eslint.config.js` and `pm-web-app/package.json`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: eslint.config.js uses js ts-eslint prettier security only; package.json has no svelte eslint plugin and no stylelint
 - OBSERVED: `svelte` is a `devDependency` (`^5.57.1`), so `svelte/compiler` ships with the build — read at `pm-web-app/package.json`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: package.json:46 svelte ^5.57.1 in devDependencies
 - OBSERVED: `lint` is `eslint .`, and the Maven module runs the npm scripts through the frontend plugin — read at `package.json` and `pom.xml`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: package.json:24 lint is eslint .; pom.xml:87-95 npm-lint execution runs run lint in verify phase
 - OBSERVED: raw `<button>` counts outside `lib/components/` — `ProjectExplorerView` 27, `StartView` 16, `OverviewView` 13, `DecompositionReviewView` 13, `SystemView` 9, `PlanView` 8, `EpicDecompositionView` 7, `EpicView` 7, `CleanupView` 7, `ProcessDesigner` 7, `BottomBar` 5, `EpicAdoptView` 5, `NavRail` 4, `DecisionView` 3, `RecipeReadyView` 2 — read by `git grep -c "<button"`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: StartView now 17 raw button lines (spec 16); other 14 counts match; src/test/fixtures also hold raw buttons but are outside the lint scope | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `outline: none` is written in `CommandPalette`, `FilterInput`, `RowMenu`, `Dialog` (components and shell), in `DecisionView` and `ProcessDesigner` (views) and in `styles/base.css` — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: outline: none in Dialog:189 RowMenu:295 FilterInput:139 CommandPalette:537 DecisionView:1739 ProcessDesigner:1868 base.css:84; also new ExternalLink Link RowLink in components/
 - OBSERVED: `StepBar.svelte` exists and is not in the table of `components.adoc` § `#vocabulary` — read at both
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StepBar.svelte exists in lib/components and doc/design has no StepBar mention in the vocabulary table
 - HYPOTHESIS: `svelte/compiler`'s `parse(source, { modern: true })` gives the element nodes with line numbers for a Svelte 5 file with `{#if}` and snippets — confirm/refute at `node_modules/svelte/types/index.d.ts` § `parse` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: svelte types index.d.ts: parse option modern:true returns modern AST; BaseElement has name_loc SourceLocation, nodes have start/end offsets
 - HYPOTHESIS: `<a>` does not occur in any `.svelte` file today (a count of 0 on the line pattern `<a `) — confirm/refute at `git grep -n "<a\b" -- pm-web-app/src` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: a tags now occur in components/ExternalLink:74 Link:68 RowLink:51 (PLAN-147/148); zero a tags in any .svelte outside lib/components so lint findings for it are 0 | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: the Maven lint step shows npm output, so warnings are visible without a log level change — confirm/refute at `pm-web-app/pom.xml` § `npm-lint` execution (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pom.xml:87-95 npm-lint execution (phase verify, run lint) is a normal frontend-plugin npm goal; output is the plugin default
 - Verify-first clause: re-run the per-file count at the current HEAD (V parts and parked plans may have landed) before writing the baseline; the baseline is the count at THIS plan's head, not the table above.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction (recount at head), not a code fact
 
 ## Expected Surface
 
@@ -110,6 +119,24 @@ Read first: `doc/design/web-app/components.adoc` (§ `#rules`, `#vocabulary`, `#
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since. Settle each HYPOTHESIS. Re-check the operator's answers to D-6 and D-7.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 3 contradicted: StartView now 17 raw button lines (spec 16); other 14 counts match; src/test/fixtures also hold raw buttons but are outside the lint scope
+- Claim 7 contradicted: a tags now occur in components/ExternalLink:74 Link:68 RowLink:51 (PLAN-147/148); zero a tags in any .svelte outside lib/components so lint findings for it are 0
+- StartView has 17 raw buttons (not 16); `<a>` exists only in `ExternalLink`/`Link`/`RowLink`. The pending list names `MascotFigure` (exists) and `Chat` (it is `ChatPanel`).
 
 ## Hand-Off Command
 

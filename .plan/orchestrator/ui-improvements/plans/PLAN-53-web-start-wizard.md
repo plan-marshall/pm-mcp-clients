@@ -26,25 +26,25 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `start.spec.js`: a gate that does not answer shows its cause after 20 s; `/start` without a project (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Steps 1 to 3**
    - What: What (two cards), Sources (source cards with state; one "Add a source" menu; the description as a source card with one "Add"), Ready (title, id, sources, what happens next; primary "Start the plan"); footer Back · Discard (overflow) · primary.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `start.spec.js`, `git-sources.spec.js`, `lesson-source.spec.js`: one primary per step; Back works (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Lazy entry**
    - What: The entry is created when the first source is added; leaving without a source leaves no entry.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test of `lib/stores/start.ts`; e2e on `projects-and-start` → `start.sources` (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20530 PM_WEB_PORT=20531 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -59,13 +59,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-10)`, `doc/claude_review/ux/proposals.adoc#UX-P-07` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-10 and `ux/proposals.adoc:284` UX-P-07 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-10 at ux/plan.adoc:68, UX-P-07 at proposals.adoc:284, UC-P-07 at use-cases/proposals.adoc:138 present
 - HYPOTHESIS: the start view hangs on "checking" after a jump to a `start.*` state (UC-F-36) because the gate has no time limit — confirm/refute at `pm-web-app/src/lib/stores/start.ts` (verify-at-outline)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `StartView.svelte:126,136` `load()` awaits `getEntry`/`openEntry`; there is no `AbortController`, signal or timeout in the file; `stores/start.ts` holds no gate. The cause is still in StartView/client.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Client bounds every request at 15 s (client.ts:2199,2325; 9fb2e7fa #399) and StartView.svelte:752-766 shows Skeleton then ErrorState with retry; no 20 s gate bound; stores/start.ts is modal state only | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Line references in the hypothesis moved (StartView.svelte load() at 120-163, client.ts request() at 3036); StartView.svelte grew to 1327 lines and now shows start.state.checking for the documents source (line 343) too; SourceList.svelte, start properties and starting-work-texts.adoc changed since the anchor.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: StartView.svelte now 1425 lines, load() at 139-185, request() near client.ts:2325, start.state.checking at :1142 and :1183
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the entry is created by `openEntry` before any source exists and the gate refusal creates none, so a lazy entry needs a split of that call — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `openEntry` and `doc/design/shared/starting-work.adoc#steps` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte:156 calls openEntry on load before any source; client.ts:2432 POST /projects/{id}/entries; refusal is a resource field with no entry; starting-work.adoc:184 says leaving keeps the entry
 - HYPOTHESIS: no `StartView.test.ts` and no `start.test.ts` exist, so the gate and lazy-entry tests are new files — confirm/refute at `pm-web-app/src/lib/views/` and `pm-web-app/src/lib/stores/` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: StartView.test.ts (68 lines) and StartView.scenarios.test.ts exist at HEAD; only stores/start.test.ts is absent | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -86,6 +90,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/shared/starting-work-texts.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -103,6 +110,14 @@ row is not in the disjointness gate population). When restarted:
 - `Button` on `WizardPage`, one primary per step, the duplicate "Choose" / "Add" labels resolved (007).
 - Fields via `Field`, Enter submits, errors under the field, documents mode as the shared `RadioGroup` (008).
 - The start-entry chat in `Chat` (009), with `control.chat.*` keys rather than reused `start.*` keys.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: Client bounds every request at 15 s (client.ts:2199,2325; 9fb2e7fa #399) and StartView.svelte:752-766 shows Skeleton then ErrorState with retry; no 20 s gate bound; stores/start.ts is modal state only
+- Claim 5 contradicted: StartView.test.ts (68 lines) and StartView.scenarios.test.ts exist at HEAD; only stores/start.test.ts is absent
+- Already done in part: the client bounds every request at 15 s and StartView shows Skeleton → ErrorState with retry (#399); the 20 s figure and "Choose a project" are not done. `StartView.test.ts` and `.scenarios.test.ts` exist.
 
 ## Hand-Off Command
 
@@ -150,3 +165,8 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150`, and after `PLAN-155` and `PLAN-156`, to avoid collisions on `StartView` and its modals.
+- Re-ground at outline: claims 1 and 5 are contradicted. The 15 s bound, `Skeleton`/`ErrorState`/retry (#399) and the `StartView` tests exist. The 20 s figure is not done.

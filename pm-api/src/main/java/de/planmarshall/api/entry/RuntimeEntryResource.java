@@ -236,7 +236,7 @@ public record RuntimeEntryResource(
         return listeners;
     }
 
-    private static List<ListenerResource> deriveListeners(Map<String, Object> map) {
+    private static List<ListenerResource> deriveListeners(Map<String, Object> map) throws IOException {
         var web = JsonTree.object(map, FIELD_WEB);
         if (web == null) {
             return List.of();
@@ -244,20 +244,38 @@ public record RuntimeEntryResource(
         var listeners = new ArrayList<ListenerResource>(2);
         var loopbackOpen = Boolean.TRUE.equals(JsonTree.bool(web, FIELD_OPEN))
                 || Boolean.TRUE.equals(JsonTree.bool(web, FIELD_ENABLED));
-        var loopbackPort = JsonTree.integer(web, FIELD_PORT);
-        listeners.add(new ListenerResource(
-                ListenerKind.LOOPBACK,
-                loopbackOpen ? ListenerState.OPEN : ListenerState.CLOSED,
-                loopbackPort,
-                loopbackOpen && loopbackPort != null ? "http://127.0.0.1:" + loopbackPort : null,
-                null));
+        var loopbackPort = portOf(web, FIELD_PORT);
         var lanOpen = Boolean.TRUE.equals(JsonTree.bool(web, FIELD_LAN));
-        listeners.add(new ListenerResource(
-                ListenerKind.LAN,
-                lanOpen ? ListenerState.OPEN : ListenerState.CLOSED,
-                JsonTree.integer(web, FIELD_LAN_PORT),
-                null,
-                JsonTree.string(web, FIELD_LAN_FINGERPRINT)));
+        var lanPort = portOf(web, FIELD_LAN_PORT);
+        try {
+            listeners.add(new ListenerResource(
+                    ListenerKind.LOOPBACK,
+                    loopbackOpen ? ListenerState.OPEN : ListenerState.CLOSED,
+                    loopbackPort,
+                    loopbackOpen && loopbackPort != null ? "http://127.0.0.1:" + loopbackPort : null,
+                    null));
+            // a closed listener carries no fingerprint (ListenerResource), whatever the legacy web object kept
+            listeners.add(new ListenerResource(
+                    ListenerKind.LAN,
+                    lanOpen ? ListenerState.OPEN : ListenerState.CLOSED,
+                    lanPort,
+                    null,
+                    lanOpen ? JsonTree.string(web, FIELD_LAN_FINGERPRINT) : null));
+        } catch (IllegalArgumentException e) {
+            // a port out of range is a malformed member like any other, refused as such
+            throw new JsonFormatException("Invalid web listener in RuntimeEntryResource: " + e.getMessage(), e);
+        }
         return listeners;
+    }
+
+    /**
+     * Reads a port the legacy {@code web} object names: absent is no port, and a present value must be an
+     * exact whole number of a TCP port, never narrowed or wrapped into another one.
+     */
+    private static @Nullable Integer portOf(Map<String, Object> web, String field) throws IOException {
+        if (web.get(field) == null) {
+            return null;
+        }
+        return (int) JsonTree.integralNumber(web, field, 0, 65_535);
     }
 }

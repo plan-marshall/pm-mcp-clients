@@ -8,7 +8,7 @@ workstream: WS-02
 
 ## Objective
 
-PLAN-147 delivered the kind mark and the six chat blocks. This part completes the tag family of `components-tags.adoc` (`ReasonBadge`, `PhaseLabel`, `Marker`) and builds `RowLink`, the row that opens its object.
+PLAN-147 (#420, `dea405d8`) delivered `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` and `FormStatus`. This part completes the tag family of `components-tags.adoc` (`ReasonBadge`, `PhaseLabel`, `Marker`) and builds `RowLink`, the row that opens its object.
 It also brings the three tag components that already exist (`StatusLabel`, `CountBadge`, `Chip`) up to the agreed rules (the `!` from the catalogue, the copy act in the accessible name,
 `--color-success-subtle` with a value of its own). The parked list, inbox, running-work, plan and epic plans (49, 51, 52, 55, 58, 59, 62) wait for these pieces.
 
@@ -51,11 +51,16 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
    - `RowLink.svelte`, props `href`, `current` and the slots of a row (kind, title, tags, the row's acts). The title is the link, its target stretched over the whole row: the whole row takes hover, pointer and focus ring and a click anywhere opens the object.
      The controls inside (a `RowMenu`, a favourite `Toggle`, a copy `Chip`) lie above the link as separate targets and never open it. The selected row carries `aria-current="true"` and the `--color-brand-subtle` ground.
    - The row is 40 px high, 32 px compact, and 44 px target on a phone. The component stacks its controls above the link without writing a numeric `z-index` (PLAN-149 owns the layer tokens).
+   - `href` is guarded by the exported `isAppPath` of `Link.svelte` (PLAN-147): an address that is not an app path renders no anchor. No second guard is written.
+   - PLAN-147 residue (landing `landings/PLAN-147.md`): `ExternalLink.test.ts` gains the refused forms `https:\\host`, `https:/<tab>/host`, a leading C0 control character and `https:///host`
+     in its table; the dead `WEB_SCHEMES` set of `ExternalLink.svelte:3` is removed (the `try/catch` stays for an invalid host).
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - `RowLink.test.ts`: exactly one anchor per row, the controls are not inside the anchor, `aria-current` follows `current`, the focus ring and hover are on the whole row, and a click on the title navigates while a click on a nested
      button does not. Fails on a revert. Evidence order: `test-first`.
+   - `RowLink.test.ts` reuses the authority table of `Link.test.ts` (`//`, `/\`, tab/LF/CR between the slashes, a foreign origin): no anchor for any of them. Evidence order: `test-first`.
+   - `ExternalLink.test.ts` refuses the four added forms; the guard still passes its existing table. Evidence order: `mutation-after`.
    - The dev-page fixture of a row with a `RowMenu`, a `Chip` and a `Toggle`-less favourite is checked in a browser: a click on the menu opens the menu and does not navigate (evidence order: `none`).
  - Implements: `components.adoc` § `#row-link`, `#clickable`, `#interaction-states`.
 4. **The agreed rules on `StatusLabel`, `CountBadge`, `Chip` and `--color-success-subtle`**
@@ -66,14 +71,14 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
      a refused clipboard shows no _Copied_; a second click inside the window restarts the reset; the copied state is announced politely.
    - `StatusLabel` (consumers: `CompletionReportView.svelte` and the dev page). Props unchanged (`tone`, `label`); add the fixed-width state slot for lists so dots stand one under the other. Edges: each of the five tones;
      a long German word wraps without moving the dot; the word is never the wire value.
-   - `--color-success-subtle` gets its own value in both themes instead of the alias of `--color-bg-subtle` (`tokens.css:113`), and `tokens.test.ts:133` asserts the new value. The value is not stated in the agreed documents (operator decision D-3, assumed:
+   - `--color-success-subtle` gets its own value in both themes instead of the alias of `--color-bg-subtle` (`tokens.css:125` at `dea405d8`), and `tokens.test.ts:149` asserts the new value. The value is not stated in the agreed documents (operator decision D-3, assumed:
      chosen in the pull request within a measured rule, written into the table of `theme-readability.adoc`): `--color-text-primary` and `--color-text-secondary` ≥ 4.5:1 and `--color-success` ≥ 3:1 on it, in both themes.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - Each listed field and edge has an assertion in `CountBadge.test.ts`, `Chip.test.ts`, `StatusLabel.test.ts`; each fails on a revert of its line. Evidence order: `mutation-after` (reverted code and failing assertion quoted in the pull request body).
    - `tokens.test.ts` asserts the new `--color-success-subtle` values and the three contrast rules in both themes. Evidence order: `test-first`.
-   - The 13 `.svelte` places that read `--color-success-subtle` are looked at in a browser in both themes; none loses contrast (evidence order: `none`).
+   - The `.svelte` places that read `--color-success-subtle` are looked at in a browser in both themes; none loses contrast (evidence order: `none`).
  - Implements: `components-tags.adoc` § `#count-badge`, `#chip`, `#status-label`, `#tag-colour`.
 5. **Fixtures and browser evidence**
  - What: fixtures of `ReasonBadge` (13 reasons, count form, both tones), `PhaseLabel` (six phases, with a role), `Marker` (three), `RowLink` (plain, current, with menu and chip) and the three conformed tags on the dev page in both themes and locales.
@@ -81,8 +86,10 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - The same browser check also covers the PLAN-147 fixture groups (Kinds on six grounds, Links, PrChip, Compose, FormStatus) and the PLAN-131 mascot row where it has landed:
+     at 390×844 the `Link`/`ExternalLink` targets measure 44 px, at 1440×900 24 px; the console is read from load. PLAN-147's own check predates its last visual fix (`3988e4d1`) and its
+     screenshots are lost (evidence order: `none`).
+   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -96,7 +103,7 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
@@ -131,6 +138,9 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
 - OBSERVED: `pm-web-app/src/lib/components/StatusLabel.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/components/StatusLabel.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/components/WorkflowIcon.svelte` — present at HEAD 1cc0e10e (read)
+- OBSERVED: `pm-web-app/src/lib/components/Link.svelte` — present at HEAD dea405d8 (read; `isAppPath` exported)
+- OBSERVED: `pm-web-app/src/lib/components/ExternalLink.svelte` — present at HEAD dea405d8
+- OBSERVED: `pm-web-app/src/lib/components/ExternalLink.test.ts` — present at HEAD dea405d8
 - OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/styles/tokens.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at HEAD 1cc0e10e
@@ -159,6 +169,21 @@ Read first: `doc/design/web-app/components-tags.adoc` (§ `#tag-set` to `#tag-ex
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-45, PLAN-147, PLAN-129, PLAN-130). Settle each HYPOTHESIS. Re-check the operator's answers to D-2 and D-3
 and that `needs-and-find.adoc` § `#reasons` still lists the closed list of 13.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+Operator decision 2026-11-13 ("Fold into PLAN-148"): PLAN-133 (#424, `a139ec62`) moved the mock onto the B1 chat contract and left the
+web chat behind. `pm-web-e2e/tests/showroom.spec.js:76-80` (the entry chat step on `ent-showroom`: `source-chat`, `chat-panel`,
+`chat-proposal`, `fsynced`) now fails against the mock, and this plan's head gate runs `-Pe2e`.
+
+- **D6 (new) — the e2e chat window.** Mark ONLY that chat step `test.fixme` (split it into its own `test` if needed, so the
+  sources and file-tree checks of the same test keep running), with a comment naming `PLAN-161` (the chat bridge), which removes the mark.
+  Do not touch the web client's chat code: `PLAN-161` migrates it. Any other e2e failure at the head that traces to the chat contract gets
+  the same treatment, each listed in the pull request body. Done when: `-Pe2e` passes at the head and the pull request lists every
+  `fixme` with its owner. Evidence order: `none`.
+- Surface: `pm-web-e2e/tests/showroom.spec.js` (present at `a139ec62`).
+- Rebase onto `a139ec62`: `running-work.json` and `fully-onboarded.json` changed heavily; the scenario loader now refuses unknown chat keys
+  at load. No source of this plan's surface conflicts.
 
 ## Hand-Off Command
 

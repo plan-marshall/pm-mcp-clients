@@ -28,9 +28,10 @@ import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.onboarding.MachineSettingsRecord;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.CleanupDecidedEvent;
 import de.planmarshall.api.system.CleanupDurations;
@@ -38,6 +39,7 @@ import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupKeptItem;
 import de.planmarshall.api.system.CleanupKind;
+import de.planmarshall.api.system.CleanupResidue;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Command;
@@ -83,7 +85,8 @@ public final class CleanupCommand implements Callable<Integer> {
 
     /** The cleanup resource of the runtime's API. */
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
-    private static final String COUNT = "count";
+    private static final String KEPT_API = CLEANUP_API + "/kept";
+    private static final String COUNT_PARAM = "count";
 
     private final OperatorContext context;
     private final PromptFactory prompts;
@@ -156,6 +159,10 @@ public final class CleanupCommand implements Callable<Integer> {
     @Option(names = "--no-input", description = "Non-interactive mode")
     boolean noInput;
 
+    /** The durations in force as the last read of the cleanup named them, or none it named. */
+    @Nullable
+    CleanupDurations durations;
+
     CleanupCommand(OperatorContext context) {
         this(context,
                             (stateId, leaveLabel, out) -> new ChoicePrompt(
@@ -183,9 +190,10 @@ public final class CleanupCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var err = spec.commandLine().getErr();
 
-        if (exclude != null && !exclude.isEmpty() && !delete) {
-            // --exclude belongs to --delete alone (26-cleanup.adoc#commands): a usage error, whose
-            // text the catalogue owns like every other refusal of the verb.
+        if (exclude != null && !exclude.isEmpty() && !isDeleteVerb()) {
+            // --exclude belongs to --delete alone and is refused with every other form
+            // (26-cleanup.adoc#commands, #t-remind): a usage error, whose text the catalogue owns like
+            // every other refusal of the verb.
             err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                 "operator.cleanup.exclude_delete_only", Map.of()));
             err.flush();
@@ -197,7 +205,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 return showKept(out);
             }
             if (release != null || all) {
-                return executeRelease(out, err);
+                return executeRelease(out);
             }
             if (remind) {
                 return executeRemind(out);
@@ -206,7 +214,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 return executeIgnore(out);
             }
             if (delete) {
-                return executeDelete(out, err);
+                return executeDelete(out);
             }
             return showCleanup(out);
         } catch (StartPrompt.InterruptException _) {
@@ -221,78 +229,90 @@ public final class CleanupCommand implements Callable<Integer> {
         }
     }
 
-    private int showKept(PrintWriter out) throws IOException {
-        var runtime = context.runtime(false);
-        var res = runtime.send(HttpRequest.get("/api/v1/system/cleanup/kept"));
-        if (res.status() == 200) {
-            var items = CleanupKeptItem.parseList(res.bodyText());
-            var locale = context.clientEnvironment().locale();
-            if (items.isEmpty()) {
-                out.println(MessageCatalogue.get(locale, "system.cleanup.kept.none"));
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.cleanup.kept_header", Map.of(COUNT, items.size())));
-                int idx = 1;
-                for (var item : items) {
-                    var glyph = glyphForKind(item.kind());
-                    var title = OutputSafety.stripControlSequences(item.title());
-                    var who = OutputSafety.stripControlSequences(item.who());
-                    var how = MessageCatalogue.format(locale, "system.cleanup.kept.why",
-                                        Map.of("how", item.how(),
-                                                            "time", OutputSafety.stripControlSequences(item.keptAt()),
-                                                            "who", who));
-                    out.printf("  %d) %s %-32s %s%n", idx++, glyph, title, how);
-                }
-            }
-            out.flush();
-            return 0;
-        }
-        throw new OperatorRefusedException("cleanup --kept", res);
+    /**
+     * @return whether the options name the delete, the one form {@code --exclude} goes with
+     */
+    private boolean isDeleteVerb() {
+        return delete && !kept && release == null && !all && !remind && !ignore;
     }
 
-    private int executeRelease(PrintWriter out, PrintWriter err) throws IOException {
-        var runtime = context.runtime(true);
-        var resKept = runtime.send(HttpRequest.get("/api/v1/system/cleanup/kept"));
-        var keptItems = CleanupKeptItem.parseList(resKept.bodyText());
+    private int showKept(PrintWriter out) throws IOException {
+        var items = keptItems(context.runtime(false), "cleanup --kept");
         var locale = context.clientEnvironment().locale();
-
-        if (all) {
-            if (!yes) {
-                if (noInput) {
-                    out.println(MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of(COUNT, keptItems.size())));
-                    out.println(MessageCatalogue.format(locale, "operator.common.needs_choice", Map.of("option", "--yes")));
-                    out.flush();
-                    return 3;
-                }
+        if (items.isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "system.cleanup.kept.none", Map.of()));
+        } else {
+            out.printf("%s · %d%n", MessageCatalogue.format(locale, "system.cleanup.kept.title", Map.of()),
+                                items.size());
+            int idx = 1;
+            for (var item : items) {
+                var glyph = glyphForKind(item.kind());
+                var title = OutputSafety.stripControlSequences(item.title());
+                // how is the wire value ignore or exclude; the catalogue names it
+                // (cleanup-texts.adoc#texts-kept)
+                var why = MessageCatalogue.format(locale, "system.cleanup.kept.why", Map.of(
+                                    "how", OutputSafety.stripControlSequences(item.how()),
+                                    "time", OutputSafety.stripControlSequences(item.keptAt()),
+                                    "who", OutputSafety.stripControlSequences(item.who())));
+                out.printf("  %d) %s %-32s %s%n", idx++, glyph, title, why);
             }
-            var putBody = JsonTree.write(Map.of("item_ids", List.of()));
-            var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
-            if (res.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of(COUNT, keptItems.size())));
-                out.flush();
+        }
+        out.flush();
+        return 0;
+    }
+
+    /**
+     * @param runtime the runtime client
+     * @param verb    the verb named in a refusal
+     * @return the items kept for good, as the runtime lists them
+     * @throws IOException on transport failure, or the runtime's refusal
+     */
+    private static List<CleanupKeptItem> keptItems(RuntimeClient runtime, String verb)
+                        throws IOException {
+        var res = runtime.send(HttpRequest.get(KEPT_API));
+        if (res.status() != 200) {
+            throw new OperatorRefusedException(verb, res);
+        }
+        return CleanupKeptItem.parseList(res.bodyText());
+    }
+
+    private int executeRelease(PrintWriter out) throws IOException {
+        var runtime = context.runtime(true);
+        var keptItems = keptItems(runtime, all ? "cleanup --release --all" : "cleanup --release");
+        return all ? releaseAll(out, runtime, keptItems.size()) : releaseNamed(out, runtime, keptItems);
+    }
+
+    private int releaseAll(PrintWriter out, RuntimeClient runtime, int keptCount) throws IOException {
+        if (!yes) {
+            if (noInput) {
+                // a release that nothing can answer sends nothing: the question and its option, exit code 3
+                // (a run without a terminal never gets here: the act gate refused it first)
+                printReleaseAllNeedsChoice(out, keptCount);
+                return 3;
+            }
+            if (!confirmReleaseAll(out, keptCount)) {
                 return 0;
             }
-            throw new OperatorRefusedException("cleanup --release --all", res);
         }
-
-        var toReleaseIndices = new ArrayList<Integer>();
-        var toReleaseIds = new ArrayList<String>();
-        if (release != null) {
-            for (var target : release) {
-                try {
-                    int num = Integer.parseInt(target);
-                    toReleaseIndices.add(num);
-                } catch (NumberFormatException _) {
-                    toReleaseIds.add(target);
-                }
-            }
+        var putBody = JsonTree.write(Map.of("item_ids", List.of()));
+        var res = runtime.send(HttpRequest.put(KEPT_API).withBody(putBody));
+        if (res.status() == 200) {
+            printReleased(out, keptCount);
+            return 0;
         }
+        throw new OperatorRefusedException("cleanup --release --all", res);
+    }
 
+    /** Releases the kept items the operator named by their number in the list, their id, or kind:id. */
+    private int releaseNamed(PrintWriter out, RuntimeClient runtime, List<CleanupKeptItem> keptItems)
+                        throws IOException {
+        // without --all the verb was dispatched for --release, so its list is present
+        var named = Objects.requireNonNull(release, "release");
         var remainingIds = new ArrayList<String>();
         int countReleased = 0;
         for (int i = 0; i < keptItems.size(); i++) {
             var item = keptItems.get(i);
-            int idx = i + 1;
-            if (toReleaseIndices.contains(idx) || toReleaseIds.contains(item.id()) || toReleaseIds.contains(item.kind() + ":" + item.id())) {
+            if (isNamedForRelease(named, i + 1, item)) {
                 countReleased++;
             } else {
                 remainingIds.add(item.id());
@@ -300,13 +320,69 @@ public final class CleanupCommand implements Callable<Integer> {
         }
 
         var putBody = JsonTree.write(Map.of("item_ids", remainingIds));
-        var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
+        var res = runtime.send(HttpRequest.put(KEPT_API).withBody(putBody));
         if (res.status() == 200) {
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of(COUNT, countReleased)));
-            out.flush();
+            printReleased(out, countReleased);
             return 0;
         }
         throw new OperatorRefusedException("cleanup --release", res);
+    }
+
+    /**
+     * @param named  the tokens of {@code --release}
+     * @param number the item's number in the list, from one
+     * @param item   the kept item
+     * @return whether a token names the item by its number, its id, or its kind and id; a token that
+     *         reads as a number names a position only
+     */
+    private static boolean isNamedForRelease(List<String> named, int number, CleanupKeptItem item) {
+        var kindAndId = kindWord(item.kind()) + ":" + item.id();
+        for (var token : named) {
+            var position = positionOf(token);
+            var names = position != null ? position == number : token.equals(item.id()) || token.equals(kindAndId);
+            if (names) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static @Nullable Integer positionOf(String token) {
+        try {
+            return Integer.parseInt(token);
+        } catch (NumberFormatException _) {
+            return null;
+        }
+    }
+
+    /**
+     * Asks the one confirmation of {@code --release --all} ({@code 26-cleanup.adoc#t-kept}) with
+     * {@code y}/{@code n} on the interactive terminal; a run without one never reaches it.
+     *
+     * @param out   the verb's writer
+     * @param count how many items are kept
+     * @return {@code true} when the release may be sent
+     */
+    private boolean confirmReleaseAll(PrintWriter out, int count) {
+        var locale = context.clientEnvironment().locale();
+        var question = MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of(COUNT_PARAM, count));
+        var consent = prompts.create(CONFIRM_STATE, cleanupLabel(locale), out);
+        consent.title(question);
+        return consent.askConsent();
+    }
+
+    private void printReleaseAllNeedsChoice(PrintWriter out, int count) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.kept.confirm_all",
+                            Map.of(COUNT_PARAM, count)));
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice",
+                            Map.of("option", "--yes")));
+        out.flush();
+    }
+
+    private void printReleased(PrintWriter out, int count) {
+        out.println("✓ " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "system.cleanup.kept.released", Map.of(COUNT_PARAM, count)));
+        out.flush();
     }
 
     private int executeRemind(PrintWriter out) throws IOException {
@@ -323,7 +399,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @throws IOException on transport failure
      */
     private int executeRemind(PrintWriter out, @Nullable CleanupJob displayed) throws IOException {
-        var job = displayed != null ? displayed : openJob(out);
+        var job = displayed != null ? displayed : openJob(out, "cleanup --remind");
         if (job == null) {
             return 0;
         }
@@ -413,7 +489,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @throws IOException on transport failure
      */
     private int executeIgnore(PrintWriter out, @Nullable CleanupJob displayed) throws IOException {
-        var job = displayed != null ? displayed : openJob(out);
+        var job = displayed != null ? displayed : openJob(out, "cleanup --ignore");
         if (job == null) {
             return 0;
         }
@@ -444,44 +520,72 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
         out.println(MessageCatalogue.format(locale, "operator.cleanup.ignored.count",
-                            Map.of(COUNT, totalItems)));
+                            Map.of(COUNT_PARAM, totalItems)));
     }
 
     /**
-     * @param out the verb's writer
+     * @param out  the verb's writer
+     * @param verb the verb named in a refusal
      * @return the open cleanup job, or {@code null} when nothing is due (the line is printed)
-     * @throws IOException on transport failure
+     * @throws IOException on transport failure, or the runtime's refusal
      */
-    private @Nullable CleanupJob openJob(PrintWriter out) throws IOException {
-        var jobRes = context.runtime(true).send(HttpRequest.get(CLEANUP_API));
-        var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
-        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
-            var locale = context.clientEnvironment().locale();
-            var nextCheck = parsed != null && parsed.get("next_check_at") != null
-                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
-                                : "tomorrow 03:00";
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.none", Map.of("time", nextCheck)));
+    private @Nullable CleanupJob openJob(PrintWriter out, String verb) throws IOException {
+        var state = cleanupState(context.runtime(true), CLEANUP_API, verb);
+        if (isNothingDue(state)) {
+            out.println(nothingDue(state, verb));
             out.flush();
             return null;
         }
-        return CleanupJob.fromJson(jobRes.bodyText());
+        return CleanupJob.fromMap(state);
     }
 
-    private int executeDelete(PrintWriter out, PrintWriter err) throws IOException {
-        var runtime = context.runtime(true);
-        var jobRes = runtime.send(HttpRequest.get(CLEANUP_API));
-        var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
-        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
-            var locale = context.clientEnvironment().locale();
-            var nextCheck = parsed != null && parsed.get("next_check_at") != null
-                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
-                                : "tomorrow 03:00";
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.none", Map.of("time", nextCheck)));
-            out.flush();
+    /**
+     * Reads the cleanup resource: the open job, or none with the next check, the durations, the
+     * kept count, and the residue ({@code cleanup.adoc#requests}).
+     *
+     * @param runtime the runtime client
+     * @param path    the resource, with its project filter where one is given
+     * @param verb    the verb named in a refusal
+     * @return the resource's object
+     * @throws IOException on transport failure, or the runtime's refusal
+     */
+    private static Map<String, Object> cleanupState(RuntimeClient runtime, String path, String verb)
+                        throws IOException {
+        var res = runtime.send(HttpRequest.get(path));
+        if (res.status() != 200) {
+            throw new OperatorRefusedException(verb, res);
+        }
+        var parsed = JsonTree.asObject(JsonTree.parse(res.bodyText()));
+        if (parsed == null) {
+            throw new OperatorRefusedException(verb + ": the runtime's cleanup is no object");
+        }
+        return parsed;
+    }
+
+    private static boolean isNothingDue(Map<String, Object> state) {
+        return Boolean.FALSE.equals(state.get("open"));
+    }
+
+    /**
+     * @param state the cleanup resource without an open job
+     * @param verb  the verb named in a refusal
+     * @return the line that nothing is due, with the next check the runtime names
+     * @throws OperatorRefusedException where the runtime names no next check
+     */
+    private String nothingDue(Map<String, Object> state, String verb) throws OperatorRefusedException {
+        var nextCheck = JsonTree.string(state, "next_check_at");
+        if (nextCheck == null || nextCheck.isBlank()) {
+            throw new OperatorRefusedException(verb + ": the runtime's cleanup names no next check");
+        }
+        return MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.none",
+                            Map.of("time", OutputSafety.stripControlSequences(nextCheck)));
+    }
+
+    private int executeDelete(PrintWriter out) throws IOException {
+        var job = openJob(out, "cleanup --delete");
+        if (job == null) {
             return 0;
         }
-
-        var job = CleanupJob.fromJson(jobRes.bodyText());
         var uncheckedIds = resolveExclude(out, job);
         if (uncheckedIds == null) {
             return 1;
@@ -514,7 +618,8 @@ public final class CleanupCommand implements Callable<Integer> {
     int previewThenStop(PrintWriter out, DeletePreview preview, int unchecked) {
         out.println(previewText(preview, unchecked));
         printWholeJobNote(out);
-        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice", Map.of("option", "--yes")));
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice",
+                            Map.of("option", "--yes")));
         out.flush();
         return 3;
     }
@@ -566,41 +671,147 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int showCleanup(PrintWriter out) throws IOException {
-        var runtime = context.runtime(false);
         var path = project != null && !project.isBlank() && !".".equals(project)
                             ? CLEANUP_API + "?project=" + OperatorUrlUtil.encodePathSegment(project)
                             : CLEANUP_API;
-        var res = runtime.send(HttpRequest.get(path));
-        if (res.status() != 200) {
-            throw new OperatorRefusedException("cleanup", res);
-        }
-
-        var parsed = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
-            var locale = context.clientEnvironment().locale();
-            var nextCheck = parsed != null && parsed.get("next_check_at") != null
-                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
-                                : "tomorrow 03:00";
-            int keptCount = JsonTree.integer(parsed, "kept_count") != null
-                                ? JsonTree.integer(parsed, "kept_count") : 2;
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.none_header", Map.of("time", nextCheck)));
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.footer", Map.of(COUNT, keptCount)));
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.residue_header", Map.of("time", "today 03:00")));
-            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.temp"));
-            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.workers"));
-            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.locks"));
-            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.rows"));
-            out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.lessons"));
-            out.flush();
+        var state = cleanupState(context.runtime(false), path, "cleanup");
+        durations = durationsOf(state);
+        if (isNothingDue(state)) {
+            printNothingDue(out, state);
             return 0;
         }
 
-        var job = CleanupJob.fromJson(res.bodyText());
+        var job = CleanupJob.fromMap(state);
         if (!context.isConsoleActive() || noInput) {
             printJob(out, job, Set.of());
             return 0;
         }
         return decide(out, spec.commandLine().getErr(), job);
+    }
+
+    /**
+     * Prints that nothing is due, then what the runtime names beside it: the kept count, the
+     * durations in force, and the residue per sweep step ({@code 26-cleanup.adoc#t-none}). A part
+     * the runtime does not send is left out rather than stood in for.
+     *
+     * @param out   the verb's writer
+     * @param state the cleanup resource without an open job
+     * @throws IOException where a residue entry names no step, or the runtime names no next check
+     */
+    private void printNothingDue(PrintWriter out, Map<String, Object> state) throws IOException {
+        var locale = context.clientEnvironment().locale();
+        out.println(MessageCatalogue.format(locale, "system.cleanup.title", Map.of()) + " · "
+                            + nothingDue(state, "cleanup"));
+        var parts = new ArrayList<String>();
+        var keptCount = JsonTree.integer(state, "kept_count");
+        if (keptCount != null) {
+            parts.add(String.format("Kept for good %d (cleanup --kept)", keptCount));
+        }
+        if (durations != null) {
+            parts.add("durations " + durationsText(locale, durations));
+        }
+        if (!parts.isEmpty()) {
+            out.println(String.join(" · ", parts));
+        }
+        printResidue(out, residuesOf(state), locale);
+        out.flush();
+    }
+
+    private static @Nullable CleanupDurations durationsOf(Map<String, Object> state) throws IOException {
+        var object = JsonTree.asObject(state.get("durations"));
+        if (object == null) {
+            return null;
+        }
+        // a durations object that leaves a member out is malformed: no default is shown as the runtime's figure
+        for (var member : CleanupDurations.defaults().toMap().keySet()) {
+            if (object.get(member) == null) {
+                throw new JsonFormatException("durations misses " + member + " in the cleanup state");
+            }
+        }
+        return CleanupDurations.fromMap(object);
+    }
+
+    private static List<CleanupResidue> residuesOf(Map<String, Object> state) throws IOException {
+        var entries = JsonTree.asArray(state.get("residue"));
+        var residues = new ArrayList<CleanupResidue>();
+        if (entries != null) {
+            for (var entry : entries) {
+                var object = JsonTree.asObject(entry);
+                if (object != null) {
+                    residues.add(CleanupResidue.fromMap(object));
+                }
+            }
+        }
+        return residues;
+    }
+
+    /**
+     * Renders the durations in force: the one figure of every kind with the reminder where the
+     * kinds agree ({@code system.cleanup.durations.summary}), and each kind with its own value where
+     * they differ or one is never offered.
+     *
+     * @param locale    the interface locale
+     * @param durations the durations the runtime names
+     * @return the rendered durations
+     */
+    static String durationsText(String locale, CleanupDurations durations) {
+        var days = List.of(durations.plansAfterDays(), durations.epicsAfterDays(), durations.logsAfterDays(),
+                            durations.reportsAfterDays(), durations.unenrolledAfterDays());
+        if (days.stream().distinct().count() == 1 && days.getFirst() > 0) {
+            return MessageCatalogue.format(locale, "system.cleanup.durations.summary",
+                                Map.of("days", days.getFirst(), "remind", durations.remindAfterDays(), "own", 0));
+        }
+        var kinds = List.of("plans", "epics", "logs", "reports", "unenrolled");
+        var parts = new ArrayList<String>();
+        for (int i = 0; i < kinds.size(); i++) {
+            var value = days.get(i);
+            parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.kind", Map.of("kind", kinds.get(i)))
+                                + " " + MessageCatalogue.format(locale, "system.cleanup.durations.value",
+                                Map.of("never", value < 0 ? "true" : "false", "days", Math.max(value, 0))));
+        }
+        parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.remind_at",
+                            Map.of("days", durations.remindAfterDays())));
+        return String.join(", ", parts);
+    }
+
+    /**
+     * Prints the residue the sweep removed by itself, as the runtime's figures per step
+     * ({@code cleanup.adoc#residue}): the time of the last sweep in the heading where every step
+     * names the same one, and on the step's own line otherwise, {@code not run yet} for a step
+     * without one.
+     *
+     * @param out      the verb's writer
+     * @param residues the runtime's residue per sweep step
+     * @param locale   the interface locale
+     */
+    static void printResidue(PrintWriter out, List<CleanupResidue> residues, String locale) {
+        if (residues.isEmpty()) {
+            return;
+        }
+        var sweeps = residues.stream().map(CleanupResidue::lastSweep).distinct().toList();
+        var common = sweeps.size() == 1 ? sweeps.getFirst() : null;
+        var title = MessageCatalogue.format(locale, "system.cleanup.residue.title", Map.of());
+        out.println(common != null ? title + " · " + lastSweepText(locale, common) : title);
+        for (var residue : residues) {
+            var line = new StringBuilder(String.format("  %-37s %3d",
+                                MessageCatalogue.format(locale, "system.cleanup.residue.step",
+                                                    Map.of("step", OutputSafety.stripControlSequences(residue.step()))),
+                                residue.count()));
+            if (residue.bytes() > 0) {
+                line.append(" · ").append(SystemCommand.formatBytes(residue.bytes()));
+            }
+            if (common == null) {
+                line.append(" · ").append(lastSweepText(locale, residue.lastSweep()));
+            }
+            out.println(line);
+        }
+    }
+
+    private static String lastSweepText(String locale, @Nullable String lastSweep) {
+        return lastSweep != null
+                            ? MessageCatalogue.format(locale, "system.cleanup.residue.last",
+                            Map.of("time", OutputSafety.stripControlSequences(lastSweep)))
+                            : MessageCatalogue.format(locale, "system.cleanup.residue.not_run", Map.of());
     }
 
     /**
@@ -632,7 +843,6 @@ public final class CleanupCommand implements Callable<Integer> {
                     openItem(out, err, items);
                     yield ASK_AGAIN;
                 }
-                case null -> ASK_AGAIN;
             };
             if (code != ASK_AGAIN) {
                 return code;
@@ -673,26 +883,25 @@ public final class CleanupCommand implements Callable<Integer> {
          * @return the rendered label
          */
         String label(String locale) {
-            return label(locale, CleanupDurations.DEFAULT_REMIND_DAYS);
-        }
-
-        String label(String locale, int remindDays) {
             return this == REMIND
-                                ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of("days", remindDays))
+                                ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey,
+                                                    Map.of("days", CleanupDurations.DEFAULT_REMIND_DAYS))
                                 : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 
         /**
-         * @param key the key the operator typed
-         * @return the decision, or {@code null} where the key names none
+         * @param key the key of a choice the bar offered: the prompt answers only those, and the
+         *            bar offers exactly the decisions
+         * @return the decision
+         * @throws IllegalArgumentException where the key names no decision
          */
-        static @Nullable Decision of(String key) {
+        static Decision of(String key) {
             for (var decision : values()) {
                 if (decision.key.equalsIgnoreCase(key)) {
                     return decision;
                 }
             }
-            return null;
+            throw new IllegalArgumentException("no decision of the cleanup has the key " + key);
         }
     }
 
@@ -733,19 +942,43 @@ public final class CleanupCommand implements Callable<Integer> {
                 }
                 itemIndex++;
             }
-            if (!filterProject && prj.items().size() > PAGE_SIZE) {
+            if (project == null && prj.items().size() > PAGE_SIZE) {
                 printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }
 
-        out.println(MessageCatalogue.format(locale, "operator.cleanup.footer_sweep",
-                            Map.of(COUNT, s.keptForGoodCount(), "time", OutputSafety.stripControlSequences(s.lastSweepAt()))));
+        var footer = new StringBuilder(String.format("Kept for good %d (cleanup --kept)", s.keptForGoodCount()));
+        if (durations != null) {
+            footer.append(" · durations ").append(durationsText(locale, durations));
+        }
+        if (s.lastSweepAt() != null) {
+            footer.append(" · ").append(lastSweepText(locale, s.lastSweepAt()));
+        }
+        out.println(footer);
         out.flush();
         return items;
     }
 
     private static boolean isUnenrolled(String projectId) {
-        return "unenrolled".equalsIgnoreCase(projectId) || "Unenrolled projects".equalsIgnoreCase(projectId);
+        return "unenrolled".equalsIgnoreCase(projectId);
+    }
+
+    /**
+     * The word an item is named by in front of its id ({@code 26-cleanup.adoc#commands}):
+     * {@code plan:}, {@code epic:}, {@code logs:}, {@code reports:}, {@code project:}. Read reports
+     * and an unenrolled project carry a longer kind on the wire than the word the operator types.
+     *
+     * @param kind the item's kind as the runtime sends it
+     * @return the word that names the kind
+     */
+    static String kindWord(String kind) {
+        var known = CleanupKind.fromValue(kind);
+        return switch (known) {
+            case READ_REPORTS -> "reports";
+            case UNENROLLED_PROJECT -> "project";
+            case PLAN, EPIC, LOGS -> known.value();
+            case null -> kind;
+        };
     }
 
     /**
@@ -759,7 +992,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private void printMore(PrintWriter out, int remaining, String projectId) {
         var command = "cleanup --project " + OutputSafety.stripControlSequences(projectId);
         out.println("   …  " + MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "operator.cleanup.more", Map.of(COUNT, remaining, "command", command)));
+                            "operator.cleanup.more", Map.of(COUNT_PARAM, remaining, "command", command)));
     }
 
     /**
@@ -862,23 +1095,10 @@ public final class CleanupCommand implements Callable<Integer> {
         var prompt = prompts.create(DECISION_STATE, cleanupLabel(locale), out)
                             .keyed()
                             .leaveKeyLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.leave", Map.of()));
-        for (var choice : decisionChoices(locale, reminderDays())) {
+        for (var choice : decisionChoices(locale)) {
             prompt.addChoice(choice);
         }
         return prompt;
-    }
-
-    private int reminderDays() {
-        try {
-            var response = context.runtime(true).send(HttpRequest.get(ConfigCommand.MACHINE_SETTINGS_PATH));
-            if (response.status() == 200) {
-                var settings = MachineSettingsRecord.fromJson(response.bodyText());
-                return settings.cleanupDurations().remindAfterDays();
-            }
-        } catch (IOException _) {
-            // fall back to default
-        }
-        return CleanupDurations.DEFAULT_REMIND_DAYS;
     }
 
     /**
@@ -886,17 +1106,8 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the five decisions of the bar, in the order they are drawn
      */
     static List<ChoicePrompt.Choice> decisionChoices(String locale) {
-        return decisionChoices(locale, CleanupDurations.DEFAULT_REMIND_DAYS);
-    }
-
-    /**
-     * @param locale     the interface locale
-     * @param remindDays the reminder interval in days
-     * @return the five decisions of the bar, in the order they are drawn
-     */
-    static List<ChoicePrompt.Choice> decisionChoices(String locale, int remindDays) {
         return Arrays.stream(Decision.values())
-                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale, remindDays)))
+                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale)))
                             .toList();
     }
 
@@ -1166,7 +1377,7 @@ public final class CleanupCommand implements Callable<Integer> {
             // an id, or kind:id, names the item below
         }
         for (var item : items) {
-            if (item.id().equals(token) || (item.kind() + ":" + item.id()).equalsIgnoreCase(token)) {
+            if (item.id().equals(token) || (kindWord(item.kind()) + ":" + item.id()).equalsIgnoreCase(token)) {
                 return item;
             }
         }
@@ -1194,10 +1405,17 @@ public final class CleanupCommand implements Callable<Integer> {
     record DeletePreview(int plans, int epics, int logs, int reports, int projects, long freedBytes) {
     }
 
-    private static String glyphForKind(String kind) {
-        if ("plan".equalsIgnoreCase(kind)) return "▸";
-        if ("epic".equalsIgnoreCase(kind)) return "◇";
-        if ("project".equalsIgnoreCase(kind) || "unenrolled_project".equalsIgnoreCase(kind)) return "▪";
-        return " ";
+    /**
+     * @param kind the item's kind as the runtime sends it
+     * @return the glyph of a plan, an epic, or an unenrolled project, and a blank for the rest
+     */
+    static String glyphForKind(String kind) {
+        return switch (CleanupKind.fromValue(kind)) {
+            case PLAN -> "▸";
+            case EPIC -> "◇";
+            case UNENROLLED_PROJECT -> "▪";
+            case LOGS, READ_REPORTS -> " ";
+            case null -> " ";
+        };
     }
 }

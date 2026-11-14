@@ -356,9 +356,10 @@ class PlanViewScenarioTest {
                     "an unknown plan id has no task activity");
 
             var unknownEpic = Generators.letterStrings(4, 10).next().toLowerCase();
-            var epic = EpicProcess.fromJson(
-                    get(runtime, "/api/v1/epics/" + unknownEpic + "/process").bodyText());
-            assertEquals(unknownEpic, epic.epicId());
+            var unknownEpicProcess = get(runtime, "/api/v1/epics/" + unknownEpic + "/process");
+            assertEquals(404, unknownEpicProcess.status());
+            assertTrue(unknownEpicProcess.bodyText().contains("scope_not_found"),
+                    "an unknown epic id answers scope_not_found");
         }
     }
 

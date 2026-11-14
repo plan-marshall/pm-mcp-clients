@@ -614,7 +614,10 @@ class EpicCommandTest {
     @DisplayName("epic decompose prints the decomposition tree")
     void epicDecompose() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/projects/pm-mcp-clients/epics/ep-001/decomposition".equals(request.target())
+            if ("/api/v1/epics/ep-001".equals(request.target())) {
+                // the decomposition is read in the project the runtime's epic names
+                response.json(200, "{\"epic_id\":\"ep-001\",\"project_id\":\"pm-mcp-clients\"}");
+            } else if ("/api/v1/projects/pm-mcp-clients/epics/ep-001/decomposition".equals(request.target())
                                 && "GET".equals(request.method())) {
                 response.json(200, """
                                     {"epic_id":"ep-001","status":"review","revision":1,

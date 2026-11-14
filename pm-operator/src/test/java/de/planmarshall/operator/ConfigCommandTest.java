@@ -27,7 +27,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -1532,6 +1534,70 @@ class ConfigCommandTest {
                          "facts":{"summary":"The models run again","aspect":"catalogue"},
                          "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/catalogue/set","preselected":true}]}
                         """;
+
+    @Test
+    @DisplayName("config set at a conflict asks an answer it does not offer again and keeps the other client's value")
+    void conflictAnswerNotOfferedIsAskedAgain() throws Exception {
+        var key = "z" + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+        var current = Generators.letterStrings(4, 8).next();
+        var typo = "z" + Generators.letterStrings(2, 5).next();
+        var puts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, "[{\"key\":\"" + key + "\",\"value\":\"" + current
+                                    + "\",\"origin\":\"machine\",\"revision\":1}]");
+            } else if ("PUT".equals(request.method())) {
+                puts.incrementAndGet();
+                response.json(409, "{\"error\":\"conflict\",\"key\":\"" + key + "\",\"value\":\"" + current
+                                    + "\",\"origin\":\"machine\",\"revision\":2}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped(typo + "\nk\n", "config", "set", key, Generators.letterStrings(4, 8).next());
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text + err),
+                            () -> assertEquals(1, puts.get(), "a typo never applies the value again"),
+                            () -> assertTrue(text.contains(typo), text),
+                            () -> assertTrue(text.contains("No setting changed"), text)
+        );
+    }
+
+    @Test
+    @DisplayName("config set at a conflict asks again after a typo, then Enter applies the value again against the new revision")
+    void conflictTypoThenEnterAppliesAgainOnTheNewRevision() throws Exception {
+        var key = "z" + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+        var current = Generators.letterStrings(4, 8).next();
+        var typo = "z" + Generators.letterStrings(2, 5).next();
+        var bodies = new CopyOnWriteArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, "[{\"key\":\"" + key + "\",\"value\":\"" + current
+                                    + "\",\"origin\":\"machine\",\"revision\":1}]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, "{\"error\":\"conflict\",\"key\":\"" + key + "\",\"value\":\"" + current
+                                        + "\",\"origin\":\"machine\",\"revision\":2}");
+                } else {
+                    response.json(200, "{}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped(typo + "\n\n", "config", "set", key, Generators.letterStrings(4, 8).next());
+
+        assertAll(
+                            () -> assertEquals(0, code, out.toString() + err),
+                            () -> assertEquals(2, bodies.size(), "the typo asks again, Enter applies once more"),
+                            () -> assertTrue(bodies.get(1).contains("\"revision\":2"), bodies.get(1))
+        );
+    }
+
     private static final String HARNESS_CONSENT = """
                         {"state":{"state_id":"harness.consent","kind":"operator_wait","level":"machine"},
                          "facts":{"summary":"Look for harnesses?","kind":"scan_harnesses"},

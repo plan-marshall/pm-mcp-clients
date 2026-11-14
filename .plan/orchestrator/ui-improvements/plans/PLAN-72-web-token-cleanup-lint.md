@@ -23,18 +23,18 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security, pm-dev-frontend:lint-config, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
      - A search finds no old token name; `./mvnw -pl pm-web-app verify` passes (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in dark and light look as before the alias removal; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in dark and light look as before the alias removal; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **stylelint rule**
    - What: Add stylelint to `pm-web-app` with a rule that fails on a raw hex value or an old token in a `.svelte` style block, run in the Maven build.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security, pm-dev-frontend:lint-config, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
      - A fixture file with a raw hex value fails the rule (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in dark and light look as before the alias removal; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in dark and light look as before the alias removal; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -46,9 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-08`, `doc/claude_review/visual-design/proposals.adoc#VD-P-02` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28 VD-P-02; tokens.css:102-126 aliases present; no stylelint in package.json
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28-29 VD-P-02; tokens.css aliases at :113-135 (comment :6) still present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Many listed components/views now exist or were changed by PLAN-25/35/43 and PLAN-90 (ErrorState, Skeleton, DataTable, Dialog, Tabs, Toast, Chip, etc.); tokens.css still carries the old aliases (line 100), no stylelint dependency yet (package.json), a styles/tokens.test.ts exists. Scope unchanged but the alias sweep now covers more files.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Aliases still at tokens.css:113+ (drift from :100); no stylelint in package.json/pom/eslint config, no .stylelintrc.json; tokens.test.ts ALIASES at :137. Amendment holds: success-subtle own value :88/:205
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -63,6 +65,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/pom.xml` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -84,6 +87,18 @@ row is not in the disjointness gate population). When restarted:
   ad-hoc button classes; `href="#"`; `outline: none` outside `lib/components` (006, 007, 008). The D1 foundation adds them as
   **warnings**; this plan, after the per-view packages, switches them to **errors** and keeps its token and stylelint work.
 - No `{@html}` in the markdown renderer (009).
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `--color-success-subtle` has its own value since `25137445` (`#E9F6EE` light, `#15271D` dark): drop it from this plan's list. The
+  verdict evidence `tokens.css:102-126` shifted (alias line removed, token added at `:88`/`:205`); `ALIASES` in `tokens.test.ts:147-150` is
+  one shorter. `theme-readability.adoc` says success ≥3:1 while the test enforces 4.5:1: align the document.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: `--color-success-subtle` has its own value (25137445, #427). Aliases now at `tokens.css:113+`, `ALIASES` at `tokens.test.ts:137`.
 
 ## Hand-Off Command
 

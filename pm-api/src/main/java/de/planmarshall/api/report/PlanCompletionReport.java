@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ChangeSize;
 
@@ -36,8 +35,10 @@ import de.planmarshall.api.overview.ChangeSize;
  * @param pullRequestNumber optional pull request number
  * @param pullRequestUrl    optional pull request link URL
  * @param reason            reason given by plan or operator
- * @param startedAt         timestamp when plan started
- * @param endedAt           timestamp when plan ended
+ * @param startedAt         timestamp when plan started, or {@code null} when the runtime gave none
+ *                          that is an instant
+ * @param endedAt           timestamp when plan ended, or {@code null} when the runtime gave none
+ *                          that is an instant (a written end time is then kept in {@code rawEnded})
  * @param durationSeconds   wall clock runtime in seconds
  * @param pausedSeconds     seconds plan was paused
  * @param pausedBy          who paused the plan
@@ -60,8 +61,8 @@ public record PlanCompletionReport(
         @Nullable Integer pullRequestNumber,
         @Nullable String pullRequestUrl,
         @Nullable String reason,
-        Instant startedAt,
-        Instant endedAt,
+        @Nullable Instant startedAt,
+        @Nullable Instant endedAt,
         long durationSeconds,
         long pausedSeconds,
         @Nullable String pausedBy,
@@ -84,8 +85,8 @@ public record PlanCompletionReport(
             @Nullable Integer pullRequestNumber,
             @Nullable String pullRequestUrl,
             @Nullable String reason,
-            Instant startedAt,
-            Instant endedAt,
+            @Nullable Instant startedAt,
+            @Nullable Instant endedAt,
             long durationSeconds,
             long pausedSeconds,
             @Nullable String pausedBy,
@@ -106,8 +107,8 @@ public record PlanCompletionReport(
             @Nullable Integer pullRequestNumber,
             @Nullable String pullRequestUrl,
             @Nullable String reason,
-            Instant startedAt,
-            Instant endedAt,
+            @Nullable Instant startedAt,
+            @Nullable Instant endedAt,
             long durationSeconds,
             long pausedSeconds,
             @Nullable String pausedBy,
@@ -121,8 +122,16 @@ public record PlanCompletionReport(
         this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, ownCalls, changeMap, null, null, null);
     }
 
-    public String ended() {
-        return rawEnded != null ? rawEnded : ReportItem.formatTime(endedAt);
+    /**
+     * @return the end time for display: the runtime's own text when it wrote one that is no
+     *         instant, the formatted instant otherwise, or {@code null} when the report carries no
+     *         end time at all
+     */
+    public @Nullable String ended() {
+        if (rawEnded != null) {
+            return rawEnded;
+        }
+        return endedAt != null ? ReportItem.formatTime(endedAt) : null;
     }
 
     public @Nullable String ran() {
@@ -154,8 +163,6 @@ public record PlanCompletionReport(
         Objects.requireNonNull(title, FIELD_TITLE);
         Objects.requireNonNull(from, "from");
         Objects.requireNonNull(outcome, FIELD_OUTCOME);
-        Objects.requireNonNull(startedAt, "startedAt");
-        Objects.requireNonNull(endedAt, "endedAt");
         deliverables = deliverables != null ? Collections.unmodifiableList(new ArrayList<>(deliverables)) : List.of();
         replanningRecords = replanningRecords != null ? Collections.unmodifiableList(new ArrayList<>(replanningRecords)) : List.of();
         decisionRecords = decisionRecords != null ? Collections.unmodifiableList(new ArrayList<>(decisionRecords)) : List.of();
@@ -177,8 +184,13 @@ public record PlanCompletionReport(
         if (pullRequestNumber != null) map.put(FIELD_PR_NUMBER, pullRequestNumber);
         if (pullRequestUrl != null) map.put(FIELD_PR_URL, pullRequestUrl);
         if (reason != null) map.put(FIELD_REASON, reason);
-        map.put(FIELD_STARTED_AT, startedAt.toString());
-        map.put(FIELD_ENDED_AT, endedAt.toString());
+        if (startedAt != null) map.put(FIELD_STARTED_AT, startedAt.toString());
+        if (endedAt != null) {
+            map.put(FIELD_ENDED_AT, endedAt.toString());
+        } else if (rawEnded != null) {
+            // the end time as the runtime wrote it: no instant is invented, and none is lost
+            map.put(FIELD_ENDED_AT, rawEnded);
+        }
         map.put(FIELD_DURATION_SECONDS, durationSeconds);
         map.put(FIELD_PAUSED_SECONDS, pausedSeconds);
         if (pausedBy != null) map.put(FIELD_PAUSED_BY, pausedBy);
@@ -238,7 +250,7 @@ public record PlanCompletionReport(
 
         long duration = parseDuration(map);
         var rawRan = JsonTree.string(map, "ran");
-        long paused = getLong(map.get(FIELD_PAUSED_SECONDS));
+        long paused = getLong(map, FIELD_PAUSED_SECONDS);
         var pausedBy = JsonTree.string(map, FIELD_PAUSED_BY);
 
         var deliverables = parseDeliverables(map);
@@ -271,11 +283,11 @@ public record PlanCompletionReport(
         return new ReportFrom("project", null, planId);
     }
 
-    private static @Nullable Integer parsePrNumber(Map<String, Object> map) {
+    private static @Nullable Integer parsePrNumber(Map<String, Object> map) throws IOException {
         var prNumObj = map.get(FIELD_PR_NUMBER);
         if (prNumObj == null) prNumObj = map.get("pull_request");
-        if (prNumObj instanceof JsonNumber jn) return (int) jn.longValue();
-        if (prNumObj instanceof Number n) return n.intValue();
+        var number = ReportNumbers.wholeOrNull(prNumObj, FIELD_PR_NUMBER);
+        if (number != null) return number.intValue();
         if (prNumObj instanceof String s) {
             try {
                 return Integer.parseInt(s.replace("#", "").trim());
@@ -286,48 +298,44 @@ public record PlanCompletionReport(
         return null;
     }
 
-    private static Instant parseStartedAt(Map<String, Object> map) {
+    /**
+     * Reads the start time. A start time that is absent or no instant stays absent: the client
+     * never stands in a time the runtime did not give.
+     */
+    private static @Nullable Instant parseStartedAt(Map<String, Object> map) {
         var startedStr = JsonTree.string(map, FIELD_STARTED_AT);
         if (startedStr == null) startedStr = JsonTree.string(map, "started");
-        if (startedStr != null) {
-            try {
-                return Instant.parse(startedStr);
-            } catch (DateTimeParseException _) {
-                return Instant.now();
-            }
-        }
-        return Instant.now();
+        return startedStr != null ? instantOrNull(startedStr) : null;
     }
 
-    private record ParsedEnded(Instant instant, @Nullable String raw) {
+    private record ParsedEnded(@Nullable Instant instant, @Nullable String raw) {
     }
 
+    /**
+     * Reads the end time. An end text that is no instant is kept as written for display; an absent
+     * end time stays absent.
+     */
     private static ParsedEnded parseEndedAt(Map<String, Object> map) {
         var endedStr = JsonTree.string(map, FIELD_ENDED_AT);
-        String rawEnded = null;
+        if (endedStr == null) endedStr = JsonTree.string(map, "ended");
         if (endedStr == null) {
-            endedStr = JsonTree.string(map, "ended");
-            if (endedStr != null && !endedStr.contains("T")) {
-                rawEnded = endedStr;
-            }
+            return new ParsedEnded(null, null);
         }
-        Instant endedAt;
-        if (endedStr != null) {
-            try {
-                endedAt = Instant.parse(endedStr);
-            } catch (DateTimeParseException _) {
-                rawEnded = endedStr;
-                endedAt = Instant.now();
-            }
-        } else {
-            endedAt = Instant.now();
-        }
-        return new ParsedEnded(endedAt, rawEnded);
+        var endedAt = instantOrNull(endedStr);
+        return new ParsedEnded(endedAt, endedAt == null ? endedStr : null);
     }
 
-    private static long parseDuration(Map<String, Object> map) {
-        long duration = getLong(map.get(FIELD_DURATION_SECONDS));
-        if (duration == 0) duration = getLong(map.get("run_duration_seconds"));
+    private static @Nullable Instant instantOrNull(String text) {
+        try {
+            return Instant.parse(text);
+        } catch (DateTimeParseException _) {
+            return null;
+        }
+    }
+
+    private static long parseDuration(Map<String, Object> map) throws IOException {
+        long duration = getLong(map, FIELD_DURATION_SECONDS);
+        if (duration == 0) duration = getLong(map, "run_duration_seconds");
         return duration;
     }
 
@@ -399,13 +407,11 @@ public record PlanCompletionReport(
         return ChangeMapRecord.fromMap(changeMap);
     }
 
-    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) {
+    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) throws IOException {
         var tuObj = map.get(FIELD_TOKEN_USAGE);
         if (tuObj == null) tuObj = map.get("tokens");
-        if (tuObj != null && JsonTree.asObject(tuObj) != null) {
-            return TokenUsageRecord.fromMap(JsonTree.asObject(tuObj));
-        }
-        return null;
+        var tokenUsage = JsonTree.asObject(tuObj);
+        return tokenUsage == null ? null : TokenUsageRecord.fromMap(tokenUsage);
     }
 
     /**
@@ -423,9 +429,7 @@ public record PlanCompletionReport(
         return fromMap(obj);
     }
 
-    private static long getLong(Object obj) {
-        if (obj instanceof JsonNumber jn) return jn.longValue();
-        if (obj instanceof Number n) return n.longValue();
-        return 0L;
+    private static long getLong(Map<String, Object> map, String field) throws IOException {
+        return ReportNumbers.whole(map.get(field), field);
     }
 }

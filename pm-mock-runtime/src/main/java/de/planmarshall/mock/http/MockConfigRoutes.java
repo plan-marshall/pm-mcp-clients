@@ -26,6 +26,7 @@ import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.config.ConfigValueChange;
 import de.planmarshall.api.config.ConfigValueResource;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 
 /**
  * The mock's configuration values: the three routes the transport table keeps (Runtime Model, Local
@@ -49,6 +50,7 @@ public final class MockConfigRoutes {
 
     private static final String KEY_VALUE = "value";
     private static final String KEY_ERROR = "error";
+    private static final String KEY_MESSAGE = "message";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_PLAN = "plan";
     private static final String SLASH = "/";
@@ -101,12 +103,14 @@ public final class MockConfigRoutes {
         }
         var segments = segments(request.path());
         if (segments.size() != LEVEL_AND_KEY) {
-            response.json(400, Map.of(KEY_ERROR, "config_level_and_key_required"));
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "A configuration write names a level and a key"));
             return true;
         }
         var level = ConfigOrigin.fromWireOrNull(segments.get(0));
         if (level == null || !OPERATOR_LEVELS.contains(level)) {
-            response.json(400, Map.of(KEY_ERROR, "config_level_unknown"));
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "Unknown configuration level: " + segments.get(0)));
             return true;
         }
         var key = segments.get(1);
@@ -186,7 +190,8 @@ public final class MockConfigRoutes {
         }
         var values = byLevel(level, scope);
         if (!values.containsKey(key)) {
-            response.json(404, Map.of(KEY_ERROR, "config_key_unknown"));
+            response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(),
+                    KEY_MESSAGE, "No value of " + key + " is recorded at this level"));
             return;
         }
         var served = served(key, level, scope, machineValues, planProjects);

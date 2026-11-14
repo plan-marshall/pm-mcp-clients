@@ -46,9 +46,11 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc CC-V-01; visual-design/verification.adoc VD-V-06..10; ux/verification.adoc UX-V-13
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc:12 CC-V-01; visual-design/verification.adoc VD-V-06..10 (:41-63); ux/verification.adoc UX-V-13 (:131) and #targets (:8)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): mobile.spec.js changed (PLAN-90 green e2e baseline); verify-web-final.adoc and visual.spec.js still absent (created by this plan, correct). Dependencies PLAN-72/73/74 not landed.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-web-final.adoc and pm-web-e2e/tests/visual.spec.js still absent; mobile.spec.js present; PLAN-72/73/74 not landed (aliases remain, baseline non-empty, no stylelint)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; deps PLAN-72/73/74 not landed so checks would be not verified
 
 ## Expected Surface
 

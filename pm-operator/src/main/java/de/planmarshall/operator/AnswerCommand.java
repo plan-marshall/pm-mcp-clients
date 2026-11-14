@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
@@ -78,6 +79,16 @@ public final class AnswerCommand implements Callable<Integer> {
     private static final String ACTION_DECLINE = "decline";
     private static final String ACTION_LATER = "later";
     private static final String ACTION_WITHDRAW = "withdraw";
+    private static final String ACTION_ANSWER = "answer";
+    /** The catalogue parameter that carries the label of a part's answer. */
+    private static final String ANSWER_PARAM = ACTION_ANSWER;
+    private static final String KEY_OWN_WORDS = "w";
+    private static final String KEY_NONE_FITS = "x";
+    private static final String KEY_CHOOSE_OPTION = "o";
+    /** The acts a waiver request offers ({@code doc/design/shared/decisions.adoc#waiver}). */
+    private static final List<String> WAIVER_ACTIONS = List.of(ACTION_WAIVE, ACTION_DECLINE, ACTION_LATER);
+    /** The acts a decision offers besides its options: later and none fits. */
+    private static final List<String> DECISION_ACTIONS = List.of(ACTION_ANSWER, ACTION_LATER, ACTION_WITHDRAW);
 
     private static final String API_V1_DECISIONS = "/api/v1/decisions/";
     private static final String API_V1_PLANS = "/api/v1/plans/";
@@ -145,17 +156,23 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int showDecision(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
-        var qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        HttpResponse qResponse;
+        try {
+            qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        } catch (IOException _) {
+            // a read that never reached an answer is as unreadable as one the runtime refused
+            return unreadable(out, locale);
+        }
         if (qResponse.status() == 404) {
             out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
             out.flush();
             return 1;
         }
-        if (qResponse.status() != 200) {
+        var envelope = qResponse.status() == 200 ? identified(qResponse) : null;
+        if (envelope == null) {
             // Any other first read is a failed read: its body is no decision to show or answer.
-            throw new OperatorRefusedException("answer " + questionId, qResponse);
+            return unreadable(out, locale);
         }
-        var envelope = DecisionEnvelope.fromJson(qResponse.bodyText());
         if (noInput) {
             printNoInput(out, envelope, locale);
             return 3;
@@ -210,20 +227,15 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private void printQuestionDetail(PrintWriter out, DecisionEnvelope envelope, String locale) {
-        var blocksKey = "decision.blocks." + (envelope.blocks() != null ? envelope.blocks().toLowerCase() : PLAN_KEY);
-        var revKey = "decision.reversibility." + (envelope.reversibility() != null ? envelope.reversibility().value() : "reversible");
+        // blocks and reversibility are never null in an envelope, and every reversibility has its text.
+        var blocksKey = "decision.blocks." + envelope.blocks().toLowerCase(Locale.ROOT);
         String blocksMsg;
         if (MessageCatalogue.hasKey(blocksKey)) {
             blocksMsg = getMessage(locale, blocksKey);
         } else {
             blocksMsg = getMessage(locale, "decision.blocks.plan");
         }
-        String revMsg;
-        if (MessageCatalogue.hasKey(revKey)) {
-            revMsg = getMessage(locale, revKey);
-        } else {
-            revMsg = getMessage(locale, "decision.reversibility.reversible");
-        }
+        var revMsg = getMessage(locale, "decision.reversibility." + envelope.reversibility().value());
 
         var headerKey = envelope.askingPhase() != null && !envelope.askingPhase().isBlank()
                             ? "operator.decision.header.question"
@@ -310,101 +322,113 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int submitAnswer(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
-        var effectiveAction = resolveEffectiveAction(action, option, questionId, locale);
-
-        if (ACTION_LATER.equalsIgnoreCase(effectiveAction)) {
-            return submitLater(runtime, out, safeQid, locale);
+        var envelope = readEnvelope(runtime, safeQid);
+        if (envelope == null) {
+            return unreadable(out, locale);
+        }
+        var offered = envelope.isWaiver() ? WAIVER_ACTIONS : DECISION_ACTIONS;
+        var effectiveAction = namedAction(envelope);
+        if (!offered.contains(effectiveAction)) {
+            return notOffered(out, envelope, locale);
         }
 
-        if (ACTION_WITHDRAW.equalsIgnoreCase(effectiveAction)) {
-            return submitWithdraw(runtime, out, safeQid, locale);
-        }
-
-        if (effectiveAction != null
-                            && (ACTION_WAIVE.equalsIgnoreCase(effectiveAction) || ACTION_DECLINE.equalsIgnoreCase(effectiveAction))
-                            && (reason == null || reason.isBlank())) {
+        if (isWaiveOrDecline(effectiveAction) && (reason == null || reason.isBlank())) {
             out.println(getMessage(locale, "operator.decision.reason_required"));
             out.flush();
             return 3;
         }
 
-        return submitAnswerPayload(runtime, out, safeQid, effectiveAction, locale);
-    }
+        if (ACTION_LATER.equals(effectiveAction)) {
+            var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
+            var laterPayload = new LinkedHashMap<String, Object>();
+            laterPayload.put(ACTION_KEY, ACTION_LATER);
+            laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
+            var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
+            if (!isAccepted(laterResponse.status())) {
+                var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
+                if (isDecisionRefusal(refusal.code())) {
+                    return handleDecisionRefusal(out, envelope, refusal, locale);
+                }
+                throw refusal;
+            }
+            printLaterDone(out, envelope, locale);
+            return 0;
+        }
 
-    private int submitLater(RuntimeClient runtime, PrintWriter out, String safeQid, String locale) throws IOException {
-        var laterEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-        var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
-        var laterPayload = new LinkedHashMap<String, Object>();
-        laterPayload.put(ACTION_KEY, ACTION_LATER);
-        laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
-        var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
-        if (!isAccepted(laterResponse.status())) {
-            var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
-            if (laterEnvelope != null && isDecisionRefusal(refusal.code())) {
-                return handleDecisionRefusal(out, laterEnvelope, refusal, locale);
+        if (ACTION_WITHDRAW.equals(effectiveAction)) {
+            var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
+            var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
+            if (isAccepted(resp.status())) {
+                printNoneFitsDone(out, envelope, locale);
+                return 0;
+            }
+            var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
+            if (isDecisionRefusal(refusal.code())) {
+                return handleDecisionRefusal(out, envelope, refusal, locale);
             }
             throw refusal;
         }
-        out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
-                            ID_KEY, questionId,
-                            SCOPE_KEY, scopeSelector(laterEnvelope),
-                            PROJECT_KEY, projectNoun(laterEnvelope, locale)
-        )));
+
+        return submitAnswerPayload(runtime, out, safeQid, envelope, effectiveAction, locale);
+    }
+
+    /**
+     * What the direct form asks for. {@code --action} names an act; a positional value is the
+     * decision's option, and only a value that is no option of it names an act. The values are the
+     * same in every language ({@code doc/design/terminal-client/01-commands.adoc#language}): the
+     * dialogue's one-letter keys are no values of the command line, so an option keyed {@code l},
+     * {@code x}, {@code y} or {@code d} is answered as that option.
+     *
+     * @return the act, or {@link #ACTION_ANSWER} for an answer with the option or the own words
+     */
+    private String namedAction(DecisionEnvelope envelope) {
+        if (action != null && !action.isBlank()) {
+            return action.trim().toLowerCase(Locale.ROOT);
+        }
+        if (option != null && !isOptionKey(envelope, option)) {
+            var acts = envelope.isWaiver() ? WAIVER_ACTIONS : DECISION_ACTIONS;
+            for (var act : acts) {
+                if (act.equalsIgnoreCase(option)) {
+                    return act;
+                }
+            }
+        }
+        return ACTION_ANSWER;
+    }
+
+    private static boolean isOptionKey(DecisionEnvelope envelope, String value) {
+        return envelope.parts().stream().anyMatch(part -> pickOption(part, value) != null);
+    }
+
+    /**
+     * A direct answer the request does not offer: a waiver is answered by waive, decline or later
+     * alone, a decision by its option, later or withdraw. Nothing is sent.
+     */
+    private static int notOffered(PrintWriter out, DecisionEnvelope envelope, String locale) {
+        if (envelope.isWaiver()) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.waiver_needs_answer", Map.of(
+                                ACTION_WAIVE, ACTION_WAIVE, ACTION_DECLINE, ACTION_DECLINE, ACTION_LATER, ACTION_LATER)));
+        } else {
+            out.println(getMessage(locale, INVALID_CHOICE_KEY));
+        }
         out.flush();
-        return 0;
-    }
-
-    private int submitWithdraw(RuntimeClient runtime, PrintWriter out, String safeQid, String locale) throws IOException {
-        var withdrawEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-        var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
-        var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
-        if (isAccepted(resp.status())) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
-                                ID_KEY, questionId,
-                                SCOPE_KEY, scopeSelector(withdrawEnvelope),
-                                PROJECT_KEY, projectNoun(withdrawEnvelope, locale)
-            )));
-            out.flush();
-            return 0;
-        }
-        var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
-        if (withdrawEnvelope != null && isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, withdrawEnvelope, refusal, locale);
-        }
-        throw refusal;
-    }
-
-    private static @Nullable String resolveEffectiveAction(@Nullable String act, @Nullable String opt, String qid, String locale) {
-        if (act != null) {
-            return act;
-        }
-        if (ACTION_WAIVE.equalsIgnoreCase(opt) || ("y".equalsIgnoreCase(opt) && qid.startsWith("WR-"))) {
-            return ACTION_WAIVE;
-        }
-        if (ACTION_DECLINE.equalsIgnoreCase(opt) || ("d".equalsIgnoreCase(opt) && qid.startsWith("WR-"))) {
-            return ACTION_DECLINE;
-        }
-        if (ACTION_LATER.equalsIgnoreCase(opt) || "l".equalsIgnoreCase(opt)
-                            || ("s".equalsIgnoreCase(opt) && LOCALE_DE.equals(locale))) {
-            return ACTION_LATER;
-        }
-        if (ACTION_WITHDRAW.equalsIgnoreCase(opt) || "none fits".equalsIgnoreCase(opt)
-                            || "x".equalsIgnoreCase(opt)) {
-            return ACTION_WITHDRAW;
-        }
-        return null;
+        return 3;
     }
 
     private int submitAnswerPayload(RuntimeClient runtime, PrintWriter out, String safeQid,
-                        @Nullable String effectiveAction, String locale) throws IOException {
-        var read = readEnvelope(runtime, safeQid);
-        if (!isWaiveOrDecline(effectiveAction)) {
-            var refusal = multiPartRefusal(out, read, locale);
-            if (refusal != null) {
-                return refusal;
-            }
+                        DecisionEnvelope envelope, String effectiveAction, String locale) throws IOException {
+        var ownWords = words != null && !words.isBlank();
+        if (ACTION_ANSWER.equals(effectiveAction) && option == null && !ownWords) {
+            // --action answer names no option and no words: there is nothing to send.
+            return notOffered(out, envelope, locale);
         }
-        var envelope = read.envelope();
+        if (ACTION_ANSWER.equals(effectiveAction) && envelope.parts().size() > 1) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.parts_direct_refused", Map.of(
+                                ID_KEY, questionId,
+                                "count", envelope.parts().size())));
+            out.flush();
+            return 3;
+        }
         var response = sendAnswer(runtime, safeQid, directPayload(effectiveAction));
         if (isAccepted(response.status())) {
             printAnswerSuccess(out, envelope, effectiveAction, locale);
@@ -417,32 +441,7 @@ public final class AnswerCommand implements Callable<Integer> {
         throw refusal;
     }
 
-    /**
-     * The guard of a direct key: a decision of several parts is answered one part at a time in the
-     * dialogue. It fails closed — when the decision could not be read, whether it has parts is not
-     * known, so nothing is sent.
-     */
-    private @Nullable Integer multiPartRefusal(PrintWriter out, EnvelopeRead read, String locale) {
-        if (option == null && (words == null || words.isBlank())) {
-            return null;
-        }
-        if (read.failed()) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
-            out.flush();
-            return 1;
-        }
-        var envelope = read.envelope();
-        if (envelope == null || envelope.parts().size() <= 1) {
-            return null;
-        }
-        out.println(MessageCatalogue.format(locale, "operator.decision.parts_direct_refused", Map.of(
-                            ID_KEY, questionId,
-                            "count", envelope.parts().size())));
-        out.flush();
-        return 3;
-    }
-
-    private LinkedHashMap<String, Object> directPayload(@Nullable String effectiveAction) {
+    private LinkedHashMap<String, Object> directPayload(String effectiveAction) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
         if (isWaiveOrDecline(effectiveAction)) {
@@ -485,37 +484,59 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     /**
-     * The read of a decision before an answer is sent.
+     * Reads the decision the request names before anything is sent. A decision the runtime does not
+     * know is its refusal; any other read that returns no decision of the id asked for fails closed.
      *
-     * @param envelope the decision, or {@code null} when it was not found or not read
-     * @param failed   {@code true} when the read failed (an I/O error or a status other than 200 and
-     *                 404), so nothing is known about the decision
+     * @return the decision, or {@code null} when the read failed or returned another decision
      */
-    private record EnvelopeRead(@Nullable DecisionEnvelope envelope, boolean failed) {
+    private @Nullable DecisionEnvelope readEnvelope(RuntimeClient runtime, String safeQid) throws IOException {
+        HttpResponse response;
+        try {
+            response = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        } catch (IOException _) {
+            // the submission is not part of this catch: a failed write is not "nothing was sent"
+            return null;
+        }
+        if (response.status() == 404) {
+            throw new OperatorRefusedException("answer " + questionId, response);
+        }
+        return response.status() == 200 ? identified(response) : null;
     }
 
-    private EnvelopeRead readEnvelope(RuntimeClient runtime, String safeQid) {
+    /**
+     * The id of the request is authoritative: a body that is no decision, has no id, or names another
+     * decision is never shown or answered as the decision that was asked for.
+     *
+     * @return the decision, or {@code null} when the body is no decision of the id asked for
+     */
+    private @Nullable DecisionEnvelope identified(HttpResponse response) {
         try {
-            var qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
-            if (qResponse.status() == 200) {
-                return new EnvelopeRead(DecisionEnvelope.fromJson(qResponse.bodyText()), false);
-            }
-            return new EnvelopeRead(null, qResponse.status() != 404);
+            var envelope = DecisionEnvelope.fromJson(response.bodyText());
+            return questionId.equals(envelope.id()) ? envelope : null;
         } catch (IOException _) {
-            return new EnvelopeRead(null, true);
+            return null;
         }
     }
 
-    private @Nullable DecisionEnvelope fetchEnvelopeSafe(RuntimeClient runtime, String safeQid) {
-        // The nouns of the later and withdraw lines only: a failed read falls back to their defaults.
-        return readEnvelope(runtime, safeQid).envelope();
+    /**
+     * Says that the decision could not be read, so that it is not known what it holds and nothing was
+     * sent.
+     *
+     * @return the exit code of a failed read
+     */
+    private int unreadable(PrintWriter out, String locale) {
+        out.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
+        out.flush();
+        return 1;
     }
 
-    private void printAnswerSuccess(PrintWriter out, @Nullable DecisionEnvelope envelope,
-                        @Nullable String effectiveAction, String locale) {
-        if (ACTION_WAIVE.equalsIgnoreCase(effectiveAction)) {
-            printWaivedSuccess(out, envelope, locale);
-        } else if (ACTION_DECLINE.equalsIgnoreCase(effectiveAction)) {
+    private void printAnswerSuccess(PrintWriter out, DecisionEnvelope envelope, String effectiveAction,
+                        String locale) {
+        if (ACTION_WAIVE.equals(effectiveAction)) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.waived", Map.of(
+                                GATE_KEY, waiverGate(envelope, locale),
+                                PLAN_KEY, planNoun(envelope, locale))));
+        } else if (ACTION_DECLINE.equals(effectiveAction)) {
             out.println(MessageCatalogue.format(locale, "operator.decision.declined", Map.of(ID_KEY, questionId)));
         } else {
             printDirectAnswerSuccess(out, envelope, locale);
@@ -523,36 +544,9 @@ public final class AnswerCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private void printWaivedSuccess(PrintWriter out, @Nullable DecisionEnvelope envelope, String locale) {
-        String resolvedPlan;
-        if (envelope != null) {
-            resolvedPlan = planNoun(envelope, locale);
-        } else if (plan != null) {
-            resolvedPlan = plan;
-        } else {
-            resolvedPlan = getMessage(locale, "decision.waiver.plan_fallback");
-        }
-        String gate;
-        if (envelope != null) {
-            gate = waiverGate(envelope, locale);
-        } else {
-            gate = getMessage(locale, "decision.waiver.gate_fallback");
-        }
-        out.println(MessageCatalogue.format(locale, "operator.decision.waived", Map.of(
-                            GATE_KEY, gate,
-                            PLAN_KEY, resolvedPlan
-        )));
-    }
-
-    private void printDirectAnswerSuccess(PrintWriter out, @Nullable DecisionEnvelope envelope, String locale) {
-        String label;
-        if (words != null && !words.isBlank()) {
-            label = words;
-        } else if (envelope != null && option != null) {
-            label = findOptionLabel(envelope, option);
-        } else {
-            label = option != null ? option : "";
-        }
+    private void printDirectAnswerSuccess(PrintWriter out, DecisionEnvelope envelope, String locale) {
+        var label = words != null && !words.isBlank() ? words
+                            : findOptionLabel(envelope, Objects.requireNonNull(option));
         out.println(MessageCatalogue.format(locale, "operator.decision.answered", Map.of(
                             ID_KEY, questionId,
                             LABEL_KEY, label
@@ -659,7 +653,8 @@ public final class AnswerCommand implements Callable<Integer> {
             }
             choice = choice.trim();
 
-            if (isQuitChoice(choice)) {
+            var keys = Keys.of(session.locale());
+            if (isQuitChoice(choice, session.locale())) {
                 printLeftDialogue(session.out(), envelope.id(), session.locale());
                 return 0;
             }
@@ -667,19 +662,48 @@ public final class AnswerCommand implements Callable<Integer> {
                 printLaterDone(session.out(), envelope, session.locale());
                 return 0;
             }
-            if ("?".equalsIgnoreCase(choice)) {
+            if ("?".equals(choice)) {
                 printEvidenceDetails(session.out(), envelope.evidence(), session.locale());
                 continue;
             }
-            if (isWaiverActChoice(choice, session.locale())) {
-                return executeWaiverAct(session, envelope, choice);
+            if (keys.waive().equalsIgnoreCase(choice)) {
+                return executeWaiverAct(session, envelope, ACTION_WAIVE);
+            }
+            if (keys.decline().equalsIgnoreCase(choice)) {
+                return executeWaiverAct(session, envelope, ACTION_DECLINE);
             }
             printWaiverNeedsAnswer(session.out(), session.locale());
         }
     }
 
-    private static boolean isQuitChoice(String choice) {
-        return "q".equalsIgnoreCase(choice) || "v".equalsIgnoreCase(choice);
+    /**
+     * The keys of the decision dialogue in the interface language
+     * ({@code doc/design/terminal-client/03-dialogues.adoc#keys}): a key is the mnemonic of its
+     * label, so it follows the language, and a key of the other language is not offered. Own words
+     * ({@code w}), none fits ({@code x}) and choose an option instead ({@code o}) are the same in
+     * both.
+     *
+     * @param leave   leave the dialogue
+     * @param back    back to the previous part, or from a confirmation
+     * @param note    add a note
+     * @param later   leave the decision open
+     * @param waive   waive the gate
+     * @param decline decline the waiver request
+     * @param edit    edit the own words at the read-back
+     */
+    private record Keys(String leave, String back, String note, String later, String waive, String decline,
+    String edit) {
+
+        private static final Keys ENGLISH = new Keys("q", "b", "m", "l", "y", "d", "e");
+        private static final Keys GERMAN = new Keys("v", "z", "n", "s", "w", "a", "b");
+
+        static Keys of(String locale) {
+            return LOCALE_DE.equals(locale) ? GERMAN : ENGLISH;
+        }
+    }
+
+    private static boolean isQuitChoice(String choice, String locale) {
+        return Keys.of(locale).leave().equalsIgnoreCase(choice);
     }
 
     private static void printLeftDialogue(PrintWriter out, String id, String locale) {
@@ -697,28 +721,18 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private static void printWaiverNeedsAnswer(PrintWriter out, String locale) {
+        var keys = Keys.of(locale);
         out.println(MessageCatalogue.format(locale, "operator.decision.waiver_needs_answer", Map.of(
-                            ACTION_WAIVE, "y", ACTION_DECLINE, "d", ACTION_LATER, LOCALE_DE.equals(locale) ? "s" : "l")));
+                            ACTION_WAIVE, keys.waive(), ACTION_DECLINE, keys.decline(), ACTION_LATER, keys.later())));
         out.flush();
     }
 
     private static boolean isLaterChoice(String choice, String locale) {
-        return "l".equalsIgnoreCase(choice) || ACTION_LATER.equalsIgnoreCase(choice)
-                            || ("s".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale))
-                            || ("später".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale));
+        return Keys.of(locale).later().equalsIgnoreCase(choice);
     }
 
-    private static boolean isWaiverActChoice(String choice, String locale) {
-        return "y".equalsIgnoreCase(choice) || "d".equalsIgnoreCase(choice)
-                            || ACTION_WAIVE.equalsIgnoreCase(choice) || ACTION_DECLINE.equalsIgnoreCase(choice)
-                            || ("g".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale))
-                            || ("a".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale));
-    }
-
-    private int executeWaiverAct(DialogueSession session, DecisionEnvelope envelope, String choice) throws IOException {
+    private int executeWaiverAct(DialogueSession session, DecisionEnvelope envelope, String act) throws IOException {
         String reqReason = promptWaiverReason(session.reader(), session.out(), session.locale());
-        var act = "d".equalsIgnoreCase(choice) || ACTION_DECLINE.equalsIgnoreCase(choice) || "a".equalsIgnoreCase(choice)
-                            ? ACTION_DECLINE : ACTION_WAIVE;
         return sendWaiverAnswer(session.runtime(), session.out(), envelope, act, reqReason, session.locale());
     }
 
@@ -908,17 +922,17 @@ public final class AnswerCommand implements Callable<Integer> {
         if (context.index() > 0 && isBackChoice(choice, locale)) {
             return new PartOutcome(PartSignal.BACK, null, context.currentNote(), 0);
         }
-        if ("m".equalsIgnoreCase(choice) && context.part().allowNote()) {
+        if (Keys.of(locale).note().equalsIgnoreCase(choice) && context.part().allowNote()) {
             return new PartOutcome(PartSignal.NOTE, null,
                                 promptNote(session.reader(), locale, context.currentNote()), 0);
         }
-        if ("w".equalsIgnoreCase(choice) && context.part().allowOwnWords()) {
+        if (KEY_OWN_WORDS.equalsIgnoreCase(choice) && context.part().allowOwnWords()) {
             var ownWordsAnswer = readOwnWords(session, envelope, locale);
             return ownWordsAnswer == null ? null
                                 : new PartOutcome(PartSignal.ANSWER,
                                 new PartAnswer(ownWordsAnswer.value(), true), context.currentNote(), 0);
         }
-        if (isNoneFitsChoice(choice, locale)) {
+        if (KEY_NONE_FITS.equalsIgnoreCase(choice)) {
             return handleWithdrawChoice(session.runtime(), session.out(), session.reader(), envelope, locale)
                                 ? done(context.currentNote()) : null;
         }
@@ -929,7 +943,7 @@ public final class AnswerCommand implements Callable<Integer> {
     private static @Nullable PartOutcome leaveOutcome(DialogueSession session, DecisionEnvelope envelope,
                         String choice, @Nullable String note) {
         var locale = session.locale();
-        if (isQuitChoice(choice)) {
+        if (isQuitChoice(choice, locale)) {
             printLeftDialogue(session.out(), envelope.id(), locale);
             return done(note);
         }
@@ -1175,9 +1189,7 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private static boolean isBackChoice(String choice, String locale) {
-        return "b".equalsIgnoreCase(choice) || "back".equalsIgnoreCase(choice)
-                            || ("z".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale))
-                            || ("zurück".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale));
+        return Keys.of(locale).back().equalsIgnoreCase(choice);
     }
 
     private static String buildPartPrompt(DecisionPart part, DecisionStake stake,
@@ -1198,7 +1210,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         if (part.allowNote()) {
             sb.append("   ").append(currentNote != null
-                                ? "m) " + getMessage(locale, "operator.decision.note_set")
+                                ? Keys.of(locale).note() + ") " + getMessage(locale, "operator.decision.note_set")
                                 : getMessage(locale, "operator.decision.prompt.add_note"));
         }
         if (index > 0) {
@@ -1272,11 +1284,6 @@ public final class AnswerCommand implements Callable<Integer> {
                             .findFirst().orElse(null);
     }
 
-    private static boolean isNoneFitsChoice(String choice, String locale) {
-        return "x".equalsIgnoreCase(choice) || "none fits".equalsIgnoreCase(choice)
-                            || ("nichts passt".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale));
-    }
-
     private static @Nullable String promptNote(LineReader reader, String locale, @Nullable String currentNote) {
         var noteInput = readLineSafe(reader, getMessage(locale, "operator.decision.note_prompt") + " › ");
         if (!noteInput.isBlank()) {
@@ -1295,12 +1302,9 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static ConfirmOutcome confirmSingle(DialogueSession session, DecisionEnvelope envelope,
                         DecisionPart part, PartAnswer answer) {
-        var picked = pickOption(part, answer.value());
-        if (picked == null) {
-            return new ConfirmOutcome(true, null, 0);
-        }
-        var confirmed = confirmNonReversible(session.reader(), session.out(), envelope, picked, session.locale());
-        return new ConfirmOutcome(confirmed, confirmed ? null : 0, 0);
+        // An answer that is no own words was picked from the part's options, so it names one.
+        var picked = Objects.requireNonNull(pickOption(part, answer.value()));
+        return confirmNonReversible(session.reader(), session.out(), envelope, picked, session.locale());
     }
 
     private ConfirmOutcome confirmMultipart(DialogueSession session, DecisionEnvelope envelope,
@@ -1330,7 +1334,7 @@ public final class AnswerCommand implements Callable<Integer> {
             printEvidenceDetails(out, envelope.evidence(), locale);
             return null;
         }
-        if (isQuitChoice(choice)) {
+        if (isQuitChoice(choice, locale)) {
             printLeftDialogue(out, envelope.id(), locale);
             return new ConfirmOutcome(false, null, 0);
         }
@@ -1352,7 +1356,7 @@ public final class AnswerCommand implements Callable<Integer> {
             for (int i = 0; i < parts.size(); i++) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.part_answer_line", Map.of(
                                     "n", i + 1,
-                                    "answer", answerLabel(parts.get(i), answers.get(i)))));
+                                    ANSWER_PARAM, answerLabel(parts.get(i), answers.get(i)))));
                 var answer = answers.get(i);
                 if (!answer.ownWords()) {
                     var option = pickOption(parts.get(i), answer.value());
@@ -1445,25 +1449,42 @@ public final class AnswerCommand implements Callable<Integer> {
                             SCOPE_KEY, scopeSelector(envelope),
                             PROJECT_KEY, projectNoun(envelope, locale)
         )) + " [Enter]   " + getMessage(locale, "operator.decision.prompt.back") + "   › ";
-        var confirm = readLineSafe(reader, confirmPrompt);
-        if (confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim())) {
+        while (true) {
+            var confirm = readLineSafe(reader, confirmPrompt);
+            var choice = confirm.trim();
+            if (isBackChoice(choice, locale)) {
+                return false;
+            }
+            if (!choice.isEmpty()) {
+                // The confirmation offers Enter and back alone; nothing else withdraws the decision.
+                out.println(getMessage(locale, INVALID_CHOICE_KEY));
+                out.flush();
+                continue;
+            }
             var withPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_WITHDRAW;
             var withResponse = runtime.send(HttpRequest.json("POST", withPath, "{}"));
             if (!isAccepted(withResponse.status())) {
                 throw new OperatorRefusedException("withdraw " + envelope.id(), withResponse);
             }
-            out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
-                                ID_KEY, envelope.id(),
-                                SCOPE_KEY, scopeSelector(envelope),
-                                PROJECT_KEY, projectNoun(envelope, locale)
-            )));
-            out.flush();
+            printNoneFitsDone(out, envelope, locale);
             return true;
         }
-        return false;
     }
 
-    private static boolean confirmNonReversible(LineReader reader, PrintWriter out,
+    private static void printNoneFitsDone(PrintWriter out, DecisionEnvelope envelope, String locale) {
+        out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
+                            ID_KEY, envelope.id(),
+                            SCOPE_KEY, scopeSelector(envelope),
+                            PROJECT_KEY, projectNoun(envelope, locale)
+        )));
+        out.flush();
+    }
+
+    /**
+     * {@code decision.confirm} of a decision that is not reversible: {@code Enter} decides, the back
+     * key returns to the part, {@code ?} shows the evidence, and every other input is not offered.
+     */
+    private static ConfirmOutcome confirmNonReversible(LineReader reader, PrintWriter out,
                         DecisionEnvelope envelope, DecisionOption picked,
                         String locale) {
         out.println();
@@ -1472,8 +1493,26 @@ public final class AnswerCommand implements Callable<Integer> {
         if (picked.consequences() != null) {
             out.println("  " + MessageCatalogue.format(locale, "operator.decision.follows", Map.of("consequence", OutputSafety.stripControlSequences(picked.consequences()))));
         }
-        var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.confirm_prompt"));
-        return confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim());
+        while (true) {
+            var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.confirm_prompt"));
+            var choice = confirm.trim();
+            if (choice.isEmpty()) {
+                return new ConfirmOutcome(true, null, 0);
+            }
+            if (isBackChoice(choice, locale)) {
+                return new ConfirmOutcome(false, 0, 0);
+            }
+            if (isQuitChoice(choice, locale)) {
+                printLeftDialogue(out, envelope.id(), locale);
+                return new ConfirmOutcome(false, null, 0);
+            }
+            if ("?".equals(choice)) {
+                printEvidenceDetails(out, envelope.evidence(), locale);
+            } else {
+                out.println(getMessage(locale, INVALID_CHOICE_KEY));
+                out.flush();
+            }
+        }
     }
 
     private record ReadBack(boolean repeat, @Nullable PartAnswer answer) {
@@ -1503,38 +1542,36 @@ public final class AnswerCommand implements Callable<Integer> {
                 interp = clarification.interpretation();
                 interpretedWords = clarification.words();
             }
-            var readBack = readBack(session, envelope, interp, interpretedWords, locale);
+            var readBack = readBack(session, interp, interpretedWords, locale);
             if (!readBack.repeat()) {
                 return readBack.answer();
             }
         }
     }
 
-    private static ReadBack readBack(DialogueSession session, DecisionEnvelope envelope,
-                        DecisionInterpretation interp, String wordsInput, String locale) {
+    private static ReadBack readBack(DialogueSession session, DecisionInterpretation interp, String wordsInput,
+                        String locale) {
         var out = session.out();
         out.println();
         var readBackText = interp.readBackText();
         final String reading = readBackText != null ? readBackText : wordsInput;
-        out.println(MessageCatalogue.format(locale, "decision.readback.understood",
-                            Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
+        var understood = MessageCatalogue.format(locale, "decision.readback.understood",
+                            Map.of("reading", TerminalSanitizer.sanitizeLine(reading)));
+        out.println(understood);
         while (true) {
             var answer = readLineSafe(session.reader(), getMessage(locale, "operator.decision.readback_confirm")).trim();
-            if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
-                return new ReadBack(false, new PartAnswer(reading, true));
-            }
-            if ("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale))) {
-                return new ReadBack(true, null);
-            }
-            if ("o".equalsIgnoreCase(answer)) {
+            if (KEY_CHOOSE_OPTION.equalsIgnoreCase(answer)) {
+                // The operator chooses an option instead: nothing is recorded.
                 return new ReadBack(false, null);
             }
-            if ("?".equals(answer)) {
-                printEvidenceDetails(out, envelope.evidence(), locale);
-                continue;
+            if (answer.isEmpty()) {
+                return new ReadBack(false, new PartAnswer(reading, true));
             }
-            // An unknown input neither keeps nor drops the reading: it is asked again.
-            out.println(getMessage(locale, INVALID_CHOICE_KEY));
+            if (Keys.of(locale).edit().equalsIgnoreCase(answer)) {
+                return new ReadBack(true, null);
+            }
+            // ? repeats what was understood; any other input is not offered at the read-back.
+            out.println("?".equals(answer) ? understood : getMessage(locale, INVALID_CHOICE_KEY));
             out.flush();
         }
     }
@@ -1606,13 +1643,10 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private static String findOptionLabel(DecisionEnvelope envelope, String key) {
-        if (!envelope.parts().isEmpty()) {
-            for (var part : envelope.parts()) {
-                for (var opt : part.options()) {
-                    if (opt.key().equalsIgnoreCase(key)) {
-                        return OutputSafety.stripControlSequences(opt.label());
-                    }
-                }
+        for (var part : envelope.parts()) {
+            var opt = pickOption(part, key);
+            if (opt != null) {
+                return OutputSafety.stripControlSequences(opt.label());
             }
         }
         return key;
@@ -1623,13 +1657,10 @@ public final class AnswerCommand implements Callable<Integer> {
      * scope and blocks, never from the subject text: an entry decision selects {@code entry}, an
      * epic one {@code epic}, a project setup {@code setup}, everything else {@code plan}.
      *
-     * @param envelope the decision envelope, may be {@code null}
+     * @param envelope the decision envelope
      * @return the selector value
      */
-    private static String scopeSelector(@Nullable DecisionEnvelope envelope) {
-        if (envelope == null) {
-            return PLAN_KEY;
-        }
+    private static String scopeSelector(DecisionEnvelope envelope) {
         if ("entry".equalsIgnoreCase(envelope.blocks())) {
             return "entry";
         }
@@ -1640,22 +1671,18 @@ public final class AnswerCommand implements Callable<Integer> {
         };
     }
 
-    private static String projectNoun(@Nullable DecisionEnvelope envelope, String locale) {
-        if (envelope != null) {
-            var project = envelope.project();
-            if (project != null && !project.isBlank()) {
-                return project;
-            }
+    private static String projectNoun(DecisionEnvelope envelope, String locale) {
+        var project = envelope.project();
+        if (project != null && !project.isBlank()) {
+            return project;
         }
         return getMessage(locale, "decision.project.fallback");
     }
 
-    private String planNoun(@Nullable DecisionEnvelope envelope, String locale) {
-        if (envelope != null) {
-            var planId = envelope.plan();
-            if (planId != null && !planId.isBlank()) {
-                return planId;
-            }
+    private String planNoun(DecisionEnvelope envelope, String locale) {
+        var planId = envelope.plan();
+        if (planId != null && !planId.isBlank()) {
+            return planId;
         }
         if (plan != null && !plan.isBlank()) {
             return plan;
@@ -1663,7 +1690,7 @@ public final class AnswerCommand implements Callable<Integer> {
         return getMessage(locale, "decision.waiver.plan_fallback");
     }
 
-    private static @Nullable String waiverGate(DecisionEnvelope envelope, String locale) {
+    private static String waiverGate(DecisionEnvelope envelope, String locale) {
         if (envelope.waiverGate() != null && !envelope.waiverGate().isBlank()) {
             return Display.gate(locale, envelope.waiverGate());
         }

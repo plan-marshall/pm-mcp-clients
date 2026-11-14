@@ -118,6 +118,27 @@ class PlanDetailTest {
         }
     }
 
+    @Test
+    @DisplayName("a synthesized plan carries the members the process resource always writes")
+    void synthesizedPlanCarriesTheAlwaysWrittenMembers() throws Exception {
+        try (var engine = engine()) {
+            for (var path : List.of("/api/v1/plans/relay-reconnect-backoff/process",
+                    "/api/v1/plans/drop-legacy-api/process")) {
+                var process = get(engine, path);
+
+                var tokens = process.get("tokens_so_far") instanceof Map<?, ?> map ? map : null;
+                assertAll(path + " follows ProcessTree#toMap",
+                        () -> assertNotNull(tokens, "tokens_so_far is always written"),
+                        () -> assertEquals(Boolean.TRUE, tokens == null ? null : tokens.get("none_yet"),
+                                "a synthesized plan has measured no token yet"),
+                        () -> assertNotNull(process.get("duration_seconds"),
+                                "duration_seconds is always written"),
+                        () -> assertNotNull(JsonTree.asObject(process.get("project")),
+                                "project is always written"));
+            }
+        }
+    }
+
     private static @Nullable String phaseState(Map<String, Object> plan, String nodeId) {
         var nodes = JsonTree.asArray(plan.get("nodes"));
         assertNotNull(nodes, "the plan must answer a node list");

@@ -53,8 +53,7 @@ Not in this plan: `StartView`, its footer and its steps (PLAN-53 owns them, with
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) on the scenario `decomposition.spec.js` uses and on `projects-and-start` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for the views (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on the scenario `decomposition.spec.js` uses and on `projects-and-start` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); `theme-readability.spec.js` passes for the views (evidence order: `none`).
 
 5. **What PLAN-158 left in the start steps and the mock (from its landing, folded 2026-11-11 on the operator's decision)**
  - What: read `landings/PLAN-158.md` of the epic; lines as read at `4a84f727`.
@@ -85,20 +84,28 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: `EpicDecompositionView.svelte` (713 lines) has 7 raw buttons, 1 `<textarea>`, a hand-drawn `role="dialog"` and `z-index: 50` (line 668), and uses `Button` and `Spinner` — read at the file
+  - verdict: contradicted | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: yes | evidence: EpicDecompositionView now 727 lines; 7 buttons 1 textarea role=dialog :438 z-index:50 :682 hold; but imports Button ErrorState Skeleton, no Spinner | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup) (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - OBSERVED: `DecompositionReviewView.svelte` (398 lines) has 13 raw buttons and 2 `<textarea>`s, and uses `Icon` only; `EpicAdoptView.svelte` (121) has 5 raw buttons and no component; `RecipeReadyView.svelte` (234) has 2 raw buttons, 2 `<input>`s and 1 `<select>` — read at the files
+  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: DecompositionReviewView 398 lines 13 buttons 2 textareas Icon only; EpicAdoptView 121 lines 5 buttons no component; RecipeReadyView 234 lines 2 buttons 2 inputs 1 select (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - OBSERVED: `DecompositionReviewView`, `EpicAdoptView` and `RecipeReadyView` are rendered by `StartView.svelte`; `EpicDecompositionView` by `AppRouter.svelte` — read by `git grep -l` of each name
+  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte renders DecompositionReviewView :832 EpicAdoptView :892 RecipeReadyView :961,971; AppRouter.svelte:69 renders EpicDecompositionView (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - OBSERVED: `EpicDecompositionView.test.ts` and `DecompositionReviewView.test.ts` exist; `EpicAdoptView` and `RecipeReadyView` have no test; `pm-web-e2e/tests/decomposition.spec.js` exists — read in the directories
+  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicDecompositionView.test.ts DecompositionReviewView.test.ts decomposition.spec.js exist; no EpicAdoptView or RecipeReadyView test (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - OBSERVED: `PLAN-137` (parked) declares `EpicDecompositionView.svelte` and `DecompositionReviewView.svelte` in its surface for the chat; `PLAN-53` (parked) declares `StartView.svelte`, `SourceList`, `SourceIntakePanel`, `RecipeSelector`, `GitSourceIntakeModal`, `LessonSourceModal` and none of `EpicAdoptView`, `RecipeReadyView`, `DecompositionReviewView` — read by `corpus surfaces`
+  - verdict: unverifiable | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Corpus surfaces of parked PLAN-137 and PLAN-53, a ledger fact not settleable from source (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - HYPOTHESIS: the check marks `✓ ✗ ○ ●` are literal glyphs in the markup today — confirm/refute at `EpicDecompositionView.svelte` § plan row markup (verify-at-outline)
+  - verdict: contradicted | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: yes | evidence: No check glyphs in EpicDecompositionView or DecompositionReviewView markup; plan rows show state by class plan--error and text tags plan__tag | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup) (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - HYPOTHESIS: `Compose` (PLAN-147) fits the instruct fields without the chat's additions (its `Enter` sends the instruction) — confirm/refute at `components-fields.adoc` § `#compose` and the fields' current submit key (verify-at-outline)
+  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Compose.svelte exists; Enter sends Shift+Enter adds a line (:25,:151); props sendLabel onsend disabledReason fit the instruct fields; components-fields.adoc #compose agrees (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 - Verify-first clause: re-read the four views after PLAN-45, PLAN-149 to PLAN-151 landed; take the PLAN-151 lint list as the work list. If PLAN-53 re-grounded and now claims `EpicAdoptView` or `RecipeReadyView`, drop it from deliverable 3.
+  - verdict: unverifiable | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact (re-stamped 2026-11-14: 7adb56c2 touched only MockRuntimeEngine.java of the declared surface, no web view)
 
 ## Expected Surface
 
@@ -134,6 +141,31 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since. Settle each HYPOTHESIS. Re-run the lint for the four views and re-check which plan claims `EpicAdoptView` and `RecipeReadyView`.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+- D5's chat items are stale: `ControlScenarioTest.unknownSubject` now pins `target_not_found` for the plan chat and tests the turn POST
+  code. Re-ground them at outline; drop what `a139ec62` already covers.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- PLAN-148 looked at 5 of 13 `--color-success-subtle` places in a browser. This plan's browser check includes its own: `EpicDecompositionView.svelte:519`
+  (both themes; contrast of the text on the block).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 0 contradicted: EpicDecompositionView now 727 lines; 7 buttons 1 textarea role=dialog :438 z-index:50 :682 hold; but imports Button ErrorState Skeleton, no Spinner
+- Claim 5 contradicted: No check glyphs in EpicDecompositionView or DecompositionReviewView markup; plan rows show state by class plan--error and text tags plan__tag
+- Already done: the chat POST code pin (#424). No check glyphs in the decomposition views; `EpicDecompositionView` uses no `Spinner`.
 
 ## Hand-Off Command
 

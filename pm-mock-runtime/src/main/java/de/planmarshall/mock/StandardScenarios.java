@@ -408,8 +408,8 @@ public final class StandardScenarios {
     public static final String INTENT_PLAN = "intent-plan";
 
     /**
-     * A plan's outline record with deliverables, affected files, criteria, justified dependencies,
-     * and a missing key link (UC-PLN-1; PM-WF-10).
+     * A plan's outline record with deliverables, affected files, criteria and justified dependencies
+     * (UC-PLN-1; PM-WF-10).
      */
     public static final String INTENT_OUTLINE = "intent-outline";
 

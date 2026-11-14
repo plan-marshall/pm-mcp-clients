@@ -101,7 +101,7 @@ final class StatusCommand implements Callable<Integer> {
         if (json) {
             if (project != null && !".".equals(project)) {
                 try {
-                    var detailRes = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + project));
+                    var detailRes = context.runtime(false).send(HttpRequest.get(projectPath(project)));
                     if (detailRes.status() == 200) {
                         out.println(detailRes.bodyText());
                         out.flush();
@@ -137,12 +137,21 @@ final class StatusCommand implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * @param projectId a project id as the operator or the runtime names it
+     * @return the project's resource, its id one encoded path segment: an id is never read as
+     *         path or query syntax
+     */
+    private static String projectPath(String projectId) {
+        return "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId);
+    }
+
     private int handleEnded(PrintWriter out) throws IOException {
         String locale = context.clientEnvironment().locale();
         if (json) {
             try {
                 var path = project != null && !".".equals(project)
-                                    ? "/api/v1/projects/" + project + "/ended"
+                                    ? projectPath(project) + "/ended"
                                     : "/api/v1/status?ended=true";
                 var response = context.runtime(false).send(HttpRequest.get(path));
                 if (response.status() == 200) {
@@ -188,7 +197,7 @@ final class StatusCommand implements Callable<Integer> {
         var cleanProject = OutputSafety.stripControlSequences(projectId);
 
         while (true) {
-            var res = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + projectId + "/ended?page=" + pageNum));
+            var res = context.runtime(false).send(HttpRequest.get(projectPath(projectId) + "/ended?page=" + pageNum));
             if (res.status() != 200) {
                 if (failHard) {
                     throw new OperatorRefusedException("status --ended", res);
@@ -317,7 +326,7 @@ final class StatusCommand implements Callable<Integer> {
 
         ProjectDetailResponse detail = null;
         try {
-            var res = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + p.projectId()));
+            var res = context.runtime(false).send(HttpRequest.get(projectPath(p.projectId())));
             if (res.status() == 200) {
                 detail = ProjectDetailResponse.fromJson(res.bodyText());
             }
@@ -515,7 +524,7 @@ final class StatusCommand implements Callable<Integer> {
     private Map<String, Object> fetchProjectStatus() throws IOException {
         var path = RuntimeClient.STATUS_PATH;
         if (project != null && !".".equals(project)) {
-            path += "?project=" + project;
+            path += "?project=" + OperatorUrlUtil.encodeQueryValue(project);
         }
         var response = context.runtime(false).send(HttpRequest.get(path));
         if (response.status() != 200) {

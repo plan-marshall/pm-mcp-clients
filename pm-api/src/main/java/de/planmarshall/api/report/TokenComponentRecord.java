@@ -9,11 +9,10 @@
  */
 package de.planmarshall.api.report;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
-
-import de.planmarshall.api.json.JsonNumber;
 
 /**
  * Raw token components reported by harnesses.
@@ -77,23 +76,14 @@ public record TokenComponentRecord(
      *
      * @param map tree map
      * @return parsed component record
+     * @throws IOException if a component is a number with a fraction
      */
-    public static TokenComponentRecord fromMap(Map<String, Object> map) {
-        Long in = toLong(map.get(FIELD_INPUT));
-        Long cr = toLong(map.get(FIELD_CACHE_READ));
-        Long cw = toLong(map.get(FIELD_CACHE_WRITE));
-        Long out = toLong(map.get(FIELD_OUTPUT));
-        Long rea = toLong(map.get(FIELD_REASONING));
+    public static TokenComponentRecord fromMap(Map<String, Object> map) throws IOException {
+        Long in = ReportNumbers.wholeOrNull(map.get(FIELD_INPUT), FIELD_INPUT);
+        Long cr = ReportNumbers.wholeOrNull(map.get(FIELD_CACHE_READ), FIELD_CACHE_READ);
+        Long cw = ReportNumbers.wholeOrNull(map.get(FIELD_CACHE_WRITE), FIELD_CACHE_WRITE);
+        Long out = ReportNumbers.wholeOrNull(map.get(FIELD_OUTPUT), FIELD_OUTPUT);
+        Long rea = ReportNumbers.wholeOrNull(map.get(FIELD_REASONING), FIELD_REASONING);
         return new TokenComponentRecord(in, cr, cw, out, rea);
-    }
-
-    private static Long toLong(Object obj) {
-        if (obj instanceof JsonNumber jn) {
-            return jn.longValue();
-        }
-        if (obj instanceof Number n) {
-            return n.longValue();
-        }
-        return null;
     }
 }

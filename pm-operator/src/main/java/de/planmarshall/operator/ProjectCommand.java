@@ -243,7 +243,7 @@ public final class ProjectCommand implements Callable<Integer> {
                         return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
                     }
                     return new ChoicePrompt(startPrompt, stateId);
-                });
+                }, context.projectSetupWorkingTimeout());
                 var finalFrame = dialogue.run();
                 if (pilot && !pilotUsed.get()) {
                     out.println(MessageCatalogue.format(locale, "operator.config.argument_unused",
@@ -434,7 +434,8 @@ public final class ProjectCommand implements Callable<Integer> {
                                 : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
             var startPrompt = new StartPrompt(context, out, locale, false);
             var dialogue = new StateDialogue(source, out, locale,
-                                stateId -> new ChoicePrompt(startPrompt, stateId));
+                                stateId -> new ChoicePrompt(startPrompt, stateId),
+                                context.projectSetupWorkingTimeout());
             try {
                 if (step != null && !step.isBlank()) {
                     var frame = source.choose(step);

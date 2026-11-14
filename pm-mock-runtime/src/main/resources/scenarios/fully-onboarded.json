@@ -1047,15 +1047,7 @@
             "justification": "The retry adapter carries the backoff policy.",
             "deliverable": 1
           }
-        ],
-        "interfaces": [
-          "RelayConnection",
-          "EventQueue"
-        ],
-        "key_links": [
-          "RelayConnection -> EventQueue"
-        ],
-        "missing_key_link": "EventQueue -> RelayStatus"
+        ]
       }
     },
     "GET /api/v1/epics/relay-hardening/intent": {

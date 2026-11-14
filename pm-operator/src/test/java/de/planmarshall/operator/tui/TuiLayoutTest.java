@@ -108,6 +108,57 @@ class TuiLayoutTest {
     }
 
     @Nested
+    @DisplayName("where a menu is drawn")
+    class MenuPlace {
+
+        private List<String> render(TuiMenu menu, int selected) {
+            var base = screen(selected, 3);
+            var withMenu = new TuiScreen(base.breadcrumb(), base.kind(), base.rows(), selected, "", false, true, 0,
+                                null, menu, null);
+            return layout.render(withMenu, 120, 20).stream().map(Object::toString).toList();
+        }
+
+        private static int indexOf(List<String> lines, String text) {
+            for (int index = 0; index < lines.size(); index++) {
+                if (lines.get(index).contains(text)) {
+                    return index;
+                }
+            }
+            throw new AssertionError("no line holds " + text + ": " + lines);
+        }
+
+        private static TuiMenu menu(String subjectRowId) {
+            return TuiMenu.opening(subjectRowId, List.of(TuiMenuEntry.enabled("x", "pause", "Pause the work")));
+        }
+
+        @Test
+        @DisplayName("a menu below its subject row, wherever the selection is")
+        void belowItsSubject() {
+            var lines = render(menu("row-2"), 0);
+
+            assertTrue(indexOf(lines, "Pause the work") > indexOf(lines, "row number 2"), lines.toString());
+        }
+
+        @Test
+        @DisplayName("a menu whose subject row is not shown is drawn below the selected row")
+        void subjectNotShown() {
+            var lines = render(menu("row-hidden"), 1);
+
+            var menuLine = indexOf(lines, "Pause the work");
+            assertTrue(menuLine > indexOf(lines, "row number 1"), lines.toString());
+            assertTrue(menuLine < indexOf(lines, "row number 2"), lines.toString());
+        }
+
+        @Test
+        @DisplayName("a menu of no row without a selection is drawn below the last row")
+        void noSubjectNoSelection() {
+            var lines = render(menu(null), -1);
+
+            assertTrue(indexOf(lines, "Pause the work") > indexOf(lines, "row number 2"), lines.toString());
+        }
+    }
+
+    @Nested
     @DisplayName("width thresholds")
     class Widths {
 
@@ -170,6 +221,70 @@ class TuiLayoutTest {
                                 .map(Object::toString).toList());
             assertTrue(text.contains("\u25b6 row number " + selected), text);
         }
+    }
+
+    @Test
+    @DisplayName("a body of one or two lines shows the selected row without scroll indicators")
+    void shortBodyHasNoIndicators() {
+        for (int terminalRows : List.of(5, 6)) {
+            var lines = layout.render(screen(7, 40), 80, terminalRows).stream().map(Object::toString).toList();
+            var body = lines.subList(2, lines.size() - 2);
+
+            assertAll(
+                                () -> assertEquals(terminalRows - 4, body.size()),
+                                () -> assertTrue(body.getLast().startsWith("▶ row number 7"), body.toString()),
+                                () -> assertTrue(body.stream().noneMatch(line -> line.contains("more")), body.toString())
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("a selected row taller than the body keeps its own first line in view")
+    void tallRowKeepsItsFirstLine() {
+        var rows = new ArrayList<TuiRow>();
+        rows.add(TuiRow.leaf("above", "the row above"));
+        rows.add(new TuiRow("tall", "the tall row", "detail one\ndetail two\ndetail three\ndetail four", false, true));
+        rows.add(TuiRow.leaf("below", "the row below"));
+        var tall = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, rows, 1, "", false, true, 0);
+
+        var body = layout.render(tall, 120, 7).stream().map(Object::toString).toList().subList(2, 5);
+
+        assertAll(
+                            () -> assertTrue(body.get(0).contains("1 more"), body.toString()),
+                            () -> assertTrue(body.get(1).startsWith("▶ the tall row"), body.toString()),
+                            () -> assertTrue(body.get(2).contains("more"), body.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a body too short for the help box stays blank instead of drawing half a box")
+    void helpOverlayInATooShortBody() {
+        var help = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, screen(0, 3).rows(), 0, "",
+                            true, true, 0);
+
+        var lines = layout.render(help, 120, 6).stream().map(Object::toString).toList();
+        var body = lines.subList(2, 4);
+
+        assertAll(
+                            () -> assertEquals(6, lines.size()),
+                            () -> body.forEach(line -> assertTrue(line.isBlank(), line))
+        );
+    }
+
+    @Test
+    @DisplayName("a help box with room for the keys only leaves the row's details out")
+    void helpOverlayDropsDetailsFirst() {
+        var help = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, screen(0, 3).rows(), 0, "",
+                            true, true, 0);
+        var groups = TuiKeyRegistry.helpGroups(TuiLevel.Kind.OVERVIEW, "en").size();
+
+        var text = String.join("\n", layout.render(help, 120, groups + 6).stream().map(Object::toString).toList());
+
+        assertAll(
+                            () -> assertTrue(text.contains("│ move"), text),
+                            () -> assertTrue(text.contains("└"), text),
+                            () -> assertFalse(text.contains("details of row 0"), text)
+        );
     }
 
     @Test

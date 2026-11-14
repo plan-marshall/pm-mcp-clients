@@ -16,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorKind;
@@ -50,6 +51,7 @@ public final class ConsoleNotice {
     private static final String CHANNEL = "channel";
     private static final String KEY_PROJECT = "project";
     private static final String DETAIL = "detail";
+    private static final String EPIC = "epic";
 
     /** The channel of an answer this console posted itself (02-operator-channel.adoc). */
     private static final String CHANNEL_CLI = "cli";
@@ -294,7 +296,8 @@ public final class ConsoleNotice {
      * @return formatted notice
      */
     public static String formatFreshCodeNotice(String locale, String code, String validUntil, String url) {
-        return CHECK + MessageCatalogue.format(locale, "operator.console.new_code",
+        // The catalogue's line carries its own check mark.
+        return MessageCatalogue.format(locale, "operator.console.new_code",
                             Map.of("code", code, "time", validUntil))
                             + "\n" + MessageCatalogue.format(locale, "operator.console.url_indent",
                             Map.of("url", TerminalSanitizer.sanitizeLine(url)));
@@ -381,17 +384,70 @@ public final class ConsoleNotice {
             case QUESTION -> questionNotice(locale, payload);
             case WAIVER -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
-            case PAIRED -> formatPairedNotice(locale,
-                                String.valueOf(payload.getOrDefault(LABEL, "unknown")));
-            case FRESH_CODE -> formatFreshCodeNotice(locale,
-                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.get("code"))),
-                                TerminalSanitizer.sanitizeLine(String.valueOf(payload.getOrDefault("valid_until", ""))),
-                                String.valueOf(payload.getOrDefault("url", "")));
-            case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
+            case PAIRED -> formatPairedNotice(locale, pairedLabel(locale, payload));
+            case FRESH_CODE -> freshCodeNotice(locale, payload);
+            case OPERATOR_WAIT -> formatOperatorWait(locale, scopeOf(event), detailOf(payload),
+                                isEpicScope(event, payload));
+            case INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
                 formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
             case REPORT -> formatReportNotice(locale, reportOf(payload));
             case HOLD -> null;
         };
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param payload the event data
+     * @return the label the paired device carries, or the catalogue's own word when it names none
+     */
+    private static String pairedLabel(String locale, Map<String, Object> payload) {
+        var label = stringOf(payload, LABEL);
+        return label != null && !label.isBlank() ? label : MessageCatalogue.format(locale, "common.unknown", Map.of());
+    }
+
+    /**
+     * @param locale  the interface locale
+     * @param payload the event data
+     * @return the fresh code's notice, or {@code null} when the event names no code: a code the
+     *         event does not carry is no code to show
+     */
+    private static @Nullable String freshCodeNotice(String locale, Map<String, Object> payload) {
+        var code = stringOf(payload, "code");
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        return formatFreshCodeNotice(locale, TerminalSanitizer.sanitize(code),
+                            TerminalSanitizer.sanitize(textOr(payload, "valid_until", "")),
+                            textOr(payload, "url", ""));
+    }
+
+    /**
+     * Formats the notice of an operator wait, which names its level: an epic's wait reads
+     * {@code Epic <id> waits for you}, a plan's {@code Plan <id> waits for you} (design <em>Console</em>,
+     * {@code operator.console.notice.operator_wait}).
+     *
+     * @param locale the interface locale
+     * @param scope  the plan or epic that waits
+     * @param detail what it waits for
+     * @param epic   whether the wait is an epic's
+     * @return the notice line
+     */
+    static String formatOperatorWait(String locale, String scope, @Nullable String detail, boolean epic) {
+        return BULLET + MessageCatalogue.format(locale, epic ? "operator.console.notice.operator_wait.epic"
+                                                : "operator.console.notice.operator_wait",
+                            Map.of("name", TerminalSanitizer.sanitizeLine(scope), "what", TerminalSanitizer.sanitizeLine(detail)));
+    }
+
+    /**
+     * @return {@code true} when the event's subject is an epic: the hold names it as its
+     *         {@code subject_kind}, or the runtime's envelope declares an epic scope
+     */
+    private static boolean isEpicScope(Map<String, Object> event, Map<String, Object> payload) {
+        if (EPIC.equals(stringOf(payload, "subject_kind"))) {
+            return true;
+        }
+        var declared = JsonTree.object(event, SCOPE);
+        return declared != null && EPIC.equals(stringOf(declared, "kind"));
     }
 
     /**
@@ -662,6 +718,24 @@ public final class ConsoleNotice {
     }
 
     /**
+     * Reads a count the runtime sent: the parsed event tree carries its numbers as {@link JsonNumber}.
+     *
+     * @param value the count, or {@code null}
+     * @return the count clamped to the whole numbers of an {@code int}, or {@code 0} when the value is no
+     *         whole number
+     */
+    static int wholeCount(@Nullable Object value) {
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return Math.clamp(jsonNumber.longValue(), 0, Integer.MAX_VALUE);
+            } catch (NumberFormatException _) {
+                return 0;
+            }
+        }
+        return value instanceof Number number ? Math.clamp(number.longValue(), 0, Integer.MAX_VALUE) : 0;
+    }
+
+    /**
      * Formats a quiet notice for an incoming report pushed over SSE.
      *
      * @param locale the interface locale
@@ -669,10 +743,11 @@ public final class ConsoleNotice {
      * @return formatted quiet notice string
      */
     public static @Nullable String formatReportNotice(String locale, Map<String, Object> event) {
-        if (event.containsKey(COUNT) && event.get(COUNT) instanceof Number num && num.intValue() > 1) {
+        var count = wholeCount(event.get(COUNT));
+        if (count > 1) {
             var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
-                                Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitizeLine(scope)));
+                                Map.of(COUNT, count, SCOPE, TerminalSanitizer.sanitizeLine(scope)));
         }
         var id = String.valueOf(event.getOrDefault(ID, ""));
         var subject = stringOf(event, SUBJECT);

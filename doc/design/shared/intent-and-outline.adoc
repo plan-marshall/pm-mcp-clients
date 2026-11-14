@@ -210,13 +210,6 @@ The outline is the plan's answer to how it will satisfy the intent. It is opened
 
 A dependency the plan adds is never shown as an unqualified coordinate. Each row shows the coordinates, the version where the record names one, the deliverable that adds it, and the justification. An addition the plan did not inherit is therefore one the operator can judge, and a missing justification is a record defect the server refuses.
 
-[#links]
-=== Interfaces and Key Links
-
-* *Interfaces*: the interfaces the outline declares, as the record names them.
-* *Key links*: the links between components the plan relies on.
-* *A missing key link*: the verification sweep may report a link it could not confirm. It is shown beside the declared links as `missing: <link>` and is never dropped into the prose; the operator sees what the sweep could not establish. The client does not compute the sweep's result.
-
 [#epic]
 == The Epic's Intent
 
@@ -299,7 +292,7 @@ The words of this design, both clients', are link:intent-and-outline-texts.adoc[
 * They do not read the rendered `request.md`, `outline.md`, or the pull-request body; the records are the source.
 * They do not derive a criterion's verdict from a deliverable's state, a done-when's verdict from a plan's row, or a flagged share from raw tokens.
 * They do not fill a missing field with a guess, hide a `not_verified` criterion, or show a model's call as a recommendation or a decision of the operator.
-* They do not compute the builder check's routing or the verification sweep's missing key link; the runtime states both.
+* They do not compute the builder check's routing; the runtime states it.
 
 [#decisions]
 == Decisions of the Operator

@@ -9,7 +9,9 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -20,8 +22,10 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.resource.RoleDetailResource;
@@ -36,6 +40,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("RolesCommand")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -62,14 +69,18 @@ class RolesCommandTest {
     }
 
     private int execute(String input, String... args) {
-        return executeWithLocale(ClientEnvironment.DEFAULT_LOCALE, input, args);
+        return executeIn(fixture.environment(), input, args);
     }
 
-    private int executeWithLocale(String locale, String input, String... args) {
-        var environment = fixture.environment();
-        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+    private int executeInGerman(String input, String... args) {
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        return executeIn(environment, input, args);
+    }
+
+    private int executeIn(Map<String, String> environment, String input, String... args) {
         var context = new OperatorContext(environment, tempDir, true,
-                            clientEnv,
+                            ClientEnvironment.capture(environment),
                             () -> new DumbTerminal(
                                                 new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)),
                                                 new ByteArrayOutputStream()),
@@ -312,8 +323,186 @@ class RolesCommandTest {
             }
         });
 
-        assertEquals(0, executeWithLocale("de", "", "roles", "show", "implementer"));
+        assertEquals(0, executeInGerman("", "roles", "show", "implementer"));
         var showOutput = out.toString();
         assertTrue(showOutput.contains("Werkzeugsatz"), showOutput);
+    }
+
+    @Test
+    @DisplayName("roles speaks the interface language: list and the qualification's preview in German")
+    void speaksTheInterfaceLanguage() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/roles".equals(request.target())) {
+                response.json(200, "{\"roles\":[]}");
+            } else {
+                response.json(200, detail("implementer").toJson());
+            }
+        });
+
+        assertEquals(0, executeInGerman("", "roles", "list"));
+        assertEquals(3, executeInGerman("", "roles", "qualify", "implementer", "--no-input"));
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("Keine Rollen."), output),
+                            () -> assertTrue(output.contains("Rolle implementer qualifizieren"), output),
+                            () -> assertTrue(output.contains("Qualifizierung jetzt ausführen?"), output),
+                            () -> assertFalse(output.contains("Qualify role"), output)
+        );
+    }
+
+    @ParameterizedTest(name = "the confirmation answered {0} runs nothing")
+    @ValueSource(strings = {"yeah", "j", "u", ""})
+    @DisplayName("the confirmation takes only the keys it offers: another answer is named and asked again")
+    void confirmationTakesOnlyItsKeys(String answer) throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, detail("implementer").toJson()));
+
+        assertEquals(1, execute(answer + "\nn\n", "roles", "qualify", "implementer"));
+
+        assertAll(
+                            () -> assertTrue(out.toString().contains(answer.isEmpty() ? "Type y or n."
+                                                : answer + " is not offered here: y, n, q"), out.toString()),
+                            () -> assertTrue(out.toString().contains("Qualification was not run."), out.toString()),
+                            () -> assertEquals(1, server.requests().size(), "no qualification request may be sent")
+        );
+    }
+
+    @ParameterizedTest(name = "the confirmation left with ''{0}'' sends nothing")
+    @ValueSource(strings = {"q\n", ""})
+    @DisplayName("q, or the end of the input, at the confirmation leaves and sends nothing")
+    void confirmationLeft(String input) throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, detail("implementer").toJson()));
+
+        assertEquals(3, execute(input, "roles", "qualify", "implementer"));
+
+        assertAll(
+                            () -> assertEquals(1, server.requests().size(), "no qualification request may be sent"),
+                            () -> assertFalse(out.toString().contains("Qualification was not run."), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a German operator's y is not offered: the German keys are named")
+    void germanRefusesY() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, detail("implementer").toJson()));
+
+        assertEquals(1, executeInGerman("y\nn\n", "roles", "qualify", "implementer"));
+
+        assertAll(
+                            () -> assertTrue(out.toString().contains("j, n, v"), out.toString()),
+                            () -> assertEquals(1, server.requests().size(), "no qualification request may be sent")
+        );
+    }
+
+    @Test
+    @DisplayName("a German operator confirms with j")
+    void germanConfirmsWithJ() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(201, "{\"qualified_fresh\":true,\"record_path\":\"/r/implementer.json\"}");
+            }
+        });
+
+        assertEquals(0, executeInGerman("j\n", "roles", "qualify", "implementer"));
+
+        server.awaitRequest(Duration.ofSeconds(1));
+        assertEquals("POST", server.awaitRequest(Duration.ofSeconds(1)).method());
+    }
+
+    @ParameterizedTest(name = "a refusal {0} {1} names ''{2}''")
+    @CsvSource(delimiter = '|', value = {
+                        "400|{\"reason\":\"corpus_missing\"}|corpus_missing",
+                        "404|{\"code\":\"role_unknown\"}|role_unknown",
+                        "409|{}|refused: ",
+                        "409|not json|refused: "})
+    @DisplayName("a refused qualification names the runtime's reason, error or code, and no reason it did not give")
+    void refusalNamesTheRuntimesReason(int status, String body, String named) throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(status, body);
+            }
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+
+        assertTrue(err.toString().contains(named), err.toString());
+    }
+
+    @ParameterizedTest(name = "a qualification answered {0} is incomplete")
+    @ValueSource(strings = {"", "not json", "{\"fresh_agreement\":0.9,\"record_path\":\" \"}",
+                        "{\"fresh_agreement\":\"high\",\"record_path\":\"/r.json\"}"})
+    @DisplayName("an answer without a record or without a measurement claims no finished qualification")
+    void incompleteAnswers(String body) throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(200, body);
+            }
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+
+        assertAll(
+                            () -> assertTrue(err.toString().contains("answered no usable measurements"), err.toString()),
+                            () -> assertFalse(out.toString().contains("finished"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a role the runtime cannot read, or a qualification it fails, exits 1 without running")
+    void runtimeFailures() throws Exception {
+        var posts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("POST".equals(request.method())) {
+                posts.incrementAndGet();
+            }
+            response.json(500, "{\"error\":\"internal\"}");
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+
+        assertAll(
+                            () -> assertTrue(err.toString().contains("Failed to qualify implementer: HTTP 500"), err.toString()),
+                            () -> assertEquals(0, posts.get())
+        );
+    }
+
+    @Test
+    @DisplayName("a qualification the runtime fails with 500 is its refusal")
+    void qualificationFailsWith500() throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(500, "{\"error\":\"internal\"}");
+            }
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+
+        assertTrue(err.toString().contains("The runtime refused: internal"), err.toString());
+    }
+
+    @Test
+    @DisplayName("the preview leaves out what the role names nothing for")
+    void previewLeavesOutWhatIsAbsent() throws Exception {
+        var bare = new RoleDetailResource("judge", "judge", "judge role", List.of(), null,
+                            new RoleDetailResource.Qualification(RoleQualificationState.UNQUALIFIED, null, List.of()),
+                            Map.of("corpus_topics", List.of()));
+        fixture.start((request, response) -> response.json(200, bare.toJson()));
+
+        assertEquals(3, execute("", "roles", "qualify", "judge", "--no-input"));
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("Qualify role judge"), output),
+                            () -> assertFalse(output.contains("Corpus topics"), output),
+                            () -> assertFalse(output.contains("Expected"), output)
+        );
     }
 }

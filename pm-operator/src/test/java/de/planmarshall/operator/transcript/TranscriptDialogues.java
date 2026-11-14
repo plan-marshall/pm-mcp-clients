@@ -152,6 +152,7 @@ final class TranscriptDialogues {
             driver.project(environment(runtime), runtime.base().getParent());
             driver.typeLine("status");
             driver.typeLine("exit");
+            driver.endOfInput();
 
             var exitCode = new PmConsole(driver.context()).run();
             if (exitCode != 0) {
@@ -198,6 +199,7 @@ final class TranscriptDialogues {
             driver.typeLine("web devices");
             driver.typeLine("config consents");
             driver.typeLine("exit");
+            driver.endOfInput();
 
             var exitCode = new PmConsole(driver.context()).run();
             if (exitCode != 0) {
@@ -218,6 +220,7 @@ final class TranscriptDialogues {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime), runtime.base().getParent());
             driver.type("d\nAdd a Codeberg provider\n\n\n\n");
+            driver.endOfInput();
 
             var exitCode = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(),
                                 "plan", "add", "--project", "pm-mcp-clients");

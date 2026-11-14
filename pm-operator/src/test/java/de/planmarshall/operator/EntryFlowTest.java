@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -444,6 +445,74 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("the entry prompt answers an input it does not offer, and q leaves without setting up")
+        void unonboardedPromptKeys() throws Exception {
+            var onboardingRead = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if (request.target().startsWith("/api/v1/onboarding")
+                                    || request.target().startsWith("/api/v1/web")) {
+                    onboardingRead.incrementAndGet();
+                    response.send(404, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var input = Generators.letterStrings(8, 12).next();
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader(input + "\nhere\n?\nq\n"));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(input + " is not offered here: w, h, q, ?"), text),
+                                () -> assertTrue(text.contains("here is not offered here: w, h, q, ?"), text),
+                                () -> assertTrue(text.contains("Nothing more is explained here"), text),
+                                () -> assertEquals(0, onboardingRead.get(), "nothing is set up and no web access opened"),
+                                () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
+            );
+        }
+
+        @Test
+        @DisplayName("over SSH the entry prompt names here first, and w shows the ways in with this host")
+        void unonboardedSshPromptAndWaysIn() throws Exception {
+            var host = Generators.letterStrings(4, 12).next();
+            var user = Generators.letterStrings(4, 12).next();
+            var env = new HashMap<>(fixture.environment());
+            env.put("SSH_CONNECTION", "192.168.1.1 50000 192.168.1.2 22");
+            env.put("HOSTNAME", host);
+            env.put("USER", user);
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if ("/api/v1/web/pairings".equals(request.target())) {
+                    response.json(201, "{\"code\":\"SSH-CODE2\",\"url\":\"http://127.0.0.1:7420/pair#code=SSH-CODE2\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var input = Generators.letterStrings(8, 12).next();
+            var context = new OperatorContext(env, tempDir, true);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader(input + "\nw\n"));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(input + " is not offered here: h, w, q, ?"), text),
+                                () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420 " + user + "@" + host), text),
+                                () -> assertTrue(text.contains("The web app opens at the setup of this machine."), text),
+                                () -> assertEquals("SSH-CODE2", result.activeCode())
+            );
+        }
+
+        @Test
         @DisplayName("partially onboarded step 2 prints stopped step notice")
         void partiallyOnboardedStep2() throws Exception {
             fixture.start((request, response) -> {
@@ -661,6 +730,140 @@ class EntryFlowTest {
                                 () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
                                 () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
             );
+        }
+    }
+
+    /**
+     * The pairing code is the runtime's alone: an answer without one opens the console without a
+     * code and says so, and an answer with one is taken in whatever shape the runtime sends it.
+     */
+    @Nested
+    @DisplayName("pairing codes and the paired browser")
+    class PairingCodes {
+
+        private static final String ONBOARDED = """
+                            {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                            """;
+        private static final String UNONBOARDED = """
+                            {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                            """;
+
+        private void serve(String status, String devices, int pairingStatus, String pairingBody) throws IOException {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, status);
+                } else if ("/api/v1/web/devices".equals(request.target())) {
+                    response.json(200, devices);
+                } else if ("/api/v1/web/pairings".equals(request.target())) {
+                    response.json(pairingStatus, pairingBody);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("on a desktop a refused code opens no browser and the console opens without a code")
+        void desktopRefusedCode() throws Exception {
+            serve(ONBOARDED, "[]", 500, "{}");
+            var openedUri = new AtomicReference<URI>();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()), null, openedUri::set);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader(""));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains("✓ Web access on http://127.0.0.1:7420"), text),
+                                () -> assertTrue(text.contains(
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 500)"), text),
+                                () -> assertFalse(text.contains("Browser opened"), text),
+                                () -> assertNull(openedUri.get(), "no browser is opened without a code"),
+                                () -> assertNull(result.activeCode()),
+                                () -> assertNull(result.activeUrl())
+            );
+        }
+
+        @Test
+        @DisplayName("over SSH a code answered without one shows no ways in that would carry a made-up code")
+        void sshAnswerWithoutCode() throws Exception {
+            var env = new HashMap<>(fixture.environment());
+            env.put("SSH_CONNECTION", "192.168.1.1 50000 192.168.1.2 22");
+            serve(ONBOARDED, "[]", 201, "{\"url\":\"http://127.0.0.1:7420/pair\"}");
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(new OperatorContext(env, tempDir, true))
+                                .run(new PrintWriter(writer), createReader(""));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 201)"), text),
+                                () -> assertFalse(text.contains("Ways in, from your own computer"), text),
+                                () -> assertNull(result.activeCode())
+            );
+        }
+
+        @Test
+        @DisplayName("choosing the web app for the setup with a refused code says so instead of opening it")
+        void setupInTheWebWithRefusedCode() throws Exception {
+            serve(UNONBOARDED, "[]", 503, "{}");
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(new OperatorContext(fixture.environment(), tempDir, true))
+                                .run(new PrintWriter(writer), createReader("w\n"));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains(
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 503)"), text),
+                                () -> assertFalse(text.contains("The web app opens at the setup of this machine."), text),
+                                () -> assertEquals(List.of("setup 0/7"), result.initialBadges()),
+                                () -> assertNull(result.activeCode())
+            );
+        }
+
+        @Test
+        @DisplayName("a code without a usable url is addressed on the loopback port")
+        void codeWithoutUsableUrl() throws Exception {
+            var code = Generators.letterStrings(4, 8).next().toUpperCase(Locale.ROOT);
+            serve(ONBOARDED, "[]", 200, "{\"code\":\"" + code + "\",\"url\":17}");
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+
+            var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), 7421);
+
+            assertEquals(new EntryFlow.PairingCode(code, "http://127.0.0.1:7421/pair#code=" + code), pairing);
+        }
+
+        @Test
+        @DisplayName("a paired browser the runtime names without a label is called a browser on this machine")
+        void pairedBrowserWithoutLabel() throws Exception {
+            serve(ONBOARDED, "[{\"device_id\":\"d1\",\"paired_from\":7},{\"device_id\":\"d2\",\"paired_from\":\"loopback\"}]",
+                                500, "{}");
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(new OperatorContext(fixture.environment(), tempDir, true))
+                                .run(new PrintWriter(writer), createReader(""));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains("(paired: a browser on this machine)"), text),
+                                () -> assertEquals("http://127.0.0.1:7420", result.activeUrl())
+            );
+        }
+
+        @Test
+        @DisplayName("the label of a browser paired without one follows the interface language")
+        void pairedBrowserLabelInGerman() throws Exception {
+            serve(ONBOARDED, "[{\"device_id\":\"d1\",\"paired_by\":\"open\",\"label\":\" \"}]", 500, "{}");
+            var env = new HashMap<>(fixture.environment());
+            env.put("LC_ALL", "de_DE.UTF-8");
+            var context = new OperatorContext(env, tempDir, true);
+
+            var label = new EntryFlow(context).findPairedBrowser(context.runtime(true));
+
+            assertEquals("ein Browser auf dieser Maschine", label);
         }
     }
 

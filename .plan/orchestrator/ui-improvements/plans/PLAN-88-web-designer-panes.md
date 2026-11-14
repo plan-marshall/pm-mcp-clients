@@ -23,11 +23,11 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `designer.spec.js` on `designer.unit-invalid`: results above the text; a finding jumps to its line (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `designer` → `designer.unit-invalid`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `designer` → `designer.unit-invalid`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through npm scripts and Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `./mvnw -pl pm-web-e2e verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -43,8 +43,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/ux/findings.adoc#UX-F-15` — read at `doc/claude_review/ux/proposals.adoc` (the designer part; the claim was corroborated at `cc5794c9` for the former `PLAN-54`)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; ux/findings.adoc:146 UX-F-15; deliverable replaced by the D1 component sweep (process-designer.adoc Layout :52-80 contradicts the pane layout)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; findings.adoc:146 UX-F-15; process-designer.adoc Layout (#layout ~49-80) puts validation as a band below the text, contradicting results above
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; a refuted claim re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -73,6 +74,12 @@ restarted:
 
 - `.intake-mode` → `SegmentedControl`, hand-rolled dialogs → `Dialog`, the two "Open" labels named apart (007).
 - Frontmatter via `Field`, the file and paste inputs, the project as `SelectField` (008).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Nothing implemented yet (`designer.back` still at `designer.en.properties:85`). The Expected Surface block is repeated after the Write-Boundary: the first block counts.
 
 ## Hand-Off Command
 
@@ -105,3 +112,10 @@ sole sanctioned write mechanism are stated in
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Pane layout:** dropped (not designed; the AGREED `process-designer.adoc` § Layout stands). The plan is the D1 component sweep of the designer only.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-149` and `PLAN-150` (no navigation-engine dependency).
+- Nothing is implemented yet (`designer.back` at `designer.en.properties:85`).
+- The pane layout is dropped.
+- The Expected Surface is repeated; merge it.

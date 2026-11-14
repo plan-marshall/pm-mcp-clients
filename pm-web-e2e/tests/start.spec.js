@@ -67,7 +67,10 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
 
     await page.getByRole('button', { name: 'Start the plan' }).click();
 
+    // The gate answers the catalogue's act_not_available (its reason project_not_ready stays
+    // in the body); the view draws that code's title and keeps the code under Details.
     await expect(page.getByTestId('start-error')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('start-error')).toContainText('start_refused');
+    await expect(page.getByTestId('start-error')).toContainText('This act is not possible now');
+    await expect(page.getByTestId('start-error')).toContainText('act_not_available');
   });
 });

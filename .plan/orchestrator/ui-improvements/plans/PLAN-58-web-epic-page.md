@@ -25,31 +25,30 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `epic-view.spec.js` on `control.epic`: waits show since; titles first (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Tabs and Intent** (superseded by D6: the tabs are Plans, Intent, Landings, Reviews and Events, with no Tokens tab; the binding text is D6-1 of `## D6 Merged 2026-11-11 (Amendment)`)
    - What: Tabs Plans (the workstreams with their plans), Intent (the sources at its top, then destination, done-when checks with evidence, non-goals), Landings, Reviews (findings and watches), Events (timeline), as D6-1 states.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - The Intent tab is filled on `control.epic` (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Counts and findings review**
    - What: Head counts and "Landungen" come from the rows the view lists; the findings review opens with the first open item selected and its counts match the card.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: epic counts equal rows; `FindingsReviewModal` selects the first open item (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 4. **A failed epic-resource read says so and can be retried (PLAN-100 residue, `landings/PLAN-100.md` defect 3)**
    - What: after `3efd10dc`, a failed initial `getEpicResource` leaves `resource = null` (`EpicView.svelte` ~158-160): Next plan then stays disabled with "The epic is still being read" although the read failed, with no error and no retry. Show the error state of deliverable 3's pattern for the resource, with "Try again", and let the bar say the true thing.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
    - Done when:
      - A test that fails before: a rejected resource read shows the error and a retry that reloads it, and Next plan does not claim the epic is still being read (evidence order: `test-first`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20580 PM_WEB_PORT=20581 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -64,11 +63,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-06` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/proposals.adoc:339` `[#UX-P-10]` and `use-cases/proposals.adoc` UC-P-06 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-P-10 at ux/proposals.adoc:339, UC-P-06 :126, UC-S-07 use-cases/plan.adoc:62, CC-F-09 cross-cutting/findings.adoc:133 present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates in src/lib/templates/, ObjectPage for the epic page); EpicView was changed by PLAN-90/a11y and must be added to the template guard list. PLAN-47 (web-actions-by-state) has not landed: ActionBar.svelte exists (PLAN-25) but lib/actions/byState.ts does not.
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-47 has landed: actions/byState.ts exists (PROJECT_ACTS :150) and WorkControlPanel.svelte:824 uses ActionBar; templates shipped part holds; EpicView not in pageWidth.test.ts list | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the head "Landungen" count (`resource.landings`) can differ from the landing rows the view lists — confirm/refute at `pm-web-app/src/lib/views/EpicView.svelte:117,746` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Rows derive from landings at EpicView.svelte:118-125 while the count prints resource.landings at :757 (spec said 117,746); two sources can differ
 - HYPOTHESIS: `FindingsReviewModal` does not select the first open item when it opens — confirm/refute at `pm-web-app/src/lib/components/FindingsReviewModal.svelte:48` § `selectedId` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: FindingsReviewModal.svelte:48 selectedId starts null; only :81 and :102 write it; no effect picks the first open item (openItems derived :58)
 
 ## Expected Surface
 
@@ -86,6 +89,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/epic_view.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -105,6 +110,13 @@ widened now (a parked row is not in the disjointness gate population). When rest
 - Head slots as for the plan page (006); one `ActionBar` with the primary, head links, no "Zurück" (007).
 - The chat as a side column (009).
 - `WorkControlPanel` dialogs of the epic belong to this plan (with `PLAN-55`).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: PLAN-47 has landed: actions/byState.ts exists (PROJECT_ACTS :150) and WorkControlPanel.svelte:824 uses ActionBar; templates shipped part holds; EpicView not in pageWidth.test.ts list
+- PLAN-47 has landed (`actions/byState.ts`, `ActionBar` in `WorkControlPanel`). The re-grounding's "new claims" were never added.
 
 ## Hand-Off Command
 
@@ -202,3 +214,9 @@ Expected Surface (when restarted; the parked rule above still holds until then):
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the views package part that restyles FindingsReviewModal is PLAN-156; this plan keeps only its first-open-item logic and runs after it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-144`, `PLAN-146` (`EpicIntentPanel`) and `PLAN-156` (`FindingsReviewModal` first).
+- Re-ground at outline: `PLAN-47` landed (`actions/byState`, `ActionBar`), so claim 1 is contradicted.
+- `EpicView` is not in the `pageWidth` list.

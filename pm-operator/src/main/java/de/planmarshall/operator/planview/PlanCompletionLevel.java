@@ -101,9 +101,10 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         if (report.pullRequestNumber() != null) {
             parts.add("#" + report.pullRequestNumber());
         }
-        if (report.ended() != null && !report.ended().isBlank()) {
-            parts.add(PlanViewFormatting.clean(report.ended()));
-        }
+        var ended = report.ended();
+        parts.add(ended != null && !ended.isBlank()
+                            ? PlanViewFormatting.clean(ended)
+                            : unknown(locale));
         return String.join(PlanViewFormatting.DOT_SEPARATOR, parts);
     }
 
@@ -192,7 +193,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             var target = ownCall.conflictTarget();
             var item = target != null && !target.isBlank()
                                 ? PlanViewFormatting.clean(target)
-                                : MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
+                                : unknown(locale);
             return MessageCatalogue.format(locale, "report.completion.own_call_conflicts", Map.of("item", item));
         }
         if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
@@ -264,7 +265,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     public static String formatOutcome(String locale, @Nullable String value) {
         if (value == null || value.isBlank()) {
-            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
+            return unknown(locale);
         }
         var cleaned = PlanViewFormatting.clean(value).trim().toLowerCase(Locale.ROOT).replace('-', '_');
         return MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", cleaned));
@@ -272,9 +273,17 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     public static String formatDeliverableState(String locale, @Nullable String state) {
         if (state == null || state.isBlank()) {
-            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
+            return unknown(locale);
         }
         var clean = PlanViewFormatting.clean(state);
         return Display.word(locale, "task", clean);
+    }
+
+    private static String description(String locale, @Nullable String value) {
+        return value != null ? value : unknown(locale);
+    }
+
+    private static String unknown(String locale) {
+        return MessageCatalogue.format(locale, "common.unknown", Map.of());
     }
 }

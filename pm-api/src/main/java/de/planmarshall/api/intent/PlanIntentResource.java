@@ -124,7 +124,7 @@ public record PlanIntentResource(
         }
 
         private static void requireOptions(List<String> optionsWeighed) {
-            if (optionsWeighed.stream().anyMatch(option -> option == null || option.isBlank())) {
+            if (optionsWeighed.stream().anyMatch(String::isBlank)) {
                 throw new IllegalArgumentException(FIELD_OPTIONS_WEIGHED + " must not carry a blank option");
             }
         }
@@ -200,7 +200,7 @@ public record PlanIntentResource(
                         IntentJson.requireText(map, FIELD_TEXT, TYPE),
                         IntentDecider.fromWire(IntentJson.requireText(map, FIELD_DECIDER, TYPE)),
                         IntentJson.readStrings(map, FIELD_OPTIONS_WEIGHED),
-                        IntentJson.optionalText(map, FIELD_QUESTION_ID, TYPE),
+                        IntentJson.optionalRawText(map, FIELD_QUESTION_ID, TYPE),
                         IntentJson.optionalRawText(map, FIELD_EVIDENCE, TYPE),
                         adrMap != null ? AdrReference.fromMap(adrMap) : null);
             } catch (IllegalArgumentException e) {
@@ -459,7 +459,7 @@ public record PlanIntentResource(
         decisions = decisions == null ? List.of() : List.copyOf(decisions);
         requireUnique(decisions.stream().map(Decision::id).toList(), "decision");
         openQuestions = openQuestions == null ? List.of() : List.copyOf(openQuestions);
-        if (openQuestions.stream().anyMatch(value -> value == null || value.isBlank())) {
+        if (openQuestions.stream().anyMatch(String::isBlank)) {
             throw new IllegalArgumentException("open_questions must not carry a blank entry");
         }
         deferred = deferred == null ? List.of() : List.copyOf(deferred);

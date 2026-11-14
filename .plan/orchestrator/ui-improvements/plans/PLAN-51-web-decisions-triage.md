@@ -25,28 +25,28 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `decisions.spec.js` on `running-work` → `decisions.open`: eight decisions, blocking first (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Keyboard and advance**
    - What: `1`–`9` choose, `Enter` decides, `c` chat, `l` later; after deciding a toast "Decided: <option>" and the next decision is selected; phone: list then detail.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - e2e: `1`, `Enter` decide; the next is selected; the toast names the option (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open`: triage list, `1` and `Enter` decide, next selected, toast; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Recommendation and evidence** (from the former `PLAN-57`, superseded: one view, one plan)
    - What: "Recommended: Rebase onto main (by implement)"; evidence as fields with plain labels, `file`/`lines` as a link where the project offers one, unknown structures as a folded JSON block (`EvidenceView.svelte`).
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: label, fields, the fallback (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 4. **Own answer confirmed** (from the former `PLAN-57`)
    - What: The answer request carries a client request id; the `decision.answered` event with that id confirms "Decided: <option>"; other events produce "answered elsewhere" with channel, device and option label.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `decisions.spec.js`: own answer; a `POST /mock/broadcast` from `cli` shows "answered in the terminal" (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 5. **One notification for a burst, none after a reconnect** (from the package `web-moving-between-plans`, moved here from `PLAN-83`)
    - What: a notification fires only for a decision the client has not announced before (`doc/design/shared/decisions.adoc#announce`, merged with PR #278): the decision announcer keeps the set of decisions it has announced; the first read after a start, a reload or a reconnect primes that set silently; decisions that arrive within one second make one notification (several: `decision.notify.several`, `{count} decisions wait for you` / `{count} Entscheidungen warten auf dich`, which opens the list of open decisions; one: its own, which opens that decision); a decision answered before the notification shows is dropped from it. The key `decision.notify.several` goes into `decisions.{en,de}.properties`; a notification never carries a decision's content.
    - Persona: plan-marshall:persona-implementer
@@ -55,7 +55,6 @@ Source of this plan (read before scoping):
      - Unit tests with a fake clock and a fake notification: a reconnect raises none, a burst of three raises one that opens the list, a single decision raises one that opens it, an answered decision is not announced (evidence order: `test-first`)
      - An e2e test through the mock's decision events: the same two cases in the browser (evidence order: `test-first`)
      - The row of the package `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` if `PLAN-83` and `PLAN-59` D4 have landed (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 6. **The chat guards are pinned, and two replies are true** (PLAN-101 residue, `landings/PLAN-101.md`)
    - What: (a) `DecisionView.svelte` ~64-66 keeps one `chatBusyId` slot: B finishing first clears A's busy marker while A's request is in flight; busy is tracked per decision (the PR 319 thread asked for it), the operation token stays. (b) No test pins the guards of `11be8390`: the `chatBusyToken` clear, the `takeProposedAnswer` revision guard (a late answer to an earlier revision is dropped; the operator is told or the design says it is dropped silently) and the `endTheChat` generation guard. (c) Two replies in the PR 319 threads are false and are corrected in the thread: `format.ts:363` ("handled in `7c7ea71c`": that commit changes `DecisionView.test.ts` only; the finding was answered, not changed, and its behaviour is decided: a first paint without the unit key keeps the numeric figure or the design says it does not) and `DecisionView.svelte:60` (the fix is `e0140658`/`11be8390` of PR 335, then this deliverable).
@@ -64,11 +63,11 @@ Source of this plan (read before scoping):
    - Done when:
      - Tests that fail when each guard is reverted: the per-decision busy marker survives another decision's operation; a late proposal answer after a revision applies nothing; `endTheChat` of an earlier generation closes nothing of the reopened panel (evidence order: `mutation-after`)
      - The two PR 319 threads carry a reply that states the real commit or the reason, and the `format.ts` first-paint behaviour is decided in the design (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
      - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20510 PM_WEB_PORT=20511 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -83,13 +82,19 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-08)`, `doc/claude_review/ux/proposals.adoc#UX-P-06` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-08 and `ux/proposals.adoc:269` UX-P-06 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-08 at ux/plan.adoc:58, UX-P-06 at ux/proposals.adoc:269, ux-decision-triage.svg and UX-F-11 present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a rule to `doc/design/shared/decisions.adoc` (#announce): a notification fires only for a decision the client has not announced before (none after a reconnect or a reload), decisions arriving within one second make one notification, several open the list of open decisions (`decision.notify.several`) and one opens that decision. this plan builds it as deliverable 5 (moved here from `PLAN-83`); the triage view must not re-announce on its own re-read.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: decisions.adoc:145-152 #announce holds the one-second burst rule and decision.notify.several; DecisionView.svelte:297 still does new Notification inline (spec said :289)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (#301): templates live in pm-web-app/src/lib/templates/ (TriagePage, ObjectPage, WizardPage, DashboardPage) and its D3 guard lists views sitting on a template; DecisionView does not use TriagePage yet and this plan must add itself to that list. Key decision.notify.several is not yet in decisions.en.properties (to be created).
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: templates/ has the four pages; pageWidth.test.ts lists only SystemView and ReportsView; DecisionView not on TriagePage; decision.notify.several absent from decisions.*.properties
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural rescope note about package-row done-when; no code fact
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the answer endpoint accepts a client-chosen request id that the `decision.answered` event echoes — confirm/refute at `pm-api/src/main/java/de/planmarshall/api` § decision answer resource and `pm-web-app/src/lib/api/client.ts` § `answerDecision` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: No request id: DecisionAnswerRequest.java fields, DecisionAnswerPayload (client.ts:1074) and DecisionAnsweredEvent (id/answer/channel/device) carry none; answerDecision:3110 sends none | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: `PremiseEvidenceView.svelte` already renders the evidence list and can carry the plain labels without a new component — confirm/refute at `pm-web-app/src/lib/components/PremiseEvidenceView.svelte` § `evidence` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PremiseEvidenceView renders lesson-source premise evidence (kind/name/path/commit), imported only by LessonSourceModal; DecisionView.svelte:946-962 shows decision evidence as a JSON pre | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -104,6 +109,13 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/decisions.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/decisions-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/decision/DecisionAnswerRequest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/decision/DecisionAnsweredEvent.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/PhaseLabel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/display/format.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -134,6 +146,20 @@ above is NOT widened now (a parked row is not in the disjointness gate populatio
 ## Amendment 2026-11-07 (PLAN-111 landing)
 
 PLAN-111 merged (`bb30d71e`) and deleted `pm-web-app/src/lib/stores/viewLayout.ts` and `pm-web-app/src/lib/components/ViewLayoutToggle.svelte` (struck from the Expected Surface); its "layout toggle is removed for decisions" clause is done. `DecisionView.svelte` has no detail pane now: `selectedDecisionId` only marks a card (`aria-current="true"`, `.decision-card--selected`) after the palette deep-link clears a hiding filter and scrolls to it (guarded while `isLoading`); the plan's "next decision selected after deciding" and `RowLink` work reuses or replaces that mark and adds no second one. `decisions.split.select` and `common.layout.*` no longer exist. Re-ground every line number (the file lost about 225 lines). Include the pre-existing prettier drift of `DecisionView.svelte` (~833, ~1068) and `DecisionView.test.ts` (~187, ~526, ~591) and the browser check of `/decisions` (mark and scroll at 390×844, de/en, light/dark) that PLAN-111 could not run.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `PhaseLabel`'s role words: the six `role.name.*` come from the mock scenarios; the runtime's `askingRole` is a free string
+  (`DecisionEnvelope.java:57`), and `PhaseLabel.svelte:90` drops an unknown role silently. Settle the role set with the runtime docs (or
+  show an unknown role with the catalogue's unknown word); list consumers of `RowLink` and `StatusLabel` as in `PLAN-49`'s amendment.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 5 contradicted: No request id: DecisionAnswerRequest.java fields, DecisionAnswerPayload (client.ts:1074) and DecisionAnsweredEvent (id/answer/channel/device) carry none; answerDecision:3110 sends none
+- Claim 6 contradicted: PremiseEvidenceView renders lesson-source premise evidence (kind/name/path/commit), imported only by LessonSourceModal; DecisionView.svelte:946-962 shows decision evidence as a JSON pre
+- Already done: the decision layout toggle is gone (#363). Two hypotheses are refuted (no request id on the answer; `PremiseEvidenceView` renders lesson-source evidence only): re-scope D3/D4 at outline. The 2026-11-10 re-grounding's "new claims" were never added.
 
 ## Hand-Off Command
 
@@ -188,3 +214,10 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150` (`RadioGroup`, `TextArea`) and `PLAN-143` (`/decisions/{id}`).
+- Re-ground at outline: start from `DecisionView` without layout modes (PLAN-111 done), and re-ground its line numbers.
+- `askingRole` is a free string.
+- The chat deliverable is dropped (PLAN-137 owns it).

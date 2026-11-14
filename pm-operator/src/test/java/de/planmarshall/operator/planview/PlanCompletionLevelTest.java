@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ import de.planmarshall.operator.tui.TuiRow;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("PlanCompletionLevel")
 class PlanCompletionLevelTest {
 
@@ -156,6 +159,31 @@ class PlanCompletionLevelTest {
                             () -> assertFalse(text.contains("Change map"), text),
                             () -> assertFalse(text.contains("Tokens"), text)
         );
+    }
+
+    @Test
+    @DisplayName("a report without an end time says the end is unknown instead of inventing one")
+    void unknownEndTime() throws Exception {
+        var planId = "plan-" + Generators.integers(1, 9999).next();
+        var withoutTimes = """
+                            {"plan_id": "%s", "title": "Docs", "outcome": "no_change"}
+                            """.formatted(planId);
+        var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(withoutTimes));
+
+        var english = summary(level, "en");
+        var german = summary(level, "de");
+
+        assertAll(
+                            () -> assertTrue(english.endsWith(" · unknown"), english),
+                            () -> assertTrue(german.endsWith(" · unbekannt"), german));
+    }
+
+    private static String summary(PlanCompletionLevel level, String locale) {
+        return level.rows(locale).stream()
+                            .filter(row -> "completion:summary".equals(row.id()))
+                            .map(TuiRow::line)
+                            .findFirst()
+                            .orElse("");
     }
 
     @Test

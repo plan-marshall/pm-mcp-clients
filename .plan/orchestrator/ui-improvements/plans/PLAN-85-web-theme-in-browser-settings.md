@@ -25,7 +25,7 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
      - Component tests: the pairing page and the revoked page show both controls and apply a choice at once (texts in the other language after choosing it); the rail and the More sheet show neither (evidence order: `test-first`)
      - `pairing.spec.js` and `chrome.spec.js`: choosing dark and German on the pairing page paints and reads them before pairing and both survive pairing and a reload; the rail has no theme and no language control (evidence order: `test-first`)
      - Every e2e test and helper that chose a theme or a language through the rail control (`helpers/contrast.js` `setTheme`, `theme-readability.spec.js`, others found by a search for the control's test ids) uses a place that still exists, and the contrast audit passes in both themes with the same tests or more (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: the pairing page (empty profile) and `fully-onboarded`: the pairing page with the control in light and dark, the rail and the More sheet without it; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: the pairing page (empty profile) and `fully-onboarded`: the pairing page with the control in light and dark, the rail and the More sheet without it; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **"This browser" in Settings**
    - What: `BrowserSettingsView.svelte` at `/settings/browser`, reached from the Settings area (a link beside the existing settings pages; `PLAN-60` makes it the tab "This browser" of the one settings view): the theme choice and the language choice with one sentence ("Kept in this browser. It is not sent to the machine."), applied at once, no Save, no "changed" mark; the view is the one home of every setting that belongs to the browser alone, so a later such setting goes here and not into another plan's view. The design lands in `doc/design/web-app/browser-settings.adoc` (linked from the README) and the README states the new placement of the control; the texts `web.settings.browser.*` are added in English and German.
    - Persona: plan-marshall:persona-implementer
@@ -33,12 +33,12 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
    - Done when:
      - `BrowserSettingsView.test.ts`: the three theme choices and the languages, the current ones marked, a choice applies at once and is stored under `pm_theme` and `pm_locale`, no save control (evidence order: `test-first`)
      - An e2e test: from Settings to "This browser", choose light and the other language, reload, both choices stand; the route is reachable from the rail's Settings destination (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings/browser` in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings/browser` in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
      - The design documents state the new placement and no document still says the control stands in the rail foot or the More sheet (a search for "rail foot" and "More sheet" with "theme" finds none) (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through npm scripts and Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `./mvnw -pl pm-web-e2e verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -54,20 +54,21 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 ## Claim Labels
 
 - OBSERVED: the theme is stored in `localStorage` under `pm_theme` with `light`, `dark`, `system`, and `app.html` reads it in an inline script before the first paint — read at `pm-web-app/src/lib/theme.ts` and `pm-web-app/src/app.html` at HEAD 07104678
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 pm_theme; app.html:20 inline read
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 THEME_STORAGE_KEY pm_theme; app.html:20 inline localStorage.getItem pm_theme before paint
 - OBSERVED: the choice stands in the rail foot (`NavRail.svelte`, fieldset `theme-choice`) and, on a phone, in the More sheet (`BottomBar.svelte`); `+layout.svelte` holds `themeChoice` and calls `writeThemeChoice` — read at HEAD 07104678; `doc/design/web-app/README.adoc` § Light and Dark Themes (line 374) and the rail description (line 171) say so
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:144-165 language button and theme fieldset; BottomBar.svelte:172-196; +layout.svelte:194,254-256; AGREED README.adoc:147,153,431 still wants this
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:160-190 language button and fieldset theme-choice; BottomBar.svelte:172-196 sheet controls; +layout.svelte:196,267-268 themeChoice and writeThemeChoice; README.adoc:424 says so
 - OBSERVED: `PairingView.svelte`, `RevokedView.svelte`, `SettingsView.svelte` (devices, `/settings`) and `MachineSettingsView.svelte` (`/settings/machine`) exist; `nav.ts` has a Settings destination — read at HEAD 07104678
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView, RevokedView, SettingsView, MachineSettingsView exist; routes/settings/machine and lib/shell/nav.ts exist
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView, RevokedView, SettingsView, MachineSettingsView exist; routes/settings/machine present; nav.ts:104-108 settings destination
 - OBSERVED: the language choice is stored in local storage under `pm_locale` and is offered in the rail foot and the More sheet beside the theme — stays stored as it is; its control moves with the theme control
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:7 pm_locale; language control in NavRail.svelte:144 and BottomBar.svelte:172
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:7 pm_locale; language toggle in NavRail.svelte:160 and BottomBar.svelte:172
 - HYPOTHESIS: `PairingView` and `RevokedView` render without the frame, so the control has to be mounted by the views themselves (`PLAN-39` kept the frame controls on such pages) — confirm/refute at the two views and `AppShell.svelte` (verify-at-outline)
-  - verdict: contradicted | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:289-347 renders RevokedView, PairingView, OnboardingView inside AppShell (rail and BottomBar stay); BottomBar.svelte:205-240 has a fallback bar with both controls; wording corrected in the 2026-11-10 Amendment
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:309-374 renders RevokedView, PairingView, ListenerOffView, OnboardingView inside AppShell; BottomBar.svelte:205-239 fallback frame bar carries both controls | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: `helpers/contrast.js` `setTheme` sets the theme through the page's control or storage, and other e2e specs click the rail's theme control — search `pm-web-e2e/tests` for the control's test ids and `pm_theme` (verify-at-outline)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-21 sets only the data-theme attribute; chrome/mobile/workspace specs use theme- ids
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:8-12 sets only data-theme attribute; chrome.spec.js:103/110 and workspace.spec.js:74 click theme- ids; mobile.spec.js:157-160,238 use sheet-/frame- ids
 - OBSERVED (reported by the run of PLAN-80, not verified here): the contrast matrix of `theme-readability.spec.js` calls `setTheme` (`helpers/contrast.js`) before `page.goto`, and `app.html` re-derives `data-theme` from `localStorage.pm_theme`, which nothing writes — so the "dark" audit may run under the light theme. This plan changes where the choice is made and the helpers that set it: it makes `setTheme` set `pm_theme` in the page's origin before the app loads (or choose through the control on the pairing page) and asserts `document.documentElement.dataset.theme` equals the requested theme in every audited test, so no audit passes under the wrong theme.
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js:630-634 setTheme before page.goto; no dataset.theme assertion anywhere
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js:655,735,... setTheme before page.goto; nothing writes pm_theme in that spec; no dataset.theme assertion anywhere in e2e
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-60` (the one settings view), `PLAN-70` (light theme pass), `PLAN-16` (locale switch) and `PLAN-37` (accessibility baseline) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; PLAN-60 (one settings view) not landed: routes/settings/machine still exists, no BrowserSettingsView
 
 ## Expected Surface
 
@@ -104,6 +105,13 @@ the disjointness gate population). When restarted:
 - Theme and language become a `RadioGroup`, applied at once (008); `/settings/browser` follows D2's address scheme and routes
   table (it becomes the tab "This browser" of `PLAN-60`'s one settings view).
 - The per-browser transcription choice ("Dieser Browser") belongs to the D4 voice package, not to this plan (009).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 4 contradicted: +layout.svelte:309-374 renders RevokedView, PairingView, ListenerOffView, OnboardingView inside AppShell; BottomBar.svelte:205-239 fallback frame bar carries both controls
+- Claim 4 is refuted: `+layout.svelte:309-374` renders the entry pages inside `AppShell`, and `BottomBar.svelte:205-239`'s fallback bar carries both controls. Option A of 2026-11-10 conflicts with this spec's Write-Boundary list (old surface still listed): settle at outline.
 
 ## Hand-Off Command
 
@@ -158,3 +166,10 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the entry pages are restyled by PLAN-157 (no theme or language control is added there, option A).
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-60` (tab host), `PLAN-144` (`BottomBar`) and `PLAN-150` (`RadioGroup`). `PLAN-109` is met.
+- Option A applies: only the tab and the `BottomBar` duplicate toggle.
+- Claim 4 is refuted.
+- The Write-Boundary still lists the old pairing/revoked surface; trim it at outline.

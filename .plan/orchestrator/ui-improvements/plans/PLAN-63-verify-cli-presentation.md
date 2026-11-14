@@ -59,8 +59,9 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/verification.adoc exists (CLI-VD-V-01..07), ux CLI-UX-V-01..07, cross-cutting CLI-CC-V-01..08
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verification.adoc: CLI-VD-V-01..07, CLI-UX-V-01..07, CLI-CC-V-01..08 all present; analysis.adoc x3 and cli/README.adoc exist; verify-cli-presentation.adoc absent
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing
 
 ## Expected Surface
 
@@ -96,3 +97,17 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Merge Rule (Amendment 2026-11-12)
+
+Added by the orchestrator after PLAN-32 (#415) merged without an operator question because its spec had no merge clause. It supersedes
+any text here that differs.
+
+- The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's "standing review
+  authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
+- The run merges only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  nitpick, "additional comments") has a reply on the PR, not only a fix.
+- The pull request body states the thread count, the resolved count and the review-body items with their count
+  (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
+- The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
+  request body carries no generator footer.

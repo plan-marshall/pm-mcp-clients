@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -88,6 +89,21 @@ class QuestionsCommandTest {
         OperatorContext.TerminalProvider termProvider = () -> new DumbTerminal(inStream, outStream);
         var context = new OperatorContext(fixture.environment(), tempDir, true, ClientEnvironment.capture(fixture.environment()), termProvider, null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private static boolean isGet(FakeRuntimeServer.Request request, String path) {
+        return path.equals(request.target()) && "GET".equals(request.method());
+    }
+
+    /** Serves the waiver request {@code id}; the direct form reads it before it sends anything. */
+    private void serveWaiver(String id) throws IOException {
+        fixture.start((request, response) -> {
+            if (isGet(request, "/api/v1/decisions/" + id)) {
+                response.json(200, "{\"id\":\"" + id + "\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
     }
 
     @Test
@@ -250,6 +266,8 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007/answer".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/Q-007")) {
+                response.json(200, "{\"id\":\"Q-007\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -268,6 +286,8 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007/answer".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/Q-007")) {
+                response.json(200, "{\"id\":\"Q-007\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -285,7 +305,7 @@ class QuestionsCommandTest {
     void answerShowDetails() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Choose strategy\",\"options\":[\"rebase\",\"merge\"]}");
             } else {
                 response.send(404, null, "");
             }
@@ -311,7 +331,7 @@ class QuestionsCommandTest {
     void answerNoInputWithoutOption() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007".equals(request.target())) {
-                response.json(200, "{\"title\":\"Question\"}");
+                response.json(200, "{\"id\":\"Q-007\",\"title\":\"Question\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -323,6 +343,27 @@ class QuestionsCommandTest {
     }
 
     @Test
+    @DisplayName("answer <id> reads a daemon answer that carries no decision id as unreadable and shows nothing")
+    void answerRefusesADecisionWithoutId() throws Exception {
+        var title = "Question " + Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-007".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(Map.of("title", title)));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-007");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(out.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
+                                                out.toString()),
+                            () -> assertFalse(out.toString().contains(title), out.toString()));
+    }
+
+    @Test
     @DisplayName("answer falls back to /api/v1/questions/<id>/answers on 404")
     void answerFallbackEndpoint() throws Exception {
         fixture.start((request, response) -> {
@@ -330,6 +371,8 @@ class QuestionsCommandTest {
                 response.send(404, null, "");
             } else if ("/api/v1/questions/Q-008/answers".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/Q-008")) {
+                response.json(200, "{\"id\":\"Q-008\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -352,6 +395,7 @@ class QuestionsCommandTest {
     @Test
     @DisplayName("answer waiver without reason returns code 3")
     void answerWaiverWithoutReason() throws Exception {
+        serveWaiver("WR-2");
         int code = execute("answer", "WR-2", "waive");
         assertEquals(3, code);
         assertTrue(out.toString().contains("reason is required"));
@@ -363,6 +407,8 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/WR-2/answer".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/WR-2")) {
+                response.json(200, "{\"id\":\"WR-2\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -405,6 +451,8 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-007/withdraw".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/Q-007")) {
+                response.json(200, "{\"id\":\"Q-007\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -1161,6 +1209,8 @@ class QuestionsCommandTest {
                 response.json(200, "{\"ok\":true}");
             } else if ("/api/v1/decisions/Q-001/withdraw".equals(target) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/decisions/WR-1") || isGet(request, "/api/v1/decisions/Q-001")) {
+                response.json(200, "{\"id\":\"" + target.substring(target.lastIndexOf('/') + 1) + "\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -1293,7 +1343,7 @@ class QuestionsCommandTest {
             }
         });
 
-        int code = executeInteractive("w\nvague idea\npostgresql\ny\n", "answer", "Q-004", "-i");
+        int code = executeInteractive("w\nvague idea\npostgresql\n\n", "answer", "Q-004", "-i");
         assertEquals(0, code);
         var output = out.toString();
         assertTrue(output.contains("Which db engine?"), output);
@@ -1306,7 +1356,8 @@ class QuestionsCommandTest {
 
     @Test
     @DisplayName("direct answer actions waive and decline require reason")
-    void answerDirectActionsRequireReason() {
+    void answerDirectActionsRequireReason() throws Exception {
+        serveWaiver("WR-1");
         int codeWaive = execute("answer", "WR-1", "--action", "waive");
         assertEquals(3, codeWaive);
         assertTrue(out.toString().contains("A reason is required."), out.toString());
@@ -1323,6 +1374,8 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/plans/plan-99/decisions/Q-007/answer".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
+            } else if (isGet(request, "/api/v1/plans/plan-99/decisions/Q-007")) {
+                response.json(200, "{\"id\":\"Q-007\"}");
             } else {
                 response.send(404, null, "");
             }

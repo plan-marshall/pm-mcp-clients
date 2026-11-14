@@ -435,7 +435,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                     out.flush();
                     return ConfigAspectRun.EXIT_MISSING_INPUT;
                 }
-                if (!ConfigCommand.applyAgain(context, locale)) {
+                if (!ConfigCommand.applyAgain(context, out, locale)) {
                     out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
                     out.flush();
                     return RECORD_KEPT;

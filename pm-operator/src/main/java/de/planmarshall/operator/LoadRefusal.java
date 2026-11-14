@@ -80,6 +80,13 @@ public record LoadRefusal(String title, String cause, String fix, String level) 
     }
 
     /**
+     * @return the refusal as one line of the status line: what happened and why
+     */
+    public String line() {
+        return title + " " + cause;
+    }
+
+    /**
      * @return the rows the level shows for the refusal
      */
     public List<TuiRow> rows() {

@@ -24,25 +24,25 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `screens.registry.test.ts` reads every state of `onboarding.json` and fails for a state without a screen (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Missing screen at runtime**
    - What: A state without a screen shows "This screen is not available in the web app", the terminal command, and a way back.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test with an unknown state: no state id in the text (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Entry states in settings**
    - What: `entry.*` renders inside the settings frame; `entry.lan-open` shows the LAN URL, the QR code and the fingerprint, with no step bar.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `entry.spec.js` on `entry.lan-open` (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20640 PM_WEB_PORT=20641 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -57,9 +57,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-02)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-01` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:26 UC-S-02; proposals.adoc:16 UC-P-01; onboarding.adoc:42 one route renders the reported state; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UC-S-02 at use-cases/plan.adoc:26, UC-P-01 at proposals.adoc:16, onboarding.adoc:42 one route renders the reported state, findings-onboarding-entry.adoc present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): screens.ts and screens.registry.test.ts still absent (created by this plan, correct); OnboardingView, SettingsView and onboarding.* catalogue changed since the anchor (PLAN-90 time/locale, a11y): re-read before D1.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: views/onboarding/ does not exist so screens.ts and screens.registry.test.ts are absent; OnboardingView.svelte still holds the else-if chain
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 
 ## Expected Surface
 
@@ -96,6 +98,12 @@ restarted (together with `PLAN-66`):
 - "Abandon" in the overflow through `ConfirmDialog`; dialogs via `Dialog` (007).
 - `SecretField`, `TextField`, `RadioGroup` / `CheckGroup`; the stray `/>` in `HarnessChoice.svelte:151-152` goes (008).
 - The role `transcribe` in the roles step belongs to the D4 voice package, not to this plan.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- No 2026-11-10 re-grounding; a second Expected Surface block sits after the Write-Boundary (the first counts). `PairingView` now draws `BrandMark`.
 
 ## Hand-Off Command
 
@@ -143,3 +151,9 @@ phone shows the onboarding without the icon.
 
 - Done when (added): the onboarding header shows `BrandMark` (colour, `28` px) beside the wordmark below `768` px as well, with one
   mark per screen; a component or e2e test at a phone width fails when the mark is missing.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-60` and `PLAN-150`, in the same wave as `PLAN-66`. D3 is met (PLAN-130/131).
+- Re-ground at outline: the brand icon is 28 px on phones (PLAN-130 residue).
+- There is a second Expected Surface block after the Write-Boundary; merge it.

@@ -76,7 +76,10 @@ public final class PmConsole {
                         "fresh_code");
 
     private final OperatorContext context;
+
+    /** How long one refresh of the badges may take, unless the console is built with its own bound. */
     static final Duration REFRESH_BOUND = Duration.ofSeconds(5);
+    private final Duration refreshBound;
     private final EntryFlow entryFlow;
     private final ReentrantLock badgeRefreshLock = new ReentrantLock();
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -105,10 +108,20 @@ public final class PmConsole {
      * @param entryFlow the entry flow the console runs and takes its machine step count from
      */
     public PmConsole(OperatorContext context, EntryFlow entryFlow) {
+        this(context, entryFlow, REFRESH_BOUND);
+    }
+
+    /**
+     * @param context      the operator context
+     * @param entryFlow    the entry flow the console runs and takes its machine step count from
+     * @param refreshBound how long one refresh of the badges may take before it keeps what it had
+     */
+    PmConsole(OperatorContext context, EntryFlow entryFlow, Duration refreshBound) {
         this.context = Objects.requireNonNull(context, "context");
         this.noticeBuffer = context.noticeBuffer();
         this.entryFlow = Objects.requireNonNull(entryFlow, "entryFlow");
         this.machineSteps = entryFlow.aspects().size();
+        this.refreshBound = Objects.requireNonNull(refreshBound, "refreshBound");
     }
 
     private String locale() {
@@ -205,7 +218,8 @@ public final class PmConsole {
      *
      * @return the trimmed line, or {@code null} when the console is to leave
      */
-    private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
+    @Nullable
+    String readCommand(LineReader reader, PrintWriter out, String locale) {
         while (running.get()) {
             try {
                 // JLine reads `%` in a prompt as its own escape introducer (`%{...%}` is zero-width
@@ -219,9 +233,14 @@ public final class PmConsole {
                 var line = reader.readLine(ConsolePrompt.format(locale, promptBadges, reconnecting.get()));
                 return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
-                if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
+                var partial = e.getPartialLine();
+                if (partial == null || partial.isBlank()) {
                     out.println(MessageCatalogue.format(locale, "operator.console.ctrl_c_hint", Map.of()));
                     out.flush();
+                } else {
+                    // Ctrl+C clears the typed line, and Up brings it back (04-console.adoc#console-keys):
+                    // JLine keeps no interrupted line in the history, so the console puts it there.
+                    reader.getHistory().add(partial);
                 }
             } catch (EndOfFileException _) {
                 var handled = handleControlD(out);
@@ -273,8 +292,10 @@ public final class PmConsole {
                 continueOnboarding(out, reader, locale, terminal);
                 return;
             }
+            // A run without an address (its contract carries no continue link) offers no
+            // continuation; EntryFlow.entryId never answers an empty address.
             var pid = b.projectId();
-            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && pid != null && !pid.isEmpty()) {
+            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && pid != null) {
                 continueProjectOnboarding(pid, out, reader, terminal);
                 return;
             }
@@ -340,7 +361,7 @@ public final class PmConsole {
     void refreshSetupBadge(String locale, Terminal terminal) {
         long startNanos = System.nanoTime();
         try {
-            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!badgeRefreshLock.tryLock(refreshBound.toNanos(), TimeUnit.NANOSECONDS)) {
                 return;
             }
         } catch (InterruptedException _) {
@@ -348,7 +369,7 @@ public final class PmConsole {
             return;
         }
         try {
-            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            long remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             if (remainingNanos <= 0) {
                 return;
             }
@@ -357,7 +378,7 @@ public final class PmConsole {
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
 
-            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             List<ConsoleBadge> projectBadges = remainingNanos > 0
                                 ? fetchProjectBadgesSafe(locale, runtime, Duration.ofNanos(remainingNanos))
                                 : previousProjectBadges();
@@ -403,7 +424,7 @@ public final class PmConsole {
         }
         switch (verb) {
             case "help" -> printHelp(out, parts);
-            case "web" -> handleWebCommand(out, parts);
+            case "web" -> handleWebCommand(line, out, parts, reader, terminal);
             default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
@@ -535,7 +556,13 @@ public final class PmConsole {
         return args.length > 0 && FULL_SCREEN_VERBS.contains(args[0]);
     }
 
-    private void handleWebCommand(PrintWriter out, String[] parts) {
+    /**
+     * Runs {@code web}: {@code qr}, {@code copy ssh} and {@code pair} are the console's own, every
+     * other form is the verb, run as every verb of the console is — from the typed line, on the
+     * console's terminal, with the badges read again afterwards.
+     */
+    private void handleWebCommand(String line, PrintWriter out, String[] parts, LineReader reader,
+                        Terminal terminal) {
         if (parts.length >= 2 && "qr".equals(parts[1])) {
             printWebQr(out);
             return;
@@ -548,8 +575,7 @@ public final class PmConsole {
             issueNewPairingCode(out);
             return;
         }
-        var args = parseArgs(String.join(" ", parts));
-        PmOperator.execute(context, out, out, args.toArray(new String[0]));
+        runOperatorVerb(line, out, reader, terminal);
     }
 
     private void printWebQr(PrintWriter out) {
@@ -666,15 +692,19 @@ public final class PmConsole {
         }
     }
 
-    private void handleSseEvent(SseEvent event, LineReader reader) {
-        if (event.data() == null || event.data().isBlank()) {
-            return;
-        }
+    /**
+     * Applies one event of the stream: data that is no JSON object (empty, malformed, or another
+     * value) is dropped, and the stream goes on.
+     *
+     * @param event  the event as the stream delivered it
+     * @param reader the line reader the notices are printed above
+     */
+    void handleSseEvent(SseEvent event, LineReader reader) {
         Map<String, Object> eventMap;
         try {
             eventMap = JsonTree.asObject(JsonTree.parse(event.data()));
         } catch (IOException _) {
-            // invalid json in the event stream: drop this event, keep the stream
+            // empty or invalid json in the event stream: drop this event, keep the stream
             return;
         }
         if (eventMap != null) {
@@ -708,13 +738,15 @@ public final class PmConsole {
         var name = eventName != null ? eventName : "";
         var payload = ConsoleNotice.payloadOf(eventMap);
         var type = notices.isEmpty() ? "" : notices.getFirst().kind();
-        if ("device.paired".equals(name) || "paired".equals(type)) {
-            var label = JsonTree.string(payload, "label");
-            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
-                                Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
-            if ("device.paired".equals(name)) {
-                issueFreshCodeAbove(reader);
+        if ("device.paired".equals(name)) {
+            // A legacy paired notice above already named the device; the line is printed once.
+            if (!"paired".equals(type)) {
+                var label = JsonTree.string(payload, "label");
+                printAboveOrHold(reader, ConsoleNotice.formatPairedNotice(locale, label != null && !label.isBlank()
+                                    ? label
+                                    : MessageCatalogue.format(locale, "common.unknown", Map.of())));
             }
+            issueFreshCodeAbove(reader);
         } else if ("fresh_code".equals(type)) {
             activePairingCode = JsonTree.string(payload, "code");
             activePairingUrl = JsonTree.string(payload, "url");
@@ -755,7 +787,7 @@ public final class PmConsole {
     void refreshBadges(Terminal terminal) {
         long startNanos = System.nanoTime();
         try {
-            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+            if (!badgeRefreshLock.tryLock(refreshBound.toNanos(), TimeUnit.NANOSECONDS)) {
                 return;
             }
         } catch (InterruptedException _) {
@@ -764,7 +796,7 @@ public final class PmConsole {
         }
         List<ConsoleBadge> refreshed;
         try {
-            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            long remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             if (remainingNanos <= 0) {
                 return;
             }
@@ -772,7 +804,7 @@ public final class PmConsole {
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
 
-            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            remainingNanos = refreshBound.toNanos() - (System.nanoTime() - startNanos);
             List<ConsoleBadge> projectBadges = remainingNanos > 0
                                 ? fetchProjectBadgesSafe(locale(), runtime, Duration.ofNanos(remainingNanos))
                                 : previousProjectBadges();
@@ -822,9 +854,9 @@ public final class PmConsole {
 
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
         var payload = ConsoleNotice.payloadOf(eventMap);
-        if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && payload.get("count") instanceof Number number && number.intValue() > 1) {
-            return Math.min(number.intValue(), 10_000);
+        var count = ConsoleNotice.wholeCount(payload.get("count"));
+        if (category == ConsoleNoticeBuffer.Category.REPORT && count > 1) {
+            return Math.min(count, 10_000);
         }
         return 1;
     }
@@ -974,7 +1006,9 @@ public final class PmConsole {
     /**
      * Splits a typed console line into arguments. Quoted text stays one argument, and a
      * backslash escapes the next character inside a quote only: text typed outside quotes, such as
-     * a path or a label, keeps its backslashes.
+     * a path or a label, keeps its backslashes. As in a shell, a quoted empty text is an argument
+     * of its own ({@code config set key ""} gives the verb an empty value), while whitespace alone
+     * separates and gives none.
      *
      * @param line the typed line
      * @return the arguments
@@ -987,6 +1021,7 @@ public final class PmConsole {
         var sb = new StringBuilder();
         boolean inQuotes = false;
         boolean escaped = false;
+        boolean quoted = false;
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
             if (escaped) {
@@ -996,8 +1031,10 @@ public final class PmConsole {
                 escaped = true;
             } else if (c == '"') {
                 inQuotes = !inQuotes;
+                quoted = true;
             } else if (Character.isWhitespace(c) && !inQuotes) {
-                flushToken(args, sb);
+                flushToken(args, sb, quoted);
+                quoted = false;
             } else {
                 sb.append(c);
             }
@@ -1005,7 +1042,7 @@ public final class PmConsole {
         if (escaped) {
             sb.append('\\');
         }
-        flushToken(args, sb);
+        flushToken(args, sb, quoted);
         return args;
     }
 
@@ -1023,11 +1060,12 @@ public final class PmConsole {
     }
 
     /**
-     * @param args the arguments read so far
-     * @param sb   the argument being built
+     * @param args   the arguments read so far
+     * @param sb     the argument being built
+     * @param quoted whether the argument had a quote, which makes even an empty one an argument
      */
-    private static void flushToken(List<String> args, StringBuilder sb) {
-        if (sb.length() > 0) {
+    private static void flushToken(List<String> args, StringBuilder sb, boolean quoted) {
+        if (quoted || !sb.isEmpty()) {
             args.add(sb.toString());
             sb.setLength(0);
         }

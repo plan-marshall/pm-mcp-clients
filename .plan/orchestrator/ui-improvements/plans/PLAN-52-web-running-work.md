@@ -26,25 +26,25 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `overview.spec.js`: columns align at 1440 px; the row menu is an icon button (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **One list, one count**
    - What: By plan and by epic render from one list; head counts are `$derived` from the rendered list or say "showing n of m".
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test asserts both groupings hold the same plans and the epic head count equals its rows (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Ended work and alongside**
    - What: Ended work is a sortable `DataTable` tab of the page, with "Chat about it" (read-only) per row; background jobs in a small block in the page head; the rail item always opens running work.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `overview.spec.js`: aligned ended-work columns; the rail item opens running work after ended work was open (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20520 PM_WEB_PORT=20521 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -59,11 +59,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-09)`, `doc/claude_review/ux/proposals.adoc#UX-P-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-09 and `ux/proposals.adoc:325` UX-P-09 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-09 at ux/plan.adoc:63, UX-P-09 at proposals.adoc:325, UC-P-06 :126, CC-P-08 cross-cutting/plan.adoc:48 present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed the order rule in `doc/design/shared/plan-overview.adoc`: running work is shown in the order the runtime serves (needs the operator first, then the newest started; projects by the start of their oldest active work); activity moves no row and a client does not sort again; the time beside a row only says how recently it was active. The rows of this page keep that order (`PLAN-82` serves it in the contract and the mock; the former `PLAN-81` is superseded); a sort by activity in this plan's rows is a defect. `PLAN-83` adds a work list beside a plan and an epic that reuses these rows and markers.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-overview.adoc:55 and :103 state the runtime order, activity moves no row, client does not sort again
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 and PLAN-35 shipped, so the page-template and data-component dependencies are met; OverviewView, ChatPanel, mobile.spec.js and overview.spec.js were touched by PLAN-90 (e2e baseline, time residue) and the a11y baseline: re-read.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: templates/ (Triage/Object/Wizard/Dashboard) and components/DataTable.svelte exist; OverviewView.svelte now 1702 lines so any old line refs have drifted
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the ended-work list can be paged by the runtime through an existing endpoint the client already calls — confirm/refute at `pm-web-app/src/lib/api/client.ts` § ended work and `pm-api/src/main/java/de/planmarshall/api/overview` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts:2941 getEndedWork(projectId,page) GET /projects/{id}/ended?page=; pm-api EndedWorkPage; OverviewView.svelte:773-781 Newer/Older buttons
 
 ## Expected Surface
 
@@ -79,6 +83,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/shared/plan-overview.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/PhaseLabel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/navigation.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -98,6 +104,18 @@ widened now (a parked row is not in the disjointness gate population). When rest
   "project sidebar becomes a filter chip row" contradicts the project list column.
 - Row slots (006), `RowLink` and `RowMenu` at the row (007), the ended-work chat read-only (009).
 - Message 002: the start-page toggle is gone (`PLAN-110`); this plan never reintroduces it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `PhaseLabel`'s role words: the six `role.name.*` come from the mock scenarios; the runtime's `askingRole` is a free string
+  (`DecisionEnvelope.java:57`), and `PhaseLabel.svelte:90` drops an unknown role silently. Settle the role set with the runtime docs (or
+  show an unknown role with the catalogue's unknown word); list consumers of `RowLink` and `StatusLabel` as in `PLAN-49`'s amendment.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: ended work paged with Newer/Older (#59). The re-grounding's "new claims" were never added.
 
 ## Hand-Off Command
 
@@ -173,3 +191,10 @@ bullet of `## Operator Decisions 2026-11-10`.
 
 Dependencies added: `PLAN-143` (the remembered place, its entry points, the app's mark), `PLAN-144` (Up and the lens segment).
 Expected Surface: unchanged.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-144` and `PLAN-149` (`RowMenu` `disabledReason`).
+- Re-ground at outline: ended-work paging is done (#59).
+- Dropped: the filter chip row, the DataTable tab, and `pm_overview_show_ended`/`ended_page`.
+- The rail opens running work (D6).

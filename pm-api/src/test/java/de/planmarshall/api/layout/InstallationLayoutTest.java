@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -297,6 +298,72 @@ class InstallationLayoutTest {
             assertFalse(home.runtimeUpgradable());
             assertTrue(home.upgradabilityRefusal().orElseThrow()
                     .contains("named by " + InstallationLayout.ENV_HOME));
+        }
+
+        @Test
+        @DisplayName("refuses an installation root that became a symbolic link after resolution")
+        void rootBecameSymbolicLink() throws Exception {
+            var installation = stage("install", OLD);
+            var home = InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation)));
+            var moved = Files.move(root.resolve("install"), root.resolve("moved"));
+            Files.createSymbolicLink(root.resolve("install"), moved);
+
+            assertFalse(home.runtimeUpgradable());
+            assertTrue(home.upgradabilityRefusal().orElseThrow().endsWith("is a symbolic link"));
+        }
+
+        @Test
+        @DisplayName("refuses an installation root that is no longer a directory")
+        void rootNoLongerDirectory() throws Exception {
+            var installation = stage("install", OLD);
+            var home = InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation)));
+            Files.move(root.resolve("install"), root.resolve("moved"));
+            Files.writeString(root.resolve("install"), "");
+
+            assertTrue(home.upgradabilityRefusal().orElseThrow().endsWith("is not a directory"));
+        }
+
+        @Test
+        @DisplayName("refuses an installation root that became writable by group or others")
+        void rootBecameWritableByOthers() throws Exception {
+            var installation = stage("install", OLD);
+            var home = InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation)));
+            Files.setPosixFilePermissions(root.resolve("install"), PosixFilePermissions.fromString("rwxrwxr-x"));
+
+            assertTrue(home.upgradabilityRefusal().orElseThrow().endsWith("is writable by group or others"));
+        }
+
+        @Test
+        @DisplayName("refuses an installation root the current user cannot write")
+        void rootNotWritable() throws Exception {
+            var installation = stage("install", OLD);
+            var home = InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation)));
+            var installRoot = root.resolve("install");
+            Files.setPosixFilePermissions(installRoot, PosixFilePermissions.fromString("r-x------"));
+            try {
+                // a superuser writes anyway: the refusal is only observable for an ordinary user
+                assumeFalse(Files.isWritable(installRoot));
+
+                assertTrue(home.upgradabilityRefusal().orElseThrow().endsWith("is not writable by the current user"));
+            } finally {
+                Files.setPosixFilePermissions(installRoot, PosixFilePermissions.fromString("rwx------"));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses an installation directory at the filesystem root")
+        void homeAtFilesystemRoot() {
+            var environment = Map.of(InstallationLayout.ENV_HOME, "/");
+
+            assertThrows(InstallationLayoutException.class,
+                    () -> InstallationLayout.resolve(environment, Optional.empty()));
+        }
+
+        @Test
+        @DisplayName("reads no version for the filesystem root or a directory right below it")
+        void noVersionNearTheRoot() throws Exception {
+            assertEquals(Optional.empty(), InstallationLayout.resolveVersion(Path.of("/")));
+            assertEquals(Optional.empty(), InstallationLayout.resolveVersion(Path.of("/usr")));
         }
 
         @Test

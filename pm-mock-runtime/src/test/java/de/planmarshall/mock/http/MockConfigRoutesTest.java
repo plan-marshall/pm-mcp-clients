@@ -133,8 +133,11 @@ class MockConfigRoutesTest {
 
         assertAll(
                 () -> assertEquals(409, aspectOwned.status(), aspectOwned.body()),
+                () -> assertTrue(aspectOwned.body().contains("\"aspect_owned\""), aspectOwned.body()),
                 () -> assertEquals(400, unknownLevel.status(), unknownLevel.body()),
-                () -> assertEquals(400, withoutKey.status(), withoutKey.body()));
+                () -> assertTrue(unknownLevel.body().contains("\"invalid_arguments\""), unknownLevel.body()),
+                () -> assertEquals(400, withoutKey.status(), withoutKey.body()),
+                () -> assertTrue(withoutKey.body().contains("\"invalid_arguments\""), withoutKey.body()));
     }
 
     @Test
@@ -149,6 +152,7 @@ class MockConfigRoutesTest {
         assertAll(
                 () -> assertEquals(204, deleted.status(), deleted.body()),
                 () -> assertEquals(404, unknown.status(), unknown.body()),
+                () -> assertTrue(unknown.body().contains("\"target_not_found\""), unknown.body()),
                 () -> assertFalse(read.body().contains("custom.flag"), read.body()));
     }
 

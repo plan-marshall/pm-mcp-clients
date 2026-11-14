@@ -10,6 +10,7 @@
 package de.planmarshall.api.display;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("Display")
@@ -151,5 +153,39 @@ class DisplayTest {
         assertEquals("unbekannt \u00b7 smoke-tests", Display.gate("de", "custom_gate:smoke-tests"));
         assertEquals("unknown", Display.gate("en", "custom_gate"));
         assertEquals("unbekannt", Display.gate("de", "custom_gate"));
+        assertEquals("CI check", Display.gate("en", "ci_check:"));
+    }
+
+    @ParameterizedTest(name = "kind \"{0}\", value \"{1}\"")
+    @CsvSource(value = {"NULL, running", "' ', running"}, nullValues = "NULL")
+    @DisplayName("word refuses a missing or blank kind")
+    void wordRefusesMissingParts(String kind, String value) {
+        assertThrows(IllegalArgumentException.class, () -> Display.word("en", kind, value));
+    }
+
+    @Test
+    @DisplayName("duration since a moment renders the span to now, and nothing for no moment")
+    void durationSince() {
+        assertEquals("25 min", Display.duration("en", NOW.minusSeconds(1500), CLOCK));
+        assertEquals("2 h 10 min", Display.duration("en", "2026-10-20T09:50:00Z", CLOCK));
+        assertEquals("0 s", Display.duration("en", NOW.plusSeconds(600), CLOCK));
+        assertEquals("", Display.duration("en", (Instant) null, CLOCK));
+        assertEquals("", Display.duration("en", (String) null, CLOCK));
+        assertEquals("", Display.duration("en", "  ", CLOCK));
+        assertEquals("since Monday", Display.duration("en", "since Monday", CLOCK));
+    }
+
+    @Test
+    @DisplayName("time renders no moment as nothing and RELATIVE as the age")
+    void timeOfNoMomentAndRelativeStyle() {
+        assertEquals("", Display.time("en", (Instant) null, CLOCK));
+        assertEquals("", Display.time("en", null, Display.TimeStyle.SHORT, CLOCK));
+        assertEquals("5 min ago", Display.time("en", NOW.minusSeconds(300), Display.TimeStyle.RELATIVE, CLOCK));
+    }
+
+    @Test
+    @DisplayName("SHORT renders a moment after today by its day and month")
+    void shortStyleOfAFutureMoment() {
+        assertEquals("22 Oct, 12:00", Display.time("en", NOW.plusSeconds(2 * 86400), Display.TimeStyle.SHORT, CLOCK));
     }
 }

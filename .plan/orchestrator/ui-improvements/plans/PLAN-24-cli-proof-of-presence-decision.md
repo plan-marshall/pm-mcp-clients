@@ -35,10 +35,10 @@ Source of this plan (read before scoping):
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
      - The package is listed `open` with its dependencies (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - The ADR and the requirement change land in `plan-marshall-documentation` through its own pull request.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks, with one exception. CI skips `build`, `quarkus-alignment` and `sonar-build` when every changed file of the pull request matches the organisation's docs-only ignore list (`**/*.adoc`, `**/*.md`, `doc/**`, `.plan/**` and the further globs of `build-paths-filter-spec`), because such files change nothing a build or an analysis produces. When the pull request's changed files all match that list, `build / conclusion` passed and `build / sonar-build` is skipped, the `undecidable` read is the expected outcome: record it as `undecidable (docs-only skip)` and it does not block. A changed file outside the list runs the full build, and the rule above applies unchanged.
@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 CLI-CC-S-06; proposals.adoc:97 CLI-CC-P-05
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 CLI-CC-S-06 (3 steps as spec); proposals.adoc:97 CLI-CC-P-05; doc/plans/proof-of-presence.adoc still absent
 - HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: HOLD stands: L-1 deferred, no milestone (docs later-improvements.adoc:17-25, 08-security.adoc:56,59)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HOLD stands: later-improvements.adoc:17-25 L-1 deferred with unchecked boxes; 08-security.adoc:56,59 name it; no ADR dir or proof doc in plan-marshall-documentation; PLAN-14 landed #277
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause, no hypothesis
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause; names no HYPOTHESIS
 
 ## Expected Surface
 
@@ -93,3 +93,17 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Merge Rule (Amendment 2026-11-12)
+
+Added by the orchestrator after PLAN-32 (#415) merged without an operator question because its spec had no merge clause. It supersedes
+any text here that differs.
+
+- The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's "standing review
+  authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
+- The run merges only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  nitpick, "additional comments") has a reply on the PR, not only a fix.
+- The pull request body states the thread count, the resolved count and the review-body items with their count
+  (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
+- The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
+  request body carries no generator footer.

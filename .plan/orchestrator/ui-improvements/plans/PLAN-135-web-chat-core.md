@@ -96,12 +96,19 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
      subject's tasks, files and decisions; an empty chat shows `control.chat.empty` and two or three starters as chips that fill
      the field and send nothing; the hint `Dictate with your system` (`web.voice.os_hint`, no code of the speech role); a
      snippet slot for the microphone that draws nothing. The focus moves into the field when the chat opens.
+   - PLAN-147 residue (landing `landings/PLAN-147.md`): the composer is built on PLAN-147's `Compose`. Its name union lets
+     `label=""` with no `ariaLabel` through and so yields an unnamed text area (`Compose.svelte:64-78`, `:196`); make an empty
+     `label` count as absent (the field is then named by `ariaLabel`, which becomes required) and test it. `Compose` calls
+     `onsend` with an empty or whitespace value whenever it is not `disabled` (`Compose.svelte:140-145`); state the contract
+     (the consumer holds the act back with `disabled` and its reason) in `components.adoc` § `#compose` and pin it in a test.
    - Texts: every `web.chat.*` key of `chat.adoc` § `#texts` (not `web.voice.*`) in en and de.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
    - `Chat.test.ts` covers the send, stop, composition, limit, counter, starter, `#`, hide, new, draft-survives-reload and focus
      rules and fails on a revert (evidence order: `test-first`).
+   - `Compose.test.ts` fails for an unnamed field (`label=""`, no `ariaLabel`) and pins the empty-value `onsend` contract
+     (evidence order: `test-first`).
    - A fixture of `Chat` and `ChatTurn` on `/dev/components` in both themes and both locales.
 5. **The chat in the engine's side column, and the plan's and epic's chat acts**
  - What:
@@ -123,10 +130,8 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
  - Done when:
    - Browser check (Playwright MCP) shows this deliverable's change as specified on `running-work` → `plan fix-relay` with the
      chat open: the widths and the phone view, the working line, a streaming reply, Stop; baseline and after snapshots plus
-     screenshots recorded (evidence order: `none`).
+     screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
    - `chat.spec.js` passes with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set; it waits on events, never on time (evidence order: `test-first`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed
-     read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -143,7 +148,7 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
   worktree did not start.
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
 - The merge rule: merge only when every thread has a reply and is resolved, every review body is answered and some head has had one
-  CodeRabbit review; counts stated from `ci pr comments`; merge on the operator's word only; commits end with
+  CodeRabbit review; counts stated from `ci pr comments`; the run merges itself once the gates hold (no further operator word); commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -154,23 +159,39 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 ## Claim Labels
 
 - OBSERVED: `ChatPanel.svelte` (324 lines) is used at `WorkControlPanel.svelte:1098,1116`, `DecisionView.svelte:1198`, `EpicView.svelte:973` and `StartView.svelte:1116` — read by `git grep -n ChatPanel -- pm-web-app/src`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatPanel.svelte is 324 lines; used at WorkControlPanel:1118,1136, DecisionView:1240, EpicView:984, StartView:1214 (lines drifted)
 - OBSERVED: `package.json` has no `dependencies` block and no `marked` — read at `pm-web-app/package.json`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: package.json has only devDependencies (:30); no dependencies block and no marked
 - OBSERVED: `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` and `FormStatus` do not exist in `pm-web-app/src/lib/components/` — absence read by `git ls-files | grep` for each name at `1cc0e10e`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark, Link, ExternalLink, PrChip, Compose, FormStatus all exist in components/ at HEAD (PLAN-147 #420 dea405d8); RowLink too (#427) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `ObjectPage.svelte` has no side slot and `TriagePage.svelte` still has the slots `filters`, `list` and `detail` — read at `pm-web-app/src/lib/templates/ObjectPage.svelte`, `TriagePage.svelte`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ObjectPage has no side slot; TriagePage still has slots filters/list/detail and props selected/hasFilters only
 - OBSERVED: D6 fixed the side column on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`, built by `PLAN-142`), none on `ObjectPage`, no side column in the chat plans, `480`/`400` measured on the container, the phone covering the bottom bar, and `open=` forms waiting for `PLAN-143` — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418`, `doc/design/web-app/chat.adoc:40,342` (`4a84f727`, D6 merged `8568b56e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: components.adoc:361,374,381 and navigation.adoc:275-284 carry the D6 side-column API on TriagePage/WizardPage, none on ObjectPage; chat.adoc:40
 - OBSERVED: `adoptRouteFromLocation` reads no `chat` or `turn` query parameter — read at `pm-web-app/src/lib/stores/runtime.ts:940-966`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: adoptRouteFromLocation now runtime.ts:1058; no chat or turn query parameter in routes.ts or runtime.ts
 - OBSERVED: `client.ts` holds the chat types at `:1565` and `:1572`, the entry chat at `:2328-2362`, the ended chat at `:2393-2417`, the plan, epic and decision chat at `:3355-3477`, and one shared `/api/v1/events` connection at `:3671` — read at `pm-web-app/src/lib/api/client.ts`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Facts hold, lines moved: ChatTurn/ChatProposal client.ts:1567/1574, normaliseChat :1656, entry chat :2478-2520, subject chats :3632-3790, shared events :4034
 - OBSERVED: the web app listens for events outside the catalogue (`plan.changed`, `decision.created`) — read at `pm-web-app/src/lib/views/PlanView.svelte:124`, `DecisionView.svelte:322`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:126-132 listens plan.changed; DecisionView:330 decision.created; neither is in EventName
 - OBSERVED: there is no Mermaid or diagram renderer for model text in `pm-web-app` — `git grep -i mermaid -- pm-web-app/src pm-web-app/package.json` is empty
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep -i mermaid in pm-web-app/src and package.json is empty
 - HYPOTHESIS: `client.ts` can open a plan's, an epic's and a workspace's event stream like the entry's (`subscribeStream` at `:3736`) — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `subscribeStream` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: subscribeStream (client.ts:4131) is path-generic, wrapped only for entry (:4099); mock serves plan/epic/entry/workspace /events (MockRuntimeEngine:6943-6958)
 - HYPOTHESIS: the plan's and the epic's routes sit on `TriagePage` at the then-current HEAD (`PLAN-144` deliverable 4), so their `Chat` has a `side` to go into — confirm/refute at the route host of `/plans/{id}` and `/epics/{id}` and `pm-web-app/src/lib/templates/TriagePage.svelte` § props (verify-at-outline; refuted → stop and loop back, no interim slot)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: No plan or epic route sits on TriagePage: only ReportsView uses it (:956); TriagePage has no side/sideOpen/onHideSide; PLAN-142/144 not landed | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: `marked` adds no transitive package and no peer conflict with Vite 8 and Svelte 5 — confirm/refute at `pm-web-app/package-lock.json` after `npm install marked` in the worktree (verify-at-outline)
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Needs npm install in a worktree; package.json and lock hold no marked, so peer and transitive impact cannot be read
 - Verify-first clause: the D1 foundation components (O1) and the column engine's side props (`PLAN-142`) are read at the current HEAD before scoping; if `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` still do not exist, the operator's answer to O1 decides what this plan builds; if `TriagePage` has no `side`, `sideOpen`, `onHideSide`, stop and loop back.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause: D1 components now exist, but TriagePage lacks the side props so its loop-back trigger holds until PLAN-142 lands
 
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/chat/` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/Chat.svelte` — absent at `1cc0e10e`; created by this plan
+- OBSERVED: `pm-web-app/src/lib/components/Compose.svelte` — present at `dea405d8` (PLAN-147)
+- OBSERVED: `pm-web-app/src/lib/components/Compose.test.ts` — present at `dea405d8` (PLAN-147)
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `dea405d8`
 - OBSERVED: `pm-web-app/src/lib/components/ChatTurn.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatMarkdown.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by PLAN-137
@@ -187,6 +208,9 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/chat.spec.js` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at `1cc0e10e`
+- OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -200,6 +224,48 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 ## Re-Grounding at Restart
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces` against everything that landed since; re-read the D4 and D5 chat documents (still `AGREED`); confirm the operator's answers to O1, O6, O7 (O2 is settled by D6, merged #403 `8568b56e`: the engine's side column of `PLAN-142`).
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `PLAN-161` (chat bridge) first adapts the existing `client.ts` chat calls and the views to B1 (bodies with `client_turn_id`/`turn_id`,
+  `ChatResource` reads through one normaliser). This plan replaces that adaptation and deletes it; the OBSERVED `client.ts` line refs are
+  stale since `a139ec62` (ended-work calls already migrated there) — re-ground at outline.
+
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+Operator decision 2026-11-14 ("Fold into PLAN-135/138"). PLAN-161 (#429, `dc811fb3`) bridged the web chat to B1. Add to this plan:
+
+- **Open a chat (new item for D1/D5).** The web only READS a chat (`client.ts:3631` `getChat` is GET). `POST …/chat` opens one
+  (`ChatRoutes.chat()`, `web-app/chat.adoc:249`; `work-actions.adoc:384`: the runtime never opens a chat by itself) and is called for the
+  entry only (`openEntryChat` `:2483`). Against the mock, every plan, epic, review or ended subject without a seeded chat answers 404 and the
+  panel shows "chat closed" (4 running plans of `running-work`). The decomposition read-back (`StartView.svelte:851` `onChat`) sets
+  `chatOpen` without opening a chat and sends turns to an unopened chat (`target_not_found`). Open the chat before the first turn on every
+  subject; test on an UNSEEDED subject (unit, e2e, browser).
+- **StartView's refresh machinery** (`refreshChat`/`chatGeneration`/`chatReadSeq`, `:225`, about 110 lines) has no test
+  (`subscribeEntryEvents` is stubbed in `StartView.test.ts:20`, `.scenarios.test.ts:23`). A refresh started during a pending answer or send
+  captures the bumped generation, and answered/closed results never bump `chatReadSeq`, so a late snapshot can bring back an answered
+  proposal (CodeRabbit's last word on #429 thread `StartView:241`, unanswered). Replace or fix with tests of the event refresh, read order,
+  entry change and that race.
+- **Try again keeps the turn id:** today `client_turn_id` is reused only for one automatic retry inside one `chatTurn` call
+  (`client.ts:3721`); the operator's Try again draws a new id and can double-send.
+- This plan replaces the bridge (one normaliser `normaliseChat` `client.ts:1656`; the follow rule `:1710`, `:3763`). The OBSERVED `client.ts`
+  line refs are stale. Empty-text `notice` turns would draw an empty line (PLAN-136).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 2 contradicted: KindMark, Link, ExternalLink, PrChip, Compose, FormStatus all exist in components/ at HEAD (PLAN-147 #420 dea405d8); RowLink too (#427)
+- Claim 10 contradicted: No plan or epic route sits on TriagePage: only ReportsView uses it (:956); TriagePage has no side/sideOpen/onHideSide; PLAN-142/144 not landed
+- KindMark, Link, ExternalLink, PrChip, Compose, FormStatus and RowLink exist (#420, #427): D1 shrinks to what is missing. No chat place sits on a template yet (PLAN-142 not landed).
+
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- **`chat.ended` refreshes the entry (operator: "Refresh the entry").** `StartView` refreshes the entry on the entry stream's events
+  only; `chat.turn.*` and `chat.proposal` go to the chat's own read and `chat.ended` refreshes nothing. On `chat.ended` re-read the entry
+  (state and offered acts); a test drives the event and sees the re-read.
+- `client.test.ts` lost its chat rows in #432's rebase: check that the dedicated chat tests cover the EPIC and the REJECT variants of the
+  subject chat routes, and add what is missing.
 
 ## Hand-Off Command
 
@@ -225,3 +291,16 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus is PLAN-147; the side column is decided by PLAN-141 (D6).
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). The transcript now receives `notice` turns (cumulative lines,
+possibly re-completed under the same turn id) and `chat.turn.started.context`. The core renderer must ignore or
+render them without breaking, even if this plan lands before PLAN-136.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-142` and `PLAN-144` D4 (plan and epic routes on the engine). Met: `PLAN-130`, `PLAN-132` to `PLAN-134`, `PLAN-147`, and O1/O2/O6/O7.
+- Re-ground at outline: there is no chat place on `TriagePage` yet (claim 10).
+- It carries residue from `PLAN-161`, the `#432` finding and `PLAN-134` (see the amendments above).
+- The `marked` dependency is operator-approved.

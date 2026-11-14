@@ -179,6 +179,10 @@ class SystemScenarioTest {
             var resWithdrawUpgrade = client.send(HttpRequest.delete("/api/v1/operator/runtime/upgrade").withHeader("Authorization", auth));
             assertEquals(200, resWithdrawUpgrade.status());
             assertEquals(RuntimeLifecycleState.RUNNING, runtime.engine().lifecycleState());
+            var resWithdrawNothing = client.send(HttpRequest.delete("/api/v1/operator/runtime/upgrade").withHeader("Authorization", auth));
+            assertEquals(409, resWithdrawNothing.status());
+            assertEquals("act_not_available", JsonTree.string(JsonTree.asObject(JsonTree.parse(resWithdrawNothing.bodyText())), "error"),
+                    "with no upgrade running there is no withdrawal to offer");
 
             // 6. Upgrade check
             var resCheck = client.send(HttpRequest.post("/api/v1/operator/runtime/upgrade/check").withHeader("Authorization", auth));

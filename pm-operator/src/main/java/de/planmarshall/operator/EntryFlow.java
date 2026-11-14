@@ -62,6 +62,7 @@ import de.planmarshall.operator.dialogue.StateDialogue;
 public final class EntryFlow {
 
     static final int DEFAULT_WEB_PORT = 7420;
+    private static final int MAX_PORT = 65_535;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
     private static final String VERSION = "version";
@@ -195,10 +196,8 @@ public final class EntryFlow {
         }
         var prompt = MessageCatalogue.format(locale, promptKey, Map.of());
 
-        String choice;
-        try {
-            choice = reader.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException _) {
+        var choice = readWhere(reader, out, locale, prompt, isSsh);
+        if (choice == null) {
             // Leaving the entry prompt keeps the block list and takes every badge the runtime
             // offers, the open project setups included.
             var cBadges = consoleBadges(locale, status,
@@ -206,20 +205,21 @@ public final class EntryFlow {
             var strBadges = cBadges.stream().map(ConsoleBadge::text).toList();
             return new EntryResult(status, strBadges, null, null, cBadges);
         }
-        if (choice == null || choice.isBlank()) {
-            choice = isSsh ? "h" : "w";
-        } else {
-            choice = choice.trim().toLowerCase(Locale.ROOT);
-        }
 
         var cBadges = new ArrayList<ConsoleBadge>();
         cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, totalSteps)));
         cBadges.addAll(readProjectSetupConsoleBadgesQuiet(locale, runtime));
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
-        if (choice.startsWith("w") && context.gate().permits()) {
+        if ("w".equals(choice) && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
-            var pairing = issuePairingCode(runtime, webPort);
+            var pairing = issueOrReport(runtime, webPort, out);
+            if (pairing == null) {
+                // Without a code no device can pair: the console opens without one, and web pair
+                // asks for one again.
+                out.flush();
+                return new EntryResult(status, badges, null, null, cBadges);
+            }
             if (!isSsh) {
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
             } else {
@@ -229,7 +229,7 @@ public final class EntryFlow {
             out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url(), cBadges);
         }
-        if (choice.startsWith("w")) {
+        if ("w".equals(choice)) {
             // The web app is offered by opening the listener and issuing a pairing code, both acts:
             // where the gate refuses an act the setup continues here instead, and the refusal
             // appears when one is typed.
@@ -240,6 +240,57 @@ public final class EntryFlow {
         out.flush();
         runOnboardingDialogue(runtime, out, reader, locale);
         return refreshedAfterDialogue(runtime, status, cBadges);
+    }
+
+    /**
+     * Reads the answer to {@code entry.where-to-onboard}: {@code Enter} takes the preselection
+     * ({@code h} in an SSH session, {@code w} on a desktop), {@code w} and {@code h} choose, and
+     * {@code q}, {@code Ctrl+C} or the end of input leave to the console prompt. Any other input is
+     * answered with one line and asked again (design <em>Dialogues</em>, links as keys).
+     *
+     * @return {@code "w"} or {@code "h"}, or {@code null} when the operator leaves
+     */
+    private static @Nullable String readWhere(LineReader reader, PrintWriter out, String locale, String prompt,
+                        boolean isSsh) {
+        while (true) {
+            String line;
+            try {
+                line = reader.readLine(prompt);
+            } catch (EndOfFileException | UserInterruptException _) {
+                return null;
+            }
+            var answer = line == null ? "" : line.trim().toLowerCase(Locale.ROOT);
+            if (answer.isEmpty()) {
+                return preselectedWhere(isSsh);
+            }
+            if (isWhereChoice(answer)) {
+                return answer;
+            }
+            if (ChoicePrompt.isLeave(locale, answer)) {
+                return null;
+            }
+            out.println(notOfferedWhere(locale, answer, line, isSsh));
+            out.flush();
+        }
+    }
+
+    /** @return {@code "h"} in an SSH session, {@code "w"} on a desktop */
+    private static String preselectedWhere(boolean isSsh) {
+        return isSsh ? "h" : "w";
+    }
+
+    private static boolean isWhereChoice(String answer) {
+        return "w".equals(answer) || "h".equals(answer);
+    }
+
+    private static String notOfferedWhere(String locale, String answer, @Nullable String line, boolean isSsh) {
+        if ("?".equals(answer)) {
+            return MessageCatalogue.format(locale, "operator.dialogue.no_explanation", Map.of());
+        }
+        var leave = locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+        var offered = (isSsh ? "h, w, " : "w, h, ") + leave + ", ?";
+        return MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
+                            "input", TerminalSanitizer.sanitizeLine(line), "offered", offered));
     }
 
     /**
@@ -344,7 +395,10 @@ public final class EntryFlow {
         if (isSsh) {
             out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                 Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
-            var pairing = issuePairingCode(runtime, webPort);
+            var pairing = issueOrReport(runtime, webPort, out);
+            if (pairing == null) {
+                return new EntryResult(status, badges, null, null, consoleBadges);
+            }
             printSshWaysIn(out, webPort, pairing.code());
             result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
         } else {
@@ -357,7 +411,10 @@ public final class EntryFlow {
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
-                var pairing = issuePairingCode(runtime, webPort);
+                var pairing = issueOrReport(runtime, webPort, out);
+                if (pairing == null) {
+                    return new EntryResult(status, badges, null, null, consoleBadges);
+                }
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
                 result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
             }
@@ -443,31 +500,48 @@ public final class EntryFlow {
     }
 
     /**
-     * Issues a pairing code via runtime {@code POST /api/v1/web/pairings}.
+     * Issues a pairing code via runtime {@code POST /api/v1/web/pairings}. Only the runtime issues
+     * a code: an answer that carries none is refused, never replaced by a code of the client's own,
+     * which no device could redeem.
      *
      * @param runtime the runtime client
      * @param port    the web port
      * @return the issued pairing code and url
-     * @throws IOException on transport failure
+     * @throws IOException on transport failure, or when the runtime issues no code
      */
     public PairingCode issuePairingCode(RuntimeClient runtime, int port) throws IOException {
-        try {
-            var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
-            if (response.status() == 200 || response.status() == 201) {
-                var json = JsonTree.asObject(JsonTree.parse(response.body()));
-                if (json != null && json.get("code") instanceof String code) {
-                    var url = (String) json.get("url");
-                    if (url == null || url.isBlank()) {
-                        url = LOOPBACK_URL_PREFIX + port + PAIR_CODE + code;
-                    }
-                    return new PairingCode(code, url);
-                }
+        var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
+        if (response.status() == 200 || response.status() == 201) {
+            var json = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (json != null && json.get("code") instanceof String code && !code.isBlank()) {
+                var url = json.get("url") instanceof String given && !given.isBlank()
+                                    ? given
+                                    : LOOPBACK_URL_PREFIX + port + PAIR_CODE + code;
+                return new PairingCode(code, url);
             }
-        } catch (IOException _) {
-            // fallback
         }
-        var fallbackCode = "KXQB-MRTN";
-        return new PairingCode(fallbackCode, LOOPBACK_URL_PREFIX + port + PAIR_CODE + fallbackCode);
+        throw new IOException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.entry.no_code", Map.of("status", response.status())));
+    }
+
+    /**
+     * Issues a pairing code for the entry, which opens the console with or without one: a code the
+     * runtime does not issue is reported with the console's own line, and the entry goes on without it.
+     *
+     * @param runtime the runtime client
+     * @param port    the web port
+     * @param out     the entry's writer
+     * @return the issued code, or {@code null} when the runtime issued none
+     */
+    private @Nullable PairingCode issueOrReport(RuntimeClient runtime, int port, PrintWriter out) {
+        try {
+            return issuePairingCode(runtime, port);
+        } catch (IOException e) {
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.console.code_failed",
+                                Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
+                                                    ? e.getMessage() : e.getClass().getSimpleName()))));
+            return null;
+        }
     }
 
     /**
@@ -479,18 +553,14 @@ public final class EntryFlow {
     public @Nullable String findPairedBrowser(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
-            if (response.status() == 200) {
-                var parsed = JsonTree.parse(response.body());
-                if (parsed instanceof List<?> list) {
-                    for (var item : list) {
-                        if (item instanceof Map<?, ?> dev) {
-                            var pairedFrom = (String) dev.get("paired_from");
-                            var pairedBy = (String) dev.get("paired_by");
-                            if ("loopback".equals(pairedFrom) || "open".equals(pairedBy)) {
-                                var label = dev.get("label");
-                                return label != null ? label.toString() : "local browser";
-                            }
-                        }
+            if (response.status() == 200 && JsonTree.parse(response.body()) instanceof List<?> list) {
+                for (var item : list) {
+                    if (item instanceof Map<?, ?> dev
+                                        && ("loopback".equals(dev.get("paired_from")) || "open".equals(dev.get("paired_by")))) {
+                        return dev.get("label") instanceof String label && !label.isBlank()
+                                            ? label
+                                            : MessageCatalogue.format(context.clientEnvironment().locale(),
+                                            "operator.entry.local_browser", Map.of());
                     }
                 }
             }
@@ -517,22 +587,40 @@ public final class EntryFlow {
 
     static int getCompletedOnboardStep(Map<String, Object> status) {
         if (status.get("onboard") instanceof Map<?, ?> onboard) {
-            var step = onboard.get("step");
-            if (step instanceof Number num) {
-                return num.intValue();
+            var step = wholeNumber(onboard.get("step"));
+            if (step >= 0) {
+                return step;
             }
-            if (step instanceof JsonNumber jn) {
-                return (int) jn.longValue();
-            }
-            var completedSteps = onboard.get("completed_steps");
-            if (completedSteps instanceof Number num) {
-                return num.intValue();
-            }
-            if (completedSteps instanceof JsonNumber jn) {
-                return (int) jn.longValue();
+            var completedSteps = wholeNumber(onboard.get("completed_steps"));
+            if (completedSteps >= 0) {
+                return completedSteps;
             }
         }
         return 0;
+    }
+
+    /**
+     * Reads a count, a step or a port the runtime reports: a whole number from {@code 0} to
+     * {@link Integer#MAX_VALUE}, as the wire's {@link JsonNumber} or a Java number.
+     *
+     * @param value the value as the status carries it
+     * @return the number, or {@code -1} when the value is no such number (a fraction, a negative or
+     *         too large a number, or no number at all)
+     */
+    static int wholeNumber(@Nullable Object value) {
+        long number;
+        if (value instanceof JsonNumber json) {
+            try {
+                number = json.longValue();
+            } catch (NumberFormatException _) {
+                return -1;
+            }
+        } else if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+            number = ((Number) value).longValue();
+        } else {
+            return -1;
+        }
+        return number >= 0 && number <= Integer.MAX_VALUE ? (int) number : -1;
     }
 
     String stepName(String locale, int step) {
@@ -544,19 +632,10 @@ public final class EntryFlow {
 
     static int getWebPort(Map<String, Object> status) {
         if (status.get("web") instanceof Map<?, ?> web) {
-            var port = web.get("port");
-            if (port instanceof Number num && num.intValue() > 0) {
-                return num.intValue();
-            }
-            if (port instanceof JsonNumber jn) {
-                try {
-                    int p = (int) jn.longValue();
-                    if (p > 0) {
-                        return p;
-                    }
-                } catch (NumberFormatException _) {
-                    // fallback to default
-                }
+            var port = wholeNumber(web.get("port"));
+            // A TCP port is 1 to 65535; anything else is no port to address, and the default applies.
+            if (port >= 1 && port <= MAX_PORT) {
+                return port;
             }
         }
         return DEFAULT_WEB_PORT;
@@ -754,7 +833,7 @@ public final class EntryFlow {
         }
         var badges = new ArrayList<ConsoleBadge>();
         for (var entry : needs.entrySet()) {
-            var count = countOf(entry.getValue());
+            var count = wholeNumber(entry.getValue());
             if (count < 0) {
                 continue;
             }
@@ -777,24 +856,6 @@ public final class EntryFlow {
         return NeedsOperatorKind.fromValue(wireKind) == NeedsOperatorKind.WAIVER
                             ? NeedsOperatorKind.WAIVER.value()
                             : wireKind;
-    }
-
-    /**
-     * @param value the count the status reports for one kind
-     * @return the count, or {@code -1} when the value is no number
-     */
-    private static int countOf(@Nullable Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof JsonNumber jsonNumber) {
-            try {
-                return (int) jsonNumber.longValue();
-            } catch (NumberFormatException _) {
-                return -1;
-            }
-        }
-        return -1;
     }
 
     private String getHostname() {

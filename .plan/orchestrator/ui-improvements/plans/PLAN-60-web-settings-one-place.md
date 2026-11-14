@@ -27,22 +27,21 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `onboarding.spec.js`, `devices.spec.js`: the redirect and every tab (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Forms**
    - What: One form, one "Save" disabled until a change, a "changed" mark per field, "Reset to inherited" for an override; plain labels with one sentence of help; no raw keys.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: save disabled until change; reset to inherited (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Conflict notice**
    - What: A settings conflict shows the other client's value and "Apply mine again" (UC-ONB-10).
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test of the conflict notice (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 4. **The cleanup record's conflict, save and texts** (PLAN-101 residue, `landings/PLAN-101.md`)
    - What: (a) `applyConflictAgain` (`MachineSettingsView.svelte` ~238-246) falls back to `{}` when the conflict's `current_value` is not a record, so the resend carries the operator's changed categories over the defaults 30/3: it merges over the stored record (`$runtimeStore.machineSettings.cleanup_durations`) or refuses the resend with a stated reason. (b) The conflict dialog's "Yours" line prints the page's old full record (`conflict.wantedValue`, ~210) while "Apply yours again" sends the other client's values for the untouched categories: the line shows what will be sent. (c) A server refusal (`invalid_value`, 400) names the minimum like the client pre-check does, or `machine-settings.adoc` states that only the client pre-check names it (`updateMachineSetting` in `stores/runtime.ts` 1086-1099 returns `null` on a throw today). (d) `saveCleanup` (~216-224) builds the saved record from the stored record (spread), not from a five-key list; the design decides whether `CLEANUP_CATEGORY_ORDER` counts as a mirror of `CleanupDurations.java` (CodeRabbit asked for a derived list; the dialog is derived, the order is not). (e) The changed set is computed against the record the page last read, not against a store that a settings event refreshed without `cleanupRemindDays`. (f) Doc leftovers of the "tokens" change: `texts-and-languages.adoc:224` shows `≥ 1.24 M tokens · 3 of 41 tasks`; `doc/claude_review/cli/resources/screens/system-view.{txt,svg}` and `system-printed.txt` show `2.02 M tokens (…)`; a German literal test for `common.tokens.total`.
@@ -52,7 +51,6 @@ Source of this plan (read before scoping):
      - Tests that fail before: a conflict whose `current_value` is not a record keeps the stored categories; the dialog's "Yours" line shows what the resend sends; a server refusal shows the minimum; a settings event that refreshes the store does not turn a stale reminder into the operator's change; an added key of the record survives `saveCleanup` (evidence order: `test-first`)
      - The design states the wire form of a 409's `current_value` and which refusals name the minimum, and the daemon item (`plan-marshall/plan-marshall-mcp` accepts the `cleanup_durations` record: checked or still open with its owner) (evidence order: `none`)
      - The stale captures and the `texts-and-languages.adoc` example carry the new wording (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
      - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
 5. **The device list loads without losing an edit or an event (PLAN-100 residue, `landings/PLAN-100.md`)**
    - What: `SettingsView.svelte` bounds its reads and drops a superseded one (`loadSequence`, `loadController`, `listenerKnown`: keep all three through the merge of the two views, deliverable 1). Three leftovers: a successful revoke edits `devices` locally without bumping `loadSequence`, so an older load in flight can re-add the revoked row; `device.revoked` and `device.renamed` arriving during a load are replaced by the load's snapshot (CodeRabbit follow-up F2: drop the snapshot if an event arrived after the read started, the epoch pattern `+layout.svelte` already uses); and the CodeRabbit fixes of PLAN-100 that no test pins: the destroy guard (`if (!isMounted) return;`), the abort of the status read in the catch, the `onDestroy` abort, and a status read that never settles.
@@ -60,9 +58,9 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
    - Done when:
      - Tests that fail before, one per leftover, each failing when its code is reverted: the revoked row stays gone; an event during a load survives it; unmounting during a load writes nothing; the status read is aborted in the catch; a pending status read ends at its bound (evidence order: `mutation-after`; cite the reverted code)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20600 PM_WEB_PORT=20601 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -77,12 +75,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-12)`, `doc/claude_review/ux/proposals.adoc#UX-P-02` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-12 and `ux/proposals.adoc` UX-P-02 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-12 at ux/plan.adoc:80, UX-P-02 proposals.adoc:73, UX-P-11 :355, UC-P-03 use-cases/proposals.adoc:47 present
 - Re-grounded note (2026-10-30, operator request): the tabs of the one settings view are Setup, Access, Credentials, Consents, Retention and **This browser**. The last one is `BrowserSettingsView` of `PLAN-85` (`web-theme-in-browser-settings`): the theme and the language choice, applied at once, no Save, nothing sent to the machine, route `/settings/browser`; later browser-only settings belong in this tab and not in another plan's view. It is a browser setting and not a machine setting, so the one-save, "changed" mark and "reset to inherited" rules of deliverable 2 do not apply to it. If `PLAN-85` has landed, this plan makes `/settings/browser` redirect to `/settings?tab=browser` like `/settings/machine`; if it has not, this plan leaves the tab to `PLAN-85`.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No BrowserSettingsView and no /settings/browser route at HEAD; PLAN-85 not landed so the leave-the-tab-to-PLAN-85 branch applies
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): BrowserSettingsView.svelte and pm-web-app/src/routes/settings/browser do not exist (PLAN-85 not landed), so the spec's 'leaves the tab to PLAN-85' branch applies; routes.ts still has only 'settings' and 'machine-settings'; routes/settings has +page.svelte and machine/.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AppRoute has only settings and machine-settings (routes.ts:25-26); routes/settings holds +page.svelte and machine/ only
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: `applyConflictAgain` still falls back to `{}` when the conflict's `current_value` is not a record — confirm/refute at `pm-web-app/src/lib/views/MachineSettingsView.svelte` § `applyConflictAgain` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: MachineSettingsView.svelte:244 parseCleanupRecord(conflict.currentValue) ?? {} still falls back to {} (spec said ~238-246); changedFields merge now wraps it
 - HYPOTHESIS: no test pins a German `common.tokens.total` — confirm/refute at `pm-web-app/src/lib/i18n/catalogue.test.ts` § `common.tokens` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No German literal test of common.tokens.total: catalogue.test.ts has no tokens key; SystemViewConsistencyTest.java:264 formats by lang; key at common.*.properties:219
 
 ## Expected Surface
 
@@ -107,6 +110,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/devices.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/i18n/catalogue.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/claude_review/cli/resources/screens/system-view.svg` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -128,6 +133,12 @@ population). When restarted:
 - Its form rule becomes the general settings-form rule: "Speichere" disabled until a change, changed marks, reset; device
   rename as an inline edit (008). It builds on `Field`, `RadioGroup`, `NumberField`, `SecretField`.
 - The `transcribe` setting and the speech-consent withdrawal belong to the D4 voice package, not to this plan.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: the rail maps machine-settings onto settings (#274).
 
 ## Hand-Off Command
 
@@ -168,3 +179,10 @@ Dependencies: D1 foundation (field system, FormStatus, Button hierarchy), D2 nav
 New claim bullets:
 
 New claims of this re-grounding are in `## Claim Labels`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150` (`SecretField`, `NumberField`, `SelectField`) and `PLAN-143` (tab addresses).
+- Re-ground at outline: the rail already maps machine-settings to settings (#274).
+- `SettingsView.test` overlaps the `PLAN-85` tab.
+- Transcribe belongs to the voice package.

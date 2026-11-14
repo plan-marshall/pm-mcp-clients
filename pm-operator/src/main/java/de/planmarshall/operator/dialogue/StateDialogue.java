@@ -11,6 +11,7 @@ package de.planmarshall.operator.dialogue;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -51,8 +52,11 @@ public final class StateDialogue {
      */
     static final Map<String, String> PROJECT_STEP_BY_STATE = projectSteps();
 
-    /** How long one working state may stay without a link before the dialogue gives up. */
-    private static final long WORKING_TIMEOUT_NANOS = 60_000_000_000L;
+    /**
+     * How long one working state may stay without a link before the dialogue gives up, unless the
+     * caller names its own bound.
+     */
+    public static final Duration WORKING_TIMEOUT = Duration.ofSeconds(60);
     private static final long POLL_PAUSE_NANOS = 100_000_000L;
     private static final String PROJECT_PREFIX = "project.";
     private static final String ONBOARD_PREFIX = "onboard.";
@@ -171,8 +175,11 @@ public final class StateDialogue {
     private final String locale;
     private final Function<String, ChoicePrompt> prompts;
     private final List<OnboardingAspect> aspects;
+    private final long workingTimeoutNanos;
 
     /**
+     * Creates a dialogue that gives up on a working state after {@link #WORKING_TIMEOUT}.
+     *
      * @param source  the runtime to read and act on
      * @param out     the output of the dialogue
      * @param locale  the interface locale
@@ -180,13 +187,29 @@ public final class StateDialogue {
      */
     public StateDialogue(Source source, PrintWriter out, String locale,
                         Function<String, ChoicePrompt> prompts) {
-        this(source, out, locale, prompts,
-                            source instanceof OnboardingSource onboardingSource
-                                                ? onboardingSource.aspects()
-                                                : List.of(OnboardingAspect.values()));
+        this(source, out, locale, prompts, WORKING_TIMEOUT);
     }
 
     /**
+     * @param source         the runtime to read and act on
+     * @param out            the output of the dialogue
+     * @param locale         the interface locale
+     * @param prompts        creates the strict choice prompt of one state, by its state id
+     * @param workingTimeout how long one working state may stay without a link before the
+     *                       dialogue gives up; must be positive
+     */
+    public StateDialogue(Source source, PrintWriter out, String locale,
+                        Function<String, ChoicePrompt> prompts, Duration workingTimeout) {
+        this(source, out, locale, prompts,
+                            source instanceof OnboardingSource onboardingSource
+                                                ? onboardingSource.aspects()
+                                                : List.of(OnboardingAspect.values()),
+                            workingTimeout);
+    }
+
+    /**
+     * Creates a dialogue that gives up on a working state after {@link #WORKING_TIMEOUT}.
+     *
      * @param source  the runtime to read and act on
      * @param out     the output of the dialogue
      * @param locale  the interface locale
@@ -196,11 +219,22 @@ public final class StateDialogue {
     StateDialogue(Source source, PrintWriter out, String locale,
                         Function<String, ChoicePrompt> prompts,
                         List<OnboardingAspect> aspects) {
+        this(source, out, locale, prompts, aspects, WORKING_TIMEOUT);
+    }
+
+    private StateDialogue(Source source, PrintWriter out, String locale,
+                        Function<String, ChoicePrompt> prompts,
+                        List<OnboardingAspect> aspects, Duration workingTimeout) {
         this.source = Objects.requireNonNull(source, "source");
         this.out = Objects.requireNonNull(out, "out");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.prompts = Objects.requireNonNull(prompts, "prompts");
         this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
+        Objects.requireNonNull(workingTimeout, "workingTimeout");
+        if (workingTimeout.isNegative() || workingTimeout.isZero()) {
+            throw new IllegalArgumentException("the working timeout must be positive");
+        }
+        this.workingTimeoutNanos = workingTimeout.toNanos();
     }
 
     /**
@@ -212,12 +246,12 @@ public final class StateDialogue {
     public Frame run() throws IOException {
         var frame = source.fetch();
         @Nullable Frame last = null;
-        var deadline = System.nanoTime() + WORKING_TIMEOUT_NANOS;
+        var deadline = System.nanoTime() + workingTimeoutNanos;
         while (true) {
             if (!frame.equals(last)) {
                 render(frame);
                 last = frame;
-                deadline = System.nanoTime() + WORKING_TIMEOUT_NANOS;
+                deadline = System.nanoTime() + workingTimeoutNanos;
             }
             if (frame.isFinal()) {
                 return frame;

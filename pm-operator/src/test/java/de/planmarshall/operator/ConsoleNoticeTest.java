@@ -18,10 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.message.MessageCatalogue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -208,6 +210,9 @@ class ConsoleNoticeTest {
         void freshCodeNotice() {
             var notice = ConsoleNotice.formatFreshCodeNotice("KXQB-MRTN", "14:32", "http://127.0.0.1:7420/pair#code=KXQB-MRTN");
             assertAll(
+                                // One check mark: the catalogue line carries its own, and the notice adds none.
+                                () -> assertEquals("✓ New code: KXQB-MRTN, valid until 14:32. The previous code no longer works.",
+                                                    notice.lines().findFirst().orElseThrow()),
                                 () -> assertTrue(notice.contains("✓ New code: KXQB-MRTN, valid until 14:32")),
                                 () -> assertTrue(notice.contains("The previous code no longer works.")),
                                 () -> assertTrue(notice.contains("http://127.0.0.1:7420/pair#code=KXQB-MRTN"))
@@ -284,6 +289,30 @@ class ConsoleNoticeTest {
             assertAll(
                                 () -> assertTrue(ConsoleNotice.fromEventMap(pairedEvent).contains("✓ Paired: local browser")),
                                 () -> assertTrue(ConsoleNotice.fromEventMap(freshEvent).contains("✓ New code: NEWCODE1"))
+            );
+        }
+
+        @Test
+        @DisplayName("a paired event without a label names the device unknown, never null")
+        void pairedWithoutLabel() {
+            var withNull = new HashMap<String, Object>();
+            withNull.put("type", "paired");
+            withNull.put("label", null);
+            var unknown = MessageCatalogue.format("en", "common.unknown", Map.of());
+
+            assertAll(
+                                () -> assertEquals("✓ Paired: " + unknown, ConsoleNotice.fromEventMap(withNull)),
+                                () -> assertEquals("✓ Paired: " + unknown,
+                                                    ConsoleNotice.fromEventMap(Map.of("type", "paired", "label", "  ")))
+            );
+        }
+
+        @Test
+        @DisplayName("a fresh code event that names no code raises no notice instead of a code null")
+        void freshCodeWithoutCode() {
+            assertAll(
+                                () -> assertNull(ConsoleNotice.fromEventMap(Map.of("type", "fresh_code", "valid_until", "15:00"))),
+                                () -> assertNull(ConsoleNotice.fromEventMap(Map.of("type", "fresh_code", "code", " ")))
             );
         }
 
@@ -462,6 +491,128 @@ class ConsoleNoticeTest {
                                 () -> assertTrue(unknownName.contains("◆ Question Q-001 · plan fix-relay"), unknownName),
                                 () -> assertNotNull(unnamedWaiver),
                                 () -> assertTrue(unnamedWaiver.contains("◆ Waiver request WR-2"), unnamedWaiver)
+            );
+        }
+
+        @Test
+        @DisplayName("names an epic's operator wait as the epic's, from the hold and from the envelope")
+        void epicOperatorWait() {
+            var fromHold = ConsoleNotice.fromEventMap("en", "hold.opened", Map.of(
+                                "hold_id", "h-2",
+                                "subject_id", "storage-v2",
+                                "subject_kind", "epic",
+                                "kind", "operator_wait",
+                                "detail", "the decomposition"));
+            var fromEnvelope = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "event", "hold.opened",
+                                "scope", Map.of("kind", "epic", "id", "storage-v2"),
+                                "data", Map.of("kind", "operator_wait", "detail", "the decomposition")));
+            var german = ConsoleNotice.fromEventMap("de", "hold.opened", Map.of(
+                                "subject_id", "storage-v2",
+                                "subject_kind", "epic",
+                                "kind", "operator_wait",
+                                "detail", "die Zerlegung"));
+            var plan = ConsoleNotice.fromEventMap("en", "hold.opened", Map.of(
+                                "subject_id", "fix-relay",
+                                "subject_kind", "plan",
+                                "kind", "operator_wait",
+                                "detail", "token approval"));
+
+            assertAll(
+                                () -> assertEquals("◆ Epic storage-v2 waits for you: the decomposition", fromHold),
+                                () -> assertEquals("◆ Epic storage-v2 waits for you: the decomposition", fromEnvelope),
+                                () -> assertEquals("◆ Epic storage-v2 wartet auf dich: die Zerlegung", german),
+                                () -> assertEquals("◆ Plan fix-relay waits for you: token approval", plan)
+            );
+        }
+
+        @Test
+        @DisplayName("takes the scope the envelope declares when the data names none")
+        void envelopeScope() {
+            var byId = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "event", "hold.opened",
+                                "scope", Map.of("kind", "plan", "id", "fix-relay"),
+                                "data", Map.of("kind", "stalled", "reason", "worker died")));
+            var byProject = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "event", "hold.opened",
+                                "scope", Map.of("kind", "project", "project_id", "pm-mcp-clients"),
+                                "data", Map.of("kind", "setup", "detail", "a credential")));
+            var byTopLevelProject = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "setup", "project", "pm-mcp-clients", "detail", "a credential"));
+            var none = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "event", "hold.opened",
+                                "scope", Map.of("kind", "machine"),
+                                "data", Map.of("kind", "cleanup_due")));
+
+            assertAll(
+                                () -> assertEquals("◆ Plan fix-relay stalled: worker died", byId),
+                                () -> assertEquals("◆ Project pm-mcp-clients: the setup needs you: a credential", byProject),
+                                () -> assertEquals("◆ Project pm-mcp-clients: the setup needs you: a credential",
+                                                    byTopLevelProject),
+                                () -> assertEquals("◆ Cleanup is due", none)
+            );
+        }
+
+        @Test
+        @DisplayName("names a credential by its key, by its link, or as unknown")
+        void credentialKey() {
+            var byLink = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "credential", "link", "/api/v1/credentials/sonar"));
+            var byDetail = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "credential", "detail", "github"));
+            var unnamed = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "credential", "link", "/api/v1/projects/pm-mcp-clients"));
+
+            assertAll(
+                                () -> assertEquals("◆ Credential sonar needs attention", byLink),
+                                () -> assertEquals("◆ Credential github needs attention", byDetail),
+                                () -> assertEquals("◆ Credential unknown needs attention", unnamed)
+            );
+        }
+
+        @Test
+        @DisplayName("shows a channel, a blocking kind and a recommendation without a catalogue text as sent")
+        void valuesWithoutCatalogueText() {
+            var answered = ConsoleNotice.fromEventMap("en", "decision.answered", Map.of(
+                                "id", "Q-007", "answer", "Rebase", "channel", "mobile"));
+            var question = ConsoleNotice.fromEventMap("en", "decision.opened", Map.of("decision", Map.of(
+                                "id", "Q-008",
+                                "subject", "epic storage-v2",
+                                "blocks", "landing-train",
+                                "recommendation", "rebase",
+                                "parts", List.of(Map.of(
+                                                    "recommendation", "3",
+                                                    "options", List.of(Map.of("key", "1", "label", "Merge")))))));
+            var noAnswerChannel = ConsoleNotice.fromEventMap("en", "decision.answered", Map.of(
+                                "id", "Q-009", "answer", "Merge"));
+
+            assertAll(
+                                () -> assertEquals("– Q-007 was answered in the mobile: Rebase. Nothing was sent from here.",
+                                                    answered),
+                                () -> assertNotNull(question),
+                                () -> assertTrue(question.contains("◆ Question Q-008 · epic storage-v2 · landing-train"), question),
+                                () -> assertTrue(question.contains("Recommended: rebase"), question),
+                                () -> assertNull(noAnswerChannel)
+            );
+        }
+
+        @Test
+        @DisplayName("takes the last step of a report's origin and names the place of many")
+        void reportOrigins() {
+            var arrow = ConsoleNotice.fromEventMap("en", "report.sent", Map.of(
+                                "from", "pm-mcp-clients › fix-relay", "subject", "merged"));
+            var project = ConsoleNotice.fromEventMap("en", "report.sent", Map.of(
+                                "project", "pm-mcp-clients", "summary", "done"));
+            var many = ConsoleNotice.fromEventMap("en", "report.sent", Map.of(
+                                "count", 4, "scope", "relay-hardening"));
+            var one = ConsoleNotice.fromEventMap("en", "report.sent", Map.of(
+                                "count", 1, "from", "fix-relay", "subject", "merged"));
+
+            assertAll(
+                                () -> assertEquals("▪ fix-relay: merged", arrow),
+                                () -> assertEquals("▪ pm-mcp-clients: done", project),
+                                () -> assertEquals("▪ 4 new reports · relay-hardening · reports", many),
+                                () -> assertEquals("▪ fix-relay: merged", one)
             );
         }
 

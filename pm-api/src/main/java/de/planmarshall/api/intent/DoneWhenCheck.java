@@ -119,7 +119,8 @@ public record DoneWhenCheck(String text, Verdict verdict, List<String> evidence)
             throw new IllegalArgumentException("text must not be blank");
         }
         evidence = evidence == null ? List.of() : List.copyOf(evidence);
-        if (evidence.stream().anyMatch(value -> value == null || value.isBlank())) {
+        // List.copyOf above already refuses a null element
+        if (evidence.stream().anyMatch(String::isBlank)) {
             throw new IllegalArgumentException("evidence must not carry a blank entry");
         }
         if (verdict.decided() && evidence.isEmpty()) {

@@ -3299,7 +3299,7 @@
               "item_id": "token-usage",
               "kind": "plan",
               "label": "token-usage",
-              "reason": "left out of a delete",
+              "reason": "exclude",
               "kept_at": "13 Oct",
               "kept_by": "the console"
             },
@@ -3307,7 +3307,7 @@
               "item_id": "relay-auth",
               "kind": "epic",
               "label": "relay-auth",
-              "reason": "ignored",
+              "reason": "ignore",
               "kept_at": "2 Oct",
               "kept_by": "the web app (iPad)"
             },
@@ -3315,7 +3315,7 @@
               "item_id": "reports-pm-mcp-clients",
               "kind": "read_reports",
               "label": "3 read reports",
-              "reason": "ignored",
+              "reason": "ignore",
               "kept_at": "2 Oct",
               "kept_by": "the web app (iPad)"
             },
@@ -3323,7 +3323,7 @@
               "item_id": "old-sandbox",
               "kind": "unenrolled_project",
               "label": "old-sandbox",
-              "reason": "ignored",
+              "reason": "ignore",
               "kept_at": "2 Oct",
               "kept_by": "the web app (iPad)"
             }

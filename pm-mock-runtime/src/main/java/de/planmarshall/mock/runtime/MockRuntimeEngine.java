@@ -47,10 +47,14 @@ import org.jspecify.annotations.Nullable;
 
 import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatSubject;
 import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.MessageText;
 import de.planmarshall.api.chat.ProposalKind;
+import de.planmarshall.api.chat.QueuedRevision;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.DecompositionCheck;
@@ -100,6 +104,7 @@ import de.planmarshall.api.entry.PairedDeviceResource;
 import de.planmarshall.api.entry.PairingCode;
 import de.planmarshall.api.entry.PairingRedemptionResponse;
 import de.planmarshall.api.entry.PairingResource;
+import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.entry.WebCredentialResource;
 import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
@@ -131,6 +136,7 @@ import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.WorkLocation;
+import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -223,7 +229,7 @@ import de.planmarshall.mock.scenario.StateDefinition;
  * The core state machine and request dispatcher for the mock runtime.
  */
 @SuppressWarnings("java:S1075")
-public final class MockRuntimeEngine implements AutoCloseable {
+public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private static final CuiLogger LOGGER = new CuiLogger(MockRuntimeEngine.class);
 
@@ -361,6 +367,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_NODE_ID = "node_id";
     private static final String KEY_TITLE = "title";
     private static final String KEY_PHASE = "phase";
+    private static final String KEY_ACTIVITY = "activity";
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
     private static final String KEY_PILOT = "pilot";
@@ -372,6 +379,22 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_PROJECTS = "/api/v1/projects";
     private static final String CONST_LEGACY_PORTAL = "legacy-portal";
     private static final String CONST_UNENROLLED = "unenrolled";
+    /** How a kept item came to be kept: left out of a delete ({@code cleanup-texts.adoc#texts-kept}). */
+    private static final String KEPT_EXCLUDE = "exclude";
+    private static final String ACTOR_CONSOLE = "the console";
+    private static final String ACTOR_WEB_APP = "the web app";
+    private static final String ACTOR_IPAD_WEB_APP = "the web app (iPad)";
+    private static final String KEPT_AT_2_OCT = "2 Oct";
+    private static final String ITEM_TOKEN_USAGE = "token-usage";
+    private static final String KIND_READ_REPORTS = "read_reports";
+    private static final String KEY_ANSWER = "answer";
+    private static final String ACTION_WAIVE = "waive";
+    private static final String ACTION_DECLINE = "decline";
+    private static final String ACTION_LATER = "later";
+    /** The acts a waiver request is answered with: the one definition the handler and its tests read. */
+    public static final Set<String> WAIVER_ACTIONS = Set.of(ACTION_WAIVE, ACTION_DECLINE, ACTION_LATER);
+    /** How a kept item came to be kept: the job was ignored. */
+    private static final String KEPT_IGNORE = "ignore";
     private static final String PATH_ENROL = "/api/v1/enrol";
     private static final String SEGMENT_ENROL = "/enrol";
     private static final String SEGMENT_STORES_DIGEST = "/stores/digest";
@@ -388,7 +411,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_CURRENT_SHA256 = "current_sha256";
     private static final String KEY_NEW_SHA256 = "new_sha256";
     private static final String KEY_STORE_PATH_QUERY = "path";
-    private static final String ERR_CONFIRMATION_MISMATCH = "confirmation_mismatch";
     private static final String ENROL_STORE_PATH = ".plan/marshal.json";
     private static final String ENROL_RECORDED_SHA256 =
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -399,6 +421,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String DECISION_ANSWERED = EventName.DECISION_ANSWERED.wire();
     private static final String DECISION_CLOSED = EventName.DECISION_CLOSED.wire();
     private static final String PATH_CONNECTION_STATUS = "/api/v1/status/connection";
+    private static final String PATH_STATUS = "/api/v1/status";
     private static final String PATH_LAN_LISTENER = "/api/v1/web/listeners/lan";
     private static final String PATH_CREDENTIALS = "/api/v1/credentials/";
     private static final String EVENT_DEVICE_PAIRED = "device.paired";
@@ -463,6 +486,32 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The state whose runtime fixture is the base every other state of the scenario inherits. */
     private static final String BASE_FIXTURE_STATE = "running_work.active";
     private static final String FIXTURE_CONTROL = "control";
+    private static final String KNOWS_DESCRIPTION = "chat.knows.description";
+    private static final String KNOWS_TASKS = "chat.knows.tasks";
+    private static final String KNOWS_PHASE = "chat.knows.phase";
+    private static final String KNOWS_VERSION = "chat.knows.version";
+    private static final String KNOWS_ARG_COUNT = "count";
+    private static final String KNOWS_ARG_PHASE = "phase";
+    private static final String KNOWS_ARG_VERSION = "version";
+    private static final String ACTIVITY_RUNNING = "running";
+    private static final String ACTIVITY_PAUSING = "pausing";
+    private static final String KEY_PHASE_STATE = "phase_state";
+    private static final String KEY_CURRENT_PHASE = "current_phase";
+    private static final String KEY_NEW_PHASE = "new_phase";
+    private static final String KEY_INSTANCE_VERSION = "instance_version";
+    private static final String KEY_TOKENS_SO_FAR = "tokens_so_far";
+    private static final String KEY_TASKS_TOTAL = "tasks_total";
+    private static final String STATE_ENDED = "ended";
+    private static final String STATE_MERGED = "merged";
+    private static final String STATE_WAITING_FOR_YOU = "waiting_for_you";
+    private static final String KEY_NODES = "nodes";
+    private static final String KEY_SUB_NODES = "sub_nodes";
+    private static final String KEY_LEAF_TASKS = "leaf_tasks";
+    private static final String KEY_CHANNEL = "channel";
+    private static final String CHANNEL_WEB = "web";
+    private static final String CHANNEL_CLI = "cli";
+    /** The member the chat registry marks its own announcements with; it never reaches the wire. */
+    private static final String INTERNAL_KEY = "$internal";
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
     private static final String FIXTURE_REPORTS = "reports";
@@ -507,14 +556,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SUFFIX_DECOMPOSITION_COMMIT = "/decomposition/commit";
     private static final String EVENT_DECOMPOSITION_UPDATED = "epic.decomposition_updated";
     private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
-    private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
     private static final String MESSAGE_CLEANUP_JOB_NOT_FOUND = "Cleanup job not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
-    private static final String ERR_START_REFUSED = "start_refused";
-    private static final String ERR_INVALID_REQUEST = "invalid_request";
+    /**
+     * The catalogue's code of a refused start: the state does not offer the act. The refusal's own
+     * cause (project_not_ready, confirmation_required, preview_stale and the others) stays in the
+     * body's {@code reason}, which the clients read.
+     */
+    private static final String ERR_START_REFUSED = ApiErrorCode.ACT_NOT_AVAILABLE.wire();
+    /** The catalogue's code of a request body or parameter that violates the endpoint's schema. */
+    private static final String ERR_INVALID_ARGUMENTS = "invalid_arguments";
     private static final String ERR_CONFIRMATION_REQUIRED = "confirmation_required";
     private static final String ERR_RATE_LIMITED = "rate_limited";
     private static final String ERR_NOT_OPEN = "not_open";
@@ -537,7 +591,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_LESSON_ID = "lesson_id";
     private static final String EVENT_LESSON_CLAIMED = "source.lesson_claimed";
     private static final String EVENT_LESSON_RETIRED = "source.lesson_retired";
-    private static final String ERR_LESSON_CLAIM_REFUSED = "lesson_claim_refused";
     private static final String REASON_LESSON_CLAIMED_ELSEWHERE = "lesson_claimed_elsewhere";
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
@@ -583,7 +636,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_NO_PROJECT_TO_COMPOSE = "no_project_to_compose";
     private static final String ERR_CONFLICT = "conflict";
     private static final String ERR_UNIT_INVALID = "unit_invalid";
-    private static final String ERR_BAD_REQUEST = "bad_request";
     private static final String FIELD_UNIT = "unit";
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_TARGET = "target";
@@ -807,6 +859,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, ReviewResource> controlReviews = new LinkedHashMap<>();
     private final Map<String, ArchiveCheck> controlArchiveChecks = new LinkedHashMap<>();
 
+    /** The plan's queued revision, by plan id, as {@code plan.revision_queued} announces it. */
+    private final Map<String, QueuedRevision> planQueuedRevisions = new LinkedHashMap<>();
+    /** How many instance versions the revisions of chats moved each plan on by, by plan id. */
+    private final Map<String, Integer> planAppliedVersions = new LinkedHashMap<>();
+    /** The chat and the turn the last version of each plan came from, by plan id. */
+    private final Map<String, ChatOrigin> planRevisionOrigins = new LinkedHashMap<>();
+    /** The phase each plan entered while the runtime runs, by plan id. */
+    private final Map<String, String> planPhases = new LinkedHashMap<>();
+    /** The activity each plan reports while the runtime runs, by plan id. */
+    private final Map<String, String> planActivities = new LinkedHashMap<>();
+
     private final Object decompositionLock = new Object();
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
 
@@ -837,7 +900,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
             boolean recordActBodies) {
-        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC);
+        this(registry, scenario, runtimeToken, deviceSecret, recordActBodies, MockTiming.REALISTIC, null);
     }
 
     /**
@@ -847,21 +910,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param deviceSecret    the accepted device secret on the web port
      * @param recordActBodies whether {@code /mock/acts} records decision request bodies
      * @param timing          how scenario events and a chat's reply are played
+     * @param scheduler       the single-threaded scheduler of the states' timed events, their auto
+     *                        transitions and the drain's steps, or {@code null} for the engine's own; a
+     *                        test that supplies its own can hold the timed events until it lets them
+     *                        run instead of waiting for their delay. The engine shuts it down on close.
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
-            boolean recordActBodies, MockTiming timing) {
+            boolean recordActBodies, MockTiming timing, @Nullable ScheduledExecutorService scheduler) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.recordActBodies = recordActBodies;
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
-        this.eventTiming = new EventTiming(timing, scheduler);
+        this.scheduler = scheduler != null ? scheduler
+                : Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
+        this.eventTiming = new EventTiming(timing, this.scheduler);
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
             broadcastEvent(event.name(), event.data());
         });
         this.chatRegistry = new ChatRegistry(event -> broadcastEvent(event.name(), scopedPayload(event)),
-                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal);
+                startRegistry::isEpicEntry, eventTiming, this::applyChatProposal, this);
         setScenario(scenario);
     }
 
@@ -903,6 +971,290 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return eventTiming.timing();
     }
 
+    @Override
+    public List<MessageText> knows(ChatSubject subject, ChatScopeKind scope) {
+        if (scope == ChatScopeKind.ARCHIVE) {
+            return List.of();
+        }
+        return switch (subject.kind()) {
+            case PLAN -> planKnows(subject.id());
+            case EPIC -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            case ENTRY -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            default -> List.of();
+        };
+    }
+
+    /**
+     * What the role of a plan's chat is given of the plan, rendered from the scenario's plan detail
+     * ({@code state-catalogue.adoc#chat-context}, The Context Summary): the description, the tasks'
+     * count, the phase and the instance version, the version being the one the chats moved the plan on
+     * to.
+     *
+     * @param planId the plan's id
+     * @return the items, in order; empty where the scenario serves no such plan
+     */
+    private List<MessageText> planKnows(String planId) {
+        var plan = planDetail(planId);
+        if (plan == null) {
+            return List.of();
+        }
+        var knows = new ArrayList<MessageText>();
+        knows.add(MessageText.of(KNOWS_DESCRIPTION));
+        var tasks = tasksTotal(plan);
+        if (tasks != null) {
+            knows.add(new MessageText(KNOWS_TASKS, Map.of(KNOWS_ARG_COUNT, tasks)));
+        }
+        var phase = planPhase(planId, plan);
+        if (phase != null) {
+            knows.add(new MessageText(KNOWS_PHASE, Map.of(KNOWS_ARG_PHASE, phase)));
+        }
+        knows.add(new MessageText(KNOWS_VERSION, Map.of(KNOWS_ARG_VERSION, instanceVersion(planId))));
+        return knows;
+    }
+
+    @Override
+    public int instanceVersion(String planId) {
+        synchronized (controlLock) {
+            return baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0);
+        }
+    }
+
+    @Override
+    public boolean revisionWindowOpen(String planId) {
+        synchronized (controlLock) {
+            if (STATE_ENDED.equals(controlPlanStates.get(planId))) {
+                return false;
+            }
+        }
+        var plan = planDetail(planId);
+        if (plan == null) {
+            // The scenario serves no detail of the plan: the mock cannot show the window closed.
+            return true;
+        }
+        var state = JsonTree.string(plan, KEY_PHASE_STATE);
+        if (state == null) {
+            state = JsonTree.string(plan, KEY_STATE);
+        }
+        if (STATE_DONE.equals(state) || STATE_ENDED.equals(state) || STATE_MERGED.equals(state)) {
+            return false;
+        }
+        var phase = planPhase(planId, plan);
+        return PHASE_EXECUTE.equals(phase) || "finalize".equals(phase);
+    }
+
+    @Override
+    public String activity(String planId) {
+        synchronized (controlLock) {
+            return controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
+        }
+    }
+
+    @Override
+    public @Nullable String planFor(ChatSubject subject) {
+        if (subject.kind() == ChatSubjectKind.PLAN) {
+            return subject.id();
+        }
+        if (subject.kind() != ChatSubjectKind.DECISION) {
+            return null;
+        }
+        var slash = subject.id().indexOf('/');
+        if (slash <= 0) {
+            return null;
+        }
+        var candidate = subject.id().substring(0, slash);
+        // Only a decision about a plan names one: machine/, project/, epic/ and entry/ decisions do not.
+        return planDetail(candidate) == null ? null : candidate;
+    }
+
+    @Override
+    public boolean offersAct(ChatSubject subject, String act) {
+        synchronized (controlLock) {
+            var actions = switch (subject.kind()) {
+                case PLAN -> buildPlanActions(subject.id()).actions();
+                case EPIC -> buildEpicActions(subject.id()).actions();
+                default -> List.<ActionAvailability>of();
+            };
+            return actions.stream().anyMatch(action -> act.equals(action.action()) && action.available());
+        }
+    }
+
+    @Override
+    public @Nullable QueuedRevision queuedRevision(String planId) {
+        synchronized (controlLock) {
+            return planQueuedRevisions.get(planId);
+        }
+    }
+
+    @Override
+    public void queueRevision(String planId, QueuedRevision revision) {
+        synchronized (controlLock) {
+            planQueuedRevisions.put(planId, revision);
+        }
+    }
+
+    @Override
+    public void revisionChatEnded(String planId) {
+        synchronized (controlLock) {
+            planQueuedRevisions.computeIfPresent(planId, (id, queued) -> new QueuedRevision(queued.chatId(),
+                    queued.turnId(), queued.subject(), false, queued.applies()));
+        }
+    }
+
+    @Override
+    public boolean applyRevision(String planId, int expectedVersion, ChatOrigin origin) {
+        synchronized (controlLock) {
+            if (baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0) != expectedVersion) {
+                return false;
+            }
+            planQueuedRevisions.remove(planId);
+            planAppliedVersions.merge(planId, 1, Integer::sum);
+            planRevisionOrigins.put(planId, origin);
+            return true;
+        }
+    }
+
+    @Override
+    public void clearRevision(String planId) {
+        synchronized (controlLock) {
+            planQueuedRevisions.remove(planId);
+        }
+    }
+
+    /**
+     * @param planId the plan's id
+     * @return the plan's detail as the scenario serves it, its version without the chats' revisions, or
+     *         {@code null} when the scenario serves no such plan
+     */
+    private @Nullable Map<String, Object> planDetail(String planId) {
+        var route = activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS);
+        if (route != null && route.representation() instanceof Map<?, ?> representation) {
+            return orderedMap(representation);
+        }
+        return planSummary(planId);
+    }
+
+    /**
+     * @param planId the plan's id
+     * @return the instance version the scenario's plan detail names, without the chats' revisions
+     */
+    private int baseInstanceVersion(String planId) {
+        var plan = planDetail(planId);
+        var version = plan == null ? null : JsonTree.integer(plan, KEY_INSTANCE_VERSION);
+        return version != null ? version : 1;
+    }
+
+    /**
+     * @param plan the plan's detail
+     * @return the number of tasks the plan's detail names, or {@code null} where it names none
+     */
+    private static @Nullable Integer tasksTotal(Map<String, Object> plan) {
+        var tokens = JsonTree.asObject(plan.get(KEY_TOKENS_SO_FAR));
+        var total = tokens == null ? null : JsonTree.integer(tokens, KEY_TASKS_TOTAL);
+        if (total != null) {
+            return total;
+        }
+        var counted = countLeafTasks(rowsOf(plan, KEY_NODES));
+        return counted == 0 ? null : counted;
+    }
+
+    /**
+     * @param nodes the plan's process nodes
+     * @return the number of leaf tasks they hold, at every depth
+     */
+    private static int countLeafTasks(List<?> nodes) {
+        var count = 0;
+        for (var raw : nodes) {
+            var node = JsonTree.asObject(raw);
+            if (node == null) {
+                continue;
+            }
+            count += rowsOf(node, KEY_LEAF_TASKS).size();
+            count += countLeafTasks(rowsOf(node, KEY_SUB_NODES));
+        }
+        return count;
+    }
+
+    /**
+     * @param planId the plan's id
+     * @param plan   the plan's detail
+     * @return the plan's current phase, the one it entered while the runtime runs where it did, else
+     *         the one the scenario's detail names
+     */
+    private @Nullable String planPhase(String planId, Map<String, Object> plan) {
+        synchronized (controlLock) {
+            var entered = planPhases.get(planId);
+            if (entered != null) {
+                return entered;
+            }
+        }
+        var phase = JsonTree.string(plan, KEY_PHASE);
+        return phase != null ? phase : JsonTree.string(plan, KEY_CURRENT_PHASE);
+    }
+
+    /**
+     * Patches a plan's representation with what its chats moved on: its instance version, the
+     * {@code queued_revision} waiting for its boundary, and the origin of the version a chat's
+     * revision made ({@code state-catalogue.adoc#chat-proposal-states}, {@code #chat-origin}).
+     *
+     * @param planId         the plan's id
+     * @param representation the representation the scenario serves
+     * @return the representation to answer
+     */
+    private Map<String, Object> withPlanOverlay(String planId, Map<?, ?> representation) {
+        var copy = orderedMap(representation);
+        synchronized (controlLock) {
+            copy.put(KEY_INSTANCE_VERSION, baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0));
+            var phase = planPhases.get(planId);
+            if (phase != null) {
+                copy.put(KEY_PHASE, phase);
+                copy.put(KEY_CURRENT_PHASE, phase);
+            }
+            var activity = planActivities.get(planId);
+            if (activity != null) {
+                copy.put(KEY_ACTIVITY, activity);
+            }
+            var queued = planQueuedRevisions.get(planId);
+            if (queued != null) {
+                copy.put("queued_revision", queued.toMap());
+            }
+            var origin = planRevisionOrigins.get(planId);
+            if (origin != null) {
+                copy.put("origin", origin.toMap());
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Patches the plan rows of an overview with the {@code queued_revision} each plan waits for.
+     *
+     * @param rows the plan rows of a project or of an epic
+     * @return the rows to answer
+     */
+    private List<Object> withQueuedRevisions(List<?> rows) {
+        var result = new ArrayList<Object>(rows.size());
+        for (var row : rows) {
+            var map = JsonTree.asObject(row);
+            if (map == null) {
+                result.add(row);
+                continue;
+            }
+            var planId = JsonTree.string(map, "id");
+            if (planId == null) {
+                planId = JsonTree.string(map, KEY_PLAN_ID);
+            }
+            var copy = orderedMap(map);
+            synchronized (controlLock) {
+                var queued = planId == null ? null : planQueuedRevisions.get(planId);
+                if (queued != null) {
+                    copy.put("queued_revision", queued.toMap());
+                }
+            }
+            result.add(copy);
+        }
+        return result;
+    }
+
     /**
      * Replaces the worker writing the reply of a chat: the reply is announced again and restarts from
      * the working line. The seam {@code /mock/inject} plays a replaced worker through.
@@ -926,9 +1278,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return scenario;
     }
 
+    /**
+     * The scenario loader refuses a state whose representation is no JSON object, and the engine reads
+     * every current state as one; a scenario handed to the engine already built gets the same check,
+     * so a runtime never starts in a state a later act would fail on.
+     */
+    private static void requireObjectRepresentations(Scenario scenario) {
+        for (var entry : scenario.states().entrySet()) {
+            if (JsonTree.asObject(entry.getValue().representation()) == null) {
+                throw new IllegalStateException("The state " + entry.getKey() + " of the scenario "
+                        + scenario.name() + " has no object representation");
+            }
+        }
+    }
+
     private synchronized void setScenario(Scenario scenario) {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
+        requireObjectRepresentations(scenario);
         validateRuntimeFixture(scenario);
         StartRegistry.validateEndedWork(scenario, scenario.start());
         validateStateFacts(scenario, scenario.start());
@@ -1493,10 +1860,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         cancelPendingTasks();
         this.currentStateId.set(nextStateId);
 
-        var stateDef = currentScenario.get().state(nextStateId);
-        if (stateDef == null) {
-            return;
-        }
+        // Every caller names a declared state: a scenario's start, a link's or an auto transition's
+        // next (all checked by the loader), or a goToState target checked against the states.
+        var stateDef = Objects.requireNonNull(currentScenario.get().state(nextStateId));
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
@@ -1653,7 +2019,82 @@ public final class MockRuntimeEngine implements AutoCloseable {
         deliverEvent(event, data);
         var payload = payloadOf(data);
         recordEndedWork(event, payload);
+        recordPlanProgress(event, payload);
         chatRegistry.observe(event, payload);
+    }
+
+    /**
+     * Records what an event says the plan moved on to, so a chat's context and the plan's revision
+     * window read the plan as it is now rather than as the scenario's fixture spells it: the phase it
+     * entered, its activity, and its instance version ({@code state-catalogue.adoc#chat-context}).
+     *
+     * @param event   the event's name
+     * @param payload the event's payload
+     */
+    private void recordPlanProgress(String event, Map<String, Object> payload) {
+        var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            return;
+        }
+        synchronized (controlLock) {
+            recordProgressOf(event, payload, planId);
+        }
+    }
+
+    /**
+     * Records one event's contribution to a plan's progress; call under the control lock.
+     *
+     * @param event   the event's name
+     * @param payload the event's payload
+     * @param planId  the plan's id
+     */
+    private void recordProgressOf(String event, Map<String, Object> payload, String planId) {
+        if (EventName.PHASE_CHANGED.wire().equals(event)) {
+            var phase = phaseOf(payload);
+            if (phase != null) {
+                planPhases.put(planId, phase);
+            }
+        } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
+            var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
+            if (version != null) {
+                planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
+            }
+        } else {
+            var activity = activityOf(event, payload);
+            if (activity != null) {
+                planActivities.put(planId, activity);
+            }
+        }
+    }
+
+    /**
+     * @param payload the event's payload
+     * @return the phase the event names, the typed event's {@code new_phase} or the plain {@code phase}
+     */
+    private static @Nullable String phaseOf(Map<String, Object> payload) {
+        var phase = stringMember(payload, KEY_NEW_PHASE);
+        return phase != null ? phase : stringMember(payload, KEY_PHASE);
+    }
+
+    /**
+     * @param event   the event's name
+     * @param payload the event's payload
+     * @return the activity the event reports or implies, or {@code null} for an event that names none
+     */
+    private static @Nullable String activityOf(String event, Map<String, Object> payload) {
+        if (EventName.ACTIVITY_CHANGED.wire().equals(event)) {
+            return stringMember(payload, KEY_ACTIVITY);
+        }
+        if (PlanControlEvent.EVENT_PAUSED.equals(event)) {
+            return ACTIVITY_PAUSING;
+        }
+        if (PlanControlEvent.EVENT_RESUMED.equals(event)) {
+            return ACTIVITY_RUNNING;
+        }
+        if (PlanControlEvent.EVENT_CANCELLED.equals(event) || EventName.SCOPE_ENDED.wire().equals(event)) {
+            return STATE_ENDED;
+        }
+        return null;
     }
 
     /**
@@ -1688,6 +2129,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void deliverEvent(String event, Object data) {
         var payload = payloadOf(data);
+        // The registry's own markers stay off the wire: a client reads the event the catalogue defines.
+        payload.remove(INTERNAL_KEY);
         var scope = scopeOf(event, payload);
 
         var targets = streamTargetsOf(event, scope, payload);
@@ -1914,6 +2357,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on I/O error
      */
     public void dispatch(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        try {
+            route(request, response, isWeb);
+        } catch (InvalidBodyException _) {
+            if (!response.isCommitted()) {
+                response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
+                        KEY_MESSAGE, "The request body is not valid JSON"));
+            }
+        }
+    }
+
+    private void route(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
 
         // 1. Control endpoints under /mock/
@@ -1928,7 +2382,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!isAuthorized(request, response, isWeb)) {
             return;
         }
-        recordOperatorAct(request);
+        recordOperatorAct(request, isWeb);
 
         // 2b. An act against a state left meanwhile is refused before any dynamic route serves it.
         if (handleStaleOperatorLink(request, response)) {
@@ -2110,7 +2564,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var auth = request.header("Authorization");
         if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
-            response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing device secret"));
+            // The catalogue answers an unauthenticated request 401 without a code.
+            response.json(401, Map.of(KEY_MESSAGE, "Invalid or missing device secret"));
             return false;
         }
         return true;
@@ -2121,7 +2576,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
             var jobToken = request.header("PM-MCP-Job-Token");
             if (jobToken == null || !request.path().startsWith("/mcp")) {
-                response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing runtime token"));
+                response.json(401, Map.of(KEY_MESSAGE, "Invalid or missing runtime token"));
                 return false;
             }
         }
@@ -2410,7 +2865,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (newLabel == null || newLabel.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_label", KEY_MESSAGE, "Device label must not be blank"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "Device label must not be blank"));
             return;
         }
 
@@ -2692,28 +3147,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return "https://" + CONST_LAN_HOST + ":" + lanListenerPort;
     }
 
-    private boolean isMachineOnboarded() {
-        var stateId = currentStateId.get();
-        var runtime = stateRuntimeFixture(stateId);
-        if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
-            return onboarded;
-        }
-        if (onboardingProgressFor(stateId) != null) {
-            return machineOnboardedFor(stateId, runtime);
-        }
-        var route = currentScenario.get().route("GET", "/api/v1/status");
+    /**
+     * Whether the machine's onboarding has completed, as the connection status reports it: read from
+     * the status the mock serves, with the reading every client applies to it
+     * ({@link RuntimeEntryResource}), so the two answers can never disagree. A scenario that serves
+     * no status object answers onboarded.
+     *
+     * @return whether the machine is onboarded
+     * @throws IOException when the served status does not decode
+     */
+    private boolean isMachineOnboarded() throws IOException {
+        var route = activeRoute("GET", PATH_STATUS);
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return true;
         }
-        if (Boolean.TRUE.equals(map.get(FIELD_ONBOARDED))) {
-            return true;
-        }
-        if (map.get(FIXTURE_ONBOARD) instanceof Map<?, ?> onboard
-                && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
-                || Boolean.TRUE.equals(onboard.get(FIELD_COMPLETED)))) {
-            return true;
-        }
-        return map.get(FIELD_MACHINE) instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get(FIELD_ONBOARDED));
+        return RuntimeEntryResource.fromMap(servedStatus(map)).onboarded();
     }
 
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -2972,7 +3420,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             validationRequest = WorkflowValidationRequest.fromMap(readBodyMap(request));
         } catch (IOException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "the text is required"));
             return;
         }
         response.json(200, designer.validate(validationRequest).toMap());
@@ -2987,7 +3435,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var text = JsonTree.string(body, FIELD_TEXT);
         if (text == null) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "the text is required"));
             return;
         }
         var existing = designer.findUnit(target, unit);
@@ -3072,6 +3520,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlEpics.clear();
             controlReviews.clear();
             controlArchiveChecks.clear();
+            planQueuedRevisions.clear();
+            planAppliedVersions.clear();
+            planRevisionOrigins.clear();
+            planPhases.clear();
+            planActivities.clear();
 
             var control = fixtureObject(startRuntimeFixture(), FIXTURE_CONTROL);
             if (control == null) {
@@ -3126,7 +3579,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
             }
             var state = JsonTree.string(plan, "state");
-            planStates.put(planId, state != null ? state : "running");
+            planStates.put(planId, state != null ? state : ACTIVITY_RUNNING);
             var epicId = JsonTree.string(plan, "epic_id");
             if (epicId != null) {
                 planEpics.put(planId, epicId);
@@ -3151,10 +3604,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
             }
             var state = JsonTree.string(epic, "state");
-            epicStates.put(epicId, state != null ? state : "running");
+            epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
             epicScope.put(epicId, intMember(epic, "scope"));
-            epicRunning.put(epicId, intMember(epic, "running"));
+            epicRunning.put(epicId, intMember(epic, ACTIVITY_RUNNING));
             epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
             var resource = fixtureObject(epic, "resource",
@@ -3286,7 +3739,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             readChatSeeds(control);
         }
         for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
-            DecisionEnvelope.fromMap(entry);
+            readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
         }
         for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
             readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
@@ -3514,7 +3967,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     ? Map.of(KEY_PROJECT_ID, projectId, KEY_LESSON_ID, lessonId)
                     : withDefaults(bodyMap, projectId, lessonId));
         } catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The claim request could not be read"));
             return;
         }
@@ -3576,7 +4029,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void refuseClaim(MockHttpResponse response, String lessonId, String reason) throws IOException {
-        response.json(409, Map.of(KEY_ERROR, ERR_LESSON_CLAIM_REFUSED, KEY_REASON, reason,
+        // the lesson's state no longer offers the claim; the reason names why
+        response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_REASON, reason,
                 KEY_LESSON_ID, lessonId));
     }
 
@@ -3800,7 +4254,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             instruct = DecompositionInstructRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The instruction could not be read"));
             return;
         }
@@ -3918,7 +4372,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var findings = DecompositionValidator.validate(current.workstreams());
             if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
-                response.json(409, Map.of(KEY_ERROR, ERR_CHECKS_FAIL, KEY_PROJECT_ID, projectId,
+                // Agree is not offered while a check fails (design "Starting Work", the decomposition)
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_PROJECT_ID, projectId,
                         "epic_id", epicId, FIELD_FINDINGS,
                         findings.stream().map(DecompositionCheckFinding::toMap).toList()));
                 return;
@@ -4161,7 +4616,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = EntryOpenRequest.fromMap(bodyMap);
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The opening request could not be read"));
             return;
         }
@@ -4185,15 +4640,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             response.json(200, state.toMap());
         } catch (StartRegistry.ActRefused refused) {
-            var status = switch (refused.error()) {
-                case ERR_INVALID_REQUEST, "invalid_arguments" -> 400;
-                case ERR_LOOPBACK_ONLY, ERR_CLI_ONLY -> 403;
-                case ERR_SCOPE_NOT_FOUND -> 404;
-                default -> 409;
-            };
-            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail(),
+            response.json(statusOf(refused), Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail(),
                     KEY_STATE, entryId));
         }
+    }
+
+    /**
+     * @param refused a start act the registry refused
+     * @return the HTTP status the catalogue pairs with the refusal's code
+     * @throws IllegalArgumentException if the registry refused with a code outside the catalogue
+     */
+    private static int statusOf(StartRegistry.ActRefused refused) {
+        return ApiErrorCode.fromWire(refused.error()).status();
     }
 
     private void handleProjectFiles(MockHttpRequest request, MockHttpResponse response, String projectId,
@@ -4201,7 +4659,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var rootWire = queryParameter(request, "root");
         var root = ConfinedRoot.fromWireOrNull(rootWire != null ? rootWire : ConfinedRoot.CHECKOUT.wireValue());
         if (root == null) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "Unknown root: " + rootWire));
             return;
         }
@@ -4213,8 +4671,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             response.json(200, listing.toMap());
         } catch (StartRegistry.ActRefused refused) {
-            var status = ERR_LOOPBACK_ONLY.equals(refused.error()) ? 403 : 400;
-            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
+            response.json(statusOf(refused), Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
         }
     }
 
@@ -4302,7 +4759,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = StartPlanRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The start request could not be read"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "The start request could not be read"));
             return;
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), parsed.issue(), parsed.documents());
@@ -4332,7 +4789,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = StartEpicRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The epic request could not be read"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "The epic request could not be read"));
             return;
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
@@ -4350,7 +4807,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var bodyMap = readBodyObject(request);
         var projectId = JsonTree.string(bodyMap, KEY_PROJECT_ID);
         if (projectId == null || projectId.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "project_id is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "project_id is required"));
             return;
         }
         String id;
@@ -4397,7 +4854,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var bodyMap = readBodyObject(request);
         var number = parsePrNumber(JsonTree.string(bodyMap, KEY_PR_REFERENCE));
         if (number <= 0) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The pull request reference names no number"));
             return;
         }
@@ -4418,13 +4875,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = PrAdoptRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The adopt request could not be read"));
             return;
         }
         var number = parsePrNumber(parsed.prUrl());
         if (number <= 0) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The pull request reference names no number"));
             return;
         }
@@ -4487,7 +4944,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             parsed = LocalChangesCaptureRequest.fromMap(bodyMap);
         }
         catch (IOException | IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE,
                     "The capture request could not be read"));
             return;
         }
@@ -4646,8 +5103,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (request.body().length == 0) {
             return new LinkedHashMap<>();
         }
-        var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-        return parsed != null ? new LinkedHashMap<>(parsed) : new LinkedHashMap<>();
+        Map<String, Object> parsed;
+        try {
+            parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+        } catch (IOException e) {
+            throw new InvalidBodyException("The request body is no JSON", e);
+        }
+        if (parsed == null) {
+            // a body that is JSON but no object ([], a number, null) is refused like malformed JSON
+            throw new InvalidBodyException("The request body is no JSON object", null);
+        }
+        return new LinkedHashMap<>(parsed);
+    }
+
+    /** A request body that is no JSON: the request is refused {@code invalid_arguments}, not a fault of the runtime. */
+    private static final class InvalidBodyException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        InvalidBodyException(String message, @Nullable IOException cause) {
+            super(message, cause);
+        }
     }
 
     private static String deriveTitle(@Nullable String title, @Nullable String objective, @Nullable String issue,
@@ -4745,7 +5220,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private WorkActions buildPlanActions(String planId) {
-        var state = controlPlanStates.getOrDefault(planId, "running");
+        var state = controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         var epicId = controlPlanEpics.get(planId);
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
@@ -4781,7 +5256,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private WorkActions buildEpicActions(String epicId) {
-        var state = controlEpicStates.getOrDefault(epicId, "running");
+        var state = controlEpicStates.getOrDefault(epicId, ACTIVITY_RUNNING);
         var actions = new ArrayList<ActionAvailability>();
         if ("ended".equals(state)) {
             actions.add(ActionAvailability.enabled("chat"));
@@ -4957,6 +5432,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handlePlanAction(MockHttpRequest request, MockHttpResponse response, String planId, String action)
             throws IOException {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
+        String eventName;
+        Map<String, Object> event;
+        Map<String, Object> resp;
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
                 response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
@@ -4964,12 +5442,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var availability = buildPlanActions(planId).action(action);
             if (availability == null) {
-                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         planId + " is " + controlPlanStates.get(planId)));
                 return;
             }
             if (!availability.available()) {
-                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_REASON, availability.reason() != null ? availability.reason() : ""));
                 return;
             }
@@ -4978,32 +5456,42 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     var point = actionRequest.point() != null ? actionRequest.point() : "task";
                     controlPlanStates.put(planId, "pausing");
                     controlPlanPausePoints.put(planId, point);
-                    broadcastEvent(PlanControlEvent.EVENT_PAUSED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_PAUSED, planId, "pausing", point, null).toMap());
+                    eventName = PlanControlEvent.EVENT_PAUSED;
+                    event = new PlanControlEvent(eventName, planId, "pausing", point, null).toMap();
                 }
                 case ACTION_START -> {
-                    controlPlanStates.put(planId, "running");
+                    controlPlanStates.put(planId, ACTIVITY_RUNNING);
                     controlPlanPausePoints.remove(planId);
-                    broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
+                    eventName = PlanControlEvent.EVENT_RESUMED;
+                    event = new PlanControlEvent(eventName, planId, ACTIVITY_RUNNING, null, null).toMap();
                 }
                 case ACTION_CANCEL, ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
-                    broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                            PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
-                            actionRequest.reason() != null ? actionRequest.reason() : "Cancelled by operator").toMap());
+                    eventName = PlanControlEvent.EVENT_CANCELLED;
+                    event = new PlanControlEvent(eventName, planId, "ended", null,
+                            actionRequest.reason() != null ? actionRequest.reason()
+                                    : "Cancelled by operator").toMap();
                 }
                 default -> {
                     // chat and settings open a dialogue; the state is unchanged
+                    eventName = null;
+                    event = null;
                 }
             }
-            var resp = new LinkedHashMap<String, Object>();
-            resp.put(KEY_STATUS, "ok");
-            resp.putAll(buildPlanActions(planId).toMap());
-            response.json(200, resp);
+            var built = new LinkedHashMap<String, Object>();
+            built.put(KEY_STATUS, "ok");
+            built.putAll(buildPlanActions(planId).toMap());
+            resp = built;
         }
+        // The transition is published before the answer is written, and after the control lock is
+        // released: the chat registry takes its own lock and calls back into these facts, so the two
+        // must never be held in the other order, and a failed write must not silence the transition.
+        if (eventName != null && event != null) {
+            broadcastEvent(eventName, event);
+        }
+        response.json(200, resp);
     }
 
     private void handleEpicAction(MockHttpRequest request, MockHttpResponse response, String epicId, String action)
@@ -5011,17 +5499,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlEpicStates.containsKey(epicId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, epicNotFound(epicId)));
                 return;
             }
             var availability = buildEpicActions(epicId).action(action);
             if (availability == null) {
-                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         epicId + " is " + controlEpicStates.get(epicId)));
                 return;
             }
             if (!availability.available()) {
-                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_REASON, availability.reason() != null ? availability.reason() : ""));
                 return;
             }
@@ -5078,6 +5566,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleResolveHold(MockHttpRequest request, MockHttpResponse response, String planId, String holdId)
             throws IOException {
         var resolution = HoldResolutionRequest.fromMap(readBodyMap(request));
+        // The events are published after the control lock is released: the chat registry takes its own
+        // lock and calls back into these facts, so the two must never be held in the other order.
+        var published = new ArrayList<Runnable>();
+        HoldResolutionResult result;
         synchronized (controlLock) {
             var hold = controlHolds.get(holdKey(planId, holdId));
             if (hold == null) {
@@ -5085,7 +5577,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (!hold.offers(resolution.act())) {
-                response.json(409, Map.of(KEY_ERROR, "act_not_allowed", KEY_MESSAGE,
+                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_MESSAGE,
                         "Hold " + holdId + " does not offer act " + resolution.act()));
                 return;
             }
@@ -5097,25 +5589,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if ("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act)) {
                 released = false;
             }
-            HoldResolutionResult result;
             if (ending) {
-                clearHoldsOf(planId);
-                controlPlanStates.put(planId, "ended");
+                clearHoldsOf(planId).forEach(cleared -> published.add(
+                        () -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared)));
+                controlPlanStates.put(planId, STATE_ENDED);
                 controlPlanPausePoints.remove(planId);
                 var endReason = resolution.reason();
                 if (endReason == null) {
                     endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
                 }
-                broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null, endReason).toMap());
+                var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED,
+                        null, endReason).toMap();
+                published.add(() -> broadcastEvent(PlanControlEvent.EVENT_CANCELLED, cancelled));
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
                 if ("held".equals(controlPlanStates.get(planId))) {
-                    controlPlanStates.put(planId, "running");
+                    controlPlanStates.put(planId, ACTIVITY_RUNNING);
                 }
-                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, hold.holdId(),
+                        hold.subjectId(), hold.subjectKind(), null, null).toMap();
+                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared));
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else {
                 var updated = new HoldRecord(hold.holdId(), hold.subjectId(), hold.subjectKind(), hold.kind(),
@@ -5123,34 +5617,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         hold.recordedDigest(), hold.currentSize(), hold.currentDigest(), hold.acts(),
                         hold.pullRequestUrl());
                 controlHolds.put(holdKey(planId, holdId), updated);
-                broadcastEvent(HoldChangedEvent.EVENT_CHANGED, new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED,
-                        updated.holdId(), updated.subjectId(), updated.subjectKind(), updated.kind(),
-                        updated.cause()).toMap());
+                var changed = new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED, updated.holdId(),
+                        updated.subjectId(), updated.subjectKind(), updated.kind(), updated.cause()).toMap();
+                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CHANGED, changed));
                 result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
             }
-            response.json(200, result.toMap());
         }
+        published.forEach(Runnable::run);
+        response.json(200, result.toMap());
     }
 
     /**
      * Clears every hold the plan carries, because ending the plan ends all of them.
      *
      * @param planId the plan being ended
+     * @return the {@code hold.cleared} payloads of the holds it cleared, to publish after the lock
      */
-    private void clearHoldsOf(String planId) {
-        var cleared = new ArrayList<HoldRecord>();
+    private List<Map<String, Object>> clearHoldsOf(String planId) {
+        var cleared = new ArrayList<Map<String, Object>>();
         var iterator = controlHolds.values().iterator();
         while (iterator.hasNext()) {
             var candidate = iterator.next();
             if (planId.equals(candidate.subjectId())) {
-                cleared.add(candidate);
+                cleared.add(new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, candidate.holdId(),
+                        candidate.subjectId(), candidate.subjectKind(), null, null).toMap());
                 iterator.remove();
             }
         }
-        for (var done : cleared) {
-            broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                    done.holdId(), done.subjectId(), done.subjectKind(), null, null).toMap());
-        }
+        return cleared;
     }
 
     private void handleGetPlanSettings(MockHttpResponse response, String planId) throws IOException {
@@ -5176,9 +5670,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if ("landing".equals(update.aspect()) && "landing.main".equals(update.value())) {
-                response.json(400, Map.of(KEY_ERROR, "refused",
-                        KEY_REASON, "the base branch of pm-mcp-clients is protected",
-                        "value", update.value()));
+                // plan-settings.validate refuses a value the project does not allow; the catalogue's
+                // code for a request value the endpoint refuses is invalid_arguments (400).
+                response.json(ApiErrorCode.INVALID_ARGUMENTS.status(),
+                        Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                                KEY_REASON, "the base branch of pm-mcp-clients is protected",
+                                "value", update.value()));
                 return;
             }
             var values = controlSettings.computeIfAbsent(planId, _ -> new LinkedHashMap<>());
@@ -5200,7 +5697,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var resource = controlEpics.get(epicId);
             if (resource == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, epicNotFound(epicId)));
                 return;
             }
             var map = new LinkedHashMap<>(resource.toMap());
@@ -5356,7 +5853,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
                         ReportKind.PLAN_STARTED,
                         "relay-token-store started by relay-hardening (2 of 3 at once)",
-                        Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
+                        Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, ACTIVITY_RUNNING, 2, "scope", 3, "by", "epic"),
                         null,
                         Instant.parse(CONST_TIME_11_21),
                         Instant.parse(CONST_TIME_11_21),
@@ -5489,7 +5986,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 CONST_FIX_RELAY,
                 CONST_FIX_RELAY,
                 new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
-                "merged",
+                STATE_MERGED,
                 "the pull request #214 was merged into main",
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
@@ -5806,8 +6303,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (ids.isEmpty()) {
             // The contract carries the ids alone. A body without them, the removed all form among
             // them, marks nothing and is refused so a caller cannot believe it read a report.
-            response.json(422, Map.of(
-                    KEY_ERROR, "report_ids_required",
+            response.json(400, Map.of(
+                    KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "POST /api/v1/reports/read needs a non-empty report_ids list"));
             return;
         }
@@ -5830,11 +6327,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleGetPlanCompletion(MockHttpResponse response, String planId) throws IOException {
         if (CONST_RELAY_TOKEN_STORE.equals(planId) || "running-plan".equals(planId)) {
+            // A running plan does not offer its completion report yet: the catalogue's act_not_available.
             response.json(409, Map.of(
-                    KEY_ERROR, "plan_running",
+                    KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                     KEY_MESSAGE, planId + " is running; its completion report follows when it ends",
                     "plan", planId,
-                    KEY_STATE, "running"
+                    KEY_STATE, ACTIVITY_RUNNING
             ));
             return;
         }
@@ -5857,6 +6355,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void handleStatusRoute(RouteDefinition route, Map<?, ?> map, MockHttpResponse response)
             throws IOException {
+        response.json(route.status(), servedStatus(map));
+    }
+
+    /**
+     * @param map the status route's representation
+     * @return the status the mock serves for it: the route completed with the live members, and in
+     *         the onboarding scenario with what the current state implies
+     */
+    private Map<String, Object> servedStatus(Map<?, ?> map) {
         var copy = new LinkedHashMap<String, Object>();
         for (var entry : map.entrySet()) {
             if (FIXTURE_WEB.equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
@@ -5884,7 +6391,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("drain_remaining_items", items);
             copy.put("drain_remaining_count", items.size());
         }
-        response.json(route.status(), copy);
+        return copy;
     }
 
     /**
@@ -5976,37 +6483,40 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
-        if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
+        if (!(rep instanceof Map<?, ?> map)) {
+            response.json(route.status(), rep);
+            return;
+        }
+        if (PATH_STATUS.equals(path)) {
             handleStatusRoute(route, map, response);
             return;
         }
-        if (rep instanceof Map<?, ?> map && (PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
+        if ((PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
                 && map.get(CONST_PROJECTS) instanceof List<?> list) {
             var copy = orderedMap(map);
             copy.put(CONST_PROJECTS, orderedProjects(list));
             response.json(route.status(), copy);
             return;
         }
-        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)) {
-            var detail = JsonTree.asObject(rep);
-            if (detail != null && (detail.get(KEY_PLANS) instanceof List<?> || detail.get(KEY_EPICS) instanceof List<?>)) {
-                var copy = orderedMap(map);
-                copy.put(KEY_PLANS, orderedActiveWork(rowsOf(detail, KEY_PLANS)));
-                var epics = new ArrayList<Object>();
-                for (var epicRow : rowsOf(detail, KEY_EPICS)) {
-                    var epicMap = JsonTree.asObject(epicRow);
-                    if (epicMap != null && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
-                        var epicCopy = orderedMap(epicMap);
-                        epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
-                        epics.add(epicCopy);
-                    } else {
-                        epics.add(epicRow);
-                    }
+        // A project's detail: its plans and its epics. The ended work of a project (.../ended) never
+        // reaches here as a read (handleProjectOverviewRoutes serves it) and lists items, not plans.
+        if (path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)
+                && (map.get(KEY_PLANS) instanceof List<?> || map.get(KEY_EPICS) instanceof List<?>)) {
+            var copy = orderedMap(map);
+            copy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(rowsOf(copy, KEY_PLANS))));
+            var epics = new ArrayList<Object>();
+            for (var epicRow : rowsOf(copy, KEY_EPICS)) {
+                if (epicRow instanceof Map<?, ?> epicMap && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
+                    var epicCopy = orderedMap(epicMap);
+                    epicCopy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(epicPlans)));
+                    epics.add(epicCopy);
+                } else {
+                    epics.add(epicRow);
                 }
-                copy.put(KEY_EPICS, orderedActiveWork(epics));
-                response.json(route.status(), copy);
-                return;
             }
+            copy.put(KEY_EPICS, orderedActiveWork(epics));
+            response.json(route.status(), copy);
+            return;
         }
         response.json(route.status(), rep);
     }
@@ -6072,7 +6582,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private static boolean ended(@Nullable Object row) {
         var map = JsonTree.asObject(row);
-        return map != null && "ended".equals(JsonTree.string(map, "phase_state"));
+        return map != null && STATE_ENDED.equals(JsonTree.string(map, KEY_PHASE_STATE));
     }
 
     /**
@@ -6304,12 +6814,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
         } catch (IllegalArgumentException _) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_query",
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                     KEY_MESSAGE, "The search text has malformed percent-encoding"));
             return;
         }
         if (query == null || query.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_query", KEY_MESSAGE, "An empty search text is refused"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "An empty search text is refused"));
             return;
         }
         var text = query.trim();
@@ -6606,6 +7116,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleMessages(MockHttpRequest request, MockHttpResponse response) throws IOException {
         if (!"GET".equalsIgnoreCase(request.method())) {
+            // A transport answer of HTTP, outside the catalogue of /api/v1 refusals: the route is GET-only.
             response.json(405, Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "Only GET is supported for messages"));
             return;
         }
@@ -6619,7 +7130,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var sub = path.substring("/api/v1/messages/".length());
         var parts = sub.split("/");
         if (parts.length > 2) {
-            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "Unexpected path segments"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "Unexpected path segments"));
             return;
         }
         var locale = parts[0];
@@ -7182,7 +7693,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (RuntimeException _) {
+            } catch (IOException | RuntimeException _) {
                 // a payload that is not a decision envelope opens nothing; the notice still goes out
             }
         } else {
@@ -7195,12 +7706,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Records one operator act: an authenticated request that is not a read. A dialogue sends one
      * when it sends what the operator chose. A request is recorded whether the runtime accepts or
-     * refuses it, so the log proves what was sent, not what took effect. The log is what
-     * {@code GET /mock/acts} serves.
+     * refuses it, so the log proves what was sent, not what took effect. The channel is the listener's
+     * — {@code cli} on the Unix socket, {@code web} with the device on the web listener — never a
+     * request's own default. The log is what {@code GET /mock/acts} serves.
      *
      * @param request the authenticated request
+     * @param isWeb   {@code true} if the request arrived on the web listener
      */
-    private void recordOperatorAct(MockHttpRequest request) {
+    private void recordOperatorAct(MockHttpRequest request, boolean isWeb) {
         var method = request.method().toUpperCase(Locale.ROOT);
         if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)) {
             return;
@@ -7213,10 +7726,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
+        act.put(KEY_CHANNEL, isWeb ? CHANNEL_WEB : CHANNEL_CLI);
+        var deviceId = isWeb ? webListenerDevice() : null;
+        if (deviceId != null) {
+            act.put(KEY_DEVICE_ID, deviceId);
+        }
         if (recordActBodies && carriesDecisionBody(request.path())) {
             act.put("body", request.bodyText());
         }
         operatorActs.add(act);
+    }
+
+    /**
+     * @return the id of the device the web listener's secret belongs to, or {@code null} when no
+     *         device is paired
+     */
+    private @Nullable String webListenerDevice() {
+        synchronized (devicesLock) {
+            return pairedDevices.isEmpty() ? null : pairedDevices.getFirst().deviceId();
+        }
     }
 
     /**
@@ -7474,7 +8002,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             state = currentScenario.get().state(previousState);
         }
         if (state == null || state.links().isEmpty()) {
-            response.json(409, Map.of(KEY_ERROR, "no_step", KEY_STATE,
+            response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_STATE,
                     previousState != null ? previousState : ""));
             return;
         }
@@ -7793,7 +8321,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (!applyMachineSetting(update.key(), update.value())) {
                 // A value the setting cannot read is refused, so a caller never sees "saved" for a
                 // record none of whose figures took effect.
-                response.json(400, Map.of(KEY_ERROR, "invalid_value",
+                response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
                         KEY_MESSAGE, "The value is not readable for " + update.key()));
                 return;
             }
@@ -8025,10 +8553,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             dropBufferedDrainFrames();
 
             keptItems.clear();
-            keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", "left out of a delete", "13 Oct", "the console"));
-            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", "ignored", "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", "read_reports", "3 read reports", "ignored", "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", "ignored", "2 Oct", "the web app (iPad)"));
+            // how is the wire value the catalogue selects on: ignore or exclude
+            keptItems.add(new CleanupKeptItem(ITEM_TOKEN_USAGE, "plan", ITEM_TOKEN_USAGE, KEPT_EXCLUDE, "13 Oct", ACTOR_CONSOLE));
+            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
+            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", KIND_READ_REPORTS, "3 read reports", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
+            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
 
             cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
             cleanupResidues.clear();
@@ -8043,11 +8572,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     new CleanupItemEntry(CONST_DOCS_TYPO, CLEANUP_KIND_PLAN, CONST_DOCS_TYPO, "no change", "11 Sep", 2097152L, 1, 0, null),
                     new CleanupItemEntry(CONST_RELAY_HARDENING, CLEANUP_KIND_EPIC, CONST_RELAY_HARDENING, FIELD_COMPLETED, "10 Sep", 12582912L, 0, 0, null),
                     new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
-                    new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
+                    new CleanupItemEntry("reports-clients", KIND_READ_REPORTS, "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
             );
             var coreEntries = List.of(
-                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
-                    new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
+                    new CleanupItemEntry(ITEM_TOKEN_USAGE, "plan", ITEM_TOKEN_USAGE, "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
+                    new CleanupItemEntry("reports-core", KIND_READ_REPORTS, "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
             );
             var unenrolledEntries = List.of(
                     new CleanupItemEntry(CONST_LEGACY_PORTAL, "unenrolled_project", CONST_LEGACY_PORTAL, "unenrolled 2 Sep · 7 plans, 1 epic", null, 1181116000L, 0, 0, null)
@@ -8532,7 +9061,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             if (accept == null || !tampered.currentSha256().equals(accept.confirmedSha256())) {
                 response.json(409, Map.of(
-                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_ERROR, ERR_CONFLICT,
                         KEY_MESSAGE, "The confirmed SHA-256 does not match the current enrolment file",
                         KEY_CURRENT_SHA256, tampered.currentSha256()));
                 return;
@@ -8605,7 +9134,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         boolean hasId = pathProjectId != null && !pathProjectId.isBlank();
         if (!hasId && (projectPath == null || projectPath.isBlank())) {
-            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A checkout path is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS, KEY_MESSAGE, "A checkout path is required"));
             return;
         }
         var projectId = hasId ? pathProjectId : projectIdFromPath(projectPath);
@@ -8672,7 +9201,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
                 response.json(409, Map.of(
-                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_ERROR, ERR_CONFLICT,
                         KEY_MESSAGE, "The confirmed SHA-256 does not match the current file",
                         KEY_CURRENT_SHA256, store.currentSha256()));
                 return;
@@ -9340,14 +9869,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         int tasksQueued;
         int activeProjects;
         if (projectFilter != null && !projectFilter.isBlank()) {
-            plansByState = Map.of("running", 2, "waiting_for_you", 1);
-            epicsByState = Map.of("running", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 2, STATE_WAITING_FOR_YOU, 1);
+            epicsByState = Map.of(ACTIVITY_RUNNING, 1);
             tasksRunning = 2;
             tasksQueued = 3;
             activeProjects = 1;
         } else {
-            plansByState = Map.of("running", 3, "waiting_for_you", 1, "held", 1, "paused", 2);
-            epicsByState = Map.of("running", 1, "waiting_for_you", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, "held", 1, "paused", 2);
+            epicsByState = Map.of(ACTIVITY_RUNNING, 1, STATE_WAITING_FOR_YOU, 1);
             tasksRunning = 4;
             tasksQueued = 6;
             activeProjects = 3;
@@ -9358,7 +9887,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, ITEM_TOKEN_USAGE),
                 new WorkerMetric("reviewer", CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
         );
 
@@ -9413,7 +9942,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     """;
             response.send(200, "text/plain; charset=utf-8", notes);
         } else {
-            response.json(404, Map.of(KEY_ERROR, "version_not_found", KEY_MESSAGE, "No release notes available for version: " + version));
+            // An unknown version is an unknown target of the catalogue.
+            response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(), KEY_MESSAGE, "No release notes available for version: " + version));
         }
     }
 
@@ -9484,7 +10014,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             canWithdrawStop = true;
         }
         if (!repeated || drainingBy == null) {
-            drainingBy = isWeb ? "the web app" : "the console";
+            drainingBy = isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE;
         }
         drainThen = THEN_RESTART.equalsIgnoreCase(thenVal) ? THEN_RESTART : THEN_EXIT;
         var generation = drainGeneration.incrementAndGet();
@@ -9523,34 +10053,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Moves the scenario on as the stop-now act of the current state declares: a state that offers
      * a stop act whose parameters carry {@code when=now} names the state the stopped runtime is in
-     * ({@code next} of its link), so the handler, the advertised act and the scenario agree.
+     * ({@code next} of its link), so the handler, the advertised act and the scenario agree. A state
+     * that offers no such act stays where it is.
+     *
+     * <p>The scenario loader guarantees what this reads: the current state is always one the
+     * scenario declares (every start, {@code next} and {@code goToState} target is checked), its
+     * representation decodes as an operator state whose every advertised link is an object with an
+     * id, a method and an href, and every advertised link has a scenario link of the same id.
      *
      * @param request the stop request
      */
     private void followStopNowLink(MockHttpRequest request) {
         synchronized (this) {
-            var stateId = currentStateId.get();
-            var state = currentScenario.get().state(stateId);
-            var representation = state != null ? JsonTree.asObject(state.representation()) : null;
-            var links = representation != null ? JsonTree.asArray(representation.get(KEY_LINKS)) : null;
-            if (state == null || links == null) {
+            var state = Objects.requireNonNull(currentScenario.get().state(currentStateId.get()));
+            var representation = Objects.requireNonNull(JsonTree.asObject(state.representation()));
+            var links = JsonTree.asArray(representation.get(KEY_LINKS));
+            if (links == null) {
                 return;
             }
             for (var element : links) {
-                var link = JsonTree.asObject(element);
-                var linkId = link != null ? JsonTree.string(link, "id") : null;
-                var params = link != null ? JsonTree.object(link, KEY_PARAMS) : null;
-                if (linkId == null || params == null
-                        || !request.method().equalsIgnoreCase(JsonTree.string(link, KEY_METHOD))
-                        || !request.path().equals(JsonTree.string(link, KEY_HREF))
-                        || !"now".equalsIgnoreCase(JsonTree.string(params, "when"))) {
-                    continue;
+                var link = Objects.requireNonNull(JsonTree.asObject(element));
+                var params = JsonTree.object(link, KEY_PARAMS);
+                if (request.path().equals(JsonTree.string(link, KEY_HREF))
+                        && request.method().equalsIgnoreCase(JsonTree.string(link, KEY_METHOD))
+                        && params != null && "now".equalsIgnoreCase(JsonTree.string(params, "when"))) {
+                    var linkId = Objects.requireNonNull(JsonTree.string(link, "id"));
+                    transitionTo(Objects.requireNonNull(state.links().get(linkId)).next());
+                    return;
                 }
-                var declared = state.links().get(linkId);
-                if (declared != null) {
-                    transitionTo(declared.next());
-                }
-                return;
             }
         }
     }
@@ -9601,7 +10131,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                     KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
-                    "draining_by", drainingBy != null ? drainingBy : "the console",
+                    "draining_by", drainingBy != null ? drainingBy : ACTOR_CONSOLE,
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
                     KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
                     "can_withdraw", canWithdrawStop,
@@ -9656,12 +10186,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 drainGeneration.incrementAndGet();
                 drainRemainingItems.set(List.of());
                 broadcastEvent("runtime.drain_withdrawn", Map.of(
-                        KEY_LIFECYCLE_STATE, "running",
+                        KEY_LIFECYCLE_STATE, ACTIVITY_RUNNING,
                         KEY_STATUS, "drain_withdrawn"
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", "running"
+                        "lifecycle_state", ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
@@ -9723,11 +10253,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", "running"
+                        "lifecycle_state", ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
-                        KEY_ERROR, "cannot_withdraw",
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_MESSAGE, "Cannot withdraw upgrade: runtime is not upgrading"
                 ));
             }
@@ -9765,8 +10295,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             // nothing new, a cleanup deletion included.
             if (lifecycleState == RuntimeLifecycleState.DRAINING || lifecycleState == RuntimeLifecycleState.STOPPING
                     || lifecycleState == RuntimeLifecycleState.STOPPED) {
+                // A stopping runtime does not offer the act: the catalogue's act_not_available.
                 response.json(409, Map.of(
-                        KEY_ERROR, "runtime_stopping",
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_MESSAGE, "The runtime is stopping; nothing new starts."
                 ));
                 return;
@@ -9805,7 +10336,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var entry = cleanupEntry(un);
                 if (entry != null) {
                     keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
-                            "left out of a delete", "today", isWeb ? "the web app" : "the console"));
+                            KEPT_EXCLUDE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
                 }
             }
 
@@ -9938,7 +10469,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             for (var prj : activeCleanupJob.projectItems()) {
                 for (var entry : prj.items()) {
-                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), "ignored", "today", isWeb ? "the web app" : "the console"));
+                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), KEPT_IGNORE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
                 }
             }
 
@@ -10064,7 +10595,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             operatorCreatedDecisionIds.clear();
             var fixture = startRuntimeFixture();
             for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
-                var decision = DecisionEnvelope.fromMap(entry);
+                var decision = readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
                 openDecisions.put(decision.id(), decision);
             }
         }
@@ -10081,7 +10612,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             openDecisions.put(decision.id(), decision);
             operatorCreatedDecisionIds.add(decision.id());
         }
-        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, decision.toMap()));
+        var opened = new LinkedHashMap<String, Object>();
+        opened.put(KEY_ID, decision.id());
+        var planId = extractPlan(decision);
+        if (planId != null) {
+            opened.put(KEY_PLAN_ID, planId);
+        }
+        opened.put(CONST_DECISION, decision.toMap());
+        broadcastEvent(DECISION_OPENED, opened);
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
@@ -10103,6 +10641,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return "pm-mcp-clients";
     }
 
+    private static String epicNotFound(String epicId) {
+        return "Epic not found: " + epicId;
+    }
+
+    private static String questionNotFound(String decisionId) {
+        return "Question " + decisionId + " not found.";
+    }
+
     private boolean handleDecisionRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
         var method = request.method();
@@ -10119,57 +10665,53 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 2. Decision specific routes
-        String decisionId = null;
-        String action = null;
+        var sub = decisionSubPath(path);
+        return sub != null && handleDecisionAct(request, response, method, sub, isWeb);
+    }
+
+    /**
+     * The decision, question and plan-scoped forms all name the id and then the act; a question names
+     * its act like a decision does, so only /answers answers it.
+     *
+     * @return the path after the forms' prefix, or {@code null} when the path is no decision route
+     */
+    private static @Nullable String decisionSubPath(String path) {
         if (path.startsWith(API_DECISIONS_PATH)) {
-            var sub = path.substring(API_DECISIONS_PATH.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = sub.substring(slash + 1);
+            return path.substring(API_DECISIONS_PATH.length());
+        }
+        if (path.startsWith(API_QUESTIONS_PATH)) {
+            return path.substring(API_QUESTIONS_PATH.length());
+        }
+        if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
+            return path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
+        }
+        return null;
+    }
+
+    private boolean handleDecisionAct(MockHttpRequest request, MockHttpResponse response, String method,
+            String sub, boolean isWeb) throws IOException {
+        int slash = sub.indexOf('/');
+        var decisionId = slash < 0 ? sub : sub.substring(0, slash);
+        var action = slash < 0 ? null : sub.substring(slash + 1);
+        if (action == null) {
+            if (!"GET".equals(method)) {
+                return false;
             }
-        } else if (path.startsWith(API_QUESTIONS_PATH)) {
-            var sub = path.substring(API_QUESTIONS_PATH.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = "answer";
-            }
-        } else if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
-            var sub = path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
-            int slash = sub.indexOf('/');
-            if (slash < 0) {
-                decisionId = sub;
-            } else {
-                decisionId = sub.substring(0, slash);
-                action = sub.substring(slash + 1);
+            handleGetDecision(response, decisionId);
+            return true;
+        }
+        if (!METHOD_POST.equals(method)) {
+            return false;
+        }
+        switch (action) {
+            case KEY_ANSWER, "answers" -> handleAnswerDecision(request, response, decisionId, isWeb);
+            case "interpret" -> handleInterpretDecision(request, response, decisionId);
+            case "withdraw" -> handleWithdrawDecision(request, response, decisionId);
+            default -> {
+                return false;
             }
         }
-
-        if (decisionId != null) {
-            if ("GET".equals(method) && action == null) {
-                handleGetDecision(response, decisionId);
-                return true;
-            }
-            if (METHOD_POST.equals(method) && ("answer".equals(action) || "answers".equals(action))) {
-                handleAnswerDecision(request, response, decisionId, isWeb);
-                return true;
-            }
-            if (METHOD_POST.equals(method) && "interpret".equals(action)) {
-                handleInterpretDecision(request, response, decisionId);
-                return true;
-            }
-            if (METHOD_POST.equals(method) && "withdraw".equals(action)) {
-                handleWithdrawDecision(request, response, decisionId);
-                return true;
-            }
-        }
-
-        return false;
+        return true;
     }
 
     private void handleListDecisions(MockHttpRequest request, MockHttpResponse response, @Nullable String planFromPath) throws IOException {
@@ -10225,7 +10767,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             map.put("project", extractProject(envelope));
             response.json(200, map);
         } else {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
         }
     }
 
@@ -10235,16 +10777,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
             envelope = openDecisions.get(decisionId);
         }
         if (envelope == null) {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
             return;
         }
 
+        // A body that is no answer object is refused like the runtime does: it never answers the
+        // decision with a choice the operator did not make.
         DecisionAnswerRequest answerReq;
         try {
             answerReq = DecisionAnswerRequest.fromJson(request.bodyText());
         } catch (IOException | IllegalArgumentException | IllegalStateException _) {
-            answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, isWeb ? "web" : "cli", null);
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "The answer to " + decisionId + " is no answer object."));
+            return;
         }
+        // The channel is the listener's, never a request's own default (PLAN-132 D5), and so is the
+        // device an answer on the web listener came from.
+        answerReq = new DecisionAnswerRequest(answerReq.partAnswers(), answerReq.option(), answerReq.ownWords(),
+                answerReq.note(), answerReq.action(), answerReq.reason(), isWeb ? CHANNEL_WEB : CHANNEL_CLI,
+                isWeb ? webListenerDevice() : null);
 
         if (envelope.isWaiver()) {
             handleWaiverAnswer(response, decisionId, answerReq);
@@ -10254,9 +10805,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleWaiverAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
-        var action = answerReq.action() != null ? answerReq.action() : (answerReq.option() != null ? answerReq.option() : "waive");
-        if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
+        var action = answerReq.action() != null ? answerReq.action() : answerReq.option();
+        if (ACTION_LATER.equalsIgnoreCase(action) || ACTION_LATER.equalsIgnoreCase(answerReq.option())) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
+            return;
+        }
+        // an action that is not one of the acts, an absent one included, is refused: a waiver is never
+        // granted by default
+        var normalized = action == null ? "" : action.toLowerCase(Locale.ROOT);
+        if (!WAIVER_ACTIONS.contains(normalized)) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_ARGUMENTS,
+                    KEY_MESSAGE, "A waiver request is answered by waive, decline or later."));
             return;
         }
         var reason = answerReq.reason();
@@ -10264,12 +10823,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
             return;
         }
-        var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
+        var outcome = ACTION_WAIVE.equals(normalized) ? "waived" : "declined";
+        DecisionEnvelope answered;
         synchronized (decisionsLock) {
-            openDecisions.remove(decisionId);
+            answered = openDecisions.remove(decisionId);
+        }
+        if (answered == null) {
+            response.json(409, Map.of(KEY_ERROR, "already_answered", KEY_MESSAGE,
+                    "Decision " + decisionId + " is no longer open"));
+            return;
         }
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
-                answerReq.channel(), answerReq.device()));
+                answerReq.channel(), answerReq.device(), extractPlan(answered)));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
@@ -10286,25 +10851,36 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (chosen == null && !answerReq.partAnswers().isEmpty()) {
             chosen = answerReq.partAnswers().values().iterator().next().toString();
         }
-        if ("later".equalsIgnoreCase(answerReq.action()) || "later".equalsIgnoreCase(chosen) || "l".equalsIgnoreCase(chosen)) {
+        if (ACTION_LATER.equalsIgnoreCase(answerReq.action()) || ACTION_LATER.equalsIgnoreCase(chosen)) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
         if (chosen == null) {
-            chosen = "1";
+            // An answer that names no option, no own words, and no part answer chooses nothing: it is
+            // refused and the decision stays open, never answered with a made-up first option.
+            response.json(ApiErrorCode.INVALID_ARGUMENTS.status(), Map.of(KEY_ERROR,
+                    ApiErrorCode.INVALID_ARGUMENTS.wire(), KEY_MESSAGE, "The answer names no option, no own words, and no part answer."));
+            return;
         }
 
+        DecisionEnvelope answered;
         synchronized (decisionsLock) {
-            openDecisions.remove(decisionId);
+            answered = openDecisions.remove(decisionId);
+        }
+        if (answered == null) {
+            response.json(409, Map.of(KEY_ERROR, "already_answered", KEY_MESSAGE,
+                    "Decision " + decisionId + " is no longer open"));
+            return;
         }
 
-        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(), answerReq.device()));
+        broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(),
+                answerReq.device(), extractPlan(answered)));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
-                "answer", chosen
+                KEY_ANSWER, chosen
         ));
-        response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, "answer", chosen));
+        response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, KEY_ANSWER, chosen));
     }
 
     /**
@@ -10313,10 +10889,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * answer carried one, so a client renders an answer without a device through the variant without one.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
-            @Nullable String device) {
+            @Nullable String device, @Nullable String planId) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", decisionId);
-        payload.put("answer", answer);
+        payload.put(KEY_ANSWER, answer);
+        if (planId != null) {
+            payload.put(KEY_PLAN_ID, planId);
+        }
         if (channel != null) {
             payload.put("channel", channel);
         }
@@ -10327,19 +10906,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleInterpretDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
-        String words = "";
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(request.body()));
-            if (map != null) {
-                words = JsonTree.string(map, "words");
-                if (words == null) words = JsonTree.string(map, "own_words");
-            }
+        // Words are read for an open decision only; an unknown id is scope_not_found as on every other act.
+        boolean open;
+        synchronized (decisionsLock) {
+            open = openDecisions.containsKey(decisionId);
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
-            // Ignore
+        if (!open) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
+            return;
         }
-        if (words == null) words = "";
+        // A body that is no object is refused like the runtime does, never read as words that pick option 2.
+        var map = parseBody(request.body());
+        if (map == null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "The words to read for " + decisionId + " are no object."));
+            return;
+        }
+        var words = JsonTree.string(map, "words");
+        if (words == null) {
+            words = Objects.requireNonNullElse(JsonTree.string(map, "own_words"), "");
+        }
         var lower = words.toLowerCase();
 
         DecisionInterpretation interp;
@@ -10384,7 +10970,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             removed = openDecisions.remove(decisionId);
         }
         if (removed == null) {
-            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
             return;
         }
 
@@ -10428,6 +11014,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 1. If static route is defined for this exact process path, return it directly
         var route = activeRoute("GET", path);
         if (route != null) {
+            if (isPlanProcess && route.representation() instanceof Map<?, ?> planRep) {
+                var sub = path.substring(PATH_PLANS_PREFIX.length());
+                var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
+                if (!planId.contains("/")) {
+                    response.json(route.status(), withPlanOverlay(planId, planRep));
+                    return true;
+                }
+            }
             response.json(route.status(), route.representation());
             return true;
         }
@@ -10473,16 +11067,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var template = defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> rep
                         ? rep
                         : null;
-                response.json(200, synthesizedPlan(template, planId, summary));
+                response.json(200, withPlanOverlay(planId, synthesizedPlan(template, planId, summary)));
                 return true;
             }
         }
 
-        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process
+        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process. An epic the scenario serves
+        // by its own process route is answered at step 1; an epic the scenario knows is answered from
+        // the template route; any other id is scope_not_found, as the ApiErrorCode catalogue names it.
         if (isEpicProcess) {
             var sub = path.substring(PATH_EPICS_PREFIX.length());
             var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!epicId.contains("/")) {
+                if (!knowsEpic(epicId)) {
+                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                            KEY_MESSAGE, epicNotFound(epicId)));
+                    return true;
+                }
                 var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
@@ -10496,6 +11097,31 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         return false;
+    }
+
+    /**
+     * @param epicId the requested epic id
+     * @return {@code true} when the scenario serves the epic by a non-error detail route or holds it
+     *         among the epics of its control fixture
+     */
+    private boolean knowsEpic(String epicId) {
+        var detailRoute = activeRoute("GET", PATH_EPICS_PREFIX + epicId);
+        if (detailRoute != null && detailRoute.status() < 400) {
+            return true;
+        }
+        // an epic a start flow created has no detail route and no control entry, but it exists
+        if (startedEpics.containsKey(epicId)) {
+            return true;
+        }
+        // so does an epic the scenario's collection lists without a detail route of its own
+        for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
+            if (epicId.equals(JsonTree.string(row, KEY_ID))) {
+                return true;
+            }
+        }
+        synchronized (controlLock) {
+            return controlEpics.containsKey(epicId);
+        }
     }
 
     /**
@@ -10522,7 +11148,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summary.put(KEY_TITLE, started.title());
             summary.put("project", started.projectId());
             summary.put(KEY_PHASE, PHASE_EXECUTE);
-            summary.put("state", "running");
+            summary.put("state", ACTIVITY_RUNNING);
             return summary;
         }
         var listRoute = activeRoute("GET", PATH_PLANS);
@@ -10590,7 +11216,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "shipped", "merged", "landed" -> STATE_DONE;
+            case "shipped", STATE_MERGED, "landed" -> STATE_DONE;
             default -> status;
         };
     }
@@ -10623,7 +11249,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Builds the process-tree detail of a plan the scenario lists without a route of its own. The
      * tree carries the plan's own identity, its phase list is the template's, and every phase is
      * marked from the plan's own phase and state; nothing that identifies another plan (its epic,
-     * pull request, activity, tokens, duration or project) is copied.
+     * pull request, activity, tokens, duration or project) is copied. The members the process resource
+     * always carries ({@code tokens_so_far}, {@code duration_seconds}) are the plan's own: no token
+     * measured yet and no time run.
      *
      * @param template the template representation
      * @param planId   the requested plan id
@@ -10633,7 +11261,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static Map<String, Object> synthesizedPlan(@Nullable Map<?, ?> template, String planId,
             Map<String, Object> summary) {
         var phase = summaryText(summary, KEY_PHASE, PHASE_EXECUTE);
-        var phaseState = summaryText(summary, "state", "running");
+        var phaseState = summaryText(summary, "state", ACTIVITY_RUNNING);
         var copy = new LinkedHashMap<String, Object>();
         copy.put(KEY_PLAN_ID, planId);
         copy.put(KEY_TITLE, summaryText(summary, KEY_TITLE, planId));
@@ -10645,14 +11273,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (summary.get("epic") instanceof Map<?, ?> epicRef) {
             copy.put("epic", epicRef);
         }
-        copy.put("current_phase", phase);
-        copy.put("phase_state", phaseState);
-        if ("waiting_for_you".equals(phaseState)) {
+        copy.put(KEY_CURRENT_PHASE, phase);
+        copy.put(KEY_PHASE_STATE, phaseState);
+        if (STATE_WAITING_FOR_YOU.equals(phaseState)) {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
-        copy.put("instance_version", 1);
-        copy.put("nodes", phaseNodes(template, phase, phaseState));
+        copy.put(KEY_INSTANCE_VERSION, 1);
+        copy.put(KEY_TOKENS_SO_FAR, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false).toMap());
+        copy.put(KEY_NODES, phaseNodes(template, phase, phaseState));
         copy.put("current_position_path", List.of());
+        copy.put("duration_seconds", 0L);
         return copy;
     }
 
@@ -10664,7 +11294,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
-        if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
+        if (template == null || !(template.get(KEY_NODES) instanceof List<?> nodes)) {
             var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
@@ -10693,7 +11323,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the state of a phase a plan without a template names
      */
     private static String phaseFallbackState(String phaseState) {
-        return "running".equals(phaseState) ? "running" : "waiting_for_operator";
+        return ACTIVITY_RUNNING.equals(phaseState) ? ACTIVITY_RUNNING : "waiting_for_operator";
     }
 
     /**
@@ -10713,8 +11343,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         phase.put("run_count", ran);
         phase.put("current_run", ran);
         phase.put("duration_seconds", 0);
-        phase.put("sub_nodes", List.of());
-        phase.put("leaf_tasks", List.of());
+        phase.put(KEY_SUB_NODES, List.of());
+        phase.put(KEY_LEAF_TASKS, List.of());
         return phase;
     }
 
@@ -10747,7 +11377,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return "done";
         }
         if (index == current) {
-            return "running".equals(phaseState) ? "running" : "waiting_for_operator";
+            return ACTIVITY_RUNNING.equals(phaseState) ? ACTIVITY_RUNNING : "waiting_for_operator";
         }
         return "planned";
     }

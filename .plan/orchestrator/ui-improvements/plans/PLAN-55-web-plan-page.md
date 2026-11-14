@@ -27,25 +27,25 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `plan-view.spec.js` on `control.ready` and `decisions.open` (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Tabs** (superseded by D6: the tabs are Process, Intent and Changes, there is no Activity, Tokens or Settings tab, and `PlanSettingsModal` stays a dialogue; the binding text is deliverable D6-1 of `## D6 Merged 2026-11-11 (Amendment)`)
    - What: Tabs Process (default), Intent, Changes as D6-1 states; `PlanSettingsModal` stays the dialogue _Plan settings…_.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: a tab switch keeps the other tab's selection; the dialogue opens from the ActionBar overflow (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Activity rows**
    - What: activity rows: local time, kind icon, tool and target; empty `LINK` rows do not render. (The tree rows and the "Jump to now" button moved to `PLAN-62` D1, which owns the process tree.)
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `NodeNarrative.test.ts` and a `PlanView` test: no `TOOL_CALL`/`PHASE` text; no empty row (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20550 PM_WEB_PORT=20551 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -61,12 +61,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-07)`, `doc/claude_review/ux/proposals.adoc#UX-P-05` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-07 and `ux/proposals.adoc:247` UX-P-05 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-07 at ux/plan.adoc:53, UX-P-05 at proposals.adoc:247, ux-plan-page.svg, UX-F-07/08/09 findings.adoc:79,85,93 present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a line to the plan view's head in `doc/design/shared/plan-view.adoc` (`change so far   12 files · +340 −27 · 2 unplanned`, below the tokens line, `plan.change.size`, absent before the first capture) and a work list beside the plan in a wide window (`PLAN-83`). `PLAN-82` serves the size in the contract and the mock and this plan builds the line into the head (the former `PLAN-81`, superseded, had it): it renders only when the plan carries a size. Also `PLAN-39` (PR #274) wrapped `PlanView.svelte` at 390 px, and its `mobile.spec.js` asserts no horizontal scroll on the ten routes: the 390 px watch on `/plans/{id}` is to be confirmed here and retired.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-view.adoc:23,170 carry change so far; mobile.spec.js:167-189 asserts no horizontal scroll at 390 px including /plans/fix-relay
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): No stale surface: PlanView.svelte, NodeNarrative.svelte, PlanSettingsModal.svelte, plan-view.adoc and plan_view properties exist; plan.change.size already exists in plan_view.en.properties (line 48), so the head's size line catalogue key is present and not to be created again; PlanView.test.ts and plan-view.spec.js changed since the anchor.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView, NodeNarrative, PlanSettingsModal, plan-view.adoc exist; plan.change.size at plan_view.en.properties:48
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: `PlanView.svelte` does not render `plan.change.size` though the key exists — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-api/src/main/resources/messages/plan_view.en.properties:48` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan.change.size rendered only by CompletionReportView.svelte:143; PlanView.svelte (1721 lines) never uses it
 - HYPOTHESIS: a `LINK` activity entry with no target renders as an empty row — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § `activity-entry` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:1070-1105 renders every entry with kind tag; a link entry falls to the else branch with entry.content possibly empty; no empty-row filter
 
 ## Expected Surface
 
@@ -86,6 +91,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -109,6 +115,12 @@ widened now (a parked row is not in the disjointness gate population). When rest
 - The chat as a side column (009).
 - `PlanSettingsModal` belongs to this plan (fields per 008; `control.plan.settings` is "Plan-Einstellungen" after `PLAN-109`).
 - Running `PLAN-106` rewrites `WorkControlPanel` act lists; line references into it in messages 007 and 009 are re-read when used.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- The re-grounding's "new claims" were never added to Claim Labels.
 
 ## Hand-Off Command
 
@@ -212,3 +224,9 @@ at the then-current HEAD, stop and loop back to the orchestrator for the order; 
 
 Expected Surface (when restarted; the parked rule above still holds until then): unchanged files; the tab's layout lives in
 `PlanView.svelte` and `PlanView.test.ts`, already listed. No new file.
+
+## Parked Gate Check 2026-11-14 (cleanup)
+
+**Stays parked (operator, 2026-11-14: "Stage plan-changes rows").** The Changes tab needs the plan-changes contract, which is now staged as `PLAN-162` (contract and mock), `PLAN-163` (terminal) and `PLAN-164` (the web tab's content, mounted in today's `PlanView`).
+- Unpark when `PLAN-164`, `PLAN-144` and `PLAN-145` have landed. This plan then carries the Changes tab into its tab set and does not build it.
+- Re-ground at outline: the "new claims" this spec says were added were never added.

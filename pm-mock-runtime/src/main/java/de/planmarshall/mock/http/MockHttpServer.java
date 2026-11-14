@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -36,11 +37,20 @@ import java.util.concurrent.TimeUnit;
 
 import org.jspecify.annotations.Nullable;
 
+import de.cuioss.tools.logging.CuiLogger;
+import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
+
 /**
  * Minimal HTTP/1.1 and Server-Sent Events server over JDK {@link ServerSocketChannel}. Supports
  * both Unix domain sockets and loopback TCP addresses.
  */
 public final class MockHttpServer implements AutoCloseable {
+
+    private static final CuiLogger LOGGER = new CuiLogger(MockHttpServer.class);
+
+    /** The one text of a fault the runtime cannot attribute to the request. */
+    private static final String FAULT_MESSAGE = "The runtime failed on the request";
 
     private final ServerSocketChannel server;
     private final MockHttpHandler handler;
@@ -166,18 +176,30 @@ public final class MockHttpServer implements AutoCloseable {
         }
     }
 
+    /**
+     * Runs the handler. A request the handler leaves unanswered, or one it fails on, is answered
+     * {@code 500} with the catalogue's {@code internal_fault}, the code of a fault the runtime cannot
+     * attribute to the request.
+     */
     private void invokeHandler(MockHttpRequest request, MockHttpResponse response) throws IOException {
         try {
             handler.handle(request, response);
             if (!response.isCommitted()) {
-                response.send(500, "application/json", "{\"error\":\"unhandled_request\"}");
+                sendInternalFault(response, "The request was not answered");
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException e) {
+            // what failed stays in the log: a message may carry a path or other detail the client must not read
+            LOGGER.debug(e, "A handler failed on %s %s", request.method(), request.path());
             if (!response.isCommitted()) {
-                response.send(500, "application/json", "{\"error\":\"internal_error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
+                sendInternalFault(response, FAULT_MESSAGE);
             }
         }
+    }
+
+    private static void sendInternalFault(MockHttpResponse response, String message) throws IOException {
+        response.send(ApiErrorCode.INTERNAL_FAULT.status(), "application/json",
+                JsonTree.write(Map.of("error", ApiErrorCode.INTERNAL_FAULT.wire(), "message", message)));
     }
 
     private static @Nullable MockHttpRequest readRequest(InputStream in) throws IOException {
@@ -230,13 +252,6 @@ public final class MockHttpServer implements AutoCloseable {
         }
         var text = bytes.toString(StandardCharsets.UTF_8);
         return text.endsWith("\r") ? text.substring(0, text.length() - 1) : text;
-    }
-
-    private static String escapeJson(@Nullable String text) {
-        if (text == null) {
-            return "";
-        }
-        return text.replace("\"", "\\\"").replace("\n", "\\n");
     }
 
     @Override
