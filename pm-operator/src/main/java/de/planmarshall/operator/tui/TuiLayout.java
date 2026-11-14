@@ -281,17 +281,20 @@ public final class TuiLayout {
             return List.of(text);
         }
         var rest = text;
-        while (displayWidth(rest) > width && !rest.isBlank()) {
+        while (displayWidth(rest) > width) {
+            // The cut lies within the line: the prefix that fits ends at or before its end, and
+            // the last space before that prefix's end lies before it.
             int end = endIndexForWidth(rest, width);
             int space = rest.lastIndexOf(' ', Math.max(0, end - 1));
             int cut = space > 0 ? space : end;
-            var head = rest.substring(0, Math.min(cut, rest.length())).stripTrailing();
+            var head = rest.substring(0, cut).stripTrailing();
             if (head.isEmpty()) {
+                // Only blanks or the continuation's indent fit before the next word: keep the rest
+                // as one line, which the caller's truncation cuts.
                 break;
             }
             lines.add(head);
-            rest = " ".repeat(CONTINUATION_INDENT)
-                                + rest.substring(Math.min(cut, rest.length())).stripLeading();
+            rest = " ".repeat(CONTINUATION_INDENT) + rest.substring(cut).stripLeading();
         }
         lines.add(rest);
         return List.copyOf(lines);
@@ -483,7 +486,8 @@ public final class TuiLayout {
         if (start < offset) {
             offset = start;
         }
-        offset = Math.max(0, Math.min(offset, Math.max(0, total - inner)));
+        // More lines than the body holds: the window of inner lines always lies inside them.
+        offset = Math.clamp(offset, 0, total - inner);
 
         var view = new ArrayList<AttributedString>(height);
         if (indicators) {
@@ -492,12 +496,7 @@ public final class TuiLayout {
                                 ? indicator("operator.overview.more_above", above) : "", width)));
         }
         for (int i = 0; i < inner; i++) {
-            view.add(offset + i < total ? lines.get(offset + i).text
-                                : new AttributedString(" ".repeat(Math.max(0, width))));
-        }
-        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
-        while (view.size() < (indicators ? height - 1 : height)) {
-            view.add(blank);
+            view.add(lines.get(offset + i).text);
         }
         if (indicators) {
             int below = rowsBelow(lines, offset + inner, total);
@@ -522,7 +521,7 @@ public final class TuiLayout {
     private static int distinctRows(List<BodyLine> lines, int from, int to) {
         int rows = 0;
         int previous = Integer.MIN_VALUE;
-        for (int i = from; i < to && i < lines.size(); i++) {
+        for (int i = from; i < to; i++) {
             int rowIndex = lines.get(i).rowIndex;
             if (rowIndex >= 0 && rowIndex != previous) {
                 rows++;

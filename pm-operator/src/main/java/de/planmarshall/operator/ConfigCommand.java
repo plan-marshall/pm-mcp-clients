@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jspecify.annotations.Nullable;
 
@@ -35,6 +36,7 @@ import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -99,9 +101,8 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String APPLY_AGAIN = "operator.settings.apply_again";
     private static final String KEY = "key";
     private static final String COUNT = "count";
-    private static final String KEEP = "k";
+    private static final String KEEP_CURRENT = "operator.actions.key.keep_current";
     private static final String DEVICES_PATH = "/api/v1/web/devices";
-    private static final String STATUS_PATH = "/api/v1/status";
     private static final String WEB_VERB = "web";
     private static final String DEVICES_VERB = "devices";
 
@@ -280,28 +281,17 @@ public final class ConfigCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
-        var listener = listenerOff()
-                            ? "operator.settings.devices.listener_off"
-                            : "operator.settings.devices.listener_on";
+        // an unreadable status is never drawn as on (paired-devices.adoc#listener-off)
+        var listener = switch (WebCommand.networkListenerState(context.runtime(true))) {
+            case "on" -> "operator.settings.devices.listener_on";
+            case "off" -> "operator.settings.devices.listener_off";
+            default -> "devices.list.listener_unknown";
+        };
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
                                                 COUNT, devices.size(),
                                                 "listener", MessageCatalogue.format(locale, listener, Map.of()))),
                             List.of(WEB_VERB, DEVICES_VERB));
-    }
-
-    private boolean listenerOff() throws IOException {
-        var response = context.runtime(true).send(HttpRequest.get(STATUS_PATH));
-        if (response.status() != 200) {
-            return false;
-        }
-        try {
-            var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            var web = status != null ? JsonTree.object(status, "web") : null;
-            return web != null && Boolean.FALSE.equals(web.get("lan"));
-        } catch (IOException _) {
-            return false;
-        }
     }
 
     /**
@@ -697,7 +687,7 @@ public final class ConfigCommand implements Callable<Integer> {
             change.out().flush();
             return ConfigAspectRun.EXIT_MISSING_INPUT;
         }
-        if (!applyAgain(context, change.locale())) {
+        if (!applyAgain(context, change.out(), change.locale())) {
             change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
             change.out().flush();
             return 0;
@@ -718,12 +708,38 @@ public final class ConfigCommand implements Callable<Integer> {
         return 1;
     }
 
-    private static boolean applyAgain(OperatorContext context, String locale) throws IOException {
+    /**
+     * Asks how a conflict goes on, as the plan settings dialogue asks it: {@code Enter} applies the
+     * operator's value again, the keep key of the catalogue or leaving keeps the current value, and
+     * any other answer is not offered and is asked again, so a typo never overwrites another
+     * client's value.
+     */
+    private static boolean applyAgain(OperatorContext context, PrintWriter out, String locale) throws IOException {
+        var keep = MessageCatalogue.format(locale, KEEP_CURRENT, Map.of());
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-            var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
-            // An end of input is no answer: keeping the current value never overwrites another client's.
-            return line != null && !KEEP.equalsIgnoreCase(line.trim());
+            while (true) {
+                String line;
+                try {
+                    line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
+                } catch (EndOfFileException _) {
+                    line = null;
+                }
+                // An end of input is no answer: keeping the current value never overwrites another client's.
+                if (line == null) {
+                    return false;
+                }
+                var answer = line.trim();
+                if (answer.isEmpty()) {
+                    return true;
+                }
+                if (keep.equalsIgnoreCase(answer) || ChoicePrompt.isLeave(locale, answer)) {
+                    return false;
+                }
+                out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
+                                    "input", OutputSafety.stripControlSequences(answer), "offered", keep)));
+                out.flush();
+            }
         }
     }
 
@@ -1331,12 +1347,7 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private boolean confirm(PrintWriter out, String locale) throws IOException {
-            try (var lease = context.openTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
-                out.flush();
-                return line == null || !KEEP.equalsIgnoreCase(line.trim());
-            }
+            return applyAgain(context, out, locale);
         }
 
         private void interact(PrintWriter out, String locale, MachineSettingsRecord settings) throws IOException {
@@ -1470,11 +1481,7 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private boolean confirmRetry(String locale) throws IOException {
-            try (var lease = context.openTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
-                return line == null || !KEEP.equalsIgnoreCase(line.trim());
-            }
+            return applyAgain(context, spec.commandLine().getOut(), locale);
         }
     }
 

@@ -30,6 +30,8 @@ import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.display.Display;
+import de.planmarshall.api.entry.ListenerKind;
+import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -66,9 +68,36 @@ public final class WebCommand implements Callable<Integer> {
     private static final String STATUS = "status";
     private static final String INDEX = "index";
     private static final String LOOPBACK = "loopback";
+    /** The network listener's state where the status cannot be read: never drawn as on. */
+    private static final String LISTENER_UNKNOWN = "unknown";
 
     private static String localeFor(OperatorContext context) {
         return context.clientEnvironment().locale();
+    }
+
+    /**
+     * Reads the network listener's state from the runtime status as its contract carries it: the
+     * {@code listeners} array, or the legacy {@code web} object it is derived from
+     * ({@link RuntimeEntryResource}). A status that cannot be read, or names no network listener,
+     * is {@code unknown}, never drawn as on (paired-devices.adoc#listener-off).
+     *
+     * @param runtime the runtime client
+     * @return {@code on}, {@code off}, or {@code unknown}
+     */
+    static String networkListenerState(RuntimeClient runtime) {
+        try {
+            var status = runtime.send(HttpRequest.get("/api/v1/status"));
+            if (status.status() != 200) {
+                return LISTENER_UNKNOWN;
+            }
+            return RuntimeEntryResource.fromJson(status.bodyText()).listeners().stream()
+                                .filter(listener -> listener.listener() == ListenerKind.LAN)
+                                .findFirst()
+                                .map(listener -> listener.isOpen() ? "on" : "off")
+                                .orElse(LISTENER_UNKNOWN);
+        } catch (IOException _) {
+            return LISTENER_UNKNOWN;
+        }
     }
 
     @Spec
@@ -369,7 +398,10 @@ public final class WebCommand implements Callable<Integer> {
                                     spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
             }
 
-            if (interactive && !yes && context.isInteractiveTerminal() && !confirm()) {
+            // Every revocation asks, since it cannot be undone; --yes answers it in a script
+            // (08-transcripts-later.adoc#t-devices). The operator checks admit an interactive
+            // terminal only, so the question can be asked.
+            if (!yes && !confirm()) {
                 return 0;
             }
 
@@ -413,8 +445,8 @@ public final class WebCommand implements Callable<Integer> {
 
         private int handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
             var locale = context.clientEnvironment().locale();
-            var body = JsonTree.write(Map.of("lan", false));
-            var response = runtime.send(HttpRequest.json("PUT", "/api/v1/web", body));
+            // devices.listener-off closes the network listener alone (paired-devices.adoc#listener-off)
+            var response = runtime.send(new HttpRequest("DELETE", "/api/v1/web/listeners/lan", Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
                 return 0;
@@ -433,17 +465,7 @@ public final class WebCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
 
-            var statusRes = runtime.send(HttpRequest.get("/api/v1/status"));
-            boolean lanOn = true;
-            if (statusRes.status() == 200) {
-                var statusObj = JsonTree.asObject(JsonTree.parse(statusRes.body()));
-                var webObj = JsonTree.object(statusObj, "web");
-                if (webObj != null && webObj.containsKey("lan")) {
-                    lanOn = Boolean.TRUE.equals(webObj.get("lan"));
-                }
-            }
-
-            renderDevices(response.body(), out, locale, lanOn, context.clock());
+            renderDevices(response.body(), out, locale, networkListenerState(runtime), context.clock());
             if (interactive && context.isInteractiveTerminal()) {
                 var parsed = JsonTree.parse(response.body());
                 if (parsed instanceof List<?> list && !list.isEmpty()) {
@@ -561,7 +583,8 @@ public final class WebCommand implements Callable<Integer> {
             return new DeviceInfo(id, label);
         }
 
-        private static void renderDevices(byte[] body, PrintWriter out, String locale, boolean lanOn, Clock clock) throws IOException {
+        private static void renderDevices(byte[] body, PrintWriter out, String locale, String listenerState, Clock clock)
+                            throws IOException {
             var parsed = JsonTree.parse(body);
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 out.println(MessageCatalogue.format(locale, "devices.list.title", Map.of())
@@ -573,7 +596,7 @@ public final class WebCommand implements Callable<Integer> {
                 }
                 out.println();
                 out.println(MessageCatalogue.format(locale, "operator.devices.console_not_listed",
-                                    Map.of("state", lanOn ? "on" : "off")));
+                                    Map.of("state", listenerState)));
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.devices.none", Map.of()));
             }

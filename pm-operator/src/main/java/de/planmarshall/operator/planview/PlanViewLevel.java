@@ -649,13 +649,21 @@ public final class PlanViewLevel {
         return taskGlyph(job.status());
     }
 
-    private static String taskGlyph(@Nullable String status) {
+    /**
+     * The glyph of a leaf task's or leaf job's status, shared by the full-screen tree and the
+     * scrollback of {@code plan <id> --print} so both draw one mapping.
+     *
+     * @param status the status as the runtime sent it, or {@code null}
+     * @return the glyph of the status; the planned glyph for a status it does not know
+     */
+    public static String taskGlyph(@Nullable String status) {
         if (status == null) {
             return NodeState.PLANNED.glyph();
         }
         return switch (status.toLowerCase(Locale.ROOT)) {
             case STATUS_DONE, STATUS_SUBMITTED -> NodeState.DONE.glyph();
-            case "running" -> NodeState.RUNNING.glyph();
+            // A task at work is `executing` in the design's leaf (16-plan-view.adoc#full-screen-leaf).
+            case "running", "executing" -> NodeState.RUNNING.glyph();
             case "waiting", "waiting_for_you" -> NodeState.WAITING_FOR_OPERATOR.glyph();
             case "failed" -> NodeState.FAILED.glyph();
             default -> NodeState.PLANNED.glyph();
@@ -663,13 +671,11 @@ public final class PlanViewLevel {
     }
 
     private static String nodeTitle(ProcessNode node, String locale) {
-        var title = PlanViewFormatting.clean(node.title());
+        var title = stripKindTitle(node);
         if (KIND_PHASE.equals(node.kind())) {
-            title = stripPrefix(title, KIND_PHASE);
             return MessageCatalogue.format(locale, "plan.node.kind.phase", Map.of()) + " " + title;
         }
         if (KIND_SUB_WORKFLOW.equals(node.kind())) {
-            title = stripPrefix(title, "sub-workflow");
             return "\u21b3 " + MessageCatalogue.format(locale, "plan.node.kind.sub_workflow", Map.of()) + " " + title;
         }
         return title;

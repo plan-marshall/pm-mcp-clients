@@ -63,9 +63,8 @@ public final class EpicViewFormatting {
      * @return the state of the head, from the closed list
      */
     public static String stateText(String locale, EpicResource epic) {
-        var state = "ended".equals(epic.state()) && epic.end() != null ? "ended" : epic.state();
         return MessageCatalogue.format(locale, "overview.epic.state",
-                            Map.of("state", clean(state).toLowerCase(Locale.ROOT)));
+                            Map.of("state", clean(epic.state()).toLowerCase(Locale.ROOT)));
     }
 
     /**
@@ -129,12 +128,16 @@ public final class EpicViewFormatting {
     /**
      * @param locale the interface locale
      * @param row    the row
-     * @return why that row cannot start, in one line
+     * @return why that row cannot start, in one line, or an empty string for a row that can start
      */
     public static String waitReasonLine(String locale, WorkRow row) {
         var reason = row.waits();
+        if (reason == null) {
+            // No wait is a row that can start (WorkRow#waits), as waitText and nextLaunchable read it.
+            return "";
+        }
         var other = clean(row.waitPlanId() != null ? row.waitPlanId() : "");
-        var key = reason == null ? "held" : reason.value();
+        var key = reason.value();
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.planId()));
         params.put("other", other);

@@ -12,6 +12,7 @@ package de.planmarshall.operator.actions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -236,6 +237,75 @@ class ActionMenusTest {
         assertTrue(menu.entries().get(1).label().startsWith("Show the pull request"));
         assertTrue(menu.entries().get(2).label().startsWith("Give up the removal"));
         assertEquals(ActionsMenu.Subject.LANDING, menu.subject());
+    }
+
+    @Test
+    @DisplayName("a landing that did not fail offers retry and its pull request, never giving up the removal")
+    void heldLanding() {
+        var menu = ActionMenus.landing("en", "remediation", "condition", null);
+
+        var actions = menu.entries().stream().map(TuiMenuEntry::action).toList();
+        assertEquals(List.of("retry", HoldActs.SHOW_PR), actions);
+        assertFalse(menu.ended());
+    }
+
+    @Test
+    @DisplayName("a plan's hold never offers the acts of a landing or of an epic")
+    void planHoldWithoutLandingActs() {
+        var menu = ActionMenus.plan("en", actions("plan", "held", "condition", "pause"),
+                            hold("retry", HoldActs.SHOW_PR, HoldActs.GIVE_UP_REMOVAL, HoldActs.CANCEL_EPIC), null, null);
+
+        var actions = menu.entries().stream().map(TuiMenuEntry::action).toList();
+        assertEquals(List.of("retry", "pause"), actions);
+    }
+
+    @Test
+    @DisplayName("an action the client has no label for keeps the runtime's name")
+    void unknownActionKeepsItsName() {
+        var menu = ActionMenus.plan("en", actions("plan", "running", null, "rewind"), null, null, null);
+
+        assertEquals("rewind", menu.entries().getFirst().label());
+    }
+
+    @Test
+    @DisplayName("a blank open decision adds no decide entry")
+    void blankDecision() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause"), null, " ", null);
+
+        assertTrue(menu.entries().stream().noneMatch(entry -> "decide".equals(entry.action())),
+                            menu.entries().toString());
+    }
+
+    @Test
+    @DisplayName("the review entries of an epic without new findings or open watches carry no count")
+    void reviewsWithoutCounts() {
+        var menu = ActionMenus.epic("en", actions("epic", "running", null, "findings", "watches"),
+                            "next-plan", List.of(), false, 0, 0, 0, null);
+
+        var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
+        assertTrue(labels.stream().noneMatch(label -> label.contains("(")), labels.toString());
+    }
+
+    @Test
+    @DisplayName("the menu's own selection stops at its first and its last entry")
+    void selectionStopsAtTheEdges() {
+        var menu = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel"), null, null, null);
+
+        menu.move(-1);
+        assertEquals("pause", menu.selected().action());
+        menu.move(5);
+        assertEquals("cancel", menu.selected().action());
+        assertEquals(1, menu.selectedIndex());
+    }
+
+    @Test
+    @DisplayName("a menu without an entry is refused")
+    void emptyMenu() {
+        List<TuiMenuEntry> none = List.of();
+        List<String> noneDropped = List.of();
+
+        assertThrows(IllegalArgumentException.class,
+                            () -> new ActionsMenu("subject", ActionsMenu.Subject.PLAN, null, none, noneDropped));
     }
 
     @Test

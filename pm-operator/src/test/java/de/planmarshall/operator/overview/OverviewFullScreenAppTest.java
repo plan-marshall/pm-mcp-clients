@@ -27,6 +27,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
@@ -601,11 +602,12 @@ class OverviewFullScreenAppTest {
         // Switch back to plan
         assertTrue(handler.handle(TuiKeyAction.SWITCH_VIEW));
 
-        // Drill down into work item inspection
+        // The fixture serves no plan's process: Enter stays on the project and names the refusal
+        // (coverage-fix: drillDownWorkItem refused plan; it opened a made-up plan level before).
         assertTrue(handler.handle(TuiKeyAction.OPEN));
-        assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
-        assertTrue(handler.handle(TuiKeyAction.BACK));
         assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
+                            app.buildScreen().rows().getLast().line().trim());
     }
 
     @Test

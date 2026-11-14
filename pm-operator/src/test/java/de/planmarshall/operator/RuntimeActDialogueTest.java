@@ -19,6 +19,7 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,6 +59,9 @@ class RuntimeActDialogueTest {
 
     private static final String ENGLISH = "en_US.UTF-8";
     private static final String GERMAN = "de_DE.UTF-8";
+
+    /** The short snapshot bound the test that waits it out passes instead of the production 5 s. */
+    private static final Duration SNAPSHOT_BOUND = Duration.ofMillis(300);
 
     private RuntimeFixture fixture;
     private StringWriter out;
@@ -147,13 +151,13 @@ class RuntimeActDialogueTest {
             var thread = new Thread(() -> {
                 try {
                     answer.set(RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out),
-                                        Act.STOP, null, false, null));
+                                        Act.STOP, null, false, null, SNAPSHOT_BOUND));
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
                 }
             }, "stop-on-a-silent-runtime");
             thread.start();
-            thread.join(15_000L);
+            thread.join(SNAPSHOT_BOUND.plusSeconds(2).toMillis());
             var hung = thread.isAlive();
             release.countDown();
             var open = stream.get();

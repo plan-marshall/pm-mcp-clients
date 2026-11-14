@@ -21,6 +21,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * A plan's own settings ({@code plan-settings.open}, {@code plan-settings.value},
@@ -105,11 +106,19 @@ final class PlanSettingsDialogue {
         for (int index = 0; index < GROUPS.size(); index++) {
             options.append("  ").append(index + 1).append(") ").append(groupLabel(GROUPS.get(index)));
         }
-        var answer = prompt.askRaw(options.toString(), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.settings.title",
-                                                Map.of("plan", planId)), planId);
-        int index = parseIndex(answer, GROUPS.size());
-        return index > 0 ? GROUPS.get(index - 1) : null;
+        while (true) {
+            var answer = prompt.askRaw(options.toString(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "control.settings.title",
+                                                    Map.of("plan", planId)), planId);
+            if (leaves(answer)) {
+                return null;
+            }
+            int index = parseIndex(answer, GROUPS.size());
+            if (index > 0) {
+                return GROUPS.get(index - 1);
+            }
+            notOffered(answer, range(1, GROUPS.size()));
+        }
     }
 
     private void showGroup(String group, List<PlanSettingsValue> values) {
@@ -132,24 +141,21 @@ final class PlanSettingsDialogue {
             options.append(index + 1).append(") ").append(OutputSafety.stripControlSequences(
                                 values.get(index).aspect())).append("  ");
         }
-        options.append("q) ").append(MessageCatalogue.format(prompt.locale(), "control.settings.close",
-                            Map.of()));
-        var answer = prompt.askRaw(options.toString(), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
-                                                Map.of("aspect", "", "plan", planId)), planId);
-        if ("q".equalsIgnoreCase(answer) || answer.isEmpty()) {
-            return null;
-        }
-        int index = parseIndex(answer, values.size());
-        if (index > 0) {
-            return values.get(index - 1).aspect();
-        }
-        for (var value : values) {
-            if (value.aspect().equalsIgnoreCase(answer)) {
-                return value.aspect();
+        options.append(leaveKey()).append(") ").append(MessageCatalogue.format(prompt.locale(),
+                            "control.settings.close", Map.of()));
+        while (true) {
+            var answer = prompt.askRaw(options.toString(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
+                                                    Map.of("aspect", "", "plan", planId)), planId);
+            if (leaves(answer)) {
+                return null;
             }
+            int index = parseIndex(answer, values.size());
+            if (index > 0) {
+                return values.get(index - 1).aspect();
+            }
+            notOffered(answer, range(1, values.size()));
         }
-        return null;
     }
 
     private int change(PlanSettingsRecord settings, String aspect) throws IOException {
@@ -179,14 +185,7 @@ final class PlanSettingsDialogue {
             if (result.conflict()) {
                 var current = result.currentValue() != null ? result.currentValue() : "";
                 prompt.line("common.conflict.changed", Map.of("value", current));
-                if (!prompt.asks()) {
-                    prompt.line("common.conflict.no_input", Map.of("value", current));
-                    return StartDialogue.EXIT_MISSING_INPUT;
-                }
-                var decision = prompt.askRaw(conflictPrompt(), STATE_ID,
-                                    MessageCatalogue.format(prompt.locale(), "common.conflict.keep", Map.of()),
-                                    planId);
-                if ("k".equalsIgnoreCase(decision)) {
+                if (!applyAgain()) {
                     return 0;
                 }
                 var again = client.updateSettings(planId, result.revision(), aspect, chosen.value());
@@ -199,15 +198,11 @@ final class PlanSettingsDialogue {
                 continue;
             }
             var reason = answer.refusalReason() != null ? answer.refusalReason() : "";
+            // Only an asking dialogue reaches a change: the group, the aspect and the value are asked
+            // first, so a refused value is asked again.
             prompt.line("control.settings.refused",
                                 Map.of("value", chosen.value() != null ? chosen.value() : aspect,
                                                     "reason", reason));
-            if (!prompt.asks()) {
-                prompt.line("operator.actions.settings.no_input",
-                                    Map.of("value", chosen.value() != null ? chosen.value() : aspect,
-                                                        "reason", reason));
-                return StartDialogue.EXIT_MISSING_INPUT;
-            }
         }
     }
 
@@ -218,20 +213,66 @@ final class PlanSettingsDialogue {
         }
         options.append("0) ").append(MessageCatalogue.format(prompt.locale(),
                             "operator.actions.settings.use_inherited", Map.of()));
-        var answer = prompt.askRaw(options.toString(), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
-                                                Map.of("aspect", aspect, "plan", planId)), planId);
-        if (answer.isEmpty() || "q".equalsIgnoreCase(answer)) {
-            return null;
+        while (true) {
+            var answer = prompt.askRaw(options.toString(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
+                                                    Map.of("aspect", aspect, "plan", planId)), planId);
+            if (leaves(answer)) {
+                return null;
+            }
+            if ("0".equals(answer)) {
+                return new ChosenValue(null);
+            }
+            int index = parseIndex(answer, choices.size());
+            if (index > 0) {
+                return new ChosenValue(choices.get(index - 1));
+            }
+            // A value is typed only where the runtime names no choices; where it names them, a value
+            // outside them is not offered and is never sent.
+            if (choices.isEmpty()) {
+                return new ChosenValue(answer);
+            }
+            notOffered(answer, range(0, choices.size()));
         }
-        if ("0".equals(answer)) {
-            return new ChosenValue(null);
+    }
+
+    /**
+     * Asks how a conflict goes on: {@code Enter} applies the operator's value again, the keep key of
+     * the catalogue keeps the current value, and leaving sends nothing.
+     *
+     * @return whether the value is applied again
+     */
+    private boolean applyAgain() {
+        var keep = MessageCatalogue.format(prompt.locale(), "operator.actions.key.keep_current", Map.of());
+        while (true) {
+            var decision = prompt.askRaw(conflictPrompt(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "common.conflict.keep", Map.of()),
+                                planId);
+            if (decision.isEmpty()) {
+                return true;
+            }
+            if (keep.equalsIgnoreCase(decision) || ChoicePrompt.isLeave(prompt.locale(), decision)) {
+                return false;
+            }
+            notOffered(decision, keep + ", " + leaveKey());
         }
-        int index = parseIndex(answer, choices.size());
-        if (index > 0) {
-            return new ChosenValue(choices.get(index - 1));
-        }
-        return new ChosenValue(answer);
+    }
+
+    private boolean leaves(String answer) {
+        return answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer);
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+    }
+
+    private String range(int first, int last) {
+        return (first == last ? String.valueOf(first) : first + "-" + last) + ", " + leaveKey();
+    }
+
+    private void notOffered(String answer, String offered) {
+        prompt.line("operator.dialogue.not_offered",
+                            Map.of("input", OutputSafety.stripControlSequences(answer), "offered", offered));
     }
 
     private String conflictPrompt() {

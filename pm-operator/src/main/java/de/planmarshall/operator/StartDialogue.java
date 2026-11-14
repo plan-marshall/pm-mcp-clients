@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
@@ -38,6 +39,7 @@ import de.planmarshall.api.start.SourceResource;
 import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The terminal client's starting dialogue (design <em>Terminal Client: Starting Work</em>): the
@@ -67,11 +69,13 @@ final class StartDialogue {
     private static final String KEY_STATE_SOURCES = "start.sources";
     private static final String KEY_STATE_READY = "start.ready";
     private static final String KEY_STATE_RECIPE_PARAMETERS = "recipe.parameters";
+    private static final String KEY_STATE_PROJECT = "start.project";
     private static final String KEY_STATE_ADOPT = "start-epic.adopt";
     private static final String KEY_STATE_ADOPT_FAILED = "start-epic.adopt-failed";
     private static final String KEY_DOCUMENTS = "start.source.documents";
     private static final String KEY_ADOPT_PROMPT = "start.adopt.prompt";
 
+    private final OperatorContext context;
     private final EntryKind kind;
     private final Map<String, String> environment;
     private final StartAnswers answers;
@@ -91,6 +95,7 @@ final class StartDialogue {
     private @Nullable StartStateResource state;
 
     private StartDialogue(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers) {
+        this.context = Objects.requireNonNull(context, "context");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.environment = Map.copyOf(context.environment());
         this.answers = Objects.requireNonNull(answers, "answers");
@@ -134,7 +139,36 @@ final class StartDialogue {
     }
 
     private int execute() throws IOException {
-        project = resolveProject();
+        var resolved = resolveProject();
+        if (resolved == null) {
+            return chooseProject();
+        }
+        project = resolved;
+        return start();
+    }
+
+    /**
+     * Lists the projects as {@code --project ?} does when none can be resolved, and starts in the one
+     * the operator chooses. A run that may not ask stops with the state it needs; a project is never
+     * made up.
+     *
+     * @return the exit code
+     * @throws IOException on transport failure
+     */
+    private int chooseProject() throws IOException {
+        if (!prompt.asks()) {
+            StartPrompt.missing(KEY_STATE_PROJECT, text("operator.projects.select.title", Map.of()), null);
+        }
+        var selection = ProjectSelector.rewrite(context, prompt.out(), prompt.out(),
+                            new String[]{"--project", "?"}, prompt.reader());
+        if (!selection.proceed()) {
+            return selection.exitCode();
+        }
+        project = selection.args().get(1);
+        return start();
+    }
+
+    private int start() throws IOException {
         prepareAnswers();
         state = answers.entryId != null ? api.fetch(answers.entryId) : openEntry();
         if (kind == EntryKind.PLAN) {
@@ -231,30 +265,73 @@ final class StartDialogue {
     }
 
     private void handleSourceKey(String answer) throws IOException {
+        var entry = entry();
         if (answer.isEmpty()) {
-            if (entry().canContinue()) {
+            if (entry.canContinue()) {
                 continueToReady();
+            } else {
+                // Enter continues only a list that can continue; otherwise it is answered, not ignored.
+                unoffered(answer, sourceKeys(entry));
             }
             return;
         }
-        switch (answer.toLowerCase(Locale.ROOT)) {
-            case "d" -> addDescription();
-            case "f" -> addDocument();
-            case "i" -> addExternal(SourceKind.ISSUE, "start.issue.field");
-            case "l" -> addExternal(SourceKind.LESSON, "start.source.lesson");
-            case "c" -> addSource(new SourceIntent(SourceKind.LOCAL_CHANGES, null));
-            case "p" -> addExternal(SourceKind.PULL_REQUEST, "start.pr.field");
-            case "h" -> openChat();
-            case "x" -> removeSource();
-            case "q" -> throw new StartPrompt.StartLeftException();
-            default -> prompt.line("start.help.sources", Map.of());
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
         }
+        if ("?".equals(answer)) {
+            prompt.line("start.help.sources", Map.of());
+            return;
+        }
+        var key = answer.toLowerCase(Locale.ROOT);
+        var sourceKind = kindOfKey(key);
+        if (sourceKind != null && offered(sourceKind)) {
+            switch (sourceKind) {
+                case DESCRIPTION -> addDescription();
+                case DOCUMENTS -> addDocument();
+                case ISSUE -> addExternal(SourceKind.ISSUE, "start.issue.field");
+                case LESSON -> addExternal(SourceKind.LESSON, "start.source.lesson");
+                case LOCAL_CHANGES -> addSource(new SourceIntent(SourceKind.LOCAL_CHANGES, null));
+                case PULL_REQUEST -> addExternal(SourceKind.PULL_REQUEST, "start.pr.field");
+            }
+            return;
+        }
+        if ("h".equals(key)) {
+            openChat();
+            return;
+        }
+        if ("x".equals(key) && !entry.sources().isEmpty()) {
+            removeSource();
+            return;
+        }
+        // A kind the list does not offer, x without a source, and any other input change nothing.
+        notOffered(answer, sourceKeys(entry));
+    }
+
+    private static @Nullable SourceKind kindOfKey(String key) {
+        for (var sourceKind : SourceKind.values()) {
+            if (StartRenderer.keyOf(sourceKind).equals(key)) {
+                return sourceKind;
+            }
+        }
+        return null;
+    }
+
+    private String sourceKeys(EntryResource entry) {
+        var keys = new ArrayList<String>();
+        entry.kindOffers().stream().filter(SourceKindOffer::available)
+                            .forEach(offer -> keys.add(StartRenderer.keyOf(offer.kind())));
+        if (entry.chatAvailable()) {
+            keys.add("h");
+        }
+        if (!entry.sources().isEmpty()) {
+            keys.add("x");
+        }
+        keys.add(leaveKey());
+        keys.add("?");
+        return String.join(", ", keys);
     }
 
     private void addDescription() throws IOException {
-        if (!offered(SourceKind.DESCRIPTION)) {
-            return;
-        }
         prompt.raw(text("start.source.description", Map.of()) + " " + text("start.description.ends", Map.of()));
         var text = new StringBuilder();
         while (true) {
@@ -272,9 +349,6 @@ final class StartDialogue {
     }
 
     private void addDocument() throws IOException {
-        if (!offered(SourceKind.DOCUMENTS)) {
-            return;
-        }
         var path = prompt.askRaw(text(KEY_DOCUMENTS, Map.of()), KEY_STATE_SOURCES,
                             text(KEY_DOCUMENTS, Map.of()), entry().entryId());
         if (!path.isEmpty()) {
@@ -283,9 +357,6 @@ final class StartDialogue {
     }
 
     private void addExternal(SourceKind sourceKind, String questionKey) throws IOException {
-        if (!offered(sourceKind)) {
-            return;
-        }
         var value = prompt.askRaw(text(questionKey, Map.of()), KEY_STATE_SOURCES,
                             text(questionKey, Map.of()), entry().entryId());
         if (!value.isEmpty()) {
@@ -299,73 +370,121 @@ final class StartDialogue {
             if (!prompt.asks()) {
                 mode = "copy";
             } else {
-                var answer = prompt.askRaw(text("start.documents.mode.prompt", Map.of()), KEY_STATE_SOURCES,
-                                    text(KEY_DOCUMENTS, Map.of()), entry().entryId());
-                mode = switch (answer.toLowerCase(Locale.ROOT)) {
-                    case "2", "move", "m" -> "move";
-                    case "a", "always" -> "copy_always";
-                    default -> "copy";
-                };
+                mode = askDocumentsMode();
             }
         }
         state = act("documents_mode:" + mode, Map.of());
     }
 
+    private String askDocumentsMode() {
+        while (true) {
+            var answer = prompt.askRaw(text("start.documents.mode.prompt", Map.of()), KEY_STATE_SOURCES,
+                                text(KEY_DOCUMENTS, Map.of()), entry().entryId());
+            // Enter takes the preselected copy; 1, 2 and a are the keys the prompt shows.
+            switch (answer.toLowerCase(Locale.ROOT)) {
+                case "", "1" -> {
+                    return "copy";
+                }
+                case "2" -> {
+                    return "move";
+                }
+                case "a" -> {
+                    return "copy_always";
+                }
+                default -> {
+                    if (leaves(answer)) {
+                        throw new StartPrompt.StartLeftException();
+                    }
+                    notOffered(answer, "1-2, a, " + leaveKey());
+                }
+            }
+        }
+    }
+
     private void resolvePending(SourceResource source) throws IOException {
         renderer.sourceLine(source);
-        var options = pendingOptions(source);
+        var keys = pendingKeys(source);
+        var options = pendingOptions(keys);
         if (!prompt.asks()) {
             StartPrompt.missing(KEY_STATE_SOURCES, options, entry().entryId());
             return;
         }
         var answer = prompt.askRaw(options, KEY_STATE_SOURCES, options, entry().entryId());
-        switch (answer.toLowerCase(Locale.ROOT)) {
+        var key = answer.toLowerCase(Locale.ROOT);
+        if (!keys.contains(key)) {
+            if (leaves(answer)) {
+                throw new StartPrompt.StartLeftException();
+            }
+            // Only the keys this source's state shows are offered; the source is shown again.
+            unoffered(answer, String.join(", ", keys) + ", " + leaveKey());
+            return;
+        }
+        switch (key) {
             case "t" -> state = act("retry:" + source.sourceId(), Map.of());
             case "r" -> state = act("remove:" + source.sourceId(), Map.of());
-            case "u", "a" -> {
+            default -> {
                 var reason = prompt.askReason(KEY_STATE_SOURCES, text("start.source.reason", Map.of()),
                                     entry().entryId());
                 state = act("accept:" + source.sourceId(), Map.of(KEY_REASON, reason));
             }
-            default -> {
-                // the list is shown again
-            }
         }
     }
 
-    private String pendingOptions(SourceResource source) {
-        var options = new ArrayList<String>();
-        var retryable = source.failure() == null || source.failure().retryable();
-        if (source.state() == SourceState.FAILED) {
-            if (retryable) {
-                options.add(text("start.source.try_again", Map.of()));
-            }
-        } else if (source.state() == SourceState.FLAGGED) {
-            options.add(text("start.source.use_anyway", Map.of()));
+    /**
+     * The keys a source that waits for the operator offers: a failed or unscreened one tries again
+     * ({@code t}) only where it names a cause that allows it, as the runtime retries no other, a
+     * flagged one is used anyway ({@code u}), an unscreened one accepted as untrusted ({@code a}),
+     * and every one can be removed.
+     */
+    private static List<String> pendingKeys(SourceResource source) {
+        var keys = new ArrayList<String>();
+        if (source.state() == SourceState.FLAGGED) {
+            keys.add("u");
         } else {
-            if (retryable) {
-                options.add(text("start.source.try_again", Map.of()));
+            var failure = source.failure();
+            if (failure != null && failure.retryable()) {
+                keys.add("t");
             }
-            options.add(text("start.source.accept_untrusted", Map.of()));
+            if (source.state() == SourceState.UNSCREENED) {
+                keys.add("a");
+            }
         }
-        options.add(text("start.source.remove_option", Map.of()));
+        keys.add("r");
+        return keys;
+    }
+
+    private String pendingOptions(List<String> keys) {
+        var options = new ArrayList<String>();
+        for (var key : keys) {
+            options.add(text(switch (key) {
+                case "t" -> "start.source.try_again";
+                case "u" -> "start.source.use_anyway";
+                case "a" -> "start.source.accept_untrusted";
+                default -> "start.source.remove_option";
+            }, Map.of()));
+        }
         return String.join("   ", options);
     }
 
     private void removeSource() throws IOException {
-        if (entry().sources().isEmpty()) {
-            return;
-        }
-        var answer = prompt.askRaw(text("start.sources.remove_which",
-                            Map.of("count", entry().sources().size())), KEY_STATE_SOURCES,
-                            text("start.sources.remove_one", Map.of()), entry().entryId());
-        try {
-            var index = Integer.parseInt(answer);
-            if (index >= 1 && index <= entry().sources().size()) {
-                state = act("remove:" + entry().sources().get(index - 1).sourceId(), Map.of());
+        var sources = entry().sources();
+        while (true) {
+            var answer = prompt.askRaw(text("start.sources.remove_which",
+                                Map.of("count", sources.size())), KEY_STATE_SOURCES,
+                                text("start.sources.remove_one", Map.of()), entry().entryId());
+            if (answer.isEmpty()) {
+                // Enter names no source: the list is shown again with nothing removed.
+                return;
             }
-        } catch (NumberFormatException _) {
-            // nothing removed
+            if (leaves(answer)) {
+                throw new StartPrompt.StartLeftException();
+            }
+            var index = indexIn(answer, sources.size());
+            if (index > 0) {
+                state = act("remove:" + sources.get(index - 1).sourceId(), Map.of());
+                return;
+            }
+            notOffered(answer, range(sources.size()) + ", " + leaveKey());
         }
     }
 
@@ -422,7 +541,13 @@ final class StartDialogue {
         }
         if ("e".equalsIgnoreCase(answer)) {
             editReady(entry);
+            return false;
         }
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        // The ready step offers Enter, e and ?; anything else changes nothing and is asked again.
+        unoffered(answer, "e, " + leaveKey() + ", ?");
         return false;
     }
 
@@ -458,13 +583,17 @@ final class StartDialogue {
         if (id != null && !id.isBlank()) {
             body.put(KEY_PLAN_ID, id);
         }
-        var created = api.act(entry().entryId(), "create", body);
-        var entry = created.entry();
-        var name = entry != null && entry.planId() != null ? entry.planId() : id;
-        var display = name != null ? name : "";
-        prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(display)));
+        var created = api.act(entry().entryId(), "create", body).entry();
+        // The runtime names the work it created, and only its id is the work's: the requested id
+        // may have been changed, so an answer that names none is a broken contract, never a start
+        // to announce under a guessed or an empty name.
+        var name = created != null ? created.planId() : null;
+        if (name == null) {
+            throw new JsonFormatException("The runtime's answer to create names no " + kind.wireValue() + " id");
+        }
+        prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(name)));
         prompt.line("start.started.follow", Map.of());
-        if (kind.epic() && name != null) {
+        if (kind.epic()) {
             new EpicDecompositionDialogue(api, prompt, project, name, answers.instruction).run();
         }
     }
@@ -473,7 +602,9 @@ final class StartDialogue {
     // Recipes
 
     private void recipeChoice() throws IOException {
-        var recipes = state.recipes().isEmpty() ? api.recipes() : state.recipes();
+        // The state carries the recipes the entry accepts; the machine's list holds recipes the
+        // project does not offer, which the entry would refuse to choose.
+        var recipes = state.recipes();
         if (recipes.isEmpty()) {
             prompt.line("start.recipe.empty", Map.of(KEY_PROJECT, project));
             throw new StartPrompt.StartLeftException();
@@ -487,8 +618,13 @@ final class StartDialogue {
             renderer.recipes(recipes);
             var answer = prompt.askRaw(text("start.source.prompt", Map.of()), state.state().wireValue(),
                                 text("start.recipe.choose.title", Map.of()), entry().entryId());
+            if (leaves(answer)) {
+                throw new StartPrompt.StartLeftException();
+            }
             key = recipeKeyAt(recipes, answer);
             if (key == null) {
+                // An answer that names no recipe of the list chooses nothing; the list is shown again.
+                unoffered(answer, range(recipes.size()) + ", " + leaveKey());
                 return;
             }
         }
@@ -519,28 +655,11 @@ final class StartDialogue {
         var parameters = resolvedParameters(recipe);
         renderer.parameters(recipe, parameters);
         if (parameters.stream().anyMatch(parameter -> !parameter.available())) {
-            var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
-                                text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
-                                entry.entryId());
-            if ("b".equalsIgnoreCase(answer)) {
-                recipeSelected = false;
-                state = act("back", Map.of());
-            }
+            answerUnavailableParameter(entry);
             return;
         }
-        if (prompt.asks()) {
-            var answer = prompt.askRaw(text("start.recipe.set", Map.of("range",
-                                "1-" + parameters.size())), KEY_STATE_RECIPE_PARAMETERS,
-                                text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
-                                entry.entryId());
-            if ("b".equalsIgnoreCase(answer)) {
-                recipeSelected = false;
-                state = act("back", Map.of());
-                return;
-            }
-            if (!answer.isEmpty()) {
-                changeParameter(parameters, answer);
-            }
+        if (prompt.asks() && !askParameters(entry, recipe, parameters)) {
+            return;
         }
         var body = new LinkedHashMap<String, Object>();
         var values = new LinkedHashMap<String, Object>();
@@ -553,6 +672,50 @@ final class StartDialogue {
         state = act("set", body);
     }
 
+    /** Only b and q remain while a parameter has no option. */
+    private void answerUnavailableParameter(EntryResource entry) throws IOException {
+        var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
+                            text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
+                            entry.entryId());
+        if ("b".equalsIgnoreCase(answer)) {
+            recipeSelected = false;
+            state = act("back", Map.of());
+            return;
+        }
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        unoffered(answer, "b, " + leaveKey());
+    }
+
+    /**
+     * Asks which parameter to change.
+     *
+     * @return {@code true} when the parameters are to be set now, {@code false} when the answer went
+     *         back or named no parameter, so the state is shown again
+     */
+    private boolean askParameters(EntryResource entry, RecipeRef recipe, List<RecipeParameter> parameters)
+                        throws IOException {
+        var answer = prompt.askRaw(text("start.recipe.set", Map.of("range",
+                            "1-" + parameters.size())), KEY_STATE_RECIPE_PARAMETERS,
+                            text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
+                            entry.entryId());
+        if ("b".equalsIgnoreCase(answer)) {
+            recipeSelected = false;
+            state = act("back", Map.of());
+            return false;
+        }
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        if (!answer.isEmpty() && !changeParameter(parameters, answer)) {
+            // An answer that names no parameter sends nothing; the parameters are shown again.
+            unoffered(answer, range(parameters.size()) + ", b, " + leaveKey() + ", ?");
+            return false;
+        }
+        return true;
+    }
+
     private List<RecipeParameter> resolvedParameters(RecipeRef recipe) {
         var parameters = new ArrayList<RecipeParameter>();
         for (var parameter : recipe.parameters()) {
@@ -563,31 +726,35 @@ final class StartDialogue {
         return parameters;
     }
 
-    private void changeParameter(List<RecipeParameter> parameters, String answer) {
+    /**
+     * Applies {@code n=value} or asks the value of parameter {@code n}.
+     *
+     * @return {@code false} if the answer names no parameter of the list
+     */
+    private boolean changeParameter(List<RecipeParameter> parameters, String answer) {
         var separator = answer.indexOf('=');
-        try {
-            if (separator > 0) {
-                var index = Integer.parseInt(answer.substring(0, separator).trim());
-                if (index >= 1 && index <= parameters.size()) {
-                    parameterValues.put(parameters.get(index - 1).name(), answer.substring(separator + 1).trim());
-                }
-                return;
+        if (separator > 0) {
+            var index = indexIn(answer.substring(0, separator).trim(), parameters.size());
+            if (index == 0) {
+                return false;
             }
-            var index = Integer.parseInt(answer.trim());
-            if (index >= 1 && index <= parameters.size()) {
-                var parameter = parameters.get(index - 1);
-                var value = prompt.askRaw(text("start.recipe.param_plain", Map.of(KEY_INDEX, index,
-                                    "name", parameter.name(), "value", parameter.value() != null
-                                                        ? parameter.value() : "")),
-                                    KEY_STATE_RECIPE_PARAMETERS, text("start.recipe.parameters.title", Map.of()),
-                                    entry().entryId());
-                if (!value.isEmpty()) {
-                    parameterValues.put(parameter.name(), value);
-                }
-            }
-        } catch (NumberFormatException _) {
-            // an answer that names no parameter leaves the values as they are
+            parameterValues.put(parameters.get(index - 1).name(), answer.substring(separator + 1).trim());
+            return true;
         }
+        var index = indexIn(answer, parameters.size());
+        if (index == 0) {
+            return false;
+        }
+        var parameter = parameters.get(index - 1);
+        var value = prompt.askRaw(text("start.recipe.param_plain", Map.of(KEY_INDEX, index,
+                            "name", parameter.name(), "value", parameter.value() != null
+                                                ? parameter.value() : "")),
+                            KEY_STATE_RECIPE_PARAMETERS, text("start.recipe.parameters.title", Map.of()),
+                            entry().entryId());
+        if (!value.isEmpty()) {
+            parameterValues.put(parameter.name(), value);
+        }
+        return true;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -610,17 +777,16 @@ final class StartDialogue {
             state = act("new", Map.of());
             return;
         }
-        if ("q".equalsIgnoreCase(answer)) {
+        if (leaves(answer)) {
             throw new StartPrompt.StartLeftException();
         }
-        try {
-            var index = Integer.parseInt(answer);
-            if (index >= 1 && index <= entry.adoptableEpics().size()) {
-                adopt(entry.adoptableEpics().get(index - 1).epicId());
-            }
-        } catch (NumberFormatException _) {
-            // the offer is shown again
+        var index = indexIn(answer, entry.adoptableEpics().size());
+        if (index > 0) {
+            adopt(entry.adoptableEpics().get(index - 1).epicId());
+            return;
         }
+        // An answer that names no epic of the offer adopts nothing; the offer is shown again.
+        unoffered(answer, range(entry.adoptableEpics().size()) + ", n, " + leaveKey() + ", ?");
     }
 
     private void adopt(String epicId) throws IOException {
@@ -661,7 +827,11 @@ final class StartDialogue {
                 throw new StartPrompt.StartLeftException();
             }
             default -> {
-                // the cause is shown again
+                if (leaves(answer)) {
+                    throw new StartPrompt.StartLeftException();
+                }
+                // the cause is shown again with the keys it offers
+                unoffered(answer, "t, b, x, " + leaveKey());
             }
         }
     }
@@ -712,7 +882,12 @@ final class StartDialogue {
         answers.parameters.forEach(parameterValues::put);
     }
 
-    private String resolveProject() throws IOException {
+    /**
+     * @return the project the verb names, the configured one, the one the working directory names, or
+     *         the only one enrolled; {@code null} when none of them resolves
+     * @throws IOException on transport failure
+     */
+    private @Nullable String resolveProject() throws IOException {
         if (answers.project != null && !answers.project.isBlank() && !".".equals(answers.project)) {
             return answers.project;
         }
@@ -737,7 +912,7 @@ final class StartDialogue {
         if (ids.size() == 1) {
             return ids.getFirst();
         }
-        return "default";
+        return null;
     }
 
     private StartStateResource act(String linkId, Map<String, Object> body) throws IOException {
@@ -756,6 +931,50 @@ final class StartDialogue {
     private @Nullable SourceKindOffer offer(SourceKind sourceKind) {
         return entry().kindOffers().stream().filter(offer -> offer.kind() == sourceKind)
                             .findFirst().orElse(null);
+    }
+
+    private boolean leaves(String answer) {
+        return ChoicePrompt.isLeave(prompt.locale(), answer);
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+    }
+
+    /**
+     * Answers an input the prompt does not offer: Enter where the prompt has no primary link, {@code ?}
+     * where the state has nothing more to explain, and any other input with the keys it offers
+     * (design <em>Dialogues</em>, links as keys). Nothing is sent.
+     */
+    private void unoffered(String answer, String offered) {
+        if (answer.isEmpty()) {
+            prompt.line("operator.dialogue.enter_no_default", Map.of());
+        } else if ("?".equals(answer)) {
+            prompt.line("operator.dialogue.no_explanation", Map.of());
+        } else {
+            notOffered(answer, offered);
+        }
+    }
+
+    private void notOffered(String answer, String offered) {
+        prompt.line("operator.dialogue.not_offered", Map.of("input", TerminalSanitizer.sanitizeLine(answer),
+                            "offered", offered));
+    }
+
+    /**
+     * @return the 1-based index the answer names within {@code 1..size}, or {@code 0} if it names none
+     */
+    private static int indexIn(String answer, int size) {
+        try {
+            var index = Integer.parseInt(answer.trim());
+            return index >= 1 && index <= size ? index : 0;
+        } catch (NumberFormatException _) {
+            return 0;
+        }
+    }
+
+    private static String range(int size) {
+        return size == 1 ? "1" : "1-" + size;
     }
 
     private int totalSteps() {

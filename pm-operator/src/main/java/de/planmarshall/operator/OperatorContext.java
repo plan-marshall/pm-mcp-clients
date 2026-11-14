@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Locale;
@@ -29,6 +30,7 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.runtime.RuntimeAccess;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.dialogue.StateDialogue;
 import de.planmarshall.operator.layout.OperatorLayout;
 
 /**
@@ -68,6 +70,7 @@ public final class OperatorContext {
     private final TerminalProvider terminalProvider;
     private final BrowserOpener browserOpener;
     private final Clock clock;
+    private final Duration projectSetupWorkingTimeout;
     private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
     private final AtomicBoolean consoleActive = new AtomicBoolean(false);
     private final Deque<Terminal> scopedTerminals = new ArrayDeque<>();
@@ -135,6 +138,41 @@ public final class OperatorContext {
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider,
                         @Nullable BrowserOpener browserOpener, @Nullable Clock clock) {
+        this(environment, userHome, interactiveTerminal, clientEnvironment,
+                            new Seams(terminalProvider, browserOpener, clock, StateDialogue.WORKING_TIMEOUT));
+    }
+
+    /**
+     * What a test injects into a context: the terminal, the browser, the clock and the bound after
+     * which the project setup dialogue gives up on a working state.
+     *
+     * @param terminalProvider           provider for JLine terminal, {@code null} for default
+     * @param browserOpener              browser opener, {@code null} for default
+     * @param clock                      the clock to use, {@code null} for {@link Clock#systemDefaultZone()}
+     * @param projectSetupWorkingTimeout how long a working state of a project setup may stay
+     *                                   without a link before the dialogue gives up
+     */
+    record Seams(@Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener,
+    @Nullable Clock clock, Duration projectSetupWorkingTimeout) {
+    }
+
+    /**
+     * Creates an operator context whose project setup dialogue gives up on a working state after
+     * the bound the seams carry instead of {@link StateDialogue#WORKING_TIMEOUT}.
+     *
+     * @param environment         the process environment
+     * @param userHome            the user's home directory
+     * @param interactiveTerminal {@code true} if attached to an interactive terminal
+     * @param clientEnvironment   the captured client environment
+     * @param seams               what is injected: terminal, browser, clock and the working bound
+     */
+    OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
+                        ClientEnvironment clientEnvironment, Seams seams) {
+        var injectedTerminal = seams.terminalProvider();
+        var injectedBrowser = seams.browserOpener();
+        var injectedClock = seams.clock();
+        this.projectSetupWorkingTimeout = Objects.requireNonNull(seams.projectSetupWorkingTimeout(),
+                            "projectSetupWorkingTimeout");
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
         this.userHome = Objects.requireNonNull(userHome, "userHome");
         this.interactiveTerminal = interactiveTerminal;
@@ -142,10 +180,10 @@ public final class OperatorContext {
         this.gate = new OperatorGate(this);
         this.stateDirectory = OperatorStateDirectory.resolve(environment, userHome);
         this.directFiles = new DirectFileAccess(paths());
-        this.terminalProvider = terminalProvider != null ? terminalProvider
+        this.terminalProvider = injectedTerminal != null ? injectedTerminal
                             : () -> defaultTerminal(interactiveTerminal);
-        this.browserOpener = browserOpener != null ? browserOpener : OperatorContext::defaultBrowserOpen;
-        this.clock = clock != null ? clock : Clock.systemDefaultZone();
+        this.browserOpener = injectedBrowser != null ? injectedBrowser : OperatorContext::defaultBrowserOpen;
+        this.clock = injectedClock != null ? injectedClock : Clock.systemDefaultZone();
     }
 
     /** @return the context of the running process */
@@ -217,6 +255,14 @@ public final class OperatorContext {
     /** @return the clock of this context */
     public Clock clock() {
         return clock;
+    }
+
+    /**
+     * @return how long a working state of a project setup may stay without a link before the
+     *         dialogue gives up; {@link StateDialogue#WORKING_TIMEOUT} unless a test names its own
+     */
+    public Duration projectSetupWorkingTimeout() {
+        return projectSetupWorkingTimeout;
     }
 
     /**

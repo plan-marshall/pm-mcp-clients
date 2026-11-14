@@ -255,6 +255,27 @@ class ConfigSettingsTest {
     }
 
     @Test
+    @DisplayName("an end of input at a documents conflict is no answer and keeps the other client's mode")
+    void documentsConflictEndOfInputKeeps() throws Exception {
+        var puts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else {
+                puts.incrementAndGet();
+                response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":5,\"current_value\":\"copy\"}");
+            }
+        });
+        var code = run(context(""), "config", "documents", "--mode", "move");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertEquals(1, puts.get(), "the mode is never sent again without an answer"),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now copy"), text),
+                            () -> assertTrue(text.contains("No setting changed"), text));
+    }
+
+    @Test
     @DisplayName("Enter on the documents prompt keeps the current mode and records nothing")
     void documentsUnchanged() throws Exception {
         settings(200);

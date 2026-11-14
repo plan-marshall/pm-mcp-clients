@@ -20,16 +20,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The pieces of the entry that the transcript does not reach directly: the step names in either
@@ -146,6 +150,39 @@ class EntryFlowStaticsTest {
         assertEquals(EntryFlow.DEFAULT_WEB_PORT, EntryFlow.getWebPort(Map.of()));
     }
 
+    /**
+     * The status comes off the wire as {@link JsonNumber}s: a fraction or a number beyond an int once
+     * threw out of the entry (the step) or wrapped into another number (the port, a badge count).
+     */
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"2.5", "-3", "4294967297", "1e3"})
+    @DisplayName("a step, a port or a count that is no whole number in range is not taken")
+    void numbersOutOfRangeAreNotTaken(String wire) {
+        var number = new JsonNumber(wire);
+
+        assertAll(
+                            () -> assertEquals(0, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("step", number)))),
+                            () -> assertEquals(4, EntryFlow.getCompletedOnboardStep(
+                                                Map.of("onboard", Map.of("step", number, "completed_steps", new JsonNumber("4"))))),
+                            () -> assertEquals(EntryFlow.DEFAULT_WEB_PORT, EntryFlow.getWebPort(Map.of("web", Map.of("port", number)))),
+                            () -> assertEquals(List.of(), EntryFlow.extractWaitingBadges(
+                                                Map.of("needs_operator", Map.of("question", number)))));
+    }
+
+    @Test
+    @DisplayName("a port beyond 65535 is no port, and the wire's whole numbers are read")
+    void portRangeAndWireNumbers() {
+        assertAll(
+                            () -> assertEquals(EntryFlow.DEFAULT_WEB_PORT, EntryFlow.getWebPort(Map.of("web", Map.of("port", 70_000)))),
+                            () -> assertEquals(EntryFlow.DEFAULT_WEB_PORT,
+                                                EntryFlow.getWebPort(Map.of("web", Map.of("port", new JsonNumber("0"))))),
+                            () -> assertEquals(9123, EntryFlow.getWebPort(Map.of("web", Map.of("port", new JsonNumber("9123"))))),
+                            () -> assertEquals(5, EntryFlow.getCompletedOnboardStep(
+                                                Map.of("onboard", Map.of("completed_steps", new JsonNumber("5"))))),
+                            () -> assertEquals(List.of("2 questions"), EntryFlow.extractWaitingBadges(
+                                                Map.of("needs_operator", Map.of("question", new JsonNumber("2"))))));
+    }
+
     @Test
     @DisplayName("badges come from the needs_operator summaries and drop the zero counts")
     void badges() {
@@ -176,16 +213,23 @@ class EntryFlowStaticsTest {
         assertEquals(0, EntryFlow.extractWaitingBadges(Map.of()).size());
     }
 
+    /**
+     * A code the runtime does not issue is refused: the client once answered such a request with a
+     * code of its own, which no device could redeem (operator decision, TASK-13).
+     */
     @Test
-    @DisplayName("the entry reports the pair to the runtime fixture helper")
+    @DisplayName("a pairing code the runtime does not issue is refused, never made up")
     void pairingFallback() throws Exception {
         try (var fixture = RuntimeFixture.create()) {
             PmOperatorTest.writeLiveRecord(fixture);
             fixture.start((request, response) -> response.send(500, null, ""));
             var context = new OperatorContext(fixture.environment(), fixture.base().getParent(), true);
-            var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), 7420);
-            assertEquals("KXQB-MRTN", pairing.code());
-            assertEquals("http://127.0.0.1:7420/pair#code=KXQB-MRTN", pairing.url());
+            var flow = new EntryFlow(context);
+            var runtime = context.runtime(true);
+
+            var refusal = assertThrows(IOException.class, () -> flow.issuePairingCode(runtime, 7420));
+
+            assertEquals("the runtime issued no code (HTTP 500)", refusal.getMessage());
         }
     }
 }

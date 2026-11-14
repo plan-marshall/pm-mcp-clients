@@ -76,6 +76,15 @@ public final class OperatorActions {
     }
 
     /**
+     * @param epic the epic
+     * @return the plan the epic's next-work action starts: its first staged plan that waits for
+     *         nothing, or {@code null}
+     */
+    public static @Nullable String nextLaunchable(EpicResource epic) {
+        return WorkActionDialogue.nextLaunchable(epic);
+    }
+
+    /**
      * Runs the read-only chat about ended work.
      *
      * @param context the operator context

@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.control.ArchiveCheck;
@@ -47,9 +50,13 @@ import de.planmarshall.operator.tui.VirtualScreenTerminal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The control contract as the dialogues and the client read and write it: every dialogue's
@@ -369,7 +376,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("d\nnot relevant\ny\n");
+        script("d\nnot relevant\nq\n");
         assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
         assertTrue(out.toString().contains("F-1 dropped"), out.toString());
     }
@@ -1049,7 +1056,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("y\n");
+        script("q\n");
         ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false);
         assertTrue(out.toString().contains("\"Reconnect loses the last event\""), out.toString());
     }
@@ -1236,6 +1243,985 @@ class ControlDialoguesTest {
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                             "config", "roles", "--plan", "p");
         assertEquals(0, code, out.toString());
+    }
+
+    /**
+     * Types the keys and ends the script, so a dialogue that asks once more than the test expects
+     * meets the end of the input at once instead of waiting for keys.
+     */
+    private void script(String keys) {
+        virtual.type(keys);
+        virtual.endOfInput();
+    }
+
+    /** Serves the holds read by read in order (the last one repeats) and records every request. */
+    private FakeRuntimeServer serveHolds(HoldResolutionResult result, String... holds) throws IOException {
+        var reads = new AtomicInteger();
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/holds")) {
+                response.json(200, holds[Math.min(reads.getAndIncrement(), holds.length - 1)]);
+            } else if (path.endsWith("/resolve")) {
+                response.json(200, result.toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static boolean resolved(FakeRuntimeServer server) {
+        return server.requests().stream().anyMatch(request -> request.target().endsWith("/resolve"));
+    }
+
+    private static String resolveBody(FakeRuntimeServer server) {
+        return server.requests().stream().filter(request -> request.target().endsWith("/resolve"))
+                            .map(FakeRuntimeServer.Request::bodyText).findFirst().orElse("");
+    }
+
+    @Nested
+    @DisplayName("the hold dialogue")
+    @EnableGeneratorController
+    class HoldDialogueBehaviour {
+
+        private static final String END_HOLD = """
+                            [{"hold_id":"H-3","subject_id":"p","subject_kind":"plan","kind":"stalled",
+                              "cause":"the worker stopped","attempts":0,"acts":["retry","end_plan"]}]
+                            """;
+
+        private final HoldResolutionResult released = new HoldResolutionResult("H-1", true, null, "p");
+
+        @Test
+        @DisplayName("an input the hold does not offer is answered with one line and asked again")
+        void notOfferedAskedAgain() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\nr\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("x) End the plan…   › "), text);
+            assertFalse(text.contains("›  ›"), text);
+            assertTrue(text.contains(input + " is not offered here: r, w, x, q"), text);
+            assertTrue(resolveBody(server).contains("\"act\":\"retry\""), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the wire name of an act is not a key: it is not offered and nothing is sent")
+        void wireNameNotOffered() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("recycle\nq\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("recycle is not offered here"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("German v leaves the hold and sends nothing")
+        void germanLeave() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            var env = new HashMap<>(fixture.environment());
+            env.put("LANG", "de_DE.UTF-8");
+            var german = new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                                virtual::terminal, null);
+            script("v\n");
+
+            assertEquals(0, HoldDialogue.run(german, new PrintWriter(out), "p", null, false));
+
+            assertFalse(out.toString().contains("nicht angeboten"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the act a menu chose for a hold that is gone is asked, not sent to the hold that holds now")
+        void preselectedActOfGoneHoldIsAsked() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("q\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", "H-9", "retry", false));
+
+            assertTrue(out.toString().contains("the worker stopped"), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("an act the hold does not offer is asked, not sent")
+        void preselectedActNotOfferedIsAsked() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+            script("q\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, "accept", false));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("the act a menu chose for the hold it names is sent to that hold")
+        void preselectedActOfNamedHold() throws Exception {
+            var two = STALLED_HOLD.replace("]", ",{\"hold_id\":\"H-2\",\"subject_id\":\"p\",\"kind\":\"stalled\","
+                                + "\"cause\":\"the second\",\"attempts\":0,\"acts\":[\"retry\"]}]");
+            var server = serveHolds(released, two);
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", "H-2", "retry", false));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/holds/H-2/resolve")),
+                                server.requests().toString());
+            assertTrue(out.toString().contains("the second"), out.toString());
+        }
+
+        @Test
+        @DisplayName("ending the plan confirms, then sends the reason")
+        void endPlanSendsReason() throws Exception {
+            var server = serveHolds(released, END_HOLD);
+            var reason = Generators.letterStrings(5, 20).next();
+            script("x\ny\n" + reason + "\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(resolveBody(server).contains("\"reason\":\"" + reason + "\""), resolveBody(server));
+            assertTrue(out.toString().contains("p goes on"), out.toString());
+            assertFalse(out.toString().contains("goes on with the change"), out.toString());
+        }
+
+        @Test
+        @DisplayName("ending the plan without a reason is refused and sends nothing")
+        void endPlanBlankReasonRefused() throws Exception {
+            var server = serveHolds(released, END_HOLD);
+            script("x\ny\n\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("The reason is required."), out.toString());
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @ParameterizedTest(name = "{0} declined")
+        @CsvSource({"x,n", "c,n", "x,later"})
+        @DisplayName("a declined confirmation sends nothing")
+        void declinedSendsNothing(String key, String answer) throws Exception {
+            var server = serveHolds(released, "x".equals(key) ? END_HOLD : INTEGRITY_HOLD);
+            script(key + "\n" + answer + "\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a refused act names the runtime's reason and fails")
+        void refusedAct() throws Exception {
+            var server = fixture.start((request, response) -> {
+                if (request.target().endsWith("/holds")) {
+                    response.json(200, STALLED_HOLD);
+                } else {
+                    response.json(409, "{\"error\":\"conflict\",\"reason\":\"the hold moved on\"}");
+                }
+            });
+            script("r\n");
+
+            assertEquals(1, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("✗"), out.toString());
+            assertTrue(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a hold that is still held but no longer listed lets the plan go on")
+        void stillHeldThenGone() throws Exception {
+            serveHolds(new HoldResolutionResult("H-1", false, null, "p"), STALLED_HOLD, "[]");
+            script("r\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("Still held: "), text);
+            assertTrue(text.contains("p goes on"), text);
+        }
+
+        @Test
+        @DisplayName("a plan that is not held says so")
+        void notHeld() throws Exception {
+            serveHolds(released, "[]");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("p is not held."), out.toString());
+        }
+
+        @Test
+        @DisplayName("without input the act it needs stops the dialogue")
+        void noInputStops() throws Exception {
+            var server = serveHolds(released, STALLED_HOLD);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                HoldDialogue.run(context, new PrintWriter(out), "p", null, true));
+
+            assertFalse(resolved(server), server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a failed landing shows its pull request and asks again")
+        void showPullRequest() throws Exception {
+            var number = Generators.integers(1, 9999).next();
+            var landing = """
+                                [{"hold_id":"H-4","subject_id":"p","kind":"landing_failed","cause":"checks failed",
+                                  "attempts":3,"last_tried_at":"2026-10-20T11:00:00Z",
+                                  "pull_request_url":"https://example.org/o/r/pull/%d",
+                                  "acts":["show_pr","end_plan"]}]
+                                """.formatted(number);
+            var server = serveHolds(released, landing);
+            script("p\nq\n");
+
+            assertEquals(0, HoldDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("#" + number + " https://example.org/o/r/pull/" + number + " is open"), text);
+            assertTrue(text.contains("Tried 3 times, last "), text);
+            assertFalse(resolved(server), server.requests().toString());
+        }
+    }
+
+    private OperatorContext german() {
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "de_DE.UTF-8");
+        return new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                            virtual::terminal, null);
+    }
+
+    /** Serves the settings, answers every change with the given results in order, and records them. */
+    private FakeRuntimeServer serveSettings(String settings, PlanSettingsUpdateResult... results) throws IOException {
+        var writes = new AtomicInteger();
+        return fixture.start((request, response) -> {
+            if (!request.target().endsWith("/settings")) {
+                response.send(404, null, "");
+            } else if ("GET".equals(request.method())) {
+                response.json(200, settings);
+            } else {
+                var result = results[Math.min(writes.getAndIncrement(), results.length - 1)];
+                response.json(result.applied() ? 200 : 409, result.toJson());
+            }
+        });
+    }
+
+    private static List<String> settingsWrites(FakeRuntimeServer server) {
+        return server.requests().stream()
+                            .filter(request -> request.target().endsWith("/settings") && !"GET".equals(request.method()))
+                            .map(FakeRuntimeServer.Request::bodyText).toList();
+    }
+
+    @Nested
+    @DisplayName("the plan settings dialogue")
+    @EnableGeneratorController
+    class PlanSettingsBehaviour {
+
+        @Test
+        @DisplayName("a value outside the runtime's choices is not offered and never sent")
+        void valueOutsideChoices() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            var input = Generators.letterStrings(8, 12).next();
+            script("1\n" + input + "\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertTrue(out.toString().contains(input + " is not offered here: 0-2, q"), out.toString());
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("a value is typed where the runtime names no choices")
+        void typedValueWithoutChoices() throws Exception {
+            var budget = String.valueOf(Generators.integers(1, 500).next());
+            var server = serveSettings("""
+                                {"plan_id":"p","revision":7,"values":[
+                                  {"aspect":"budget","value":"10","origin":"plan"}]}
+                                """, PlanSettingsUpdateResult.applied(8));
+            script("1\n" + budget + "\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), server.requests().toString());
+            assertTrue(settingsWrites(server).getFirst().contains("\"" + budget + "\""), settingsWrites(server).toString());
+            assertTrue(out.toString().contains("version becomes 8"), out.toString());
+        }
+
+        @Test
+        @DisplayName("the German keep key keeps the current value and applies nothing again")
+        void germanKeepKey() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.conflict(8, "landing.main"),
+                                PlanSettingsUpdateResult.applied(9));
+            script("1\n2\nh\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(german(), new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), out.toString());
+        }
+
+        @ParameterizedTest(name = "the conflict answered with \"{0}\" applies nothing again")
+        @ValueSource(strings = {"q", "k", "zz"})
+        @DisplayName("a conflict applies the value again only on Enter")
+        void conflictAppliedOnlyOnEnter(String answer) throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.conflict(8, "landing.main"),
+                                PlanSettingsUpdateResult.applied(9));
+            script("1\n2\n" + answer + "\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            assertEquals(1, settingsWrites(server).size(), out.toString());
+            assertEquals("zz".equals(answer), out.toString().contains("zz is not offered here: k, q"), out.toString());
+        }
+
+        @Test
+        @DisplayName("an aspect that is not offered is answered and asked again")
+        void aspectNotOffered() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            script("landing\n9\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+            var text = out.toString();
+            assertTrue(text.contains("landing is not offered here: 1, q"), text);
+            assertTrue(text.contains("9 is not offered here: 1, q"), text);
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("a group that is not offered is answered and asked again")
+        void groupNotOffered() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+            script("5\nv\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(german(), new PrintWriter(out), "p", null, false));
+
+            assertTrue(out.toString().contains("5 wird hier nicht angeboten: 1-4, v"), out.toString());
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("without input the dialogue stops where it would ask")
+        void noInputStops() throws Exception {
+            var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.applied(8));
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", true));
+
+            assertEquals(List.of(), settingsWrites(server));
+        }
+
+        @Test
+        @DisplayName("each group holds its own aspects, with where each value comes from")
+        void groupsAndOrigins() throws Exception {
+            serveSettings("""
+                                {"plan_id":"p","revision":7,"values":[
+                                  {"aspect":"landing","value":"landing.main","origin":"plan","choices":["landing.main"]},
+                                  {"aspect":"role.planning","origin":"machine","choices":["a"]},
+                                  {"aspect":"integration.github","value":"on","origin":"team","choices":["on"]},
+                                  {"aspect":"provider.speech","value":"off","origin":"project","choices":["off"]}]}
+                                """, PlanSettingsUpdateResult.applied(8));
+            script("2\nq\n");
+
+            assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", null, false));
+
+            var text = out.toString();
+            assertTrue(text.contains("role.planning"), text);
+            assertTrue(text.contains("from the machine"), text);
+            assertFalse(text.contains("integration.github"), text);
+            assertFalse(text.contains("provider.speech"), text);
+        }
+    }
+
+    /** Serves the review, answers each disposition with the decided review, and records every request. */
+    private FakeRuntimeServer serveReview(String review) throws IOException {
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.contains("/disposition")) {
+                response.json(200, REVIEW_KEPT);
+            } else if (path.endsWith("/review/commit")) {
+                response.json(200, REVIEW_COMMITTED);
+            } else if (path.contains("/review")) {
+                response.json(200, review);
+            } else if (path.endsWith("/chat")) {
+                response.json(200, CHAT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static List<String> sent(FakeRuntimeServer server, String suffix) {
+        return server.requests().stream().filter(request -> request.target().contains(suffix))
+                            .map(FakeRuntimeServer.Request::bodyText).toList();
+    }
+
+    @Nested
+    @DisplayName("the review dialogue")
+    @EnableGeneratorController
+    class ReviewBehaviour {
+
+        @Test
+        @DisplayName("a key the item does not offer is answered and asked again")
+        void decisionNotOffered() throws Exception {
+            var server = serveReview(REVIEW);
+            script("r\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(out.toString().contains("r is not offered here: k, d, h, f, q"), out.toString());
+            assertEquals(List.of(), sent(server, "/disposition"));
+        }
+
+        @ParameterizedTest(name = "{0}: answered \"{1}\" -> {2}")
+        @CsvSource({"findings,1,kept", "findings,2,watch", "findings,'',kept", "watches,1,watch",
+                            "watches,2,kept"})
+        @DisplayName("keeping an item keeps it in its register or moves it to the other")
+        void keepOrMove(String register, String answer, String disposition) throws Exception {
+            var server = serveReview(REVIEW.replace("\"register\":\"findings\"", "\"register\":\"" + register + "\""));
+            script("k\n" + answer + "\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", register, false));
+
+            var bodies = sent(server, "/disposition");
+            assertEquals(1, bodies.size(), out.toString());
+            assertTrue(bodies.getFirst().contains("\"" + disposition + "\""), bodies.getFirst());
+        }
+
+        @ParameterizedTest(name = "q at the {0} question sends nothing")
+        @ValueSource(strings = {"k", "d"})
+        @DisplayName("leaving at the keep or the drop question sends nothing")
+        void leaveSendsNothing(String key) throws Exception {
+            var server = serveReview(REVIEW);
+            script(key + "\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertEquals(List.of(), sent(server, "/disposition"));
+        }
+
+        @Test
+        @DisplayName("a register answer that is not offered is answered and asked again")
+        void registerNotOffered() throws Exception {
+            var server = serveReview(REVIEW);
+            script("k\n3\n1\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(out.toString().contains("3 is not offered here: 1-2, q"), out.toString());
+            assertEquals(1, sent(server, "/disposition").size(), out.toString());
+        }
+
+        @Test
+        @DisplayName("an item with a drafted plan shows the plan")
+        void draftedPlanShown() throws Exception {
+            var objective = Generators.letterStrings(8, 20).next();
+            var drafted = REVIEW.replace("\"items\":[", "\"drafted_plan\":{\"plan_id\":\"relay-fix\","
+                                + "\"objective\":\"" + objective + "\",\"deliverables\":[\"one\",\"two\"],"
+                                + "\"surface\":[\"a.java\",\"b.java\"]},\"items\":[");
+            serveReview(drafted);
+            script("q\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            var text = out.toString();
+            assertTrue(text.contains("Plan relay-fix"), text);
+            assertTrue(text.contains(objective), text);
+            assertTrue(text.contains("one; two"), text);
+            assertTrue(text.contains("a.java, b.java"), text);
+            assertFalse(text.contains("p) Promote to a plan"), text);
+            assertFalse(text.contains("e) Edit"), text);
+        }
+
+        @ParameterizedTest(name = "{0} over a drafted plan")
+        @ValueSource(strings = {"p", "e"})
+        @DisplayName("promote and edit are not offered: the key is answered and the same prompt asked again")
+        void promoteAndEditNotOffered(String key) throws Exception {
+            var drafted = REVIEW.replace("\"items\":[", "\"drafted_plan\":{\"plan_id\":\"relay-fix\","
+                                + "\"objective\":\"" + Generators.letterStrings(8, 20).next() + "\","
+                                + "\"deliverables\":[],\"surface\":[]},\"items\":[");
+            var server = serveReview(drafted);
+            script(key + "\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            var text = out.toString();
+            assertTrue(text.contains(key + " is not offered here: k, d, h, f, q"), text);
+            assertEquals(2, text.split("f\\) finish", -1).length - 1, text);
+            assertFalse(text.contains("The runtime offers no drafted plan for this item."), text);
+            assertEquals(List.of(), sent(server, "/disposition"));
+        }
+
+        @Test
+        @DisplayName("the chat about the review reads the review again afterwards")
+        void chatThenReadAgain() throws Exception {
+            var server = serveReview(REVIEW);
+            script("h\n\nq\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/epics/e/chat")),
+                                server.requests().toString());
+            assertEquals(2, server.requests().stream().filter(request -> request.target().contains("/review")).count(),
+                                server.requests().toString());
+        }
+
+        @Test
+        @DisplayName("a declined finish writes nothing to the ledger")
+        void finishDeclined() throws Exception {
+            var server = serveReview(REVIEW_KEPT);
+            script("n\n");
+
+            assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+            assertEquals(List.of(), sent(server, "/review/commit"));
+        }
+
+        @ParameterizedTest(name = "without input over {0}")
+        @ValueSource(strings = {"an open item", "a decided review"})
+        @DisplayName("without input the review stops where it would ask")
+        void noInputStops(String state) throws Exception {
+            var server = serveReview("an open item".equals(state) ? REVIEW : REVIEW_KEPT);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", true));
+
+            assertEquals(List.of(), sent(server, "/disposition"));
+            assertEquals(List.of(), sent(server, "/review/commit"));
+        }
+    }
+
+    private static final String CUT = """
+                        {"epic_id":"e","status":"check","revision":3,
+                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                           "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
+                             "expected_surface":["pm-relay/src/cursor"],"dependencies":[],"status":"staged"}]},
+                         {"id":"WS-2","name":"Authentication","order":2,
+                           "staged_plans":[{"plan_id":"relay-auth-v2","title":"relay-auth-v2",
+                             "objective":"a token exchange","expected_surface":["pm-api/src/cursor"],
+                             "dependencies":["relay-cursor-order"],"status":"staged"}]}],
+                         "findings":[{"severity":"error","rule":"surface_overlap",
+                           "affected_plans":["relay-cursor-order","relay-auth-v2"],
+                           "message":"surface overlaps relay-auth-v2 (pm-api/src/cursor)"}]}
+                        """;
+
+    private static final String CUT_PASSING = """
+                        {"epic_id":"e","status":"review","revision":4,
+                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                           "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
+                             "expected_surface":["pm-relay/src/cursor"],"dependencies":[],"status":"staged"}]}],
+                         "findings":[]}
+                        """;
+
+    /** Serves the epic's decompose action and its decomposition; the check answers with the given cut. */
+    private FakeRuntimeServer serveDecomposition(String checked) throws IOException {
+        return serveDecomposition(CUT, checked);
+    }
+
+    /** Serves the given cut, or answers 404 for it when it is {@code null}; the check answers {@code checked}. */
+    private FakeRuntimeServer serveDecomposition(@Nullable String cut, String checked)
+                        throws IOException {
+        var base = "/projects/pr/epics/e/decomposition";
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/epics/e/actions")) {
+                response.json(200, EPIC_ACTIONS.replace("{\"action\":\"next\",\"available\":true},",
+                                    "{\"action\":\"decompose\",\"available\":true},"));
+            } else if (path.endsWith(base + "/check")) {
+                response.json(200, checked);
+            } else if (path.endsWith(base + "/commit")) {
+                response.json(200, "{\"status\":\"committed\",\"ledger_revision\":4,\"launchable_plan_count\":1}");
+            } else if (path.endsWith(base + "/instruct")) {
+                response.json(200, CUT_PASSING);
+            } else if (path.endsWith(base) && cut != null) {
+                response.json(200, cut);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private int decompose(OperatorContext on) throws IOException {
+        return WorkActionDialogue.run(on, new PrintWriter(out), "epic", "e", "decompose", false,
+                            EpicResource.fromJson(EPIC), null);
+    }
+
+    @Nested
+    @DisplayName("the decomposition dialogue")
+    @EnableGeneratorController
+    class DecompositionBehaviour {
+
+        @Test
+        @DisplayName("an input the cut does not offer is answered with one line, and q leaves keeping the draft")
+        void notOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(input + " is not offered here: 1-2, +, r, q, ?"), text);
+            assertTrue(text.contains("Left [3/3] Decomposition of e. The draft is kept."), text);
+            assertEquals(List.of(), sent(server, "/check"));
+        }
+
+        @Test
+        @DisplayName("? says that nothing more is explained")
+        void questionMark() throws Exception {
+            serveDecomposition(CUT);
+            script("?\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertTrue(out.toString().contains("Nothing more is explained here; choose one of the keys."),
+                                out.toString());
+        }
+
+        @Test
+        @DisplayName("German v leaves and keeps the draft")
+        void germanLeave() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("v\n");
+
+            assertEquals(0, decompose(german()));
+
+            assertTrue(out.toString().contains("Dekomposition von e verlassen"), out.toString());
+            assertEquals(List.of(), sent(server, "/check"));
+        }
+
+        @Test
+        @DisplayName("a plan opens with its detail and is edited by the operator's words")
+        void openAndEdit() throws Exception {
+            var server = serveDecomposition(CUT);
+            var words = Generators.letterStrings(8, 30).next();
+            script("2\ne\n" + words + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("a token exchange"), text);
+            assertTrue(text.contains("WS-2 Authentication"), text);
+            var instructs = sent(server, "/instruct");
+            assertEquals(1, instructs.size(), text);
+            assertTrue(instructs.getFirst().contains("\"edit\"") && instructs.getFirst().contains("relay-auth-v2")
+                                && instructs.getFirst().contains(words), instructs.getFirst());
+        }
+
+        @Test
+        @DisplayName("Enter agrees: a cut whose checks pass is committed")
+        void agreeCommits() throws Exception {
+            var server = serveDecomposition(CUT_PASSING);
+            script("\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(1, sent(server, "/commit").size(), out.toString());
+        }
+
+        @Test
+        @DisplayName("Enter over a cut whose checks fail commits nothing and shows the cut again")
+        void agreeRefusedByChecks() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(1, sent(server, "/check").size(), out.toString());
+            assertEquals(List.of(), sent(server, "/commit"));
+        }
+
+        @Test
+        @DisplayName("an open plan offers no drop: d is answered and the same prompt asked again")
+        void dropNotOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            script("1\nd\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertFalse(text.contains("d) drop"), text);
+            assertTrue(text.contains("d is not offered here: k, e, b, q, ?"), text);
+            assertEquals(2, text.split("k\\) keep   e\\) edit   b\\) back   \\?", -1).length - 1, text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("? at an open plan says that nothing more is explained and asks again")
+        void planQuestionMark() throws Exception {
+            serveDecomposition(CUT);
+            script("1\n?\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("Nothing more is explained here; choose one of the keys."), text);
+            assertEquals(2, text.split("k\\) keep   e\\) edit   b\\) back   \\?", -1).length - 1, text);
+        }
+
+        @ParameterizedTest(name = "\"{0}\" at an open plan")
+        @ValueSource(strings = {"k", "b", "", "q"})
+        @DisplayName("keep, back, Enter and q at an open plan return to the cut and send nothing")
+        void planBackToCut(String answer) throws Exception {
+            var server = serveDecomposition(CUT);
+            script("1\n" + answer + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            // the cut shown twice, before and after the plan, and once more in the line that leaves it
+            assertEquals(3, text.split("\\[3/3\\]", -1).length - 1, text);
+            assertTrue(text.contains("Left [3/3] Decomposition of e. The draft is kept."), text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("German v at an open plan returns to the cut and the plan prompt names v")
+        void germanPlanPrompt() throws Exception {
+            var server = serveDecomposition(CUT);
+            var input = Generators.letterStrings(8, 12).next();
+            script("1\n" + input + "\nv\nv\n");
+
+            assertEquals(0, decompose(german()));
+
+            var text = out.toString();
+            assertTrue(text.contains("k) behalten   e) bearbeiten   b) zur\u00fcck   ?"), text);
+            assertFalse(text.contains("d) verwerfen"), text);
+            assertTrue(text.contains(input + " wird hier nicht angeboten: k, e, b, v, ?"), text);
+            assertTrue(text.contains("Dekomposition von e verlassen"), text);
+            assertEquals(List.of(), sent(server, "/instruct"));
+        }
+
+        @Test
+        @DisplayName("the read-back answers an input it does not offer, and ?, then accepts on Enter")
+        void readBackNotOffered() throws Exception {
+            var server = serveDecomposition(CUT);
+            var words = Generators.letterStrings(8, 30).next();
+            var input = Generators.letterStrings(8, 12).next();
+            script("2\ne\n" + words + "\n?\n" + input + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains("Nothing more is explained here; choose one of the keys."), text);
+            assertTrue(text.contains(input + " is not offered here: i, x, q, ?"), text);
+            assertEquals(3, text.split("Accept\\? \\[Enter\\]", -1).length - 1, text);
+            assertEquals(1, sent(server, "/instruct").size(), text);
+        }
+
+        @ParameterizedTest(name = "empty words after {0}")
+        @ValueSource(strings = {"r", "+", "2 e"})
+        @DisplayName("empty words send no instruction, read nothing back and keep the cut")
+        void emptyWordsSendNothing(String keys) throws Exception {
+            var server = serveDecomposition(CUT);
+            script(keys.replace(' ', '\n') + "\n\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            assertEquals(List.of(), sent(server, "/instruct"));
+            assertFalse(out.toString().contains("Accept? [Enter]"), out.toString());
+            assertTrue(out.toString().contains("Left [3/3] Decomposition of e. The draft is kept."), out.toString());
+        }
+
+        @Test
+        @DisplayName("a number beyond the cut's plans is not offered and opens nothing")
+        void numberBeyondPlans() throws Exception {
+            serveDecomposition(CUT);
+            var number = Generators.integers(3, 999).next();
+            script(number + "\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(number + " is not offered here: 1-2, +, r, q, ?"), text);
+            assertFalse(text.contains("k) keep   e) edit"), text);
+        }
+
+        @Test
+        @DisplayName("a cut of one plan offers 1, and a plan without an objective shows none")
+        void onePlanCut() throws Exception {
+            serveDecomposition(CUT_PASSING, CUT_PASSING);
+            var input = Generators.letterStrings(8, 12).next();
+            script(input + "\n1\nb\nq\n");
+
+            assertEquals(0, decompose(context));
+
+            var text = out.toString();
+            assertTrue(text.contains(input + " is not offered here: 1, +, r, q, ?"), text);
+            assertTrue(text.contains("Objective     \u2014"), text);
+            assertTrue(text.contains("Workstream    WS-1 Reconnect"), text);
+        }
+
+        @Test
+        @DisplayName("an epic without a drafted decomposition says so and asks nothing")
+        void noDecomposition() throws Exception {
+            var server = serveDecomposition(null, CUT);
+            script("");
+
+            assertEquals(0, decompose(context));
+
+            assertTrue(out.toString().contains("No decomposition is drafted for e yet."), out.toString());
+            assertEquals(List.of(), sent(server, "/check"));
+        }
+    }
+
+    /** Serves the given actions for every subject and answers every act with them. */
+    private FakeRuntimeServer serveActions(String actions) throws IOException {
+        return fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/actions") || path.contains("/actions/")) {
+                response.json(200, actions);
+            } else if (path.endsWith("/epics/e")) {
+                response.json(200, EPIC);
+            } else if (path.endsWith("/archive-check")) {
+                response.json(200, ARCHIVE_CHECK.replace("\"lines\":[",
+                                    "\"lines\":[{\"label\":\"the ledger is behind\",\"passed\":true,\"note\":\"3 rows\"},"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    private static List<String> performed(FakeRuntimeServer server) {
+        return server.requests().stream().map(FakeRuntimeServer.Request::target)
+                            .filter(target -> target.contains("/actions/")).toList();
+    }
+
+    @Nested
+    @DisplayName("the work action dialogue")
+    @EnableGeneratorController
+    class WorkActionBehaviour {
+
+        @Test
+        @DisplayName("a negative common-files count is refused and nothing is sent")
+        void commonFilesNegative() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+            script("-" + Generators.integers(1, 50).next() + "\n");
+
+            assertEquals(1, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
+                                false, EpicResource.fromJson(EPIC), null));
+
+            assertTrue(out.toString().contains("Give the number"), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an action the state does not offer is refused with the actions it allows")
+        void actionNotInState() throws Exception {
+            var server = serveActions(PAUSED_ACTIONS);
+
+            assertEquals(1, dialogue("plan", "p", "pause"));
+
+            assertTrue(out.toString().contains("start, abandon"), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an action that cannot run now is refused with the runtime's reason")
+        void actionDisabled() throws Exception {
+            var reason = Generators.letterStrings(8, 20).next();
+            var server = serveActions(PLAN_ACTIONS.replace("{\"action\":\"pause\",\"available\":true}",
+                                "{\"action\":\"pause\",\"available\":false,\"reason\":\"" + reason + "\"}"));
+
+            assertEquals(1, dialogue("plan", "p", "pause"));
+
+            assertTrue(out.toString().contains("pause is not available: " + reason), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("an offered action the dialogue has no form for is refused")
+        void offeredWithoutDialogue() throws Exception {
+            var server = serveActions(PLAN_ACTIONS.replace("{\"action\":\"pause\",\"available\":true}",
+                                "{\"action\":\"decide\",\"available\":true}"));
+
+            assertEquals(1, dialogue("plan", "p", "decide"));
+
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("abandoning a paused plan without an epic asks the reason and confirms")
+        void abandonWithoutEpic() throws Exception {
+            var server = serveActions(PAUSED_ACTIONS);
+            script("given up\n1\ny\n");
+
+            assertEquals(0, dialogue("plan", "p", "abandon"));
+
+            var text = out.toString();
+            assertTrue(text.contains("abandoned"), text);
+            assertFalse(text.contains(" told"), text);
+            assertEquals(List.of("/api/v1/plans/p/actions/abandon"), performed(server));
+        }
+
+        @Test
+        @DisplayName("ending without a reason is refused and sends nothing")
+        void endWithoutReason() throws Exception {
+            var server = serveActions(PLAN_ACTIONS);
+            script("\n");
+
+            assertEquals(0, dialogue("plan", "p", "cancel"));
+
+            assertTrue(out.toString().contains("The reason is required."), out.toString());
+            assertEquals(List.of(), performed(server));
+        }
+
+        @Test
+        @DisplayName("a plan held by an integrity pause is aborted, not cancelled")
+        void integrityPausedAborts() throws Exception {
+            serveActions(PLAN_ACTIONS.replace("\"state\":\"running\"",
+                                "\"state\":\"held\",\"hold_kind\":\"integrity_pause\""));
+            script("the file changed\n1\ny\n");
+
+            assertEquals(0, dialogue("plan", "p", "cancel"));
+
+            assertTrue(out.toString().contains("aborted"), out.toString());
+        }
+
+        @Test
+        @DisplayName("a hold act of an epic is sent as the epic's act")
+        void epicHoldAct() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+
+            assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "retry", false,
+                                null, null));
+
+            assertEquals(List.of("/api/v1/epics/e/actions/retry"), performed(server));
+        }
+
+        @Test
+        @DisplayName("an archive check line that names no catalogue text is shown as the runtime wrote it")
+        void archiveUncataloguedLine() throws Exception {
+            serveActions(EPIC_ACTIONS);
+            script("n\n");
+
+            assertEquals(0, dialogue("epic", "e", "archive"));
+
+            assertTrue(out.toString().contains("the ledger is behind"), out.toString());
+            assertTrue(out.toString().contains("3 rows"), out.toString());
+        }
+
+        @Test
+        @DisplayName("automatic mode without the epic resource reads the epic first")
+        void autoReadsEpic() throws Exception {
+            var server = serveActions(EPIC_ACTIONS);
+
+            assertEquals(0, dialogue("epic", "e", "auto"));
+
+            assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/epics/e")),
+                                server.requests().toString());
+            assertTrue(out.toString().contains("starts its plans by itself"), out.toString());
+        }
+
+        @Test
+        @DisplayName("without input the action stops and says so")
+        void noInputStops() throws Exception {
+            var server = serveActions(PLAN_ACTIONS);
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT,
+                                WorkActionDialogue.run(context, new PrintWriter(out), "plan", "p", "pause", true, null,
+                                                    null));
+
+            assertEquals(List.of(), performed(server));
+        }
     }
 
     @Test
