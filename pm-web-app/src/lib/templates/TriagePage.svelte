@@ -32,6 +32,7 @@
   import { tick } from 'svelte';
   import KindMark, { KIND_WORD_KEYS } from '../components/KindMark.svelte';
   import GapStrip from './GapStrip.svelte';
+  import SideColumn from './SideColumn.svelte';
   import { t } from '../i18n';
   import { pageInset, windowFor, type ColumnWindow } from './columnWindow';
 
@@ -67,9 +68,27 @@
     object?: Snippet<[Level]>;
     /** A selection the list does not hold, shown as one pinned row with its reason. */
     pinned?: PinnedRow | null;
+    /** The chat's side column. */
+    side?: Snippet;
+    /** Whether the chat's side column is shown. */
+    sideOpen?: boolean;
+    /** The act that hides the chat; the view replaces the address. */
+    onHideSide?: () => void;
+    /** The head of the first visible column, which the page fills with Up (PLAN-144). */
+    up?: Snippet;
   }
 
-  let { levels, label, column, object, pinned = null }: Props = $props();
+  let {
+    levels,
+    label,
+    column,
+    object,
+    pinned = null,
+    side,
+    sideOpen = false,
+    onHideSide = () => {},
+    up,
+  }: Props = $props();
 
   /** The measuring frame: the template's own container. */
   let frame = $state<HTMLElement | null>(null);
@@ -86,7 +105,9 @@
   const container = $derived(measured > 0 ? measured : PROVISIONAL_WIDTH);
 
   /** The window the chain gets in that container. */
-  const layout: ColumnWindow = $derived(windowFor({ container, depth: levels.length, peek }));
+  const layout: ColumnWindow = $derived(
+    windowFor({ container, depth: levels.length, peek, sideOpen: sideOpen && side !== undefined }),
+  );
 
   /** The levels the window hides to its left, with their index in the chain. */
   const hidden = $derived(
@@ -253,6 +274,11 @@
    * @param event the key press on the window or one of its columns
    */
   function onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && sideOpen && side !== undefined) {
+      event.preventDefault();
+      onHideSide();
+      return;
+    }
     if (isField(event.target)) {
       return;
     }
@@ -272,6 +298,7 @@
   style:padding-inline={`${pageInset(container)}px`}
   bind:this={frame}
 >
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="triage-page__window"
     role="group"
@@ -300,6 +327,10 @@
         aria-label={entry.level.title}
         style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
       >
+        {#if up && entry.index === layout.start}
+          <div class="triage-page__up">{@render up()}</div>
+        {/if}
+
         {#if carriesPinned(entry.index) && pinned !== null}
           <p class="triage-page__pinned" data-testid="triage-pinned">
             <KindMark kind={pinned.level.kind} />
@@ -323,6 +354,15 @@
         objectTitle={objectTitle}
         width={layout.stripWidth}
         onReturn={() => void returnToObject()}
+      />
+    {/if}
+
+    {#if sideOpen && side}
+      <SideColumn
+        {side}
+        width={layout.sideWidth}
+        takesSpace={layout.sideTakesSpace}
+        onHide={onHideSide}
       />
     {/if}
   </div>
@@ -378,6 +418,13 @@
   .triage-page__pinned-title {
     color: var(--color-text-primary);
     font-weight: var(--weight-semibold);
+  }
+
+  .triage-page__up {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block-end: var(--space-3);
   }
 
   @keyframes triage-page-shift {

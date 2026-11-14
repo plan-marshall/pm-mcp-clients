@@ -348,7 +348,7 @@ describe('the side column of the chat', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Hide the chat' }));
     expect(onHideSide).toHaveBeenCalledOnce();
 
-    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: 'Escape' });
+    await fireEvent.keyDown(screen.getByTestId('side-column'), { key: 'Escape' });
     expect(onHideSide).toHaveBeenCalledTimes(2);
   });
 

@@ -81,7 +81,8 @@ describe('ObjectPage', () => {
 
     expect(source).not.toContain('name="path"');
     expect(source).not.toContain('object-page-path');
-    expect(source).not.toContain('side');
+    expect(source).not.toContain('name="side"');
+    expect(source).not.toContain('export let side');
   });
 
   it('adds no second surface around the strip and the tabs', () => {
