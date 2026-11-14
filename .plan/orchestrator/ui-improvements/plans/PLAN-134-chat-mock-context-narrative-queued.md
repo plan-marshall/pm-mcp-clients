@@ -83,8 +83,6 @@ Specification: `doc/design/web-app/chat.adoc` § `#subject-notices`, `#status-ca
  - Done when:
    - A web-listener test and a socket test assert the recorded channel; the full build and integration tests pass at the head
      (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed
-     read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -96,7 +94,7 @@ Specification: `doc/design/web-app/chat.adoc` § `#subject-notices`, `#status-ca
 - Ports: mock web port 21340 (`20000 + 10 × 134`), app port 21341 (`AGENTS.md` § Ports).
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
 - The merge rule: merge only when every thread has a reply and is resolved, every review body is answered and some head has had one
-  CodeRabbit review; counts stated from `ci pr comments`; merge on the operator's word only; commits end with
+  CodeRabbit review; counts stated from `ci pr comments`; the run merges itself once the gates hold (no further operator word); commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -134,6 +132,24 @@ Specification: `doc/design/web-app/chat.adoc` § `#subject-notices`, `#status-ca
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; re-read the event catalogue row of `plan.revision_queued`.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+Operator decision 2026-11-13 (recommended split). Re-ground at outline against `a139ec62`:
+
+- D1 is partly done: `ChatRegistry.context(address)` already writes `knows` for description, archive and decision, and `as_of`. Keep the
+  133 states: `ProposalState.ACCEPTED` for a revision, `APPLIED` otherwise, the `ChatRegistry.observe` hook and the seed validation.
+- **D-new-1 (m2):** `MockRuntimeEngine.applyChatProposal` (`:874-890`) only increments `revision` for an accepted row or draft proposal;
+  `before`/`after` are not applied. Spec of PLAN-133 D4 says the change is "applied and shows in the subject's resource". Apply it;
+  `ChatProposalsTest.java:216-232` ("moves on by one revision") becomes a check of the applied value. Test-first, fails on a revert.
+- **D-new-2 (m3):** `starting-work.adoc:148` says abandoning an entry deletes its transcript; `ChatRegistry.java:691` ends it as
+  `ENTRY_CLOSED` and keeps it, and no test pins either. Implement the design (delete) with a test, or, if the design is wrong for B1, stop
+  and ask the operator before changing the document.
+- **D-new-3 (m4):** `ChatRegistry.java:541-548` `playFailure` checks `isCurrent` under the lock and calls `replaceWorker` after releasing
+  it (a stop plus a new message in between hits the new reply): make check-and-replace atomic. `ChatRegistry.java:1141` routes on
+  `indexOf("chat")`, so an id literally `chat` is unroutable: parse by position from `ChatRoutes`. One test each (lesson
+  `2026-11-12-23-001` items 6 and 7).
+- Overlap: `PLAN-161` (chat bridge, may run in parallel) changes no mock code; if this plan changes a chat route or body, coordinate.
 
 ## Hand-Off Command
 

@@ -71,8 +71,6 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
  - Skills: pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
  - Done when:
    - The ITs pass with `-Pintegration-tests` and assert the screen (evidence order: `test-first`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed
-     (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -94,14 +92,23 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 ## Claim Labels
 
 - OBSERVED: `AnswerCommand.java` offers no `h) chat` today (PLAN-124 removed the advertisement until the surface exists); `git grep -n chat -- AnswerCommand.java` finds one unrelated line — read at `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand has no chat mention at all now (spec said one line); no h) chat is offered
 - OBSERVED: `ReviewDialogue` has a `CHAT` decision and the key `chat` at its prompt — read at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java:106,120,175,201`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue CHAT :106, enum :120, key chat :175,201; case CHAT opens WorkChatDialogue epic chat at :107
 - OBSERVED: `StartDialogue` handles `h` with `openChat()` and runs `ChatDialogue` — read at `pm-operator/src/main/java/de/planmarshall/operator/StartDialogue.java:247,672-682`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartDialogue case h -> openChat() :247; openChat :672-684 runs new ChatDialogue(...)
 - OBSERVED: `ChatDialogue` ends the chat on an empty line — read at `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java:58-91`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.run :84-85 an empty answer calls endChat(entryId)
 - OBSERVED: the design says the decision chat's key is `operator.actions.key.chat` (`h`, `t`) and that without the surface it is not advertised — read at `doc/design/terminal-client/14-transcripts-decisions.adoc:17,195,253`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 14-transcripts-decisions.adoc:195 (key operator.actions.key.chat, h/t) and :253 (not advertised without the surface)
 - HYPOTHESIS: the review chat's item scope is not sent by the current client (the web one is the same) — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java` § `case CHAT` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue:107 opens WorkChatDialogue epic chat with epicId only; no item scope is sent (web EpicView:477 the same)
 - HYPOTHESIS: `ActionMenus` and `ActionsMenu` already list a chat entry that runs `WorkChatDialogue` for plans and epics only — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionMenus chat entries :39,128,247,267; chat runs WorkChatDialogue for plan/epic kinds only (ActionSupport:360, OperatorActions:92, WorkActionDialogue:307)
 - HYPOTHESIS: `StartApi` carries the entry's chat routes and needs the B1 route builders — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartApi.java` § chat (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartApi uses ChatRoutes.entry for open :135, turn :151, page :175, accept :199, end :213 (B1 builders)
 - Verify-first clause: PLAN-123 (running) and PLAN-124 (landed) edit `AnswerCommand`; re-read the decision prompt at the then-current HEAD before scoping deliverable 1; the operator's answer to O10 is read before scoping deliverable 2.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause; PLAN-124 shape confirmed (no chat in AnswerCommand) but PLAN-123 status unreadable
 
 ## Expected Surface
 
@@ -125,6 +132,15 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/14-transcripts-decisions.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/22-texts-actions.adoc` — present at `1cc0e10e`
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/control/ChatTurnResource.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/control/ChatProposalResource.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/control/ChatScope.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/control/ChatState.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/control/ChatRole.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/start/StartStateResource.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/control/ControlCataloguesTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartCodecTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartContractTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -139,6 +155,23 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 ## Re-Grounding at Restart
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; list which of PLAN-123, 30, 44 landed.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- `StartApi` already runs the start chat on the B1 model (`a139ec62`); the HYPOTHESIS "StartApi needs the B1 route builders" is settled true.
+  This plan still replaces its 60 s polling with stream-following and the `start.chat.*` texts; `StartChatResource` deletion stays here.
+- **m5:** the poll loop `StartApi.java:158-160` (`LockSupport.parkNanos`, up to 600 GETs) does not check the interrupt flag. The
+  replacement must stop on interrupt; one test.
+- `PLAN-161` adapts `WorkActionsClient`/`WorkChatDialogue` to B1 first; this plan and `PLAN-138` replace that adaptation.
+- D2 (review/decomposition chat) needs the O10 route builders in `ChatRoutes` (absent at `a139ec62`); see the epic's Open Items.
+
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+- The terminal's ended-work menu and `h) chat` need the same new-entry surface as `PLAN-138` D4, and D1's decision chat address needs the
+  decision envelope's subject id: both in the epic's contract Open Item.
+- Owner of the orphaned old-shape `pm-api` chat types: after deleting `StartChatResource`/`FollowUpProposalResource`, this plan also deletes
+  `control.ChatTurnResource`, `ChatProposalResource`, `ChatScope`, `ChatState`, `ChatRole` and `StartStateResource.chat` with their codecs
+  and tests, if nothing else uses them.
 
 ## Hand-Off Command
 
@@ -158,3 +191,9 @@ own `inbox/{sender}-{seq}` message; the orchestrator owns every other ledger wri
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Review and decomposition chats (O10):** own addresses, as PLAN-132 records; this plan follows them.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- `AnswerCommand` line refs are stale since `98cea294` (no `chat` yet: the PLAN-140 premise holds). `EpicCommand` chat now at `:699`,
+  `PlanCommand` chat at `:799`, `ActionSupport.chat` at `:350-386`. The EOF contract (`StartPrompt.StartLeftException`) and the
+  `readOwnWords`/`clarified` path are shared with the answer verb.

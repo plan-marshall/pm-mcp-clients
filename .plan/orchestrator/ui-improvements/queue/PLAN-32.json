@@ -2,10 +2,10 @@
   "id": "PLAN-32",
   "slug": "cli-config-contract",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "pr": "415",
+  "landing": "landings/PLAN-32.md",
   "seq": 32
 }

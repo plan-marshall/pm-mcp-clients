@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-161",
+  "slug": "chat-client-bridge",
+  "workstream": "WS-07",
+  "status": "shipped",
+  "lane": "runbook",
+  "plan_marshall_plan_id": "",
+  "pr": "429",
+  "landing": "landings/PLAN-161.md",
+  "seq": 161
+}

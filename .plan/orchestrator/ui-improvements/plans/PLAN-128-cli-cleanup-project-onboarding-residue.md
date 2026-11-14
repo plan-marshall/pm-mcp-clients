@@ -88,8 +88,24 @@ Make each do what the design says, with tests that can fail, and answer the revi
  - Skills: pm-dev-java:junit-core
  - Done when:
    - `ci pr comments --pr-number 377` and `--pr-number 381` read 0 unresolved threads and no unanswered review body. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open
-     (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed. Evidence order: `none`.
+
+5. **`config cleanup` and the overview's Cleanup row (PLAN-32 residue, folded 2026-11-12 on the operator's decision)**
+ - What:
+   - The `config` overview's last row (`ConfigCommand.java:233-238` at `948c51a1`) runs the top-level `cleanup` job view. The design
+     (`08-transcripts-later.adoc:179`, `26-cleanup.adoc:29,38,177-182`) opens the durations editor `config cleanup`
+     (`settings.cleanup-durations`, `settings.record`), and no `config cleanup` subcommand exists. Add `config cleanup [--project <id>|.]
+     [--plans|--epics|--logs <days>|never]` as `26-cleanup.adoc#t-durations` draws it, and point the row at it.
+   - The mock: plain-writable `cleanup.*` configuration keys (`MockRuntimeEngine.java:7409`) shadow the durations of `/machine/settings`.
+     There are two sources of truth, and the 7-day minimum is bypassed. Keep one source and refuse a value under the minimum as the
+     specification says.
+   - The row's value `{days} days` has no plural form ("1 days"): the key is PLAN-30's (D6); this deliverable only uses it.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
+ - Done when:
+   - `ConfigCommandTest`: selecting the Cleanup row opens `config cleanup`; `config cleanup --plans 3` is refused under the minimum;
+     `--project .` writes the project's value. A mock test: a `cleanup.*` write and `/machine/settings` agree. Each fails on a revert.
+     Evidence order: `test-first`.
+   - Terminal check of `config cleanup` (machine and `--project`), en and de. Evidence order: `none`.
 
 ## Standing Constraints
 
@@ -108,10 +124,10 @@ a reduced aspect list, in `en` and `de`.
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
 - **The merge rule:**
-  - The merge question is asked only when every review thread on this pull request has a reply and is resolved, and every review body is
+  - The run merges only when every review thread on this pull request has a reply and is resolved, and every review body is
     answered; at least one CodeRabbit review of some head must exist (if CodeRabbit refuses on quota, stop and ask the operator).
   - The pull request body states the thread count, the resolved count and the review-body items with their count, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
     The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -164,11 +180,15 @@ a reduced aspect list, in `en` and `de`.
 - OBSERVED: `doc/design/terminal-client/26-cleanup.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/17-projects.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at `1cc0e10e`
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at `948c51a1` (D5, PLAN-32 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at `948c51a1` (D5)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockConfigRoutes.java` — present at `948c51a1` (D5)
+- OBSERVED: `doc/design/terminal-client/08-transcripts-later.adoc` — present at `948c51a1` (D5, read)
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-128.txt` — absent; created by this plan
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-23` (shipped, #381), `PLAN-121` (shipped, #390), `PLAN-119` (shipped, #377), `PLAN-123` (running: `CleanupCommand`, `StateDialogue`),
+- Depends on: `PLAN-160` (the `config` residue: the same `ConfigCommand.java` overview; this plan runs after it), `PLAN-23` (shipped, #381), `PLAN-121` (shipped, #390), `PLAN-119` (shipped, #377), `PLAN-123` (running: `CleanupCommand`, `StateDialogue`),
   `PLAN-84` (running: the catalogue pairs, `01-commands.adoc`)
 - Overlaps with: `PLAN-30` (`CleanupCommand` literals, `01-commands.adoc`, the catalogue pairs: this plan runs BEFORE it), `PLAN-44` (the glyph guard moves
   the glyph literals of `CleanupCommand`: starts after), `PLAN-126` and `PLAN-127` (the catalogue pairs: run in series),
@@ -195,3 +215,9 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - **Excluded aspect (decision 2):** a state of an aspect not in the injected list shows no step name (the overview lists only the injected aspects); never `Done`.
 - **`26-cleanup.adoc` (decision 7):** the AGREED text wins: the confirmation gets back `back` and `?`, and the 7 keys the code added are entered in the document's text table; the lane's other unapproved edits revert to the AGREED wording.
 - **Argument no state asked for (decision 8):** implemented as `01-commands.adoc:172` says; the sentence stays.
+
+## PLAN-32 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-32.md` (operator, AskUserQuestion): deliverable 5 adds `config cleanup` and points the overview's Cleanup row at it,
+and makes the mock's durations one source. Surface +4 paths (`ConfigCommand.java`, `ConfigCommandTest.java`, `MockConfigRoutes.java`,
+`08-transcripts-later.adoc` read). Runs after `PLAN-160` and `PLAN-126`.

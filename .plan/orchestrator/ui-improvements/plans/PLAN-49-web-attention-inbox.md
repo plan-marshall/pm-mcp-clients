@@ -24,18 +24,18 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `attention.test.ts`: each kind becomes an item with its act; order; an answered decision leaves (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Inbox view and route**
    - What: `lib/views/InboxView.svelte` on the triage template at `/`; `openStartPage()` opens it; empty state "Nothing waits for you." with the running work per project; the rail item and the tab title carry the total.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `inbox.spec.js` on `fully-onboarded`: the five items of UX-V-02, blocking first; each act opens its place (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20490 PM_WEB_PORT=20491 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -52,13 +52,19 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-02)`, `doc/claude_review/ux/proposals.adoc#UX-P-01` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` carries UX-S-02 (2 hits), `ux/proposals.adoc` UX-P-01, `use-cases/proposals.adoc` UC-P-09.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-02 at ux/plan.adoc:24, UX-P-01 at ux/proposals.adoc:12, UC-P-09 at use-cases/proposals.adoc:176; all present at HEAD
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-7 is `AGREED` and the runtime serves the list, so "derived on the client from the stores that exist" no longer holds. The operator decided two views against one combined entry (what waits; go to work by name), and the web "what waits" view is "a route of its own, a destination of the rail with its count" per the package `needs-and-find`; the rail from `PLAN-39` exists and the rail item and tab title carry the total. `PLAN-83` and `PLAN-52` share the running-work rows with this view.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: MachineApiPaths.java:26 serves /api/v1/machine/needs-operator via NeedsOperatorPage; rail exists (nav.ts, NavRail, nav-inbox.svg); client.ts has no getNeedsOperator yet
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): attention.ts, InboxView.svelte and inbox.spec.js are still absent; the claim of the spec narrative that the rail exists holds (nav-inbox.svg icon and routes.ts present); routes.ts has no inbox/attention/needs route yet; OverviewView.svelte is still home.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: attention.ts, InboxView.svelte, inbox.spec.js absent; nav-inbox.svg present; AppRoute (routes.ts:20) has no inbox route; landingRoute (runtime.ts:380) lands on overview
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact to settle by reading
 - HYPOTHESIS: `fully-onboarded.json` serves no `needs-operator` resource (only `running-work.json` does), so the browser check names `running-work` or extends the fixture — confirm/refute at `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` § `needs-operator` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: fully-onboarded.json has 0 needs-operator resources; running-work.json:84,3125,3497,3806 serve it
 - HYPOTHESIS: the Event `needs_operator.changed` reaches the web stream with the machine summary in its payload — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorChangedEvent.java` § `EVENT_NAME` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: NeedsOperatorChangedEvent.java:41 EVENT_NAME needs_operator.changed; toMap puts summary under needs_operator; OverviewView.svelte:242 handles it from the web stream
 - HYPOTHESIS: `web.rail.needs` and `web.inbox.title` are absent from the catalogue and belong in `common.{en,de}.properties` — confirm/refute at `pm-api/src/main/resources/messages/common.en.properties` § `web.rail` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: web.rail.needs and web.inbox.title appear in no messages file; only common has web.frame.rail.*; keys are named in doc/design/web-app/needs-and-find.adoc:27,70,82
 
 ## Expected Surface
 
@@ -90,6 +96,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/needs-and-find.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/RowLink.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/RowLink.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -112,6 +123,17 @@ design sessions' output, and a parked row is not in the disjointness gate popula
   `RowLink` (007).
 - The empty state uses the mascot "nothing waits" pose or the source bust (005).
 - The bottom bar becomes What waits · Running work · Decisions · More; Reports moves into More with its unread count (003).
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- First adopter of `RowLink` and `StatusLabel`'s list slot (after `PLAN-149` D6 renames the prop; never write `<StatusLabel slot>`).
+- `RowLink` contract at `25137445`: `title` is a plain string on one line with ellipsis; slots `kind`/`tags`/`acts`; only `acts` and a `.chip`
+  in `tags` sit above the stretched link (the `kind` slot and any other control in `tags` are covered, `RowLink.svelte:100-103`, `:137`,
+  `:146`). The second detail line this plan needs (path / since / blocks, `:111-112`) is not in `RowLink`: add it to `RowLink` here, with
+  its stacking.
+- a11y to settle as first adopter: `aria-current` sits on the wrapper `<div>` (`RowLink.svelte:47`), not the anchor — move it to the anchor
+  (`aria-current="page"`/`true`); `.row-link:focus-within` (`:87-90`) rings the row on a mouse click into a nested control and doubles the
+  anchor's own ring — use `:has(a:focus-visible)`. Test in a browser, not by CSS strings.
 
 ## Hand-Off Command
 

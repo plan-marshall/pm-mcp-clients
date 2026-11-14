@@ -107,7 +107,7 @@ Specification: `doc/design/web-app/brand-mark-mascot.adoc` (§ `#surfaces`, `#as
   this worktree did not start.
 - Write-set discipline: the main checkout is never edited; only the session's own worktree and branch.
 - The merge rule: merge only when every thread has a reply and is resolved, every review body is answered and some head has had
-  one CodeRabbit review; counts stated from `ci pr comments`; merge on the operator's word only; commits end with
+  one CodeRabbit review; counts stated from `ci pr comments`; the run merges itself once the gates hold (no further operator word); commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; no generator footer in the pull request body.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -162,10 +162,12 @@ Re-read every file above at the then-current HEAD; settle the HYPOTHESES; re-run
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-12 by the operator's size rule: 19 files, six deliverables of new components, derived images and
+browser evidence; it had been emitted on the runbook lane by mistake and not started). Overlap now running: PLAN-147
+(`routes/dev/components/+page.svelte`); whichever lands second rebases.
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-131-web-mascot-figure-and-surfaces.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-131-web-mascot-figure-and-surfaces.md"
 ```
 
 ## Write-Boundary

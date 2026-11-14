@@ -2,10 +2,10 @@
   "id": "PLAN-128",
   "slug": "cli-cleanup-project-onboarding-residue",
   "workstream": "WS-04",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "pr": "425",
+  "landing": "landings/PLAN-128.md",
   "seq": 128
 }

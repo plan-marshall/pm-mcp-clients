@@ -81,8 +81,6 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
  - Skills: pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
  - Done when:
    - `ChatKnowsIT` passes with `-Pintegration-tests` and asserts the screen (evidence order: `test-first`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue
-     dismissed (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -103,12 +101,19 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 ## Claim Labels
 
 - OBSERVED: `PlanViewLevel`, `PlanViewFormatting`, `OverviewFormatting` exist in `planview/` and `overview/` and are edited by PLAN-123 (running) — read at `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewLevel.java`, `.../overview/OverviewFormatting.java`; the PLAN-123 surface in `queue-view.md`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel, PlanViewFormatting (planview/), OverviewFormatting, ProjectWorkLevel (overview/) are tracked; PLAN-123 status not readable
 - OBSERVED: the terminal has no chat that follows a stream and no `o`, `older` or `changes` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue has no stream following and no o, older or changes handling
 - OBSERVED: events are pushed above the prompt by the console with `LineReader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole printAbove at :700,713,840 (spec :652,788)
 - HYPOTHESIS: a dialogue can print a `–` line above its prompt through the same `LineReader` it asks with, without `PmConsole` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `reader()` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() (:220) hands out the JLine LineReader the dialogue asks with; printAbove is available on it without PmConsole
 - HYPOTHESIS: the plan view and the overview row get `queued_revision` from the resources PLAN-132 extends, so no new route is read — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/ActivePlanSummary.java` after PLAN-132 (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActivePlanSummary.java:46,68 and ProcessTree.java:46,67 already carry queued_revision; no new route needed
 - HYPOTHESIS: pre-filling a line editor buffer for a starter is possible with `LineReader.readLine(prompt, null, buffer)` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: JLine 3 LineReader.readLine(String, Character, String buffer) exists; StartPrompt.read (:201) uses plain readLine() today
 - Verify-first clause: re-read the files above at the then-current HEAD (PLAN-123, 44 and 50 touch `planview/` and `overview/`); PLAN-138 and PLAN-134 must have landed.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dependency clause: PLAN-138 not landed (old chat behaviour at HEAD); PLAN-134 landing not verifiable by reading
 
 ## Expected Surface
 
