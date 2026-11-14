@@ -105,13 +105,21 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 ## Claim Labels
 
 - OBSERVED: `ReportsView.svelte` (1509 lines) uses `Button`, `EmptyState`, `ErrorState`, `FilterInput`, `Icon`, `IconButton`, `RowMenu`, `Skeleton` and has no raw `<button>`, `<a>` or `<input>` — read at the imports and by `git grep -c`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView now 1643 lines; imports Button Icon IconButton RowMenu FilterInput EmptyState ErrorState Skeleton (+TriagePage); no raw button/a/input
 - OBSERVED: `CompletionReportView.svelte` (989 lines) uses `Button`, `Icon`, `Spinner`, `StatusLabel`, has no raw tag, and carries 6 lines with tag-like class names — read at the file and by `git grep -cE 'class="[^"]*(badge|pill|chip|tag|state-dot|status)'`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `routes.ts` knows `/reports` and `/reports?plan=` and no `/reports/{id}` — read at `pm-web-app/src/lib/routes.ts:312-315`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: routes.ts:312-315 /reports and /reports?plan= exactly; no /reports/{id}
 - OBSERVED: `PLAN-129` (staged) rewrites the mark-all rollback and retention in `ReportsView.svelte`, and its D2 touches `CompletionReportView.svelte` (focus); `PLAN-131` (staged) places the mascot in `ReportsView` — read at both specs
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `ReportsView.svelte:1171` passes `visibleLabel` and nine `size="small"` values that PLAN-149 removes — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView passes visibleLabel at :1290 (was 1171) on RowMenu; size=small x9 still in ReportsView
 - HYPOTHESIS: the unread dot and the semibold subject are drawn by hand in `ReportsView` and move to a `StatusLabel` and a class of the row — confirm/refute at `ReportsView.svelte` § row markup (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView:1183-1184 hand-drawn span report-card__unread-dot plus class report-card--unread at :1177
 - HYPOTHESIS: the Tokens section of `CompletionReportView` is already a table of its own — confirm/refute at `CompletionReportView.svelte` § tokens (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CompletionReportView tokens-section :400 holds three own breakdown-table tables (:457 :503 :554) and a total card
 - Verify-first clause: re-read both views after PLAN-45, PLAN-129, PLAN-131, PLAN-149 to PLAN-152 landed; take the PLAN-151 lint list and a tag-class scan as the work list. If PLAN-129 moved the retention code, rebase deliverable 1 on it.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
 
 ## Expected Surface
 
@@ -161,6 +169,14 @@ Re-read every file above at the then-current HEAD. Run `corpus surfaces` against
 
 - PLAN-148 looked at 5 of 13 `--color-success-subtle` places in a browser. This plan's browser check includes its own: `CompletionReportView.svelte:834`
   (both themes; contrast of the text on the block).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match
+- Claim 3 contradicted: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged
+- `CompletionReportView` uses no `Spinner`. The mascot all-clear is already placed (`ReportsView.svelte:1054`; PLAN-129, PLAN-131 landed).
 
 ## Hand-Off Command
 

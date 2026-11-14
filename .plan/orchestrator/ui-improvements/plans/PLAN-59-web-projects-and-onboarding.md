@@ -66,14 +66,21 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-07` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/proposals.adoc:339` `[#UX-P-10]` and `use-cases/proposals.adoc` UC-P-07 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-P-10 at ux/proposals.adoc:339, UC-P-07 at proposals.adoc:138, UC-F-31 at findings-projects-starting.adoc:21 present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed `doc/design/shared/project-explorer.adoc` (`#project-row`): in the web app the row of a ready project carries _Add a plan_ (`project.action.add_plan`) beside its marks, a project that is not ready shows it disabled with the reason (`project.action.disabled_not_ready`), and _Add an epic_ stays among the actions. this plan builds it as deliverable 4 (moved here from `PLAN-83`, together with the project acts of the former `PLAN-47` D4), into the rebuilt grid and table cards. The design also now orders projects as the runtime serves them (needs the operator first, then the start of their oldest active work): "last activity" on a card is information, never a sort key.
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Add a plan and disabled_not_ready are in project-explorer.adoc:83, but its order is by name or most used with operator-ordered favourites (:38-40); the served-order rule is plan-overview.adoc:55 | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates); project.action.add_plan and project.action.disabled_not_ready already exist in projects.en.properties (added with the PR #278 design); ProjectExplorerView/ProjectOnboardingView were touched by PLAN-90/a11y.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: projects.en.properties:20 project.action.add_plan and :42 disabled_not_ready exist; no pm-web-app source references them
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural rescope note about package-row done-when; no code fact
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: `ProjectOnboardingView.svelte` has no id, name or pilot field (only the step key `identity` at :42) — confirm/refute at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` § identity (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectOnboardingView.svelte:44 has only the identity step key; inputs are checkout path (:499) and chat (:702); project.identity.id/name/pilot keys exist unused
 - HYPOTHESIS: the explorer does not render `project.action.add_plan` / `project.action.disabled_not_ready` although both keys exist — confirm/refute at `pm-web-app/src/lib/views/ProjectExplorerView.svelte` § actions (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectExplorerView renders neither key (no web source uses them); PROJECT_ACTS (byState.ts:150) offers start_plan only, no add_plan
 - HYPOTHESIS: the project page route `/projects/{id}` does not exist; only `/projects/[id]/start` does — confirm/refute at `pm-web-app/src/routes/projects/` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: src/routes/projects holds +page.svelte, onboard/ and [id]/start only; routes.ts has no /projects/{id} pattern
 
 ## Expected Surface
 
@@ -91,6 +98,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -112,6 +120,13 @@ widened now (a parked row is not in the disjointness gate population). When rest
   visible on a ready project's row and disabled with its reason otherwise; release / unenrol through `ConfirmDialog` (007).
 - `FilterInput`, the release reason in `ConfirmDialog` with `TextArea`, per-aspect settings by the settings-form rule (008).
 - The project-onboarding chat in `Chat` (009).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: Add a plan and disabled_not_ready are in project-explorer.adoc:83, but its order is by name or most used with operator-ordered favourites (:38-40); the served-order rule is plan-overview.adoc:55
+- Ordering: `project-explorer.adoc:38-40` orders by name or most used with favourites; the served-order rule is `plan-overview.adoc:55`. New routes `/projects/{id}` and `/project-onboarding/{entry}` are not in the surface.
 
 ## Hand-Off Command
 

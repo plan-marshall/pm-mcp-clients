@@ -89,15 +89,25 @@ Read first: `doc/design/shared/texts-and-languages.adoc` (§ `#keys` bullets "On
 ## Claim Labels
 
 - OBSERVED: `web.common.back|close|save|cancel|retry`, `common.actions.back`, `common.back|close|save` all exist in `common.en.properties` (lines 1-5, 89-94, 195-201), with web readers in the 21 files named in deliverable 1 — read at `pm-api/src/main/resources/messages/common.en.properties` and by `git grep -l`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: common.en lines now 132-135 and 248-252; web.common.retry gone (common.action.retry:247 via #399); readers now 20 files: CleanupView ReportsView SystemView dropped; FindingsReviewModal PlanSettingsModal added | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `overview.kind.*` is read by `EpicView.svelte`, `OverviewView.svelte` and, in `pm-operator`, by `StatusCommand.java`, `overview/EndedWorkLevel.java`, `overview/ProjectWorkLevel.java`; `overview.find.kind.*` is read by `CommandPalette.svelte` only — read by `git grep -l`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: overview.kind.* readers EpicView OverviewView plus StatusCommand EndedWorkLevel ProjectWorkLevel and a 4th operator reader EpicCommand.java:292; overview.find.kind only CommandPalette holds | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `overview.needs.waiver_request` is read by `PmConsole.java`; `overview.needs.operator_wait` only by `OverviewCatalogueTest` — read by `git grep -l`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: overview.needs.waiver_request no longer exists in any pack (removed in #426 98cea294; OverviewCatalogueTest asserts absence); PmConsole does not read it; operator_wait has no reader at all | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `decisions.filter.label` is read by `DecisionView.svelte`, `report.filter.label` by `ReportsView.svelte`; `common.filter.label` exists (`common.en.properties:234`) — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: DecisionView:1363 decisions.filter.label; ReportsView:961 report.filter.label; common.filter.label exists at common.en.properties:285 (was 234)
 - OBSERVED: the deferred reload is `reloadWaitsForInput` in `SystemView.svelte` (lines 52, 211-237), over `hasUnsentInput` of `stores/unsentInput.ts`; `i18n/index.ts` has `loadMessages(locale, area)` and `setLocale(locale)` and fetches a missing pack from the runtime — read at the three files
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: SystemView reloadWaitsForInput :54 set/clear :212-244 over hasUnsentInput; i18n/index.ts loadMessages:453 setLocale:498 fetch missing pack via apiClient.getMessages
 - OBSERVED: the `pm-operator` files `PmConsole`, `StatusCommand`, `ProjectWorkLevel` are in the surfaces of running and staged CLI plans (PLAN-123, 84, 126, 127, 128 and others) — read by `corpus surfaces`
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Corpus ledger fact (surfaces of staged CLI plans), not settleable by reading source
 - OBSERVED: `landings/PLAN-112.md` states the hole in one sentence ("a client whose reload is deferred for unsent input may fetch a missing locale from a newer runtime") and no rule — read at the landing
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: landings/PLAN-112.md:31 states the hole in one sentence and no rule
 - HYPOTHESIS: the fetch of a missing pack during a deferred reload is reachable through `setLocale` and the first open of a view, and through nothing else — confirm/refute at `pm-web-app/src/lib/i18n/index.ts` § `loadMessages`, `setLocale`, `adoptRecordedLocale` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: getMessages is reached by setLocale and adoptRecordedLocale (runtime.ts:848) via loadCatalogueFor and by initI18n:673-677; no view calls loadMessages(area) so first-open-of-a-view path does not exist | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: the "states" part of deliverable 2 touches fewer than ten keys once the `pm-operator` readers are excluded — confirm/refute at the inventory run at outline: `overview.state.*` against `git grep` per key (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: overview.state.* is 6 keys total; all read by pm-operator (OverviewFormatting StatusCommand PlanViewFormatting SystemView.java); no web reader; far under ten
 - Verify-first clause: re-run the reader inventory of every key of deliverables 1 and 2 at the current HEAD (PLAN-45, PLAN-147, PLAN-148 and the CLI plans may have changed it) before scoping; a key that gained a `pm-operator` reader stays.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction (re-run the reader inventory), not a code fact
 
 ## Expected Surface
 
@@ -127,6 +137,10 @@ Read first: `doc/design/shared/texts-and-languages.adoc` (§ `#keys` bullets "On
 - OBSERVED: `doc/design/shared/texts-and-languages.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/system-texts.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/decisions-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/PlanSettingsModal.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/CompletionReportView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/shared/plan-overview.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -156,6 +170,16 @@ Re-read every file above at the then-current HEAD. Re-run the reader inventory a
 ## PLAN-148 Landing Residue (Amendment 2026-11-14)
 
 - The reader inventory includes PLAN-148's keys: `phase.name.*`, `role.name.*`, `common.marker.*`, `common.chip.copy`, `dev.row_link.*`, `dev.section.*`, `dev.examples.*`.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 0 contradicted: common.en lines now 132-135 and 248-252; web.common.retry gone (common.action.retry:247 via #399); readers now 20 files: CleanupView ReportsView SystemView dropped; FindingsReviewModal PlanSettingsModal added
+- Claim 1 contradicted: overview.kind.* readers EpicView OverviewView plus StatusCommand EndedWorkLevel ProjectWorkLevel and a 4th operator reader EpicCommand.java:292; overview.find.kind only CommandPalette holds
+- Claim 2 contradicted: overview.needs.waiver_request no longer exists in any pack (removed in #426 98cea294; OverviewCatalogueTest asserts absence); PmConsole does not read it; operator_wait has no reader at all
+- Claim 7 contradicted: getMessages is reached by setLocale and adoptRecordedLocale (runtime.ts:848) via loadCatalogueFor and by initI18n:673-677; no view calls loadMessages(area) so first-open-of-a-view path does not exist
+- Already done: `web.common.retry` merged into `common.action.retry` (#399); `overview.needs.waiver_request` removed (#426). Readers changed: re-run the inventory. No view calls `loadMessages(area)`.
 
 ## Hand-Off Command
 

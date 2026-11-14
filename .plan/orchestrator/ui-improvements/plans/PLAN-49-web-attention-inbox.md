@@ -52,13 +52,19 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-02)`, `doc/claude_review/ux/proposals.adoc#UX-P-01` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` carries UX-S-02 (2 hits), `ux/proposals.adoc` UX-P-01, `use-cases/proposals.adoc` UC-P-09.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-02 at ux/plan.adoc:24, UX-P-01 at ux/proposals.adoc:12, UC-P-09 at use-cases/proposals.adoc:176; all present at HEAD
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-7 is `AGREED` and the runtime serves the list, so "derived on the client from the stores that exist" no longer holds. The operator decided two views against one combined entry (what waits; go to work by name), and the web "what waits" view is "a route of its own, a destination of the rail with its count" per the package `needs-and-find`; the rail from `PLAN-39` exists and the rail item and tab title carry the total. `PLAN-83` and `PLAN-52` share the running-work rows with this view.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: MachineApiPaths.java:26 serves /api/v1/machine/needs-operator via NeedsOperatorPage; rail exists (nav.ts, NavRail, nav-inbox.svg); client.ts has no getNeedsOperator yet
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): attention.ts, InboxView.svelte and inbox.spec.js are still absent; the claim of the spec narrative that the rail exists holds (nav-inbox.svg icon and routes.ts present); routes.ts has no inbox/attention/needs route yet; OverviewView.svelte is still home.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: attention.ts, InboxView.svelte, inbox.spec.js absent; nav-inbox.svg present; AppRoute (routes.ts:20) has no inbox route; landingRoute (runtime.ts:380) lands on overview
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact to settle by reading
 - HYPOTHESIS: `fully-onboarded.json` serves no `needs-operator` resource (only `running-work.json` does), so the browser check names `running-work` or extends the fixture — confirm/refute at `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` § `needs-operator` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: fully-onboarded.json has 0 needs-operator resources; running-work.json:84,3125,3497,3806 serve it
 - HYPOTHESIS: the Event `needs_operator.changed` reaches the web stream with the machine summary in its payload — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorChangedEvent.java` § `EVENT_NAME` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: NeedsOperatorChangedEvent.java:41 EVENT_NAME needs_operator.changed; toMap puts summary under needs_operator; OverviewView.svelte:242 handles it from the web stream
 - HYPOTHESIS: `web.rail.needs` and `web.inbox.title` are absent from the catalogue and belong in `common.{en,de}.properties` — confirm/refute at `pm-api/src/main/resources/messages/common.en.properties` § `web.rail` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: web.rail.needs and web.inbox.title appear in no messages file; only common has web.frame.rail.*; keys are named in doc/design/web-app/needs-and-find.adoc:27,70,82
 
 ## Expected Surface
 
@@ -90,6 +96,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/needs-and-find.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/RowLink.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/RowLink.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 

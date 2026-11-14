@@ -114,16 +114,27 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 ## Claim Labels
 
 - OBSERVED: the terminal posts `payload.put("message", message)` to `…/chat/turns` and expects status `200` — read at `pm-operator/src/main/java/de/planmarshall/operator/actions/WorkActionsClient.java:318-330`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Now posts ChatTurnRequest(text, client_turn_id) to routes.turns() and expects 202 (WorkActionsClient:338-349) since PLAN-161 #429 | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `plan chat --message` posts to `…/chat` and prints the raw body — read at `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java:347-361`; `PlanCommand.java:811-831`; `EpicCommand.java:574-594`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionSupport.chat:353-356 still sends --message via chatTurn and prints toJson(); option at PlanCommand:809, EpicCommand:709 (target is now chat/turns)
 - OBSERVED: the design lists `plan chat <plan_id>` and `epic chat <epic_id>` with no `--message` and says chats are dialogues — read at `doc/design/terminal-client/19-actions.adoc:27,39,47`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 19-actions.adoc:27,39 list plan chat <plan_id> and epic chat <epic_id> without --message; dialogue text at :401
 - OBSERVED: the start chat ends on an empty line (`api.endChat`) — read at `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java:58-91`; the plan and epic chat ends the dialogue on a blank message — read at `WorkChatDialogue.java` § `execute`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.java:84-85 empty line calls endChat -> endEntryChat; WorkChatDialogue:167-169 blank message leaves the dialogue
 - OBSERVED: no stream, no stop key, and no step lines in `WorkChatDialogue` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue.execute (:121-179) polls through chatTurn/awaitReply; no stream, no stop key, no step lines
 - OBSERVED: `PmConsole` pushes events above the prompt with `reader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole uses reader.printAbove at :700,713,840 (spec :652,788)
 - OBSERVED: `StartPrompt` wraps a JLine `LineReader` (`askRaw`, `askInline`, `reader()`) — read at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java:138,155,217`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt askRaw :141, askInline :158, reader() :220 wrap a JLine LineReader (lines drifted by 3)
 - HYPOTHESIS: the dialogues in `pm-operator` can read a plan's, an epic's and a workspace's event stream through `pm-api`'s `SseReader` and `UnixSocketHttpClient` without a new dependency — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/http/SseReader.java` and `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` § event stream (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-operator already uses pm-api SseReader via exchange.events() at PmConsole:639 and OverviewFullScreenApp:1512; no new dependency
 - HYPOTHESIS: a typed line `s` or `q` while the reply writes can be read with the JLine `LineReader` and `printAbove` in one thread pair without a raw-key mode — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.read (:201) is a blocking readLine; thread-pair behaviour with printAbove cannot be settled by reading
 - HYPOTHESIS: the `operator.actions.chat.*` set of `22-texts-actions.adoc` is 21 keys and none of them but `operator.actions.chat.{you,accept,reject…}` exists — confirm/refute at `doc/design/terminal-client/22-texts-actions.adoc` and `pm-api/src/main/resources/messages/operator.en.properties:341-360` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 22-texts-actions.adoc lists 18 chat keys (+key.* gives 21); operator.en holds you, accept, reject, this_item, accepted, follow_up, no_input; left/new_command/writing/restarted/older absent
 - Verify-first clause: re-read every file above at the then-current HEAD (PLAN-123, running, edits `PlanCommand` and `AnswerCommand`; PLAN-30, 42, 44, 48 touch `ActionSupport`, `EpicCommand`, `PmConsole`); the operator's answers to O8 and O9 are read before scoping deliverables 1 and 3.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause; O8/O9 answers sit in the amendment, PLAN-123 landing status is not readable here
 
 ## Expected Surface
 
@@ -144,6 +155,7 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/22-texts-actions.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/19-actions.adoc` — present at `1cc0e10e`
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -184,6 +196,13 @@ Operator decision 2026-11-14 ("Fold into PLAN-135/138"):
 - D4 ("Enter … opens `plan add` at its sources") collides with the runtime accept PLAN-161 added: the ended-work accept already asks the
   runtime to open the follow-up start; a second `plan add` would start twice. Which entry opened is not observable (see the epic's contract
   Open Item); re-design D4 on that item.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 0 contradicted: Now posts ChatTurnRequest(text, client_turn_id) to routes.turns() and expects 202 (WorkActionsClient:338-349) since PLAN-161 #429
+- Already done: D1's wire is on B1 (PLAN-161, #429); the `--message` removal and the rest are open.
 
 ## Hand-Off Command
 

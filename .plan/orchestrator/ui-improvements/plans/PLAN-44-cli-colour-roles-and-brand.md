@@ -76,11 +76,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:29-30,50-51; proposals.adoc:120-121
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:29-30 S-03, :50-51 S-05; proposals.adoc:120-121 P-05 (P-01 at :9, P-02 at :64)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: Style/Glyphs/tests absent; named tui/transcript classes present
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/Style.java, Glyphs.java, StyleTest, GlyphsTest, RawEscapeGuardTest absent; TuiScreenDriver, TuiLayout, TuiMenu present; CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession present
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first names a HYPOTHESIS that does not exist
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first names a HYPOTHESIS that does not exist
 
 ## Expected Surface
 
@@ -125,6 +125,10 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/terminal-client/05-transcripts-entry.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/shared/plan-overview.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -164,6 +168,12 @@ This section supersedes the spec text and earlier notes where they differ.
 - Sequencing: strictly after PLAN-123 (multi-file overlap) and after the PLAN-36 residue plan (NeedsCommand,
   OverviewFormatting, ConsoleNotice, TuiKeyRegistry footer).
 - Disposition: AMEND and SPLIT after the operator's five design decisions; HOLD for PLAN-123.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: D4's cell attributes in `AnsiScreen` (PLAN-02, #232, 1864d8a3). The verify-first clause names a HYPOTHESIS that does not exist.
 
 ## Hand-Off Command
 

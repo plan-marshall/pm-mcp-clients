@@ -46,9 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-08`, `doc/claude_review/visual-design/proposals.adoc#VD-P-02` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28 VD-P-02; tokens.css:102-126 aliases present; no stylelint in package.json
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28-29 VD-P-02; tokens.css aliases at :113-135 (comment :6) still present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Many listed components/views now exist or were changed by PLAN-25/35/43 and PLAN-90 (ErrorState, Skeleton, DataTable, Dialog, Tabs, Toast, Chip, etc.); tokens.css still carries the old aliases (line 100), no stylelint dependency yet (package.json), a styles/tokens.test.ts exists. Scope unchanged but the alias sweep now covers more files.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Aliases still at tokens.css:113+ (drift from :100); no stylelint in package.json/pom/eslint config, no .stylelintrc.json; tokens.test.ts ALIASES at :137. Amendment holds: success-subtle own value :88/:205
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -63,6 +65,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/pom.xml` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD 1cc0e10e; created by this plan
+- OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -90,6 +93,12 @@ row is not in the disjointness gate population). When restarted:
 - `--color-success-subtle` has its own value since `25137445` (`#E9F6EE` light, `#15271D` dark): drop it from this plan's list. The
   verdict evidence `tokens.css:102-126` shifted (alias line removed, token added at `:88`/`:205`); `ALIASES` in `tokens.test.ts:147-150` is
   one shorter. `theme-readability.adoc` says success ≥3:1 while the test enforces 4.5:1: align the document.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: `--color-success-subtle` has its own value (25137445, #427). Aliases now at `tokens.css:113+`, `ALIASES` at `tokens.test.ts:137`.
 
 ## Hand-Off Command
 

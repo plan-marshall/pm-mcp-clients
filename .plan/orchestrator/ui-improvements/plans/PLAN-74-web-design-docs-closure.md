@@ -51,10 +51,13 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-13)`, `doc/claude_review/visual-design/plan.adoc#VD-S-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86 UX-S-13; visual-design/plan.adoc:69 VD-S-09; deliverables 1, 3, 4 retired (web-app/README.adoc AGREED; PLAN-108 PR 362 ddcab793)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86 UX-S-13; visual-design/plan.adoc:69 VD-S-09; proposals.adoc:217-218 VD-P-09; deliverables 3,4 done by PLAN-108 ddcab793, 1 dropped
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): doc/design/web-app/components.adoc now exists (added by PLAN-35, 5650c41e), so the 'add components.adoc' part of the deliverables is already partly done and must be reworked as 'update'; README.adoc, brand-mark.adoc and theme-readability.adoc exist and changed since the anchor.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/design/web-app/components.adoc exists (plus components-tags/fields/brand/chat), README.adoc, brand-mark.adoc, theme-readability.adoc all present
 - RESCOPE at outline (design audit 2026-11-02): no done/dropped list with PLAN ids in web-app/README (Z2); the web-app design status FINAL becomes AGREED (R7-3/R7-4), and the same rule covers the new web-app/components.adoc:15 FINAL.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:12 and components.adoc:15 Status AGREED; README has no done/dropped proposal list (only PLAN ids in routes row :485)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -85,6 +88,12 @@ Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructi
   packages landed, then `PLAN-72`, `PLAN-73`.
 
 Queue status: `parked`; the orchestrator re-grounds this spec (deliverables, Expected Surface) when it is restarted.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: D3 and D4 (ddcab793, PLAN-108 #362); README and `components.adoc` already read AGREED. Re-scope at outline to what is left.
 
 ## Hand-Off Command
 

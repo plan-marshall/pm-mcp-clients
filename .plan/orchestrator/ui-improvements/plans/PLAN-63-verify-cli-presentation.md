@@ -59,8 +59,9 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/verification.adoc exists (CLI-VD-V-01..07), ux CLI-UX-V-01..07, cross-cutting CLI-CC-V-01..08
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verification.adoc: CLI-VD-V-01..07, CLI-UX-V-01..07, CLI-CC-V-01..08 all present; analysis.adoc x3 and cli/README.adoc exist; verify-cli-presentation.adoc absent
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing
 
 ## Expected Surface
 

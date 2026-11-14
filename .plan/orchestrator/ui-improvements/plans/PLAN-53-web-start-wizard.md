@@ -59,13 +59,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-10)`, `doc/claude_review/ux/proposals.adoc#UX-P-07` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-10 and `ux/proposals.adoc:284` UX-P-07 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-10 at ux/plan.adoc:68, UX-P-07 at proposals.adoc:284, UC-P-07 at use-cases/proposals.adoc:138 present
 - HYPOTHESIS: the start view hangs on "checking" after a jump to a `start.*` state (UC-F-36) because the gate has no time limit — confirm/refute at `pm-web-app/src/lib/stores/start.ts` (verify-at-outline)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `StartView.svelte:126,136` `load()` awaits `getEntry`/`openEntry`; there is no `AbortController`, signal or timeout in the file; `stores/start.ts` holds no gate. The cause is still in StartView/client.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Client bounds every request at 15 s (client.ts:2199,2325; 9fb2e7fa #399) and StartView.svelte:752-766 shows Skeleton then ErrorState with retry; no 20 s gate bound; stores/start.ts is modal state only | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Line references in the hypothesis moved (StartView.svelte load() at 120-163, client.ts request() at 3036); StartView.svelte grew to 1327 lines and now shows start.state.checking for the documents source (line 343) too; SourceList.svelte, start properties and starting-work-texts.adoc changed since the anchor.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: StartView.svelte now 1425 lines, load() at 139-185, request() near client.ts:2325, start.state.checking at :1142 and :1183
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the entry is created by `openEntry` before any source exists and the gate refusal creates none, so a lazy entry needs a split of that call — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `openEntry` and `doc/design/shared/starting-work.adoc#steps` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte:156 calls openEntry on load before any source; client.ts:2432 POST /projects/{id}/entries; refusal is a resource field with no entry; starting-work.adoc:184 says leaving keeps the entry
 - HYPOTHESIS: no `StartView.test.ts` and no `start.test.ts` exist, so the gate and lazy-entry tests are new files — confirm/refute at `pm-web-app/src/lib/views/` and `pm-web-app/src/lib/stores/` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: StartView.test.ts (68 lines) and StartView.scenarios.test.ts exist at HEAD; only stores/start.test.ts is absent | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -86,6 +90,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/shared/starting-work-texts.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -103,6 +110,14 @@ row is not in the disjointness gate population). When restarted:
 - `Button` on `WizardPage`, one primary per step, the duplicate "Choose" / "Add" labels resolved (007).
 - Fields via `Field`, Enter submits, errors under the field, documents mode as the shared `RadioGroup` (008).
 - The start-entry chat in `Chat` (009), with `control.chat.*` keys rather than reused `start.*` keys.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: Client bounds every request at 15 s (client.ts:2199,2325; 9fb2e7fa #399) and StartView.svelte:752-766 shows Skeleton then ErrorState with retry; no 20 s gate bound; stores/start.ts is modal state only
+- Claim 5 contradicted: StartView.test.ts (68 lines) and StartView.scenarios.test.ts exist at HEAD; only stores/start.test.ts is absent
+- Already done in part: the client bounds every request at 15 s and StartView shows Skeleton → ErrorState with retry (#399); the 20 s figure and "Choose a project" are not done. `StartView.test.ts` and `.scenarios.test.ts` exist.
 
 ## Hand-Off Command
 

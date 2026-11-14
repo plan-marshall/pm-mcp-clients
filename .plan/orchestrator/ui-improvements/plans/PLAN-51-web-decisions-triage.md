@@ -82,13 +82,19 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-08)`, `doc/claude_review/ux/proposals.adoc#UX-P-06` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-08 and `ux/proposals.adoc:269` UX-P-06 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-08 at ux/plan.adoc:58, UX-P-06 at ux/proposals.adoc:269, ux-decision-triage.svg and UX-F-11 present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a rule to `doc/design/shared/decisions.adoc` (#announce): a notification fires only for a decision the client has not announced before (none after a reconnect or a reload), decisions arriving within one second make one notification, several open the list of open decisions (`decision.notify.several`) and one opens that decision. this plan builds it as deliverable 5 (moved here from `PLAN-83`); the triage view must not re-announce on its own re-read.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: decisions.adoc:145-152 #announce holds the one-second burst rule and decision.notify.several; DecisionView.svelte:297 still does new Notification inline (spec said :289)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (#301): templates live in pm-web-app/src/lib/templates/ (TriagePage, ObjectPage, WizardPage, DashboardPage) and its D3 guard lists views sitting on a template; DecisionView does not use TriagePage yet and this plan must add itself to that list. Key decision.notify.several is not yet in decisions.en.properties (to be created).
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: templates/ has the four pages; pageWidth.test.ts lists only SystemView and ReportsView; DecisionView not on TriagePage; decision.notify.several absent from decisions.*.properties
 - RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural rescope note about package-row done-when; no code fact
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: the answer endpoint accepts a client-chosen request id that the `decision.answered` event echoes — confirm/refute at `pm-api/src/main/java/de/planmarshall/api` § decision answer resource and `pm-web-app/src/lib/api/client.ts` § `answerDecision` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: No request id: DecisionAnswerRequest.java fields, DecisionAnswerPayload (client.ts:1074) and DecisionAnsweredEvent (id/answer/channel/device) carry none; answerDecision:3110 sends none | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: `PremiseEvidenceView.svelte` already renders the evidence list and can carry the plain labels without a new component — confirm/refute at `pm-web-app/src/lib/components/PremiseEvidenceView.svelte` § `evidence` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PremiseEvidenceView renders lesson-source premise evidence (kind/name/path/commit), imported only by LessonSourceModal; DecisionView.svelte:946-962 shows decision evidence as a JSON pre | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -103,6 +109,13 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/decisions.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/decisions-texts.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/decision/DecisionAnswerRequest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/decision/DecisionAnsweredEvent.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/PhaseLabel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/display/format.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -139,6 +152,14 @@ PLAN-111 merged (`bb30d71e`) and deleted `pm-web-app/src/lib/stores/viewLayout.t
 - `PhaseLabel`'s role words: the six `role.name.*` come from the mock scenarios; the runtime's `askingRole` is a free string
   (`DecisionEnvelope.java:57`), and `PhaseLabel.svelte:90` drops an unknown role silently. Settle the role set with the runtime docs (or
   show an unknown role with the catalogue's unknown word); list consumers of `RowLink` and `StatusLabel` as in `PLAN-49`'s amendment.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 5 contradicted: No request id: DecisionAnswerRequest.java fields, DecisionAnswerPayload (client.ts:1074) and DecisionAnsweredEvent (id/answer/channel/device) carry none; answerDecision:3110 sends none
+- Claim 6 contradicted: PremiseEvidenceView renders lesson-source premise evidence (kind/name/path/commit), imported only by LessonSourceModal; DecisionView.svelte:946-962 shows decision evidence as a JSON pre
+- Already done: the decision layout toggle is gone (#363). Two hypotheses are refuted (no request id on the answer; `PremiseEvidenceView` renders lesson-source evidence only): re-scope D3/D4 at outline. The 2026-11-10 re-grounding's "new claims" were never added.
 
 ## Hand-Off Command
 

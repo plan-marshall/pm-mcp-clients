@@ -124,22 +124,37 @@ verdict tag, the texts, the links and the shown fields.
 ## Claim Labels
 
 - OBSERVED: `client.ts` has no intent, outline or over_size call and no web source outside tests mentions intent — read by `git grep -n -i "intent\|outline" -- pm-web-app/src/lib/api/client.ts` and `git grep -n -i intent -- pm-web-app/src ':!*.test.ts'` (both empty)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No intent/outline/over_size call in client.ts; only lineDiff.ts contains the word intent, unrelated
 - OBSERVED: the contract is `PlanIntentResource` (plan_id, revision, goal, criteria, non_goals, decisions, open_questions, deferred, builder_check), `OutlineResource` (plan_id, revision, summary, deliverables, added_dependencies, interfaces, key_links, missing_key_link), `EpicIntentResource`, `OverSizeDistributionResource` — read at `pm-api/src/main/java/de/planmarshall/api/intent/*.java`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanIntentResource :50-58, OutlineResource, EpicIntentResource, OverSizeDistributionResource exist in pm-api intent/ with the named members
 - OBSERVED (at `1cc0e10e`, still so at `main` `4a84f727`; `PLAN-159` changes it before this plan): a decision carries id, text, decider, options_weighed and question_id only; the deciders are `operator|quorum|model|fact`; criterion statuses are `met|not_met|not_verified`; non-goals are strings; the builder check's resolution is `pending|answered|not_run` without a reason; `proposed_multiple` is required — read at `PlanIntentResource.java:84-90`, `IntentDecider.java:23-35`, `CriterionStatus.java:26-32`, `BuilderCheckResource.java:37-56`, `OverSizeDistributionResource.java:41-69`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Superseded by PLAN-159 #417 835e7024: Decision has evidence and adr (:96-97), nonGoals are NonGoal records (:54), builder check has reason, proposedMultiple is @Nullable | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: D6 decided the design shows the ADR relation, the fact's evidence, `NG-n` by id and the `not_run` reason, uses the engine's decider `role`, drops vote support, and makes the verdict a `StatusLabel` state — read at `doc/design/shared/intent-and-outline.adoc:104,121-130,165,278,289,307`, `doc/design/web-app/components-tags.adoc:89-100` (`4a84f727`, D6 merged `8568b56e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: intent-and-outline.adoc:278 the verdict is a StatusLabel; components-tags.adoc:100 verdicts are states, not_verified neutral
 - OBSERVED: the area `intent` is registered in the design but not in code: `MessageCatalogue.SUPPORTED_AREAS` has no `intent` and no `intent.*.properties` exists; no `state.criterion.*`/`state.check.*` key exists — read at `doc/design/shared/texts-and-languages.adoc:121`, `pm-api/src/main/java/de/planmarshall/api/message/MessageCatalogue.java:38-62`, `git ls-files pm-api/src/main/resources/messages`, `grep state.criterion pm-api/src/main/resources/messages/common.en.properties` (empty) (`4a84f727`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No intent in MessageCatalogue.SUPPORTED_AREAS (:38), no intent.* properties files, no state.criterion keys in common.en
 - OBSERVED: the mock serves the four GET routes from fixtures in `running-work.json` and `fully-onboarded.json` for `fix-relay`, `relay-hardening` and `pm-mcp-clients`, answering any other id from the same fixture — read at `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java:5386-5440`, `pm-mock-runtime/src/main/resources/scenarios/running-work.json:1089,1213,1298,1358`, `fully-onboarded.json:848,972,1057,1117`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Mock serves the routes: FIXTURE_* constants MockRuntimeEngine:550-553; fixtures in running-work.json:1317,1402,1462 and fully-onboarded.json:976,1061,1121
 - OBSERVED: `EventName` names no intent or outline event — read by `git grep -n -i intent -- pm-api/src/main/java/de/planmarshall/api/event/EventName.java` (empty)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EventName has no intent or outline event (git grep -i intent is empty)
 - OBSERVED: no intent catalogue area exists — read by `git ls-files pm-api/src/main/resources/messages` (no `intent.*`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git ls-files pm-api/src/main/resources/messages shows no intent.* file
 - OBSERVED: `stripControlSequences` is the safe-text helper — read at `pm-web-app/src/lib/utils/outputSafety.ts:6`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: stripControlSequences is at outputSafety.ts:6
 - OBSERVED: no view uses `Tabs` — read by `git grep -n Tabs -- pm-web-app/src/lib/views` (non-test: empty)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No non-test view uses Tabs (Tabs.svelte exists in components only)
 - OBSERVED: `intent-and-outline-texts.adoc` was absent at `1cc0e10e`; D6 created it with 75 keys: 68 of the area `intent` and the seven `state.*` verdict words — read at `doc/design/shared/intent-and-outline-texts.adoc` (`4a84f727`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: intent-and-outline-texts.adoc exists with 75 key rows (68 intent.*, 7 state.criterion/check)
 - HYPOTHESIS: the daemon answers a plan without an intent record with a not-found error the client can map to "no record yet" — confirm/refute at `../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc` § `intent-record` and `pm-api/.../intent/IntentContractTest.java` (verify-at-outline)
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Daemon not-found behaviour for an absent intent record is not in the cited spec section or in pm-api; needs the engine
 - HYPOTHESIS: the plan's events (`plan.changed`, `phase.changed`) signal a new intent or outline revision — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/event/EventName.java` (verify-at-outline)
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan.changed is not in EventName; phase.changed (:129) exists; no event names an intent or outline revision
 - HYPOTHESIS: a new catalogue area needs a registration beyond the properties files — confirm/refute at `pm-web-app/src/lib/i18n/catalogue.test.ts` and `pm-web-app/src/lib/i18n/index.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Registration is MessageCatalogue.SUPPORTED_AREAS (:38); web loadMessages(area) (i18n/index.ts:453) is area-agnostic so no web-side registration
 - Verify-first clause: re-read `intent-and-outline.adoc`, its texts document and `PLAN-159`'s landing at the then-current HEAD; the verdict is a `StatusLabel` state (no new component); if `PLAN-159` has not landed (no `adr`, `evidence`, `{id, text}` non-goals, `role` or builder `reason` in `pm-api`), stop and loop back.
 
 5. **The `pm-api` intent residue of PLAN-159** (added 2026-11-12, operator routing of the PLAN-159 landing)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-159 landed (835e7024 #417): adr/evidence, NonGoal, reason, optional proposedMultiple present; StatusLabel.svelte exists
  - What:
    - Tests for the readers PLAN-159 added (`IntentJson.optionalRawText`, `optionalDouble`, `optionalObject`; `PlanIntentResource.java`, `BuilderCheckResource.java`, `OverSizeDistributionResource.java` at `835e7024`): an explicit `null` for `adr`, `evidence` and `reason` (the engine writes explicit nulls, `IntentCodec.java:271`), a non-object `adr`, a wrong-typed member, a `fact` decision with blank (not absent) evidence, and an empty non-goal list at record level (`PlanIntentResource.java:454-457`, untested). The refusals assert the field or message, not only the exception type.
    - The `not_run` rule: `BuilderCheckResource` accepts `questions` on a `not_run` check while its own Javadoc (`:59`, "in the questions' absence") and the engine's spec (a `not_run` comes from `infeasible`, `lost` or an unqualified `qgate`; the questions sit in `facts.builder_open_questions`) say there are none. Refuse them, with a test. If the engine's spec at the then-current HEAD records questions on a `not_run` check, correct the Javadoc instead and pin that. If the spec is silent, stop and ask.
@@ -193,6 +208,13 @@ verdict tag, the texts, the links and the shown fields.
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`, amended against `4a84f727` after D6). Re-run `corpus surfaces` against everything that landed since (`PLAN-159` first). Settle each HYPOTHESIS. `intent-and-outline.adoc` is `AGREED` and its texts document exists (D6, `8568b56e`); re-check that the key count is still 75 (68 `intent.*`, 7 `state.*`).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 2 contradicted: Superseded by PLAN-159 #417 835e7024: Decision has evidence and adr (:96-97), nonGoals are NonGoal records (:54), builder check has reason, proposedMultiple is @Nullable
+- Claim 2 is superseded by PLAN-159 (#417): `adr`/`evidence`, `NonGoal`, `reason`, optional `proposedMultiple`. Deliverable 5 sits inside `## Claim Labels` without a `## Deliverables` heading: the claim parser counts it under the verify-first clause; move it at outline.
 
 ## Hand-Off Command
 

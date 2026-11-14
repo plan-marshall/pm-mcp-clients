@@ -94,16 +94,24 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 ## Claim Labels
 
 - OBSERVED: `PairingView.svelte` (371 lines) has one raw `<input>`, uses `BrandMark`, `Button`, `PairingQr`, `Spinner`; `RevokedView.svelte` (95) and `ListenerOffView.svelte` (113) use `Button` and have no raw tag — read at the files and by `git grep -c`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView 476 lines (was 371) one raw input :128 imports BrandMark Button PairingQr Spinner (+MascotFigure); RevokedView 123 ListenerOffView 138 use Button no raw tag
 - OBSERVED: `PairingView.test.ts`, `PairingView.scenarios.test.ts` and `RevokedView.test.ts` exist; `ListenerOffView` has no test; `pairing.spec.js` and `entry.spec.js` exist — read in the directories
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: ListenerOffView.test.ts exists now (132 lines, PLAN-131 #422); PairingView.test/scenarios RevokedView.test pairing.spec entry.spec exist | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `PLAN-130` edits `PairingView.svelte` (the brand mark), `PLAN-131` edits `PairingView`, `RevokedView`, `ListenerOffView` (the figures), `PLAN-45` edits `ListenerOffView.svelte` — read by `corpus surfaces`
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Corpus surfaces of PLAN-130/131/45, a ledger fact; PLAN-130 and PLAN-131 are shipped (#414 #422)
 - OBSERVED: `entry.adoc` shows no theme or language control on the pairing page; `README.adoc` § themes keeps the choice in the rail foot and the More sheet (option A), while `PLAN-85`'s spec places it on these pages — read in both documents and the batch reports
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: entry.adoc has no theme or language control; README.adoc:424 keeps theme+language in rail foot and More sheet; PLAN-85 spec places them on pairing and revoked pages
 - HYPOTHESIS: the two commands to copy are rendered by a hand-written copy button today, not by `Chip` — confirm/refute at `PairingView.svelte` § commands markup (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView.svelte:145-165 two cmd-row with code element plus ghost Button copy (copyToClipboard :68); no Chip
 - HYPOTHESIS: `ListenerOffView` already follows the `ErrorState` pattern after PLAN-45 — confirm/refute at `ListenerOffView.svelte` after PLAN-45 lands (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: ListenerOffView.svelte has no ErrorState import; hand-styled card h1/p with MascotFigure, own reconnect calling initRuntime() at :47 | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED (re-grounded 2026-11-13 at `6e8c29af`): PLAN-131 created `ListenerOffView.test.ts` (132 lines) and a new `UnreachableView.svelte` (+ test), which
   covers the hidden open view (`+layout.svelte:364-371`) with hand-styled `h1`/`p` as `entry.adoc` draws "a page of its own". Deliverable 2's
   "a page that says the machine is not reachable uses the `ErrorState` pattern" applies to `UnreachableView` too: decide at outline whether
   `ErrorState` can carry the page-of-its-own layout; if not, record it as a finding. `lint:vocabulary` covers `UnreachableView.svelte`.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ListenerOffView.test.ts 132 lines; UnreachableView.svelte + test (192 lines) exist; +layout.svelte:367 mounts it; hand-styled h1 :55 and p :56
 - Verify-first clause: re-read the three views after PLAN-45, PLAN-130, PLAN-131, PLAN-150 and PLAN-151 landed; take the PLAN-151 lint list as the work list.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
 
 ## Expected Surface
 
@@ -121,12 +129,12 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 - OBSERVED: `pm-web-app/src/routes/layout.test.ts` — present at `6e8c29af` (PLAN-131 residue; the `shellGone` test)
 - OBSERVED: `pm-web-app/src/lib/stores/heldFigure.ts` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-app/src/lib/stores/heldFigure.test.ts` — present at `6e8c29af` (PLAN-131 residue)
-- OBSERVED: `pm-web-app/src/lib/components/NavRail.svelte` — present at `6e8c29af` (PLAN-131 residue)
-- OBSERVED: `pm-web-app/src/lib/components/NavRail.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/shell/NavRail.svelte` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/shell/NavRail.test.ts` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-app/src/lib/components/BrandMark.svelte` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-app/src/lib/components/BrandMark.test.ts` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-app/src/lib/components/MascotFigure.test.ts` — present at `6e8c29af` (PLAN-131 residue)
-- OBSERVED: `pm-web-app/src/lib/components/uiIcons.test.ts` — present at `6e8c29af` (PLAN-131 residue)
+- OBSERVED: `pm-web-app/src/lib/icons/uiIcons.test.ts` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.test.ts` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsItemCommandsTest.java` — present at `6e8c29af` (PLAN-131 residue)
 - OBSERVED: `pm-web-e2e/tests/pairing.spec.js` — present at HEAD 1cc0e10e
@@ -135,6 +143,8 @@ Not in this plan: `BrandMark`, `MascotFigure`, the hero figure and its poses (PL
 - OBSERVED: `pm-api/src/main/resources/messages/pairing.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/entry.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/entry.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/api/requestLimit.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/assets/mascot/mascotFiles.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -163,6 +173,14 @@ Re-read every file above at the then-current HEAD. Run `corpus surfaces` against
 ## PLAN-148 Landing Residue (Amendment 2026-11-14)
 
 - `Chip` renders nothing for an empty value, is named `Copy {value}`, and truncates at `max-inline-size: 100%`: a long command to copy would be cut. Re-check the pairing page's two commands against that (wrap, or a copy button beside full text).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: ListenerOffView.test.ts exists now (132 lines, PLAN-131 #422); PairingView.test/scenarios RevokedView.test pairing.spec entry.spec exist
+- Claim 5 contradicted: ListenerOffView.svelte has no ErrorState import; hand-styled card h1/p with MascotFigure, own reconnect calling initRuntime() at :47
+- `ListenerOffView.test.ts` exists (#422) without the way-back and reconnect cases; `ListenerOffView` has no `ErrorState` and reconnects through `initRuntime()` (`:47`). Surface paths corrected: `NavRail` is under `lib/shell/`, `uiIcons.test.ts` under `lib/icons/`.
 
 ## Hand-Off Command
 

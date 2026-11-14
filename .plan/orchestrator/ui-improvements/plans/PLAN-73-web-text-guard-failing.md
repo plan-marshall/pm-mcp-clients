@@ -61,9 +61,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-07`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09` — read at `doc/claude_review/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102 CC-P-09; text-guard-baseline.json 4 views non-empty, 24 entries
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102-103 CC-P-09; baseline has 4 non-empty views (Epic1, Decision2, ProcessDesigner17, ProjectExplorer4) = 24 entries
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Baseline text-guard-baseline.json and textGuard.js still exist (CC-S-07 says delete the baseline); baseline is non-empty (e.g. EpicView de foreign-word paused, DecisionView de raw-enum ci_check) and was last touched by 9890d74b/5f9e60da; many views listed as touched changed since the anchor, so the amount of residue should be re-counted at outline.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: text-guard-baseline.json non-empty: EpicView de foreign-word paused, DecisionView de/en raw-enum ci_check; textGuard.js and text-guard.spec.js exist
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -95,6 +97,12 @@ row is not in the disjointness gate population). Its expected first failures, to
 - literals and glyph labels (007);
 - machine ids as labels, raw `e.message`, labels with colons or title case (008);
 - `start.*` keys reused in the chat instead of `control.chat.*` (009).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- The text-guard baseline now has 23 views × 2 (`UnreachableView`, 6e8c29af), not 22.
 
 ## Hand-Off Command
 

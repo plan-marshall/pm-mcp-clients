@@ -97,15 +97,25 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
 ## Claim Labels
 
 - OBSERVED: `tokens.css` declares no `--layer-*` token; numeric `z-index` is written in the components `DataTable` (1), `BottomBar` (20), `RowMenu` (30), `ActionBar` (10), `Toast` (90), `Dialog` (100), `CommandPalette` (100) — read by `git grep -n z-index -- pm-web-app/src`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css has no --layer-*; z-index DataTable:158=1 BottomBar:361=20 RowMenu:261=30 (drift) ActionBar:274=10 Toast:73=90 Dialog:166=100 CommandPalette:515=100
 - OBSERVED: the further `z-index` literals sit in `FindingsReviewModal` 50, `PlanSettingsModal` 50, `GrantModal` 60, `GitSourceIntakeModal` 50, `LanListenerModal` 100, `HoldResolutionModal` 50, `ConfinedFilePicker` 60, `LessonSourceModal` 50, `StartWorkModal` 50, `EpicDecompositionView` 50, `SystemView` 100, `ProjectOnboardingView` 100 and 110, `CleanupView` 100, `MachineSettingsView` 100, `ProjectExplorerView` 100 (twice), `ProcessDesigner` 100 — same read
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: All 18 further literals match: Findings/PlanSettings/GitSource/Hold/Lesson/StartWork/EpicDecomp 50; Grant/Picker 60; Lan/System/Cleanup/Machine/ProcessDesigner 100; Onboarding 100+110; Explorer 100x2
 - OBSERVED: `RowMenu.svelte` filters disabled entries out of the keyboard walk (lines 89-91) and returns on a disabled item (129); `ActionBar.svelte` draws its own `role="menu"` (line 223) — read at both files
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowMenu.svelte menuEntries filters disabled at :100-102 and openMenu/item returns on disabled at :141 (drift from 89-91,129); ActionBar.svelte:223 role=menu
 - OBSERVED: `Button.svelte` passes the native `disabled` (`disabled={disabled || loading}`), types `size` as `'sm'|'md'|'lg'|'small'`, and `size="small"` occurs 19 times (`CompletionReportView` 2, `DecisionView` 6, `ProjectExplorerView` 2, `ReportsView` 9) — read at `Button.svelte` and by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Button.svelte:47 disabled={disabled||loading}; :21 size sm|md|lg|small; size=small x19 (CompletionReport 2 Decision 6 ProjectExplorer 2 Reports 9)
 - OBSERVED: `visibleLabel` is passed by `DataTable.svelte:121` and `ReportsView.svelte:1171` — read by `git grep visibleLabel`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visibleLabel DataTable.svelte:121; ReportsView now passes it at :1290 (was 1171) to RowMenu; RowMenu.svelte:27 and IconButton.svelte:22 also declare it; dev page passes it 3x
 - OBSERVED: `RowMenu` is used by `ReportsView.svelte` and the dev page; `ActionBar` by `WorkControlPanel.svelte`, `SettingsView.svelte`, `SystemView.svelte`, `routes/+layout.svelte` and the dev page — read by `git grep "<RowMenu\|<ActionBar"`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowMenu consumers ReportsView:1285 + dev page; ActionBar consumers WorkControlPanel:824,828 SettingsView:375,450 SystemView:782 routes/+layout.svelte:334 dev page
 - OBSERVED: no `SegmentedControl`, `Toggle` or `ActMenu` exists; `role="radiogroup"` is hand-written in `OverviewView.svelte:782` and `DecisionView.svelte`, `aria-pressed` in `StepBar.svelte` and `PlanView.svelte` — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No SegmentedControl/Toggle/ActMenu tracked; radiogroup OverviewView:802 (was 782) DecisionView:1038; aria-pressed StepBar:52 PlanView:926
 - OBSERVED: `reports.adoc:148` has the word beside the glyph "from the tablet width up" while `components.adoc` § `#icon-button` says `IconButton` never shows its label — read in both documents
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: shared/reports.adoc:148 still has word beside glyph from tablet width up; components.adoc:161 says IconButton never shows its label
 - HYPOTHESIS: `Dialog.svelte` and `ConfirmDialog.svelte` already meet most of § `#dialog` and § `#confirm-dialog` — confirm/refute at `Dialog.test.ts` and `ConfirmDialog.test.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dialog.svelte has radius-lg 12px shadow-overlay text-xl labelledby focus trap Escape danger list footer right; ConfirmDialog has busy confirmDisabled typedName; tests 14 and 9
 - Verify-first clause: re-read `RowMenu`, `ActionBar`, `Button` and every consumer at the current HEAD after PLAN-129 and PLAN-45; add any new consumer's fields and edges to deliverables 2 and 4.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction for the implementing session, not a code fact; no new RowMenu or ActionBar consumer at HEAD
 
 ## Expected Surface
 
@@ -139,6 +149,12 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/row-menu.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/reports.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/StatusLabel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/StatusLabel.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/IconButton.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/components-tags.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/README.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 

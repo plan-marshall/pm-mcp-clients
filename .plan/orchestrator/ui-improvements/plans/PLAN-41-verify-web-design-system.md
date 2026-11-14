@@ -45,9 +45,11 @@ Run the design-system checks against the merged code and record the result. Ever
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/visual-design/verification.adoc` holds VD-V-01..VD-V-10 (lines 10-65).; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/verification.adoc holds VD-V-01..VD-V-10 at lines 14-63 as listed; CC-V-06 and CC-V-07 exist in cross-cutting/verification.adoc:42,49
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing
 - HYPOTHESIS: the vocabulary lint runs in the build and can be read as a count per view — confirm/refute at `pm-web-app/eslint.config.js` § `vocabulary` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: pm-web-app/eslint.config.js has no vocabulary rule or per-view count (only recommended rules, security, console); vocabulary lint is PLAN-151 not landed | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -68,6 +70,13 @@ component set that design session D1 replaces; it is re-grounded after D1–D3 (
 the AGREED `components.adoc`, tag family, interaction set and field system). Queue status: `parked` — not emitted until D1,
 D2 and D3 have merged; the Expected Surface above is NOT widened now (a parked row is not in the disjointness gate
 population).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 2 contradicted: pm-web-app/eslint.config.js has no vocabulary rule or per-view count (only recommended rules, security, console); vocabulary lint is PLAN-151 not landed
+- The 2026-11-10 re-grounding says new claim bullets were added; none exist. The vocabulary lint (claim 2) is PLAN-151's, not landed.
 
 ## Hand-Off Command
 

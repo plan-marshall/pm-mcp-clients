@@ -43,8 +43,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/ux/findings.adoc#UX-F-15` — read at `doc/claude_review/ux/proposals.adoc` (the designer part; the claim was corroborated at `cc5794c9` for the former `PLAN-54`)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; ux/findings.adoc:146 UX-F-15; deliverable replaced by the D1 component sweep (process-designer.adoc Layout :52-80 contradicts the pane layout)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; findings.adoc:146 UX-F-15; process-designer.adoc Layout (#layout ~49-80) puts validation as a band below the text, contradicting results above
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; a refuted claim re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -73,6 +74,12 @@ restarted:
 
 - `.intake-mode` → `SegmentedControl`, hand-rolled dialogs → `Dialog`, the two "Open" labels named apart (007).
 - Frontmatter via `Field`, the file and paste inputs, the project as `SelectField` (008).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Nothing implemented yet (`designer.back` still at `designer.en.properties:85`). The Expected Surface block is repeated after the Write-Boundary: the first block counts.
 
 ## Hand-Off Command
 

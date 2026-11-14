@@ -75,12 +75,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-12)`, `doc/claude_review/ux/proposals.adoc#UX-P-02` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/ux/plan.adoc` UX-S-12 and `ux/proposals.adoc` UX-P-02 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-12 at ux/plan.adoc:80, UX-P-02 proposals.adoc:73, UX-P-11 :355, UC-P-03 use-cases/proposals.adoc:47 present
 - Re-grounded note (2026-10-30, operator request): the tabs of the one settings view are Setup, Access, Credentials, Consents, Retention and **This browser**. The last one is `BrowserSettingsView` of `PLAN-85` (`web-theme-in-browser-settings`): the theme and the language choice, applied at once, no Save, nothing sent to the machine, route `/settings/browser`; later browser-only settings belong in this tab and not in another plan's view. It is a browser setting and not a machine setting, so the one-save, "changed" mark and "reset to inherited" rules of deliverable 2 do not apply to it. If `PLAN-85` has landed, this plan makes `/settings/browser` redirect to `/settings?tab=browser` like `/settings/machine`; if it has not, this plan leaves the tab to `PLAN-85`.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No BrowserSettingsView and no /settings/browser route at HEAD; PLAN-85 not landed so the leave-the-tab-to-PLAN-85 branch applies
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): BrowserSettingsView.svelte and pm-web-app/src/routes/settings/browser do not exist (PLAN-85 not landed), so the spec's 'leaves the tab to PLAN-85' branch applies; routes.ts still has only 'settings' and 'machine-settings'; routes/settings has +page.svelte and machine/.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AppRoute has only settings and machine-settings (routes.ts:25-26); routes/settings holds +page.svelte and machine/ only
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: `applyConflictAgain` still falls back to `{}` when the conflict's `current_value` is not a record — confirm/refute at `pm-web-app/src/lib/views/MachineSettingsView.svelte` § `applyConflictAgain` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: MachineSettingsView.svelte:244 parseCleanupRecord(conflict.currentValue) ?? {} still falls back to {} (spec said ~238-246); changedFields merge now wraps it
 - HYPOTHESIS: no test pins a German `common.tokens.total` — confirm/refute at `pm-web-app/src/lib/i18n/catalogue.test.ts` § `common.tokens` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No German literal test of common.tokens.total: catalogue.test.ts has no tokens key; SystemViewConsistencyTest.java:264 formats by lang; key at common.*.properties:219
 
 ## Expected Surface
 
@@ -105,6 +110,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/devices.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/i18n/catalogue.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/claude_review/cli/resources/screens/system-view.svg` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -126,6 +133,12 @@ population). When restarted:
 - Its form rule becomes the general settings-form rule: "Speichere" disabled until a change, changed marks, reset; device
   rename as an inline edit (008). It builds on `Field`, `RadioGroup`, `NumberField`, `SecretField`.
 - The `transcribe` setting and the speech-consent withdrawal belong to the D4 voice package, not to this plan.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: the rail maps machine-settings onto settings (#274).
 
 ## Hand-Off Command
 

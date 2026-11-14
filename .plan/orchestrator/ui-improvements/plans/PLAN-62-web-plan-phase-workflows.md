@@ -57,12 +57,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-05)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-04` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/use-cases/plan.adoc` UC-S-05 and `use-cases/proposals.adoc` UC-P-04 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UC-S-05 at use-cases/plan.adoc:50, UC-P-04 proposals.adoc:98, findings-plans-control.adoc present
 - HYPOTHESIS: the instance diagram data of `PM-IMPL-5` is available through the API the plan view already reads — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/process/` (verify-at-outline)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `pm-api/.../process/` has `ProcessNode`, `NodeState`, `PruneReason`; `client.ts:3151` `getPlanProcess` (GET `/api/v1/plans/{id}/process`), called at `PlanView.svelte` `loadPlanProcess`.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api process/ has ProcessTree, ProcessNode, NodeState, PruneReason; client.ts:3424 getPlanProcess; PlanView.svelte:171 loadPlanProcess
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): client.ts line cited in older evidence moved (getPlanProcess now client.ts:3107); PLAN-43 shipped ObjectPage template, relevant to the PlanView rework; PlanView, NodeNarrative, processNode.ts and plan-view.spec.js changed (PLAN-90/a11y/token work).
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: getPlanProcess now client.ts:3424; templates/ObjectPage.svelte shipped; PlanView.svelte 1721 lines
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: a leaf node renders no expander today — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte:885-896` § `toggle-btn` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte:899-921 renders the toggle button for every node; a leaf gets a blank glyph and aria-expanded undefined (hasChildren :622), so an inert expander button still exists | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -75,6 +78,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/utils/processNode.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -100,6 +104,13 @@ the disjointness gate population). When restarted:
 - `RowLink` (PLAN-148) supports no tree role and has no covered-safe place for a disclosure button except `acts`; the spec's "RowLink + a
   disclosure button with aria-current; plain arrows stay with the tree" (`:95`) must be re-designed at outline (read `RowLink.svelte` at
   HEAD and `PLAN-49`'s changes to it).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 4 contradicted: PlanView.svelte:899-921 renders the toggle button for every node; a leaf gets a blank glyph and aria-expanded undefined (hasChildren :622), so an inert expander button still exists
+- Already done: the not-in-plan box (#70). Claim 4 refuted: `PlanView.svelte:899-921` renders an inert toggle on every leaf (aria-expanded undefined).
 
 ## Hand-Off Command
 

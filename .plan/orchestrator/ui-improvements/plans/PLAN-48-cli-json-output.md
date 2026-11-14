@@ -53,11 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57; proposals.adoc:125-126
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57 CLI-UX-S-06; proposals.adoc:125-126 CLI-UX-P-07
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
-  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (PLAN-36 #391); json/ test dir absent; SystemCommand prints the body raw
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first stale
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -79,6 +79,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorProcessIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorKind.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SystemCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -112,6 +115,13 @@ This section supersedes the spec text and earlier notes where they differ.
   `ReadVerbExitCodesTest`.
 - Dependencies: add PLAN-30 and PLAN-36 (landed); chain 30 → 42 → 48. Stale: the PLAN-77 clause, the verify-first clause.
 - Disposition: AMEND (schema decision); HOLD until PLAN-42 lands.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355)
+- Already done: `needs`, `status` and `system --json` exist (#391); hardening and the rest are open. `01-commands.adoc` is listed twice in the surface; the verify-first clause names a HYPOTHESIS that does not exist.
 
 ## Hand-Off Command
 

@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 CLI-CC-S-06; proposals.adoc:97 CLI-CC-P-05
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58 CLI-CC-S-06 (3 steps as spec); proposals.adoc:97 CLI-CC-P-05; doc/plans/proof-of-presence.adoc still absent
 - HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: HOLD stands: L-1 deferred, no milestone (docs later-improvements.adoc:17-25, 08-security.adoc:56,59)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HOLD stands: later-improvements.adoc:17-25 L-1 deferred with unchecked boxes; 08-security.adoc:56,59 name it; no ADR dir or proof doc in plan-marshall-documentation; PLAN-14 landed #277
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause, no hypothesis
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause; names no HYPOTHESIS
 
 ## Expected Surface
 

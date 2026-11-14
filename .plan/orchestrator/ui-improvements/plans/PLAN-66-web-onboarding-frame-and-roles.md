@@ -107,9 +107,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-04)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-03` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:41 UC-S-04; proposals.adoc:47 UC-P-03; deliverables 1, 9, 10 corrected vs onboarding*.adoc in the 2026-11-10 Amendment
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:41 UC-S-04; proposals.adoc:47-48 UC-P-03 present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): pm-web-app/src/lib/views/onboarding/ still absent (created by this plan); all listed present files still exist, including LanguageChoice.svelte; onboarding properties, ModelsChoice.svelte, OnboardingView.svelte and +layout.svelte changed since the anchor.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: views/onboarding/ still absent; OnboardingView, Aspect/Harness/Language/Models Choice, CredentialEntry, onboarding.spec.js, 3 onboarding adoc, 2 properties all tracked
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -145,6 +147,12 @@ row is not in the disjointness gate population). When restarted:
 - The token entry is `SecretField`, the per-harness model text field is `TextField`, the choice screens are `RadioGroup` /
   `CheckGroup`; the stray `/>` in `HarnessChoice.svelte:151-152` goes (008); "Abandon" through `ConfirmDialog` (007).
 - The role `transcribe` in the roles step belongs to the D4 voice package.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: D10's monogram fallback (cc5794c9, #255) — the usage wording is not. Still due: `HarnessChoice.svelte:151-152` stray duplicate `/>`; `SecretField`/`TextField`/`RadioGroup`/`CheckGroup` do not exist yet (PLAN-150).
 
 ## Hand-Off Command
 

@@ -57,9 +57,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-02)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-01` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:26 UC-S-02; proposals.adoc:16 UC-P-01; onboarding.adoc:42 one route renders the reported state; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UC-S-02 at use-cases/plan.adoc:26, UC-P-01 at proposals.adoc:16, onboarding.adoc:42 one route renders the reported state, findings-onboarding-entry.adoc present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): screens.ts and screens.registry.test.ts still absent (created by this plan, correct); OnboardingView, SettingsView and onboarding.* catalogue changed since the anchor (PLAN-90 time/locale, a11y): re-read before D1.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: views/onboarding/ does not exist so screens.ts and screens.registry.test.ts are absent; OnboardingView.svelte still holds the else-if chain
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 
 ## Expected Surface
 
@@ -96,6 +98,12 @@ restarted (together with `PLAN-66`):
 - "Abandon" in the overflow through `ConfirmDialog`; dialogs via `Dialog` (007).
 - `SecretField`, `TextField`, `RadioGroup` / `CheckGroup`; the stray `/>` in `HarnessChoice.svelte:151-152` goes (008).
 - The role `transcribe` in the roles step belongs to the D4 voice package, not to this plan.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- No 2026-11-10 re-grounding; a second Expected Surface block sits after the Write-Boundary (the first counts). `PairingView` now draws `BrandMark`.
 
 ## Hand-Off Command
 
