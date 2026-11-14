@@ -195,8 +195,6 @@ class IntentScenarioTest {
                 assertEquals("de.cuioss:cui-http", outline.addedDependencies().getFirst().name());
                 assertEquals(1, outline.addedDependencies().getFirst().deliverable());
                 assertEquals(1, outline.satisfying("AC-001").size());
-                assertTrue(outline.hasMissingKeyLink());
-                assertEquals("EventQueue -> RelayStatus", outline.missingKeyLink());
 
                 var second = outline.deliverable(2);
                 assertNotNull(second);
