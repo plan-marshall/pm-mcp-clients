@@ -31,7 +31,7 @@ const BODIES = ['Lens body', 'Project body', 'Epic body', 'Plan body', 'Task bod
 /**
  * Renders the engine and reports the container's width, as a browser's observer would.
  *
- * @param width the container's content width in px
+ * @param width the container's content width `W` in px, as the design's tables state it
  * @returns the rendered engine, its frame and how many observers were told
  */
 async function renderWindow(width: number, levels: Level[] = LEVELS) {
@@ -39,7 +39,8 @@ async function renderWindow(width: number, levels: Level[] = LEVELS) {
     props: { levels, label: 'Levels', bodies: BODIES, objectBody: 'Object body' },
   });
   const frame = screen.getByTestId('triage-page');
-  const told = reportBox(frame, width, 800);
+  // The design states the inset-less content width; the template measures the container.
+  const told = reportBox(frame, width + 48, 800);
   await tick();
   return { ...result, frame, told };
 }
@@ -71,15 +72,16 @@ describe('TriagePage as the column engine', () => {
 
   it('computes the window again when the container changes its width', async () => {
     const { frame } = await renderWindow(744);
+    const window_ = document.querySelector('.triage-page__window');
 
     expect(columns()).toHaveLength(2);
-    expect(screen.getByTestId('triage-page')).toHaveAttribute('data-columns', '2');
+    expect(window_).toHaveAttribute('data-columns', '2');
 
-    reportBox(frame, 1168, 800);
+    reportBox(frame, 1216, 800);
     await tick();
 
     expect(columns()).toHaveLength(3);
-    expect(screen.getByTestId('triage-page')).toHaveAttribute('data-columns', '3');
+    expect(window_).toHaveAttribute('data-columns', '3');
   });
 
   it('follows the container, not the viewport', async () => {
@@ -90,7 +92,7 @@ describe('TriagePage as the column engine', () => {
     // 1920 px of viewport would fill four columns; the 744 px container fills two.
     expect(columns()).toHaveLength(2);
 
-    reportBox(frame, 744, 800);
+    reportBox(frame, 792, 800);
     await tick();
     expect(columns()).toHaveLength(2);
   });
@@ -134,7 +136,7 @@ describe('TriagePage as the column engine', () => {
         pinned: { level: LEVELS[4], reason: 'ended' },
       },
     });
-    reportBox(screen.getByTestId('triage-page'), 1168, 800);
+    reportBox(screen.getByTestId('triage-page'), 1216, 800);
     await tick();
 
     const pinned = screen.getByTestId('triage-pinned');
@@ -146,11 +148,11 @@ describe('TriagePage as the column engine', () => {
   it('keeps the widest chain inside the content width', async () => {
     await renderWindow(1168);
 
-    const layout = windowFor({ container: 1168, depth: LEVELS.length });
+    const layout = windowFor({ container: 1216, depth: LEVELS.length });
     const total = columns().reduce((sum, column) => sum + widthOf(column), 0);
 
     expect(total).toBe(layout.listWidth * (layout.columns - 1) + layout.objectWidth);
-    expect(total + layout.stripWidth).toBe(contentWidth(1168));
+    expect(total + layout.stripWidth).toBe(contentWidth(1216));
   });
 
   it('never scrolls the page sideways', () => {
