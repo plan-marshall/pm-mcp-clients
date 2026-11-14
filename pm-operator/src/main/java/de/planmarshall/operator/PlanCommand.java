@@ -49,6 +49,7 @@ import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
@@ -161,10 +162,6 @@ public final class PlanCommand implements Callable<Integer> {
                 path += "?depth=" + depth;
             }
             var response = runtime.send(HttpRequest.get(path));
-            if (response.status() == 404) {
-                // Fallback to direct plan endpoint for legacy/minimal test fixtures
-                response = runtime.send(HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId)));
-            }
             if (response.status() == 200) {
                 var body = response.bodyText();
                 if (body.contains("\"nodes\"") || body.contains("\"plan_id\"")) {
@@ -412,8 +409,8 @@ public final class PlanCommand implements Callable<Integer> {
         if ((level + 1) <= maxDepth && !node.leafTasks().isEmpty()) {
             var taskIndent = "  ".repeat(level + 1);
             for (var task : node.leafTasks()) {
-                var taskGlyph = getTaskGlyph(task.status());
-                var taskStateCol = String.format("%-9s", task.status());
+                var taskGlyph = PlanViewLevel.taskGlyph(task.status());
+                var taskStateCol = String.format("%-9s", OutputSafety.stripControlSequences(task.status()));
                 var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
                 var taskInfoParts = new ArrayList<String>();
                 if (task.durationSeconds() > 0) {
@@ -434,8 +431,8 @@ public final class PlanCommand implements Callable<Integer> {
         if ((level + 1) <= maxDepth && node.leafJob() != null) {
             var job = node.leafJob();
             var jobIndent = "  ".repeat(level + 1);
-            var jobGlyph = getTaskGlyph(job.status());
-            var jobStateCol = String.format("%-9s", job.status());
+            var jobGlyph = PlanViewLevel.taskGlyph(job.status());
+            var jobStateCol = String.format("%-9s", OutputSafety.stripControlSequences(job.status()));
             var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
             var jobInfoParts = new ArrayList<String>();
             if (job.durationSeconds() > 0) {
@@ -445,7 +442,7 @@ public final class PlanCommand implements Callable<Integer> {
                 jobInfoParts.add("waits slot");
             }
             if (job.outcome() != null && !job.outcome().isBlank()) {
-                jobInfoParts.add(job.outcome());
+                jobInfoParts.add(OutputSafety.stripControlSequences(job.outcome()));
             }
             var jobInfo = String.join(" · ", jobInfoParts);
             if (!jobInfo.isEmpty()) {
@@ -458,19 +455,6 @@ public final class PlanCommand implements Callable<Integer> {
         if (level < maxDepth && !node.subNodes().isEmpty()) {
             renderNodes(out, node.subNodes(), level + 1, maxDepth);
         }
-    }
-
-    private static String getTaskGlyph(@Nullable String status) {
-        if (status == null) {
-            return "○";
-        }
-        return switch (status.toLowerCase()) {
-            case "done", "submitted" -> "✓";
-            case "running" -> "▶";
-            case "waiting", "waiting_for_you" -> "!";
-            case "failed" -> "✗";
-            default -> "○";
-        };
     }
 
     static String formatTokens(ProcessTokens tokens) {
@@ -889,6 +873,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         private void printCompletionReport(PrintWriter out, String body, boolean showTokens, boolean showComponents) throws IOException {
             var report = PlanCompletionReport.fromJson(body);
+            var locale = context.clientEnvironment().locale();
 
             var headParts = new ArrayList<String>();
             headParts.add(ConsoleNotice.stripControlSequences(report.planId()));
@@ -897,18 +882,19 @@ public final class PlanCommand implements Callable<Integer> {
             if (report.pullRequestNumber() != null) {
                 headParts.add("#" + report.pullRequestNumber());
             }
-            if (report.ended() != null) {
-                headParts.add(report.ended());
-            }
+            var ended = report.ended();
+            headParts.add(ended != null && !ended.isBlank()
+                                ? ConsoleNotice.stripControlSequences(ended)
+                                : MessageCatalogue.format(locale, "common.unknown", Map.of()));
             out.println(String.join(" · ", headParts));
 
             var from = report.from();
             if (from != null && from.project() != null) {
-                var path = "in " + from.project();
+                var path = "in " + ConsoleNotice.stripControlSequences(from.project());
                 if (from.epic() != null && !from.epic().isBlank()) {
-                    path += " › " + from.epic();
+                    path += " › " + ConsoleNotice.stripControlSequences(from.epic());
                 }
-                out.printf("  %-50s plan %s%n", path, report.planId());
+                out.printf("  %-50s plan %s%n", path, ConsoleNotice.stripControlSequences(report.planId()));
             }
 
             var outcomeDesc = report.terminalReason() != null ? report.terminalReason() : report.outcome();
@@ -917,7 +903,6 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf(FMT_14S, "", ConsoleNotice.stripControlSequences(report.pullRequestUrl()));
             }
 
-            var locale = context.clientEnvironment().locale();
             var reason = report.reason() != null && !report.reason().isBlank()
                                 ? report.reason()
                                 : MessageCatalogue.format(locale, "common.none", Map.of());
@@ -930,33 +915,42 @@ public final class PlanCommand implements Callable<Integer> {
 
             printDeliverables(out, report.deliverables());
             printReplanning(out, report.replanningRecords());
-            printDecisions(out, report.decisionRecords());
+            printDecisions(out, report.decisionRecords(), locale);
             printOwnCalls(out, report.ownCalls());
             printChangeMap(out, report.changeMap());
 
             var usage = report.tokenUsage();
             if (usage != null) {
-                printTokensSummary(out, usage, ran, report.planId(), showTokens, showComponents);
+                printTokensSummary(out, usage, ran, ConsoleNotice.stripControlSequences(report.planId()),
+                                    showTokens, showComponents);
             }
             out.flush();
         }
 
         private static @Nullable String formatRan(PlanCompletionReport report, String locale, ZoneId zone) {
-            var ran = report.ran();
-            if (ran == null && report.durationSeconds() > 0) {
-                ran = Display.duration(locale, report.durationSeconds());
-                if (report.startedAt() != null && report.endedAt() != null) {
-                    var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
-                    ran += ", " + timeFmt.format(report.startedAt()) + " to " + timeFmt.format(report.endedAt());
-                }
-                if (report.pausedSeconds() > 0) {
-                    ran += " · paused " + Display.duration(locale, report.pausedSeconds());
-                    if (report.pausedBy() != null) {
-                        ran += " by " + report.pausedBy();
-                    }
-                }
+            var written = report.ran();
+            if (written != null) {
+                return ConsoleNotice.stripControlSequences(written);
             }
-            return ran;
+            if (report.durationSeconds() <= 0) {
+                return null;
+            }
+            var duration = Display.duration(locale, report.durationSeconds());
+            var started = report.startedAt();
+            var endedAt = report.endedAt();
+            if (started == null || endedAt == null) {
+                return duration;
+            }
+            // Ran is the wall time from start to end and how long the operator paused it
+            // (completion-report.adoc#layout): the pause is the operator's, never a name the
+            // runtime wrote.
+            var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
+            var paused = report.pausedSeconds() > 0 ? Display.duration(locale, report.pausedSeconds()) : "none";
+            return MessageCatalogue.format(locale, "report.completion.ran_value", Map.of(
+                                "duration", duration,
+                                "start", timeFmt.format(started),
+                                "end", timeFmt.format(endedAt),
+                                "paused", paused));
         }
 
         private static void printDeliverables(PrintWriter out, List<DeliverableSummary> deliverables) {
@@ -966,7 +960,8 @@ public final class PlanCommand implements Callable<Integer> {
                 long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
                 out.printf("  %-14s %d of %d done%n", "deliverables", doneCount, deliverables.size());
                 for (var deliv : deliverables) {
-                    out.printf("                   %-5s %s%n", deliv.state(), ConsoleNotice.stripControlSequences(deliv.name()));
+                    out.printf("                   %-5s %s%n", ConsoleNotice.stripControlSequences(deliv.state()),
+                                        ConsoleNotice.stripControlSequences(deliv.name()));
                 }
             }
         }
@@ -977,29 +972,41 @@ public final class PlanCommand implements Callable<Integer> {
                 var repSummary = String.format("%d · after %s (%s): %s",
                                     replanningRecords.size(),
                                     ConsoleNotice.stripControlSequences(first.trigger()),
-                                    first.time() != null ? first.time() : "",
+                                    first.time() != null ? ConsoleNotice.stripControlSequences(first.time()) : "",
                                     ConsoleNotice.stripControlSequences(first.change()));
                 out.printf(FMT_14S, "re-planning", repSummary);
             }
         }
 
-        private static void printDecisions(PrintWriter out, List<DecisionRecord> decisionRecords) {
+        private static void printDecisions(PrintWriter out, List<DecisionRecord> decisionRecords, String locale) {
             if (!decisionRecords.isEmpty()) {
                 var decList = new ArrayList<String>();
                 for (var d : decisionRecords) {
-                    var decText = d.id();
+                    var decText = ConsoleNotice.stripControlSequences(d.id());
                     if (d.question() != null && !d.question().isBlank()) {
                         decText += " " + ConsoleNotice.stripControlSequences(d.question());
                     }
-                    var by = d.by();
-                    if ("operator".equalsIgnoreCase(by)) {
-                        by = d.channel() != null ? "you, the " + d.channel() + " app" : "you";
-                    }
-                    decText += " (" + by + ")";
+                    decText += " (" + decidedBy(d, locale) + ")";
                     decList.add(decText);
                 }
                 out.printf("  %-14s %d · %s%n", "decisions", decisionRecords.size(), String.join(" · ", decList));
             }
+        }
+
+        /**
+         * How a decision was taken, as its record names it (completion-report.adoc#texts,
+         * {@code report.completion.decision_by}): by you with the channel, left to the plan, by a
+         * quorum, or withdrawn; any other value is shown as the runtime wrote it.
+         */
+        private static String decidedBy(DecisionRecord decision, String locale) {
+            var by = decision.by();
+            var channel = decision.channel();
+            if ("operator".equals(by) && (channel == null || channel.isBlank())) {
+                return MessageCatalogue.format(locale, "operator.actions.chat.you", Map.of());
+            }
+            return MessageCatalogue.format(locale, "report.completion.decision_by", Map.of(
+                                "by", ConsoleNotice.stripControlSequences(by),
+                                "channel", channel != null ? ConsoleNotice.stripControlSequences(channel) : ""));
         }
 
         private static void printOwnCalls(PrintWriter out, List<OwnCallRecord> ownCalls) {
@@ -1094,14 +1101,21 @@ public final class PlanCommand implements Callable<Integer> {
             if (item.harnessModel() == null) {
                 return "";
             }
-            var effort = item.effort() != null ? item.effort() : "medium";
-            return " " + item.harnessModel() + " · " + effort;
+            // The pin as the plan's records name it (completion-report.adoc#tokens): an effort the
+            // records do not carry is left out, never stood in.
+            var pin = " " + ConsoleNotice.stripControlSequences(item.harnessModel());
+            var effort = item.effort();
+            return effort != null && !effort.isBlank()
+                                ? pin + " · " + ConsoleNotice.stripControlSequences(effort)
+                                : pin;
         }
 
         private void printTokensDetail(PrintWriter out, TokenUsageRecord usage, String planId, boolean showComponents) {
             int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
             if (unmeasured > 0) {
-                var reason = usage.unmeasuredReason() != null ? ": " + usage.unmeasuredReason() : "";
+                var reason = usage.unmeasuredReason() != null
+                                    ? ": " + ConsoleNotice.stripControlSequences(usage.unmeasuredReason())
+                                    : "";
                 out.printf("  %-12s %d of %d tasks not measured%s%n", "coverage", unmeasured, usage.tasksTotal(), reason);
             } else {
                 out.printf("  %-12s %d of %d tasks measured%n", "coverage", usage.tasksTotal(), usage.tasksTotal());
@@ -1125,7 +1139,7 @@ public final class PlanCommand implements Callable<Integer> {
             for (var item : items) {
                 var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
                 var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + NOT_MEASURED) : "";
-                var paddedName = padRight(item.name(), nameWidth);
+                var paddedName = padRight(ConsoleNotice.stripControlSequences(item.name()), nameWidth);
                 if (isRole) {
                     var pin = formatPin(item);
                     out.printf("               %s %-26s %s%s%n", paddedName, pin, val, unmeasuredItem);
@@ -1154,10 +1168,12 @@ public final class PlanCommand implements Callable<Integer> {
                         case "no_product" -> "produced nothing";
                         case "retries" -> "retries";
                         case "remediation" -> "remediation";
-                        default -> w.wasteClass();
+                        default -> ConsoleNotice.stripControlSequences(w.wasteClass());
                     };
                     var amount = TokenFormat.formatTokens(w.tokens(), false, "en");
-                    var extra = w.causeSummary() != null ? w.causeSummary() : (w.tasksCount() + " tasks");
+                    var extra = w.causeSummary() != null
+                                        ? ConsoleNotice.stripControlSequences(w.causeSummary())
+                                        : (w.tasksCount() + " tasks");
                     out.printf("               %-18s %-6s %s%n", label, amount, extra);
                 }
             }

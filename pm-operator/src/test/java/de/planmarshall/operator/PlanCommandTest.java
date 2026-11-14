@@ -21,6 +21,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -320,31 +325,154 @@ class PlanCommandTest {
     }
 
     @Test
-    @DisplayName("plan <id> views plan details")
+    @DisplayName("plan <id> reads the plan's process resource and draws its tree")
     void planDetail() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/plans/p-001".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"id\":\"p-001\",\"phase\":\"execute\",\"state\":\"running\"}");
+        var planId = Generators.letterStrings(6, 12).next();
+        var taskId = "TASK-" + Generators.integers(1, 99).next();
+        var server = fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + planId + "/process").equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"plan_id":"%s","current_phase":"execute","phase_state":"running",
+                                     "nodes":[{"node_id":"execute","title":"phase execute","kind":"phase",
+                                       "state":"running","sub_nodes":[],
+                                       "leaf_tasks":[{"task_id":"%s","role":"implement","harness":"claude",
+                                         "model":"sonnet","attempt":1,"status":"executing"}]}]}
+                                    """.formatted(planId, taskId));
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("plan", "p-001");
+        int code = execute("plan", planId, "--print");
+        var output = out.toString();
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("p-001"))
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains(planId + " · execute · running"), output),
+                            // a task at work is `executing` and draws the running glyph (16-plan-view.adoc#full-screen-leaf)
+                            () -> assertTrue(output.contains("▶ executing " + taskId + " (implement)"), output),
+                            () -> assertTrue(server.requests().stream()
+                                                                    .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
+                                                server.requests().toString())
         );
     }
 
     @Test
-    @DisplayName("plan <id> reports not found on 404")
+    @DisplayName("plan <id> reports not found on 404 and asks no other resource")
     void planDetailNotFound() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        var planId = Generators.letterStrings(6, 12).next();
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
-        int code = execute("plan", "p-missing");
-        assertEquals(1, code);
-        assertTrue(out.toString().contains("Plan p-missing not found."));
+        int code = execute("plan", planId, "--print");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Plan " + planId + " not found."), out.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                                    .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
+                                                server.requests().toString())
+        );
+    }
+
+    @Nested
+    @DisplayName("plan report on what the runtime wrote")
+    class ReportTexts {
+
+        /** A colour sequence as JSON writes it: the parsed text carries the escape character. */
+        private static final String ESC = "\\u001b[31m";
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String pausedBy = Generators.letterStrings(6, 12).next();
+
+        private String report() {
+            return """
+                                {"plan_id":"%1$s","outcome":"merged",
+                                 "from":{"project":"pm%2$sx","epic":"ep%2$sic"},
+                                 "started_at":"2026-03-01T08:40:00Z","ended_at":"2026-03-01T11:20:00Z",
+                                 "duration_seconds":9600,"paused_seconds":1200,"paused_by":"%3$s",
+                                 "deliverables":[{"title":"one","state":"do%2$sne"}],
+                                 "replanning":[{"trigger":"the base moved","time":"09%2$s:55","change":"TASK-5 added"}],
+                                 "decisions":[
+                                   {"id":"Q-1%2$s","by":"delegated"},
+                                   {"id":"Q-2","by":"quorum"},
+                                   {"id":"Q-3","by":"withdrawn"},
+                                   {"id":"Q-4","by":"operator","channel":"web"}],
+                                 "tokens":{"total":1000,"input":900,"output":100,"floor":false,
+                                   "coverage":{"total_tasks":2,"unmeasured":1,"reason":"term%2$sinated","workers":1,"models":1},
+                                   "by_role":[{"name":"plan%2$sner","harness_model":"claude:opus-5.5",
+                                     "total":1000,"input":900,"output":100,"floor":false,"unmeasured":0}]}}
+                                """.formatted(planId, ESC, pausedBy);
+        }
+
+        private String render(String... extra) throws Exception {
+            var path = "/api/v1/plans/" + planId + "/completion";
+            serve(path, report());
+            var args = new ArrayList<>(List.of("plan", "report", planId));
+            args.addAll(List.of(extra));
+            int code = execute(args.toArray(String[]::new));
+            assertEquals(0, code, err.toString());
+            return out.toString();
+        }
+
+        @Test
+        @DisplayName("strips the control sequences of every text the runtime wrote")
+        void stripsControlSequences() throws Exception {
+            var output = render("--tokens");
+            assertFalse(output.contains("\u001b"), output);
+        }
+
+        @Test
+        @DisplayName("says the pause was the operator's and never prints the runtime's name for it")
+        void pauseIsTheOperators() throws Exception {
+            var zone = new OperatorContext(fixture.environment(), tempDir, true).clock().getZone();
+            var fmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
+            var expected = "2 h 40 min, " + fmt.format(Instant.parse("2026-03-01T08:40:00Z"))
+                                + " to " + fmt.format(Instant.parse("2026-03-01T11:20:00Z"))
+                                + " · paused 20 min by you";
+            var output = render();
+            assertAll(
+                                () -> assertTrue(output.contains(expected), output),
+                                () -> assertFalse(output.contains(pausedBy), output));
+        }
+
+        @Test
+        @DisplayName("names how each decision was taken by the texts of the decision log")
+        void decisionsByTheirRecord() throws Exception {
+            var output = render();
+            assertAll(
+                                () -> assertTrue(output.contains("(left to the plan)"), output),
+                                () -> assertTrue(output.contains("Q-2 (a quorum)"), output),
+                                () -> assertTrue(output.contains("Q-3 (withdrawn)"), output),
+                                () -> assertTrue(output.contains("Q-4 (you, web)"), output),
+                                () -> assertFalse(output.contains("delegated"), output));
+        }
+
+        @Test
+        @DisplayName("names an operator decision without a channel in the interface language")
+        void operatorDecisionWithoutChannelInGerman() throws Exception {
+            var path = "/api/v1/plans/" + planId + "/completion";
+            serve(path, "{\"plan_id\":\"" + planId + "\",\"outcome\":\"merged\","
+                                + "\"decisions\":[{\"id\":\"Q-9\",\"by\":\"operator\"}]}");
+            var env = new HashMap<>(fixture.environment());
+            env.put("LC_ALL", "de_DE.UTF-8");
+            var context = new OperatorContext(env, tempDir, true);
+
+            int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                "plan", "report", planId);
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("Q-9 (du)"), out.toString()),
+                                () -> assertFalse(out.toString().contains("(you)"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("shows a role's pin as recorded and stands in no effort")
+        void pinWithoutEffort() throws Exception {
+            var output = render("--tokens");
+            assertAll(
+                                () -> assertTrue(output.contains("claude:opus-5.5"), output),
+                                () -> assertFalse(output.contains("· medium"), output));
+        }
     }
 
     @Test
@@ -579,7 +707,7 @@ class PlanCommandTest {
             if ("/api/v1/plans/p-001/completion".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, "Completion Report: p-001 SUCCESS (3 tasks, 25m)");
             } else if ("/api/v1/plans/p-running/completion".equals(request.target())) {
-                response.send(409, null, "plan_running");
+                response.send(409, null, "act_not_available");
             } else {
                 response.send(404, null, "");
             }
@@ -606,6 +734,25 @@ class PlanCommandTest {
                 response.send(404, null, "");
             }
         });
+    }
+
+    @Test
+    @DisplayName("plan report says the end is unknown when the report carries no end time")
+    void planReportWithoutEndTime() throws Exception {
+        var planId = "plan-" + Generators.integers(1, 9999).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + planId + "/completion").equals(request.target())) {
+                response.json(200, "{\"plan_id\":\"" + planId + "\",\"outcome\":\"no_change\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "report", planId);
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains(planId + " · completion report · no_change · unknown"), output));
     }
 
     @Test
@@ -689,7 +836,7 @@ class PlanCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/plans/running-plan/completion".equals(request.target())) {
                 response.json(409, """
-                                    {"error":"plan_running","state":"running"}
+                                    {"error":"act_not_available","state":"running"}
                                     """);
             } else {
                 response.send(404, null, "");

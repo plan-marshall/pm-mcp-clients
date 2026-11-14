@@ -240,7 +240,7 @@ class AcceptEditCommandTest {
         @Test
         @DisplayName("a stale confirmation is refused with an explanation")
         void staleConfirmation() throws Exception {
-            enrolmentRuntime(409, "{\"error\":\"confirmation_mismatch\"}");
+            enrolmentRuntime(409, "{\"error\":\"conflict\"}");
 
             assertEquals(1, executeInteractive("y\n", "accept-edit", "enrolment", project));
             assertTrue(err.toString().contains("changed since it was shown"), err.toString());

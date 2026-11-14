@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorChangedEvent;
@@ -123,17 +122,7 @@ public final class NeedsOperatorNotices {
      * @return the count, or {@code 0} when the value is no whole number
      */
     private static int countOf(@Nullable Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof JsonNumber jsonNumber) {
-            try {
-                return Math.clamp(jsonNumber.longValue(), 0, Integer.MAX_VALUE);
-            } catch (NumberFormatException _) {
-                return 0;
-            }
-        }
-        return 0;
+        return ConsoleNotice.wholeCount(value);
     }
 
     /**

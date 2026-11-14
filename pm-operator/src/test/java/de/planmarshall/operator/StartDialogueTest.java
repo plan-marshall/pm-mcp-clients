@@ -524,7 +524,7 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("a staged plan can be kept or dropped without changing the cut")
+    @DisplayName("a staged plan is kept without changing the cut, and d is not offered: the contract has no drop")
     void decompositionKeepAndDrop() throws Exception {
         var kept = run(StandardScenarios.START_EPIC,
                             String.join("\n", "d", "Harden the relay", "", "", "", "3", "k", "q"),
@@ -534,7 +534,23 @@ class StartDialogueTest {
                             "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
         assertAll(
                             () -> assertTrue(kept.contains("relay-auth-v2"), kept),
-                            () -> assertTrue(dropped.contains("relay-auth-v2"), dropped));
+                            () -> assertTrue(dropped.contains("relay-auth-v2"), dropped),
+                            () -> assertFalse(dropped.contains("d) drop"), dropped),
+                            () -> assertTrue(dropped.contains("d is not offered here: k, e, b, q, ?"), dropped));
+    }
+
+    @Test
+    @DisplayName("an invalid answer at a proposal changes nothing")
+    void chatProposalInvalidAnswer() throws Exception {
+        var rendered = run(StandardScenarios.START_CHAT,
+                            "h\nWhat about comments?\nz\n?\nq\n\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
+        assertAll(
+                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
+                            () -> assertTrue(rendered.contains("z is not offered here: r, q, ?"), rendered),
+                            () -> assertTrue(rendered.contains("Nothing more is explained here"), rendered),
+                            () -> assertFalse(rendered.contains("description stored"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
     @Test
@@ -548,7 +564,7 @@ class StartDialogueTest {
                                                 outcome.rendered()));
     }
 
-    private static String run(String scenario, String input, String... args) throws Exception {
+    static String run(String scenario, String input, String... args) throws Exception {
         var outcome = runWithCode(scenario, input, args);
         assertEquals(0, outcome.code(), outcome.rendered());
         return outcome.rendered();
@@ -576,11 +592,10 @@ class StartDialogueTest {
             environment.put(LANG, ENGLISH);
             environment.put("USER", "operator");
             driver.project(environment, runtime.base().getParent());
-            if (input == null) {
-                driver.endOfInput();
-            } else {
+            if (input != null) {
                 driver.type(input);
             }
+            driver.endOfInput();
             var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
             return new Outcome(code, driver.render(), runtime.requests());
         }

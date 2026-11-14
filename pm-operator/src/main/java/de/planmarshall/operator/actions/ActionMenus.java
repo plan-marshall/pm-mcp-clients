@@ -147,9 +147,6 @@ public final class ActionMenus {
         if ("landing_failed".equals(holdKind)) {
             addHoldAct(entries, used, dropped, locale, HoldActs.GIVE_UP_REMOVAL);
         }
-        if (entries.isEmpty()) {
-            addHoldAct(entries, used, dropped, locale, "retry");
-        }
         return new ActionsMenu(landingId, ActionsMenu.Subject.LANDING, rowId, entries, dropped);
     }
 

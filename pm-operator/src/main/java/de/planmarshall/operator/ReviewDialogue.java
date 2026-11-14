@@ -12,7 +12,9 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -22,6 +24,7 @@ import de.planmarshall.api.control.ReviewItemResource;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The findings or watches review of an epic ({@code review.open}, {@code review.item},
@@ -35,6 +38,7 @@ import de.planmarshall.operator.actions.WorkActionsClient;
 final class ReviewDialogue {
 
     private static final String STATE_ID = "control.review";
+    private static final String COUNT_PARAM = "count";
     private static final String REGISTER_FINDINGS = "findings";
     private static final String REGISTER_WATCHES = "watches";
 
@@ -92,17 +96,13 @@ final class ReviewDialogue {
             }
             var item = open.getFirst();
             show(review, item);
-            var decision = askDecision(item, review);
+            var decision = askDecision(review);
             if (decision == null) {
                 return 0;
             }
             review = switch (decision) {
                 case KEEP -> keep(item);
                 case DROP -> drop(item);
-                case PROMOTE, EDIT -> {
-                    prompt.line("operator.actions.review.no_draft", Map.of());
-                    yield review;
-                }
                 case CHAT -> {
                     WorkChatDialogue.run(context, out, "epic", epicId, false, !prompt.asks());
                     yield client.review(epicId, register);
@@ -117,7 +117,7 @@ final class ReviewDialogue {
     }
 
     private enum Decision {
-        KEEP, DROP, PROMOTE, EDIT, CHAT, REMAINING, FINISH
+        KEEP, DROP, CHAT, REMAINING, FINISH
     }
 
     private void show(ReviewResource review, ReviewItemResource item) {
@@ -164,58 +164,81 @@ final class ReviewDialogue {
                                                 "text", value));
     }
 
-    private @Nullable Decision askDecision(ReviewItemResource item, ReviewResource review) {
+    /**
+     * Asks the decision by its key. Only the keys the prompt draws are taken; an empty line or the
+     * leave key leaves, and any other input is answered with one line and the same prompt
+     * ({@code 03-dialogues.adoc#keys}).
+     * <p>
+     * Promoting an item to a plan and editing it are not offered: the client has no call that stages
+     * the drafted plan or edits the item, so the keys would lead nowhere. The drafted plan is shown
+     * with the item all the same.
+     */
+    private @Nullable Decision askDecision(ReviewResource review) {
+        var offered = new LinkedHashMap<String, Decision>();
         var options = new StringBuilder();
-        options.append(key("keep")).append(") ").append(text("control.review.keep_finding")).append("   ");
-        options.append(key("drop")).append(") ").append(text("control.review.drop")).append("   ");
-        if (item.proposal() != null && !item.proposal().isBlank() && review.draftedPlan() != null) {
-            options.append(key("promote")).append(") ").append(text("control.review.promote")).append("   ");
-            options.append("e) ").append(text("control.review.edit")).append("   ");
-        }
-        options.append(key("chat")).append(") ").append(text("control.review.chat")).append("   ");
+        offer(offered, options, key("keep"), Decision.KEEP, text("control.review.keep_finding"));
+        offer(offered, options, key("drop"), Decision.DROP, text("control.review.drop"));
+        offer(offered, options, key("chat"), Decision.CHAT, text("control.review.chat"));
         if (review.openItems().size() > 1) {
-            options.append(key("accept_remaining")).append(") ")
-                                .append(MessageCatalogue.format(prompt.locale(), "operator.actions.review.remaining",
-                                                    Map.of("count", review.openItems().size()))).append("   ");
+            offer(offered, options, key("accept_remaining"), Decision.REMAINING,
+                                MessageCatalogue.format(prompt.locale(), "operator.actions.review.remaining",
+                                                    Map.of(COUNT_PARAM, review.openItems().size())));
         }
         options.append(key("finish")).append(") ").append(text("operator.actions.review.finish"))
                             .append(StartPrompt.SUFFIX);
-        var answer = prompt.askInline(options.toString(), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.review.title",
-                                                Map.of("epic", epicId, "register", register)), epicId);
-        if (answer.isEmpty()) {
-            return null;
+        offered.put(key("finish"), Decision.FINISH);
+        while (true) {
+            var answer = prompt.askInline(options.toString(), STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "control.review.title",
+                                                    Map.of("epic", epicId, "register", register)), epicId);
+            if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                return null;
+            }
+            for (var entry : offered.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(answer)) {
+                    return entry.getValue();
+                }
+            }
+            notOffered(answer, String.join(", ", offered.keySet()) + ", " + leaveKey());
         }
-        if (answer.equalsIgnoreCase(key("keep"))) {
-            return Decision.KEEP;
+    }
+
+    private static void offer(Map<String, Decision> offered, StringBuilder options, String key, Decision decision,
+                        String label) {
+        offered.put(key, decision);
+        options.append(key).append(") ").append(label).append("   ");
+    }
+
+    private void notOffered(String answer, String offered) {
+        prompt.line("operator.dialogue.not_offered",
+                            Map.of("input", OutputSafety.stripControlSequences(answer), "offered", offered));
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+    }
+
+    /** Leaves the review where it is: nothing more is sent. */
+    private void leaveIf(String answer) {
+        if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
+            throw new StartPrompt.StartLeftException();
         }
-        if (answer.equalsIgnoreCase(key("drop"))) {
-            return Decision.DROP;
-        }
-        if (answer.equalsIgnoreCase(key("promote"))) {
-            return Decision.PROMOTE;
-        }
-        if ("e".equalsIgnoreCase(answer)) {
-            return Decision.EDIT;
-        }
-        if (answer.equalsIgnoreCase(key("chat"))) {
-            return Decision.CHAT;
-        }
-        if (answer.equalsIgnoreCase(key("accept_remaining"))) {
-            return Decision.REMAINING;
-        }
-        if (answer.equalsIgnoreCase(key("finish"))) {
-            return Decision.FINISH;
-        }
-        return null;
     }
 
     private ReviewResource keep(ReviewItemResource item) throws IOException {
         var other = REGISTER_FINDINGS.equals(register) ? REGISTER_WATCHES : REGISTER_FINDINGS;
-        var answer = prompt.askRaw("1) " + registerLabel(register) + "  2) " + registerLabel(other)
-                            + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.review.keep_finding", Map.of()),
-                            epicId);
+        String answer;
+        while (true) {
+            answer = prompt.askRaw("1) " + registerLabel(register) + "  2) " + registerLabel(other)
+                                + StartPrompt.SUFFIX, STATE_ID,
+                                MessageCatalogue.format(prompt.locale(), "control.review.keep_finding", Map.of()),
+                                epicId);
+            leaveIf(answer);
+            if (answer.isEmpty() || "1".equals(answer) || "2".equals(answer)) {
+                break;
+            }
+            notOffered(answer, "1-2, " + leaveKey());
+        }
         boolean stay = !"2".equals(answer);
         var disposition = stay ? keptValue() : movedValue();
         var updated = client.disposition(epicId, item.itemId(), disposition, null);
@@ -234,6 +257,7 @@ final class ReviewDialogue {
     private ReviewResource drop(ReviewItemResource item) throws IOException {
         var reason = prompt.askRaw(text("control.review.drop_reason") + StartPrompt.SUFFIX, STATE_ID,
                             text("control.review.drop"), epicId);
+        leaveIf(reason);
         var updated = client.disposition(epicId, item.itemId(), ReviewDisposition.DROPPED.value(), reason);
         prompt.line("operator.actions.review.dropped",
                             Map.of("item", OutputSafety.stripControlSequences(item.itemId())));
@@ -248,10 +272,10 @@ final class ReviewDialogue {
         }
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
                             "control.review.accept_remaining_confirm",
-                            Map.of("count", open.size())) + "   " + text("operator.actions.yes_no")
+                            Map.of(COUNT_PARAM, open.size())) + "   " + text("operator.actions.yes_no")
                             + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.review.accept_remaining",
-                                                Map.of("count", open.size())), epicId);
+                                                Map.of(COUNT_PARAM, open.size())), epicId);
         if (!Answers.isYes(answer)) {
             return review;
         }
@@ -266,9 +290,6 @@ final class ReviewDialogue {
     }
 
     private int finish() throws IOException {
-        if (!prompt.asks()) {
-            StartPrompt.missing(STATE_ID, text("operator.actions.review.finish"), epicId);
-        }
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "control.review.finish", Map.of())
                             + "   " + text("operator.actions.yes_no") + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.review.finish", Map.of()), epicId);

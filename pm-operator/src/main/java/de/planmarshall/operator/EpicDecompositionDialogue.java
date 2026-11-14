@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +24,7 @@ import de.planmarshall.api.decomposition.InstructAction;
 import de.planmarshall.api.decomposition.StagedPlanRecord;
 import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The third step of starting an epic: its decomposition (design <em>Terminal Client: Starting
@@ -115,20 +117,46 @@ final class EpicDecompositionDialogue {
                     return 0;
                 }
                 current = checked;
-            } else if ("q".equalsIgnoreCase(answer)) {
+            } else if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
             } else if ("r".equalsIgnoreCase(answer)) {
                 current = rewrite(current);
-            } else if ("+".equalsIgnoreCase(answer)) {
+            } else if ("+".equals(answer)) {
                 current = add(current);
             } else {
                 var target = planAt(current, answer);
                 if (target != null) {
                     current = openPlan(current, target);
+                } else {
+                    notOffered(answer, offered(current));
                 }
             }
         }
+    }
+
+    private String offered(EpicDecomposition cut) {
+        return plansOffered(cut.stagedPlanCount()) + "+, r, " + leaveKey() + ", ?";
+    }
+
+    private static String plansOffered(int count) {
+        if (count == 0) {
+            return "";
+        }
+        if (count == 1) {
+            return "1, ";
+        }
+        return "1-" + count + ", ";
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+    }
+
+    /** Answers an input a prompt does not offer, or {@code ?}, with one line (03-dialogues.adoc#keys). */
+    private void notOffered(String answer, String offered) {
+        prompt.raw("?".equals(answer) ? text("operator.dialogue.no_explanation", Map.of())
+                            : text("operator.dialogue.not_offered", Map.of("input", clean(answer), "offered", offered)));
     }
 
     private @Nullable EpicDecomposition agree() throws IOException {
@@ -167,21 +195,40 @@ final class EpicDecompositionDialogue {
         return after;
     }
 
-    private EpicDecomposition openPlan(EpicDecomposition cut, StagedPlanRecord plan) throws IOException {
-        printPlan(cut, plan);
-        var answer = prompt.askRaw(text(KEY_PLAN_PROMPT, Map.of()), STATE_ID,
-                            text("decomposition.edit", Map.of()), epicId);
-        if ("e".equalsIgnoreCase(answer)) {
-            return edit(cut, plan);
+    /**
+     * Shows one plan and asks what to do with it. {@code e} edits it; keep, back, Enter and the leave
+     * key return to the cut. The decomposition contract has no act that drops a plan, so no drop key
+     * is offered; any other input is answered with one line and the same prompt.
+     */
+    private EpicDecomposition openPlan(EpicDecomposition cut, PlacedPlan placed) throws IOException {
+        printPlan(placed);
+        while (true) {
+            var answer = prompt.askRaw(text(KEY_PLAN_PROMPT, Map.of()), STATE_ID,
+                                text("decomposition.edit", Map.of()), epicId);
+            if ("e".equalsIgnoreCase(answer)) {
+                return edit(cut, placed.plan());
+            }
+            if (answer.isEmpty() || "k".equalsIgnoreCase(answer) || "b".equalsIgnoreCase(answer)
+                                || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                return cut;
+            }
+            notOffered(answer, "k, e, b, " + leaveKey() + ", ?");
         }
-        return cut;
     }
 
     private EpicDecomposition edit(EpicDecomposition before, StagedPlanRecord plan) throws IOException {
-        var after = instructEdit(before, plan);
+        var words = askEditWords(plan);
+        if (words.isEmpty()) {
+            // No words: the role was asked nothing, so there is no change to read back.
+            return before;
+        }
+        var after = instructEdit(before, plan, words);
         var answer = readBackDecision();
         while ("i".equalsIgnoreCase(answer)) {
-            after = instructEdit(after, plan);
+            var more = askEditWords(plan);
+            if (!more.isEmpty()) {
+                after = instructEdit(after, plan, more);
+            }
             answer = readBackDecision();
         }
         if ("x".equalsIgnoreCase(answer)) {
@@ -192,21 +239,35 @@ final class EpicDecompositionDialogue {
         return after;
     }
 
-    private EpicDecomposition instructEdit(EpicDecomposition before, StagedPlanRecord plan) throws IOException {
-        var words = askWords("start.decomposition.instruct.title",
-                            Map.of(KEY_PLAN, clean(plan.planId())));
-        if (words.isEmpty()) {
-            return before;
-        }
+    /** Asks for the operator's words for one plan; empty for no words. */
+    private String askEditWords(StagedPlanRecord plan) {
+        return askWords("start.decomposition.instruct.title", Map.of(KEY_PLAN, clean(plan.planId())));
+    }
+
+    /** Sends the operator's words for one plan and reads the change back. */
+    private EpicDecomposition instructEdit(EpicDecomposition before, StagedPlanRecord plan, String words)
+                        throws IOException {
         var after = api.instruct(project, epicId,
                             new DecompositionInstructRequest(plan.planId(), words, InstructAction.EDIT));
         prompt.raw(readBack(before, after, plan.planId()));
         return after;
     }
 
+    /**
+     * Asks how the read-back goes on: Enter accepts, {@code i} instructs again, {@code x} discards.
+     * The edit is already in the draft, so the leave key keeps it as it is, like Enter; any other
+     * input is answered with one line and the same prompt.
+     */
     private String readBackDecision() {
-        return prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
-                            text("decomposition.accept", Map.of()), epicId);
+        while (true) {
+            var answer = prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
+                                text("decomposition.accept", Map.of()), epicId);
+            if (answer.isEmpty() || "i".equalsIgnoreCase(answer) || "x".equalsIgnoreCase(answer)
+                                || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                return answer;
+            }
+            notOffered(answer, "i, x, " + leaveKey() + ", ?");
+        }
     }
 
     private String askWords(String key, Map<String, ?> args) {
@@ -248,35 +309,28 @@ final class EpicDecompositionDialogue {
         return String.join("\n", lines);
     }
 
-    private void printPlan(EpicDecomposition cut, StagedPlanRecord plan) {
+    private void printPlan(PlacedPlan placed) {
+        var plan = placed.plan();
         prompt.raw("  " + clean(plan.planId()));
         prompt.raw("    " + text(KEY_OBJECTIVE, Map.of()) + "     " + value(plan.objective()));
         prompt.raw("    " + text(KEY_SURFACE, Map.of()) + "       " + surface(plan));
         prompt.raw("    " + text(KEY_DEPENDS, Map.of()) + "    "
                             + (plan.dependencies().isEmpty() ? text(KEY_NONE, Map.of())
                             : clean(String.join(", ", plan.dependencies()))));
-        var workstream = workstreamOf(cut, plan);
-        if (workstream != null) {
-            prompt.raw("    " + text(KEY_WORKSTREAM, Map.of()) + "    "
-                                + clean(workstream.id() + " " + workstream.name()));
-        }
+        prompt.raw("    " + text(KEY_WORKSTREAM, Map.of()) + "    "
+                            + clean(placed.workstream().id() + " " + placed.workstream().name()));
     }
 
-    private static @Nullable WorkstreamRecord workstreamOf(EpicDecomposition cut, StagedPlanRecord plan) {
-        for (var workstream : cut.workstreams()) {
-            if (workstream.stagedPlans().stream().anyMatch(candidate -> candidate.planId().equals(plan.planId()))) {
-                return workstream;
-            }
-        }
-        return null;
+    /** A plan of the cut with the workstream it was found in. */
+    private record PlacedPlan(WorkstreamRecord workstream, StagedPlanRecord plan) {
     }
 
-    private @Nullable StagedPlanRecord planAt(EpicDecomposition cut, String answer) {
+    private static @Nullable PlacedPlan planAt(EpicDecomposition cut, String answer) {
         try {
             var index = Integer.parseInt(answer);
-            var plans = new ArrayList<StagedPlanRecord>();
+            var plans = new ArrayList<PlacedPlan>();
             for (var workstream : cut.workstreams()) {
-                plans.addAll(workstream.stagedPlans());
+                workstream.stagedPlans().forEach(plan -> plans.add(new PlacedPlan(workstream, plan)));
             }
             return index >= 1 && index <= plans.size() ? plans.get(index - 1) : null;
         } catch (NumberFormatException _) {
@@ -310,13 +364,13 @@ final class EpicDecompositionDialogue {
     private String readBack(EpicDecomposition before, EpicDecomposition after, @Nullable String planId) {
         var buffer = new StringWriter();
         try (var writer = new PrintWriter(buffer)) {
-            DecompositionSupport.printReadBack(writer, before, after, planId);
+            DecompositionSupport.printReadBack(writer, prompt.locale(), before, after, planId);
         }
         return buffer.toString().stripTrailing();
     }
 
-    private static String clean(@Nullable String value) {
-        return TerminalSanitizer.sanitizeLine(value != null ? value : "");
+    private static String clean(String value) {
+        return TerminalSanitizer.sanitizeLine(value);
     }
 
     private String text(String key, Map<String, ?> args) {

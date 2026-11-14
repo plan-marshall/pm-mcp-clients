@@ -24,6 +24,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.AcceptEditRequest;
 import de.planmarshall.api.resource.AcceptEditResult;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.resource.StoreDigestComparison;
 
 import picocli.CommandLine.Command;
@@ -76,7 +77,8 @@ public final class AcceptEditCommand implements Callable<Integer> {
     private static final String PATH_STORE_ACCEPT = "/stores/accept-edit";
     private static final String PATH_ENROLMENT_DIGEST = "/enrolment/digest";
     private static final String PATH_ENROLMENT_ACCEPT = "/enrolment/accept-edit";
-    private static final String ERR_CONFIRMATION_MISMATCH = "confirmation_mismatch";
+    /** A confirmation against a digest that moved on is refused with the catalogue's {@code conflict}. */
+    private static final String ERR_CONFIRMATION_MISMATCH = ApiErrorCode.CONFLICT.wire();
     private static final String PROJECT_OPTION = "--project";
     private static final String PROJECT_DESCRIPTION = "Project that owns the scope";
     private static final String NO_INPUT_OPTION = "--no-input";

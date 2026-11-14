@@ -11,7 +11,6 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,15 +32,16 @@ import de.planmarshall.api.decomposition.EpicDecomposition;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.project.EnrolledProject;
+import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryOpenRequest;
-import de.planmarshall.api.start.RecipeRef;
 import de.planmarshall.api.start.StartStateResource;
 
 /**
  * The HTTP surface of the start contract a terminal dialogue drives (design <em>Starting Work</em>):
- * the entry opened under its project, its acts, its chat, the recipes of the project, and the epic's
- * decomposition.
+ * the entry opened under its project, its acts, its chat, the enrolled projects, and the epic's
+ * decomposition. The recipes a start offers come with its state, never from the machine's list.
  */
 final class StartApi {
 
@@ -49,9 +49,7 @@ final class StartApi {
     private static final String ENTRIES = "/api/v1/entries/";
     private static final String LINKS = "/links/";
     private static final String CHAT = "chat";
-    private static final String RECIPES = "/api/v1/recipes";
     private static final String DECOMPOSITION = "/decomposition";
-    private static final String KEY_RECIPES = "recipes";
     private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
     /** How long the terminal waits for the role's reply: a minute, read ten times a second. */
@@ -221,54 +219,20 @@ final class StartApi {
     }
 
     /**
-     * @return the ids of the enrolled projects
-     * @throws IOException on transport failure
+     * Reads the enrolled projects as the explorer reports them, through the explorer's own record,
+     * so the start resolves its project from the same answer {@code --project ?} lists. A refused
+     * read is no project; an answer that is not the explorer's is refused as a broken contract.
+     *
+     * @return the ids of the enrolled projects, or an empty list where the runtime refused the read
+     * @throws IOException on transport failure or an answer that is not the explorer's
      */
     List<String> projects() throws IOException {
         var response = send(HttpRequest.get("/api/v1/projects"));
         if (response.status() != 200) {
             return List.of();
         }
-        var parsed = JsonTree.parse(response.bodyText());
-        var raw = JsonTree.asArray(parsed instanceof Map<?, ?> map ? map.get("projects") : parsed);
-        if (raw == null) {
-            return List.of();
-        }
-        var ids = new ArrayList<String>();
-        for (var item : raw) {
-            var object = JsonTree.asObject(item);
-            if (object != null) {
-                var id = JsonTree.string(object, "project_id");
-                if (id != null) {
-                    ids.add(id);
-                }
-            }
-        }
-        return ids;
-    }
-
-    /**
-     * @return the recipes offered on this machine
-     * @throws IOException on transport failure
-     */
-    List<RecipeRef> recipes() throws IOException {
-        var response = send(HttpRequest.get(RECIPES));
-        if (response.status() != 200) {
-            throw new OperatorRefusedException(KEY_RECIPES, response);
-        }
-        var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-        var raw = map == null ? null : JsonTree.asArray(map.get(KEY_RECIPES));
-        if (raw == null) {
-            return List.of();
-        }
-        var recipes = new ArrayList<RecipeRef>();
-        for (var item : raw) {
-            var object = JsonTree.asObject(item);
-            if (object != null) {
-                recipes.add(RecipeRef.fromMap(object));
-            }
-        }
-        return recipes;
+        return ProjectExplorer.fromJson(response.bodyText()).allProjects().stream()
+                            .map(EnrolledProject::projectId).toList();
     }
 
     /**

@@ -427,8 +427,12 @@ final class WorkActionDialogue {
                             id);
         int count;
         try {
-            count = Integer.parseInt(answer.trim());
+            count = Integer.parseInt(answer);
         } catch (NumberFormatException _) {
+            count = -1;
+        }
+        // The count of files two plans may share is a number of files: a negative one is no answer.
+        if (count < 0) {
             prompt.line("operator.actions.common_files.invalid", Map.of());
             return 1;
         }
@@ -496,7 +500,12 @@ final class WorkActionDialogue {
         return "integrity_pause".equals(actions.holdKind());
     }
 
-    private static @Nullable String nextLaunchable(EpicResource epic) {
+    /**
+     * @param epic the epic
+     * @return the first staged plan that waits for nothing, the one the epic's next-work action
+     *         starts, or {@code null}
+     */
+    static @Nullable String nextLaunchable(EpicResource epic) {
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
                 if (STAGED.equals(normalize(row.status()))

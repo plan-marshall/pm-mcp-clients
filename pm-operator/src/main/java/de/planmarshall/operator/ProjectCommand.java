@@ -235,7 +235,7 @@ public final class ProjectCommand implements Callable<Integer> {
                         return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
                     }
                     return new ChoicePrompt(startPrompt, stateId);
-                });
+                }, context.projectSetupWorkingTimeout());
                 var finalFrame = dialogue.run();
                 return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
             } catch (StartPrompt.MissingInputException missing) {
@@ -417,7 +417,8 @@ public final class ProjectCommand implements Callable<Integer> {
                                 : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
             var startPrompt = new StartPrompt(context, out, locale, false);
             var dialogue = new StateDialogue(source, out, locale,
-                                stateId -> new ChoicePrompt(startPrompt, stateId));
+                                stateId -> new ChoicePrompt(startPrompt, stateId),
+                                context.projectSetupWorkingTimeout());
             try {
                 if (step != null && !step.isBlank()) {
                     var frame = source.choose(step);

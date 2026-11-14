@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
  * The machine settings of the terminal (UC-ONB-10): the settings screen, the withdrawal of a
  * remembered consent, and the documents mode with the concurrent-change conflict.
  */
+@EnableGeneratorController
 @DisplayName("config settings, consents, and documents")
 class ConfigSettingsTest {
 
@@ -252,6 +254,27 @@ class ConfigSettingsTest {
         assertEquals(0, code);
         assertTrue(text.contains("Changed meanwhile: it is now copy"), text);
         assertTrue(text.contains("No setting changed"), text);
+    }
+
+    @Test
+    @DisplayName("an end of input at a documents conflict is no answer and keeps the other client's mode")
+    void documentsConflictEndOfInputKeeps() throws Exception {
+        var puts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else {
+                puts.incrementAndGet();
+                response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":5,\"current_value\":\"copy\"}");
+            }
+        });
+        var code = run(context(""), "config", "documents", "--mode", "move");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertEquals(1, puts.get(), "the mode is never sent again without an answer"),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now copy"), text),
+                            () -> assertTrue(text.contains("No setting changed"), text));
     }
 
     @Test

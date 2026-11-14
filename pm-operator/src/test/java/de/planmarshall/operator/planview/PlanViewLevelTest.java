@@ -16,16 +16,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("PlanViewLevel")
+@EnableGeneratorController
 class PlanViewLevelTest {
 
     private static final String TREE = """
@@ -144,6 +151,19 @@ class PlanViewLevelTest {
         );
     }
 
+    @ParameterizedTest(name = "a task {0} carries {1}")
+    @CsvSource({"running, RUNNING", "executing, RUNNING", "done, DONE", "submitted, DONE"})
+    @DisplayName("a task of a leaf carries the glyph of its status; one at work, executing, is running")
+    void taskGlyphFollowsItsStatus(String status, NodeState expected) throws Exception {
+        var view = new PlanViewLevel(ProcessTree.fromJson(TREE.replace("\"attempt\": 2, \"status\": \"running\"",
+                            "\"attempt\": 2, \"status\": \"" + status + "\"")));
+
+        var line = view.rows("en").stream().filter(row -> "task:TASK-003".equals(row.id())).map(TuiRow::line)
+                            .findFirst().orElseThrow().strip();
+
+        assertTrue(line.startsWith(expected.glyph()), line);
+    }
+
     @Test
     @DisplayName("the header carries the path from the project through the epic and the plan to the node")
     void breadcrumb() throws Exception {
@@ -227,6 +247,34 @@ class PlanViewLevelTest {
         assertFalse(view.footer("en").contains("c completion"), view.footer("en"));
         var ended = new PlanViewLevel(ProcessTree.fromJson(TREE), new PlanViewLevel.EndedInfo("merged", "done", "2 d ago"));
         assertTrue(ended.footer("en").contains("c completion"), ended.footer("en"));
+    }
+
+    private static String summary(PlanViewLevel view) {
+        return view.rows("en").stream().filter(row -> PlanViewLevel.SUMMARY_ROW_ID.equals(row.id()))
+                            .map(TuiRow::line).findFirst().orElseThrow();
+    }
+
+    @Test
+    @DisplayName("the summary of an ended plan without a time or a reason ends with its outcome alone")
+    void endedSummaryWithoutTimeOrReason() throws Exception {
+        var ended = new PlanViewLevel(ProcessTree.fromJson(TREE), new PlanViewLevel.EndedInfo("merged", "done", "2 d ago"));
+        var bare = new PlanViewLevel(ProcessTree.fromJson(TREE), new PlanViewLevel.EndedInfo("abandoned", " ", null));
+
+        assertTrue(summary(ended).endsWith("merged · 2 d ago · done"), summary(ended));
+        assertTrue(summary(bare).endsWith("abandoned"), summary(bare));
+    }
+
+    @Test
+    @DisplayName("the summary of a plan that waits says so, and leaves out a pull request and a time it has not")
+    void waitingSummary() throws Exception {
+        var tree = TREE.replace("\"needs_operator\": false", "\"needs_operator\": true")
+                            .replace("\"duration_seconds\": 7800,", "\"duration_seconds\": 0,")
+                            .replace("\"pull_request_number\": 214,", "");
+        var line = summary(new PlanViewLevel(ProcessTree.fromJson(tree)));
+
+        assertTrue(line.endsWith("waits for you"), line);
+        assertFalse(line.contains("#214"), line);
+        assertTrue(summary(view()).contains("#214"), summary(view()));
     }
 
     @Test
@@ -334,5 +382,102 @@ class PlanViewLevelTest {
         assertNull(view.waitingPlanOf("node:execute"));
         assertEquals("execute.envelope", view.nodeIdOfTask("TASK-003"));
         assertNotNull(view.taskIdOf("task:TASK-003"));
+    }
+
+    @Test
+    @DisplayName("a node that names what it waits for names its plan for the hand-off")
+    void nodeWaitsFor() throws Exception {
+        var tree = TREE.replace("\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"planned\"",
+                            "\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"planned\","
+                                                + " \"waits_for\": \"the review\"");
+        var view = new PlanViewLevel(ProcessTree.fromJson(tree));
+
+        assertEquals("fix-relay", view.waitingPlanOf("node:finalize"));
+        assertNull(view.waitingPlanOf("node:init"));
+    }
+
+    @Nested
+    @DisplayName("w finds where the plan is")
+    class WhereItIs {
+
+        private static final String PATH = "\"current_position_path\": [\"execute\", \"execute.envelope\", \"TASK-003\"]";
+
+        private PlanViewLevel view(String tree) throws Exception {
+            return new PlanViewLevel(ProcessTree.fromJson(tree));
+        }
+
+        @Test
+        @DisplayName("a path that ends at a node selects the node and opens it")
+        void pathEndsAtNode() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": [\"execute\", \"execute.envelope\"]"));
+            view.closeRow("node:execute");
+
+            assertEquals("node:execute.envelope", view.jumpToActive());
+
+            assertTrue(ids(view).contains("task:TASK-003"));
+        }
+
+        @Test
+        @DisplayName("without a path the running node is where the plan is, and it opens")
+        void runningNodeWithoutPath() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": []"));
+            view.closeRow("node:execute");
+
+            assertEquals("node:execute", view.jumpToActive());
+
+            assertTrue(ids(view).contains("node:execute.envelope"));
+        }
+
+        @Test
+        @DisplayName("a path of ids the tree does not hold falls back to the running node")
+        void unknownPath() throws Exception {
+            var view = view(TREE.replace(PATH, "\"current_position_path\": [\"gone\", \"TASK-999\"]"));
+
+            assertEquals("node:execute", view.jumpToActive());
+        }
+
+        @Test
+        @DisplayName("with nothing running the first node is where the plan is, and without nodes the summary")
+        void nothingRunning() throws Exception {
+            var idle = TREE.replace(PATH, "\"current_position_path\": []").replace("\"state\": \"running\"",
+                                "\"state\": \"done\"");
+            assertEquals("node:init", view(idle).jumpToActive());
+
+            var empty = idle.substring(0, idle.indexOf("\"nodes\": [")) + "\"nodes\": [], \"current_position_path\": []}";
+            var emptyView = view(empty);
+            assertEquals(emptyView.rows("en").getFirst().id(), emptyView.jumpToActive());
+        }
+    }
+
+    @Test
+    @DisplayName("Enter on a node without children, a task, an unknown node or nothing changes nothing")
+    void openRowChangesNothing() throws Exception {
+        var view = view();
+        var before = ids(view);
+
+        assertFalse(view.openRow("node:init"));
+        assertFalse(view.openRow("task:TASK-003"));
+        assertFalse(view.openRow("node:unknown"));
+        assertFalse(view.openRow(null));
+
+        assertEquals(before, ids(view));
+    }
+
+    @Test
+    @DisplayName("← on a task the tree does not hold has no parent to go to")
+    void closeUnknownTask() throws Exception {
+        assertNull(view().closeRow("task:UNKNOWN"));
+    }
+
+    @Test
+    @DisplayName("x on a row that is no node of the tree opens the whole tree")
+    void expandAllFromUnknownRow() throws Exception {
+        var view = view();
+        view.closeRow("node:execute.envelope");
+
+        view.expandAll(Generators.fixedValues("node:unknown", "task:TASK-003", "summary:plan").next());
+
+        assertTrue(ids(view).contains("task:TASK-001"));
+        assertTrue(ids(view).contains("node:remediation"));
     }
 }

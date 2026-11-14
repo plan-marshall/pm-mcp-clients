@@ -101,10 +101,10 @@ public final class ActionsMenu {
     }
 
     /**
-     * @return the selected entry, or {@code null}
+     * @return the selected entry: the menu always has one, and its selection stays on an entry
      */
-    public @Nullable TuiMenuEntry selected() {
-        return selected >= 0 && selected < entries.size() ? entries.get(selected) : null;
+    public TuiMenuEntry selected() {
+        return entries.get(selected);
     }
 
     /**

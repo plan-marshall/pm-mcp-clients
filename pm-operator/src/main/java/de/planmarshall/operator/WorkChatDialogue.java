@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -22,6 +23,7 @@ import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * The chat with a plan's or an epic's planning role ({@code chat.open}, {@code chat.turn},
@@ -203,19 +205,30 @@ final class WorkChatDialogue {
         var question = endedChat
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.follow_up", Map.of())
                             : MessageCatalogue.format(prompt.locale(), "operator.actions.chat.accept", Map.of());
-        var answer = prompt.askRaw(question + "   " + MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.accept_reject",
-                            Map.of("key", MessageCatalogue.format(prompt.locale(),
-                                                "operator.actions.key.reject", Map.of()))),
-                            STATE_ID, question, subjectId);
-        if (answer.isEmpty()) {
-            return Boolean.TRUE;
+        var rejectKey = MessageCatalogue.format(prompt.locale(), "operator.actions.key.reject", Map.of());
+        while (true) {
+            var answer = prompt.askRaw(question + "   " + MessageCatalogue.format(prompt.locale(),
+                                "operator.actions.accept_reject", Map.of("key", rejectKey)),
+                                STATE_ID, question, subjectId);
+            if (answer.isEmpty()) {
+                return Boolean.TRUE;
+            }
+            if (answer.equalsIgnoreCase(rejectKey)) {
+                return Boolean.FALSE;
+            }
+            if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                return null;
+            }
+            // Any other input is answered with one line and the proposal is asked again; only the leave
+            // key leaves the chat (design Dialogues, links as keys).
+            prompt.line("?".equals(answer) ? "operator.dialogue.no_explanation" : "operator.dialogue.not_offered",
+                                Map.of("input", TerminalSanitizer.sanitizeLine(answer), "offered",
+                                                    rejectKey + ", " + leaveKey() + ", ?"));
         }
-        if (answer.equalsIgnoreCase(MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.key.reject", Map.of()))) {
-            return Boolean.FALSE;
-        }
-        return null;
+    }
+
+    private String leaveKey() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
     }
 
     private void showHead(ChatResource chat, boolean endedChat) {

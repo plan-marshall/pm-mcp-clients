@@ -56,6 +56,9 @@ import org.junit.jupiter.api.io.TempDir;
 @DisplayName("PmConsole behaviour")
 class PmConsoleBehaviourTest {
 
+    /** The short refresh bound the tests that wait it out pass instead of the production 5 s. */
+    private static final Duration REFRESH_BOUND = Duration.ofMillis(300);
+
     @TempDir
     Path tempDir;
 
@@ -418,15 +421,21 @@ class PmConsoleBehaviourTest {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
-                var console = new PmConsole(context);
+                var console = new PmConsole(context, new EntryFlow(context), REFRESH_BOUND);
                 var started = System.nanoTime();
                 assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
                 var elapsed = Duration.ofNanos(System.nanoTime() - started);
-                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plus(Duration.ofMillis(1500))) < 0, elapsed.toString());
+                assertTrue(elapsed.compareTo(REFRESH_BOUND.plus(Duration.ofMillis(1500))) < 0, elapsed.toString());
             }
         } finally {
             release.countDown();
         }
+    }
+
+    @Test
+    @DisplayName("the console's public constructors keep the 5 s refresh bound")
+    void theProductionRefreshBoundStaysFiveSeconds() {
+        assertEquals(PmConsole.REFRESH_BOUND, Duration.ofSeconds(5));
     }
 
     private static void awaitRelease(CountDownLatch release) {
@@ -642,6 +651,18 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("a quoted empty text is an argument, as in a shell, and whitespace alone is none")
+    void typedQuotedEmptyTextIsAnArgument() {
+        var key = Generators.letterStrings(4, 12).next();
+        assertAll(
+                            () -> assertEquals(List.of("config", "set", key, ""),
+                                                PmConsole.parseArgs("config set " + key + " \"\"")),
+                            () -> assertEquals(List.of("config", "set", key, "", "--project"),
+                                                PmConsole.parseArgs("config set " + key + "  \"\"  --project")),
+                            () -> assertEquals(List.of(), PmConsole.parseArgs("  \t  ")));
+    }
+
+    @Test
     @DisplayName("a stalled runtime lets the prompt return within the bound")
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         var release = new CountDownLatch(1);
@@ -661,8 +682,9 @@ class PmConsoleBehaviourTest {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
-                var console = new PmConsole(context);
-                assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
+                var console = new PmConsole(context, new EntryFlow(context), REFRESH_BOUND);
+                assertTimeoutPreemptively(REFRESH_BOUND.plusSeconds(2),
+                                    () -> console.refreshSetupBadge("en", terminal));
             }
         } finally {
             release.countDown();
@@ -693,7 +715,7 @@ class PmConsoleBehaviourTest {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
-                var console = new PmConsole(context);
+                var console = new PmConsole(context, new EntryFlow(context), REFRESH_BOUND);
                 var first = new Thread(() -> console.refreshSetupBadge("en", terminal));
                 var second = new Thread(() -> console.refreshBadges(terminal));
                 var third = new Thread(() -> console.refreshSetupBadge("en", terminal));
@@ -708,7 +730,7 @@ class PmConsoleBehaviourTest {
                 third.join(30_000);
                 var waited = Duration.ofNanos(System.nanoTime() - started);
 
-                assertTrue(waited.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(2)) < 0,
+                assertTrue(waited.compareTo(REFRESH_BOUND.plusSeconds(2)) < 0,
                                     "a queued refresh must not wait out its predecessors: " + waited);
                 release.countDown();
                 first.join(30_000);

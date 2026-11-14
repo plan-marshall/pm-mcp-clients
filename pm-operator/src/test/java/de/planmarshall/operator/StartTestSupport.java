@@ -31,7 +31,7 @@ final class StartTestSupport {
 
     /**
      * @param scenario the mock scenario
-     * @param input    the scripted keys, or {@code null} for end of input
+     * @param input    the scripted keys, or {@code null} for none; the script ends after them
      * @param args     the verb and its arguments
      * @return the exit code and everything the verb rendered
      * @throws Exception if the runtime or the verb fails
@@ -46,11 +46,10 @@ final class StartTestSupport {
             environment.put("USER", "operator");
             environment.put("PM_PROJECT", "pm-mcp-clients");
             driver.project(environment, runtime.base().getParent());
-            if (input == null) {
-                driver.endOfInput();
-            } else {
+            if (input != null) {
                 driver.type(input);
             }
+            driver.endOfInput();
             var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
             return new Outcome(code, driver.render());
         }
