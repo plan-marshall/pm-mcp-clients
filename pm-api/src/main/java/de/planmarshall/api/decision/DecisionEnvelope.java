@@ -197,7 +197,7 @@ public record DecisionEnvelope(
         return copy;
     }
 
-    private static List<DecisionPart> partsOf(@Nullable Object parts) throws IOException {
+    private static List<DecisionPart> partsOf(@Nullable Object parts) {
         var result = new ArrayList<DecisionPart>();
         if (parts instanceof List<?> list) {
             for (var item : list) {

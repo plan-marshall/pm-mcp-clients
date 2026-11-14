@@ -1255,72 +1255,6 @@ public final class OverviewFullScreenApp {
     }
 
     /**
-     * @param trigger the menu's mnemonic, or the empty string to close the menu
-     * @return {@code true} to keep the view open
-     */
-    private void handleMenu(String trigger) {
-        var openRuntimeMenu = runtimeMenu;
-        if (openRuntimeMenu != null) {
-            handleRuntimeMenu(openRuntimeMenu, trigger);
-            return;
-        }
-        if (actionsMenu == null) {
-            return;
-        }
-        if (trigger.isEmpty()) {
-            actionsMenu = null;
-            return;
-        }
-        var entry = actionsMenu.entry(trigger);
-        if (entry == null) {
-            return;
-        }
-        if (!entry.enabled()) {
-            statusMessage = entry.reason() != null ? entry.reason() : "";
-            return;
-        }
-        var menu = actionsMenu;
-        actionsMenu = null;
-        runMenuEntry(menu, entry);
-        refreshActiveLevels();
-    }
-
-    private void runMenuEntry(ActionsMenu menu, TuiMenuEntry entry) {
-        var subject = menu.subject();
-        if (subject == ActionsMenu.Subject.LANDING) {
-            if ("show_pr".equals(entry.action())) {
-                statusMessage = entry.label();
-                return;
-            }
-            var project = currentProjectId();
-            if (project != null && menuLandingUnit != null) {
-                runDialogue(() -> {
-                    actionsClient().performLanding(project, menuLandingUnit, entry.action());
-                    return 0;
-                });
-            }
-            return;
-        }
-        var kind = menuKind != null ? menuKind : "plan";
-        if (subject == ActionsMenu.Subject.ENDED) {
-            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId()));
-            return;
-        }
-        if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
-            var decision = menuDecision;
-            if (decision != null) {
-                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision,
-                                    "--interactive"));
-            }
-            return;
-        }
-        var holdId = menuHold != null ? menuHold.holdId() : null;
-        var epic = menuEpic;
-        runDialogue(() -> OperatorActions.run(context, dialogueOut(), kind, menu.subjectId(), entry.action(),
-                            epic, holdId));
-    }
-
-    /**
      * @return the project of the level shown, the one a follow-up of ended work starts in, or
      *         {@code null} when the level belongs to no project the view holds
      */
@@ -1869,7 +1803,6 @@ public final class OverviewFullScreenApp {
         }
     }
 
-
     private void openRuntimeActions() {
         var level = currentSystem.get();
         if (level == null) {
@@ -1889,39 +1822,6 @@ public final class OverviewFullScreenApp {
                                 MessageCatalogue.format(locale, "operator.system.action.check", Map.of())));
         }
         runtimeMenu = TuiMenu.opening(SystemLevel.ROW_RUNTIME, entries);
-    }
-
-    /**
-     * The menu is modal like every menu of the view ({@link TuiMenu}): a key it does not hold
-     * leaves it open.
-     *
-     * @param menu    the open menu
-     * @param trigger the menu's mnemonic, or the empty string to close the menu
-     */
-    private void handleRuntimeMenu(TuiMenu menu, String trigger) {
-        if (trigger.isEmpty()) {
-            runtimeMenu = null;
-            return;
-        }
-        var entry = menu.entry(trigger);
-        if (entry == null) {
-            return;
-        }
-        runtimeMenu = null;
-        switch (entry.action()) {
-            case "stop" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
-                                "runtime", "stop"));
-            case "restart" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
-                                "runtime", "restart"));
-            case "upgrade" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
-                                "runtime", "upgrade"));
-            case "check" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
-                                "runtime", "upgrade", "--check"));
-            default -> {
-                // An entry this view does not know leaves the view unchanged.
-            }
-        }
-        refreshSystem();
     }
 
     /**
@@ -2229,6 +2129,105 @@ public final class OverviewFullScreenApp {
                 }
                 return true;
             }
+        }
+
+        private void handleMenu(String trigger) {
+            var openRuntimeMenu = runtimeMenu;
+            if (openRuntimeMenu != null) {
+                handleRuntimeMenu(openRuntimeMenu, trigger);
+                return;
+            }
+            if (actionsMenu == null) {
+                return;
+            }
+            if (trigger.isEmpty()) {
+                actionsMenu = null;
+                return;
+            }
+            var entry = actionsMenu.entry(trigger);
+            if (entry == null) {
+                return;
+            }
+            if (!entry.enabled()) {
+                statusMessage = entry.reason() != null ? entry.reason() : "";
+                return;
+            }
+            var menu = actionsMenu;
+            actionsMenu = null;
+            runMenuEntry(menu, entry);
+            refreshActiveLevels();
+        }
+
+        /**
+         * @param trigger the menu's mnemonic, or the empty string to close the menu
+         * @return {@code true} to keep the view open
+         */
+        private void runMenuEntry(ActionsMenu menu, TuiMenuEntry entry) {
+            var subject = menu.subject();
+            if (subject == ActionsMenu.Subject.LANDING) {
+                if ("show_pr".equals(entry.action())) {
+                    statusMessage = entry.label();
+                    return;
+                }
+                var project = currentProjectId();
+                if (project != null && menuLandingUnit != null) {
+                    runDialogue(() -> {
+                        actionsClient().performLanding(project, menuLandingUnit, entry.action());
+                        return 0;
+                    });
+                }
+                return;
+            }
+            var kind = menuKind != null ? menuKind : "plan";
+            if (subject == ActionsMenu.Subject.ENDED) {
+                runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId()));
+                return;
+            }
+            if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
+                var decision = menuDecision;
+                if (decision != null) {
+                    runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision,
+                                        "--interactive"));
+                }
+                return;
+            }
+            var holdId = menuHold != null ? menuHold.holdId() : null;
+            var epic = menuEpic;
+            runDialogue(() -> OperatorActions.run(context, dialogueOut(), kind, menu.subjectId(), entry.action(),
+                                epic, holdId));
+        }
+
+        /**
+         * The menu is modal like every menu of the view ({@link TuiMenu}): a key it does not hold
+         * leaves it open.
+         *
+         * @param menu    the open menu
+         * @param trigger the menu's mnemonic, or the empty string to close the menu
+         */
+        private void handleRuntimeMenu(TuiMenu menu, String trigger) {
+            if (trigger.isEmpty()) {
+                runtimeMenu = null;
+                return;
+            }
+            var entry = menu.entry(trigger);
+            if (entry == null) {
+                return;
+            }
+            runtimeMenu = null;
+            switch (entry.action()) {
+                case "stop" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                    "runtime", "stop"));
+                case "restart" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                    "runtime", "restart"));
+                case "upgrade" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                    "runtime", "upgrade"));
+                case "check" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                    "runtime", "upgrade", "--check"));
+                default -> {
+                    // An entry this view does not know leaves the view unchanged.
+                }
+            }
+            refreshSystem();
         }
 
         private boolean handleLocked(TuiKeyAction action) {

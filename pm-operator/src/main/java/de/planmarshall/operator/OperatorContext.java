@@ -168,9 +168,9 @@ public final class OperatorContext {
      */
     OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, Seams seams) {
-        var terminalProvider = seams.terminalProvider();
-        var browserOpener = seams.browserOpener();
-        var clock = seams.clock();
+        var injectedTerminal = seams.terminalProvider();
+        var injectedBrowser = seams.browserOpener();
+        var injectedClock = seams.clock();
         this.projectSetupWorkingTimeout = Objects.requireNonNull(seams.projectSetupWorkingTimeout(),
                             "projectSetupWorkingTimeout");
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
@@ -180,10 +180,10 @@ public final class OperatorContext {
         this.gate = new OperatorGate(this);
         this.stateDirectory = OperatorStateDirectory.resolve(environment, userHome);
         this.directFiles = new DirectFileAccess(paths());
-        this.terminalProvider = terminalProvider != null ? terminalProvider
+        this.terminalProvider = injectedTerminal != null ? injectedTerminal
                             : () -> defaultTerminal(interactiveTerminal);
-        this.browserOpener = browserOpener != null ? browserOpener : OperatorContext::defaultBrowserOpen;
-        this.clock = clock != null ? clock : Clock.systemDefaultZone();
+        this.browserOpener = injectedBrowser != null ? injectedBrowser : OperatorContext::defaultBrowserOpen;
+        this.clock = injectedClock != null ? injectedClock : Clock.systemDefaultZone();
     }
 
     /** @return the context of the running process */
