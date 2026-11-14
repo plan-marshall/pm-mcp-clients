@@ -193,10 +193,10 @@ public final class WebCommand implements Callable<Integer> {
                 // only the runtime issues a code: an answer without one is refused, never shown as a made-up code
                 if (json == null || !(json.get("code") instanceof String issued) || issued.isBlank()) {
                     throw new IOException(MessageCatalogue.format(localeFor(context), "operator.entry.no_code",
-                                        Map.of("status", response.status())));
+                                        Map.of(STATUS, response.status())));
                 }
                 var code = issued;
-                var url = json != null && json.get("url") instanceof String u && !u.isBlank()
+                var url = json.get("url") instanceof String u && !u.isBlank()
                                     ? u
                                     : LOOPBACK_URL_PREFIX + DEFAULT_PORT + "/pair#code=" + code;
                 var validUntil = LocalTime.now(context.clock()).plusMinutes(10).format(TIME_FORMATTER);
