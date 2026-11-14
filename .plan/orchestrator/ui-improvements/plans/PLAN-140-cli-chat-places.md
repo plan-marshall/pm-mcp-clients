@@ -173,6 +173,15 @@ Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run
   `control.ChatTurnResource`, `ChatProposalResource`, `ChatScope`, `ChatState`, `ChatRole` and `StartStateResource.chat` with their codecs
   and tests, if nothing else uses them.
 
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- **Rebuild "no role qualifies" (operator: "Rebuild on ChatRegistry").** PLAN-133 moved the start chat into `ChatRegistry`;
+  the old `StartRegistry` fixture member `chat.available: false` that produced `start.chat.role_unqualified` went with it, and so did
+  its tests. `StartStateResource.CHAT_ROLE_UNQUALIFIED` still exists and nothing sets it. Give the mock a way to refuse opening a chat
+  because no role qualifies (a scenario flag or state read by `ChatRegistry`, answered with the contract's refusal), a scenario that
+  uses it, and the terminal's line for it; keep the constant (or its B1 successor) — do not delete it with the old start-chat types. If
+  the B1 contract has no refusal code for it, it belongs to the epic's chat contract Open Item: stop and ask.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

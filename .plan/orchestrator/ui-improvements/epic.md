@@ -288,6 +288,9 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Decisions
 
+- 2026-11-14 (operator, `analyze-fix-build-time` finding #432): `!` on a needs item runs exactly the command the row prints — for a
+  plan's hold, failed landing and condition it opens nothing in the full screen. One rule; no subject-specific opening.
+
 - 2026-11-14 (operator, PLAN-148 landing): the integrity hold is named **`integrity_hold`** — the work package
   `doc/plans/harness-decision-log-hold-names.adoc` stands and renames the code (`NeedsOperatorKind.INTEGRITY_PAUSE` → `INTEGRITY_HOLD`). PLAN-148's
   "assumed" D-2 went the other way: it flipped `needs-and-find.adoc:42` and `components-tags.adoc` to `integrity_pause` and added
@@ -823,6 +826,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   → `PLAN-135`.
 
 ## Watches
+
+- `analyze-fix-build-time` (#432, 2026-11-14, non-epic plan): (1) the parent POM's quality-gate recipe rewrites `@CsvSource({"''"})` to
+  `@ValueSource(strings = {"''"})`, turning an empty answer (Enter) into two apostrophes (broke `ControlDialoguesTest.planBackToCut`);
+  owner `pm-mcp-parent` (outside this repository) — report there; until then a test that needs an empty answer avoids that form.
+  (2) `-Pcoverage,integration-tests` in one invocation under-reports coverage (second agent run overwrites `jacoco.exec`); the developer
+  documentation (`project-setup.adoc`) should say to run them separately — owner plan-marshall-documentation; PLAN-79 measures with
+  `-Pcoverage` alone. Routed: PLAN-30 mailbox (answer fail-closed read, cleanup key), PLAN-140 (role_unqualified rebuild), PLAN-135
+  (`chat.ended` refresh, chat route tests), PLAN-79 (branch margin), PLAN-149 (test timeout policy); decision on `!` above.
 
 > ↪ Relocated to `settled.md` § "Landing watches 2026-10-31 to 2026-11-10" — 22 landed-plan watch entries (PLAN-82 … PLAN-45); their landing files carry the record and their open items were routed at the time (cleanup 2026-11-14, operator).
 

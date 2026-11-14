@@ -201,6 +201,12 @@ must be fixed before its first adopter (`PLAN-49`, then 51, 52, 55, 62, 154):
     fails on a revert of the old prop name in the fixture (evidence order `test-first`).
 - Surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, `pm-web-app/src/lib/components/StatusLabel.test.ts` (present at `25137445`).
 
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- `routes/dev/components/+page.test.ts` now sets `testTimeout` 20 s (it renders the whole showroom and passed 5 s beside the full
+  suite). This plan adds fixtures to that page: replace the per-file setting with one policy for heavy render tests (a named project or
+  a shared helper in the Vitest config), or split the page test by section.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

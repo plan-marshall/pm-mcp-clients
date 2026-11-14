@@ -259,6 +259,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 10 contradicted: No plan or epic route sits on TriagePage: only ReportsView uses it (:956); TriagePage has no side/sideOpen/onHideSide; PLAN-142/144 not landed
 - KindMark, Link, ExternalLink, PrChip, Compose, FormStatus and RowLink exist (#420, #427): D1 shrinks to what is missing. No chat place sits on a template yet (PLAN-142 not landed).
 
+## Finding from `analyze-fix-build-time` (#432), 2026-11-14
+
+- **`chat.ended` refreshes the entry (operator: "Refresh the entry").** `StartView` refreshes the entry on the entry stream's events
+  only; `chat.turn.*` and `chat.proposal` go to the chat's own read and `chat.ended` refreshes nothing. On `chat.ended` re-read the entry
+  (state and offered acts); a test drives the event and sees the re-read.
+- `client.test.ts` lost its chat rows in #432's rebase: check that the dedicated chat tests cover the EPIC and the REJECT variants of the
+  subject chat routes, and add what is missing.
+
 ## Hand-Off Command
 
 Lane: `runbook`.
