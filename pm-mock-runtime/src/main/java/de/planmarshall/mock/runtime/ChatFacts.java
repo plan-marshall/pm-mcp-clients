@@ -103,13 +103,17 @@ interface ChatFacts {
     void revisionChatEnded(String planId);
 
     /**
-     * Applies the queued revision at the plan's boundary: the plan's instance version moves on by one
-     * and the change records its origin ({@code state-catalogue.adoc#chat-origin}).
+     * Applies the queued revision at the plan's boundary, in one step with the version check: the plan's
+     * instance version moves on by one and the change records its origin
+     * ({@code state-catalogue.adoc#chat-origin}) only where the plan still carries the version the
+     * revision was checked against.
      *
-     * @param planId the plan's id
-     * @param origin the origin of the change
+     * @param planId         the plan's id
+     * @param expectedVersion the version the revision was checked against
+     * @param origin         the origin of the change
+     * @return {@code true} if the revision was applied, {@code false} if the plan moved on meanwhile
      */
-    void applyRevision(String planId, ChatOrigin origin);
+    boolean applyRevision(String planId, int expectedVersion, ChatOrigin origin);
 
     /**
      * Clears the plan's queued revision, refused at its boundary or lapsed.

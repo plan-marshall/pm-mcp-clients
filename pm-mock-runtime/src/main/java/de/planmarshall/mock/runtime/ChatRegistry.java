@@ -1315,7 +1315,14 @@ final class ChatRegistry {
             return events;
         }
         var origin = new ChatOrigin(queued.chatId(), queued.turnId());
-        facts.applyRevision(planId, origin);
+        if (!facts.applyRevision(planId, current, origin)) {
+            // The plan moved on between the check and the application: the revision is refused.
+            facts.clearRevision(planId);
+            events.add(revisionQueued(planId, null));
+            events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.REFUSED,
+                    MessageText.of(FINDING_CHECK_FAILED)));
+            return events;
+        }
         events.add(revisionQueued(planId, null));
         events.add(activityChanged(planId, facts.activity(planId), null));
         events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.APPLIED, null));

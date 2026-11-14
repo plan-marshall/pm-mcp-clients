@@ -1072,11 +1072,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     @Override
-    public void applyRevision(String planId, ChatOrigin origin) {
+    public boolean applyRevision(String planId, int expectedVersion, ChatOrigin origin) {
         synchronized (controlLock) {
+            if (baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0) != expectedVersion) {
+                return false;
+            }
             planQueuedRevisions.remove(planId);
             planAppliedVersions.merge(planId, 1, Integer::sum);
             planRevisionOrigins.put(planId, origin);
+            return true;
         }
     }
 
@@ -5478,6 +5482,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private void handleResolveHold(MockHttpRequest request, MockHttpResponse response, String planId, String holdId)
             throws IOException {
         var resolution = HoldResolutionRequest.fromMap(readBodyMap(request));
+        // The events are published after the control lock is released: the chat registry takes its own
+        // lock and calls back into these facts, so the two must never be held in the other order.
+        var published = new ArrayList<Runnable>();
+        HoldResolutionResult result;
         synchronized (controlLock) {
             var hold = controlHolds.get(holdKey(planId, holdId));
             if (hold == null) {
@@ -5497,25 +5505,27 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if ("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act)) {
                 released = false;
             }
-            HoldResolutionResult result;
             if (ending) {
-                clearHoldsOf(planId);
-                controlPlanStates.put(planId, "ended");
+                clearHoldsOf(planId).forEach(cleared -> published.add(
+                        () -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared)));
+                controlPlanStates.put(planId, STATE_ENDED);
                 controlPlanPausePoints.remove(planId);
                 var endReason = resolution.reason();
                 if (endReason == null) {
                     endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
                 }
-                broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null, endReason).toMap());
+                var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED,
+                        null, endReason).toMap();
+                published.add(() -> broadcastEvent(PlanControlEvent.EVENT_CANCELLED, cancelled));
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
                 if ("held".equals(controlPlanStates.get(planId))) {
                     controlPlanStates.put(planId, ACTIVITY_RUNNING);
                 }
-                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, hold.holdId(),
+                        hold.subjectId(), hold.subjectKind(), null, null).toMap();
+                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared));
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else {
                 var updated = new HoldRecord(hold.holdId(), hold.subjectId(), hold.subjectKind(), hold.kind(),
@@ -5523,34 +5533,34 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         hold.recordedDigest(), hold.currentSize(), hold.currentDigest(), hold.acts(),
                         hold.pullRequestUrl());
                 controlHolds.put(holdKey(planId, holdId), updated);
-                broadcastEvent(HoldChangedEvent.EVENT_CHANGED, new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED,
-                        updated.holdId(), updated.subjectId(), updated.subjectKind(), updated.kind(),
-                        updated.cause()).toMap());
+                var changed = new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED, updated.holdId(),
+                        updated.subjectId(), updated.subjectKind(), updated.kind(), updated.cause()).toMap();
+                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CHANGED, changed));
                 result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
             }
-            response.json(200, result.toMap());
         }
+        published.forEach(Runnable::run);
+        response.json(200, result.toMap());
     }
 
     /**
      * Clears every hold the plan carries, because ending the plan ends all of them.
      *
      * @param planId the plan being ended
+     * @return the {@code hold.cleared} payloads of the holds it cleared, to publish after the lock
      */
-    private void clearHoldsOf(String planId) {
-        var cleared = new ArrayList<HoldRecord>();
+    private List<Map<String, Object>> clearHoldsOf(String planId) {
+        var cleared = new ArrayList<Map<String, Object>>();
         var iterator = controlHolds.values().iterator();
         while (iterator.hasNext()) {
             var candidate = iterator.next();
             if (planId.equals(candidate.subjectId())) {
-                cleared.add(candidate);
+                cleared.add(new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, candidate.holdId(),
+                        candidate.subjectId(), candidate.subjectKind(), null, null).toMap());
                 iterator.remove();
             }
         }
-        for (var done : cleared) {
-            broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                    done.holdId(), done.subjectId(), done.subjectKind(), null, null).toMap());
-        }
+        return cleared;
     }
 
     private void handleGetPlanSettings(MockHttpResponse response, String planId) throws IOException {
