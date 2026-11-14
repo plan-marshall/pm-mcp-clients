@@ -80,10 +80,9 @@ test.describe('Fully onboarded showroom', () => {
 
   /*
    * PLAN-133 (a139ec62) moved the mock runtime onto the B1 chat contract and left the web client's
-   * chat behind, so this step fails against the mock until PLAN-161 (the chat bridge) migrates it and
-   * removes the mark. It is its own test so the sources and the file tree above keep running.
+   * chat behind; PLAN-161 (the chat bridge) migrated it, so the mark is gone.
    */
-  test.fixme('opens the start entry\'s refinement chat', async ({ page }) => {
+  test('opens the start entry\'s refinement chat', async ({ page }) => {
     await page.goto('/entries/ent-showroom');
     await expect(page.getByTestId('start-view')).toBeVisible();
 
