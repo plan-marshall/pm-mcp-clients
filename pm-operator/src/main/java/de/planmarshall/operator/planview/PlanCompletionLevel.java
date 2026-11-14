@@ -39,6 +39,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
     private static final String OWN_CALL_KIND_WIDTH = "%-19s";
     private static final String KEY_SEPARATOR = ": ";
     private static final String OWN_CALL_ROW_PREFIX = "completion:own-call:";
+    private static final String COMMON_UNKNOWN = "common.unknown";
 
     /**
      * @param report the plan's completion report
@@ -191,7 +192,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             var target = ownCall.conflictTarget();
             var item = target != null && !target.isBlank()
                                 ? PlanViewFormatting.clean(target)
-                                : MessageCatalogue.format(locale, "common.unknown", Map.of());
+                                : MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
             return MessageCatalogue.format(locale, "report.completion.own_call_conflicts", Map.of("item", item));
         }
         if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
@@ -263,7 +264,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     public static String formatOutcome(String locale, @Nullable String value) {
         if (value == null || value.isBlank()) {
-            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         var cleaned = PlanViewFormatting.clean(value).trim().toLowerCase(Locale.ROOT).replace('-', '_');
         return MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", cleaned));
@@ -271,7 +272,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
 
     public static String formatDeliverableState(String locale, @Nullable String state) {
         if (state == null || state.isBlank()) {
-            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         var clean = PlanViewFormatting.clean(state);
         return Display.word(locale, "task", clean);

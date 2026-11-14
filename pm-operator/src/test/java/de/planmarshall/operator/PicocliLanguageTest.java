@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -91,6 +92,35 @@ class PicocliLanguageTest {
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }
 
+    private static final List<String> FORBIDDEN_ENGLISH_HELP_PHRASES = List.of(
+                        "Commands:",
+                        "Usage:",
+                        "Shows the runtime status; never starts the runtime.",
+                        "Shows the overview of running work",
+                        "Enables, pairs, or configures",
+                        "Starts, stops, restarts, or upgrades",
+                        "Signals the runtime to drain",
+                        "Manages machine and project",
+                        "The operator's credential acts.",
+                        "Manages project enrolments",
+                        "Explores and lists projects",
+                        "Manages client bundle installations",
+                        "Inspects or controls plans.",
+                        "Inspects or controls epics.",
+                        "Recipe operations.",
+                        "Verify a lesson's premise",
+                        "Lists open decisions and questions.",
+                        "Answers an open question or decision.",
+                        "Reports operations.",
+                        "Shows the system view; never starts the runtime.",
+                        "Cleanup operations:",
+                        "Enrols the headless CLI",
+                        "Reads the effective role set",
+                        "Accepts a manual edit",
+                        "Shows what needs operator attention",
+                        "Goes to work by name:"
+    );
+
     @Test
     @DisplayName("pm-operator -h in German prints German headings and descriptions with no English words outside glossary")
     void helpInGerman() {
@@ -99,34 +129,14 @@ class PicocliLanguageTest {
         String help = out.toString();
 
         assertTrue(help.contains("Befehle:"), "Expected German heading 'Befehle:' in: " + help);
-        assertFalse(help.contains("Commands:"), "Should not contain English 'Commands:' in: " + help);
-        assertFalse(help.contains("Usage:"), "Should not contain English 'Usage:' in: " + help);
-
         assertTrue(help.contains("Zeigt den Runtime-Status; startet die Runtime nie."), help);
-        assertFalse(help.contains("Shows the runtime status; never starts the runtime."), help);
-        assertFalse(help.contains("Shows the overview of running work"), help);
-        assertFalse(help.contains("Enables, pairs, or configures"), help);
-        assertFalse(help.contains("Starts, stops, restarts, or upgrades"), help);
-        assertFalse(help.contains("Signals the runtime to drain"), help);
-        assertFalse(help.contains("Manages machine and project"), help);
-        assertFalse(help.contains("The operator's credential acts."), help);
-        assertFalse(help.contains("Manages project enrolments"), help);
-        assertFalse(help.contains("Explores and lists projects"), help);
-        assertFalse(help.contains("Manages client bundle installations"), help);
-        assertFalse(help.contains("Inspects or controls plans."), help);
-        assertFalse(help.contains("Inspects or controls epics."), help);
-        assertFalse(help.contains("Recipe operations."), help);
-        assertFalse(help.contains("Verify a lesson's premise"), help);
-        assertFalse(help.contains("Lists open decisions and questions."), help);
-        assertFalse(help.contains("Answers an open question or decision."), help);
-        assertFalse(help.contains("Reports operations."), help);
-        assertFalse(help.contains("Shows the system view; never starts the runtime."), help);
-        assertFalse(help.contains("Cleanup operations:"), help);
-        assertFalse(help.contains("Enrols the headless CLI"), help);
-        assertFalse(help.contains("Reads the effective role set"), help);
-        assertFalse(help.contains("Accepts a manual edit"), help);
-        assertFalse(help.contains("Shows what needs operator attention"), help);
-        assertFalse(help.contains("Goes to work by name:"), help);
+        assertContainsNone(help, FORBIDDEN_ENGLISH_HELP_PHRASES);
+    }
+
+    private static void assertContainsNone(String text, List<String> forbidden) {
+        for (var item : forbidden) {
+            assertFalse(text.contains(item), "Should not contain English '" + item + "' in: " + text);
+        }
     }
 
     @Test

@@ -47,6 +47,7 @@ final class WorkActionDialogue {
     private static final String STAGED = "staged";
     private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
+    private static final String KEY_STATE = "state";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
                         "give_up_removal");
@@ -142,7 +143,7 @@ final class WorkActionDialogue {
         var availability = actions.action(action);
         if (availability == null) {
             prompt.line("operator.actions.refused",
-                                Map.of("name", id, "state", actions.state(),
+                                Map.of("name", id, KEY_STATE, actions.state(),
                                                     "actions", allowed(actions)));
             return 1;
         }
@@ -167,7 +168,7 @@ final class WorkActionDialogue {
             case "archive" -> archive();
             default -> {
                 prompt.line("operator.actions.refused",
-                                    Map.of("name", id, "state", actions.state(),
+                                    Map.of("name", id, KEY_STATE, actions.state(),
                                                         "actions", allowed(actions)));
                 yield 1;
             }
@@ -338,7 +339,7 @@ final class WorkActionDialogue {
             var candidate = launchable != null ? launchable : nextScopeBlocked(epic);
             if (candidate != null) {
                 if (!askRaise(epic, running, candidate)) {
-                    prompt.line("operator.dialogue.left", Map.of("state", "epic.raise-scope"));
+                    prompt.line("operator.dialogue.left", Map.of(KEY_STATE, "epic.raise-scope"));
                     return 0;
                 }
                 client.perform(kind, id, "next", Map.of("raise_scope", true));

@@ -48,6 +48,7 @@ public final class Display {
     private static final long DAYS_PER_MONTH = 30L;
     private static final long DAYS_PER_YEAR = 365L;
     private static final String COUNT = "count";
+    private static final String COMMON_UNKNOWN = "common.unknown";
 
     /**
      * The three renderings of a moment the design defines
@@ -82,11 +83,11 @@ public final class Display {
             throw new IllegalArgumentException("A display word needs a kind");
         }
         if (value == null || value.isBlank()) {
-            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         var key = "state." + kind + "." + value;
         if (!MessageCatalogue.hasKey(locale, key)) {
-            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         return MessageCatalogue.format(locale, key, Map.of());
     }
@@ -139,12 +140,12 @@ public final class Display {
             if (gate.contains(" ") || gate.contains(">") || gate.contains("<") || gate.contains("=")) {
                 return gate.replace('_', ' ');
             }
-            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         var kind = GateKind.fromValue(gate);
         var kindWord = kind != null
                 ? word(locale, "gate", kind.value())
-                : MessageCatalogue.format(locale, "common.unknown", Map.of());
+                : MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         if (colon == gate.length() - 1) {
             return kindWord;
         }

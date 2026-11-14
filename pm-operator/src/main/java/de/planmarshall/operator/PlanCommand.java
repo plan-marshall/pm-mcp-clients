@@ -894,6 +894,24 @@ public final class PlanCommand implements Callable<Integer> {
             var report = PlanCompletionReport.fromJson(body);
             var locale = context.clientEnvironment().locale();
 
+            printReportHeader(out, report, locale);
+            var ran = formatRan(report, locale, context.clock().getZone());
+            printReportMetadata(out, report, locale, ran);
+
+            printDeliverables(out, report.deliverables(), locale);
+            printReplanning(out, report.replanningRecords());
+            printDecisions(out, report.decisionRecords());
+            printOwnCalls(out, report.ownCalls(), locale);
+            printChangeMap(out, report.changeMap());
+
+            var usage = report.tokenUsage();
+            if (usage != null) {
+                printTokensSummary(out, usage, ran, report.planId(), showTokens, showComponents, locale);
+            }
+            out.flush();
+        }
+
+        private static void printReportHeader(PrintWriter out, PlanCompletionReport report, String locale) {
             var headParts = new ArrayList<String>();
             headParts.add(ConsoleNotice.stripControlSequences(report.planId()));
             var reportTitle = MessageCatalogue.get(locale, "report.completion.open");
@@ -909,7 +927,9 @@ public final class PlanCommand implements Callable<Integer> {
                 headParts.add(report.ended());
             }
             out.println(String.join(" · ", headParts));
+        }
 
+        private static void printReportMetadata(PrintWriter out, PlanCompletionReport report, String locale, @Nullable String ran) {
             var from = report.from();
             if (from != null && from.project() != null) {
                 var path = "in " + from.project();
@@ -930,22 +950,9 @@ public final class PlanCommand implements Callable<Integer> {
                                 : MessageCatalogue.format(locale, "common.none", Map.of());
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
-            var ran = formatRan(report, locale, context.clock().getZone());
             if (ran != null) {
                 out.printf(FMT_14S, "ran", ran);
             }
-
-            printDeliverables(out, report.deliverables(), locale);
-            printReplanning(out, report.replanningRecords());
-            printDecisions(out, report.decisionRecords());
-            printOwnCalls(out, report.ownCalls(), locale);
-            printChangeMap(out, report.changeMap());
-
-            var usage = report.tokenUsage();
-            if (usage != null) {
-                printTokensSummary(out, usage, ran, report.planId(), showTokens, showComponents, locale);
-            }
-            out.flush();
         }
 
         private static @Nullable String formatRan(PlanCompletionReport report, String locale, ZoneId zone) {

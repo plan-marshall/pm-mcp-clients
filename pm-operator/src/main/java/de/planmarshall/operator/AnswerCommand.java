@@ -313,46 +313,11 @@ public final class AnswerCommand implements Callable<Integer> {
         var effectiveAction = resolveEffectiveAction(action, option, questionId, locale);
 
         if (ACTION_LATER.equalsIgnoreCase(effectiveAction)) {
-            var laterEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-            var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
-            var laterPayload = new LinkedHashMap<String, Object>();
-            laterPayload.put(ACTION_KEY, ACTION_LATER);
-            laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
-            var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
-            if (!isAccepted(laterResponse.status())) {
-                var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
-                if (laterEnvelope != null && isDecisionRefusal(refusal.code())) {
-                    return handleDecisionRefusal(out, laterEnvelope, refusal, locale);
-                }
-                throw refusal;
-            }
-            out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
-                                ID_KEY, questionId,
-                                SCOPE_KEY, scopeSelector(laterEnvelope),
-                                PROJECT_KEY, projectNoun(laterEnvelope, locale)
-            )));
-            out.flush();
-            return 0;
+            return submitLater(runtime, out, safeQid, locale);
         }
 
         if (ACTION_WITHDRAW.equalsIgnoreCase(effectiveAction)) {
-            var withdrawEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-            var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
-            var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
-            if (isAccepted(resp.status())) {
-                out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
-                                    ID_KEY, questionId,
-                                    SCOPE_KEY, scopeSelector(withdrawEnvelope),
-                                    PROJECT_KEY, projectNoun(withdrawEnvelope, locale)
-                )));
-                out.flush();
-                return 0;
-            }
-            var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
-            if (withdrawEnvelope != null && isDecisionRefusal(refusal.code())) {
-                return handleDecisionRefusal(out, withdrawEnvelope, refusal, locale);
-            }
-            throw refusal;
+            return submitWithdraw(runtime, out, safeQid, locale);
         }
 
         if (effectiveAction != null
@@ -364,6 +329,49 @@ public final class AnswerCommand implements Callable<Integer> {
         }
 
         return submitAnswerPayload(runtime, out, safeQid, effectiveAction, locale);
+    }
+
+    private int submitLater(RuntimeClient runtime, PrintWriter out, String safeQid, String locale) throws IOException {
+        var laterEnvelope = fetchEnvelopeSafe(runtime, safeQid);
+        var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
+        var laterPayload = new LinkedHashMap<String, Object>();
+        laterPayload.put(ACTION_KEY, ACTION_LATER);
+        laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
+        var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
+        if (!isAccepted(laterResponse.status())) {
+            var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
+            if (laterEnvelope != null && isDecisionRefusal(refusal.code())) {
+                return handleDecisionRefusal(out, laterEnvelope, refusal, locale);
+            }
+            throw refusal;
+        }
+        out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
+                            ID_KEY, questionId,
+                            SCOPE_KEY, scopeSelector(laterEnvelope),
+                            PROJECT_KEY, projectNoun(laterEnvelope, locale)
+        )));
+        out.flush();
+        return 0;
+    }
+
+    private int submitWithdraw(RuntimeClient runtime, PrintWriter out, String safeQid, String locale) throws IOException {
+        var withdrawEnvelope = fetchEnvelopeSafe(runtime, safeQid);
+        var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
+        var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
+        if (isAccepted(resp.status())) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
+                                ID_KEY, questionId,
+                                SCOPE_KEY, scopeSelector(withdrawEnvelope),
+                                PROJECT_KEY, projectNoun(withdrawEnvelope, locale)
+            )));
+            out.flush();
+            return 0;
+        }
+        var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
+        if (withdrawEnvelope != null && isDecisionRefusal(refusal.code())) {
+            return handleDecisionRefusal(out, withdrawEnvelope, refusal, locale);
+        }
+        throw refusal;
     }
 
     private static @Nullable String resolveEffectiveAction(@Nullable String act, @Nullable String opt, String qid, String locale) {
@@ -762,7 +770,7 @@ public final class AnswerCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException {
+    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException, OperatorRefusedException {
         printQuestionDetail(session.out(), envelope, session.locale());
         session.out().println();
 
@@ -777,36 +785,56 @@ public final class AnswerCommand implements Callable<Integer> {
             }
             progress = result.progress();
             try {
-                if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
-                    return submitAnswers(session, envelope, parts, answers, progress.note());
+                var step = processConfirmation(session, envelope, parts, answers, progress.note());
+                if (step.exitCode().isPresent()) {
+                    return step.exitCode().getAsInt();
                 }
-                var confirm = confirmAnswers(session, envelope, parts, answers);
-                if (confirm.submit()) {
-                    return submitAnswers(session, envelope, parts, answers, progress.note());
-                }
-                var reopenIndex = confirm.reopenIndex();
-                if (reopenIndex == null) {
-                    return confirm.exitCode();
-                }
+                var reopenIndex = step.reopenIndex();
                 progress = new Progress(reopenIndex, progress.note());
                 answers.keySet().removeIf(key -> key >= reopenIndex);
             } catch (OperatorRefusedException refused) {
-                if (refused.code() == ApiErrorCode.INVALID_ANSWER || refused.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
-                    var wire = refused.code().wire();
-                    var reason = refused.serverMessage() != null ? refused.serverMessage() : "";
-                    session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
-                                        "reason", reason,
-                                        "n", 1
-                    )));
-                    session.out().flush();
-                    continue;
+                var exit = handleInteractiveRefusal(session, envelope, refused);
+                if (exit.isPresent()) {
+                    return exit.getAsInt();
                 }
-                if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
-                    return handleDecisionRefusal(session.out(), envelope, refused, session.locale());
-                }
-                throw refused;
             }
         }
+    }
+
+    private record ConfirmStep(OptionalInt exitCode, @Nullable Integer reopenIndex) {
+    }
+
+    private ConfirmStep processConfirmation(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers, @Nullable String note) throws IOException {
+        if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
+            return new ConfirmStep(OptionalInt.of(submitAnswers(session, envelope, parts, answers, note)), null);
+        }
+        var confirm = confirmAnswers(session, envelope, parts, answers);
+        if (confirm.submit()) {
+            return new ConfirmStep(OptionalInt.of(submitAnswers(session, envelope, parts, answers, note)), null);
+        }
+        if (confirm.reopenIndex() == null) {
+            return new ConfirmStep(OptionalInt.of(confirm.exitCode()), null);
+        }
+        return new ConfirmStep(OptionalInt.empty(), confirm.reopenIndex());
+    }
+
+    private OptionalInt handleInteractiveRefusal(DialogueSession session, DecisionEnvelope envelope,
+                        OperatorRefusedException refused) throws OperatorRefusedException {
+        if (refused.code() == ApiErrorCode.INVALID_ANSWER || refused.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
+            var wire = refused.code().wire();
+            var refusalReason = refused.serverMessage() != null ? refused.serverMessage() : "";
+            session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
+                                REASON_KEY, refusalReason,
+                                "n", 1
+            )));
+            session.out().flush();
+            return OptionalInt.empty();
+        }
+        if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
+            return OptionalInt.of(handleDecisionRefusal(session.out(), envelope, refused, session.locale()));
+        }
+        throw refused;
     }
 
     private record WalkOutcome(OptionalInt exitCode, Progress progress) {
@@ -1672,9 +1700,9 @@ public final class AnswerCommand implements Callable<Integer> {
         printDecisionDetail(out, envelope, locale);
         var wire = refusal.code() != null ? refusal.code().wire() : "conflict";
         var key = "decision.refused." + wire;
-        var reason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
+        var refusalReason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
         out.println(MessageCatalogue.format(locale, key, Map.of(
-                            "reason", reason,
+                            REASON_KEY, refusalReason,
                             "n", 1
         )));
         out.flush();

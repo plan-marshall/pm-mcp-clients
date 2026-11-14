@@ -2331,10 +2331,9 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("an act body on a credential path or chat path is not recorded")
     void actBodyOnCredentialPathIsNotRecorded() throws Exception {
-        var recordingEngine = new MockRuntimeEngine(registry,
-                registry.resolve(StandardScenarios.STATUS_ONLY),
-                runtimeToken, deviceSecret, true);
-        try {
+        try (var recordingEngine = new MockRuntimeEngine(registry,
+                     registry.resolve(StandardScenarios.STATUS_ONLY),
+                     runtimeToken, deviceSecret, true)) {
             send(recordingEngine, "PUT", "/api/v1/credentials/github", auth,
                     "{\"token\":\"secret\"}".getBytes(StandardCharsets.UTF_8), false);
             send(recordingEngine, "POST", "/api/v1/decisions/d-1/chat", auth,
@@ -2362,8 +2361,6 @@ class MockRuntimeEngineTest {
             assertNotNull(answerAct);
             assertEquals("/api/v1/questions/q-1/answer", answerAct.get("path"));
             assertTrue(answerAct.containsKey("body"), "decision answer body must be recorded in acts");
-        } finally {
-            recordingEngine.close();
         }
     }
 }

@@ -96,7 +96,7 @@ final class ConfigAspectRun {
 
         Outcome {
             facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
-            lastStateId = Objects.requireNonNull(lastStateId, "lastStateId");
+            Objects.requireNonNull(lastStateId, "lastStateId");
         }
 
         Outcome(int exitCode, Map<String, Object> facts) {

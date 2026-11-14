@@ -268,7 +268,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                                 "index", index++,
                                 "label", MessageCatalogue.format(locale,
                                                     "operator.cleanup.durations.kind." + kind, Map.of()),
-                                "value", rendered(locale, daysOf(durations, kind)))));
+                                VALUE, rendered(locale, daysOf(durations, kind)))));
         }
         out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
     }
@@ -457,7 +457,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         try {
             var durations = CleanupDurations.fromJson(currentValue);
             return MessageCatalogue.format(locale, "operator.settings.cleanup.value",
-                                Map.of("days", durations.plansAfterDays(), "remind", durations.remindAfterDays()));
+                                Map.of("days", durations.plansAfterDays(), KIND_REMIND, durations.remindAfterDays()));
         } catch (IOException _) {
             return currentValue;
         }

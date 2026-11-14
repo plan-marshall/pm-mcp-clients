@@ -227,6 +227,11 @@ public final class ProjectCommand implements Callable<Integer> {
                 return refusalExit;
             }
 
+            return runAddDialogue(response, safePath, locale, out, err);
+        }
+
+        private Integer runAddDialogue(HttpResponse response, String safePath, String locale,
+                            PrintWriter out, PrintWriter err) {
             Started started = null;
             var startPrompt = new StartPrompt(context, out, locale, noInput);
             var pilotUsed = new AtomicBoolean(false);

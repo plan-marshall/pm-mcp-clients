@@ -56,9 +56,6 @@ public final class MockConfigRoutes {
     private static final String CONFLICT = "conflict";
     private static final String ASPECT_OWNED = "aspect_owned";
 
-    /** The keys an aspect owns, and the one family a project's own value writes at its level. */
-    private static final String CLEANUP_KEY_PREFIX = "cleanup.";
-
     /** The levels an operator may write, from the one catalogue that defines them. */
     private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
             .map(ConfigOrigin::fromWire)

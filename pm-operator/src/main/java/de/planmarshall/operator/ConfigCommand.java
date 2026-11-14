@@ -202,10 +202,10 @@ public final class ConfigCommand implements Callable<Integer> {
             try {
                 return MachineSettingsRecord.fromJson(response.bodyText());
             } catch (IOException _) {
-                throw new OperatorRefusedException("config", response);
+                throw new OperatorRefusedException(CONFIG_VERB, response);
             }
         }
-        throw new OperatorRefusedException("config", response);
+        throw new OperatorRefusedException(CONFIG_VERB, response);
     }
 
     /**
@@ -272,9 +272,14 @@ public final class ConfigCommand implements Callable<Integer> {
             return null;
         }
         var lan = listenerLan();
-        var listener = lan == null
-                            ? "operator.settings.devices.listener_unknown"
-                            : (lan ? "operator.settings.devices.listener_on" : "operator.settings.devices.listener_off");
+        String listener;
+        if (lan == null) {
+            listener = "operator.settings.devices.listener_unknown";
+        } else if (Boolean.TRUE.equals(lan)) {
+            listener = "operator.settings.devices.listener_on";
+        } else {
+            listener = "operator.settings.devices.listener_off";
+        }
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
                                                 COUNT, devices.size(),
@@ -1423,7 +1428,7 @@ public final class ConfigCommand implements Callable<Integer> {
             MachineSettingsRecord settings;
             try {
                 settings = owner.readSettingsQuiet();
-            } catch (OperatorRefusedException e) {
+            } catch (OperatorRefusedException _) {
                 out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;

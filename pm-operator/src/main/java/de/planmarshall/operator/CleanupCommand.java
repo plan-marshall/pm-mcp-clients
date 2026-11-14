@@ -83,6 +83,7 @@ public final class CleanupCommand implements Callable<Integer> {
 
     /** The cleanup resource of the runtime's API. */
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
+    private static final String COUNT = "count";
 
     private final OperatorContext context;
     private final PromptFactory prompts;
@@ -229,7 +230,7 @@ public final class CleanupCommand implements Callable<Integer> {
             if (items.isEmpty()) {
                 out.println(MessageCatalogue.get(locale, "system.cleanup.kept.none"));
             } else {
-                out.println(MessageCatalogue.format(locale, "operator.cleanup.kept_header", Map.of("count", items.size())));
+                out.println(MessageCatalogue.format(locale, "operator.cleanup.kept_header", Map.of(COUNT, items.size())));
                 int idx = 1;
                 for (var item : items) {
                     var glyph = glyphForKind(item.kind());
@@ -257,7 +258,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (all) {
             if (!yes) {
                 if (noInput) {
-                    out.println(MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of("count", keptItems.size())));
+                    out.println(MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of(COUNT, keptItems.size())));
                     out.println(MessageCatalogue.format(locale, "operator.common.needs_choice", Map.of("option", "--yes")));
                     out.flush();
                     return 3;
@@ -266,7 +267,7 @@ public final class CleanupCommand implements Callable<Integer> {
             var putBody = JsonTree.write(Map.of("item_ids", List.of()));
             var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
             if (res.status() == 200) {
-                out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of("count", keptItems.size())));
+                out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of(COUNT, keptItems.size())));
                 out.flush();
                 return 0;
             }
@@ -301,7 +302,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var putBody = JsonTree.write(Map.of("item_ids", remainingIds));
         var res = runtime.send(HttpRequest.put("/api/v1/system/cleanup/kept").withBody(putBody));
         if (res.status() == 200) {
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of("count", countReleased)));
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.released", Map.of(COUNT, countReleased)));
             out.flush();
             return 0;
         }
@@ -443,7 +444,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
         out.println(MessageCatalogue.format(locale, "operator.cleanup.ignored.count",
-                            Map.of("count", totalItems)));
+                            Map.of(COUNT, totalItems)));
     }
 
     /**
@@ -583,7 +584,7 @@ public final class CleanupCommand implements Callable<Integer> {
             int keptCount = JsonTree.integer(parsed, "kept_count") != null
                                 ? JsonTree.integer(parsed, "kept_count") : 2;
             out.println(MessageCatalogue.format(locale, "operator.cleanup.none_header", Map.of("time", nextCheck)));
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.footer", Map.of("count", keptCount)));
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.footer", Map.of(COUNT, keptCount)));
             out.println(MessageCatalogue.format(locale, "operator.cleanup.residue_header", Map.of("time", "today 03:00")));
             out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.temp"));
             out.println(MessageCatalogue.get(locale, "operator.cleanup.residue.workers"));
@@ -738,7 +739,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
 
         out.println(MessageCatalogue.format(locale, "operator.cleanup.footer_sweep",
-                            Map.of("count", s.keptForGoodCount(), "time", OutputSafety.stripControlSequences(s.lastSweepAt()))));
+                            Map.of(COUNT, s.keptForGoodCount(), "time", OutputSafety.stripControlSequences(s.lastSweepAt()))));
         out.flush();
         return items;
     }
@@ -758,7 +759,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private void printMore(PrintWriter out, int remaining, String projectId) {
         var command = "cleanup --project " + OutputSafety.stripControlSequences(projectId);
         out.println("   …  " + MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "operator.cleanup.more", Map.of("count", remaining, "command", command)));
+                            "operator.cleanup.more", Map.of(COUNT, remaining, "command", command)));
     }
 
     /**

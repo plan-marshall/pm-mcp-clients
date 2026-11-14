@@ -117,39 +117,15 @@ public class OperatorRefusedException extends IOException {
     private record ParsedRefusal(@Nullable ApiErrorCode code, @Nullable String rawCode, @Nullable String serverMessage) {
     }
 
+    private record ExtractedFields(@Nullable String code, @Nullable String message) {
+    }
+
     private static ParsedRefusal parseRefusal(HttpResponse response) {
-        String parsedCode = null;
-        String parsedMessage = null;
         var body = response.bodyText();
-        if (body != null && !body.isBlank() && body.trim().startsWith("{")) {
-            try {
-                var parsed = JsonTree.parse(body);
-                if (parsed instanceof Map<?, ?> map) {
-                    var errorObj = map.get("error");
-                    if (errorObj instanceof Map<?, ?> errMap) {
-                        if (errMap.get("code") instanceof String c) {
-                            parsedCode = c;
-                        }
-                        if (errMap.get("message") instanceof String m) {
-                            parsedMessage = m;
-                        }
-                    } else if (errorObj instanceof String errStr) {
-                        parsedCode = errStr;
-                        if (parsedMessage == null && ApiErrorCode.fromWireOrNull(errStr) == null) {
-                            parsedMessage = errStr;
-                        }
-                    }
-                    if (parsedCode == null && map.get("code") instanceof String c) {
-                        parsedCode = c;
-                    }
-                    if (parsedMessage == null && map.get("message") instanceof String m) {
-                        parsedMessage = m;
-                    }
-                }
-            } catch (IOException _) {
-                // Not valid JSON
-            }
-        }
+        var extracted = extractFromJson(body);
+        var parsedCode = extracted.code();
+        var parsedMessage = extracted.message();
+
         if (parsedMessage == null && (parsedCode == null || ApiErrorCode.fromWireOrNull(parsedCode) == null)) {
             parsedMessage = body;
         }
@@ -159,6 +135,47 @@ public class OperatorRefusedException extends IOException {
         ApiErrorCode resolvedCode = parsedCode != null ? ApiErrorCode.fromWireOrNull(parsedCode) : null;
         String sanitizedMessage = parsedMessage != null ? TerminalSanitizer.sanitizeLine(parsedMessage).strip() : null;
         return new ParsedRefusal(resolvedCode, parsedCode, sanitizedMessage);
+    }
+
+    private static ExtractedFields extractFromJson(@Nullable String body) {
+        if (body == null || body.isBlank() || !body.trim().startsWith("{")) {
+            return new ExtractedFields(null, null);
+        }
+        try {
+            var parsed = JsonTree.parse(body);
+            if (parsed instanceof Map<?, ?> map) {
+                return extractFromMap(map);
+            }
+        } catch (IOException _) {
+            // Not valid JSON
+        }
+        return new ExtractedFields(null, null);
+    }
+
+    private static ExtractedFields extractFromMap(Map<?, ?> map) {
+        String parsedCode = null;
+        String parsedMessage = null;
+        var errorObj = map.get("error");
+        if (errorObj instanceof Map<?, ?> errMap) {
+            if (errMap.get("code") instanceof String c) {
+                parsedCode = c;
+            }
+            if (errMap.get("message") instanceof String m) {
+                parsedMessage = m;
+            }
+        } else if (errorObj instanceof String errStr) {
+            parsedCode = errStr;
+            if (ApiErrorCode.fromWireOrNull(errStr) == null) {
+                parsedMessage = errStr;
+            }
+        }
+        if (parsedCode == null && map.get("code") instanceof String c) {
+            parsedCode = c;
+        }
+        if (parsedMessage == null && map.get("message") instanceof String m) {
+            parsedMessage = m;
+        }
+        return new ExtractedFields(parsedCode, parsedMessage);
     }
 
     /**

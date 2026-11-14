@@ -35,6 +35,8 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class QuestionsCommand implements Callable<Integer> {
 
+    private static final String COMMON_UNKNOWN = "common.unknown";
+
     private final OperatorContext context;
 
     @Spec
@@ -136,17 +138,17 @@ public final class QuestionsCommand implements Callable<Integer> {
         var blocksKey = blocks != null
                             ? "decision.blocks." + blocks.toString().toLowerCase(Locale.ROOT)
                             : "decision.blocks.plan";
-        var blocksWord = MessageCatalogue.hasKey(locale, blocksKey)
-                            ? MessageCatalogue.format(locale, blocksKey, Map.of())
-                            : MessageCatalogue.format(locale, "common.unknown", Map.of());
+        var blocksWord = MessageCatalogue.format(locale,
+                            MessageCatalogue.hasKey(locale, blocksKey) ? blocksKey : COMMON_UNKNOWN,
+                            Map.of());
 
         var rev = q.get("reversibility");
         var revKey = rev != null
                             ? "decision.reversibility." + rev.toString().toLowerCase(Locale.ROOT)
                             : "decision.reversibility.reversible";
-        var revWord = MessageCatalogue.hasKey(locale, revKey)
-                            ? MessageCatalogue.format(locale, revKey, Map.of())
-                            : MessageCatalogue.format(locale, "common.unknown", Map.of());
+        var revWord = MessageCatalogue.format(locale,
+                            MessageCatalogue.hasKey(locale, revKey) ? revKey : COMMON_UNKNOWN,
+                            Map.of());
 
         var metaParts = List.of(phaseStr, blocksWord, revWord).stream()
                             .filter(s -> s != null && !s.isBlank()).toList();
