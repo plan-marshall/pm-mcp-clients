@@ -943,6 +943,44 @@ describe('start-chat: the one chat panel', () => {
     await waitFor(() => expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument());
   });
 
+  it('opens a new chat when the cached one has ended', async () => {
+    arrangeOpen(
+      sources({
+        sources: [source({ title: 'Add a Codeberg provider for issues' })],
+        can_continue: true,
+        chat_available: true,
+        chat_disabled_reason: null,
+      }),
+    );
+    const ended = {
+      chat_id: 'C-0001',
+      subject_id: 'ent-3f9a2c41',
+      subject_kind: 'entry',
+      role: 'refine',
+      scope: 'entry',
+      state: 'chat.end',
+      turns: [],
+      proposal: null,
+    };
+    const opened = { ...ended, chat_id: 'C-0002', state: 'chat.turn' };
+    const open = vi.spyOn(apiClient, 'openEntryChat').mockResolvedValue(ended);
+    const reread = vi.spyOn(apiClient, 'getEntryChat').mockResolvedValue(ended);
+
+    render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
+    await screen.findByTestId('source-list');
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    expect(open).toHaveBeenCalledTimes(1);
+
+    // The chat was ended meanwhile; reopening starts a new one instead of reading the ended one.
+    open.mockResolvedValue(opened);
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('chat-panel')).not.toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+    expect(reread).not.toHaveBeenCalled();
+  });
+
   it('is disabled with its reason while a source is not yet screened', async () => {
     arrangeOpen(
       sources({

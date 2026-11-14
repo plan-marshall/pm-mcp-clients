@@ -80,6 +80,8 @@
    * applied over the newer state those produced.
    */
   let chatGeneration = 0;
+  /** Counts the chat reads, so two event refreshes cannot apply out of order. */
+  let chatReadSeq = 0;
 
   let readyTitle = '';
   let readyId = '';
@@ -224,12 +226,14 @@
     if (!chatOpen || chat === null || chat.state === 'chat.end' || chat.state === 'chat.carried') {
       return;
     }
-    // A refresh is applied only while no send, end or answer has overtaken it.
+    // A refresh is applied only while no other read is newer and no send, end or answer overtook it.
     const generation = chatGeneration;
+    const read = ++chatReadSeq;
     try {
       const opened = await apiClient.getEntryChat(target);
       if (
         destroyed ||
+        read !== chatReadSeq ||
         generation !== chatGeneration ||
         (entryId !== null && target !== entryId)
       )
@@ -513,10 +517,12 @@
     busy = true;
     try {
       // The chat is its own resource, read on its route: a cached one is read again, so a proposal
-      // answered or a reply completed while the panel was closed is shown as it stands.
-      const opened = chat === null
-        ? await apiClient.openEntryChat(target)
-        : await apiClient.getEntryChat(target);
+      // answered or a reply completed while the panel was closed is shown as it stands. An ended
+      // chat is opened again instead, which starts a new one.
+      const opened =
+        chat === null || chat.state === 'chat.end' || chat.state === 'chat.carried'
+          ? await apiClient.openEntryChat(target)
+          : await apiClient.getEntryChat(target);
       if (destroyed || generation !== chatGeneration || (entryId !== null && target !== entryId))
         return;
       chat = opened;
