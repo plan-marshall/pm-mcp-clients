@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +32,10 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -659,6 +664,390 @@ class StartContractTest {
             assertThrows(JsonFormatException.class, () -> SourceResource.fromJson(
                     "{\"source_id\":\"s\",\"kind\":\"bogus\",\"reference\":\"r\",\"state\":\"stored\","
                             + "\"trust\":\"trusted\"}"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Source invariants")
+    class SourceInvariants {
+
+        @ParameterizedTest(name = "{0} with verdict {1} and disposition {2} blocks Continue: {3}")
+        @CsvSource(nullValues = "-", value = {
+                "flagged,flagged,-,true",
+                "unscreened,unscreened,-,true",
+                "unscreened,unscreened,try_again,true",
+                "screening,-,-,true",
+                "flagged,flagged,accept_untrusted,false",
+                "checking,-,accept_untrusted,true",
+                "fetching,-,accept_untrusted,true",
+                "screening,-,accept_untrusted,true",
+                "unscreened,unscreened,accept_untrusted,false",
+                "stored,clean,-,false"})
+        @DisplayName("Continue waits for every source that is not stored, screened, or accepted")
+        void blocksContinueUntilAccepted(String state, String verdict, String disposition, boolean blocks) {
+            var source = externalSource(SourceState.fromWire(state),
+                    verdict != null ? ScreeningVerdict.fromWire(verdict) : null,
+                    disposition != null ? UnscreenedDisposition.fromWire(disposition) : null);
+
+            assertEquals(blocks, source.blocksContinue());
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = SourceState.class, names = {"FLAGGED", "STORED", "COPIED", "MOVED"})
+        @DisplayName("a flagged verdict stands on a flagged, stored, or accepted source and keeps its spans")
+        void flaggedVerdictStates(SourceState state) throws Exception {
+            var source = externalSource(state, ScreeningVerdict.FLAGGED, null);
+
+            var roundTrip = SourceResource.fromJson(source.toJson());
+
+            assertEquals(source, roundTrip);
+            assertEquals(1, roundTrip.spans().size());
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = SourceState.class, names = {"CHECKING", "FETCHING", "SCREENING", "UNSCREENED"})
+        @DisplayName("a flagged verdict is refused on a source not yet stored or left unscreened")
+        void flaggedVerdictRefusedElsewhere(SourceState state) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> externalSource(state, ScreeningVerdict.FLAGGED, null));
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = ScreeningVerdict.class, names = {"FLAGGED", "UNSCREENED"})
+        @DisplayName("a flagged or unscreened source never loses the untrusted mark")
+        void verdictNeedingAcceptanceKeepsUntrusted(ScreeningVerdict verdict) {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+            var state = verdict == ScreeningVerdict.FLAGGED ? SourceState.FLAGGED : SourceState.UNSCREENED;
+
+            assertThrows(IllegalArgumentException.class, () -> new SourceResource(id, SourceKind.ISSUE,
+                    reference, null, state, SourceTrust.TRUSTED, verdict, null, List.of(), null, null, List.of(),
+                    null));
+        }
+
+        @Test
+        @DisplayName("a source neither failed nor screened carries no failure")
+        void failureOnlyOnFailedOrScreened() {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+            var failure = SourceFailure.of(SourceFailureCause.NOT_FOUND);
+
+            assertThrows(IllegalArgumentException.class, () -> new SourceResource(id, SourceKind.DESCRIPTION,
+                    reference, null, SourceState.STORED, SourceTrust.TRUSTED, null, failure, List.of(), null, null,
+                    List.of(), null));
+        }
+
+        @Test
+        @DisplayName("only a flagged source carries flagged spans")
+        void spansNeedFlaggedVerdict() {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+            var spans = List.of(span());
+
+            assertThrows(IllegalArgumentException.class, () -> new SourceResource(id, SourceKind.ISSUE,
+                    reference, null, SourceState.STORED, SourceTrust.UNTRUSTED, ScreeningVerdict.CLEAN, null,
+                    spans, null, null, List.of(), null));
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = SourceState.class, names = {"STORED", "FLAGGED", "UNSCREENED"})
+        @DisplayName("an external source stored, flagged, or unscreened without acceptance names its verdict")
+        void externalSourceNamesVerdict(SourceState state) {
+            assertThrows(IllegalArgumentException.class, () -> externalSource(state, null, null));
+        }
+
+        @Test
+        @DisplayName("an unscreened source names the cause of its screening and keeps it on the wire")
+        void unscreenedSourceNamesCause() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+            var cause = SourceFailure.of(SourceFailureCause.NO_SCREENER);
+            var source = new SourceResource(id, SourceKind.ISSUE, reference, null, SourceState.UNSCREENED,
+                    SourceTrust.UNTRUSTED, ScreeningVerdict.UNSCREENED, cause, List.of(), null, null, List.of(),
+                    null);
+
+            var roundTrip = SourceResource.fromJson(source.toJson());
+
+            assertEquals(cause, roundTrip.failure());
+            assertEquals(source, roundTrip);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", " ", "\t"})
+        @DisplayName("an acceptance as untrusted refuses a blank reason")
+        void acceptanceRefusesBlankReason(String reason) {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+
+            assertThrows(IllegalArgumentException.class, () -> new SourceResource(id, SourceKind.ISSUE,
+                    reference, null, SourceState.UNSCREENED, SourceTrust.UNTRUSTED, ScreeningVerdict.UNSCREENED,
+                    null, List.of(), UnscreenedDisposition.ACCEPT_UNTRUSTED, reason, List.of(), null));
+        }
+
+        @Test
+        @DisplayName("absent spans and changed files read as none")
+        void absentListsReadAsNone() {
+            var id = Generators.nonBlankStrings().next();
+            var reference = Generators.nonBlankStrings().next();
+
+            var source = new SourceResource(id, SourceKind.DESCRIPTION, reference, null, SourceState.STORED,
+                    SourceTrust.TRUSTED, null, null, null, null, null, null, null);
+
+            assertTrue(source.spans().isEmpty());
+            assertTrue(source.changedFiles().isEmpty());
+            assertFalse(source.toMap().containsKey(SourceResource.FIELD_SPANS));
+            assertFalse(source.toMap().containsKey(SourceResource.FIELD_CHANGED_FILES));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "{\"kind\":\"issue\",\"reference\":\"r\",\"state\":\"stored\",\"trust\":\"untrusted\"}",
+                "{\"source_id\":\"s\",\"kind\":\"issue\",\"state\":\"stored\",\"trust\":\"untrusted\"}",
+                "{\"source_id\":\"s\",\"kind\":\"issue\",\"reference\":\"r\",\"state\":\"gone\",\"trust\":\"untrusted\"}",
+                "{\"source_id\":\"s\",\"kind\":\"issue\",\"reference\":\"r\",\"state\":\"stored\",\"trust\":\"maybe\"}",
+                "{\"source_id\":\"s\",\"kind\":\"issue\",\"reference\":\"r\",\"state\":\"stored\","
+                        + "\"trust\":\"untrusted\",\"verdict\":\"dirty\"}",
+                "{\"source_id\":\"s\",\"kind\":\"issue\",\"reference\":\"r\",\"state\":\"unscreened\","
+                        + "\"trust\":\"untrusted\",\"verdict\":\"unscreened\",\"disposition\":\"ignore\"}"})
+        @DisplayName("a source on the wire without its id or reference or with an unknown closed value is refused")
+        void wireRefusals(String json) {
+            assertThrows(JsonFormatException.class, () -> SourceResource.fromJson(json));
+        }
+
+        @Test
+        @DisplayName("a streamed source that is no object is refused")
+        void streamedNonObjectRefused() {
+            assertThrows(JsonFormatException.class, () -> readStreaming("[]", SourceResource::readFrom));
+        }
+
+        private static SourceResource externalSource(SourceState state, ScreeningVerdict verdict,
+                                                     UnscreenedDisposition disposition) {
+            var spans = verdict == ScreeningVerdict.FLAGGED ? List.of(span()) : List.<ScreeningSpan>of();
+            var reason = disposition != null && disposition.recordsReason()
+                    ? Generators.nonBlankStrings().next() : null;
+            return new SourceResource(Generators.nonBlankStrings().next(), SourceKind.ISSUE,
+                    Generators.nonBlankStrings().next(), null, state, SourceTrust.UNTRUSTED, verdict, null, spans,
+                    disposition, reason, List.of(), null);
+        }
+
+        private static ScreeningSpan span() {
+            return new ScreeningSpan(0, 12, Generators.nonBlankStrings().next(),
+                    Generators.nonBlankStrings().next());
+        }
+    }
+
+    @Nested
+    @DisplayName("Start state derivation")
+    class StateDerivation {
+
+        @ParameterizedTest
+        @EnumSource(EntryKind.class)
+        @DisplayName("the refused state shows its refusal, offers abandon, and an epic's also back")
+        void refusedState(EntryKind kind) throws Exception {
+            var project = Generators.nonBlankStrings().next();
+            var refusal = StartRefusal.machineNotOnboarded(project, "providers");
+            var entry = entry(kind, StartState.REFUSED, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, refusal, null, List.of());
+            var roundTrip = StartStateResource.fromJson(state.toJson());
+
+            assertEquals(refusal, roundTrip.refusal());
+            assertEquals(refusal.toMap(), state.operator().facts().get(StartStateResource.FIELD_REFUSAL));
+            assertNotNull(state.link(StartStateResource.LINK_ABANDON));
+            assertEquals(kind.epic(), state.link(StartStateResource.LINK_BACK) != null);
+            assertEquals(kind.epic() ? 2 : 1, state.operator().links().size());
+        }
+
+        @Test
+        @DisplayName("the adoption-failed state shows its cause and offers try again, back, and abandon")
+        void adoptionFailedState() throws Exception {
+            var epicId = Generators.nonBlankStrings().next();
+            var failure = AdoptionFailure.unreadable(epicId, ".marshall/epics/" + epicId + "/epic.json",
+                    Generators.nonBlankStrings().next());
+            var entry = entry(EntryKind.EPIC, StartState.EPIC_ADOPT_FAILED, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, null, failure, List.of());
+            var roundTrip = StartStateResource.fromJson(state.toJson());
+
+            assertEquals(failure, roundTrip.adoptionFailure());
+            assertEquals(failure.toMap(), state.operator().facts().get(StartStateResource.FIELD_ADOPTION_FAILURE));
+            assertEquals(List.of(StartStateResource.LINK_RETRY, StartStateResource.LINK_BACK,
+                    StartStateResource.LINK_ABANDON), linkIds(state));
+        }
+
+        @Test
+        @DisplayName("the ready state keeps its ready step on the wire")
+        void readyStepOnTheWire() throws Exception {
+            var title = Generators.nonBlankStrings().next();
+            var ready = StartReadyResource.ofEpic(title, "relay-hardening", true, ConfigOrigin.PROJECT, 1, 0);
+            var entry = entry(EntryKind.EPIC, StartState.READY, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, ready, null, null, null, List.of());
+            var roundTrip = StartStateResource.fromJson(state.toJson());
+
+            assertEquals(ready, roundTrip.ready());
+            assertEquals(state.toJson(), roundTrip.toJson());
+        }
+
+        @Test
+        @DisplayName("a refusal or an adoption failure outside its own state is refused")
+        void membersOnlyInTheirState() {
+            var sources = sourcesEntry();
+            var refusal = StartRefusal.projectNotReady(sources.projectId(), "credential sonar");
+            var failure = AdoptionFailure.unreadable("relay-hardening", "epic.json", "permission denied");
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> StartStateResource.of(sources, null, null, refusal, null, List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> StartStateResource.of(sources, null, null, null, failure, List.of()));
+        }
+
+        @Test
+        @DisplayName("the adopt state offers each adoptable epic, a new epic, and abandon")
+        void adoptState() {
+            var first = new AdoptableEpic("relay-hardening", Generators.nonBlankStrings().next());
+            var second = new AdoptableEpic("relay-v2", Generators.nonBlankStrings().next());
+            var entry = entry(EntryKind.EPIC, StartState.EPIC_ADOPT, List.of(), List.of(first, second));
+
+            var state = StartStateResource.of(entry, null, null, null, null, List.of());
+
+            assertEquals(List.of("adopt:relay-hardening", "adopt:relay-v2", StartStateResource.LINK_NEW,
+                    StartStateResource.LINK_ABANDON), linkIds(state));
+        }
+
+        @Test
+        @DisplayName("the choose state preselects the sources and offers a recipe and abandon")
+        void chooseState() {
+            var entry = entry(EntryKind.PLAN, StartState.CHOOSE, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, null, null, List.of());
+
+            assertEquals(List.of(StartStateResource.LINK_SOURCES, StartStateResource.LINK_RECIPE,
+                    StartStateResource.LINK_ABANDON), linkIds(state));
+            assertTrue(state.link(StartStateResource.LINK_SOURCES).preselected());
+        }
+
+        @ParameterizedTest(name = "{0} at {1} without a recipe names why none is offered: {2}")
+        @CsvSource({
+                "plan,start.choose,true",
+                "plan,start.recipe,true",
+                "plan,recipe.choose,true",
+                "plan,start.sources,false",
+                "epic,start.choose,false"})
+        @DisplayName("a plan's recipe choice without a recipe names the reason")
+        void noRecipeReason(String kind, String stateId, boolean named) {
+            var entry = entry(EntryKind.fromWire(kind), StartState.fromWire(stateId), List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, null, null, List.of());
+
+            assertEquals(named, state.operator().facts().containsKey("no_recipe_reason"));
+        }
+
+        @Test
+        @DisplayName("a recipe choice with recipes names no reason and offers each recipe and the sources")
+        void recipeChoiceWithRecipes() {
+            var recipe = new RecipeRef("audit", "audit", Generators.nonBlankStrings().next(), "project", false,
+                    List.of());
+            var entry = entry(EntryKind.PLAN, StartState.RECIPE_CHOOSE, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, null, null, List.of(recipe));
+
+            assertFalse(state.operator().facts().containsKey("no_recipe_reason"));
+            assertEquals("1", state.operator().facts().get("recipe_count"));
+            assertEquals(List.of("choose:audit", StartStateResource.LINK_SOURCES), linkIds(state));
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = StartState.class, names = {"RECIPE_CREATE", "RECIPE_STEP_CREATE"})
+        @DisplayName("the create states offer only the creation")
+        void createStates(StartState startState) {
+            var entry = entry(EntryKind.PLAN, startState, List.of(), List.of());
+
+            var state = StartStateResource.of(entry, null, null, null, null, List.of());
+
+            assertEquals(List.of(StartStateResource.LINK_CREATE), linkIds(state));
+            assertTrue(state.link(StartStateResource.LINK_CREATE).preselected());
+        }
+
+        @Test
+        @DisplayName("a source's item shows its title, verdict, spans, disposition, and reason")
+        void itemShowsEverySourceFact() {
+            var title = Generators.nonBlankStrings().next();
+            var reason = Generators.nonBlankStrings().next();
+            var span = new ScreeningSpan(0, 12, Generators.nonBlankStrings().next(),
+                    Generators.nonBlankStrings().next());
+            var flagged = new SourceResource("src-1", SourceKind.ISSUE, Generators.nonBlankStrings().next(), title,
+                    SourceState.FLAGGED, SourceTrust.UNTRUSTED, ScreeningVerdict.FLAGGED, null, List.of(span),
+                    UnscreenedDisposition.ACCEPT_UNTRUSTED, reason, List.of(), null);
+            var entry = entry(EntryKind.PLAN, StartState.SOURCES, List.of(flagged), List.of());
+
+            var facts = StartStateResource.of(entry, null, null, null, null, List.of())
+                    .operator().items().getFirst().facts();
+
+            assertEquals(title, facts.get("title"));
+            assertEquals("flagged", facts.get("verdict"));
+            assertEquals(JsonTree.write(List.of(span.toMap())), JsonTree.write(facts.get("spans")));
+            assertEquals("accept_untrusted", facts.get("disposition"));
+            assertEquals(reason, facts.get("disposition_reason"));
+            assertFalse(facts.containsKey("changed_files"));
+        }
+
+        @Test
+        @DisplayName("a pull request's item lists its changed files")
+        void itemListsChangedFiles() {
+            var file = new ChangedFile("src/main/java/A.java", 4, 1, true, false);
+            var pullRequest = SourceResource.pullRequest("src-pr", Generators.nonBlankStrings().next(), null,
+                    List.of(file));
+            var entry = entry(EntryKind.PLAN, StartState.SOURCES, List.of(pullRequest), List.of());
+
+            var facts = StartStateResource.of(entry, null, null, null, null, List.of())
+                    .operator().items().getFirst().facts();
+
+            assertEquals(JsonTree.write(List.of(file.toMap())), JsonTree.write(facts.get("changed_files")));
+            assertFalse(facts.containsKey("title"));
+            assertFalse(facts.containsKey("disposition"));
+        }
+
+        @Test
+        @DisplayName("a state read without its start member carries no entry and no recipes")
+        void stateWithoutStartMember() throws Exception {
+            var map = new LinkedHashMap<>(StartStateResource.of(sourcesEntry(), null, null, null, null, List.of())
+                    .toMap());
+            map.remove(StartStateResource.FIELD_START);
+
+            var state = StartStateResource.fromJson(JsonTree.write(map));
+
+            assertNull(state.entry());
+            assertTrue(state.recipes().isEmpty());
+            assertEquals(StartState.SOURCES, state.state());
+            assertEquals(Map.of(), state.toMap().get(StartStateResource.FIELD_START));
+        }
+
+        @Test
+        @DisplayName("an absent recipe list reads as none")
+        void absentRecipesReadAsNone() {
+            var operator = StartStateResource.of(sourcesEntry(), null, null, null, null, List.of()).operator();
+
+            var state = new StartStateResource(operator, null, null, null, null, null, null);
+
+            assertTrue(state.recipes().isEmpty());
+        }
+
+        @Test
+        @DisplayName("a streamed state that is no object is refused")
+        void streamedNonObjectRefused() {
+            assertThrows(JsonFormatException.class, () -> readStreaming("[]", StartStateResource::readFrom));
+        }
+
+        private static EntryResource entry(EntryKind kind, StartState state, List<SourceResource> sources,
+                                           List<AdoptableEpic> adoptable) {
+            return new EntryResource("ent-" + Generators.integers(1, 9_999).next(), kind,
+                    Generators.nonBlankStrings().next(), state, null, null, sources, List.of(), false, false,
+                    StartStateResource.CHAT_ROLE_UNQUALIFIED, null, adoptable, null);
+        }
+
+        private static List<String> linkIds(StartStateResource state) {
+            return state.operator().links().stream().map(OperatorLink::id).toList();
         }
     }
 

@@ -186,11 +186,20 @@ public record SourceResource(
     }
 
     /**
+     * A source lets <em>Continue</em> pass once it is stored, screened, or accepted: a settled state, or
+     * a flagged or unscreened source the operator accepted as untrusted with a reason. A flagged or
+     * unscreened source nobody has accepted yet still blocks, as does every source still in progress
+     * or failed (design <em>Starting Work</em>, the list of sources).
+     *
      * @return {@code true} if the source still blocks <em>Continue</em>
      */
     public boolean blocksContinue() {
-        return !state.settled() && state != SourceState.FLAGGED && state != SourceState.UNSCREENED
-                && disposition == null;
+        if (state.settled()) {
+            return false;
+        }
+        // only a flagged or unscreened source can be accepted; one still in progress or failed blocks
+        var acceptable = state == SourceState.FLAGGED || state == SourceState.UNSCREENED;
+        return !(acceptable && disposition == UnscreenedDisposition.ACCEPT_UNTRUSTED);
     }
 
     /**

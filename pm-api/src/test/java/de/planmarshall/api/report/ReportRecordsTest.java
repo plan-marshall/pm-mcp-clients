@@ -22,12 +22,21 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatTurnPointer;
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 
 @EnableGeneratorController
 class ReportRecordsTest {
@@ -475,7 +484,7 @@ class ReportRecordsTest {
     }
 
     @Test
-    void shouldRoundTripTokenComponentRecord() {
+    void shouldRoundTripTokenComponentRecord() throws Exception {
         var input = (long) Generators.integers(0, 1_000_000).next();
         var cacheRead = (long) Generators.integers(0, 1_000_000).next();
         var cacheWrite = (long) Generators.integers(0, 1_000_000).next();
@@ -582,7 +591,7 @@ class ReportRecordsTest {
     }
 
     @Test
-    void shouldTestTokenUsageRecordFallbacksAndAccessors() {
+    void shouldTestTokenUsageRecordFallbacksAndAccessors() throws Exception {
         var map = Map.<String, Object>of(
                 "total", 50000L,
                 "input", 45000L,
@@ -619,6 +628,321 @@ class ReportRecordsTest {
         assertEquals(3, tokenRecord.wasteRecords().size());
         assertEquals(3000L, tokenRecord.totalWasteTokens());
         assertEquals(6, tokenRecord.wasteSharePercent());
+    }
+
+    @Nested
+    @DisplayName("TokenUsageRecord read leniently")
+    class TokenUsageReading {
+
+        @Test
+        @DisplayName("should read an empty usage as zero figures, not floor, without reason and without rows")
+        void shouldReadEmptyUsage() throws Exception {
+            var usage = TokenUsageRecord.fromMap(Map.of());
+
+            assertAll(
+                    () -> assertEquals(0L, usage.totalTokens()),
+                    () -> assertEquals(0L, usage.durationSeconds()),
+                    () -> assertEquals(0, usage.tasksMeasured()),
+                    () -> assertEquals(0, usage.tasksTotal()),
+                    () -> assertFalse(usage.isFloor()),
+                    () -> assertNull(usage.unmeasuredReason()),
+                    () -> assertFalse(usage.toMap().containsKey("unmeasured_reason")),
+                    () -> assertTrue(usage.byPhase().isEmpty()),
+                    () -> assertTrue(usage.wasteRecords().isEmpty()),
+                    () -> assertEquals(0L, usage.totalWasteTokens()));
+        }
+
+        @Test
+        @DisplayName("should replace absent row lists of a constructed usage by empty lists")
+        void shouldReplaceAbsentListsByEmptyLists() {
+            var total = (long) Generators.integers(1, 1_000_000).next();
+
+            var usage = new TokenUsageRecord(total, total, 0L, 0L, 0, 0, 0, 0, false, null, null, null, null, null,
+                    0L, 0);
+
+            assertAll(
+                    () -> assertTrue(usage.byPhase().isEmpty()),
+                    () -> assertTrue(usage.byRole().isEmpty()),
+                    () -> assertTrue(usage.byModel().isEmpty()),
+                    () -> assertTrue(usage.wasteRecords().isEmpty()),
+                    () -> assertEquals(List.of(), usage.toMap().get("by_model")));
+        }
+
+        @Test
+        @DisplayName("should prefer the members of the current schema over coverage and legacy waste")
+        void shouldPreferCurrentMembers() throws Exception {
+            var workers = Generators.integers(1, 9).next();
+            var models = Generators.integers(1, 9).next();
+            var tasksTotal = Generators.integers(2, 50).next();
+            var measured = Generators.integers(1, tasksTotal).next();
+            var reason = Generators.nonBlankStrings().next();
+            var wasteTotal = (long) Generators.integers(1, 1_000_000).next();
+            var wasteRecord = new TokenWasteRecord("retries", wasteTotal, 3, 1, null);
+            var row = new TokenBreakdownItem("execute", 10, 8, 2, 0, false, null, null);
+            var map = new LinkedHashMap<String, Object>();
+            map.put("workers_count", (long) workers);
+            map.put("models_count", (long) models);
+            map.put("tasks_total", (long) tasksTotal);
+            map.put("tasks_measured", (long) measured);
+            map.put("unmeasured_reason", reason);
+            map.put("coverage", Map.of("workers", 99L, "models", 99L, "total_tasks", 99L, "unmeasured", 1L,
+                    "reason", "other"));
+            map.put("waste_records", List.of(wasteRecord.toMap(), "not-an-object"));
+            map.put("total_waste_tokens", wasteTotal);
+            map.put("waste_share_percent", 3L);
+            map.put("waste", Map.of("total", 99L, "share_percent", 99L, "retries_tokens", 99L));
+            map.put("by_phase", List.of(row.toMap(), "not-an-object"));
+
+            var usage = TokenUsageRecord.fromMap(map);
+
+            assertAll(
+                    () -> assertEquals(workers, usage.workersCount()),
+                    () -> assertEquals(models, usage.modelsCount()),
+                    () -> assertEquals(tasksTotal, usage.tasksTotal()),
+                    () -> assertEquals(measured, usage.tasksMeasured()),
+                    () -> assertEquals(reason, usage.unmeasuredReason()),
+                    () -> assertEquals(List.of(wasteRecord), usage.wasteRecords()),
+                    () -> assertEquals(wasteTotal, usage.totalWasteTokens()),
+                    () -> assertEquals(3, usage.wasteSharePercent()),
+                    () -> assertEquals(List.of(row), usage.byPhase()));
+        }
+
+        @Test
+        @DisplayName("should derive legacy waste rows only for the classes that carry tokens or tasks")
+        void shouldDeriveLegacyWasteRowsSparingly() throws Exception {
+            var noProductTasks = Generators.integers(1, 20).next();
+            var retriesTokens = (long) Generators.integers(1, 1_000_000).next();
+            var map = Map.<String, Object>of(
+                    "coverage", Map.of(),
+                    "waste", Map.of(
+                            "no_product_tasks", (long) noProductTasks,
+                            "retries_tokens", retriesTokens,
+                            "retries_causes", "not-a-list",
+                            "remediation_tokens", 0L));
+
+            var usage = TokenUsageRecord.fromMap(map);
+            var empty = TokenUsageRecord.fromMap(Map.of("waste", Map.of("no_product_tokens", 0L)));
+
+            assertAll(
+                    () -> assertEquals(0, usage.tasksMeasured()),
+                    () -> assertEquals(List.of(
+                            new TokenWasteRecord("no_product", 0L, 0, noProductTasks, null),
+                            new TokenWasteRecord("retries", retriesTokens, 0, 1, null)), usage.wasteRecords()),
+                    () -> assertTrue(empty.wasteRecords().isEmpty()));
+        }
+    }
+
+    @Nested
+    @DisplayName("ReportsPage read leniently")
+    class ReportsPageReading {
+
+        @Test
+        @DisplayName("should read the short member names, count the items, and skip an item that is no object")
+        void shouldReadShortMemberNames() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var older = Generators.integers(1, 50).next();
+            var json = JsonTree.write(Map.of("reports", List.of(Map.of("id", id), 1),
+                    "oldest_unread", "yesterday 18:40", "older_count", older));
+
+            var page = ReportsPage.fromJson(json);
+
+            assertAll(
+                    () -> assertEquals(List.of(id), page.items().stream().map(ReportItem::id).toList()),
+                    () -> assertEquals(1, page.unreadCount()),
+                    () -> assertNull(page.oldestUnreadTime()),
+                    () -> assertTrue(page.hasOlder()),
+                    () -> assertEquals(older, page.olderCount()));
+        }
+
+        @Test
+        @DisplayName("should read an empty page and write no absent oldest unread time")
+        void shouldReadEmptyPage() throws Exception {
+            var unread = Generators.integers(0, 50).next();
+
+            var empty = ReportsPage.fromMap(Map.of("items", Generators.nonBlankStrings().next()));
+            var constructed = new ReportsPage(null, unread, null, false, 0);
+
+            assertAll(
+                    () -> assertTrue(empty.items().isEmpty()),
+                    () -> assertEquals(0, empty.unreadCount()),
+                    () -> assertFalse(empty.hasOlder()),
+                    () -> assertTrue(constructed.items().isEmpty()),
+                    () -> assertFalse(constructed.toMap().containsKey("oldest_unread_time")),
+                    () -> assertEquals(constructed, ReportsPage.fromMap(constructed.toMap())));
+        }
+
+        @Test
+        @DisplayName("should refuse a fractional count held as a number built in memory, and read a whole one")
+        void shouldRefuseAFractionalCountHeldAsANumber() throws Exception {
+            var whole = Generators.integers(0, 100).next();
+            var fraction = whole + 0.5;
+
+            var page = ReportsPage.fromMap(Map.of("unread_count", (double) whole, "older_count", (double) whole));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ReportsPage.fromMap(Map.of("unread_count", fraction))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> ReportsPage.fromMap(Map.of("older_count", fraction))),
+                    () -> assertEquals(whole, page.unreadCount()),
+                    () -> assertEquals(whole, page.olderCount()));
+        }
+
+        @Test
+        @DisplayName("should refuse a count with a fraction, JSON that is neither page nor list, and skip a list's non-object")
+        void shouldRefuseMalformedShapes() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var fraction = JsonTree.write(Map.of("unread_count", 2.5));
+            var scalar = JsonTree.write(Generators.integers(0, 100).next());
+
+            var list = ReportsPage.fromJson(JsonTree.write(List.of("x", Map.of("id", id))));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class, () -> ReportsPage.fromJson(fraction)),
+                    () -> assertThrows(JsonFormatException.class, () -> ReportsPage.fromJson(scalar)),
+                    () -> assertEquals(1, list.unreadCount()));
+        }
+    }
+
+    @Test
+    @DisplayName("TokenComponentRecord should read an absent or non-numeric component as unreported and zero")
+    void shouldReadUnreportedTokenComponents() throws Exception {
+        var components = TokenComponentRecord.fromMap(Map.of("input", Generators.nonBlankStrings().next()));
+
+        assertAll(
+                () -> assertNull(components.inputTokens()),
+                () -> assertEquals(0L, components.input()),
+                () -> assertEquals(0L, components.cacheRead()),
+                () -> assertEquals(0L, components.cacheWrite()),
+                () -> assertEquals(0L, components.output()),
+                () -> assertEquals(0L, components.reasoning()),
+                () -> assertTrue(components.toMap().isEmpty()));
+    }
+
+    @Nested
+    @DisplayName("ReportItem read leniently")
+    class ReportItemReading {
+
+        @Test
+        @DisplayName("should not mark a report sent later whose displayed sent time equals its created time")
+        void shouldNotMarkEqualDisplayedTimesSentLater() throws Exception {
+            var shown = "today " + Generators.integers(10, 23).next() + ":00";
+
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created", shown, "sent", shown));
+
+            assertAll(
+                    () -> assertFalse(item.isSentLater()),
+                    () -> assertEquals(shown, item.created()),
+                    () -> assertEquals(shown, item.sent()));
+        }
+
+        @Test
+        @DisplayName("should write the created and sent times it kept as text back as that text")
+        void shouldKeepDisplayTimesWhenSerialized() throws Exception {
+            var created = "today " + Generators.integers(10, 23).next() + ":00";
+            var sent = "Tuesday " + Generators.integers(10, 23).next() + ":10";
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created", created, "sent", sent));
+
+            var again = ReportItem.fromMap(item.toMap());
+
+            assertAll(
+                    () -> assertEquals(sent, item.toMap().get("sent_at")),
+                    () -> assertEquals(created, again.created()),
+                    () -> assertEquals(sent, again.sent()),
+                    () -> assertNull(again.sentAt()));
+        }
+
+        @Test
+        @DisplayName("should keep a sent time that is no instant as its text and invent no instant for it")
+        void shouldKeepAnUnparseableSentTimeAsText() throws Exception {
+            var created = Instant.ofEpochSecond(Generators.integers(0, 1_000_000_000).next());
+            var shown = "Tuesday " + Generators.integers(10, 23).next() + ":00";
+
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "from", "p",
+                    "created_at", created.toString(), "sent_at", shown));
+
+            assertAll(
+                    () -> assertNull(item.sentAt()),
+                    () -> assertEquals(shown, item.sent()),
+                    () -> assertFalse(item.isSentLater()),
+                    () -> assertEquals(created, item.createdAt()),
+                    () -> assertEquals(ReportItem.formatTime(created), item.created()));
+        }
+
+        @Test
+        @DisplayName("should default every absent member of a report that carries only its id")
+        void shouldDefaultAbsentMembers() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+            var before = Instant.now();
+
+            var item = ReportItem.fromMap(Map.of("id", id, "read_at", "not-an-instant",
+                    "detail", "/api/v1/reports/" + id));
+            var after = Instant.now();
+
+            assertAll(
+                    () -> assertEquals(ReportKind.PLAN_ENDED, item.kind()),
+                    () -> assertEquals("", item.subject()),
+                    () -> assertEquals(new ReportFrom("", null, null), item.from()),
+                    () -> assertFalse(item.createdAt().isBefore(before)),
+                    () -> assertFalse(item.createdAt().isAfter(after)),
+                    () -> assertNull(item.sentAt()),
+                    () -> assertEquals(item.created(), item.sent()),
+                    () -> assertNull(item.readAt()),
+                    () -> assertFalse(item.isRead()),
+                    () -> assertNull(item.body()),
+                    () -> assertEquals("/api/v1/reports/" + id, item.detail()));
+        }
+
+        @ParameterizedTest(name = "{0} of kind {1}")
+        @CsvSource({
+                "proj, plan.ended, proj, , ",
+                "proj › epic › plan, plan.ended, proj, epic, plan",
+                "proj > epic, epic.ended, proj, epic, ",
+                "proj > plan, plan.started, proj, , plan"
+        })
+        @DisplayName("should read a from path by its parts and the kind of the report")
+        void shouldReadAFromPath(String path, String kind, String project, String epic, String plan)
+                throws Exception {
+            var item = ReportItem.fromMap(Map.of("id", Generators.nonBlankStrings().next(), "kind", kind,
+                    "from", path));
+
+            assertEquals(new ReportFrom(project, epic, plan), item.from());
+        }
+
+        @Test
+        @DisplayName("should refuse a from that is neither a path nor an object")
+        void shouldRefuseAFromOfAnotherType() {
+            var map = Map.<String, Object>of("id", Generators.nonBlankStrings().next(), "from", List.of());
+
+            assertThrows(JsonFormatException.class, () -> ReportItem.fromMap(map));
+        }
+
+        @Test
+        @DisplayName("should refuse a report or a list of reports in the wrong JSON shape and skip non-objects")
+        void shouldRefuseWrongShapes() throws Exception {
+            var id = Generators.nonBlankStrings().next();
+
+            var list = ReportItem.parseList(JsonTree.write(List.of(1, Map.of("id", id))));
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class, () -> ReportItem.fromJson("[]")),
+                    () -> assertThrows(JsonFormatException.class, () -> ReportItem.parseList("{}")),
+                    () -> assertEquals(List.of(id), list.stream().map(ReportItem::id).toList()));
+        }
+
+        @Test
+        @DisplayName("should replace absent subject parameters of a constructed report by an empty map")
+        void shouldReplaceAbsentSubjectParameters() {
+            var item = new ReportItem(Generators.nonBlankStrings().next(), new ReportFrom("p", null, null),
+                    ReportKind.PLAN_STARTED, Generators.nonBlankStrings().next(), null, null, Instant.EPOCH, null,
+                    null, null, null, null);
+
+            assertAll(
+                    () -> assertTrue(item.subjectParams().isEmpty()),
+                    () -> assertFalse(item.toMap().containsKey("subject_params")));
+        }
     }
 
     @Test
@@ -705,6 +1029,266 @@ class ReportRecordsTest {
         assertNotNull(ReportItem.formatTime(now));
         assertNotNull(ReportItem.formatTime(yesterday));
         assertTrue(ReportItem.formatTime(old).contains("d ago"));
+    }
+
+    @Nested
+    @DisplayName("PlanCompletionReport read leniently")
+    class CompletionReading {
+
+        @Test
+        @DisplayName("should write an end time that is no instant back as its text, so reading it again keeps it")
+        void shouldKeepATextualEndTimeWhenSerialized() throws Exception {
+            var ended = "yesterday " + Generators.integers(10, 23).next() + ":40";
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", "p", "ended_at", ended));
+
+            var again = PlanCompletionReport.fromMap(report.toMap());
+
+            assertAll(
+                    () -> assertEquals(ended, report.toMap().get("ended_at")),
+                    () -> assertEquals(ended, again.ended()),
+                    () -> assertNull(again.endedAt()));
+        }
+
+        @Test
+        @DisplayName("should take the plan id from the short member and refuse a report without one")
+        void shouldReadOrRefuseThePlanId() throws Exception {
+            var plan = Generators.nonBlankStrings().next();
+
+            var report = PlanCompletionReport.fromMap(Map.of("plan", plan, "started_at", "2026-10-16T08:40:00Z",
+                    "ended_at", "2026-10-16T09:00:00Z"));
+
+            assertAll(
+                    () -> assertEquals(plan, report.planId()),
+                    () -> assertEquals(plan, report.title()),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> PlanCompletionReport.fromMap(Map.of("title", plan))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> PlanCompletionReport.fromJson(JsonTree.write(List.of(plan)))));
+        }
+
+        @Test
+        @DisplayName("should read a one-part from path as the project and a from of another type as the plan's own")
+        void shouldReadFromVariants() throws Exception {
+            var project = "proj" + Generators.integers(0, 999).next();
+            var planId = "plan" + Generators.integers(0, 999).next();
+
+            var onePart = PlanCompletionReport.fromMap(Map.of("plan_id", planId, "from", project));
+            var number = PlanCompletionReport.fromMap(Map.of("plan_id", planId,
+                    "from", Generators.integers(0, 999).next()));
+
+            assertAll(
+                    () -> assertEquals(new ReportFrom(project, null, null), onePart.from()),
+                    () -> assertEquals(new ReportFrom("project", null, planId), number.from()));
+        }
+
+        @Test
+        @DisplayName("should read an unparseable pull request as none and keep an end time that is no instant as text")
+        void shouldReadUnparseablePullRequestAndEndText() throws Exception {
+            var shown = "Tuesday " + Generators.integers(10, 23).next() + ":00";
+
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", Generators.nonBlankStrings().next(),
+                    "pull_request", "#" + Generators.nonBlankStrings().next() + "x", "ended", shown));
+
+            assertAll(
+                    () -> assertNull(report.pullRequestNumber()),
+                    () -> assertEquals(shown, report.rawEnded()),
+                    () -> assertEquals(shown, report.ended()));
+        }
+
+        @Test
+        @DisplayName("should skip a non-object entry of the deliverables, re-plannings and decisions, and a token usage that is no object")
+        void shouldSkipNonObjectEntries() throws Exception {
+            var name = Generators.nonBlankStrings().next();
+            var noObject = Generators.nonBlankStrings().next();
+            var deliverable = new DeliverableSummary(name, "done");
+            var replan = new ReplanningRecord(name, "14:00", name, null);
+            var decision = new DecisionRecord("Q-001", name, null, "delegated", null, null, null);
+
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", name,
+                    "deliverables", List.of(noObject, deliverable.toMap()),
+                    "replanning", List.of(noObject, replan.toMap()),
+                    "decisions", List.of(noObject, decision.toMap()),
+                    "tokens", noObject));
+
+            assertAll(
+                    () -> assertEquals(List.of(deliverable), report.deliverables()),
+                    () -> assertEquals(List.of(replan), report.replanningRecords()),
+                    () -> assertEquals(List.of(decision), report.decisionRecords()),
+                    () -> assertNull(report.tokenUsage()));
+        }
+
+        static Stream<Arguments> startTimesNotGiven() {
+            var text = Generators.letterStrings(3, 12).next();
+            return Stream.of(
+                    Arguments.of("absent", Map.of()),
+                    Arguments.of("started_at no instant", Map.of("started_at", text)),
+                    Arguments.of("started no instant", Map.of("started", text)));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("startTimesNotGiven")
+        @DisplayName("should keep a start time the runtime did not give as an instant absent, never stand in the present")
+        void shouldKeepAnAbsentOrUnreadableStartTimeAbsent(String variant, Map<String, Object> startMember)
+                throws Exception {
+            var member = new LinkedHashMap<String, Object>(startMember);
+            member.put("plan_id", Generators.nonBlankStrings().next());
+
+            var report = PlanCompletionReport.fromMap(member);
+
+            assertAll(
+                    () -> assertNull(report.startedAt(), variant),
+                    () -> assertFalse(report.toMap().containsKey("started_at"), variant));
+        }
+
+        @Test
+        @DisplayName("should keep an absent end time absent, with no end text to display")
+        void shouldKeepAnAbsentEndTimeAbsent() throws Exception {
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", Generators.nonBlankStrings().next()));
+
+            assertAll(
+                    () -> assertNull(report.endedAt()),
+                    () -> assertNull(report.rawEnded()),
+                    () -> assertNull(report.ended()),
+                    () -> assertFalse(report.toMap().containsKey("ended_at")));
+        }
+
+        @Test
+        @DisplayName("should keep an end text that is no instant as text and leave the end instant absent")
+        void shouldKeepAnUnreadableEndInstantAbsent() throws Exception {
+            var shown = Generators.letterStrings(3, 12).next();
+
+            var report = PlanCompletionReport.fromMap(Map.of("plan_id", Generators.nonBlankStrings().next(),
+                    "ended_at", shown));
+
+            assertAll(
+                    () -> assertNull(report.endedAt()),
+                    () -> assertEquals(shown, report.rawEnded()),
+                    () -> assertEquals(shown, report.ended()));
+        }
+
+        @Test
+        @DisplayName("should keep the absence of both times across the wire round trip")
+        void shouldKeepAbsentTimesAcrossTheRoundTrip() throws Exception {
+            var planId = Generators.nonBlankStrings().next();
+            var report = new PlanCompletionReport(planId, planId, new ReportFrom("p", null, planId), "merged", null,
+                    null, null, null, null, null, 0, 0, null, null, null, null, null, null, null);
+
+            var json = report.toJson();
+            var read = PlanCompletionReport.fromJson(json);
+
+            assertAll(
+                    () -> assertFalse(json.contains("started_at")),
+                    () -> assertFalse(json.contains("ended_at")),
+                    () -> assertNull(read.startedAt()),
+                    () -> assertNull(read.endedAt()),
+                    () -> assertNull(read.ended()),
+                    () -> assertEquals(report, read));
+        }
+
+        @Test
+        @DisplayName("should replace absent lists of a constructed report by empty lists")
+        void shouldReplaceAbsentLists() {
+            var planId = Generators.nonBlankStrings().next();
+
+            var report = new PlanCompletionReport(planId, planId, new ReportFrom("p", null, planId), "merged", null,
+                    null, null, null, Instant.EPOCH, Instant.EPOCH, 0, 0, null, null, null, null, null, null, null);
+
+            assertAll(
+                    () -> assertTrue(report.deliverables().isEmpty()),
+                    () -> assertTrue(report.replanningRecords().isEmpty()),
+                    () -> assertTrue(report.decisionRecords().isEmpty()),
+                    () -> assertTrue(report.ownCalls().isEmpty()));
+        }
+    }
+
+    @Nested
+    @DisplayName("Report counts on the wire")
+    class WholeCounts {
+
+        /** A reader of one report record from a parsed JSON object. */
+        @FunctionalInterface
+        interface RecordReader {
+            Object read(Map<String, Object> object) throws Exception;
+        }
+
+        /** The count a parsed record holds for the member under test. */
+        @FunctionalInterface
+        interface CountOf {
+            long of(Object parsed);
+        }
+
+        static Stream<Arguments> countMembers() {
+            RecordReader usage = TokenUsageRecord::fromMap;
+            RecordReader row = TokenBreakdownItem::fromMap;
+            RecordReader components = TokenComponentRecord::fromMap;
+            RecordReader waste = TokenWasteRecord::fromMap;
+            RecordReader report = PlanCompletionReport::fromMap;
+            return Stream.of(
+                    Arguments.of("usage total_tokens", usage, "{\"total_tokens\":%s}",
+                            (CountOf) r -> ((TokenUsageRecord) r).totalTokens()),
+                    Arguments.of("usage coverage workers", usage, "{\"coverage\":{\"workers\":%s}}",
+                            (CountOf) r -> ((TokenUsageRecord) r).workersCount()),
+                    Arguments.of("usage legacy waste total", usage, "{\"waste\":{\"total\":%s}}",
+                            (CountOf) r -> ((TokenUsageRecord) r).totalWasteTokens()),
+                    Arguments.of("row tokens", row, "{\"label\":\"execute\",\"tokens\":%s}",
+                            (CountOf) r -> ((TokenBreakdownItem) r).tokens()),
+                    Arguments.of("usage row unmeasured", usage, "{\"by_role\":[{\"label\":\"r\",\"unmeasured\":%s}]}",
+                            (CountOf) r -> ((TokenUsageRecord) r).byRole().getFirst().unmeasuredTasksCount()),
+                    Arguments.of("components input", components, "{\"input\":%s}",
+                            (CountOf) r -> Objects.requireNonNull(((TokenComponentRecord) r).inputTokens())),
+                    Arguments.of("row components reasoning", row, "{\"label\":\"x\",\"components\":{\"reasoning\":%s}}",
+                            (CountOf) r -> Objects.requireNonNull(((TokenBreakdownItem) r).components()).reasoning()),
+                    Arguments.of("waste tokens", waste, "{\"waste_class\":\"retries\",\"tokens\":%s}",
+                            (CountOf) r -> ((TokenWasteRecord) r).tokens()),
+                    Arguments.of("usage waste record share", usage,
+                            "{\"waste_records\":[{\"waste_class\":\"retries\",\"share_percent\":%s}]}",
+                            (CountOf) r -> ((TokenUsageRecord) r).wasteRecords().getFirst().sharePercent()),
+                    Arguments.of("report paused_seconds", report, "{\"plan_id\":\"p\",\"paused_seconds\":%s}",
+                            (CountOf) r -> ((PlanCompletionReport) r).pausedSeconds()),
+                    Arguments.of("report pull_request_number", report,
+                            "{\"plan_id\":\"p\",\"pull_request_number\":%s}",
+                            (CountOf) r -> Objects.requireNonNull(((PlanCompletionReport) r).pullRequestNumber())),
+                    Arguments.of("report token usage", report,
+                            "{\"plan_id\":\"p\",\"token_usage\":{\"output_tokens\":%s}}",
+                            (CountOf) r -> ((PlanCompletionReport) r).tokenUsage().outputTokens()));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("countMembers")
+        @DisplayName("should refuse a count with a fraction instead of truncating it")
+        void shouldRefuseACountWithAFraction(String member, RecordReader reader, String template, CountOf count)
+                throws Exception {
+            var fraction = Generators.integers(0, 1_000_000).next() + ".5";
+            var object = JsonTree.asObject(JsonTree.parse(template.formatted(fraction)));
+
+            assertThrows(JsonFormatException.class, () -> reader.read(object), member);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("countMembers")
+        @DisplayName("should read a whole count written with a zero fraction as that count")
+        void shouldReadAWholeCountWithAZeroFraction(String member, RecordReader reader, String template,
+                CountOf count) throws Exception {
+            var whole = Generators.integers(0, 1_000_000).next();
+            var object = JsonTree.asObject(JsonTree.parse(template.formatted(whole + ".0")));
+
+            var parsed = reader.read(object);
+
+            assertNotNull(parsed, member);
+            assertEquals(whole.longValue(), count.of(parsed), member);
+        }
+
+        @Test
+        @DisplayName("should refuse a count held as a fractional number built in memory")
+        void shouldRefuseAFractionalNumberInMemory() {
+            var fraction = Generators.integers(0, 1_000_000).next() + 0.5;
+
+            assertAll(
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> TokenComponentRecord.fromMap(Map.of("output", fraction))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> TokenWasteRecord.fromMap(Map.of("tokens", fraction))));
+        }
     }
 }
 

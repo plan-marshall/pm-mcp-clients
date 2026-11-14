@@ -317,7 +317,7 @@ final class DesignerRegistry {
                     request.project())), null);
         }
 
-        var name = nameFrom(header, request.unitName());
+        var name = nameFrom(header);
         var structure = parseStructure(request.text());
 
         var ruleFindings = staticRules(request.text(), request.project());
@@ -397,8 +397,12 @@ final class DesignerRegistry {
                 null, null, null, null);
     }
 
+    /**
+     * Moves a scope to its next revision, counting from the revision {@link #digest} names for a
+     * scope that has none recorded yet, so every placing and removal changes the digest.
+     */
     private void bump(String scope) {
-        revisions.merge(scope, 1, Integer::sum);
+        revisions.put(scope, revisions.getOrDefault(scope, 1) + 1);
     }
 
     private static void replaceOrAdd(List<WorkflowUnit> list, WorkflowUnit unit) {
@@ -434,12 +438,12 @@ final class DesignerRegistry {
         return stages;
     }
 
-    private static String nameFrom(String header, @Nullable String fallback) {
-        var parts = header.split("\\s+");
-        if (parts.length >= 2 && !parts[1].isBlank()) {
-            return parts[1];
-        }
-        return fallback != null ? fallback : "";
+    /**
+     * @param header a header {@link #HEADER} matched, so its second word is the unit's name
+     * @return the unit's name
+     */
+    private static String nameFrom(String header) {
+        return header.split("\\s+")[1];
     }
 
     private static List<WorkflowFinding> staticRules(String text, String project) {
@@ -554,9 +558,12 @@ final class DesignerRegistry {
                 .map(DesignerRegistry::entryExitValue).toList();
     }
 
+    /**
+     * @param line a frontmatter line {@link #firstValue} selected by its {@code key:} prefix
+     * @return the value after the colon
+     */
     private static String valueOf(String line) {
-        var index = line.indexOf(':');
-        return index >= 0 ? line.substring(index + 1).strip() : line.strip();
+        return line.substring(line.indexOf(':') + 1).strip();
     }
 
     private static String entryExitValue(String line) {

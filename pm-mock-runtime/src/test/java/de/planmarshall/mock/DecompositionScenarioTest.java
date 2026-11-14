@@ -156,8 +156,10 @@ class DecompositionScenarioTest {
         try (var runtime = MockRuntime.start(STATE)) {
             var res = post(runtime, BASE + "relay-hardening/decomposition/commit", "{}");
             assertEquals(409, res.status());
-            assertEquals("checks_fail", JsonTree.string(JsonTree.asObject(JsonTree.parse(res.bodyText())),
-                    "error"));
+            var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
+            assertEquals("act_not_available", JsonTree.string(body, "error"),
+                    "Agree is not offered while a check fails");
+            assertFalse(JsonTree.asArray(body.get("findings")).isEmpty(), "the refusal names the failing checks");
         }
     }
 

@@ -176,8 +176,13 @@ public record ReportItem(
             map.put(FIELD_SUBJECT_PARAMS, subjectParams);
         }
         if (body != null) map.put(FIELD_BODY, body);
-        map.put(FIELD_CREATED_AT, createdAt.toString());
-        if (sentAt != null) map.put(FIELD_SENT_AT, sentAt.toString());
+        // a time the runtime wrote as display text stays that text: no instant is invented for it
+        map.put(FIELD_CREATED_AT, rawCreated != null ? rawCreated : createdAt.toString());
+        if (sentAt != null) {
+            map.put(FIELD_SENT_AT, sentAt.toString());
+        } else if (rawSent != null) {
+            map.put(FIELD_SENT_AT, rawSent);
+        }
         if (readAt != null) map.put(FIELD_READ_AT, readAt.toString());
         if (readChannel != null) map.put(FIELD_READ_CHANNEL, readChannel);
         if (readDevice != null) map.put(FIELD_READ_DEVICE, readDevice);
@@ -224,7 +229,7 @@ public record ReportItem(
         }
 
         var created = parseCreatedAt(map);
-        var sent = parseSentAt(map, created.instant());
+        var sent = parseSentAt(map);
         var readAt = parseReadAt(map);
 
         var readChannel = JsonTree.string(map, FIELD_READ_CHANNEL);
@@ -281,14 +286,12 @@ public record ReportItem(
     private record TimeParseResult(@Nullable Instant instant, @Nullable String raw) {
     }
 
+    // a time that is no ISO instant is kept as its display text (raw); Instant.parse refuses every such text
     private static TimeParseResult parseCreatedAt(Map<String, Object> map) {
         var createdAtStr = JsonTree.string(map, FIELD_CREATED_AT);
         String rawCreated = null;
         if (createdAtStr == null) {
             createdAtStr = JsonTree.string(map, "created");
-            if (createdAtStr != null && !createdAtStr.contains("T")) {
-                rawCreated = createdAtStr;
-            }
         }
         Instant createdAt;
         if (createdAtStr != null) {
@@ -304,25 +307,20 @@ public record ReportItem(
         return new TimeParseResult(createdAt, rawCreated);
     }
 
-    private static TimeParseResult parseSentAt(Map<String, Object> map, Instant createdAt) {
+    private static TimeParseResult parseSentAt(Map<String, Object> map) {
         var sentAtStr = JsonTree.string(map, FIELD_SENT_AT);
-        String rawSent = null;
         if (sentAtStr == null) {
             sentAtStr = JsonTree.string(map, "sent");
-            if (sentAtStr != null && !sentAtStr.contains("T")) {
-                rawSent = sentAtStr;
-            }
         }
-        Instant sentAt = null;
-        if (sentAtStr != null) {
-            try {
-                sentAt = Instant.parse(sentAtStr);
-            } catch (DateTimeParseException _) {
-                rawSent = sentAtStr;
-                sentAt = createdAt.plusSeconds(120);
-            }
+        if (sentAtStr == null) {
+            return new TimeParseResult(null, null);
         }
-        return new TimeParseResult(sentAt, rawSent);
+        try {
+            return new TimeParseResult(Instant.parse(sentAtStr), null);
+        } catch (DateTimeParseException _) {
+            // the display text is all that is known: no instant is invented, so isSentLater compares the texts
+            return new TimeParseResult(null, sentAtStr);
+        }
     }
 
     private static @Nullable Instant parseReadAt(Map<String, Object> map) {

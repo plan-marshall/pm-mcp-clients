@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -193,6 +194,48 @@ class StartScenarioTest {
                 assertNotNull(event);
                 assertEquals("epic.started", event.event());
             }
+        }
+    }
+
+    @Test
+    @DisplayName("knows an epic a start flow created: its process is not refused as an unknown epic")
+    void startedEpicIsKnown() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var title = Generators.letterStrings(4, 10).next().toLowerCase();
+            var started = client.send(HttpRequest.json("POST", "/api/v1/projects/pm-mcp-clients/epics/start",
+                    new StartEpicRequest("pm-mcp-clients", title, Boolean.FALSE, null).toJson())
+                    .withHeader("Authorization", auth));
+            assertEquals(201, started.status(), started.bodyText());
+            var epicId = PlanStartResult.fromJson(started.bodyText()).id();
+
+            var process = client.send(HttpRequest.get("/api/v1/epics/" + epicId + "/process")
+                    .withHeader("Authorization", auth));
+
+            assertEquals(200, process.status(), process.bodyText());
+            assertEquals(epicId, JsonTree.string(JsonTree.asObject(JsonTree.parse(process.bodyText())), "epic_id"));
+        }
+    }
+
+    @Test
+    @DisplayName("knows an epic the scenario's collection lists although it serves no detail route for it")
+    void collectionEpicIsKnown() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var process = client.send(HttpRequest.get("/api/v1/epics/platform-setup/process")
+                    .withHeader("Authorization", auth));
+            var unknown = client.send(HttpRequest.get("/api/v1/epics/unknown-"
+                    + Generators.letterStrings(4, 10).next().toLowerCase() + "/process")
+                    .withHeader("Authorization", auth));
+
+            assertAll(
+                    () -> assertEquals(200, process.status(), process.bodyText()),
+                    () -> assertEquals("platform-setup",
+                            JsonTree.string(JsonTree.asObject(JsonTree.parse(process.bodyText())), "epic_id")),
+                    () -> assertEquals(404, unknown.status(), "an id no source knows stays refused"));
         }
     }
 
@@ -734,6 +777,9 @@ class StartScenarioTest {
                         "/api/v1/entries/ent-7a2e4f01/links/adopt:storage-migration", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(409, failed.status());
+                assertEquals("act_not_available",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(failed.bodyText())), "error"),
+                        "an epic that started offers no further adoption");
             }
         }
 

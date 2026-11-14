@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -87,7 +86,7 @@ public record ReportsPage(
         Objects.requireNonNull(map, "map");
 
         List<ReportItem> items = parseItems(map);
-        int unreadCount = parseCount(map.get(FIELD_UNREAD_COUNT), items.size());
+        int unreadCount = parseCount(map.get(FIELD_UNREAD_COUNT), FIELD_UNREAD_COUNT, items.size());
 
         var oldestStr = JsonTree.string(map, FIELD_OLDEST_UNREAD_TIME);
         if (oldestStr == null) {
@@ -95,7 +94,7 @@ public record ReportsPage(
         }
         Instant oldest = parseInstant(oldestStr);
 
-        int olderCount = parseCount(map.get(FIELD_OLDER_COUNT), 0);
+        int olderCount = parseCount(map.get(FIELD_OLDER_COUNT), FIELD_OLDER_COUNT, 0);
         boolean hasOlder = Boolean.TRUE.equals(map.get(FIELD_HAS_OLDER)) || olderCount > 0;
 
         return new ReportsPage(items, unreadCount, oldest, hasOlder, olderCount);
@@ -119,13 +118,16 @@ public record ReportsPage(
         return List.of();
     }
 
-    private static int parseCount(@Nullable Object obj, int defaultValue) {
-        if (obj instanceof JsonNumber jn) {
-            return (int) jn.longValue();
-        } else if (obj instanceof Number n) {
-            return n.intValue();
+    private static int parseCount(@Nullable Object obj, String field, int defaultValue) throws IOException {
+        // a count with a fraction is malformed and refused as such, for a Number as for a JsonNumber
+        var whole = ReportNumbers.wholeOrNull(obj, field);
+        if (whole == null) {
+            return defaultValue;
         }
-        return defaultValue;
+        if (whole > Integer.MAX_VALUE || whole < Integer.MIN_VALUE) {
+            throw new JsonFormatException("Not a count in range for " + field + " in ReportsPage: " + whole);
+        }
+        return whole.intValue();
     }
 
     @Nullable

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -196,5 +197,60 @@ class MessageCatalogueTest {
                 () -> assertEquals("Standard", de.get("common.marker.default")),
                 () -> assertEquals("this one", en.get("common.marker.this_one")),
                 () -> assertEquals("dieses Gerät", de.get("common.marker.this_one")));
+    }
+
+    @Nested
+    @DisplayName("an unknown key is its own template")
+    class KeyAsTemplate {
+
+        @Test
+        @DisplayName("should substitute a typed placeholder without a body and keep it when its value is absent")
+        void shouldSubstituteATypedPlaceholder() {
+            var value = Generators.integers(0, 10_000).next();
+
+            assertAll(
+                    () -> assertEquals("n=" + value,
+                            MessageCatalogue.format("n={count, number}", Map.of("count", value))),
+                    () -> assertEquals("n={count, number}",
+                            MessageCatalogue.format("n={count, number}", Map.of())),
+                    () -> assertEquals("d=" + value,
+                            MessageCatalogue.format("en", "d={when, date, short}", Map.of("when", value))),
+                    () -> assertEquals("d={when, date, short}",
+                            MessageCatalogue.format("en", "d={when, date, short}", Map.of())));
+        }
+
+        @Test
+        @DisplayName("should keep an unclosed placeholder as written and read no parameters as none")
+        void shouldKeepAnUnclosedPlaceholder() {
+            var value = Generators.nonBlankStrings().next();
+
+            assertAll(
+                    () -> assertEquals("open {name", MessageCatalogue.format("en", "open {name",
+                            Map.of("name", value))),
+                    () -> assertEquals("p={name}", MessageCatalogue.format("en", "p={name}", null)));
+        }
+
+        @Test
+        @DisplayName("should count a plural from a number written as text and ignore text after the last case")
+        void shouldCountAPluralFromText() {
+            var count = Generators.integers(2, 99).next();
+            var template = "{n, plural, one {one file} other {# files} trailing}";
+
+            assertAll(
+                    () -> assertEquals(count + " files",
+                            MessageCatalogue.format("en", template, Map.of("n", " " + count + " "))),
+                    () -> assertEquals("one file", MessageCatalogue.format("en", template, Map.of("n", "1"))));
+        }
+    }
+
+    @Test
+    @DisplayName("should read a blank area and ALL in any case as every area")
+    void shouldReadBlankAndUpperCaseAllAsEveryArea() {
+        var all = MessageCatalogue.getMessages("en", "all");
+
+        assertAll(
+                () -> assertEquals(all, MessageCatalogue.getMessages("en", " ")),
+                () -> assertEquals(all, MessageCatalogue.getMessages("en", "ALL")),
+                () -> assertEquals(all, MessageCatalogue.getMessages("en", null)));
     }
 }

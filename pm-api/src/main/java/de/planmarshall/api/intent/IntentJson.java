@@ -172,26 +172,6 @@ final class IntentJson {
     }
 
     /**
-     * Reads an optional integral number. A member absent or {@code null} yields {@code -1}; a member
-     * with a fraction or out of range is refused.
-     *
-     * @param object  the object
-     * @param key     the member name
-     * @param minimum the inclusive lower bound
-     * @param maximum the inclusive upper bound
-     * @param type    the record's type name for the refusal
-     * @return the value, or {@code -1}
-     * @throws IOException if the member is present and not an exact in-range integral number
-     */
-    static int optionalInt(Map<String, Object> object, String key, int minimum, int maximum, String type)
-            throws IOException {
-        if (!object.containsKey(key) || object.get(key) == null) {
-            return -1;
-        }
-        return requireInt(object, key, minimum, maximum, type);
-    }
-
-    /**
      * Reads a required finite floating-point number.
      *
      * @param object the object
@@ -233,7 +213,7 @@ final class IntentJson {
      */
     static @Nullable Double optionalDouble(Map<String, Object> object, String key, String type)
             throws IOException {
-        if (!object.containsKey(key) || object.get(key) == null) {
+        if (object.get(key) == null) {
             return null;
         }
         return requireDouble(object, key, type);
@@ -281,7 +261,7 @@ final class IntentJson {
      * @throws IOException if a present value is not a scalar array
      */
     static List<String> readStrings(Map<String, Object> object, String key) throws IOException {
-        if (!object.containsKey(key) || object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));
@@ -306,10 +286,10 @@ final class IntentJson {
      * @param min    the inclusive lower bound of every element
      * @param max    the inclusive upper bound of every element
      * @return the numbers, never {@code null}
-     * @throws IOException if a present value is not an array of in-range integral numbers
+     * @throws IOException if a present value, a present {@code null} included, is not an array of in-range integral numbers
      */
     static List<Integer> readInts(Map<String, Object> object, String key, int min, int max) throws IOException {
-        if (!object.containsKey(key) || object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));
@@ -335,7 +315,7 @@ final class IntentJson {
      * @throws IOException if a present value is not an object array
      */
     static List<Map<String, Object>> readObjects(Map<String, Object> object, String key) throws IOException {
-        if (!object.containsKey(key) || object.get(key) == null) {
+        if (!object.containsKey(key)) {
             return List.of();
         }
         var array = JsonTree.asArray(object.get(key));

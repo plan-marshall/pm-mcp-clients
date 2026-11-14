@@ -74,11 +74,12 @@ public record EpicProcessPlan(
         int tasksTotal = totNum != null ? totNum.intValue() : 0;
         var running = Boolean.TRUE.equals(map.get("running"));
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new EpicProcessPlan(
                 planId,
-                title != null ? title : planId,
-                currentPhase != null ? currentPhase : "init",
-                phaseState != null ? phaseState : (running ? "running" : "staged"),
+                title,
+                currentPhase,
+                phaseState,
                 tasksDone,
                 tasksTotal,
                 running

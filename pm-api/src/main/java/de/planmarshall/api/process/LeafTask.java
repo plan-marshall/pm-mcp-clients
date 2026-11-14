@@ -113,13 +113,14 @@ public record LeafTask(
             offTrack = OffTrackInfo.fromMap(offTrackObj);
         }
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new LeafTask(
                 taskId,
-                role != null ? role : "implement",
-                harness != null ? harness : "agent",
-                model != null ? model : "default",
+                role,
+                harness,
+                model,
                 attempt,
-                status != null ? status : "planned",
+                status,
                 outcome,
                 durationSeconds,
                 tokensSoFar,

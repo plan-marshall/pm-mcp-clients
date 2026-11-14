@@ -296,11 +296,12 @@ public class ScenarioLoader {
             rejectUnknownFields(stateMap, STATE_FIELDS, scenario, stateId, "");
 
             // representation
-            var representation = stateMap.get(FIELD_REPRESENTATION);
-            if (!(representation instanceof Map<?, ?>)) {
+            if (!(stateMap.get(FIELD_REPRESENTATION) instanceof Map<?, ?> representationRaw)) {
                 throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
                         "state representation must be a JSON object");
             }
+            @SuppressWarnings("unchecked")
+            var representation = (Map<String, Object>) representationRaw;
 
             // links
             var links = parseLinks(stateMap.get("links"), scenario, stateId);
@@ -361,19 +362,14 @@ public class ScenarioLoader {
      * The operator representation is mandatory: a state without a valid {@code state.state_id} fails
      * the load, so every state of every scenario is one both clients can render.
      *
-     * @param representation the state representation
+     * @param representationMap the state representation, an object (parseStates refuses any other)
      * @param links          the scenario links keyed by operator link id
      * @param events         the timed events of the state
      * @param scenario       the scenario identifier for error reporting
      * @param stateId        the state identifier
      */
-    private static void validateOperatorState(Object representation, Map<String, LinkDefinition> links,
-            List<EventDefinition> events, String scenario, String stateId) {
-        var representationMap = JsonTree.asObject(representation);
-        if (representationMap == null) {
-            throw new ScenarioValidationException(scenario, stateId, FIELD_REPRESENTATION,
-                    "the representation must be an operator state object");
-        }
+    private static void validateOperatorState(Map<String, Object> representationMap,
+            Map<String, LinkDefinition> links, List<EventDefinition> events, String scenario, String stateId) {
         var stateMap = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_STATE));
         if (stateMap == null || !stateMap.containsKey(OperatorStateResource.FIELD_STATE_ID)) {
             throw new ScenarioValidationException(scenario, stateId, "representation.state.state_id",
@@ -632,7 +628,7 @@ public class ScenarioLoader {
             String scenario, String stateId, String path) {
         for (var key : map.keySet()) {
             if (!allowed.contains(key)) {
-                var field = path == null || path.isBlank() ? key : path + "." + key;
+                var field = path.isEmpty() ? key : path + "." + key;
                 throw new ScenarioValidationException(scenario, stateId, field,
                         "unknown field '" + key + "' in the closed scenario schema");
             }
@@ -792,23 +788,12 @@ public class ScenarioLoader {
         }
     }
 
+    // JsonTree.parse reads every JSON number as a JsonNumber, the only number a scenario carries.
     private static int asInt(Object val, int defaultVal) {
-        if (val instanceof JsonNumber jn) {
-            return (int) jn.longValue();
-        }
-        if (val instanceof Number n) {
-            return n.intValue();
-        }
-        return defaultVal;
+        return val instanceof JsonNumber jn ? (int) jn.longValue() : defaultVal;
     }
 
     private static long asLong(Object val, long defaultVal) {
-        if (val instanceof JsonNumber jn) {
-            return jn.longValue();
-        }
-        if (val instanceof Number n) {
-            return n.longValue();
-        }
-        return defaultVal;
+        return val instanceof JsonNumber jn ? jn.longValue() : defaultVal;
     }
 }

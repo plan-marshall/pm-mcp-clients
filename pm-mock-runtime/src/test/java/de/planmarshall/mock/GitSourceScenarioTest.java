@@ -28,6 +28,7 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.source.git.LocalChangesCaptureResult;
 import de.planmarshall.api.source.git.LocalChangesPreview;
 import de.planmarshall.api.source.git.PrAdoptResult;
@@ -315,8 +316,13 @@ class GitSourceScenarioTest {
         return LocalChangesPreview.fromJson(res.bodyText());
     }
 
+    /**
+     * Reads the reason of a refused start. Every refusal answers the catalogue's code
+     * {@code act_not_available}; the cause the clients read stays in the body's {@code reason}.
+     */
     private static String reason(String body) throws Exception {
         var map = JsonTree.asObject(JsonTree.parse(body));
+        assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE.wire(), JsonTree.string(map, "error"));
         return JsonTree.string(map, "reason");
     }
 }

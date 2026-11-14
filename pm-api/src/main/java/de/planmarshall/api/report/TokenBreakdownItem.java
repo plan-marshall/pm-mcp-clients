@@ -9,12 +9,12 @@
  */
 package de.planmarshall.api.report;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -116,29 +116,30 @@ public record TokenBreakdownItem(
      *
      * @param map tree map
      * @return parsed item
+     * @throws IOException if a count is a number with a fraction
      */
-    public static TokenBreakdownItem fromMap(Map<String, Object> map) {
+    public static TokenBreakdownItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var label = JsonTree.string(map, FIELD_LABEL);
         if (label == null) {
             label = JsonTree.string(map, "name");
         }
         if (label == null) label = "";
-        long tokens = getLong(map.get(FIELD_TOKENS));
+        long tokens = getLong(map, FIELD_TOKENS);
         if (tokens == 0L) {
-            tokens = getLong(map.get("total"));
+            tokens = getLong(map, "total");
         }
-        long input = getLong(map.get(FIELD_INPUT_TOKENS));
+        long input = getLong(map, FIELD_INPUT_TOKENS);
         if (input == 0L) {
-            input = getLong(map.get("input"));
+            input = getLong(map, "input");
         }
-        long output = getLong(map.get(FIELD_OUTPUT_TOKENS));
+        long output = getLong(map, FIELD_OUTPUT_TOKENS);
         if (output == 0L) {
-            output = getLong(map.get("output"));
+            output = getLong(map, "output");
         }
-        int unmeasured = (int) getLong(map.get(FIELD_UNMEASURED_TASKS));
+        int unmeasured = (int) getLong(map, FIELD_UNMEASURED_TASKS);
         if (unmeasured == 0) {
-            unmeasured = (int) getLong(map.get("unmeasured"));
+            unmeasured = (int) getLong(map, "unmeasured");
         }
         boolean isFloor = Boolean.TRUE.equals(map.get(FIELD_IS_FLOOR)) || Boolean.TRUE.equals(map.get("floor"));
         var details = JsonTree.string(map, FIELD_DETAILS);
@@ -160,9 +161,7 @@ public record TokenBreakdownItem(
         return new TokenBreakdownItem(label, tokens, input, output, unmeasured, isFloor, details, components);
     }
 
-    private static long getLong(Object obj) {
-        if (obj instanceof JsonNumber jn) return jn.longValue();
-        if (obj instanceof Number n) return n.longValue();
-        return 0L;
+    private static long getLong(Map<String, Object> map, String field) throws IOException {
+        return ReportNumbers.whole(map.get(field), field);
     }
 }

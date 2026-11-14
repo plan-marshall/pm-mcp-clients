@@ -105,7 +105,7 @@ class EnrolScenarioTest {
                     .withHeader("Authorization", auth));
             assertEquals(409, refused.status());
             var refusedJson = JsonTree.asObject(JsonTree.parse(refused.bodyText()));
-            assertEquals("confirmation_mismatch", refusedJson.get("error"));
+            assertEquals("conflict", refusedJson.get("error"));
 
             // 2. The current digest is accepted and re-baselines the sidecar
             var accepted = client.send(HttpRequest.json("POST", target,
@@ -299,7 +299,7 @@ class EnrolScenarioTest {
             var refused = client.send(HttpRequest.json("POST", enrolmentAccept(TAMPERED_PROJECT),
                     new AcceptEditRequest(comparison.storePath(), stale).toJson()).withHeader("Authorization", auth));
             assertEquals(409, refused.status(), refused.bodyText());
-            assertEquals("confirmation_mismatch", JsonTree.asObject(JsonTree.parse(refused.bodyText())).get("error"));
+            assertEquals("conflict", JsonTree.asObject(JsonTree.parse(refused.bodyText())).get("error"));
 
             var still = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
                     .withHeader("Authorization", auth));

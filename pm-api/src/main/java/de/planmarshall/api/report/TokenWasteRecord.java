@@ -9,12 +9,12 @@
  */
 package de.planmarshall.api.report;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -65,21 +65,16 @@ public record TokenWasteRecord(
      *
      * @param map tree map
      * @return parsed waste record
+     * @throws IOException if a count is a number with a fraction
      */
-    public static TokenWasteRecord fromMap(Map<String, Object> map) {
+    public static TokenWasteRecord fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var wasteClass = JsonTree.string(map, FIELD_WASTE_CLASS);
         if (wasteClass == null) wasteClass = "unknown";
-        long tokens = getLong(map.get(FIELD_TOKENS));
-        int share = (int) getLong(map.get(FIELD_SHARE_PERCENT));
-        int tasks = (int) getLong(map.get(FIELD_TASKS_COUNT));
+        long tokens = ReportNumbers.whole(map.get(FIELD_TOKENS), FIELD_TOKENS);
+        int share = (int) ReportNumbers.whole(map.get(FIELD_SHARE_PERCENT), FIELD_SHARE_PERCENT);
+        int tasks = (int) ReportNumbers.whole(map.get(FIELD_TASKS_COUNT), FIELD_TASKS_COUNT);
         var causes = JsonTree.string(map, FIELD_CAUSE_SUMMARY);
         return new TokenWasteRecord(wasteClass, tokens, share, tasks, causes);
-    }
-
-    private static long getLong(Object obj) {
-        if (obj instanceof JsonNumber jn) return jn.longValue();
-        if (obj instanceof Number n) return n.longValue();
-        return 0L;
     }
 }

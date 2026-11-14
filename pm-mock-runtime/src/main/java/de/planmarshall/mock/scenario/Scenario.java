@@ -10,6 +10,7 @@
 package de.planmarshall.mock.scenario;
 
 import java.util.Map;
+import java.util.Objects;
 
 
 import org.jspecify.annotations.Nullable;
@@ -44,12 +45,8 @@ Map<String, StateDefinition> states) {
      * Compact constructor validating required properties.
      */
     public Scenario {
-        if (name == null) {
-            throw new NullPointerException("name");
-        }
-        if (start == null) {
-            throw new NullPointerException("start");
-        }
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(start, "start");
         pairingCode = pairingCode == null || pairingCode.isBlank() ? DEFAULT_PAIRING_CODE : pairingCode;
         routes = routes == null ? Map.of() : Map.copyOf(routes);
         states = states == null ? Map.of() : Map.copyOf(states);

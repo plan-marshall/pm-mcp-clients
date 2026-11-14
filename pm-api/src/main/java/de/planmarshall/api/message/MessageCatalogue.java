@@ -301,18 +301,15 @@ public final class MessageCatalogue {
             while (i < len && Character.isWhitespace(body.charAt(i))) {
                 i++;
             }
-            if (i >= len) {
-                break;
-            }
+            // past the end, indexOf finds no brace either, so no separate end check is needed
             int braceOpen = body.indexOf('{', i);
             if (braceOpen < 0) {
                 break;
             }
             String caseName = body.substring(i, braceOpen).trim();
+            // the body sits inside an expression whose braces evaluateTemplate already matched, so
+            // every case brace opened here is closed
             int braceClose = findMatchingBrace(body, braceOpen);
-            if (braceClose < 0) {
-                break;
-            }
             String caseBody = body.substring(braceOpen + 1, braceClose);
             result.put(caseName, caseBody);
             i = braceClose + 1;

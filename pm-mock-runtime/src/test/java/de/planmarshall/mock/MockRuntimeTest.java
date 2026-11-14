@@ -92,7 +92,8 @@ class MockRuntimeTest {
             var unauthResponse = client.send(HttpRequest.get("/api/v1/status"));
             assertEquals(401, unauthResponse.status());
             var unauthBody = JsonTree.asObject(JsonTree.parse(unauthResponse.body()));
-            assertEquals("unauthorized", JsonTree.string(unauthBody, "error"));
+            assertFalse(unauthBody.containsKey("error"), "a 401 carries no code: " + unauthBody);
+            assertNotNull(JsonTree.string(unauthBody, "message"), "a 401 says why");
 
             // 2. Request with invalid token -> 401
             var badResponse = client.send(HttpRequest.get("/api/v1/status")

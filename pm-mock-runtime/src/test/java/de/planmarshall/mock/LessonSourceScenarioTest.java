@@ -143,8 +143,26 @@ class LessonSourceScenarioTest {
 
             assertEquals(409, res.status());
             var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals("lesson_claim_refused", JsonTree.string(body, "error"));
+            assertEquals("act_not_available", JsonTree.string(body, "error"),
+                    "a refusal answers in the catalogue's codes");
             assertEquals("lesson_premise_broken", JsonTree.string(body, "reason"));
+        }
+    }
+
+    @Test
+    @DisplayName("answers a request body that is no JSON invalid_arguments, not a fault of the runtime")
+    void shouldRefuseABodyThatIsNoJson() throws Exception {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.json("POST",
+                    "/api/v1/projects/" + PROJECT + "/sources/lessons/les-0009/claim",
+                    "{" + Generators.letterStrings(4, 10).next()).withHeader("Authorization", auth));
+
+            assertEquals(400, res.status(), res.bodyText());
+            var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
+            assertEquals("invalid_arguments", JsonTree.string(body, "error"));
         }
     }
 

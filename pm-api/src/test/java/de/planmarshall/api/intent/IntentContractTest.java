@@ -21,12 +21,19 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -584,8 +591,180 @@ class IntentContractTest {
         }
     }
 
+    @Nested
+    @DisplayName("The plan intent's own rules")
+    class PlanIntentRules {
+
+        @Test
+        @DisplayName("a role decision carrying a blank question_id on the wire is refused, not silently dropped")
+        void blankQuestionOfARoleIsRefused() {
+            var json = intentJson("{\"id\":\"DC-020\",\"text\":\"" + sentence() + "\",\"decider\":\"role\","
+                    + "\"options_weighed\":[],\"question_id\":\" \"}");
+
+            var thrown = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(json));
+
+            assertTrue(thrown.getMessage().contains("only an operator or quorum decision names a question"),
+                    thrown.getMessage());
+        }
+
+        @Test
+        @DisplayName("an operator decision without its question, or with a blank one, is refused")
+        void operatorDecisionNeedsItsQuestion() {
+            var text = sentence();
+            List<String> noOptions = List.of();
+
+            assertAll(
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-021", text, IntentDecider.OPERATOR, noOptions, null, null, null)),
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-022", text, IntentDecider.QUORUM, noOptions, " ", null, null)),
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-023", text, IntentDecider.ROLE, noOptions, "Q-023", null, null)),
+                    () -> assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                            "{\"id\":\"DC-024\",\"text\":\"" + text + "\",\"decider\":\"operator\","
+                                    + "\"options_weighed\":[],\"question_id\":\" \"}"))));
+        }
+
+        @Test
+        @DisplayName("a fact decision with a blank evidence is refused")
+        void blankEvidenceOfAFactIsRefused() {
+            var text = sentence();
+            List<String> noOptions = List.of();
+
+            assertAll(
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-025", text, IntentDecider.FACT, noOptions, null, " ", null)),
+                    () -> assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                            "{\"id\":\"DC-026\",\"text\":\"" + text + "\",\"decider\":\"fact\","
+                                    + "\"options_weighed\":[],\"evidence\":\" \"}"))));
+        }
+
+        @Test
+        @DisplayName("a decision with a blank id, a blank text, or a blank or missing option is refused")
+        void decisionShapeIsChecked() {
+            var text = sentence();
+            var withNull = new ArrayList<String>();
+            withNull.add(null);
+            var blankOption = List.of(" ");
+
+            assertAll(
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            " ", text, IntentDecider.ROLE, List.of(), null, null, null)),
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-027", " ", IntentDecider.ROLE, List.of(), null, null, null)),
+                    () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
+                            "DC-028", text, IntentDecider.ROLE, blankOption, null, null, null)),
+                    () -> assertThrows(NullPointerException.class, () -> new PlanIntentResource.Decision(
+                            "DC-029", text, IntentDecider.ROLE, withNull, null, null, null)));
+        }
+
+        @Test
+        @DisplayName("a decision without weighed options holds an empty list and writes an empty array")
+        void absentOptionsAreEmpty() {
+            var decision = new PlanIntentResource.Decision("DC-030", sentence(), IntentDecider.ROLE, null, null,
+                    null, null);
+
+            assertEquals(List.of(), decision.optionsWeighed());
+            assertEquals(List.of(), decision.toMap().get("options_weighed"));
+        }
+
+        @ParameterizedTest(name = "a deferred item with a blank {0} is refused")
+        @ValueSource(strings = {"id", "text", "reason"})
+        @DisplayName("a deferred item with a blank id, text, or reason is refused")
+        void blankDeferredItemIsRefused(String blankField) {
+            var id = "id".equals(blankField) ? " " : "DF-" + Generators.integers(1, 999).next();
+            var text = "text".equals(blankField) ? " " : sentence();
+            var reason = "reason".equals(blankField) ? " " : sentence();
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> new PlanIntentResource.DeferredItem(id, text, reason));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("de.planmarshall.api.intent.IntentContractTest#invalidPlanIntents")
+        @DisplayName("a plan intent breaking one of its record rules is refused with that rule")
+        void invalidPlanIntentIsRefused(String rule, Executable construction) {
+            var thrown = assertThrows(IllegalArgumentException.class, construction);
+
+            assertTrue(thrown.getMessage().contains(rule), thrown.getMessage());
+        }
+
+        @Test
+        @DisplayName("absent decisions, open questions, and deferred items read as empty lists")
+        void absentListsAreEmpty() {
+            var intent = new PlanIntentResource(planId(), 1, sentence(), List.of(openCriterion()), oneNonGoal(),
+                    null, null, null, null);
+
+            assertAll(
+                    () -> assertEquals(List.of(), intent.decisions()),
+                    () -> assertEquals(List.of(), intent.openQuestions()),
+                    () -> assertEquals(List.of(), intent.deferred()),
+                    () -> assertEquals(List.of(), intent.operatorDecisions()),
+                    () -> assertEquals(List.of(), intent.roleCalls()));
+        }
+
+        @Test
+        @DisplayName("before the builder check ran there are no open builder questions and no builder_check")
+        void noBuilderCheckYet() {
+            var intent = intentWith(List.of());
+
+            assertAll(
+                    () -> assertNull(intent.builderCheck()),
+                    () -> assertEquals(List.of(), intent.openBuilderQuestions()),
+                    () -> assertFalse(intent.toMap().containsKey(PlanIntentResource.FIELD_BUILDER_CHECK)),
+                    () -> assertFalse(intent.toJson().contains("\"builder_check\"")));
+        }
+    }
+
+    static Stream<Arguments> invalidPlanIntents() {
+        var criteria = List.of(openCriterion());
+        var nonGoals = oneNonGoal();
+        List<PlanIntentResource.Decision> noDecisions = List.of();
+        List<String> noQuestions = List.of();
+        List<PlanIntentResource.DeferredItem> noDeferred = List.of();
+        var role = new PlanIntentResource.Decision("DC-001", sentence(), IntentDecider.ROLE, List.of(), null, null,
+                null);
+        var item = new PlanIntentResource.DeferredItem("DF-001", sentence(), sentence());
+        List<String> blankQuestion = List.of(" ");
+        return Stream.of(
+                Arguments.of("plan_id must not be blank", (Executable) () -> new PlanIntentResource(" ", 1,
+                        sentence(), criteria, nonGoals, noDecisions, noQuestions, noDeferred, null)),
+                Arguments.of("goal must not be blank", (Executable) () -> new PlanIntentResource(planId(), 1, " ",
+                        criteria, nonGoals, noDecisions, noQuestions, noDeferred, null)),
+                Arguments.of("revision must be at least 1", (Executable) () -> new PlanIntentResource(planId(), 0,
+                        sentence(), criteria, nonGoals, noDecisions, noQuestions, noDeferred, null)),
+                Arguments.of("criteria must not be empty", (Executable) () -> new PlanIntentResource(planId(), 1,
+                        sentence(), null, nonGoals, noDecisions, noQuestions, noDeferred, null)),
+                Arguments.of("non_goals must not be empty", (Executable) () -> new PlanIntentResource(planId(), 1,
+                        sentence(), criteria, null, noDecisions, noQuestions, noDeferred, null)),
+                Arguments.of("open_questions must not carry a blank entry", (Executable) () ->
+                        new PlanIntentResource(planId(), 1, sentence(), criteria, nonGoals, noDecisions,
+                                blankQuestion, noDeferred, null)),
+                Arguments.of("duplicate decision id: DC-001", (Executable) () -> new PlanIntentResource(planId(),
+                        1, sentence(), criteria, nonGoals, List.of(role, role), noQuestions, noDeferred, null)),
+                Arguments.of("duplicate deferred item id: DF-001", (Executable) () ->
+                        new PlanIntentResource(planId(), 1, sentence(), criteria, nonGoals, noDecisions,
+                                noQuestions, List.of(item, item), null)));
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Helpers
+
+    private static String sentence() {
+        return Generators.letterStrings(5, 20).next() + " " + Generators.letterStrings(5, 20).next();
+    }
+
+    private static String planId() {
+        return "plan-" + Generators.letterStrings(4, 10).next().toLowerCase();
+    }
+
+    private static IntentCriterion openCriterion() {
+        return new IntentCriterion("AC-001", sentence(), List.of(1), null, null);
+    }
+
+    private static List<PlanIntentResource.NonGoal> oneNonGoal() {
+        return List.of(new PlanIntentResource.NonGoal("NG-1", sentence()));
+    }
 
     private static PlanIntentResource intentWith(List<PlanIntentResource.Decision> decisions) {
         return intentWith(decisions,

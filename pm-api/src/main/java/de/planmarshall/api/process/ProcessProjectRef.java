@@ -60,7 +60,8 @@ public record ProcessProjectRef(
         }
         var displayName = JsonTree.string(map, "display_name");
         var link = JsonTree.string(map, "link");
-        return new ProcessProjectRef(projectId, displayName != null ? displayName : projectId, link);
+        // an absent display name stays null here: the canonical constructor supplies the default
+        return new ProcessProjectRef(projectId, displayName, link);
     }
 
     public static ProcessProjectRef fromJson(String json) throws IOException {

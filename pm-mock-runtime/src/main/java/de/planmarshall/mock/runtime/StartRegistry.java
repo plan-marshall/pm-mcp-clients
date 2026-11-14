@@ -556,8 +556,6 @@ final class StartRegistry {
             entry.recipe = entry.recipes.stream().filter(recipe -> recipe.key().equals(request.recipeKey()))
                     .findFirst().orElse(null);
         }
-        entry.chatAvailable = true;
-        entry.chatDisabledReason = null;
         if (request.kind().epic() && !entry.adoptable.isEmpty()) {
             entry.state = STATE_SOURCES;
         }
@@ -613,7 +611,7 @@ final class StartRegistry {
                 case StartStateResource.LINK_RECIPE ->
                     entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case StartStateResource.LINK_START -> continueToReady(entry);
-                case "back" -> leaveRecipe(entry);
+                case "back" -> back(entry);
                 case "create" -> create(entry, body);
                 case "set" -> setParameters(entry, body);
                 case "retry" -> retryAdoption(entry);
@@ -783,22 +781,6 @@ final class StartRegistry {
         return projectRecipes.getOrDefault(projectId, List.of());
     }
 
-    /**
-     * @param projectId the project
-     * @param recipes   the recipes it offers
-     */
-    synchronized void setRecipes(String projectId, @Nullable List<RecipeRef> recipes) {
-        projectRecipes.put(projectId, recipes == null ? List.of() : List.copyOf(recipes));
-    }
-
-    /**
-     * @param projectId the project
-     * @return the project's landing in force
-     */
-    synchronized String landing(String projectId) {
-        return projectLandings.getOrDefault(projectId, LANDING_PULL_REQUEST);
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Acts
 
@@ -946,8 +928,9 @@ final class StartRegistry {
             if (source.failure() == null || !source.failure().retryable()) {
                 throw new ActRefused("act_not_available", "The source offers no retry");
             }
+            // only documents are copied; every other kind is stored (SourceState)
             replaced.add(new SourceResource(source.sourceId(), source.kind(), source.reference(), source.title(),
-                    source.kind().external() ? SourceState.STORED : SourceState.COPIED,
+                    source.kind() == SourceKind.DOCUMENTS ? SourceState.COPIED : SourceState.STORED,
                     source.kind().external() ? SourceTrust.TRUSTED : source.trust(),
                     source.kind().external() ? ScreeningVerdict.CLEAN : null, null, List.of(), null, null,
                     source.changedFiles(), source.digest()));
@@ -985,6 +968,15 @@ final class StartRegistry {
             throw new ActRefused("act_not_available", "Continue waits for a stored and screened source");
         }
         entry.state = STATE_READY;
+    }
+
+    /**
+     * <em>Back</em> to ①: from a recipe's steps it leaves the recipe, and from
+     * {@code start-epic.adopt-failed} it leaves the failed adoption, whose cause is no longer shown.
+     */
+    private static void back(StartEntry entry) {
+        entry.adoptionFailure = null;
+        leaveRecipe(entry);
     }
 
     private static void leaveRecipe(StartEntry entry) {
@@ -1056,8 +1048,14 @@ final class StartRegistry {
         return representation;
     }
 
+    /**
+     * Adopts an epic of the project's ledger. A ledger that cannot be adopted is not a refused act:
+     * the start moves to {@code start-epic.adopt-failed} and shows the cause with <em>Try again</em>,
+     * <em>Back</em> and <em>Abandon</em> (design <em>Starting Work</em>, adopting an epic from
+     * elsewhere), so the act answers the entry in that state.
+     */
     private void adopt(StartEntry entry, String epicId) throws ActRefused {
-        var offered = entry.adoptable.stream().anyMatch(epic -> epic.epicId().equals(epicId));
+        var offered = !entry.created && entry.adoptable.stream().anyMatch(epic -> epic.epicId().equals(epicId));
         if (!offered) {
             throw new ActRefused("act_not_available", "No adoptable epic with the id " + epicId);
         }
@@ -1065,7 +1063,7 @@ final class StartRegistry {
                 && entry.pendingAdoptionFailure.epicId().equals(epicId)) {
             entry.adoptionFailure = entry.pendingAdoptionFailure;
             entry.state = STATE_EPIC_ADOPT_FAILED;
-            throw new ActRefused("adoption_failed", "The ledger of " + epicId + " cannot be adopted");
+            return;
         }
         entry.planId = epicId;
         entry.title = entry.adoptable.stream().filter(epic -> epic.epicId().equals(epicId))
@@ -1138,15 +1136,8 @@ final class StartRegistry {
         if (kind == SourceKind.LESSON && !entry.lessonsAvailable) {
             return "start.sources.no_lessons";
         }
-        if (kind == SourceKind.PULL_REQUEST || kind == SourceKind.LOCAL_CHANGES) {
-            return SourceKindOffer.REASON_ALONE;
-        }
-        if (kind == SourceKind.ISSUE || kind == SourceKind.LESSON) {
-            return SourceKindOffer.REASON_ALONE;
-        }
-        if (entry.kind.epic()) {
-            return "start.sources.epic_kind";
-        }
+        // Descriptions and documents always combine, and an epic is offered neither a lesson, the
+        // local changes nor a pull request: every other refused kind stands alone.
         return SourceKindOffer.REASON_ALONE;
     }
 

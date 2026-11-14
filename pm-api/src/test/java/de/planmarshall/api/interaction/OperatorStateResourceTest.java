@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.interaction;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -22,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -259,6 +262,73 @@ class OperatorStateResourceTest {
                 () -> new OperatorScope(OperatorScopeKind.MACHINE, "m", null, null));
         assertThrows(JsonFormatException.class,
                 () -> OperatorScope.fromMap(JsonTree.asObject(JsonTree.parse("{\"kind\":\"epic\"}"))));
+    }
+
+    private static final String MINIMAL_SCOPE_AND_STATE =
+            "\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\"%s}";
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', textBlock = """
+            no state                       | {"scope":{"kind":"machine"},"links":[]}
+            an unknown level               | {%s,"links":[]}
+            a level a state does not write | {%s,"links":[]}
+            texts that are no array        | {%s,"texts":{},"links":[]}
+            a text that is no object       | {%s,"texts":["a.b"],"links":[]}
+            a proposal that is no array    | {%s,"proposal":"x","links":[]}
+            a proposal that is no object   | {%s,"proposal":[1],"links":[]}
+            a negative revision            | {%s,"revision":-1,"links":[]}
+            JSON that is no object         | ["onboarding"]
+            """)
+    @DisplayName("a state refuses a malformed member as a format error")
+    void stateRefusesMalformedMembers(String violation, String template) {
+        var level = switch (violation) {
+            case "an unknown level" -> ",\"level\":\"team-" + Generators.integers(0, 99).next() + "\"";
+            case "a level a state does not write" -> ",\"level\":\"default\"";
+            default -> "";
+        };
+        var json = template.formatted(MINIMAL_SCOPE_AND_STATE.formatted(level));
+
+        assertThrows(JsonFormatException.class, () -> OperatorStateResource.fromJson(json), violation);
+    }
+
+    @Test
+    @DisplayName("a constructed state refuses a negative revision and a link id an item repeats, and defaults absent lists")
+    void constructedStateInvariants() {
+        var scope = new OperatorScope(OperatorScopeKind.MACHINE, null, null, null);
+        var link = new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/api/v1/x", Map.of(), false, null);
+        var item = new OperatorItem("chk-1", Map.of(), List.of(new OperatorLink("yes", OperatorLinkRelation.RETRY,
+                "POST", "/api/v1/y", Map.of(), false, null)));
+        var revision = (long) -Generators.integers(1, 100).next();
+
+        var defaulted = new OperatorStateResource(scope, "onboarding", null, null, null, null, null, null, null,
+                null, null, null, null);
+        var itemList = List.of(item);
+        var linkList = List.of(link);
+
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
+                        "onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), List.of(),
+                        revision, List.of())),
+                () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
+                        "onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), itemList,
+                        null, linkList)),
+                () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
+                        "Onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), List.of(),
+                        null, List.of())),
+                () -> assertTrue(defaulted.texts().isEmpty()),
+                () -> assertTrue(defaulted.proposal().isEmpty()),
+                () -> assertTrue(defaulted.items().isEmpty()),
+                () -> assertTrue(defaulted.links().isEmpty()),
+                () -> assertTrue(defaulted.facts().isEmpty()),
+                () -> assertEquals(Map.of("state_id", "onboarding"), defaulted.toMap().get("state")),
+                () -> assertFalse(defaulted.toMap().containsKey("facts")));
+    }
+
+    @ParameterizedTest(name = "\"{0}\" matches the state id grammar: {1}")
+    @CsvSource({"onboarding, true", "remediation.choose, true", "Onboarding, false", "a..b, false"})
+    @DisplayName("the state id grammar is offered to callers")
+    void stateIdGrammar(String value, boolean matches) {
+        assertEquals(matches, OperatorStateResource.matchesStateIdGrammar(value));
     }
 
     private static OperatorStateResource readStreaming(String json) throws IOException {
