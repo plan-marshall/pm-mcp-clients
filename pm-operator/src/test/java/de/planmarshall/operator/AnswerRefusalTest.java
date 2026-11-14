@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -35,6 +36,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Every response is checked before the dialogue prints success, and the nouns of the result lines
@@ -217,16 +220,65 @@ class AnswerRefusalTest {
         assertTrue(targets.stream().noneMatch(t -> t.contains("/api/v1/questions/")), targets.toString());
     }
 
-    @Test
-    @DisplayName("a 500 on the first read is a failed read, not a decision")
-    void serverErrorOnFirstReadIsFailedRead() throws Exception {
+    private static final String UNREADABLE = "Q-001 could not be read, so it is not known whether it has parts;"
+                        + " nothing was sent. Answer it in the dialogue.";
+
+    @ParameterizedTest(name = "a {0} on the first read of {1} is a failed read, not a decision")
+    @CsvSource({"500, answer Q-001 --no-input", "503, answer Q-001 --no-input", "500, answer Q-001 1",
+                        "502, answer Q-001 later"})
+    @DisplayName("a failed first read prints the unreadable line and exits 1, with no status on screen")
+    void failedFirstReadIsUnreadable(int status, String command) throws Exception {
         var failure = text();
-        fixture.start((request, response) -> response.json(500, errorBody(failure)));
+        var posted = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(status, errorBody(failure));
+            } else {
+                posted.add(request.target());
+                response.json(200, "{\"ok\":true}");
+            }
+        });
 
-        var code = run("en", new byte[0], "answer", "Q-001", "--no-input");
+        var code = run("en", new byte[0], command.split(" "));
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
+                            () -> assertFalse((out.toString() + err).contains("HTTP " + status), out + " " + err),
+                            () -> assertTrue(posted.isEmpty(), posted.toString()));
+    }
+
+    @ParameterizedTest(name = "{0} is no decision of Q-001: {2}")
+    @CsvSource(delimiter = '|', value = {
+                        "another id | --no-input | OTHER",
+                        "another id | 1 | OTHER",
+                        "a body without an id | --no-input | NOID",
+                        "a body that is no JSON | 1 | NOJSON"})
+    @DisplayName("a first read that returns no decision of the id asked for prints the unreadable line and exits 1")
+    void mismatchedFirstReadIsUnreadable(String name, String argument, String kind) throws Exception {
+        var other = "Q-" + Generators.integers(100, 999).next();
+        var body = switch (kind) {
+            case "OTHER" -> envelope(other, "plan", "plan", "plan " + text(), text());
+            case "NOID" -> envelope("Q-001", "plan", "plan", "plan " + text(), text()).replace("\"id\": \"Q-001\",", "");
+            default -> "not json " + text();
+        };
+        var posted = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, body);
+            } else {
+                posted.add(request.target());
+                response.json(200, "{\"ok\":true}");
+            }
+        });
+
+        var code = run("en", new byte[0], "answer", "Q-001", argument);
+
+        assertAll(
+                            () -> assertEquals(1, code, name),
+                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
+                            () -> assertFalse(out.toString().contains(other + " for"), out.toString()),
+                            () -> assertTrue(posted.isEmpty(), posted.toString()));
     }
 
     @Test

@@ -214,6 +214,8 @@ class AnswerKeysTest {
                                                     out.toString()),
                                 () -> assertFalse(out.toString().contains("stays open"), out.toString()),
                                 () -> assertFalse(out.toString().contains("bleibt offen"), out.toString()),
+                                () -> assertTrue(out.toString().contains("de".equals(locale) ? "Verlassen: Q-21" : "Left Q-21"),
+                                                    "the end of the input leaves the dialogue: " + out),
                                 () -> assertTrue(acts.isEmpty(), acts.toString()));
         }
 

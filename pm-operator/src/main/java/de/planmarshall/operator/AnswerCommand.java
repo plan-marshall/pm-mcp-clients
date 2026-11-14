@@ -38,7 +38,6 @@ import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
-import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
@@ -160,11 +159,11 @@ public final class AnswerCommand implements Callable<Integer> {
             out.flush();
             return 1;
         }
-        if (qResponse.status() != 200) {
+        var envelope = qResponse.status() == 200 ? identified(qResponse) : null;
+        if (envelope == null) {
             // Any other first read is a failed read: its body is no decision to show or answer.
-            throw new OperatorRefusedException("answer " + questionId, qResponse);
+            return unreadable(out, locale);
         }
-        var envelope = identified(qResponse, locale);
         if (noInput) {
             printNoInput(out, envelope, locale);
             return 3;
@@ -314,7 +313,10 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int submitAnswer(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
-        var envelope = readEnvelope(runtime, safeQid, locale);
+        var envelope = readEnvelope(runtime, safeQid);
+        if (envelope == null) {
+            return unreadable(out, locale);
+        }
         var offered = envelope.isWaiver() ? WAIVER_ACTIONS : DECISION_ACTIONS;
         var effectiveAction = namedAction(envelope);
         if (!offered.contains(effectiveAction)) {
@@ -461,28 +463,44 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     /**
-     * Reads the decision the request names before anything is sent: a decision the runtime does
-     * not return is its refusal, and every result line takes its nouns from the decision itself.
+     * Reads the decision the request names before anything is sent. A decision the runtime does not
+     * know is its refusal; any other read that returns no decision of the id asked for fails closed.
+     *
+     * @return the decision, or {@code null} when the read failed or returned another decision
      */
-    private DecisionEnvelope readEnvelope(RuntimeClient runtime, String safeQid, String locale) throws IOException {
+    private @Nullable DecisionEnvelope readEnvelope(RuntimeClient runtime, String safeQid) throws IOException {
         var response = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
-        if (response.status() != 200) {
+        if (response.status() == 404) {
             throw new OperatorRefusedException("answer " + questionId, response);
         }
-        return identified(response, locale);
+        return response.status() == 200 ? identified(response) : null;
     }
 
     /**
-     * The id of the request is authoritative: a body without an id, or one that names another
-     * decision, is refused, never shown or answered as the decision that was asked for.
+     * The id of the request is authoritative: a body that is no decision, has no id, or names another
+     * decision is never shown or answered as the decision that was asked for.
+     *
+     * @return the decision, or {@code null} when the body is no decision of the id asked for
      */
-    private DecisionEnvelope identified(HttpResponse response, String locale) throws IOException {
-        var envelope = DecisionEnvelope.fromJson(response.bodyText());
-        if (!questionId.equals(envelope.id())) {
-            throw new JsonFormatException(MessageCatalogue.format(locale, "operator.decision.id_mismatch",
-                                Map.of(ID_KEY, questionId, "returned", envelope.id())));
+    private @Nullable DecisionEnvelope identified(HttpResponse response) {
+        try {
+            var envelope = DecisionEnvelope.fromJson(response.bodyText());
+            return questionId.equals(envelope.id()) ? envelope : null;
+        } catch (IOException _) {
+            return null;
         }
-        return envelope;
+    }
+
+    /**
+     * Says that the decision could not be read, so that it is not known what it holds and nothing was
+     * sent.
+     *
+     * @return the exit code of a failed read
+     */
+    private int unreadable(PrintWriter out, String locale) {
+        out.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
+        out.flush();
+        return 1;
     }
 
     private void printAnswerSuccess(PrintWriter out, DecisionEnvelope envelope, String effectiveAction,

@@ -276,7 +276,7 @@ class QuestionsCommandTest {
     }
 
     @Test
-    @DisplayName("answer <id> reports a daemon answer that carries no decision id as malformed and shows nothing")
+    @DisplayName("answer <id> reads a daemon answer that carries no decision id as unreadable and shows nothing")
     void answerRefusesADecisionWithoutId() throws Exception {
         var title = "Question " + Generators.letterStrings(4, 12).next();
         fixture.start((request, response) -> {
@@ -291,8 +291,8 @@ class QuestionsCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(err.toString().contains("answer: Missing id in DecisionEnvelope"),
-                                                err.toString()),
+                            () -> assertTrue(out.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
+                                                out.toString()),
                             () -> assertFalse(out.toString().contains(title), out.toString()));
     }
 

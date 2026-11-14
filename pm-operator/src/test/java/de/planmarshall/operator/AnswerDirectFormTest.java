@@ -86,7 +86,7 @@ class AnswerDirectFormTest {
 
         @ParameterizedTest(name = "answer Q-31 {0}")
         @ValueSource(strings = {"1", "later", "withdraw", "--no-input", "-i"})
-        @DisplayName("a decision returned with another id is refused and nothing is sent")
+        @DisplayName("a decision returned with another id is unreadable: the line is printed and nothing is sent")
         void otherIdIsRefused(String argument) throws Exception {
             var other = "Q-" + Generators.integers(100, 999).next();
             serve("Q-31", decision(other));
@@ -95,35 +95,38 @@ class AnswerDirectFormTest {
 
             assertAll(
                                 () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                                () -> assertTrue(err.toString().contains(
-                                                                        "The runtime returned the decision " + other + " for Q-31; nothing was sent."),
-                                                    err.toString()),
-                                () -> assertFalse(out.toString().contains(other), out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
+                                                    out.toString()),
+                                () -> assertFalse((out.toString() + err).contains(other), out + " " + err),
                                 () -> assertTrue(acts.isEmpty(), acts.toString()));
         }
 
         @Test
-        @DisplayName("the German refusal names both ids")
+        @DisplayName("the German unreadable line names the id asked for")
         void otherIdIsRefusedInGerman() throws Exception {
             serve("Q-31", decision("Q-77"));
 
             var code = run("de", "", "answer", "Q-31");
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(err.toString().contains("Die Laufzeit hat für Q-31 die Entscheidung Q-77 geliefert"),
-                                err.toString());
+            assertTrue(out.toString().contains("Q-31 ließ sich nicht lesen, daher ist unbekannt, ob sie Teile hat"),
+                                out.toString());
         }
 
         @ParameterizedTest(name = "answer Q-31 {0}")
         @ValueSource(strings = {"1", "later", "withdraw"})
-        @DisplayName("a decision returned without an id is refused on every direct path and nothing is sent")
+        @DisplayName("a decision returned without an id is unreadable on every direct path and nothing is sent")
         void missingIdIsRefused(String argument) throws Exception {
             serve("Q-31", "{\"title\":\"" + Generators.letterStrings(4, 12).next() + "\"}");
 
             var code = run("en", "", "answer", "Q-31", argument);
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(err.toString().contains("Missing id in DecisionEnvelope"), err.toString());
+            assertTrue(out.toString().contains(
+                                                    "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
+                                out.toString());
+            assertFalse(err.toString().contains("Missing id"), err.toString());
             assertTrue(acts.isEmpty(), acts.toString());
         }
 
@@ -146,14 +149,17 @@ class AnswerDirectFormTest {
         }
 
         @Test
-        @DisplayName("a refused read of the decision is shown as the refusal, not read as a decision")
+        @DisplayName("a failed read of the decision is unreadable, with no status shown, and is not read as a decision")
         void refusedReadIsTheRefusal() throws Exception {
             fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
 
             var code = run("en", "", "answer", "Q-31");
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(err.toString().contains(REFUSED), err.toString());
+            assertTrue(out.toString().contains(
+                                                    "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
+                                out.toString());
+            assertFalse((out.toString() + err).contains("HTTP 500"), out + " " + err);
             assertFalse(err.toString().contains("Missing id"), err.toString());
         }
     }

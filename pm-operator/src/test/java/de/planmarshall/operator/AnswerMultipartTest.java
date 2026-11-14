@@ -218,7 +218,10 @@ class AnswerMultipartTest {
         var code = run(new byte[0], "answer", "Q-012", "2");
 
         assertEquals(1, code);
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertTrue(out.toString().contains(
+                                                "Q-012 could not be read, so it is not known whether it has parts; nothing was sent."),
+                            out.toString());
+        assertFalse((out.toString() + err).contains("HTTP 500"), out + " " + err);
         assertTrue(postedBodies.isEmpty(), postedBodies.toString());
     }
 
