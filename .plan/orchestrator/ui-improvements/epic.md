@@ -288,11 +288,20 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Decisions
 
+- 2026-11-14 (operator, `analyze` of `analyze-fix-build-time-004.md` / `-005.md`, handover and recorded-only findings of the closed plan): "Fold into
+  PLAN-165". PLAN-165 gains deliverables 4 (run `-Pe2e` first and fix the specs that still fail), 5 (a module-local `sonar` profile in
+  `pm-web-app/pom.xml` so the Sonar job reads a web LCOV report; CI's Sonar job runs `-Psonar`, not `-Pcoverage`, so dropping
+  `sonar.coverage.exclusions=**/*` first would show the web app at 0 %) and 6 (web branch coverage 78.7 % to 80 %, thresholds on in `vite.config.ts`, then the
+  exclusion dropped). **Scope-bloat guard:** PLAN-165 now has 6 deliverables and is proceeding UNSPLIT on the operator's word; rationale: one
+  follow-up plan was the operator's request, and 4 to 6 are one chain on one module (`pm-web-app`). It is emitted when no web plan runs, or in
+  halves. The decision of 2026-11-14 above that the exclusion waits for the operator's threshold is superseded: the threshold is the project's 80 % minimum.
+  Everything else in `-004` and `-005` is a Watch (below). Operator, same day: do not emit yet, cleanup continues.
+
 - 2026-11-14 (operator, `analyze` of `analyze-fix-build-time-002.md` / `-003.md`, deferred items of #435 and #436): the tests-only items fold into
   PLAN-79 (Generators sweep, parameterize, the two console-settings transcripts, a `refreshPoppedLevel()` test; its surface gains the two transcript
   files; the sweep is PLAN-79's own work, so it is not duplicated in a second plan); the main-code and web items go to ONE new plan, **PLAN-165** `derive-lists-from-one-definition` (WS-05, runbook: the offered keys of
   `EpicDecompositionDialogue`, `CleanupCommand.durationsText` from `CleanupKind`, one refresh-event set per web stream; deliverable 2 waits for PLAN-30;
-  #436 merged as `83d9d150`, so nothing unmerged blocks it). The Sonar coverage exclusion is NOT in it: Watch below, the operator decides the threshold first.
+  #436 merged as `83d9d150`, so nothing unmerged blocks it). The Sonar coverage exclusion was NOT in it at first (superseded by the next entry: `-004`/`-005` tie it to the web coverage work and the operator folded that in).
   Message 001's open decisions stand routed, none is left open: items 1 (chat fixture on `ChatRegistry`) in PLAN-140, 2 and 3 (`AnswerCommand`, cleanup
   catalogue copies) in the PLAN-30 mailbox, 4 (`!`) decided (above), 5 and 10 (chat events, route-table rows) in PLAN-135, 8 in PLAN-79, 9 in PLAN-149;
   6 (parent-POM recipe) and 7 (coverage profiles, documentation) stay Watches with owners outside this repository.
@@ -895,10 +904,29 @@ plan spec names the plan, proposal and finding documents it comes from.
   → 2026-11-14 (`analyze-fix-build-time-002`, `-003`; #434 `c6a05fa8`, #435 `b6c90174` and #436 `83d9d150` merged): (3) recurrence of item (1):
   the quality gate also reformats files it has no business with (whitespace only, e.g. `pm-api/.../ReportRecordsTest.java`); each full gate run dirties
   unrelated files that are reverted by hand: same recipe family, owner `pm-mcp-parent`; PLAN-165's Standing Constraints say to revert them. (4) **Sonar
-  coverage exclusion, awaits the operator:** `pm-web-app/pom.xml:25` `sonar.coverage.exclusions=**/*` (read at `b6c90174`) predates the split and excludes every
+  coverage exclusion, now PLAN-165 deliverables 5 and 6 (operator, `-004`/`-005`; see Decisions):** `pm-web-app/pom.xml:25` `sonar.coverage.exclusions=**/*` (read at `b6c90174`) predates the split and excludes every
   web source from Sonar coverage, so the LCOV report path beside it contributes nothing; removing it puts the web app under the new-code coverage condition of
   the gate: the operator decides the threshold first, then the exclusion is narrowed or dropped (a decision of the operator and a one-line change, or a package;
   not staged). Routed: PLAN-79 (tests-only items), PLAN-165 (derived lists); decision above.
+  → 2026-11-14 (`analyze-fix-build-time-004`, `-005`; the plan is closed and archived, not finalized; its changes landed by hand as #434-#436): leads, all dated
+  2026-11-11 to 11-13 BEFORE the merges, so each is to be verified against current `main` before it is acted on. **Taken into PLAN-165:** `-Pe2e` first
+  (Playwright: a 2026-11-13 run failed in `run-playwright`; `showroom.spec.js` start-entry chat after #424 moved chat into `ChatRegistry`;
+  `designer.spec.js` intermittent, 2 of 88), the `sonar` profile, web branch coverage 78.7 % to 80 %. **Left as Watches, no plan:** (a) D6 the build-time
+  report (`work/build-time-report.md` of the archived plan, after-section pending; a whole-tree `verify` ran 6:22 min against 10:20 at baseline) and
+  D11 a review that the new tests are behavioural, not coverage-only (three parts, never started) — owner the operator, they ride a plan only on the
+  operator's word; (b) contract questions for the engine and design owners: `client.ts` `getProjectSettings`/`saveProjectSettings` use
+  `/api/v1/projects/{id}/settings` and `expected_revision` that no record, mock route or operator code knows; `runtime.ts` counts `report.*` and
+  `decision.*` on the runtime stream that `EventName` does not declare there; `handleDecisionEvent` reads `decision.opened`'s title at the top level
+  and double-decrements the open count (live-count defect 5c821f); `runtime.draining` is read under two spellings; the `needs_operator` kinds are spelled two
+  ways; `SystemView.upgradeNow` posts without the confirmation `system.adoc#upgrade-progress` asks for; stub bodies of `ControlCommandTest`,
+  `ConfigCommandTest`, `WebDevicesCommandTest` still write `refused`; `ChatRegistry` does not consult `chat_available`; (c) design documents that disagree with
+  the code: `25-system.adoc` (Enter on the Work figure), `16-plan-view` (the example key line), the decisions catalogue against `03-dialogues`, no line for a
+  refused pairing code, no state `start.project`, a change-ledger row with a wrong SHA; (d) 33 dead branches and 44 redundant guards (`OverviewFullScreenApp` 14,
+  `client.ts` 5, `MockRuntimeEngine` 4, `ScenarioLoader` 3, `runtime.ts` 3, the rest one or two per class; list in the archived plan's
+  `artifacts/findings/improvement.jsonl`), and the standing gap that `pm-api` packages lack `@NullMarked` (all but `chat`), which CLAUDE.md requires; (e)
+  **do not reopen:** `ProcessTree`, `ProcessNode`, `EpicProcess` and `TaskActivity` skip non-object entries on purpose (operator decision, in their Javadoc);
+  `sonar.cpd.exclusions=**/*` is duplication, not coverage; `pm-web-e2e` `sonar.skip` and the `pm-exec` `macos-coverage` exclusion of `LinuxCalls` were reviewed and kept.
+  The full text sits in the archived plan's `work/follow-up-findings-export.md` and `work/follow-up-handover.md` (under `.plan/local`, not tracked).
 
 > ↪ Relocated to `settled.md` § "Landing watches 2026-10-31 to 2026-11-10" — 22 landed-plan watch entries (PLAN-82 … PLAN-45); their landing files carry the record and their open items were routed at the time (cleanup 2026-11-14, operator).
 
