@@ -264,17 +264,17 @@ public final class MockConfigRoutes {
      * Forgets every value a {@code PUT} wrote, so a reset or a scenario switch does not carry a
      * previous state's configuration.
      */
-    public void clear() {
+    public synchronized void clear() {
         written.clear();
         revisions.clear();
         revision = 0;
     }
 
-    private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
+    private synchronized Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
         return written.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
     }
 
-    private Map<String, Long> revisionsByLevel(ConfigOrigin level, @Nullable String scope) {
+    private synchronized Map<String, Long> revisionsByLevel(ConfigOrigin level, @Nullable String scope) {
         return revisions.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
     }
 
@@ -306,7 +306,7 @@ public final class MockConfigRoutes {
         return new ConfigValueChange(parsed, 0);
     }
 
-    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
+    private synchronized List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
             Map<String, String> planProjects) {
         var project = scopeValue(query, KEY_PROJECT);
         var plan = scopeValue(query, KEY_PLAN);

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -328,6 +329,40 @@ class ConfigCommandTest {
                             () -> assertEquals(0, code, text),
                             () -> assertTrue(text.contains("No setting changed."), text),
                             () -> assertEquals(1, bodies.size(), bodies.toString()));
+    }
+
+    @Test
+    @DisplayName("a second conflict on retry prints the conflict line again and allows retrying")
+    void secondConflictPrintsConflictLineAgain() throws Exception {
+        var key = "custom." + Generators.letterStrings(4, 8).next();
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf(key, "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, conflictOf(key, "30", 5));
+                } else if (bodies.size() == 2) {
+                    response.json(409, conflictOf(key, "45", 6));
+                } else {
+                    response.json(200, valueOf(key, "60", 7));
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n\n", "config", "set", key, "60");
+        var text = out.toString();
+
+        assertAll(
+                () -> assertEquals(0, code, text),
+                () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                () -> assertTrue(text.contains("Changed meanwhile: it is now 45. Yours was not applied."), text),
+                () -> assertFalse(text.contains("HTTP 409"), text),
+                () -> assertEquals(3, bodies.size(), bodies.toString()),
+                () -> assertTrue(bodies.get(2).contains("\"revision\":6"), bodies.get(2)));
     }
 
     @Test
@@ -1055,6 +1090,29 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertNotNull(devices, out.toString()),
                             () -> assertTrue(devices.contains("3 devices \u00b7 network listener off"), devices));
+    }
+
+    @Test
+    @DisplayName("the overview names network listener unknown when status is unreadable")
+    void overviewShowsUnknownForUnreadableListener() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"id\":\"dev-1\",\"label\":\"Terminal\"}]");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.send(500, null, "error");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config");
+        var devices = rowOfLabel(out.toString(), "Paired devices");
+
+        assertAll(
+                () -> assertNotNull(devices, out.toString()),
+                () -> assertTrue(devices.contains("1 device \u00b7 network listener unknown"), devices));
     }
 
     @Test

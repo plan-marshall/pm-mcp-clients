@@ -3273,6 +3273,42 @@
             "href": "/api/v1/onboarding/settings/reconfigure/language"
           },
           {
+            "id": "reconfigure:harnesses",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/harnesses"
+          },
+          {
+            "id": "reconfigure:models",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/models"
+          },
+          {
+            "id": "reconfigure:roles",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/roles"
+          },
+          {
+            "id": "reconfigure:credentials",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/credentials"
+          },
+          {
+            "id": "reconfigure:providers",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/providers"
+          },
+          {
+            "id": "reconfigure:plan-defaults",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults"
+          },
+          {
             "id": "done",
             "rel": "next",
             "method": "POST",
@@ -3286,6 +3322,36 @@
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/language",
           "next": "language.reconfigure"
+        },
+        "reconfigure:harnesses": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
+          "next": "harness.reconfigure-consent"
+        },
+        "reconfigure:models": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/models",
+          "next": "catalogue.reconfigure"
+        },
+        "reconfigure:roles": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/roles",
+          "next": "roles.reconfigure"
+        },
+        "reconfigure:credentials": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/credentials",
+          "next": "store.reconfigure"
+        },
+        "reconfigure:providers": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/providers",
+          "next": "providers.reconfigure"
+        },
+        "reconfigure:plan-defaults": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults",
+          "next": "defaults.reconfigure"
         },
         "done": {
           "method": "POST",
@@ -3335,6 +3401,428 @@
         "set": {
           "method": "POST",
           "href": "/api/v1/onboarding/language/set",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "harness.reconfigure-consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.reconfigure-consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Look for harnesses on this machine again?",
+          "kind": "scan_harnesses"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/scan",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/decline",
+          "next": "harness.reconfigure"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/scan",
+          "next": "harness.reconfigure"
+        }
+      }
+    },
+    "harness.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The enrolled harnesses run again with the recorded values as the proposal",
+          "aspect": "harness",
+          "add": "",
+          "remove": "",
+          "default": "claude"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/set",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "catalogue.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The models plans may use run again with the recorded values as the proposal",
+          "aspect": "catalogue",
+          "allow": ""
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/set",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "roles.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "roles.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The role assignments run again with the recorded values as the proposal",
+          "aspect": "roles",
+          "set": "",
+          "reset": "",
+          "reset_all": "false",
+          "defaults": "false"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/set",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "store.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The credential store runs again with the recorded values as the proposal",
+          "aspect": "store",
+          "current": "os"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/set",
+          "next": "settings.store-credential"
+        }
+      }
+    },
+    "settings.store-credential": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.store-credential",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The token is stored; checking the providers that use it",
+          "current": "os"
+        },
+        "links": [
+          {
+            "id": "stored",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/store-credential",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "stored": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/store-credential",
+          "next": "settings.verify-providers"
+        }
+      }
+    },
+    "settings.verify-providers": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.verify-providers",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Providers · Checking the providers that use github",
+          "kind": "verify_providers",
+          "current": "os",
+          "key": "github",
+          "providers": [
+            {
+              "provider": "github",
+              "ready": true
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/verify-providers",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/verify-providers",
+          "next": "providers.verified"
+        }
+      }
+    },
+    "providers.verified": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.verified",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The provider check is done",
+          "current": "os",
+          "plans": "fix-relay"
+        },
+        "links": [
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/verify-providers/done",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/verify-providers/done",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "providers.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The providers run again with the recorded values as the proposal",
+          "aspect": "providers",
+          "verify": "false",
+          "use": "",
+          "without": ""
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/set",
+          "next": "settings.choose"
+        }
+      }
+    },
+    "defaults.reconfigure": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "defaults.reconfigure",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How plans run runs again with the recorded values as the proposal",
+          "aspect": "defaults",
+          "landing": "landing.pull-request",
+          "method": "method.test-first",
+          "asking": "ask.key-points",
+          "posture": "posture.standard"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings"
+          },
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/defaults/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/defaults/set",
           "next": "settings.choose"
         }
       }

@@ -87,6 +87,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private boolean started;
     private boolean returned;
     private Map<String, Object> lastFacts = Map.of();
+    private String lastStateId = "";
 
     /**
      * The boolean answers a verb carries.
@@ -167,6 +168,13 @@ public final class AspectRunSource implements StateDialogue.Source {
         return lastFacts;
     }
 
+    /**
+     * @return the state id of the last state the run reported before it returned to the settings
+     */
+    public String lastStateId() {
+        return lastStateId;
+    }
+
     @Override
     public StateDialogue.Frame fetch() throws IOException {
         var frame = read();
@@ -191,6 +199,7 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return asFinal(current);
             }
             lastFacts = current.facts();
+            lastStateId = current.stateId();
             if (current.isFinal()) {
                 return current;
             }

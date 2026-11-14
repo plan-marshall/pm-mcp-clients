@@ -74,8 +74,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ROLES = "roles";
     private static final String PROVIDERS = "providers";
     private static final String PLAN_DEFAULTS = "plan-defaults";
-    private static final String HARNESS_PREFIX = "harness.";
-    private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
     private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
     private static final String ONE_LEVEL = "operator.config.one_level";
     private static final String CONFIG_VERB = "config";
@@ -120,16 +118,6 @@ public final class ConfigCommand implements Callable<Integer> {
             case PLANS -> PLAN_DEFAULTS;
         };
     }
-
-    /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
-    private static final Map<String, String> ASPECT_PREFIXES = Map.of(
-                        LANGUAGE, LANGUAGE + ".",
-                        HARNESSES, HARNESS_PREFIX,
-                        MODELS, MODELS + ".",
-                        ROLES, ROLES + ".",
-                        CREDENTIALS, CREDENTIALS + ".",
-                        PROVIDERS, PROVIDERS + ".",
-                        PLAN_DEFAULTS, PLAN_DEFAULTS_PREFIX);
 
     /** The catalogue prefixes a configuration value's text is looked up in, in this order. */
     private static final List<String> VALUE_TEXT_KEYS = List.of(
@@ -283,9 +271,10 @@ public final class ConfigCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
-        var listener = listenerOff()
-                            ? "operator.settings.devices.listener_off"
-                            : "operator.settings.devices.listener_on";
+        var lan = listenerLan();
+        var listener = lan == null
+                            ? "operator.settings.devices.listener_unknown"
+                            : (lan ? "operator.settings.devices.listener_on" : "operator.settings.devices.listener_off");
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
                                                 COUNT, devices.size(),
@@ -293,17 +282,20 @@ public final class ConfigCommand implements Callable<Integer> {
                             List.of(WEB_VERB, DEVICES_VERB));
     }
 
-    private boolean listenerOff() throws IOException {
+    private @Nullable Boolean listenerLan() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(STATUS_PATH));
         if (response.status() != 200) {
-            return false;
+            return null;
         }
         try {
             var status = JsonTree.asObject(JsonTree.parse(response.bodyText()));
             var web = status != null ? JsonTree.object(status, "web") : null;
-            return web != null && Boolean.FALSE.equals(web.get("lan"));
+            if (web == null || !web.containsKey("lan")) {
+                return null;
+            }
+            return Boolean.TRUE.equals(web.get("lan"));
         } catch (IOException _) {
-            return false;
+            return null;
         }
     }
 
@@ -454,11 +446,10 @@ public final class ConfigCommand implements Callable<Integer> {
         if (key == null || key.isBlank()) {
             return values;
         }
-        var aspectPrefix = ASPECT_PREFIXES.get(key);
         var selected = new ArrayList<ConfigValueResource>();
         for (var value : values) {
             if (value.key().equals(key) || value.key().startsWith(key + ".")
-                                || (aspectPrefix != null && value.key().startsWith(aspectPrefix))) {
+                                || AspectOwnedKeys.owningAspect(value.key()).map(key::equals).orElse(false)) {
                 selected.add(value);
             }
         }
@@ -685,33 +676,45 @@ public final class ConfigCommand implements Callable<Integer> {
 
     private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
                         @Nullable Object value, boolean noInput, ConfigValueResource current) throws IOException {
-        var rendered = renderedValue(change.locale(), current);
-        if (noInput) {
-            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
+        var currentConflict = current;
+        var targetRevision = current.revision();
+        while (true) {
+            var rendered = renderedValue(change.locale(), currentConflict);
+            if (noInput) {
+                change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
+                                    Map.of(VALUE, rendered)));
+                change.out().flush();
+                return ConfigAspectRun.EXIT_MISSING_INPUT;
+            }
+            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
                                 Map.of(VALUE, rendered)));
             change.out().flush();
-            return ConfigAspectRun.EXIT_MISSING_INPUT;
+            if (!context.isInteractiveTerminal()) {
+                change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+                change.out().flush();
+                return ConfigAspectRun.EXIT_MISSING_INPUT;
+            }
+            if (!applyAgain(context, change.locale())) {
+                change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+                change.out().flush();
+                return 0;
+            }
+            var retry = sendChange(context, deletion, change.writePath(), value, targetRevision);
+            if (retry.status() == 200 || retry.status() == 204) {
+                change.out().println(change.doneLine());
+                change.out().flush();
+                return 0;
+            }
+            if (retry.status() == 409) {
+                var next = conflictOf(retry.bodyText());
+                if (next != null) {
+                    currentConflict = next;
+                    targetRevision = next.revision();
+                    continue;
+                }
+            }
+            return failed(change, retry.status());
         }
-        change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
-                            Map.of(VALUE, rendered)));
-        change.out().flush();
-        if (!context.isInteractiveTerminal()) {
-            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
-            change.out().flush();
-            return ConfigAspectRun.EXIT_MISSING_INPUT;
-        }
-        if (!applyAgain(context, change.locale())) {
-            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
-            change.out().flush();
-            return 0;
-        }
-        var retry = sendChange(context, deletion, change.writePath(), value, current.revision());
-        if (retry.status() == 200 || retry.status() == 204) {
-            change.out().println(change.doneLine());
-            change.out().flush();
-            return 0;
-        }
-        return failed(change, retry.status());
     }
 
     private static int failed(Change change, int status) {

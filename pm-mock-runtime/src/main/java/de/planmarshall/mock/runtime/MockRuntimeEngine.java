@@ -777,7 +777,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The credential store a later run of the store aspect chose. */
     private String machineCredentialStore = "os";
     /** Whether the providers' later run verified them. */
-    private boolean machineProvidersVerified;
+    private volatile boolean machineProvidersVerified;
 
     /** How many items of what waits one page of {@code GET /api/v1/machine/needs-operator} serves. */
     private static final int NEEDS_PAGE_SIZE = 20;
@@ -7468,7 +7468,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || previousState.startsWith("language.reconfigure"))) {
             recordInterfaceLanguage(body, previousState, linkName);
         }
-        if (previousState != null && previousState.endsWith(".reconfigure")) {
+        if (previousState != null && (previousState.endsWith(".reconfigure")
+                || previousState.startsWith("settings.verify-providers"))) {
             recordAspectAnswer(previousState, linkName, body);
         }
         String newState;
@@ -7533,6 +7534,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param body     the step's request body
      */
     private void recordAspectAnswer(String state, @Nullable String linkName, Map<String, Object> body) {
+        if (state.startsWith("settings.verify-providers")) {
+            if ("yes".equals(linkName) || LINK_SET.equals(linkName) || linkName == null) {
+                machineProvidersVerified = providerCheckSucceeds(state);
+            }
+            return;
+        }
         if (!LINK_SET.equals(linkName)) {
             return;
         }
@@ -7554,20 +7561,44 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (state.startsWith("providers.reconfigure")) {
             var verify = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
-            machineProvidersVerified = verify && providerCheckSucceeds();
+            machineProvidersVerified = verify && providerCheckSucceeds(state);
         }
     }
 
     /**
+     * @param stateId optional state id to look up facts for, or {@code null} to use the current state
      * @return whether the scenario declares its providers ready, so a verify that found no ready
      *         provider records the failure instead of trusting the request's flag
      */
-    private boolean providerCheckSucceeds() {
+    private boolean providerCheckSucceeds(@Nullable String stateId) {
+        var id = stateId != null ? stateId : currentStateId.get();
+        var facts = id != null ? stateFacts(id) : null;
+        if (facts != null) {
+            var providers = facts.get("providers");
+            if (providers instanceof List<?> list && !list.isEmpty()) {
+                boolean anyReady = false;
+                for (var item : list) {
+                    if (item instanceof Map<?, ?> m) {
+                        var r = m.get("ready");
+                        if (Boolean.TRUE.equals(r) || "true".equalsIgnoreCase(String.valueOf(r))) {
+                            anyReady = true;
+                            break;
+                        }
+                    }
+                }
+                return anyReady;
+            }
+            if (facts.containsKey("ready")) {
+                var r = facts.get("ready");
+                return Boolean.TRUE.equals(r) || "true".equalsIgnoreCase(String.valueOf(r));
+            }
+        }
         var route = currentScenario.get().route("GET", "/api/v1/status");
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return false;
         }
-        return Boolean.TRUE.equals(map.get("providers_ready"));
+        var pr = map.get("providers_ready");
+        return Boolean.TRUE.equals(pr) || "true".equalsIgnoreCase(String.valueOf(pr));
     }
 
     /**

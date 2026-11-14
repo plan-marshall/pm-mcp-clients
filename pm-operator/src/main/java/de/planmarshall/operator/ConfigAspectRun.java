@@ -85,15 +85,22 @@ final class ConfigAspectRun {
     }
 
     /**
-     * The outcome of one later run: its exit code, and the facts of the last state it reported.
+     * The outcome of one later run: its exit code, the facts of the last state it reported, and the
+     * id of that last state.
      *
-     * @param exitCode the verb's exit code
-     * @param facts    the facts of the last state before the run returned to the settings
+     * @param exitCode    the verb's exit code
+     * @param facts       the facts of the last state before the run returned to the settings
+     * @param lastStateId the state id of the last state
      */
-    record Outcome(int exitCode, Map<String, Object> facts) {
+    record Outcome(int exitCode, Map<String, Object> facts, String lastStateId) {
 
         Outcome {
             facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
+            lastStateId = Objects.requireNonNull(lastStateId, "lastStateId");
+        }
+
+        Outcome(int exitCode, Map<String, Object> facts) {
+            this(exitCode, facts, "");
         }
     }
 
@@ -199,7 +206,7 @@ final class ConfigAspectRun {
     }
 
     private static Outcome outcome(AspectRunSource source, int exitCode) {
-        return new Outcome(exitCode, source.lastFacts());
+        return new Outcome(exitCode, source.lastFacts(), source.lastStateId());
     }
 
     private void reportUnused(AspectRunSource source) {

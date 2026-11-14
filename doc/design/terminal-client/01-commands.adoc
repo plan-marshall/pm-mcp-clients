@@ -78,9 +78,9 @@ pm-operator web devices [list|rename <device_id> <label>|revoke <device_id>|revo
                                                           [op]  the paired devices: list, rename, revoke one, revoke all others or all (from
                                                                 the terminal the same: every paired device), turn the LAN listener off (UC-ENT-2);
                                                                 `list` alone is a read and runs without the checks
-pm-operator config show [<aspect>|<key>] [--machine|--project <project_id>|.|?|--plan <plan_id>|?]    effective values with their origin
-pm-operator config set <key> <value> [--machine|--project <project_id>|.|?|--plan <plan_id>|?]  [op]  one plain key at one level
-pm-operator config unset <key> [--machine|--project <project_id>|.|?|--plan <plan_id>|?]        [op]  remove a key at one level; the next level's value applies
+pm-operator config show [<aspect>|<key>] [--machine|--project <project_id>|--plan <plan_id>]    effective values with their origin
+pm-operator config set <key> <value> [--machine|--project <project_id>|--plan <plan_id>] [--no-input]  [op]  one plain key at one level
+pm-operator config unset <key> [--machine|--project <project_id>|--plan <plan_id>] [--no-input]        [op]  remove a key at one level; the next level's value applies
 pm-operator status [--project <project_id>] [--by epic] [--watch] [--json]
                                                                 the running work as a tree, and the runtime (15-overview)
 pm-operator status --ended [--project <project_id>]             the ended work as a tree, opened read-only as it ended (15-overview)
