@@ -60,8 +60,7 @@ Not in this plan: the `RowLink` row and `aria-current` selection of the Reports 
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
    - `CompletionReportView.test.ts`: the floor sign, `not measured`, a model with unmeasured tasks, the coverage line, the phase link. Evidence order: `test-first`.
-   - Browser check (Playwright MCP) on `reports-and-system` and `running-work` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for both views (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on `reports-and-system` and `running-work` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); `theme-readability.spec.js` passes for both views (evidence order: `none`).
 
 5. **What PLAN-158 left in the reports and the designer (from its landing, folded 2026-11-11 on the operator's decision)**
  - What: read `landings/PLAN-158.md` of the epic; lines as read at `4a84f727`. Three CodeRabbit findings of #408 that were
@@ -99,20 +98,28 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: `ReportsView.svelte` (1509 lines) uses `Button`, `EmptyState`, `ErrorState`, `FilterInput`, `Icon`, `IconButton`, `RowMenu`, `Skeleton` and has no raw `<button>`, `<a>` or `<input>` — read at the imports and by `git grep -c`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView now 1643 lines; imports Button Icon IconButton RowMenu FilterInput EmptyState ErrorState Skeleton (+TriagePage); no raw button/a/input
 - OBSERVED: `CompletionReportView.svelte` (989 lines) uses `Button`, `Icon`, `Spinner`, `StatusLabel`, has no raw tag, and carries 6 lines with tag-like class names — read at the file and by `git grep -cE 'class="[^"]*(badge|pill|chip|tag|state-dot|status)'`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `routes.ts` knows `/reports` and `/reports?plan=` and no `/reports/{id}` — read at `pm-web-app/src/lib/routes.ts:312-315`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: routes.ts:312-315 /reports and /reports?plan= exactly; no /reports/{id}
 - OBSERVED: `PLAN-129` (staged) rewrites the mark-all rollback and retention in `ReportsView.svelte`, and its D2 touches `CompletionReportView.svelte` (focus); `PLAN-131` (staged) places the mascot in `ReportsView` — read at both specs
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `ReportsView.svelte:1171` passes `visibleLabel` and nine `size="small"` values that PLAN-149 removes — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView passes visibleLabel at :1290 (was 1171) on RowMenu; size=small x9 still in ReportsView
 - HYPOTHESIS: the unread dot and the semibold subject are drawn by hand in `ReportsView` and move to a `StatusLabel` and a class of the row — confirm/refute at `ReportsView.svelte` § row markup (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView:1183-1184 hand-drawn span report-card__unread-dot plus class report-card--unread at :1177
 - HYPOTHESIS: the Tokens section of `CompletionReportView` is already a table of its own — confirm/refute at `CompletionReportView.svelte` § tokens (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CompletionReportView tokens-section :400 holds three own breakdown-table tables (:457 :503 :554) and a total card
 - Verify-first clause: re-read both views after PLAN-45, PLAN-129, PLAN-131, PLAN-149 to PLAN-152 landed; take the PLAN-151 lint list and a tag-class scan as the work list. If PLAN-129 moved the retention code, rebase deliverable 1 on it.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
 
 ## Expected Surface
 
@@ -147,6 +154,29 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-45, PLAN-129, PLAN-131, PLAN-148 to PLAN-152). Settle each HYPOTHESIS. Re-run the lint for both views.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- PLAN-148 looked at 5 of 13 `--color-success-subtle` places in a browser. This plan's browser check includes its own: `CompletionReportView.svelte:834`
+  (both themes; contrast of the text on the block).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match
+- Claim 3 contradicted: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged
+- `CompletionReportView` uses no `Spinner`. The mascot all-clear is already placed (`ReportsView.svelte:1054`; PLAN-129, PLAN-131 landed).
 
 ## Hand-Off Command
 

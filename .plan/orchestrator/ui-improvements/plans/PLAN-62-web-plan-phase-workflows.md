@@ -24,25 +24,25 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `plan-view.spec.js` on `process.phase.*`: taken and not-taken steps; a leaf has no expander; tree rows without the kind in the name; "Jump to now" scrolls to the running node (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Phase narrative and intent**
    - What: A phase without task activity shows outcome, duration, loop count, and for outline and refine a link to the Intent tab; the Intent tab shows goal, criteria, non-goals.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `intent.ready` shows the three parts (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 3. **Not in this plan; breakdown**
    - What: A list "Not in this plan" under the phases with the reason; "By phase and role" only when reported.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `process.pruned-lane` shows the list; no breakdown control without data (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20620 PM_WEB_PORT=20621 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -57,12 +57,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-05)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-04` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/use-cases/plan.adoc` UC-S-05 and `use-cases/proposals.adoc` UC-P-04 exist.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UC-S-05 at use-cases/plan.adoc:50, UC-P-04 proposals.adoc:98, findings-plans-control.adoc present
 - HYPOTHESIS: the instance diagram data of `PM-IMPL-5` is available through the API the plan view already reads — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/process/` (verify-at-outline)
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `pm-api/.../process/` has `ProcessNode`, `NodeState`, `PruneReason`; `client.ts:3151` `getPlanProcess` (GET `/api/v1/plans/{id}/process`), called at `PlanView.svelte` `loadPlanProcess`.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api process/ has ProcessTree, ProcessNode, NodeState, PruneReason; client.ts:3424 getPlanProcess; PlanView.svelte:171 loadPlanProcess
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): client.ts line cited in older evidence moved (getPlanProcess now client.ts:3107); PLAN-43 shipped ObjectPage template, relevant to the PlanView rework; PlanView, NodeNarrative, processNode.ts and plan-view.spec.js changed (PLAN-90/a11y/token work).
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: getPlanProcess now client.ts:3424; templates/ObjectPage.svelte shipped; PlanView.svelte 1721 lines
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
 - HYPOTHESIS: a leaf node renders no expander today — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte:885-896` § `toggle-btn` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte:899-921 renders the toggle button for every node; a leaf gets a blank glyph and aria-expanded undefined (hasChildren :622), so an inert expander button still exists | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -75,6 +78,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/utils/processNode.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -94,6 +98,19 @@ the disjointness gate population). When restarted:
 - `PhaseLabel` and `StatusLabel`; no "Phase phase …" in a node row (the node shows "init" with the phase icon) (006).
 - A node row = `RowLink` + a disclosure button with `aria-current` for the selected node; **plain arrows stay with the tree**,
   `Ctrl+←/→` move between columns (007, 003 §7).
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `RowLink` (PLAN-148) supports no tree role and has no covered-safe place for a disclosure button except `acts`; the spec's "RowLink + a
+  disclosure button with aria-current; plain arrows stay with the tree" (`:95`) must be re-designed at outline (read `RowLink.svelte` at
+  HEAD and `PLAN-49`'s changes to it).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 4 contradicted: PlanView.svelte:899-921 renders the toggle button for every node; a leaf gets a blank glyph and aria-expanded undefined (hasChildren :622), so an inert expander button still exists
+- Already done: the not-in-plan box (#70). Claim 4 refuted: `PlanView.svelte:899-921` renders an inert toggle on every leaf (aria-expanded undefined).
 
 ## Hand-Off Command
 

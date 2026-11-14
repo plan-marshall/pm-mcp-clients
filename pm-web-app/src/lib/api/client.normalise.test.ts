@@ -225,4 +225,178 @@ describe('ApiClient wire normalisation', () => {
       title: 'kept',
     });
   });
+
+  it('reads a ChatResource as the chat the views show', async () => {
+    respond({
+      id: 'chat-7',
+      subject: { kind: 'plan', id: 'fix-relay' },
+      role: { name: 'replan', model: 'sonnet' },
+      scope: 'plan',
+      state: 'chat.read-back',
+      context: {
+        knows: [{ key: 'chat.knows.description' }],
+        as_of: '2026-10-14T10:00:00Z',
+      },
+      proposal: {
+        turn_id: 'T-0003',
+        reply_turn_id: 'T-0002',
+        kind: 'revision',
+        summary: 'a test per transport',
+        applies: { key: 'chat.applies.after_task', args: { task_id: 'TASK-3' } },
+        before: 'a test for the websocket transport',
+        after: 'a test per transport, websocket and SSE',
+        state: 'open',
+      },
+      turns: [
+        {
+          turn_id: 'T-0001',
+          kind: 'message',
+          author: 'operator',
+          status: 'complete',
+          format: 'plain',
+          untrusted: false,
+          text: 'Can the cursor test cover SSE?',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:00Z',
+        },
+        {
+          turn_id: 'T-0002',
+          kind: 'message',
+          author: 'replan',
+          status: 'complete',
+          format: 'markdown',
+          untrusted: true,
+          model: 'sonnet',
+          text: 'A test per transport',
+          steps: [{ key: 'chat.step.read', args: { target: "the plan's tasks" } }],
+          refs: [],
+          at: '2026-10-14T10:00:05Z',
+        },
+        {
+          turn_id: 'T-0003',
+          kind: 'proposal',
+          author: 'replan',
+          status: 'complete',
+          format: 'markdown',
+          untrusted: false,
+          model: 'sonnet',
+          text: 'a test per transport',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:06Z',
+        },
+      ],
+    });
+
+    const chat = await client.getChat('fix-relay');
+
+    // The proposal is the proposal panel's, never a line of the transcript.
+    expect(chat).toEqual({
+      chat_id: 'chat-7',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'plan',
+      state: 'chat.read-back',
+      turns: [
+        {
+          role: 'operator',
+          text: 'Can the cursor test cover SSE?',
+          at: '2026-10-14T10:00:00Z',
+          untrusted: false,
+        },
+        {
+          role: 'replan',
+          text: 'A test per transport',
+          at: '2026-10-14T10:00:05Z',
+          untrusted: true,
+        },
+      ],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'a test per transport',
+        before: 'a test for the websocket transport',
+        after: 'a test per transport, websocket and SSE',
+        applies: 'chat.applies.after_task',
+      },
+    });
+  });
+
+  it('carries no proposal once the runtime has answered it', async () => {
+    respond({
+      id: 'chat-8',
+      subject: { kind: 'plan', id: 'fix-relay' },
+      role: { name: 'replan', model: 'sonnet' },
+      scope: 'plan',
+      state: 'chat.turn',
+      context: { knows: [], as_of: '2026-10-14T10:00:00Z' },
+      proposal: {
+        turn_id: 'T-0003',
+        reply_turn_id: 'T-0002',
+        kind: 'revision',
+        summary: 'a test per transport',
+        after: 'websocket and SSE',
+        state: 'accepted',
+      },
+      turns: [],
+    });
+
+    const chat = await client.getChat('fix-relay');
+
+    // Only an open proposal awaits an answer; showing an answered one would offer a refused act.
+    expect(chat.proposal).toBeNull();
+  });
+
+  it('reads the role and proposal of ended work from a ChatResource', async () => {
+    respond({
+      id: 'chat-9',
+      subject: { kind: 'epic', id: 'relay-hardening' },
+      role: { name: 'decompose', model: 'sonnet' },
+      scope: 'archive',
+      state: 'chat.read-back',
+      context: { knows: [], as_of: '2026-10-14T10:00:00Z' },
+      proposal: {
+        turn_id: 'T-0100',
+        reply_turn_id: 'T-0099',
+        kind: 'follow_up',
+        summary: 'a follow-up plan',
+        before: null,
+        after: 'Relay hardening, second round follows relay-hardening',
+        state: 'open',
+      },
+      turns: [
+        {
+          turn_id: 'T-0100',
+          kind: 'proposal',
+          author: 'decompose',
+          status: 'complete',
+          format: 'markdown',
+          untrusted: false,
+          model: 'sonnet',
+          text: 'a follow-up plan',
+          steps: [],
+          refs: [],
+          at: '2026-10-14T10:00:06Z',
+        },
+      ],
+    });
+
+    const followUp = await client.getEndedChat('epic', 'relay-hardening');
+
+    expect(followUp).toEqual({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      role: 'decompose',
+      scope: 'archive',
+      available: true,
+      proposal: {
+        turn_id: 'T-0100',
+        summary: 'a follow-up plan',
+        before: null,
+        after: 'Relay hardening, second round follows relay-hardening',
+        applies: null,
+      },
+    });
+  });
 });

@@ -33,10 +33,10 @@ Source of this plan (read before scoping):
    - Done when:
      - No row repeats a fact of its own row or its details line (transcripts) (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` at 120 × 30, 100 × 30 and 80 × 24: plan view (task and phase state columns), overview, system, reports; before and after captures recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
@@ -48,11 +48,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design plan.adoc:40-41; proposals.adoc:76-77
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:40-41 CLI-VD-S-04; proposals.adoc:76-77 P-03 and :112 P-04
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
-  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: layout/ is the installation layout; RowLayout belongs in tui/ (Re-grounding 2026-11-10)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowLayout absent everywhere; layout/ holds only OperatorLayout and package-info (installation layout); system/ has SystemView, SystemLevel, SystemFormatting. RowLayout belongs in tui/
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first stale
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -69,6 +69,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/reports/ReportsLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/tui/TuiLayoutTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/RowLayout.java` — absent at `dc811fb3`; created by this plan (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -100,6 +101,12 @@ This section supersedes the spec text and earlier notes where they differ.
 - Sequencing: after PLAN-123 (multi-file) and PLAN-44.
 - Disposition: AMEND (design amendment of the grid); HOLD for PLAN-44.
 
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Already done: the system view's double "not measured" (#299). `RowLayout` belongs in `tui/` (absent).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
@@ -116,3 +123,23 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Merge Rule (Amendment 2026-11-12)
+
+Added by the orchestrator after PLAN-32 (#415) merged without an operator question because its spec had no merge clause. It supersedes
+any text here that differs.
+
+- The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's "standing review
+  authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
+- The run merges only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  nitpick, "additional comments") has a reply on the PR, not only a fix.
+- The pull request body states the thread count, the resolved count and the review-body items with their count
+  (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
+- The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
+  request body carries no generator footer.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Re-ground at `98cea294`: the overview next-page row is this plan's (#416 reply: "PLAN-50 owns the rows"); `rowIdOf` identity is now
+  kind, link, place and `since`; `OverviewFullScreenApp` +242 and `ProjectsOverviewLevel` changed. The startup-notice baseline seeds from the
+  first needs page only (`OverviewFullScreenApp.java:526-535`, mock page size 20): with paging, seed from every page.

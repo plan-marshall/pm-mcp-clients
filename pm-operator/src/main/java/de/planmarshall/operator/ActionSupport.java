@@ -18,12 +18,10 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
@@ -103,6 +101,9 @@ final class ActionSupport {
 
         /** What happens to the running plans of a cancelled epic. */
         static final FlagPair PLANS = new FlagPair("--with-plans", "--without-plans");
+
+        /** The answer to raising a full epic scope by one. */
+        static final FlagPair RAISE = new FlagPair("--raise-scope", "--no-raise");
     }
 
     /**
@@ -340,7 +341,7 @@ final class ActionSupport {
      * @param spec    the picocli command specification
      * @param kind    "plan" or "epic"
      * @param id      the work item ID
-     * @param message the chat message, or {@code null} to fetch history
+     * @param message the chat message to send, or {@code null} to read the chat and run its dialogue
      * @return exit code
      * @throws IOException on network or runtime error
      */
@@ -348,39 +349,19 @@ final class ActionSupport {
                         @Nullable String message) throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var endpoint = "/api/v1/" + kind + "s/" + OperatorUrlUtil.encodePathSegment(id) + "/chat";
+        var client = new WorkActionsClient(context);
         if (message != null && !message.isBlank()) {
-            var response = context.runtime(true).send(
-                                HttpRequest.json("POST", endpoint, JsonTree.write(Map.of("message", message))));
-            if (response.status() == 200 || response.status() == 201) {
-                out.println(response.bodyText());
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException(kind + " chat", response);
-        }
-
-        var response = context.runtime(true).send(HttpRequest.get(endpoint));
-        if (response.status() == 200) {
-            if (context.isConsoleActive()) {
-                var description = WorkChatDialogue.run(context, out, kind, id, false, false);
-                if (description != null) {
-                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                        "operator.actions.chat.follow_up_started",
-                                        Map.of("description", OutputSafety.stripControlSequences(description))));
-                    out.flush();
-                    var code = StartDialogue.run(context, out, EntryKind.PLAN,
-                                        new StartAnswers().withDescription(description));
-                    // The chat is one of the view's other dialogues: a start it opens leaves back
-                    // with it, so its interrupt never ends the console or the view with 130.
-                    return leaveBack(code);
-                }
-                return 0;
-            }
-            WorkChatDialogue.render(context, out, ChatReadBackResource.fromJson(response.bodyText()));
+            out.println(client.chatTurn(kind, id, message).toJson());
+            out.flush();
             return 0;
         }
-        throw new OperatorRefusedException(kind + " chat", response);
+
+        if (context.isConsoleActive()) {
+            WorkChatDialogue.run(context, out, kind, id, false, false);
+            return 0;
+        }
+        WorkChatDialogue.render(context, out, client.chat(kind, id));
+        return 0;
     }
 
     /**

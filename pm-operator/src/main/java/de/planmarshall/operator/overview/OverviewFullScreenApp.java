@@ -39,6 +39,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
@@ -111,7 +112,6 @@ public final class OverviewFullScreenApp {
     private static final String VERB_ANSWER = "answer";
     private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
-    private static final String PLANS_VERB = "plans";
     private static final String NEEDS_LEVEL = "needs";
     private static final String PROJECTS_LEVEL = "projects";
     private static final String EXPLORER_LEVEL = "explorer";
@@ -171,6 +171,32 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    /**
+     * The refusals of the overview's own reads at one moment, replaced as a whole so that a reader on
+     * another thread never sees a half-written set.
+     *
+     * @param projects the refusal of the projects read, or {@code null}
+     * @param needs    the refusal of the needs read, or {@code null}
+     * @param explorer the refusal of the explorer read, or {@code null}
+     */
+    private record Refusals(@Nullable LoadRefusal projects, @Nullable LoadRefusal needs,
+    @Nullable LoadRefusal explorer) {
+
+        static final Refusals NONE = new Refusals(null, null, null);
+
+        Refusals withProjects(@Nullable LoadRefusal refusal) {
+            return new Refusals(refusal, needs, explorer);
+        }
+
+        Refusals withNeeds(@Nullable LoadRefusal refusal) {
+            return new Refusals(projects, refusal, explorer);
+        }
+
+        Refusals withExplorer(@Nullable LoadRefusal refusal) {
+            return new Refusals(projects, needs, refusal);
+        }
+    }
+
     private final OperatorContext context;
     private final Terminal terminal;
     private final String locale;
@@ -213,14 +239,17 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuLandingUnit;
     private @Nullable String menuDecision;
     private @Nullable String statusMessage;
-    private @Nullable LoadRefusal projectsRefusal;
-    private @Nullable LoadRefusal needsRefusal;
-    private @Nullable LoadRefusal explorerRefusal;
+    /**
+     * The refusals of the overview's own reads: the refresh thread writes them and the render thread
+     * reads them, so they live in one immutable holder that is replaced as a whole.
+     */
+    private final AtomicReference<Refusals> refusals = new AtomicReference<>(Refusals.NONE);
     private @Nullable String systemBanner;
     private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
     private @Nullable OverviewKeyHandler activeKeyHandler;
+    private VerbRunner verbRunner;
 
     /**
      * Creates the full-screen overview application with system clock and context defaults.
@@ -259,6 +288,7 @@ public final class OverviewFullScreenApp {
         this.stateStore = Objects.requireNonNull(stateStore, "stateStore");
         this.noticeBuffer = Objects.requireNonNull(noticeBuffer, "noticeBuffer");
         this.initialSelection = Objects.requireNonNull(initialSelection, "initialSelection");
+        this.verbRunner = args -> PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
     }
 
     /**
@@ -409,9 +439,10 @@ public final class OverviewFullScreenApp {
             fetchExplorer(runtime);
             fetchUnreadReports(runtime);
             var level = explorerLevel.get();
-            if (level == null && explorerRefusal != null) {
+            var refusal = refusals.get().explorer();
+            if (level == null && refusal != null) {
                 level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(), List.of(), List.of(), List.of()),
-                                    false, explorerRefusal);
+                                    false, refusal);
             }
             if (level != null) {
                 var rows = level.rows(locale, clock);
@@ -423,10 +454,11 @@ public final class OverviewFullScreenApp {
         fetchProjects(runtime);
         fetchNeedsOperator(runtime);
         fetchUnreadReports(runtime);
+        seedNeedsNotices();
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
+        var rootLevel = overviewLevel(projects);
         currentOverviewLevel.set(rootLevel);
         var rootRows = rootLevel.rows(locale, clock);
 
@@ -486,20 +518,57 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    /**
+     * Seeds the view's own notice rule from the list of what waits it read at start: what that read
+     * showed is in the view already and is not counted again as arriving meanwhile, while anything
+     * beyond it is. A list the runtime did not serve showed nothing.
+     */
+    void seedNeedsNotices() {
+        var shown = new LinkedHashMap<NeedsOperatorKind, Integer>();
+        var page = cachedNeedsOperator.get();
+        if (page != null) {
+            for (var item : page.items()) {
+                shown.merge(item.kind(), 1, Integer::sum);
+            }
+        }
+        needsNotices.seed(shown);
+    }
+
     void fetchNeedsOperator(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
             if (response.status() == 200) {
                 cachedNeedsOperator.set(NeedsOperatorPage.fromJson(response.bodyText()));
-                needsRefusal = null;
+                refuseNeeds(null);
                 return;
             }
-            needsRefusal = LoadRefusal.of(locale, response, NEEDS_LEVEL);
-        } catch (IOException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure, NEEDS_LEVEL);
+            refuseNeeds(LoadRefusal.of(locale, response, NEEDS_LEVEL));
+        } catch (IOException _) {
+            refuseNeeds(LoadRefusal.unreachable(locale, NEEDS_LEVEL));
         } catch (IllegalArgumentException failure) {
-            needsRefusal = LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL);
+            refuseNeeds(LoadRefusal.of(locale, failure.getMessage(), NEEDS_LEVEL));
         }
+    }
+
+    private void refuseNeeds(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withNeeds(refusal));
+    }
+
+    private void refuseProjects(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withProjects(refusal));
+    }
+
+    private void refuseExplorer(@Nullable LoadRefusal refusal) {
+        refusals.updateAndGet(current -> current.withExplorer(refusal));
+    }
+
+    /**
+     * @param projects the projects the overview shows
+     * @return the overview's root level with the refusals of its reads as they are now
+     */
+    private ProjectsOverviewLevel overviewLevel(List<ProjectSummary> projects) {
+        var current = refusals.get();
+        return new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), current.projects(), current.needs());
     }
 
     void fetchProjects(RuntimeClient runtime) {
@@ -507,14 +576,14 @@ public final class OverviewFullScreenApp {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
                 cachedProjects.set(ProjectOverviewResponse.fromJson(response.bodyText()));
-                projectsRefusal = null;
+                refuseProjects(null);
                 return;
             }
-            projectsRefusal = LoadRefusal.of(locale, response, PROJECTS_LEVEL);
-        } catch (IOException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure, PROJECTS_LEVEL);
+            refuseProjects(LoadRefusal.of(locale, response, PROJECTS_LEVEL));
+        } catch (IOException _) {
+            refuseProjects(LoadRefusal.unreachable(locale, PROJECTS_LEVEL));
         } catch (IllegalArgumentException failure) {
-            projectsRefusal = LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL);
+            refuseProjects(LoadRefusal.of(locale, failure.getMessage(), PROJECTS_LEVEL));
         }
     }
 
@@ -522,34 +591,34 @@ public final class OverviewFullScreenApp {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                explorerRefusal = LoadRefusal.of(locale, response, EXPLORER_LEVEL);
-                keepExplorerRefusal();
+                keepExplorerRefusal(LoadRefusal.of(locale, response, EXPLORER_LEVEL));
                 return;
             }
             var explorer = ProjectExplorer.fromJson(response.bodyText());
             var current = explorerLevel.get();
             boolean byMostUsed = current != null && current.byMostUsed();
-            explorerRefusal = null;
+            refuseExplorer(null);
             explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed, null));
-        } catch (IOException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure, EXPLORER_LEVEL);
-            keepExplorerRefusal();
+        } catch (IOException _) {
+            keepExplorerRefusal(LoadRefusal.unreachable(locale, EXPLORER_LEVEL));
         } catch (IllegalArgumentException failure) {
-            explorerRefusal = LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL);
-            keepExplorerRefusal();
+            keepExplorerRefusal(LoadRefusal.of(locale, failure.getMessage(), EXPLORER_LEVEL));
         }
     }
 
     /**
-     * Keeps the refusal on the level the sort toggle and a favourite reorder rebuild from: the row
-     * must not vanish while the read still fails.
+     * Records the refusal and keeps it on the level the sort toggle and a favourite reorder rebuild
+     * from: the row must not vanish while the read still fails.
+     *
+     * @param refusal the refusal of the explorer read
      */
-    private void keepExplorerRefusal() {
+    private void keepExplorerRefusal(LoadRefusal refusal) {
+        refuseExplorer(refusal);
         var current = explorerLevel.get();
         var explorer = current != null ? current.explorer()
                             : new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
         explorerLevel.set(new ProjectsExplorerLevel(explorer, current != null && current.byMostUsed(),
-                            explorerRefusal));
+                            refusal));
     }
 
     void fetchUnreadReports(RuntimeClient runtime) {
@@ -813,7 +882,7 @@ public final class OverviewFullScreenApp {
      */
     static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
         return switch (kind != null ? kind : "") {
-            case "question", "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "question", "decision", "waiver", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
             case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
@@ -881,6 +950,16 @@ public final class OverviewFullScreenApp {
     @FunctionalInterface
     private interface DialogueTask {
         int run() throws IOException;
+    }
+
+    /** What runs one verb the view hands off, by its words. */
+    @FunctionalInterface
+    public interface VerbRunner {
+        /**
+         * @param args the verb and its arguments
+         * @return the verb's exit code
+         */
+        int run(String... args);
     }
 
     private WorkActionsClient actionsClient() {
@@ -1193,8 +1272,7 @@ public final class OverviewFullScreenApp {
         }
         var kind = menuKind != null ? menuKind : "plan";
         if (subject == ActionsMenu.Subject.ENDED) {
-            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId(),
-                                currentProjectId(), locale));
+            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId()));
             return;
         }
         if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
@@ -1365,9 +1443,19 @@ public final class OverviewFullScreenApp {
         openActions();
     }
 
+    /**
+     * Replaces what runs a verb the view hands off, so a test observes the exact words without a
+     * runtime behind every verb.
+     *
+     * @param runner the runner of a verb's words
+     */
+    public void verbRunner(VerbRunner runner) {
+        this.verbRunner = Objects.requireNonNull(runner, "runner");
+    }
+
     void runVerb(String... args) {
         runDialogue(() -> {
-            var code = PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
+            var code = verbRunner.run(args);
             // A start the view hands off is one of the view's other dialogues: its interrupt
             // leaves back to the view as q does (04-console.adoc#console-dialogue-handoff).
             var start = args.length > 1 && (("plan".equals(args[0]) || "epic".equals(args[0]))
@@ -1393,81 +1481,15 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void openNeedsItemAct(NeedsOperatorItem item) {
-        switch (item.kind()) {
-            case DECISION, WAIVER -> openDecisionAct(item);
-            case HELD, LANDING_FAILED -> openHoldAct(item);
-            case SETUP -> openSetupAct(item);
-            case CREDENTIAL -> runVerb("credentials");
-            case CLEANUP_DUE -> runVerb("cleanup");
-            case FINDINGS -> openFindingsAct(item);
-            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
-            case OTHER -> runVerb(PLANS_VERB);
-        }
-    }
-
-    private void openDecisionAct(NeedsOperatorItem item) {
-        String decisionId = null;
-        if (item.link() != null && item.link().contains("/decisions/")) {
-            decisionId = item.link().substring(item.link().lastIndexOf('/') + 1);
-        } else if (item.plan() != null) {
-            try {
-                decisionId = actionsClient().openDecision(item.plan().id());
-            } catch (IOException _) {
-                // best effort
-            }
-        }
-        if (decisionId != null) {
-            String finalDecisionId = decisionId;
-            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, finalDecisionId));
-        } else {
-            runVerb(VERB_ANSWER);
-        }
-    }
-
-    private void openHoldAct(NeedsOperatorItem item) {
-        var planId = item.plan() != null ? item.plan().id() : null;
-        if (planId != null) {
-            try {
-                var hold = actionsClient().hold(planId);
-                if (hold != null) {
-                    runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
-                    return;
-                }
-            } catch (IOException _) {
-                // best effort
-            }
-            runVerb("plan", planId);
-        } else if (item.epic() != null) {
-            runVerb("epic", item.epic().id());
-        }
-    }
-
-    private void openSetupAct(NeedsOperatorItem item) {
-        var projId = item.project() != null ? item.project().id() : null;
-        if (projId != null) {
-            runVerb(PROJECT_VERB, VERB_SETUP, projId);
-        } else {
-            runVerb(PROJECT_VERB, VERB_SETUP);
-        }
-    }
-
-    private void openFindingsAct(NeedsOperatorItem item) {
-        if (item.epic() != null) {
-            runVerb("epic", "findings", item.epic().id());
-        } else {
-            runVerb("reports");
-        }
-    }
-
-    private void openPlanAct(NeedsOperatorItem item) {
-        if (item.plan() != null) {
-            try {
-                openPlan(context.runtime(true), item.plan().id(), null);
-            } catch (IOException _) {
-                // best effort
-            }
-        }
+    /**
+     * Runs what waits in a row of the needs list: exactly the command the row prints
+     * ({@link OverviewFormatting#needsItemCommand(NeedsOperatorItem)}), so {@code !} never opens
+     * something other than what the operator reads.
+     *
+     * @param item the item of the selected row
+     */
+    public void openNeedsItemAct(NeedsOperatorItem item) {
+        runVerb(OverviewFormatting.needsItemCommand(item).toArray(String[]::new));
     }
 
     private Thread startEventListener() {
@@ -1715,7 +1737,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(), projectsRefusal, needsRefusal);
+            var levelModel = overviewLevel(projects);
             currentOverviewLevel.set(levelModel);
             stack.refresh(levelModel.rows(locale, clock));
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
@@ -1745,7 +1767,7 @@ public final class OverviewFullScreenApp {
         }
         var level = explorerLevel.get();
         if (level != null) {
-            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), explorerRefusal);
+            level = new ProjectsExplorerLevel(level.explorer(), level.byMostUsed(), refusals.get().explorer());
         }
         if (level != null) {
             var refreshed = level;
@@ -3029,8 +3051,7 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get(),
-                                projectsRefusal, needsRefusal);
+            var levelModel = overviewLevel(projects);
             currentOverviewLevel.set(levelModel);
             stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
         }

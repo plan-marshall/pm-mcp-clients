@@ -61,6 +61,7 @@ import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.system.RuntimeLifecycleState;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
@@ -364,7 +365,30 @@ class MockRuntimeEngineTest {
             var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken),
                     new byte[0], false);
             var waiting = JsonTree.asObject(after.json().get("needs_operator"));
-            assertEquals(1, JsonTree.integer(waiting, "waiver_request"));
+            assertNotNull(waiting);
+            assertEquals(1, JsonTree.integer(waiting, "waiver"),
+                    "a waiver counts under the contract's kind waiver: " + waiting);
+            assertFalse(waiting.containsKey("waiver_request"),
+                    "the mock serves one list of kinds, never the specification's spelling beside it: " + waiting);
+        }
+    }
+
+    @Test
+    @DisplayName("every kind the status counts is a kind of the contract's closed list")
+    void statusCountsOnlyContractKinds() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                     runtimeToken, deviceSecret)) {
+            var waiver = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"WR-"
+                    + Generators.integers(100, 999).next() + "\",\"title\":\"Waiver\",\"subject\":\"plan fix-relay\","
+                    + "\"is_waiver\":true,\"waiver_gate\":\"sonar\"}}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), waiver.getBytes(StandardCharsets.UTF_8), false);
+            var status = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
+            var waiting = JsonTree.asObject(status.json().get("needs_operator"));
+            assertNotNull(waiting);
+            for (var kind : waiting.keySet()) {
+                assertEquals(kind, NeedsOperatorKind.fromWireOrOther(kind).value(),
+                        "the status names " + kind + " outside the contract's kinds: " + waiting);
+            }
         }
     }
 

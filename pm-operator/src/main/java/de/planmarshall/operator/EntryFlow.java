@@ -41,6 +41,7 @@ import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
@@ -757,13 +758,25 @@ public final class EntryFlow {
             if (count < 0) {
                 continue;
             }
-            var kind = String.valueOf(entry.getKey());
+            var kind = badgeKindOf(String.valueOf(entry.getKey()));
             var badgeText = ConsolePrompt.formatBadge(locale, kind, count);
             if (badgeText != null) {
                 badges.add(ConsoleBadge.waiting(kind, count, badgeText));
             }
         }
         return badges;
+    }
+
+    /**
+     * @param wireKind the kind the status names a count by
+     * @return the contract's kind {@code waiver} for every spelling {@link NeedsOperatorKind} reads as
+     *         the waiver (the specification's one included), so a runtime that still sends it badges a
+     *         waiver; every other kind as it stands
+     */
+    private static String badgeKindOf(String wireKind) {
+        return NeedsOperatorKind.fromValue(wireKind) == NeedsOperatorKind.WAIVER
+                            ? NeedsOperatorKind.WAIVER.value()
+                            : wireKind;
     }
 
     /**

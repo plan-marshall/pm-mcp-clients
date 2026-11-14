@@ -826,42 +826,50 @@ describe('start-chat: the one chat panel', () => {
         chat_disabled_reason: null,
       }),
     );
-    const chatState = representation({
-      entry: entry({
-        sources: [source({ title: 'Add a Codeberg provider for issues' })],
-        can_continue: true,
-        chat_available: true,
-      }),
-      chat: {
-        entry_id: 'ent-3f9a2c41',
-        role: 'refine',
-        scope: 'request',
-        available: true,
-        turns: [
-          {
-            role: 'operator',
-            text: 'What did you understand?',
-            at: '2026-10-19T10:00:00Z',
-            untrusted: false,
-          },
-          {
-            role: 'refine',
-            text: 'A provider that reads Codeberg issues.',
-            at: '2026-10-19T10:00:05Z',
-            untrusted: false,
-          },
-        ],
-        proposal: {
-          summary: 'An addition to the description',
-          after: 'Pull requests of Codeberg are out of scope.',
-          applies: 'the description',
+    const chatReadBack = {
+      chat_id: 'C-0001',
+      subject_id: 'ent-3f9a2c41',
+      subject_kind: 'entry',
+      role: 'refine',
+      scope: 'entry',
+      state: 'chat.read-back',
+      turns: [
+        {
+          role: 'operator',
+          text: 'What did you understand?',
+          at: '2026-10-19T10:00:00Z',
+          untrusted: false,
         },
-        transcript: 'with_entry',
+        {
+          role: 'refine',
+          text: 'A provider that reads Codeberg issues.',
+          at: '2026-10-19T10:00:05Z',
+          untrusted: false,
+        },
+      ],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'An addition to the description',
+        after: 'Pull requests of Codeberg are out of scope.',
+        applies: 'chat.applies.after_task',
       },
+    };
+    const open = vi.spyOn(apiClient, 'openEntryChat').mockResolvedValue(chatReadBack);
+    const send = vi.spyOn(apiClient, 'chatTurn').mockResolvedValue({
+      ...chatReadBack,
+      turns: [
+        ...chatReadBack.turns,
+        {
+          role: 'refine',
+          text: 'Kept small.',
+          at: '2026-10-19T10:00:09Z',
+          untrusted: false,
+        },
+      ],
     });
-    vi.spyOn(apiClient, 'actEntry').mockResolvedValue(chatState);
-    const send = vi.spyOn(apiClient, 'chatTurn').mockResolvedValue(chatState);
-    const accept = vi.spyOn(apiClient, 'answerChatProposal').mockResolvedValue(chatState);
+    const accept = vi
+      .spyOn(apiClient, 'answerChatProposal')
+      .mockResolvedValue({ ...chatReadBack, state: 'chat.turn', proposal: null });
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
@@ -869,6 +877,8 @@ describe('start-chat: the one chat panel', () => {
 
     await fireEvent.click(screen.getByTestId('source-chat'));
     expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    // The chat is opened on its own route, never by an act of the entry.
+    expect(open).toHaveBeenCalledWith('ent-3f9a2c41');
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent('What did you understand?');
     expect(screen.getByTestId('chat-proposal')).toHaveTextContent(
       'Proposed addition to the description',
@@ -879,9 +889,96 @@ describe('start-chat: the one chat panel', () => {
     });
     await fireEvent.click(screen.getByTestId('chat-send'));
     expect(send).toHaveBeenCalledWith('ent-3f9a2c41', 'Keep it small.');
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('Kept small.');
 
     await fireEvent.click(screen.getByTestId('chat-accept'));
-    expect(accept).toHaveBeenCalledWith('ent-3f9a2c41', true);
+    expect(accept).toHaveBeenCalledWith('ent-3f9a2c41', 'T-0003', true);
+  });
+
+  it('reads the chat again when it is reopened after a change', async () => {
+    arrangeOpen(
+      sources({
+        sources: [source({ title: 'Add a Codeberg provider for issues' })],
+        can_continue: true,
+        chat_available: true,
+        chat_disabled_reason: null,
+      }),
+    );
+    const chatReadBack = {
+      chat_id: 'C-0001',
+      subject_id: 'ent-3f9a2c41',
+      subject_kind: 'entry',
+      role: 'refine',
+      scope: 'entry',
+      state: 'chat.read-back',
+      turns: [
+        {
+          role: 'operator',
+          text: 'What did you understand?',
+          at: '2026-10-19T10:00:00Z',
+          untrusted: false,
+        },
+      ],
+      proposal: { turn_id: 'T-0003', summary: 'An addition', after: 'With fsynced.' },
+    };
+    const open = vi.spyOn(apiClient, 'openEntryChat').mockResolvedValue(chatReadBack);
+    const reread = vi
+      .spyOn(apiClient, 'getEntryChat')
+      .mockResolvedValue({ ...chatReadBack, state: 'chat.turn', proposal: null });
+
+    render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
+    await screen.findByTestId('source-list');
+
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    expect(open).toHaveBeenCalledTimes(1);
+
+    // Closing with Escape leaves the chat open on the runtime; reopening reads it again.
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('chat-panel')).not.toBeInTheDocument());
+
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    await waitFor(() => expect(reread).toHaveBeenCalledWith('ent-3f9a2c41'));
+    // The re-read chat carries no proposal, so the card the cached one had is gone.
+    await waitFor(() => expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument());
+  });
+
+  it('opens a new chat when the cached one has ended', async () => {
+    arrangeOpen(
+      sources({
+        sources: [source({ title: 'Add a Codeberg provider for issues' })],
+        can_continue: true,
+        chat_available: true,
+        chat_disabled_reason: null,
+      }),
+    );
+    const ended = {
+      chat_id: 'C-0001',
+      subject_id: 'ent-3f9a2c41',
+      subject_kind: 'entry',
+      role: 'refine',
+      scope: 'entry',
+      state: 'chat.end',
+      turns: [],
+      proposal: null,
+    };
+    const opened = { ...ended, chat_id: 'C-0002', state: 'chat.turn' };
+    const open = vi.spyOn(apiClient, 'openEntryChat').mockResolvedValue(ended);
+    const reread = vi.spyOn(apiClient, 'getEntryChat').mockResolvedValue(ended);
+
+    render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
+    await screen.findByTestId('source-list');
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    expect(open).toHaveBeenCalledTimes(1);
+
+    // The chat was ended meanwhile; reopening starts a new one instead of reading the ended one.
+    open.mockResolvedValue(opened);
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('chat-panel')).not.toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('source-chat'));
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+    expect(reread).not.toHaveBeenCalled();
   });
 
   it('is disabled with its reason while a source is not yet screened', async () => {

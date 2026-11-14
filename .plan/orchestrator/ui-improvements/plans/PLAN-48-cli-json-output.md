@@ -37,10 +37,10 @@ Source of this plan (read before scoping):
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
      - The document passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
@@ -53,11 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57; proposals.adoc:125-126
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57 CLI-UX-S-06; proposals.adoc:125-126 CLI-UX-P-07
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
-  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (PLAN-36 #391); json/ test dir absent; SystemCommand prints the body raw
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first stale
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -79,6 +79,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorProcessIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorKind.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SystemCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -113,6 +116,13 @@ This section supersedes the spec text and earlier notes where they differ.
 - Dependencies: add PLAN-30 and PLAN-36 (landed); chain 30 → 42 → 48. Stale: the PLAN-77 clause, the verify-first clause.
 - Disposition: AMEND (schema decision); HOLD until PLAN-42 lands.
 
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355)
+- Already done: `needs`, `status` and `system --json` exist (#391); hardening and the rest are open. `01-commands.adoc` is listed twice in the surface; the verify-first clause names a HYPOTHESIS that does not exist.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
@@ -129,3 +139,23 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## Merge Rule (Amendment 2026-11-12)
+
+Added by the orchestrator after PLAN-32 (#415) merged without an operator question because its spec had no merge clause. It supersedes
+any text here that differs.
+
+- The pull request is merged only after at least one CodeRabbit review of some head with its findings handled. A lane's "standing review
+  authorization" does not replace it. If CodeRabbit refuses on quota, stop and ask the operator.
+- The run merges only when every review thread has a reply and is resolved, and every review body item (outside-diff,
+  nitpick, "additional comments") has a reply on the PR, not only a fix.
+- The pull request body states the thread count, the resolved count and the review-body items with their count
+  (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
+- The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
+  request body carries no generator footer.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Re-ground at `98cea294`: `NeedsCommand` gained `--page` and the beyond-the-end line (`operator.needs.page_beyond`); `NeedsOneCountTest`
+  pins per-kind counts across four surfaces (`needs --json` keeps them); `NeedsOperatorKind.fromWireOrOther` exists — re-check the premise
+  "`fromMap` throws on unknown".

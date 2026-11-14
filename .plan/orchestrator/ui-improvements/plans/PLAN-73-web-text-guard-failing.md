@@ -38,7 +38,7 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - The baseline is empty (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Failing mode**
    - What: The guard fails on any violation; delete `text-guard-baseline.json`.
    - Persona: plan-marshall:persona-integration-tester
@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
    - Done when:
      - Adding a raw enum to a view fails the spec (evidence order: `mutation-after`)
      - `PM_MOCK_WEB_PORT=20730 PM_WEB_PORT=20731 ./mvnw -pl pm-web-e2e verify -Pe2e` passes (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in `de` and `en`; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20730 PM_WEB_PORT=20731 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -61,9 +61,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-07`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09` — read at `doc/claude_review/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102 CC-P-09; text-guard-baseline.json 4 views non-empty, 24 entries
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102-103 CC-P-09; baseline has 4 non-empty views (Epic1, Decision2, ProcessDesigner17, ProjectExplorer4) = 24 entries
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Baseline text-guard-baseline.json and textGuard.js still exist (CC-S-07 says delete the baseline); baseline is non-empty (e.g. EpicView de foreign-word paused, DecisionView de raw-enum ci_check) and was last touched by 9890d74b/5f9e60da; many views listed as touched changed since the anchor, so the amount of residue should be re-counted at outline.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: text-guard-baseline.json non-empty: EpicView de foreign-word paused, DecisionView de/en raw-enum ci_check; textGuard.js and text-guard.spec.js exist
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 
 ## Expected Surface
 
@@ -95,6 +97,12 @@ row is not in the disjointness gate population). Its expected first failures, to
 - literals and glyph labels (007);
 - machine ids as labels, raw `e.message`, labels with colons or title case (008);
 - `start.*` keys reused in the chat instead of `control.chat.*` (009).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- The text-guard baseline now has 23 views × 2 (`UnreachableView`, 6e8c29af), not 22.
 
 ## Hand-Off Command
 

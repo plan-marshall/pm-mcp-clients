@@ -1,0 +1,67 @@
+<script lang="ts" module>
+  /**
+   * The catalogue key of each marker's word — the one definition the type, the list and the mappings
+   * come from. Every key is a literal here, and `MessageCatalogueTest` of `pm-api` asserts it in both
+   * languages; the web catalogue guard cannot see a key passed as a variable.
+   */
+  const MARKER_WORDS = {
+    recommended: 'common.marker.recommended',
+    default: 'common.marker.default',
+    this_one: 'common.marker.this_one',
+  } as const;
+
+  /** The three properties a marker names (components-tags.adoc, markers). */
+  export type MarkerKind = keyof typeof MARKER_WORDS;
+
+  /** The markers, in the order the design names them. */
+  export const MARKERS: readonly MarkerKind[] = Object.freeze(
+    Object.keys(MARKER_WORDS) as MarkerKind[],
+  );
+
+  /** The neutral UI icon of each marker; the word tells the three apart. */
+  export const MARKER_ICONS: Readonly<Record<MarkerKind, string>> = Object.freeze({
+    recommended: 'state.check',
+    default: 'state.dot',
+    this_one: 'state.dot',
+  });
+
+  /** The catalogue key of each marker's word. */
+  export const MARKER_WORD_KEYS: Readonly<Record<MarkerKind, string>> = MARKER_WORDS;
+</script>
+
+<script lang="ts">
+  import Icon from './Icon.svelte';
+  import { t } from '../i18n';
+
+  /**
+   * A property of one option among several — _recommended_, _default_, _this one_ — after the
+   * option's label: a small neutral icon and its word in `--color-text-secondary`.
+   *
+   * It draws no fill, no border and no brand colour; the option itself is what the operator chooses,
+   * and the marker only says something about it.
+   */
+  interface Props {
+    /** Which property the marker names. */
+    kind: MarkerKind;
+    /** The option the marker belongs to, as its accessible name. */
+    label?: string;
+  }
+
+  let { kind, label }: Props = $props();
+</script>
+
+<span class="marker" data-marker={kind} title={label || undefined}>
+  <Icon name={MARKER_ICONS[kind]} size={16} />
+  <span class="marker__word">{$t(MARKER_WORD_KEYS[kind])}</span>
+</span>
+
+<style>
+  .marker {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    line-height: var(--line-height-xs);
+  }
+</style>

@@ -1,0 +1,36 @@
+# Screen captures for PLAN-127: the answer verb, the sanitizer, `epic next` and the needs surfaces made correct
+# Covers, each in en and de:
+#   - D1 a multi-part decision: the answer verb reads the decision and asks part by part
+#   - D2 a hostile envelope (bidi controls, zero-width characters and tag characters), shown cleaned
+#   - D3 `epic next` reading the epic and asking before it raises the scope
+#   - D5 the overview's "Needs you" group and the `needs` list, at 120x30 and 80x24, waiver named by its
+#     contract kind and every row printing the command `!` runs
+# Taken by ScreenCaptureIT at the PR head (-Dpm.screens=PLAN-127), never by running pm-operator in a shell.
+#
+# name | scenario | states | command | keys | columnsxrows | locale | environment | beforeKeys | broadcast
+
+# D1: a three-part decision, part 1, then part 2 after the first answer
+answer-multipart-part1-120x30-en | running-work | decisions.open | answer Q-012 | l\n | 120x30 | en_US.UTF-8 | - | - | -
+answer-multipart-part2-120x30-en | running-work | decisions.open | answer Q-012 | l\n | 120x30 | en_US.UTF-8 | - | 1\n | -
+answer-multipart-part1-120x30-de | running-work | decisions.open | answer Q-012 | s\n | 120x30 | de_DE.UTF-8 | - | - | -
+answer-multipart-part2-120x30-de | running-work | decisions.open | answer Q-012 | s\n | 120x30 | de_DE.UTF-8 | - | 1\n | -
+
+# D2: a decision whose title, description and evidence carry bidi, zero-width and tag characters, shown cleaned
+answer-hostile-envelope-120x30-en | running-work | decisions.open | | l\nexit\n | 120x30 | en_US.UTF-8 | - | answer Q-HOSTILE\n?\n | {"event":"decision.opened","data":{"decision":{"id":"Q-HOSTILE","revision":1,"title":"Hostile‮ envelope","subject":"plan fix-relay","scope":"plan","blocks":"plan","reversibility":"reversible","description":"Choose​ one‍ now⁦","evidence":{"file":"src/Main‏.java","lines":"42-58","summary":"tagged󠁁󠁿 text"},"parts":[{"part_id":"1","question":"Which‪?","options":[{"key":"1","label":"Yes​"}]}]}}}
+answer-hostile-envelope-120x30-de | running-work | decisions.open | | s\nexit\n | 120x30 | de_DE.UTF-8 | - | answer Q-HOSTILE\n?\n | {"event":"decision.opened","data":{"decision":{"id":"Q-HOSTILE","revision":1,"title":"Hostile‮ envelope","subject":"plan fix-relay","scope":"plan","blocks":"plan","reversibility":"reversible","description":"Choose​ one‍ now⁦","evidence":{"file":"src/Main‏.java","lines":"42-58","summary":"tagged󠁁󠁿 text"},"parts":[{"part_id":"1","question":"Which‪?","options":[{"key":"1","label":"Yes​"}]}]}}}
+
+# D3: `epic next` reads the epic and asks before it raises the scope; Ctrl+C leaves with nothing sent
+epic-next-asks-120x30-en | running-work | - | epic next relay-hardening | \c | 120x30 | en_US.UTF-8 | -
+epic-next-asks-120x30-de | running-work | - | epic next relay-hardening | \c | 120x30 | de_DE.UTF-8 | -
+
+# D5: the overview's "Needs you" group
+overview-needs-120x30-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | -
+overview-needs-120x30-de | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | -
+overview-needs-80x24-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | -
+overview-needs-80x24-de | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | -
+
+# D5: the `needs` list, every row with the command `!` runs
+needs-120x30-en | running-work | - | needs | - | 120x30 | en_US.UTF-8 | -
+needs-120x30-de | running-work | - | needs | - | 120x30 | de_DE.UTF-8 | -
+needs-80x24-en | running-work | - | needs | - | 80x24 | en_US.UTF-8 | -
+needs-80x24-de | running-work | - | needs | - | 80x24 | de_DE.UTF-8 | -

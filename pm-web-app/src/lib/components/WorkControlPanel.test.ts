@@ -818,8 +818,9 @@ describe('WorkControlPanel component', () => {
       subject_kind: 'plan',
       role: 'replan',
       scope: 'plan',
-      state: 'open',
+      state: 'chat.turn',
       turns: [],
+      proposal: null,
     });
     const turn = vi.spyOn(apiClient, 'chatWithSubject').mockResolvedValue({
       chat_id: 'C-0001',
@@ -827,8 +828,18 @@ describe('WorkControlPanel component', () => {
       subject_kind: 'plan',
       role: 'replan',
       scope: 'plan',
-      state: 'turn',
-      turns: [{ role: 'operator', text: 'Can the test cover SSE?', at: 'now', untrusted: false }],
+      state: 'chat.read-back',
+      turns: [
+        { role: 'operator', text: 'Can the test cover SSE?', at: 'now', untrusted: false },
+        { role: 'replan', text: 'Yes: a second test.', at: 'now', untrusted: false },
+      ],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'a test per transport',
+        before: 'one transport',
+        after: 'websocket and SSE',
+        applies: 'chat.applies.after_task',
+      },
     });
 
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
@@ -842,9 +853,52 @@ describe('WorkControlPanel component', () => {
     await waitFor(() => {
       expect(turn).toHaveBeenCalledWith('fix-relay', 'Can the test cover SSE?');
     });
+    // The reply the client read is drawn, and the proposal it made is the panel's own card.
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('Yes: a second test.');
+    expect(screen.getByTestId('chat-proposal-after')).toHaveTextContent('websocket and SSE');
   });
 
-  it('offers a chat about ended work and opens the start of its follow-up', async () => {
+  it('answers the chat proposal after a message, by the proposal’s own turn', async () => {
+    vi.spyOn(apiClient, 'getChat').mockResolvedValue({
+      chat_id: 'C-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'plan',
+      state: 'chat.read-back',
+      turns: [{ role: 'operator', text: 'Add SSE', at: 'now', untrusted: false }],
+      proposal: {
+        turn_id: 'T-0003',
+        summary: 'a test per transport',
+        after: 'websocket and SSE',
+      },
+    });
+    const accept = vi.spyOn(apiClient, 'answerSubjectChatProposal').mockResolvedValue({
+      chat_id: 'C-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'plan',
+      state: 'chat.turn',
+      turns: [{ role: 'operator', text: 'Add SSE', at: 'now', untrusted: false }],
+      proposal: null,
+    });
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
+
+    await waitFor(() => {
+      expect(accept).toHaveBeenCalledWith('fix-relay', 'T-0003', true);
+    });
+    // The answered proposal is gone with the answer: the runtime keeps it in the resource.
+    await waitFor(() => {
+      expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('offers a chat about ended work and tells that its follow-up start is being prepared', async () => {
     vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
       subject_id: 'codeberg-issues',
       subject_kind: 'plan',
@@ -859,18 +913,14 @@ describe('WorkControlPanel component', () => {
       },
     });
     const accept = vi.spyOn(apiClient, 'acceptFollowUp').mockResolvedValue({
-      start: {
-        entry: {
-          entry_id: 'ent-3f9a2c41',
-          kind: 'plan',
-          project_id: 'pm-mcp-clients',
-          state: 'start.sources',
-          sources: [],
-          kind_offers: [],
-          can_continue: true,
-          chat_available: true,
-        },
-      },
+      chat_id: 'C-0002',
+      subject_id: 'codeberg-issues',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'archive',
+      state: 'chat.turn',
+      turns: [],
+      proposal: null,
     });
 
     render(WorkControlPanel, {
@@ -893,7 +943,48 @@ describe('WorkControlPanel component', () => {
       expect(accept).toHaveBeenCalledWith('plan', 'codeberg-issues', 'T-0207');
     });
     expect(apiClient.getEndedChat).toHaveBeenCalledWith('plan', 'codeberg-issues');
-    expect(window.location.pathname).toBe('/entries/ent-3f9a2c41');
+    // No B1 surface names the entry the accept opened, so the operator is told a start is prepared.
+    const notice = await screen.findByTestId('chat-notice');
+    expect(notice).toHaveTextContent(
+      'A new plan is being started in pm-mcp-clients with this description',
+    );
+    // The answered proposal is gone, and the success is a status rather than a refusal.
+    expect(screen.queryByTestId('chat-proposal')).not.toBeInTheDocument();
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice.className).toContain('work-control__notice');
+  });
+
+  it('reports a refused follow-up as an alert', async () => {
+    vi.spyOn(apiClient, 'getEndedChat').mockResolvedValue({
+      subject_id: 'codeberg-issues',
+      subject_kind: 'plan',
+      role: 'replan',
+      scope: 'archive',
+      available: true,
+      proposal: {
+        turn_id: 'T-0207',
+        summary: 'A follow-up plan',
+        after: 'Add the Codeberg issue provider on top of relay-v2.',
+        applies: 'a new plan',
+      },
+    });
+    vi.spyOn(apiClient, 'acceptFollowUp').mockRejectedValue(new Error('conflict'));
+
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'codeberg-issues',
+        subjectKind: 'plan',
+        projectId: 'pm-mcp-clients',
+        ended: true,
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-chat'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
+
+    const notice = await screen.findByTestId('chat-notice');
+    expect(notice).toHaveAttribute('role', 'alert');
+    expect(notice.className).toContain('work-control__failure');
   });
 
   it('accepts no follow-up whose proposal was read without its turn', async () => {

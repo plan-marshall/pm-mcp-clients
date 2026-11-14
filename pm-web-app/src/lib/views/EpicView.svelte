@@ -495,9 +495,13 @@
   }
 
   async function answerReviewProposal(accept: boolean) {
+    const turnId = reviewChat?.proposal?.turn_id;
+    if (!turnId) {
+      return;
+    }
     reviewChatBusy = true;
     try {
-      reviewChat = await apiClient.answerSubjectChatProposal(`epic:${epicId}`, accept);
+      reviewChat = await apiClient.answerSubjectChatProposal(`epic:${epicId}`, turnId, accept);
     } catch (err: unknown) {
       reviewNotice = $t('control.review.failed', { reason: reasonOf(err) });
     } finally {

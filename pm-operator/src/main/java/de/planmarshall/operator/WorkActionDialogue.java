@@ -57,13 +57,15 @@ final class WorkActionDialogue {
     private final WorkActionsClient client;
     private final String kind;
     private final String id;
+    private final @Nullable Boolean raiseAnswer;
 
     private WorkActionDialogue(OperatorContext context, PrintWriter out, String kind, String id,
-                        boolean noInput) {
+                        boolean noInput, @Nullable Boolean raiseAnswer) {
         this.context = context;
         this.out = out;
         this.kind = kind;
         this.id = id;
+        this.raiseAnswer = raiseAnswer;
         this.prompt = new StartPrompt(context, out, context.clientEnvironment().locale(), noInput);
         this.client = new WorkActionsClient(context);
     }
@@ -88,11 +90,41 @@ final class WorkActionDialogue {
         if (HOLD_ACTS.contains(action) && PLAN.equals(kind)) {
             return HoldDialogue.run(context, out, id, holdId, action, noInput);
         }
-        var dialogue = new WorkActionDialogue(context, out, kind, id, noInput);
+        var dialogue = new WorkActionDialogue(context, out, kind, id, noInput, null);
+        return dialogue.guarded(() -> dialogue.execute(action, epic));
+    }
+
+    /**
+     * Runs {@code epic next} as the verb does: it reads the epic and takes the one decision path of
+     * the menu's {@code next} (19-actions.adoc). With no plan launchable and the scope full, or the
+     * count of running plans unknown, the raise is asked; a flag answers it before it is asked, and
+     * {@code --no-input} without one stops. {@code raise_scope} is sent only as that answer.
+     *
+     * @param context     the operator context
+     * @param out         the verb's output
+     * @param epicId      the epic
+     * @param raiseAnswer {@code true} for {@code --raise-scope}, {@code false} for {@code --no-raise},
+     *                    {@code null} to ask
+     * @param noInput     whether the verb may ask nothing
+     * @return the exit code
+     * @throws IOException on transport failure, or when the runtime refuses the read or the act
+     */
+    static int next(OperatorContext context, PrintWriter out, String epicId, @Nullable Boolean raiseAnswer,
+                        boolean noInput) throws IOException {
+        var dialogue = new WorkActionDialogue(context, out, EPIC, epicId, noInput, raiseAnswer);
+        return dialogue.guarded(() -> dialogue.next(dialogue.client.epic(epicId)));
+    }
+
+    @FunctionalInterface
+    private interface Step {
+        int run() throws IOException;
+    }
+
+    private int guarded(Step step) throws IOException {
         try {
-            return dialogue.execute(action, epic);
+            return step.run();
         } catch (StartPrompt.MissingInputException _) {
-            out.println(MessageCatalogue.format(dialogue.prompt.locale(), "operator.actions.stopped", Map.of()));
+            out.println(MessageCatalogue.format(prompt.locale(), "operator.actions.stopped", Map.of()));
             out.flush();
             return StartDialogue.EXIT_MISSING_INPUT;
         } catch (StartPrompt.InterruptException _) {
@@ -316,6 +348,10 @@ final class WorkActionDialogue {
     }
 
     private boolean askRaise(EpicResource epic, @Nullable Integer running, String plan) {
+        if (raiseAnswer != null) {
+            // --raise-scope or --no-raise answered the question before it was asked.
+            return raiseAnswer;
+        }
         var question = running != null
                             ? MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
                             Map.<String, Object>of(EPIC, id, RUNNING, running, SCOPE, epic.scope(), PLAN, plan))

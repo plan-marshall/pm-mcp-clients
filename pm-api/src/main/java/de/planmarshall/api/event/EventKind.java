@@ -51,8 +51,11 @@ public enum EventKind {
      */
     QUESTION("question", List.of("question", "decision"), List.of(EventName.DECISION_OPENED.wire())),
 
-    /** A waiver request named by the legacy {@code type} member alone. */
-    WAIVER_REQUEST("waiver_request", List.of("waiver_request"), List.of()),
+    /**
+     * A waiver request: its notice kind is the contract's kind {@code waiver}; the legacy
+     * {@code type} member still names it by the specification's spelling {@code waiver_request}.
+     */
+    WAIVER(NeedsOperatorKind.WAIVER.value(), List.of("waiver_request"), List.of()),
 
     /**
      * A decision was answered in another channel. The console prints it only for a channel that is

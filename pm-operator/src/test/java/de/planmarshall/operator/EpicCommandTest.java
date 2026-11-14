@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -20,6 +21,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -30,7 +35,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import picocli.CommandLine;
+import picocli.CommandLine.Model.OptionSpec;
 
 @DisplayName("EpicCommand")
 @EnableGeneratorController
@@ -299,21 +310,244 @@ class EpicCommandTest {
     }
 
     @Test
-    @DisplayName("epic next triggers next plan")
-    void epicNext() throws Exception {
+    @DisplayName("epic <id> names an unknown count in the wait of a row that waits for the scope")
+    void epicResourceScopeWaitUnknown() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/epics/ep-001/next".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
+            if ("/api/v1/epics/relay-hardening".equals(request.target())) {
+                response.json(200, EPIC_RESOURCE.replace("\"scope\":3,\"running\":3", "\"scope\":3")
+                                    .replace("\"wait_reason\":\"overlap\",\"wait_plan_id\":\"relay-auth-v2\"",
+                                                        "\"wait_reason\":\"scope\""));
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("epic", "next", "ep-001", "--raise-scope");
+        int code = execute("epic", "relay-hardening");
+
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Next plan for ep-001 started"))
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("? of 3 taken"), out.toString())
         );
+    }
+
+    @Test
+    @DisplayName("epic next reads the epic, then triggers its next plan and names the plan it started")
+    void epicNext() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var planId = Generators.letterStrings(6, 12).next();
+        var epicPath = "/api/v1/epics/" + epicId;
+        var server = fixture.start((request, response) -> {
+            if (epicPath.equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"epic_id":"%s","project_id":"pm-mcp-clients","display_name":"pm-mcp-clients",
+                                     "state":"running","auto_start":false,"overlap_max_files":0,
+                                     "scope":3,"running":3,
+                                     "workstreams":[{"id":"WS-1","name":"W","open":true,"rows":[
+                                       {"plan_id":"%s","title":"%s","status":"staged","wait_reason":"scope"}]}],
+                                     "sources":[],"landings":0,"findings":{"new":0,"open":0,"kept":0},
+                                     "watches":{"new":0,"open":0,"kept":0},"events":[]}
+                                    """.formatted(epicId, planId, planId));
+            } else if ((epicPath + "/actions/next").equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"subject_id\":\"" + epicId + "\",\"subject_kind\":\"epic\","
+                                    + "\"state\":\"running\",\"actions\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "next", epicId, "--raise-scope");
+
+        var targets = server.requests().stream().map(FakeRuntimeServer.Request::target).toList();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(epicPath, targets.getFirst(), targets.toString()),
+                            () -> assertTrue(targets.contains(epicPath + "/actions/next"),
+                                                "the next plan was never triggered: " + targets),
+                            () -> assertTrue(out.toString().contains(planId), out.toString())
+        );
+    }
+
+    /**
+     * {@code epic next} reads the epic and asks to raise a full scope by one; the flags answer the
+     * question and {@code raise_scope} is sent only as the operator's answer (19-actions.adoc).
+     */
+    @Nested
+    @DisplayName("epic next")
+    class Next {
+
+        private final String epicId = Generators.letterStrings(6, 12).next();
+        private final String planId = Generators.letterStrings(6, 12).next();
+
+        private String epic(String counts, String waitReason) {
+            return """
+                                {"epic_id":"%s","project_id":"pm-mcp-clients","display_name":"pm-mcp-clients",
+                                 "state":"running","auto_start":false,"overlap_max_files":0,%s,
+                                 "workstreams":[{"id":"WS-1","name":"W","open":true,"rows":[
+                                   {"plan_id":"%s","title":"%s","status":"staged","wait_reason":"%s"}]}],
+                                 "sources":[],"landings":0,"findings":{"new":0,"open":0,"kept":0},
+                                 "watches":{"new":0,"open":0,"kept":0},"events":[]}
+                                """.formatted(epicId, counts, planId, planId, waitReason);
+        }
+
+        private FakeRuntimeServer serve(String epicBody) throws IOException {
+            var epicPath = "/api/v1/epics/" + epicId;
+            var nextPath = epicPath + "/actions/next";
+            return fixture.start((request, response) -> {
+                if (epicPath.equals(request.target()) && "GET".equals(request.method())) {
+                    response.json(200, epicBody);
+                } else if (nextPath.equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(200, "{\"subject_id\":\"" + epicId + "\",\"subject_kind\":\"epic\","
+                                        + "\"state\":\"running\",\"actions\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        private List<String> posted(FakeRuntimeServer server) {
+            return server.requests().stream()
+                                .filter(request -> "POST".equals(request.method()))
+                                .map(FakeRuntimeServer.Request::bodyText)
+                                .toList();
+        }
+
+        @Test
+        @DisplayName("a plain run reads the epic and starts its next plan without raising the scope")
+        void plainRun() throws Exception {
+            var server = serve(epic("\"scope\":3,\"running\":2", "none"));
+
+            int code = execute("epic", "next", epicId);
+            var bodies = posted(server);
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertEquals("/api/v1/epics/" + epicId, server.requests().getFirst().target(),
+                                                    server.requests().toString()),
+                                () -> assertEquals(List.of("{\"raise_scope\":false}"), bodies),
+                                () -> assertTrue(out.toString().contains(planId), out.toString()),
+                                () -> assertTrue(out.toString().contains("3 of 3 at once"), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--raise-scope answers yes on a full scope and the started line names the raised scope")
+        void raiseOnFullScope() throws Exception {
+            var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
+
+            int code = execute("epic", "next", epicId, "--raise-scope");
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertEquals(List.of("{\"raise_scope\":true}"), posted(server)),
+                                () -> assertTrue(out.toString().contains(planId), out.toString()),
+                                () -> assertTrue(out.toString().contains("4 of 4 at once"), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--raise-scope on an unknown count names ? of the raised scope, never running plus one")
+        void raiseOnUnknownCount() throws Exception {
+            var server = serve(epic("\"scope\":3", "scope"));
+
+            int code = execute("epic", "next", epicId, "--raise-scope");
+            var output = out.toString();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertEquals(List.of("{\"raise_scope\":true}"), posted(server)),
+                                () -> assertTrue(output.contains("? of 4 at once"), output),
+                                () -> assertFalse(output.contains("4 of 4 at once"), output)
+            );
+        }
+
+        @Test
+        @DisplayName("--no-raise answers no on a full scope and sends nothing")
+        void noRaiseOnFullScope() throws Exception {
+            var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
+
+            int code = execute("epic", "next", epicId, "--no-raise");
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--no-input without an answer stops on a full scope with exit 3 and sends nothing")
+        void noInputStops() throws Exception {
+            var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
+
+            int code = execute("epic", "next", epicId, "--no-input");
+            assertAll(
+                                () -> assertEquals(3, code, out.toString()),
+                                () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--no-input without an answer stops on an unknown count with exit 3 and sends nothing")
+        void noInputStopsOnUnknownCount() throws Exception {
+            var server = serve(epic("\"scope\":3", "none"));
+
+            int code = execute("epic", "next", epicId, "--no-input");
+            assertAll(
+                                () -> assertEquals(3, code, out.toString()),
+                                () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--raise-scope with --no-raise is a usage error and sends nothing")
+        void bothFlagsRejected() throws Exception {
+            var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
+
+            int code = execute("epic", "next", epicId, "--raise-scope", "--no-raise");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(
+                                                                        "--raise-scope and --no-raise are mutually exclusive."),
+                                                    err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("the options carry their descriptions from the catalogue")
+        void optionDescriptionsFromCatalogue() {
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var spec = new CommandLine(new EpicCommand.NextCommand(context)).getCommandSpec();
+            assertAll(
+                                () -> assertEquals(
+                                                    "When the scope is full, answer yes: raise it by one and start the next plan",
+                                                    String.join(" ", spec.findOption("--raise-scope").description())),
+                                () -> assertEquals("When the scope is full, answer no: leave it and start no plan",
+                                                    String.join(" ", spec.findOption("--no-raise").description())),
+                                () -> assertEquals(
+                                                    "Ask nothing: without --raise-scope or --no-raise, a full scope stops here",
+                                                    String.join(" ", spec.findOption("--no-input").description()))
+            );
+        }
+
+        @ParameterizedTest(name = "locale {0}")
+        @ValueSource(strings = {"en_US.UTF-8", "de_DE.UTF-8"})
+        @DisplayName("every description key an option declares is in the catalogue bundle")
+        void everyOptionKeyInBundle(String language) {
+            var environment = new HashMap<>(fixture.environment());
+            environment.put("LANG", language);
+            var context = new OperatorContext(environment, tempDir, true);
+            var spec = new CommandLine(new EpicCommand.NextCommand(context)).getCommandSpec();
+            var declared = spec.options().stream()
+                                .map(OptionSpec::descriptionKey)
+                                .filter(key -> key != null && !key.isEmpty())
+                                .toList();
+            var bundle = spec.resourceBundle();
+
+            assertFalse(declared.isEmpty(), "NextCommand declares no description key");
+            assertNotNull(bundle, "no catalogue bundle is set");
+            List<Executable> checks = declared.stream()
+                                .<Executable>map(key -> () -> assertTrue(bundle.containsKey(key),
+                                                    "option description key not in the catalogue bundle: " + key))
+                                .toList();
+            assertAll(checks);
+            assertEquals(Set.copyOf(declared), Set.copyOf(EpicCommand.NextCommand.optionKeys()));
+        }
     }
 
     @Test
@@ -397,9 +631,25 @@ class EpicCommandTest {
     @Test
     @DisplayName("epic chat communicates with epic")
     void epicChat() throws Exception {
+        var answered = new AtomicBoolean();
+        var chat = """
+                            {"id":"C-2","subject":{"kind":"epic","id":"ep-001"},
+                             "role":{"name":"decompose","model":"sonnet"},"scope":"epic","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                               {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                                "format":"plain","untrusted":false,"text":"status please","steps":[],"refs":[],
+                                "at":"2026-10-16T10:00:00Z"},
+                               {"turn_id":"T-2","kind":"message","author":"decompose","status":"complete",
+                                "format":"markdown","untrusted":false,"model":"sonnet",
+                                "text":"the epic runs two plans","steps":[],"refs":[],
+                                "at":"2026-10-16T10:01:00Z"}]}
+                            """;
         fixture.start((request, response) -> {
-            if ("/api/v1/epics/ep-001/chat".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"reply\":\"hi\"}");
+            if ("/api/v1/epics/ep-001/chat/turns".equals(request.target())) {
+                answered.set(true);
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else if ("/api/v1/epics/ep-001/chat".equals(request.target())) {
+                response.json(200, chat);
             } else {
                 response.send(404, null, "");
             }
@@ -407,7 +657,8 @@ class EpicCommandTest {
 
         int code = execute("epic", "chat", "ep-001", "--message", "status please");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("reply"));
+        assertTrue(answered.get(), "the message was not sent as a chat turn");
+        assertTrue(out.toString().contains("the epic runs two plans"), out.toString());
     }
 
     @Test

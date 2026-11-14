@@ -131,8 +131,6 @@ deliverables below state its rulings.
      Evidence order: `test-first`.
    - Browser check (Playwright MCP) on `running-work` of a deep link, the history and the fill, in German and English. Evidence
      order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
 
 ## Standing Constraints
 
@@ -144,9 +142,9 @@ deliverables below state its rulings.
 - Ports of this plan: mock web port 21430, app port 21431 (`20000 + 10 × 143`) (`AGENTS.md` § Ports). Other plans run at the same
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
-- The merge rule: the merge question is asked only when every review thread has a reply and is resolved and every review body is
+- The merge rule: the run merges only when every review thread has a reply and is resolved and every review body is
   answered, and some head has had one CodeRabbit review. The pull request body states thread count, resolved count and review-body
-  items from `ci pr comments`, never from memory. Merge only on the operator's word. Commits end with
+  items from `ci pr comments`, never from memory. The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer. If CodeRabbit refuses on
   quota, stop and ask the operator.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues, every open issue fixed in
@@ -155,20 +153,35 @@ deliverables below state its rulings.
 ## Claim Labels
 
 - OBSERVED: `AppRoute` has no project-page, task, decisions-detail or reports-detail route and no `/`; `FIXED_ROUTE_PATHS` and `PARAMETERIZED_PATHS` do not match `/plans/{id}/tasks/{task}`, `/decisions/{id}`, `/reports/{id}` or `/projects/{id}` — read at `pm-web-app/src/lib/routes.ts:20-39,167-211`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AppRoute (routes.ts:20-39) has no project-page, task, decision-detail or report-detail route and no /; FIXED/PARAMETERIZED paths (:167-211) match none (a root +page.svelte exists)
 - OBSERVED: `pathForRoute` writes `/reports?plan=`, `/projects?project=`, `/decisions?decision=` and `/epics/decompose` — read at `pm-web-app/src/lib/routes.ts:307-335`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pathForRoute :291-336 writes /reports?plan=, /projects?project=, /designer?project=, /decisions?decision=, /epics/decompose
 - OBSERVED: the caller stack and the writers are `navigationStack` (:777), `pushRoute` (:849), `goBack` (:869), `syncUrl` (:906), `adoptRouteFromLocation` (:941) — read at `pm-web-app/src/lib/stores/runtime.ts`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: runtime.ts navigationStack :894, pushRoute :966, goBack :986, syncUrl :1023, adoptRouteFromLocation :1058 (lines drifted)
 - OBSERVED: `landingRoute` (:294) and `openStartPage` (:335) exist at HEAD and the rail's brand click calls `openStartPage` — read at `pm-web-app/src/lib/stores/runtime.ts:294-345`, `pm-web-app/src/lib/shell/NavRail.svelte:89`. (The re-grounding report of PLAN-49 states they no longer exist: it is wrong at this HEAD.)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: landingRoute runtime.ts:380 and openStartPage :421 exist; NavRail.svelte:98 calls openStartPage
 - OBSERVED: `syncUrl` writes `{ path }` as the history state and the layout's effect sets the address from the store on every route change — read at `pm-web-app/src/lib/stores/runtime.ts:906-917`, `pm-web-app/src/routes/+layout.svelte:234-250`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: syncUrl writes {path} as history state and returns early for an unchanged address (:1023-1033); the layout calls it at :257
 - OBSERVED: `OverviewView` stores `pm_overview_view_mode`, `pm_overview_selected_project`, `pm_overview_show_ended`, `pm_overview_ended_page` and restores the ended section — read at `pm-web-app/src/lib/views/OverviewView.svelte:191-215,341-354,394`; no key holds the selected plan or epic
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: OverviewView localStorage keys view_mode :197/:404, selected_project :210/:351, show_ended :216, ended_page :218; none holds the selected plan or epic
 - OBSERVED: the reports detail is keyed by plan id (`selectedReportDetailPlanId`) — read at `pm-web-app/src/lib/stores/runtime.ts:79,794`, `pm-web-app/src/lib/views/ReportsView.svelte:270-298`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: selectedReportDetailPlanId runtime.ts:80,148; ReportsView:325-353 keys the detail by plan id
 - OBSERVED: `follow` is not implemented anywhere in the views — read by `git grep -n -i follow -- pm-web-app/src/lib/views/OverviewView.svelte pm-web-app/src/lib/views/PlanView.svelte` (no mode); this plan only parses and serialises it
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No follow mode in OverviewView or PlanView (git grep -w follow is empty)
 - OBSERVED: each route has its own `+page.svelte` mounting `AppRouter`; `projects/[id]/start`, `projects/onboard`, `epics/decompose`, `plans/[id]` exist — read at `pm-web-app/src/routes/**`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Each route has its own +page.svelte (21 tracked); projects/[id]/start, projects/onboard, epics/decompose, plans/[id] exist (plus epics/[id]/decomposition)
 - HYPOTHESIS: the report's detail address `/reports/{id}` takes the report id while the completion report is keyed by plan id, so the view must look the plan up in the report record (`from.plan`) — confirm/refute at `pm-web-app/src/lib/views/ReportsView.svelte` § `selectedReportDetailPlanId` and `doc/design/shared/completion-report.adoc:103` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Reports carry from.plan (ReportsView:173,749,860-861); the detail opens via showDetail(item.from.plan), so /reports/{id} must look the plan up
 - HYPOTHESIS: every new path needs its own `+page.svelte` (no catch-all or fallback page) — confirm/refute at `pm-web-app/vite.config.ts` § adapter and `src/routes/+layout.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No catch-all route among the 21 +page.svelte; adapter-static fallback index.html (vite.config.ts:113) only serves the shell for deep links
 - HYPOTHESIS: `CommandPalette.svelte` navigates through `navigateTo` with the same params and needs no change beyond the new routes — confirm/refute at `pm-web-app/src/lib/shell/CommandPalette.svelte` § `navigateTo` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: CommandPalette has no navigateTo; it navigates with pushRoute (:205 start, :226 decisions, :232 reports) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `syncUrl` writes `{ path }` as the history state of every push and replace and returns early for an unchanged address; `dropCodeFragment` replaces the state with `null` — read at `pm-web-app/src/lib/stores/runtime.ts:920-931,224-227` (`4a84f727`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: syncUrl writes {path} :1033 and returns early :1029; dropCodeFragment does replaceState(null) at runtime.ts:310-311
 - OBSERVED: D6 settled the place (project, grouping, selected plan or epic; never the mode), the two fill entry points (a mark-less load at `/` or bare `/overview` by a replace; a click on Running work by a push), the unfilled lens list of Up and the lens segment, `/?lens=waits`, and the plan's `tab=`/`node=`/`file=` rules — read at `doc/design/shared/plan-overview.adoc:164-171`, `doc/design/web-app/navigation.adoc:178-222`, `doc/design/web-app/README.adoc:445-449`, `doc/design/web-app/plan-view-interaction.adoc:122-129` (`4a84f727`, D6 merged `8568b56e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-overview.adoc:169-171, navigation.adoc:216-219, README.adoc:445,449 carry the entry points, remembered place without mode, lens segment
 - Verify-first clause: re-read `navigation.adoc#url`, `plan-overview.adoc#persistence` and `plan-view-interaction.adoc#addresses` at the then-current HEAD. If the entry points or the remembered place's content differ from this spec, the documents win and the spec is re-scoped.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Docs at plan-overview.adoc:169-171 and navigation.adoc:216-219 match the spec's entry points and remembered-place content; landingRoute/openStartPage still exist
 
 ## Expected Surface
 
@@ -225,6 +238,13 @@ deliverables below state its rulings.
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`). Re-run `corpus surfaces` against everything that landed since (PLAN-45 and PLAN-129 first). Settle each HYPOTHESIS. Confirm `landingRoute` and `openStartPage` still exist (PLAN-110's claimed removal is not at this HEAD).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 11 contradicted: CommandPalette has no navigateTo; it navigates with pushRoute (:205 start, :226 decisions, :232 reports)
+- `CommandPalette` navigates with `pushRoute`, there is no `navigateTo`.
 
 ## Hand-Off Command
 

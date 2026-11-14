@@ -26,10 +26,11 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.control.ArchiveCheck;
-import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionResult;
@@ -118,28 +119,86 @@ class ControlDialoguesTest {
                         """;
 
     private static final String CHAT = """
-                        {"chat_id":"C-1","subject_id":"p","subject_kind":"plan","role":"replan",
-                         "scope":"plan","state":"turn","turns":[
-                           {"role":"operator","text":"Can the test cover SSE?","at":"2026-10-16T10:00:00Z",
-                            "untrusted":false},
-                           {"role":"replan","text":"Yes, I propose a second test.","at":"2026-10-16T10:01:00Z",
-                            "untrusted":false}]}
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Can the test cover SSE?","steps":[],
+                            "refs":[],"at":"2026-10-16T10:00:00Z"},
+                           {"turn_id":"T-2","kind":"message","author":"replan","status":"complete",
+                            "format":"markdown","untrusted":false,"model":"sonnet",
+                            "text":"Yes, I propose a second test.","steps":[],"refs":[],
+                            "at":"2026-10-16T10:01:00Z"}]}
+                        """;
+
+    private static final String CHAT_ANSWERED = """
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:02:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Can the test cover SSE?","steps":[],
+                            "refs":[],"at":"2026-10-16T10:00:00Z"},
+                           {"turn_id":"T-2","kind":"message","author":"replan","status":"complete",
+                            "format":"markdown","untrusted":false,"model":"sonnet",
+                            "text":"Yes, I propose a second test.","steps":[],"refs":[],
+                            "at":"2026-10-16T10:01:00Z"},
+                           {"turn_id":"T-3","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Add SSE","steps":[],"refs":[],
+                            "at":"2026-10-16T10:02:00Z"},
+                           {"turn_id":"T-4","kind":"message","author":"replan","status":"complete",
+                            "format":"markdown","untrusted":false,"model":"sonnet",
+                            "text":"Yes, I propose a second test.","steps":[],"refs":[],
+                            "at":"2026-10-16T10:03:00Z"}]}
                         """;
 
     private static final String CHAT_PROPOSAL = """
-                        {"chat_id":"C-1","subject_id":"p","subject_kind":"plan","role":"replan",
-                         "scope":"plan","state":"read-back","turns":[
-                           {"role":"operator","text":"Add SSE","at":"2026-10-16T10:00:00Z","untrusted":false}],
-                         "proposal":{"summary":"a test per transport","before":"one transport",
-                           "after":"websocket and SSE","applies":"after the current task"}}
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.read-back",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Add SSE","steps":[],"refs":[],
+                            "at":"2026-10-16T10:00:00Z"}],
+                         "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"revision",
+                           "summary":"a test per transport","before":"one transport",
+                           "after":"websocket and SSE",
+                           "applies":{"key":"chat.applies.after_task","args":{"task_id":"TASK-4"}},
+                           "state":"open"}}
                         """;
 
     private static final String CHAT_ENDED = """
-                        {"chat_id":"C-2","subject_id":"docs-typo","subject_kind":"plan","role":"replan",
-                         "scope":"archive","state":"read-back","turns":[
-                           {"role":"operator","text":"Why was it cancelled?","at":"2026-10-16T10:00:00Z",
-                            "untrusted":false}],
-                         "proposal":{"summary":"a follow-up","after":"Add the provider on top of relay-v2"}}
+                        {"id":"C-2","subject":{"kind":"plan","id":"docs-typo"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"archive","state":"chat.read-back",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Why was it cancelled?","steps":[],
+                            "refs":[],"at":"2026-10-16T10:00:00Z"}],
+                         "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                           "summary":"a follow-up","after":"Add the provider on top of relay-v2",
+                           "state":"open"}}
+                        """;
+
+    private static final String CHAT_STREAMING = """
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.reply",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Can the test cover SSE?","steps":[],
+                            "refs":[],"at":"2026-10-16T10:00:00Z"},
+                           {"turn_id":"T-2","kind":"message","author":"replan","status":"streaming",
+                            "format":"markdown","untrusted":false,"model":"sonnet","text":"Yes, I",
+                            "steps":[],"refs":[],"at":"2026-10-16T10:01:00Z"}]}
+                        """;
+
+    private static final String CHAT_ANSWERED_PROPOSAL = """
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                         "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                           {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                            "format":"plain","untrusted":false,"text":"Add SSE","steps":[],"refs":[],
+                            "at":"2026-10-16T10:00:00Z"}],
+                         "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"revision",
+                           "summary":"a test per transport","after":"websocket and SSE",
+                           "state":"accepted"}}
                         """;
 
     private static final String SETTINGS = """
@@ -318,13 +377,14 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("a chat message is answered, and an empty line ends the chat")
     void chatTurn() throws Exception {
+        var answered = new AtomicBoolean();
         serve((request, response) -> {
             var path = request.target();
             if (path.endsWith("/chat") && "GET".equals(request.method())) {
-                response.json(200, CHAT);
+                response.json(200, answered.get() ? CHAT_ANSWERED : CHAT);
             } else if (path.endsWith("/chat/turns")) {
-                response.json(200, CHAT.replace("\"state\":\"turn\"", "\"state\":\"turn\"").replace(
-                                    "Can the test cover SSE?", "Add SSE"));
+                answered.set(true);
+                response.json(202, "{\"turn_id\":\"T-3\"}");
             } else {
                 response.send(404, null, "");
             }
@@ -353,23 +413,102 @@ class ControlDialoguesTest {
         var text = out.toString();
         assertTrue(text.contains("Proposed change"), text);
         assertTrue(text.contains("websocket and SSE"), text);
+        // The point the proposal applies at is read from its runtime key, not printed as one.
+        assertTrue(text.contains("applies after the current task"), text);
+        assertFalse(text.contains("chat.applies."), text);
         assertTrue(text.contains("The chat is kept with p"), text);
     }
 
     @Test
     @DisplayName("a chat about ended work proposes a follow-up plan")
     void chatEndedFollowUp() throws Exception {
+        var accepted = new AtomicBoolean();
         serve((request, response) -> {
-            if (request.target().endsWith("/chat")) {
+            var path = request.target();
+            if (path.endsWith("/chat")) {
                 response.json(200, CHAT_ENDED);
+            } else if (path.endsWith("/proposal/accept")) {
+                accepted.set(true);
+                response.json(200, CHAT_ANSWERED_PROPOSAL);
             } else {
                 response.send(404, null, "");
             }
         });
         virtual.type("\n");
-        var description = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false);
-        assertEquals("Add the provider on top of relay-v2", description);
+        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false));
+        // The accept reaches the runtime, which opens the start; the terminal says so once.
+        assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
         assertTrue(out.toString().contains("read only"), out.toString());
+        assertTrue(out.toString().contains("A new plan is being started with this description"),
+                            out.toString());
+    }
+
+    @Test
+    @DisplayName("an answered proposal is not read back again: the chat asks for a message")
+    void chatAnsweredProposalAsksForAMessage() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat")) {
+                response.json(200, CHAT_PROPOSAL);
+            } else if (path.endsWith("/proposal/accept")) {
+                response.json(200, CHAT_ANSWERED_PROPOSAL);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("\n\n");
+        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        var text = out.toString();
+        // The read-back is drawn once, and the answered proposal is not offered a second time.
+        assertEquals(1, times(text, "Proposed change"), text);
+        assertTrue(text.contains("The chat is kept with p"), text);
+    }
+
+    @Test
+    @DisplayName("a chart turn follows the reply until its turn stops streaming")
+    void chatFollowsTheStreamingReply() throws Exception {
+        var reads = new AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+                // The first read still shows the reply being written; the next one has it complete.
+                response.json(200, reads.incrementAndGet() < 3 ? CHAT_STREAMING : CHAT);
+            } else if (path.endsWith("/chat/turns")) {
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var client = new WorkActionsClient(context);
+        var chat = client.chatTurn("plan", "p", "Can the test cover SSE?");
+        assertEquals(2, chat.turns().size());
+        assertTrue(reads.get() >= 3, "the reply was not read again while it streamed: " + reads.get());
+    }
+
+    @Test
+    @DisplayName("a chat without a proposal, and a proposal without an applies point, render")
+    void chatRenderWithoutProposalOrApplies() throws Exception {
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatResource.fromJson(CHAT));
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatResource.fromJson(CHAT_ENDED));
+        var text = out.toString();
+        assertTrue(text.contains("Yes, I propose a second test."), text);
+        assertTrue(text.contains("Proposed follow-up plan"), text);
+        assertFalse(text.contains("chat.applies."), text);
+    }
+
+    /**
+     * @param text the drawn transcript
+     * @param part the text to count
+     * @return how often the transcript carries the part
+     */
+    private static int times(String text, String part) {
+        var count = 0;
+        var index = text.indexOf(part);
+        while (index >= 0) {
+            count++;
+            index = text.indexOf(part, index + part.length());
+        }
+        return count;
     }
 
     @Test
@@ -549,7 +688,7 @@ class ControlDialoguesTest {
             } else if (path.endsWith("/chat")) {
                 response.json(200, CHAT);
             } else if (path.endsWith("/chat/turns")) {
-                response.json(200, CHAT);
+                response.json(202, "{\"turn_id\":\"T-1\"}");
             } else if (path.endsWith("/chat/proposal/accept")) {
                 response.json(200, CHAT);
             } else if (path.endsWith("/chat/proposal/reject")) {
@@ -591,8 +730,8 @@ class ControlDialoguesTest {
         assertEquals(1, client.commitReview("e").items().size());
         assertEquals(2, client.chat("plan", "p").turns().size());
         assertEquals(2, client.chatTurn("plan", "p", "hello").turns().size());
-        assertEquals(2, client.chatProposal("plan", "p", true).turns().size());
-        assertEquals(2, client.chatProposal("plan", "p", false).turns().size());
+        assertEquals(2, client.chatProposal("plan", "p", "T-3", true).turns().size());
+        assertEquals(2, client.chatProposal("plan", "p", "T-3", false).turns().size());
         EpicResource epic = client.epic("e");
         assertEquals("e", epic.epicId());
         ArchiveCheck check = client.archiveCheck("e");
@@ -1013,7 +1152,7 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("a chat can be rendered without asking")
     void chatRender() throws Exception {
-        WorkChatDialogue.render(context, new PrintWriter(out), ChatReadBackResource.fromJson(CHAT_PROPOSAL));
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatResource.fromJson(CHAT_PROPOSAL));
         assertTrue(out.toString().contains("Proposed change"), out.toString());
         assertTrue(out.toString().contains("websocket and SSE"), out.toString());
     }
@@ -1116,7 +1255,7 @@ class ControlDialoguesTest {
         assertThrows(OperatorRefusedException.class, () -> client.commitReview("e"));
         assertThrows(OperatorRefusedException.class, () -> client.chat("plan", "p"));
         assertThrows(OperatorRefusedException.class, () -> client.chatTurn("plan", "p", "x"));
-        assertThrows(OperatorRefusedException.class, () -> client.chatProposal("plan", "p", true));
+        assertThrows(OperatorRefusedException.class, () -> client.chatProposal("plan", "p", "T-3", true));
         assertThrows(OperatorRefusedException.class, () -> client.epic("e"));
         assertThrows(OperatorRefusedException.class, () -> client.archiveCheck("e"));
         assertThrows(OperatorRefusedException.class, () -> client.performLanding("pr", "unit", "retry"));

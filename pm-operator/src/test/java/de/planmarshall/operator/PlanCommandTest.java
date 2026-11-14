@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -540,9 +541,25 @@ class PlanCommandTest {
     @Test
     @DisplayName("plan chat communicates with plan")
     void planChat() throws Exception {
+        var answered = new AtomicBoolean();
+        var chat = """
+                            {"id":"C-1","subject":{"kind":"plan","id":"p-001"},
+                             "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                               {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                                "format":"plain","untrusted":false,"text":"hello plan","steps":[],"refs":[],
+                                "at":"2026-10-16T10:00:00Z"},
+                               {"turn_id":"T-2","kind":"message","author":"replan","status":"complete",
+                                "format":"markdown","untrusted":false,"model":"sonnet",
+                                "text":"the chat answered from the runtime","steps":[],"refs":[],
+                                "at":"2026-10-16T10:01:00Z"}]}
+                            """;
         fixture.start((request, response) -> {
-            if ("/api/v1/plans/p-001/chat".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"reply\":\"hello plan\"}");
+            if ("/api/v1/plans/p-001/chat/turns".equals(request.target())) {
+                answered.set(true);
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else if ("/api/v1/plans/p-001/chat".equals(request.target())) {
+                response.json(200, chat);
             } else {
                 response.send(404, null, "");
             }
@@ -550,7 +567,9 @@ class PlanCommandTest {
 
         int code = execute("plan", "chat", "p-001", "--message", "hello plan");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("hello plan"));
+        assertTrue(answered.get(), "the message was not sent as a chat turn");
+        // The reply the runtime wrote is printed; the operator's own message is not the proof.
+        assertTrue(out.toString().contains("the chat answered from the runtime"), out.toString());
     }
 
     @Test

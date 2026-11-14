@@ -13,8 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The terminal output safety boundary, fed control sequences of every kind
@@ -22,6 +27,7 @@ import org.junit.jupiter.api.Test;
  * device could carry; none of them may survive into what the operator sees.
  */
 @DisplayName("TerminalSanitizer")
+@EnableGeneratorController
 class TerminalSanitizerTest {
 
     @Test
@@ -115,6 +121,47 @@ class TerminalSanitizerTest {
         var safe = TerminalSanitizer.sanitize(raw);
         assertFalse(safe.contains("\u001B"));
         assertTrue(safe.endsWith("after"));
+    }
+
+    @ParameterizedTest(name = "U+{0}")
+    @ValueSource(ints = {0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069,
+                        0x200E, 0x200F, 0x061C, 0x2028, 0x2029})
+    @DisplayName("removes the bidi controls that reorder what the terminal shows")
+    void removesBidiControls(int codePoint) {
+        assertRemovedBetweenText(codePoint);
+    }
+
+    @ParameterizedTest(name = "U+{0}")
+    @ValueSource(ints = {0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF})
+    @DisplayName("removes the zero-width characters that hide between the visible ones")
+    void removesZeroWidthCharacters(int codePoint) {
+        assertRemovedBetweenText(codePoint);
+    }
+
+    @ParameterizedTest(name = "U+{0}")
+    @ValueSource(ints = {0xE0000, 0xE0001, 0xE0041, 0xE007E, 0xE007F})
+    @DisplayName("removes the tag characters whole, both halves of the surrogate pair")
+    void removesTagCharacters(int codePoint) {
+        assertRemovedBetweenText(codePoint);
+    }
+
+    @Test
+    @DisplayName("keeps a supplementary character that is visible text")
+    void keepsVisibleSupplementaryCharacter() {
+        var text = Generators.letterStrings(1, 12).next();
+        var emoji = new String(Character.toChars(0x1F600));
+
+        assertEquals(text + emoji, TerminalSanitizer.sanitize(text + emoji));
+    }
+
+    private static void assertRemovedBetweenText(int codePoint) {
+        var before = Generators.letterStrings(1, 12).next();
+        var after = Generators.letterStrings(1, 12).next();
+        var hostile = before + new String(Character.toChars(codePoint)) + after;
+
+        var safe = TerminalSanitizer.sanitize(hostile);
+
+        assertEquals(before + after, safe);
     }
 
     private static void assertAllEmpty(String... values) {

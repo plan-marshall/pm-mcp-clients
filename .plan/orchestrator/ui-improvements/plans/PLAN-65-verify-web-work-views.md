@@ -56,8 +56,9 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/verification.adoc holds every named check id (UX-V-01..13, UC-V-04/06/07/08/10, CC-V-08); checks remapped to D1-D5 in the 2026-11-10 Amendment
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/verification.adoc holds UX-V-01..13 (:58-131), use-cases UC-V-04/06/07/08/10 (:47-83), cross-cutting CC-V-08 (:55); #targets anchor present
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause: no code fact. Deps not all landed (e.g. PLAN-64 views/onboarding absent, routes/settings/machine still present)
 
 ## Expected Surface
 

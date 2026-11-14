@@ -2,10 +2,10 @@
   "id": "PLAN-126",
   "slug": "cli-needs-residue",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-126-cli-needs-residue",
+  "pr": "416",
+  "landing": "landings/PLAN-126.md",
   "seq": 126
 }

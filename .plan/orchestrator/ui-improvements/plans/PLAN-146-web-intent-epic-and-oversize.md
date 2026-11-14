@@ -65,8 +65,6 @@ Q4 (a) and (d) of `landings/PLAN-141-findings.md` § Answers settles the check's
    - `intent.spec.js` passes with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set. Evidence order: `test-first`.
    - Browser check (Playwright MCP) of both fixtures on `running-work` at `1440 × 900` and `390 × 844`, German and English, both
      themes. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
 
 ## Standing Constraints
 
@@ -78,9 +76,9 @@ Q4 (a) and (d) of `landings/PLAN-141-findings.md` § Answers settles the check's
 - Ports of this plan: mock web port 21460, app port 21461 (`20000 + 10 × 146`) (`AGENTS.md` § Ports). Other plans run at the same
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
-- The merge rule: the merge question is asked only when every review thread has a reply and is resolved and every review body is
+- The merge rule: the run merges only when every review thread has a reply and is resolved and every review body is
   answered, and some head has had one CodeRabbit review. The pull request body states thread count, resolved count and review-body
-  items from `ci pr comments`, never from memory. Merge only on the operator's word. Commits end with
+  items from `ci pr comments`, never from memory. The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer. If CodeRabbit refuses on
   quota, stop and ask the operator.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues, every open issue fixed in
@@ -89,16 +87,27 @@ Q4 (a) and (d) of `landings/PLAN-141-findings.md` § Answers settles the check's
 ## Claim Labels
 
 - OBSERVED: `EpicIntentResource` carries epic_id, destination, done_when (text, verdict `pending|met|not_met`, evidence), non_goals, not_yet_specified and plans (plan_id, title, done_when) — read at `pm-api/src/main/java/de/planmarshall/api/intent/EpicIntentResource.java:51-72`, `DoneWhenCheck.java`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicIntentResource :41-47 epicId, destination, doneWhen, nonGoals, notYetSpecified, plans; DoneWhenCheck verdict pending|met|not_met with evidence
 - OBSERVED: `OverSizeDistributionResource` carries project_id, role, current_multiple, proposed_multiple and buckets (label, from_multiple, to_multiple, task_count, flagged_tasks) and no total or share field — read at `OverSizeDistributionResource.java:50-54`, `TokenBucket.java:48-52`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: OverSizeDistributionResource carries projectId, role, currentMultiple, proposedMultiple, buckets; total and share are derived accessors (:99,:116), not wire fields
 - OBSERVED: the mock serves `GET /api/v1/epics/relay-hardening/intent` and `GET /api/v1/projects/pm-mcp-clients/metrics/oversize` in `running-work.json` and `fully-onboarded.json` — read at `pm-mock-runtime/src/main/resources/scenarios/running-work.json:1298,1358`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Mock handles epic intent and oversize routes (MockRuntimeEngine:550-553,5587); fixtures running-work.json:1402,1462 and fully-onboarded.json:1061,1121
 - OBSERVED: `machine-settings.adoc` has no role-multiple line, so the chart's home is D6's decision — read by `git grep -n -i "over_size\|oversize" -- doc/design/web-app` (empty at `1cc0e10e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: machine-settings.adoc has no over_size line; README.adoc:96,461 now name the chart (the earlier empty grep is stale)
 - OBSERVED: D6 put the chart on the project page's setup tab, read-only, per role, named by its resource, with the absent-proposal case (`intent.oversize.title_current`, no flagged comparison) and `intent.oversize.empty` for a role without measured tasks; the done-when check's verdict is a `StatusLabel` state `state.check.*` — read at `doc/design/shared/intent-and-outline.adoc:244,278-279,289`, `doc/design/shared/project-explorer.adoc:108`, `doc/design/shared/intent-and-outline-texts.adoc:257-296,300-336` (`4a84f727`, D6 merged `8568b56e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: project-explorer.adoc:108 setup tab holds the read-only over_size per role; texts doc has title_current and empty (:261,:265)
 - OBSERVED: at `main` `4a84f727` `OverSizeDistributionResource` requires a positive `proposed_multiple` and always writes it; `PLAN-159` makes it optional — read at `pm-api/src/main/java/de/planmarshall/api/intent/OverSizeDistributionResource.java:41-69,154`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Superseded by PLAN-159: proposedMultiple is @Nullable (OverSizeDistributionResource:48) and written only when present (:143) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: the runtime serves one distribution per project and role, and the setup tab can read every role's distribution the project sets through the route `GET /api/v1/projects/{id}/metrics/oversize` (today one record with one `role`, no role parameter) — confirm/refute at `pm-api/.../intent/OverSizeDistributionResource.java`, `MockRuntimeEngine.java` § `handleIntentRoutes` and `PLAN-159`'s landing (verify-at-outline; a route without a role selector is reported to the orchestrator, not invented here)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Route takes a project id only (MockRuntimeEngine:5587-5591) and serves one record with one role, no role selector, so one request cannot give every role | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: no chart component exists in the web app — read by `git ls-files pm-web-app/src/lib/components` (no chart)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No chart component under pm-web-app/src/lib/components
 - HYPOTHESIS: the flagged share is the sum of `flagged_tasks` over the sum of `task_count`, which the design allows ("the sum of the flagged tasks over all tasks") without recomputing from raw tokens — confirm/refute at `doc/design/shared/intent-and-outline.adoc` § `buckets` (:260-263) (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: intent-and-outline.adoc:261 defines the share as sum of flagged tasks over all tasks; pm-api flaggedShare() (:116) does the same on buckets
 - HYPOTHESIS: the plan's epic panel can be shown for an epic whose intent the daemon does not serve yet with an empty state, as for a plan — confirm/refute at `pm-api/.../intent/IntentContractTest.java` and the D6 documents (verify-at-outline)
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Whether the daemon serves an epic without an intent record cannot be settled by reading
 - Verify-first clause: re-read `intent-and-outline.adoc` (#oversize, #web) and the landings of `PLAN-145` and `PLAN-159` at the then-current HEAD. The verdict is a `StatusLabel` state (no new component); if `proposed_multiple` is still required in `pm-api`, stop and loop back.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: proposed_multiple is optional in pm-api (PLAN-159 landed); PLAN-145 landing is pending (sequencing, not a premise)
 
 ## Expected Surface
 
@@ -122,6 +131,14 @@ Q4 (a) and (d) of `landings/PLAN-141-findings.md` § Answers settles the check's
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`). Re-run `corpus surfaces` against everything that landed since. Settle each HYPOTHESIS.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 5 contradicted: Superseded by PLAN-159: proposedMultiple is @Nullable (OverSizeDistributionResource:48) and written only when present (:143)
+- Claim 6 contradicted: Route takes a project id only (MockRuntimeEngine:5587-5591) and serves one record with one role, no role selector, so one request cannot give every role
+- Claim 5 superseded by PLAN-159. Claim 6 refuted: the oversize route takes a project id and serves one role; one request cannot give every role.
 
 ## Hand-Off Command
 

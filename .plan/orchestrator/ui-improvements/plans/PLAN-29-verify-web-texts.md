@@ -43,9 +43,11 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: `doc/claude_review/cross-cutting/verification.adoc:10-48` holds CC-V-01..CC-V-05 as the spec lists them.; re-grounded vs D1-D5 2026-11-10 (Amendment)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc holds CC-V-01..05 at lines 12-40 (file also has V-06..08); result file verify-web-texts.adoc absent in verification-results/
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing; PLAN-85 and the web wave are not decidable by reading this clause
 - HYPOTHESIS: the text guard declares a view list that can be extended without changing the guard's rules — confirm/refute at `pm-web-e2e/tests/text-guard.spec.js` § `declared views` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: view list is DECLARED_VIEWS (23) at theme-readability.spec.js:31, rule-independent, baseline keyed by it (:1053); text-guard.spec.js has no declared-views section (location drift)
 
 ## Expected Surface
 
@@ -66,6 +68,12 @@ waits with PLAN-85** (the verification checks the texts, theme and language plac
 change). Queue status: `parked` — not emitted until its gate is met; the orchestrator re-grounds this spec against the
 AGREED documents when it is restarted. The Expected Surface above is deliberately NOT widened now: the files and component
 names are the design sessions' output, and a parked row is not in the disjointness gate population.
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- The 2026-11-10 re-grounding says new claim bullets were added to Claim Labels; none exist. View list now `DECLARED_VIEWS` (23) at `theme-readability.spec.js:31`.
 
 ## Hand-Off Command
 

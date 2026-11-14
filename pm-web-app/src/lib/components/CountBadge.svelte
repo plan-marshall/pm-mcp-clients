@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../i18n';
+
   /**
    * A number in a pill (VD-P-05): the attention fill for "needs you", the neutral fill otherwise.
    *
@@ -19,9 +21,9 @@
 >
   {#if label}
     <span class="sr-only">{label}</span>
-    <span aria-hidden="true">{count}</span>
+    <span aria-hidden="true">{attention ? $t('overview.needs.count', { count }) : count}</span>
   {:else}
-    {count}
+    <span>{attention ? $t('overview.needs.count', { count }) : count}</span>
   {/if}
 </span>
 

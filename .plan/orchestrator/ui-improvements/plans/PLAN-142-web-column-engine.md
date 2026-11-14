@@ -123,9 +123,7 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
    - `column-window.spec.js`, `reports.spec.js` and `mobile.spec.js` pass with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set; they wait on
      the layout's own condition, never on time. Evidence order: `test-first`.
    - Browser check (Playwright MCP) on `reports-and-system` and the `/dev/components` fixture at `1280` and `1440` px and on the
-     phone, German and English, light and dark; screenshots recorded. Evidence order: `none`.
-   - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for
-     a failed read, never `0`); a confirmed `0` or every open issue dismissed. Evidence order: `none`.
+     phone, German and English, light and dark; screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it). Evidence order: `none`.
 
 ## Standing Constraints
 
@@ -139,9 +137,9 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
 - Ports of this plan: mock web port 21420, app port 21421 (`20000 + 10 × 142`) (`AGENTS.md` § Ports). Other plans run at the same
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
-- The merge rule: the merge question is asked only when every review thread has a reply and is resolved and every review body is
+- The merge rule: the run merges only when every review thread has a reply and is resolved and every review body is
   answered, and some head has had one CodeRabbit review. The pull request body states thread count, resolved count and review-body
-  items from `ci pr comments`, never from memory. Merge only on the operator's word. Commits end with
+  items from `ci pr comments`, never from memory. The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with
   `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer. If CodeRabbit refuses on
   quota, stop and ask the operator.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
@@ -151,19 +149,33 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
 ## Claim Labels
 
 - OBSERVED: `TriagePage` has the props `selected`, `hasFilters`, the slots `filters`, `list`, `detail`, a `2fr 3fr` grid and a `max-width: 1099px` query — read at `pm-web-app/src/lib/templates/TriagePage.svelte:12-77`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: TriagePage props selected/hasFilters :12-13, slots filters/list/detail, grid 2fr 3fr :36, max-width 1099px :57
 - OBSERVED: `ReportsView.svelte` is the only production user of `TriagePage` — read at `pm-web-app/src/lib/views/ReportsView.svelte:13,855`; `git grep -l TriagePage -- pm-web-app/src` lists fixtures and tests besides
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView is the only non-test user: import :13, TriagePage :956-974; other uses are fixtures under src/test/fixtures
 - OBSERVED: `ObjectPage` has the slots `kind`, `path`, `title`, `id`, `state`, `primary`, `secondary`, `overflow`, `attention`, `tabs`, a `max-width: 1440px`, no `compact` and no side slot — read at `pm-web-app/src/lib/templates/ObjectPage.svelte:18-60`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ObjectPage slots kind/path/title/id/state/primary/secondary/overflow/attention/tabs, max-width 1440px :60, no compact, no side
 - OBSERVED: `WizardPage` is `max-width: 720px` with no side slot, and no production view uses `ObjectPage` or `WizardPage` (only fixtures and tests) — read at `pm-web-app/src/lib/templates/WizardPage.svelte`; `git grep -n "ObjectPage\|WizardPage" -- pm-web-app/src/lib pm-web-app/src/routes pm-web-app/src/test`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WizardPage max-width 720px :41, no side slot; no production view uses ObjectPage or WizardPage
 - OBSERVED: no `ResizeObserver` is used outside tests; `matchMedia` is — read by `git grep -n "ResizeObserver\|matchMedia" -- pm-web-app/src`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: ResizeObserver is used in production: MascotFigure.svelte:64; tests also have a fake (lib/test/resizeObserver.ts, setupTests.ts:44) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: a static `style` attribute is blocked by the policy and a bound `style=` or `style:` directive is allowed — read at `pm-web-app/src/lib/csp.test.ts:1-60`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: csp.test.ts:11-12,31 blocks a static style attribute and allows style= and style: directives
 - OBSERVED: the frame has a polite live region — read at `pm-web-app/src/routes/+layout.svelte:349`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: +layout.svelte:376 has the polite live region (spec :349), fed by quietReportNotice and quietDecisionNotice
 - OBSERVED: `KindMark`, `Link`, `RowLink` do not exist under `pm-web-app/src/lib/components/` — read by `git ls-files pm-web-app/src/lib/components`
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark.svelte, Link.svelte and RowLink.svelte all exist in components/ at HEAD (PLAN-147 #420, PLAN-148 #427) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: the throw-away column-window prototype of D2 (`pm-web-app/src/routes/dev/columns/`) is not in the repository — read by `git ls-files pm-web-app/src/routes/dev`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: routes/dev holds only components/; no dev/columns prototype is tracked
 - OBSERVED: every row of both width tables follows from the window rule with `W` = viewport − rail − `48` (`12 × 2` below `480`) — checked by hand against `doc/design/web-app/navigation.adoc:86-155,279-301`; `columnWindow.test.ts` is the machine confirmation
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Hand-checked both tables of navigation.adoc (:118-155 and :286-308) against the window rule with W=viewport-rail-48; every row follows
 - HYPOTHESIS: the frame's live region can carry the announcement through the runtime store (`quietReportNotice`, `quietDecisionNotice` are its inputs today) or through a region of the engine's own — confirm/refute at `pm-web-app/src/routes/+layout.svelte` § `aria-live` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Live region +layout.svelte:376-379 takes store notices; an announcement can ride a new store field or a region of the engine's own
 - HYPOTHESIS: `@testing-library/svelte` with a `ResizeObserver` stub in `setupTests.ts` is enough to test the window — confirm/refute at `pm-web-app/src/setupTests.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: setupTests.ts:43-44 already installs a fake ResizeObserver (lib/test/resizeObserver.ts) for jsdom tests
 - OBSERVED: D6 fixed the side-column API on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`) and took it off `ObjectPage`; the chat plans build no slot of their own — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418` (`4a84f727`, D6 merged `8568b56e`)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: components.adoc:361,374,381 and navigation.adoc:275-284 carry the D6 side props on TriagePage/WizardPage and none on ObjectPage
 - Verify-first clause: re-read `navigation.adoc#side-columns` and `components.adoc#triage-page` at the then-current HEAD before scoping deliverable 4; the D6 API above is binding (no interim slot exists in the chat plans). If `KindMark` and `Link` do not exist yet, stop and loop back.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: KindMark and Link exist (loop-back trigger absent); side-column docs read at navigation.adoc:275-284 and components.adoc:374
 
 ## Expected Surface
 
@@ -209,6 +221,14 @@ delivers `side`, `sideOpen` and `onHideSide` on `TriagePage` and `WizardPage` on
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD (this spec was grounded at `1cc0e10e`). Re-run `corpus surfaces` against everything that landed since (PLAN-45, PLAN-129, PLAN-130 and the D1 foundation first). Settle each HYPOTHESIS. The D6 documents are merged (#403, `8568b56e`); re-check that `navigation.adoc` still carries the width tables unchanged (at `4a84f727`: `:118-155` and `:286-308`).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 4 contradicted: ResizeObserver is used in production: MascotFigure.svelte:64; tests also have a fake (lib/test/resizeObserver.ts, setupTests.ts:44)
+- Claim 7 contradicted: KindMark.svelte, Link.svelte and RowLink.svelte all exist in components/ at HEAD (PLAN-147 #420, PLAN-148 #427)
+- `MascotFigure.svelte:64` uses `ResizeObserver` in production; KindMark/Link/RowLink exist.
 
 ## Hand-Off Command
 

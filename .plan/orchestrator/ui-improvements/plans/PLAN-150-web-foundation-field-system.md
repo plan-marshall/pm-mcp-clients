@@ -71,8 +71,7 @@ Read first: `doc/design/web-app/components-fields.adoc` (all), `README.adoc` § 
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -86,21 +85,30 @@ Read first: `doc/design/web-app/components-fields.adoc` (all), `README.adoc` § 
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: none of `Field`, `FieldError`, `TextField`, `TextArea`, `NumberField`, `SecretField`, `CodeField`, `SelectField`, `RadioGroup`, `CheckField`, `CheckGroup` exists; `FilterInput.svelte` and `CredentialEntry.svelte` do — read in `pm-web-app/src/lib/components/` at `1cc0e10e`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: None of the 11 field components exist; FilterInput.svelte and CredentialEntry.svelte do; Compose FormStatus Marker also now exist
 - OBSERVED: raw `<input>`, `<textarea>` or `<select>` appear in 38 `.svelte` files (views, shell and components) — read by `git grep -c "<input\|<textarea\|<select" -- pm-web-app/src`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 38 .svelte files carry input/textarea/select tags (39th hit is routes/layout.test.ts)
 - OBSERVED: `tokens.css` declares no `--control-*` token — read at `pm-web-app/src/styles/tokens.css`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css has no --control-* token
 - OBSERVED: `ConfirmDialog.svelte` has one raw `<input>` (the typed name) and the props `title`, `consequences`, `actionLabel`, `cancelLabel`, `typedName`, `busy`, `confirmDisabled`, `testid`, `onConfirm`, `onClose` — read at `ConfirmDialog.svelte:16-36`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ConfirmDialog.svelte:68 one raw input; exports open title consequences actionLabel cancelLabel typedName busy confirmDisabled testid onConfirm onClose at :10-40
 - OBSERVED: `common.en.properties` has no `common.field.*` key; `stores/unsentInput.ts` exports `hasUnsentInput` and `hasUnsentInputStore` — read at both files
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: common.en.properties has no common.field.*; unsentInput.ts exports hasUnsentInput :61 and hasUnsentInputStore :17 (plus scanUnsentInput startUnsentInputTracking)
 - OBSERVED: `Button.svelte` sizes are `sm` 16-px icon, `md` and `lg` 20-px icon and no height token — read at `Button.svelte`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Button.svelte ICON_SIZES sm 16 small 16 md 20 lg 20; heights are literal min-height 28/34/40, no height token
 - HYPOTHESIS: `Button` reaches its `md` height of 34 px by its own padding and line height, and moving it onto `--control-height` changes no pixel — confirm/refute at `Button.svelte` § `.btn--md` and `Button.test.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Button.svelte:89-91 .btn--md min-height:34px literal; natural height 34.25 so moving onto --control-height 34px changes no pixel
 - HYPOTHESIS: no view reads `CredentialEntry`'s props through anything but its declared props, so a later rebuild on `SecretField` is possible without this plan — confirm/refute at `git grep CredentialEntry -- pm-web-app/src` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CredentialEntry has one consumer SettingsView.svelte:492 (plus its own test); no other reader
 - Verify-first clause: re-read `components-fields.adoc` and the consumers named at the current HEAD; if a parked plan's re-ground changed a field's prop, settle it before scoping. If the operator rules D-5 otherwise, drop the guard from deliverable 4.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction (re-read, D-5 operator answer), not settled by reading code
 
 ## Expected Surface
 
@@ -129,6 +137,8 @@ Read first: `doc/design/web-app/components-fields.adoc` (all), `README.adoc` § 
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/components-fields.adoc` — present at HEAD 1cc0e10e (changed only if a prop differs)
+- OBSERVED: `pm-web-app/src/lib/components/Marker.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/Chip.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -144,6 +154,20 @@ Read first: `doc/design/web-app/components-fields.adoc` (all), `README.adoc` § 
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-147 to PLAN-149, PLAN-129). Settle each HYPOTHESIS. Re-check the operator's answer to D-5 and that `components-fields.adoc` is still `AGREED`.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `Marker`'s `label` is a native `title` tooltip (`Marker.svelte:53`), not visible text; `Chip` uses `data-advisory`. Settle one advisory convention in the field system.
 
 ## Hand-Off Command
 

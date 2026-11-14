@@ -59,8 +59,7 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) on `running-work`, `projects-and-start` and `fully-onboarded` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; `theme-readability.spec.js` passes for the modals' owners (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on `running-work`, `projects-and-start` and `fully-onboarded` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); `theme-readability.spec.js` passes for the modals' owners (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -74,20 +73,28 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: raw element counts — `HoldResolutionModal` 4 buttons + 1 input, `FindingsReviewModal` 19 buttons + 2 textareas + 1 input, `ConfinedFilePicker` 7 buttons + 1 input, `PrAdoptPanel` 2 buttons + 2 inputs, `GrantModal` 3 buttons, `LanListenerModal` 0 raw (a hand-drawn dialog), `StartWorkModal` 6 buttons + 1 input; layer literals 50, 50, 60, none, 60, 100, 50 — read by `git grep -c` and `git grep -n z-index`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Counts identical: Hold 4b+1i, Findings 19b+2ta+1i, Picker 7b+1i, PrAdopt 2b+2i, Grant 3b, LanListener 0 raw, StartWork 6b+1i; z-index 50 50 60 none 60 100 50
 - OBSERVED: owners — `HoldResolutionModal` and `PlanSettingsModal` are imported by `WorkControlPanel.svelte`; `FindingsReviewModal` by `EpicView.svelte`; `ConfinedFilePicker` and `GrantModal` by `StartView.svelte`; `PrAdoptPanel` by `GitSourceIntakeModal.svelte`; `LanListenerModal` by `SettingsView.svelte`; `StartWorkModal` by nothing — read by `git grep -l` of each name
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkControlPanel imports Hold+PlanSettings; EpicView FindingsReview; StartView Picker+Grant; GitSourceIntakeModal PrAdoptPanel; SettingsView LanListener; StartWorkModal nothing
 - OBSERVED: tests — `HoldResolutionModal.test.ts`, `FindingsReviewModal.test.ts`, `LanListenerModal.test.ts` exist; `ConfinedFilePicker`, `PrAdoptPanel`, `GrantModal` have none — read in `components/`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HoldResolutionModal FindingsReviewModal LanListenerModal tests exist; none for ConfinedFilePicker PrAdoptPanel GrantModal
 - OBSERVED: surfaces — `PLAN-58` and `PLAN-137` declare `FindingsReviewModal.svelte`; `PLAN-55` declares `PlanSettingsModal.svelte`; no staged plan declares `HoldResolutionModal`, `ConfinedFilePicker`, `PrAdoptPanel`, `GrantModal`, `LanListenerModal` — read by `corpus surfaces`
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Corpus surfaces of staged plans, a ledger fact not settleable from source
 - HYPOTHESIS: the irreversible hold acts (_Accept the change_, _Abort the plan_, _Give up the removal_) already confirm first inside `HoldResolutionModal` — confirm/refute at `HoldResolutionModal.svelte` § act handlers (verify-at-outline); if not, record it as a finding, do not change the behaviour here
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HoldResolutionModal.svelte:30 IRREVERSIBLE set (accept end_plan abort cancel_epic give_up_removal); inline hold-confirm step :153-170 before confirmAct
 - HYPOTHESIS: `FindingsReviewModal` is one dialog with a list beside the item, not two — confirm/refute at `FindingsReviewModal.svelte` § markup (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: FindingsReviewModal has one role=dialog (:152) and a review-modal__list ul (:182) beside the item
 - HYPOTHESIS: the `Dialog` footer slot takes more than two acts without a layout change — confirm/refute at `Dialog.svelte` § footer (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dialog.svelte .dialog__footer is flex wrap justify-end, so more than two acts need no layout change
 - Verify-first clause: re-read each modal after PLAN-45, PLAN-149, PLAN-150, PLAN-151 and PLAN-58/53/55 (if any landed); a modal a landed plan has already moved is dropped from this plan.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
 
 ## Expected Surface
 
@@ -128,6 +135,16 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since. Settle each HYPOTHESIS. Re-check which plan claims each modal and the operator's answer to D-10.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
 
 ## Hand-Off Command
 
