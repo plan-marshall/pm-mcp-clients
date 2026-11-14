@@ -14,7 +14,13 @@
     type StartStateResource,
     type UnclaimedLessonSummary,
   } from '../api/client';
-  import { navigateTo, openEpicView, openPlanView, runtimeStore } from '../stores/runtime';
+  import {
+    navigateTo,
+    openEpicView,
+    openPlanView,
+    openProjectOnboarding,
+    runtimeStore,
+  } from '../stores/runtime';
   import SourceList from '../components/SourceList.svelte';
   import ConfinedFilePicker from '../components/ConfinedFilePicker.svelte';
   import GrantModal from '../components/GrantModal.svelte';
@@ -102,12 +108,32 @@
   let decompositionCommitted = false;
   let decompositionError = '';
 
+  /**
+   * The events of the entry's stream (`EventName` of pm-api, stream `entry`) that change what the
+   * entry resource holds: its sources, their progress and checks, and its state; `reset` asks for
+   * a fresh read. The chat's turns and proposals are the chat's own read (`refreshChat`), and a
+   * streamed piece of a turn changes nothing the entry holds.
+   */
+  const ENTRY_REFRESH_EVENTS = new Set([
+    'reset',
+    'source.added',
+    'source.removed',
+    'source.flagged',
+    'progress.changed',
+    'check.result',
+    'entry.moved',
+    'state.entered',
+  ]);
+
   let lastState = '';
   let unsubscribeEntry: (() => void) | null = null;
   let destroyed = false;
   let mounted = false;
   let loadedEntryId: string | null = entryId;
   let entryGeneration = 0;
+  /** Numbers the entry reads in the order they started; `appliedEntryRead` is the newest one applied. */
+  let entryReadSeq = 0;
+  let appliedEntryRead = 0;
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
@@ -204,7 +230,7 @@
     if (destroyed) return;
     unsubscribeEntry?.();
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
-      if (event === 'entry.changed' || event === 'source.changed') {
+      if (ENTRY_REFRESH_EVENTS.has(event)) {
         void refresh();
       } else if (
         event === 'chat.turn.started' ||
@@ -248,16 +274,20 @@
     const target = entry?.entry_id;
     if (!target) return;
     const generation = entryGeneration;
+    const read = ++entryReadSeq;
     try {
       const resource = await apiClient.getEntry(target);
       if (
         destroyed ||
         generation !== entryGeneration ||
+        // an older read that completes after a newer one has applied must not restore what it saw
+        read < appliedEntryRead ||
         resource.start.entry?.entry_id !== target ||
         target !== (entryId ?? target)
       ) {
         return;
       }
+      appliedEntryRead = read;
       apply(resource);
     } catch {
       // A refresh that fails leaves the shown representation as it is.
@@ -722,22 +752,31 @@
     }
   }
 
-  function refusalText(): string {
-    if (!state?.refusal) return '';
-    return state.refusal.reason === 'machine_not_onboarded'
-      ? $t('start.gate.machine', { need: state.refusal.need ?? '' })
+  type Refusal = NonNullable<StartState['refusal']>;
+
+  /**
+   * @param refusal the gate's refusal the start opened on
+   * @returns what is missing, for the machine or for the project
+   */
+  function refusalText(refusal: Refusal): string {
+    return refusal.reason === 'machine_not_onboarded'
+      ? $t('start.gate.machine', { need: refusal.need ?? '' })
       : $t('start.gate.project', {
-          project: state.refusal.project_id ?? currentProject,
-          need: state.refusal.need ?? '',
+          project: refusal.project_id ?? currentProject,
+          need: refusal.need ?? '',
         });
   }
 
-  function openRefusalAction(): void {
-    if (!state?.refusal) return;
-    if (state.refusal.reason === 'machine_not_onboarded') {
+  /**
+   * Goes on where the refusal is fixed: the machine's onboarding, or the project's.
+   *
+   * @param refusal the gate's refusal the start opened on
+   */
+  function openRefusalAction(refusal: Refusal): void {
+    if (refusal.reason === 'machine_not_onboarded') {
       navigateTo('onboarding');
     } else {
-      navigateTo('projects');
+      openProjectOnboarding(null, refusal.project_id ?? currentProject);
     }
   }
 
@@ -809,10 +848,15 @@
     {/if}
 
     {#if state?.refusal}
+      {@const refusal = state.refusal}
       <section class="start-view__panel" data-testid="start-refused">
-        <p class="start-view__gate">{refusalText()}</p>
-        <button type="button" data-testid="refusal-action" on:click={openRefusalAction}>
-          {$t(state.refusal.action_key)}
+        <p class="start-view__gate">{refusalText(refusal)}</p>
+        <button
+          type="button"
+          data-testid="refusal-action"
+          on:click={() => openRefusalAction(refusal)}
+        >
+          {$t(refusal.action_key)}
         </button>
       </section>
     {:else if showDecomposition}

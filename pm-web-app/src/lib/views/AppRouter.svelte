@@ -41,9 +41,8 @@
   {/key}
 {:else if !$runtimeStore.isPaired}
   <PairingView />
-{:else if !$runtimeStore.isOnboarded && !$runtimeStore.isOffline && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'project-onboarding'}
-  <OnboardingView />
-{:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding'}
+{:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding' || (!$runtimeStore.isOnboarded && !$runtimeStore.isOffline)}
+  <!-- The onboarding routes, and every route of a machine that is not onboarded while it answers. -->
   <OnboardingView />
 {:else if $runtimeStore.currentRoute === 'projects'}
   <ProjectExplorerView />

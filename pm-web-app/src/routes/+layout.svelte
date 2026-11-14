@@ -157,11 +157,24 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      await apiClient.stopRuntime('now');
+      const epoch = lifecycleEpochOf();
+      const answer = await apiClient.stopRuntime('now');
       stopNowConfirm = false;
+      // A lifecycle event that arrived while the request was pending is newer than this answer.
+      const superseded = epoch !== lifecycleEpochOf();
       advanceLifecycleEpoch();
-      // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
-      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null, isStopped: true }));
+      if (!superseded) {
+        // The stop ends the drain; the lifecycle event may be missed on a dropped stream. A drain that
+        // ends in a restart answers `running`: the runtime is not stopped (as `runtime.stopping`).
+        const isStopped = answer.lifecycle_state !== 'running';
+        runtimeStore.update((s) => ({
+          ...s,
+          isDraining: false,
+          drainInfo: null,
+          isStopped,
+          stoppedInfo: null,
+        }));
+      }
     } catch (err: unknown) {
       // The refusal belongs in the banner; the short confirmation has done its work.
       stopNowConfirm = false;

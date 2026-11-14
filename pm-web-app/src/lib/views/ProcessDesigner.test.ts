@@ -518,6 +518,27 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(editor.value.slice(0, editor.selectionStart).split('\n')).toHaveLength(2);
   });
 
+  it('places nothing when the text was edited after validation behind the open dialogue', async () => {
+    const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit');
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state edited behind the dialogue\n` },
+    });
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    expect(placeSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('place-dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('designer-notice')).toHaveTextContent(
+      'The text changed since: validate again.',
+    );
+  });
+
   it('shows the side-by-side difference before placing and lands it', async () => {
     const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit');
     render(ProcessDesigner);
@@ -612,6 +633,240 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(screen.getByTestId('place-retry')).toBeInTheDocument();
   });
 
+  /** Validates the open text and opens the placement's target choice. */
+  async function openPlacement(): Promise<void> {
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+  }
+
+  it('lists the landing in the project and names the placed unit by its frontmatter', async () => {
+    const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'pm-mcp-clients',
+      status: 'landed',
+      steps: ['written', 'committed', 'landed'],
+      author: 'Oliver Wolff',
+      release: '0.9.0',
+      digest: 'sha256:placed',
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+
+    await fireEvent.click(screen.getByRole('radio', { name: /In the project pm-mcp-clients/ }));
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    const done = await screen.findByTestId('designer-place-done');
+    expect(placeSpy).toHaveBeenCalledWith(
+      'pm-mcp-clients',
+      'phase-6-finalize',
+      expect.objectContaining({ unit_name: 'phase-6-finalize' }),
+    );
+    // The lines of the landing stay readable once it has landed.
+    const steps = Array.from(
+      screen.getByTestId('designer-landing').querySelectorAll('li'),
+      (item) => item.textContent?.trim(),
+    );
+    expect(steps).toEqual([
+      'written to .marshall/config/phase-6-finalize.pmwf',
+      'committed',
+      'landed: in force from now on',
+    ]);
+    // The result names the display name and the modification date of what was placed, never the
+    // runtime's release.
+    const today = new Date().toISOString().slice(0, 10);
+    expect(done).toHaveTextContent(`Placed: Finalize by Oliver Wolff, ${today} · sha256:placed`);
+  });
+
+  it('names the author the placed text carries when the answer names none', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'machine',
+      status: 'landed',
+      steps: ['written'],
+      digest: 'sha256:placed',
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('frontmatter-author'), {
+      target: { value: 'Ada Lovelace' },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    const done = await screen.findByTestId('designer-place-done');
+    expect(done).toHaveTextContent('by Ada Lovelace,');
+    expect(done).not.toHaveTextContent('you');
+  });
+
+  it('opens the conflict card for the refusal conflict only, not for a code that names one', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockRejectedValue(
+      new Error('enrolment_root_conflict'),
+    );
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    expect(await screen.findByTestId('designer-place-failed')).toHaveTextContent(
+      'The landing failed:',
+    );
+    expect(screen.queryByTestId('designer-place-conflict')).not.toBeInTheDocument();
+  });
+
+  it('says a text equal to the unit at that level is not placed and offers no Place', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // The machine has no copy, so the comparison is against the project's copy in force.
+    expect(await screen.findByText(/against the project's copy/)).toBeInTheDocument();
+    expect(
+      screen.getByText('The text is the same as the unit at this level: nothing to place.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('place-confirm')).not.toBeInTheDocument();
+  });
+
+  it('marks each line of the difference with its glyph, not with colour alone', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const edited = finalizeText
+      .replace('name: Finalize', 'name: Settled')
+      .replace('  done -> finalize.archive-plan\n', '');
+    await fireEvent.input(screen.getByTestId('workflow-text'), { target: { value: edited } });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    const diff = await screen.findByTestId('designer-diff');
+    const glyphOf = (label: string): string[] =>
+      Array.from(diff.querySelectorAll(`[aria-label="${label}"] .diff-kind`), (glyph) =>
+        String(glyph.textContent),
+      );
+    expect(glyphOf('changed line')).toEqual(['~']);
+    expect(glyphOf('removed line')).toEqual(['−']);
+    expect(glyphOf('unchanged line').every((glyph) => glyph === '')).toBe(true);
+  });
+
+  it('places again on Try again after a refused landing', async () => {
+    const placeSpy = vi
+      .spyOn(apiClient, 'placeWorkflowUnit')
+      .mockRejectedValueOnce(new Error('internal_fault'));
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+    await fireEvent.click(await screen.findByTestId('place-retry'));
+
+    expect(await screen.findByTestId('designer-place-done')).toHaveTextContent('Placed:');
+    expect(placeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks the browser to keep the page only while the draft changed', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const leave = (): Event => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event;
+    };
+
+    expect(leave().defaultPrevented).toBe(false);
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state extra\n` },
+    });
+    expect(leave().defaultPrevented).toBe(true);
+  });
+
+  it.each([
+    ['names the runtime as author', 'plan-marshall', 'Ada Lovelace'],
+    ['names its own author', 'Grace Hopper', 'Grace Hopper'],
+  ])(
+    'writes the remembered author into a unit that %s on its first edit',
+    async (_case, author, expected) => {
+      localStorage.setItem('pm_designer_author', 'Ada Lovelace');
+      const authored = finalizeText.replace('type: subworkflow', `type: subworkflow\nauthor: ${author}`);
+      vi.spyOn(apiClient, 'getWorkflows').mockResolvedValue([
+        { ...units[0], levels: [{ ...units[0].levels[0], text: authored }] },
+      ]);
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(authored));
+
+      await fireEvent.input(screen.getByTestId('workflow-text'), {
+        target: { value: `${authored}state extra\n` },
+      });
+
+      expect(editorText()).toContain(`author: ${expected}`);
+      expect(screen.getByTestId('frontmatter-author')).toHaveValue(expected);
+    },
+  );
+
+  it('shows the structure as the runtime read it: the unit name, the states and their calls', async () => {
+    vi.spyOn(apiClient, 'validateWorkflow').mockResolvedValue({
+      ...validResult,
+      structure: {
+        display_name: '',
+        entries: [],
+        exits: [],
+        states: [
+          {
+            id: 'finalize.review',
+            kind: 'state',
+            outcomes: ['done -> finalize.archive-plan'],
+            calls: ['git.commit_and_push'],
+          },
+        ],
+      },
+    });
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+
+    const pane = screen.getByTestId('structure-pane');
+    await waitFor(() => expect(pane).toHaveTextContent('↳ git.commit_and_push'));
+    expect(pane).toHaveTextContent('phase-6-finalize');
+    expect(pane).not.toHaveTextContent('→');
+    expect(pane).not.toHaveTextContent('◂');
+  });
+
+  it('keeps the line numbers beside the text as it scrolls', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    const editor = screen.getByTestId('workflow-text');
+
+    editor.scrollTop = 42;
+    await fireEvent.scroll(editor);
+
+    expect(screen.getByTestId('designer-gutter').scrollTop).toBe(42);
+  });
+
+  it('titles the composed process after the project it was composed for', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await fireEvent.click(await screen.findByTestId('preview-button'));
+
+    expect(screen.getByTestId('composed-preview')).toHaveTextContent(
+      'If a plan started now in pm-mcp-clients',
+    );
+    await fireEvent.click(screen.getByTestId('preview-close'));
+    expect(screen.queryByTestId('composed-preview')).not.toBeInTheDocument();
+  });
+
   it('is read only at phone width while Validate stays offered', async () => {
     const original = window.matchMedia;
     window.matchMedia = vi.fn().mockReturnValue({
@@ -629,6 +884,173 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(screen.getByTestId('designer-phone-note')).toBeInTheDocument();
 
     window.matchMedia = original;
+  });
+
+  /** @returns the editor's text */
+  function editorText(): string {
+    return (screen.getByTestId('workflow-text') as HTMLTextAreaElement).value;
+  }
+
+  it('keeps the author prompt while the name is typed and writes the remembered name', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId('designer-author-input'), {
+      target: { value: 'Ada Lovelace ' },
+    });
+    expect(screen.getByTestId('designer-author-input')).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Remember my name' }));
+
+    expect(localStorage.getItem('pm_designer_author')).toBe('Ada Lovelace');
+    expect(editorText()).toContain('author: Ada Lovelace');
+    expect(screen.queryByTestId('designer-author-input')).toBeNull();
+  });
+
+  it.each([
+    ['frontmatter-description', 'Settles the plan and lands it.', 'description: Settles the plan and lands it.'],
+    ['frontmatter-icon', 'phase.execute', 'icon: phase.execute'],
+    ['frontmatter-author', 'Grace Hopper', 'author: Grace Hopper'],
+    ['frontmatter-modified', '2026-01-02', 'modified: 2026-01-02'],
+    ['frontmatter-release', '1.0.0', 'release: 1.0.0'],
+  ])('writes a first edit of %s into the text as typed', async (field, value, line) => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId(field), { target: { value } });
+
+    expect(editorText().split('\n')).toContain(line);
+  });
+
+  /** Opens a pasted unit that no installed unit holds, with its frontmatter added: nothing is replaced. */
+  async function openNewUnit(): Promise<void> {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.input(screen.getByTestId('designer-paste'), {
+      target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
+    });
+    await fireEvent.click(screen.getByTestId('designer-paste-open'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Add the frontmatter' }));
+  }
+
+  it('writes the type typed into the panel of a new unit into the text', async () => {
+    await openNewUnit();
+
+    await fireEvent.input(screen.getByTestId('frontmatter-type'), { target: { value: 'workflow' } });
+
+    expect(editorText().split('\n')).toContain('type: workflow');
+  });
+
+  it('writes the entries and exits typed into the panel of a new unit as interface lines', async () => {
+    await openNewUnit();
+
+    await fireEvent.input(screen.getByTestId('frontmatter-entries'), {
+      target: { value: 'start, resume' },
+    });
+    await fireEvent.input(screen.getByTestId('frontmatter-exits'), {
+      target: { value: 'merged abandoned' },
+    });
+
+    const lines = editorText().split('\n');
+    expect(lines).toEqual(
+      expect.arrayContaining(['entry start', 'entry resume', 'exit merged', 'exit abandoned']),
+    );
+  });
+
+  it.each(['frontmatter-type', 'frontmatter-entries', 'frontmatter-exits'])(
+    'keeps %s read only while the open unit replaces an installed one',
+    async (field) => {
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+      expect(screen.getByTestId(field)).toHaveAttribute('readonly');
+    },
+  );
+
+  it('adds a frontmatter to a unit that has none, named after the unit', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.input(screen.getByTestId('designer-paste'), {
+      target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
+    });
+    await fireEvent.click(screen.getByTestId('designer-paste-open'));
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add the frontmatter' }));
+
+    const lines = editorText().split('\n');
+    expect(lines[0]).toBe('workflow bare-unit version 1 format 1');
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        '---',
+        'name: bare-unit',
+        'type: subworkflow',
+        `modified: ${new Date().toISOString().slice(0, 10)}`,
+        'release: 0.9.0',
+      ]),
+    );
+    expect(screen.getByTestId('frontmatter-name')).toHaveValue('bare-unit');
+  });
+
+  describe('an uploaded file', () => {
+    /**
+     * jsdom's `File` has no `text()`; the designer reads only the size and the text.
+     *
+     * @param content the file's text, or a reason it cannot be read
+     * @param size the size the browser reports
+     * @returns the file the operator chooses
+     */
+    function fileOf(content: string | Error, size = 64): File {
+      return {
+        name: 'unit.pmwf',
+        size,
+        text: () => (content instanceof Error ? Promise.reject(content) : Promise.resolve(content)),
+      } as unknown as File;
+    }
+
+    /**
+     * @param file the file the operator chooses
+     */
+    async function upload(file: File): Promise<void> {
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+      await fireEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+      const input = screen.getByTestId('designer-file-input');
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      await fireEvent.change(input);
+    }
+
+    it('opens a unit read from the file', async () => {
+      const content = finalizeText.replace('phase-6-finalize', 'uploaded-unit');
+
+      await upload(fileOf(content));
+
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(content));
+      expect(screen.getByTestId('designer-unit')).toHaveTextContent('uploaded-unit');
+    });
+
+    it.each([
+      ['a file over the limit', fileOf(finalizeText, 1_048_577), 'The file is larger than 1 MB.'],
+      ['a file that is not text', fileOf('workflow �'), 'The file is not UTF-8 text.'],
+      [
+        'a text without a header line',
+        fileOf('state lonely\n'),
+        'The text has no header line (workflow <name> version <n> format <n>).',
+      ],
+    ])('refuses %s and keeps the open unit', async (_case, file, message) => {
+      await upload(file);
+
+      expect(await screen.findByTestId('designer-intake-error')).toHaveTextContent(message);
+      expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText);
+    });
+
+    it('says when the file could not be read', async () => {
+      await upload(fileOf(new Error('gone')));
+
+      expect(await screen.findByTestId('designer-intake-error')).toHaveTextContent(
+        'The file could not be read.',
+      );
+    });
   });
 });
 

@@ -222,7 +222,6 @@
 
   /** Reads the permission the operator gave once, if any. */
   function readNotifyPreference(): void {
-    if (typeof window === 'undefined') return;
     try {
       const stored = window.localStorage.getItem(NOTIFY_KEY);
       if (stored === 'granted' || stored === 'denied') {
@@ -245,11 +244,9 @@
   async function allowNotifications(): Promise<void> {
     notifyAsked = true;
     try {
-      if (typeof Notification === 'undefined') {
-        notifyState = 'denied';
-        notifyMessage = $t('decision.notify.failed');
-        return;
-      }
+      // A browser without the API refuses like one that blocks the prompt; the outcome is stored
+      // either way, so the banner does not ask again on the next visit.
+      if (typeof Notification === 'undefined') throw new Error('no notifications');
       const permission = await Notification.requestPermission();
       notifyState = permission === 'granted' ? 'granted' : 'denied';
       notifyMessage =
@@ -258,18 +255,14 @@
       notifyState = 'denied';
       notifyMessage = $t('decision.notify.failed');
     }
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(NOTIFY_KEY, notifyState);
-    }
+    window.localStorage.setItem(NOTIFY_KEY, notifyState);
   }
 
   function denyNotifications(): void {
     notifyAsked = true;
     notifyState = 'denied';
     notifyMessage = $t('decision.notify.denied');
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(NOTIFY_KEY, 'denied');
-    }
+    window.localStorage.setItem(NOTIFY_KEY, 'denied');
   }
 
   /** The parameters the notification's title names its subject by. */
@@ -282,7 +275,7 @@
     if (subject.startsWith('setup of ')) {
       return { subject: 'setup', project: subject.slice('setup of '.length), kind };
     }
-    if (dec.scope === 'entry' || subject.startsWith('start ')) {
+    if (subject.startsWith('start ')) {
       return { subject: 'entry', project: subject.replace(/^start (in )?/, ''), kind };
     }
     return { subject: 'other', name: subject.replace(/^plan /, ''), kind };
@@ -292,7 +285,7 @@
   function notifyDecision(dec: DecisionEnvelope): void {
     if (notifyState !== 'granted') return;
     if (typeof Notification === 'undefined') return;
-    if (typeof document === 'undefined' || document.visibilityState === 'visible') return;
+    if (document.visibilityState === 'visible') return;
     try {
       new Notification($t('decision.notify.title', notificationParams(dec)));
     } catch {
@@ -300,17 +293,31 @@
     }
   }
 
-  /** Replaces a decision with its newer revision and drops the answers to the old one. */
-  function applyRevision(revised: DecisionEnvelope): void {
+  /**
+   * Replaces a decision with its newer revision and drops the answers to the old one.
+   *
+   * @param revised the newer revision
+   * @param change what changed, as `decision.changed` reports it, if it does
+   */
+  function applyRevision(revised: DecisionEnvelope, change?: string | null): void {
     revisedNotices[revised.id] = $t('decision.outcome.revised', {
-      change: revised.change || $t('decision.changed'),
+      change: change || $t('decision.changed'),
     });
     clearDecisionState(revised.id);
+    // A proposal the chat made for the old question must not be taken for the revised one.
+    if (chatDecisionId === revised.id) closeChatPanel();
     decisions = decisions.map((entry) => (entry.id === revised.id ? revised : entry));
   }
 
+  /**
+   * Counts the times a decision's state was dropped: an interpretation that was asked before the
+   * drop and answers after it belongs to a question that no longer stands.
+   */
+  const stateEpochs: Record<string, number> = {};
+
   /** Drops every answer, note, interpretation, and submission the decision carried. */
   function clearDecisionState(id: string): void {
+    stateEpochs[id] = (stateEpochs[id] ?? 0) + 1;
     const prefix = `${id}:`;
     delete partAnswers[id];
     delete reopened[id];
@@ -325,15 +332,67 @@
     }
   }
 
+  /**
+   * The decision a `decision.opened` or `decision.changed` payload carries.
+   *
+   * The event's `data` holds the decision under `decision`, beside the envelope's `event`, `at` and
+   * `scope`; the payload itself is never a decision.
+   *
+   * @param data the event's data
+   * @returns the decision, or `null` when the payload names none
+   */
+  function decisionOf(data: unknown): DecisionEnvelope | null {
+    const decision = (data as { decision?: DecisionEnvelope } | null)?.decision;
+    return decision?.id ? decision : null;
+  }
+
+  /**
+   * The line that ends a decision's chat when the decision was answered elsewhere.
+   *
+   * The answer names its channel only where it is known; an absent channel stays absent and is never
+   * read as one of the two, so the line then says only that the decision is answered.
+   *
+   * @param id the decision
+   * @param channel the channel the answer names, if any
+   * @param device the device the answer names, if any
+   * @returns the line
+   */
+  function answeredElsewhereNotice(id: string, channel?: string, device?: string): string {
+    if (channel !== 'cli' && channel !== 'web') return $t('decision.chat.answered', { id });
+    return $t('decision.chat.closed_elsewhere', {
+      id,
+      channel: $t(`decision.channel.${channel}`),
+      device: device || '—',
+    });
+  }
+
+  /**
+   * Ends the chat of a decision that closed elsewhere and says so.
+   *
+   * The decision leaves the list with its card, so the line stands in the notices above the list,
+   * where the operator finds it instead of the decision. The chat no longer belongs to any decision,
+   * so the `decision.closed` that follows a `decision.answered` adds no second line.
+   *
+   * @param id the decision whose chat ended
+   * @param line the line that says why
+   */
+  function endChatOf(id: string, line: string): void {
+    chatOpen = false;
+    chat = null;
+    chatDecisionId = null;
+    invalidateChat();
+    notices = [{ id: `${id}-chat`, text: line }, ...notices];
+  }
+
   function handleEvent(event: string, data: unknown) {
     if (!isMounted) return;
-    if (event === 'decision.opened' || event === 'decision.created') {
+    if (event === 'decision.opened') {
       sawDecisionEvent = true;
-      const dec = data as DecisionEnvelope;
-      if (dec && dec.id) {
+      const dec = decisionOf(data);
+      if (dec) {
         const existing = decisions.find((entry) => entry.id === dec.id);
         if (existing) {
-          if ((dec.revision ?? 1) > (existing.revision ?? 1)) {
+          if (dec.revision > existing.revision) {
             applyRevision(dec);
           }
         } else {
@@ -343,20 +402,25 @@
       } else {
         void loadDecisions();
       }
-    } else if (event === 'decision.revised') {
-      const revised = data as DecisionEnvelope;
-      if (revised?.id) {
-        applyRevision(revised);
+    } else if (event === 'decision.changed') {
+      const revised = decisionOf(data);
+      if (revised) {
+        if (decisions.some((entry) => entry.id === revised.id)) {
+          applyRevision(revised, (data as { change_summary?: string | null }).change_summary);
+        } else {
+          decisions = [revised, ...decisions];
+        }
+      } else {
+        void loadDecisions();
       }
     } else if (event === 'decision.answered') {
       const answer = data as {
         id?: string;
-        decision_id?: string;
         channel?: string;
         device?: string;
         answer?: string;
       };
-      const id = answer?.id || answer?.decision_id;
+      const id = answer?.id;
       if (id) {
         // The event carries the option key the answer names; the option's label is the word the
         // operator chose. The decision is taken from the list here, before it is dropped below.
@@ -370,32 +434,30 @@
         });
         notices = [{ id: `${id}-answered`, text }, ...notices];
         if (chatDecisionId === id) {
-          chatOpen = false;
-          invalidateChat();
-          chatNotice = $t('decision.chat.closed_elsewhere', {
-            id,
-            channel:
-              answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web'),
-            device: answer.device || '—',
-          });
+          endChatOf(id, answeredElsewhereNotice(id, answer.channel, answer.device));
         }
         decisions = decisions.filter((d) => d.id !== id);
       } else {
         void loadDecisions();
       }
       void refreshDecisionsCount();
-    } else if (event === 'decision.closed' || event === 'decision.withdrawn') {
-      const closeData = data as { id?: string; decision_id?: string; reason?: string };
-      const id = closeData?.id || closeData?.decision_id;
+    } else if (event === 'decision.closed') {
+      const closeData = data as { id?: string; outcome?: string; reason?: string };
+      const id = closeData?.id;
       if (id) {
         decisions = decisions.filter((d) => d.id !== id);
         if (chatDecisionId === id) {
-          chatOpen = false;
-          invalidateChat();
-          chatNotice = $t('decision.chat.withdrawn', {
+          // A revision that removed the need for the decision withdraws it; every other outcome
+          // (answered, waived, declined) is an answer, and the chat ends with it as answered.
+          endChatOf(
             id,
-            reason: closeData.reason || $t('decision.outcome.withdrawn'),
-          });
+            closeData.outcome === 'withdrawn'
+              ? $t('decision.chat.withdrawn', {
+                  id,
+                  reason: closeData.reason || $t('decision.outcome.withdrawn'),
+                })
+              : $t('decision.chat.answered', { id }),
+          );
         }
       } else {
         void loadDecisions();
@@ -566,14 +628,19 @@
     const key = keyOf(dec, part, index);
     const words = ownWordsTexts[key]?.trim() || '';
     if (!words) return;
+    const epoch = stateEpochs[dec.id] ?? 0;
     isInterpreting[key] = true;
     try {
-      interpretations[key] = await apiClient.interpretDecision(dec.id, words);
+      const interpretation = await apiClient.interpretDecision(dec.id, words);
+      // A revision dropped this decision's state while the request ran: its answer is stale.
+      if ((stateEpochs[dec.id] ?? 0) !== epoch) return;
+      interpretations[key] = interpretation;
       clearActFailure(`interpret:${key}`);
     } catch (err: unknown) {
+      if ((stateEpochs[dec.id] ?? 0) !== epoch) return;
       showActFailure(`interpret:${key}`, actFailureText(err, $t('decision.interpret.failed')));
     } finally {
-      isInterpreting[key] = false;
+      if ((stateEpochs[dec.id] ?? 0) === epoch) isInterpreting[key] = false;
     }
   }
 
@@ -657,13 +724,18 @@
     }
   }
 
+  /**
+   * Drops an answered or withdrawn decision from the list.
+   *
+   * Its chat closes with it, whichever way the answer was reached: the own-words confirmation is
+   * disabled while the chat is open (`isChatting`), and a chat that opened after the readback is
+   * closed here, so no continuation of it outlives the card.
+   *
+   * @param id the decision
+   */
   function closeDecision(id: string) {
+    if (chatDecisionId === id) closeChatPanel();
     decisions = decisions.filter((d) => d.id !== id);
-    if (chatDecisionId === id) {
-      chatOpen = false;
-      chat = null;
-      invalidateChat();
-    }
     void refreshDecisionsCount();
   }
 
@@ -675,9 +747,14 @@
     invalidateChat();
   }
 
+  /**
+   * Leaves a decision unanswered: it answers nothing, so the decision stays open and in the list
+   * until it is answered, and only the mark a command-palette match gave its card is dropped.
+   *
+   * @param id the decision the operator leaves
+   */
   function handleLater(id: string) {
-    // Decision stays open; operator moves away
-    decisions = decisions.filter((d) => d.id !== id);
+    if (selectedDecisionId === id) selectedDecisionId = null;
   }
 
   function reasonOf(err: unknown): string {
@@ -828,7 +905,7 @@
     aria-current={selectedDecisionId === dec.id ? 'true' : undefined}
     data-decision-id={dec.id}
   >
-    {#if dec.is_waiver || dec.id.startsWith('WR-')}
+    {#if dec.is_waiver}
       <!-- Waiver Request View -->
       <div class="waiver-card">
         <header class="card-header">
@@ -840,7 +917,7 @@
           {#if dec.delivered_at}
             <span class="waiting-time">
               {$t('decision.waiting', {
-                subject: dec.scope || 'plan',
+                subject: dec.scope,
                 time: formatTime(dec.delivered_at, 'short', $currentLocale),
               })}
             </span>
@@ -851,23 +928,19 @@
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.gate')}:</span>
             <span class="detail-value mono"
-              >{dec.waiver_gate ||
-                (dec.evidence?.gate as string) ||
-                $t('decision.waiver.gate_fallback')}</span
+              >{dec.waiver_gate || $t('decision.waiver.gate_fallback')}</span
             >
           </div>
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.result')}:</span>
             <span class="detail-value"
-              >{dec.waiver_result ||
-                (dec.evidence?.result as string) ||
-                $t('decision.waiver.result_failed')}</span
+              >{dec.waiver_result || $t('decision.waiver.result_failed')}</span
             >
           </div>
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.asked_by')}:</span>
             <span class="detail-value"
-              >{dec.asking_phase || 'execute'} · {dec.asking_role || 'implement'}</span
+              >{[dec.asking_phase, dec.asking_role].filter(Boolean).join(' · ')}</span
             >
           </div>
           <div class="detail-row">
@@ -1147,6 +1220,7 @@
                               size="small"
                               variant="primary"
                               data-advisory={$t('decision.readback.confirm.title')}
+                              disabled={isChatting(dec)}
                               onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
                             >
                               {$t('decision.readback.confirm')}
@@ -1220,11 +1294,9 @@
             variant="secondary"
             disabled={isSubmittingDecision(dec) || isChatting(dec)}
             onclick={() => submitWithdraw(dec)}
-            data-advisory={$t('decision.answer.none_fits.title', {
-              subject: dec.scope || 'plan',
-            })}
+            data-advisory={$t('decision.answer.none_fits.title', { subject: dec.scope })}
           >
-            {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
+            {$t('decision.answer.none_fits', { subject: dec.scope })}
           </Button>
           <Button
             variant="secondary"
@@ -1249,7 +1321,6 @@
               onEnd={endTheChat}
               onAccept={() => answerChatProposal(true)}
               onReject={() => answerChatProposal(false)}
-              onToggle={() => openChat(dec)}
               onClose={closeChatPanel}
               acceptLabel={$t('decision.chat.answer_proposed')}
             />

@@ -6558,7 +6558,7 @@
               "id": "fix-relay",
               "project_id": "pm-mcp-clients"
             },
-            "decision_id": "Q-007",
+            "id": "Q-007",
             "answer": "2",
             "channel": "web"
           }
@@ -6574,7 +6574,7 @@
               "id": "fix-relay",
               "project_id": "pm-mcp-clients"
             },
-            "decision_id": "Q-007",
+            "id": "Q-007",
             "closure": "answered"
           }
         }

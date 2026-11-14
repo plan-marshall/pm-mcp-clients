@@ -313,6 +313,38 @@ describe('the app shell', () => {
     expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
   });
 
+  it('ends the drain without a stopped runtime when Stop now ends in a restart', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: false,
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'stopRuntime').mockResolvedValue({ lifecycle_state: 'running' });
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(screen.queryByTestId('draining-banner')).not.toBeInTheDocument());
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: false });
+  });
+
   it('shows the refusal of a withdraw and ignores a second click', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
@@ -391,6 +423,46 @@ describe('the app shell', () => {
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
       'The stop now could not be started: Action failed.',
     );
+  });
+
+  it('ignores a stop-now answer that a newer lifecycle event has already outdated', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: false,
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    let answerStopNow: (answer: { lifecycle_state: string }) => void = () => {};
+    const pending = new Promise<{ lifecycle_state: string }>((resolve) => {
+      answerStopNow = resolve;
+    });
+    vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(pending);
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    handleRuntimeEvent('runtime.stopping', { lifecycle_state: 'stopped' });
+    expect(get(runtimeStore).isStopped).toBe(true);
+
+    answerStopNow({ lifecycle_state: 'running' });
+
+    await waitFor(() => expect(screen.queryByTestId('confirm-dialog-confirm')).toBeNull());
+    expect(get(runtimeStore).isStopped).toBe(true);
   });
 
   it('lets go of a hung withdrawal, saying so and re-enabling both drain acts', async () => {

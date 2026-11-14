@@ -999,7 +999,7 @@ describe('PlanView component', () => {
     await fireEvent.click(screen.getByTestId('select-node-init'));
     expect(await screen.findByTestId('node-narrative-title')).toHaveTextContent('init');
 
-    onEvent?.('plan.changed');
+    onEvent?.('phase.changed');
     await waitFor(() =>
       expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('init'),
     );
@@ -1008,7 +1008,7 @@ describe('PlanView component', () => {
       ...mockPlan,
       nodes: mockPlan.nodes.filter((node) => node.node_id !== 'init'),
     });
-    onEvent?.('plan.changed');
+    onEvent?.('phase.changed');
 
     await waitFor(() =>
       expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'task'),
@@ -1167,5 +1167,158 @@ describe('PlanView component', () => {
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(select).toHaveAttribute('aria-pressed', 'true');
     expect(select.closest('.node-row')).toHaveClass('node-row--selected');
+  });
+
+  describe('the jump to the current position', () => {
+    let scrolled: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      scrolled = vi.fn();
+      Element.prototype.scrollIntoView = scrolled as unknown as Element['scrollIntoView'];
+    });
+
+    it('opens the path, selects the running task and scrolls to it', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-init'));
+      await fireEvent.click(screen.getByTestId('toggle-node-execute'));
+      expect(screen.queryByTestId('task-TASK-003')).not.toBeInTheDocument();
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      expect(await screen.findByTestId('task-TASK-003')).toHaveAttribute('aria-current', 'true');
+      expect(scrolled).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    });
+
+    it('selects the running node where no task runs', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: mockPlan.nodes.map((node) => ({
+          ...node,
+          leaf_tasks: node.leaf_tasks.map((task) => ({ ...task, status: 'done' })),
+        })),
+      });
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-init'));
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('keeps the selection where nothing runs', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: mockPlan.nodes.map((node) => ({
+          ...node,
+          state: 'done',
+          leaf_tasks: node.leaf_tasks.map((task) => ({ ...task, status: 'done' })),
+        })),
+      });
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-finalize'));
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      expect(screen.getByTestId('select-node-finalize')).toHaveAttribute('aria-current', 'true');
+      expect(scrolled).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each(['activity.changed', 'phase.changed', 'task.off_track', 'project.work_ended'])(
+    'reads the process again on the runtime event %s',
+    async (name) => {
+      let onEvent: ((event: string, data?: unknown) => void) | undefined;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+        onEvent = callback;
+        return () => {};
+      });
+      const load = vi.spyOn(apiClient, 'getPlanProcess');
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      onEvent?.('hold.opened');
+      expect(load).toHaveBeenCalledTimes(1);
+      onEvent?.(name);
+
+      await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    },
+  );
+
+  it('says the attempt in the interface language, in the task row and the activity head', async () => {
+    const { setLocale, messagesStore, currentLocale } = await import('../i18n');
+    const { loadMessages } = await import('../../test/catalogue-fixture');
+    vi.spyOn(apiClient, 'getMessages').mockImplementation(async (locale) => loadMessages(locale));
+    render(PlanView);
+    await screen.findByTestId('activity-feed');
+
+    try {
+      await setLocale('de');
+      // the switch itself succeeded: the language changed, and the texts below are its catalogue's
+      expect(get(currentLocale)).toBe('de');
+
+      await waitFor(() =>
+        expect(screen.getByTestId('activity-attempt')).toHaveTextContent('Versuch 1'),
+      );
+      expect(screen.getByTestId('task-TASK-003')).toHaveTextContent('Versuch 1');
+      expect(screen.getByTestId('task-TASK-003')).not.toHaveTextContent('attempt');
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      await setLocale('en');
+    }
+  });
+
+  it.each([
+    ['unmeasured tokens', { not_measured: true, floor: false, tasks_measured: 4 }, 'not measured · 6 of 10 tasks not measured'],
+    ['a floor with unmeasured tasks', { not_measured: false, floor: true, tasks_measured: 7 }, '3 of 10 tasks not measured'],
+    ['a floor over every task', { not_measured: false, floor: true, tasks_measured: 10 }, null],
+  ])('says how far the tokens are measured for %s', async (_case, tokens, coverage) => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      tokens_so_far: { ...mockPlan.tokens_so_far, tasks_total: 10, ...tokens },
+    });
+    render(PlanView);
+
+    const line = await screen.findByTestId('plan-tokens');
+    if (coverage) {
+      expect(line).toHaveTextContent(coverage);
+    } else {
+      expect(line).not.toHaveTextContent('not measured');
+    }
+  });
+
+  it.each([
+    ['a changed entry by the file it names', { kind: 'changed', files: ['pm-relay/Relay.java'] }, 'pm-relay/Relay.java'],
+    ['a gap by its own words', { kind: 'gap', content: 'the transcript was cut here' }, 'the transcript was cut here'],
+  ])('shows %s', async (_case, entry, expected) => {
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [{ timestamp: '14:03:02', ...entry }],
+    });
+    render(PlanView);
+
+    const [row] = await screen.findAllByTestId('activity-entry');
+    expect(row).toHaveTextContent(expected);
+  });
+
+  it('names a failed tool call without a size by its status alone', async () => {
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        {
+          timestamp: '14:02:20',
+          kind: 'tool',
+          tool_name: 'bash',
+          tool_target: './mvnw test',
+          tool_failed: true,
+        },
+      ],
+    });
+    render(PlanView);
+
+    const badge = await screen.findByTestId('tool-failed');
+    expect(badge.textContent?.trim()).toBe('failed');
   });
 });

@@ -16,7 +16,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
-  import { actFailureReason, isClientError } from '../api/errors';
+  import { actFailureReason, errorCodeOf, isClientError } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -84,6 +84,8 @@
   let signatureDropped = $state(false);
   let pendingAction = $state<(() => void) | null>(null);
   let savedAuthor = $state('');
+  /** The name typed into the author prompt; it becomes the saved author only when remembered. */
+  let authorDraft = $state('');
 
   /** The route project the designer has settled on, so the same route is not adopted twice. */
   let appliedRouteProjectId: string | null = null;
@@ -245,9 +247,11 @@
     return range ? range.start + 1 : -1;
   }
 
+  // The app renders in the browser only (`ssr = false` in the root layout), so the storage helpers
+  // below reach `window` without asking whether it exists.
+
   /** @returns the author this device remembers, or an empty string */
   function readAuthor(): string {
-    if (typeof window === 'undefined') return '';
     try {
       return window.localStorage.getItem(AUTHOR_KEY) ?? '';
     } catch {
@@ -257,7 +261,6 @@
 
   /** @returns the draft this device remembers, or null */
   function readDraft(): Draft | null {
-    if (typeof window === 'undefined') return null;
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (!raw) return null;
@@ -283,7 +286,6 @@
 
   /** Keeps the draft in this browser, so a reload shows it again. */
   function saveDraft(): void {
-    if (typeof window === 'undefined') return;
     try {
       const draft: Draft = {
         text,
@@ -300,7 +302,6 @@
 
   /** Drops the draft once it was placed or discarded. */
   function clearDraft(): void {
-    if (typeof window === 'undefined') return;
     try {
       window.localStorage.removeItem(DRAFT_KEY);
     } catch {
@@ -484,8 +485,12 @@
     updateCursorFromTextarea();
   }
 
+  /**
+   * Appends a building block's template; the palette is offered only where the text is editable.
+   *
+   * @param block the block the operator chose
+   */
   function insertBlock(block: BuildingBlock): void {
-    if (isCompiledOnly || isPhone) return;
     text = `${text.replace(/\s+$/, '')}\n${block.template}\n`;
     if (!touched) touched = true;
     afterEdit();
@@ -498,7 +503,8 @@
    * @param create whether the panel is adding a frontmatter
    */
   function applyFrontmatterEdit(edit: (fields: FrontmatterFields) => void): void {
-    text = editFrontmatter(text, edit, true);
+    // The first change stamps the date and the release, and drops the signature; the operator's
+    // own edit is applied after the stamp, so a first edit of the date or the release stands.
     if (!touched) {
       touched = true;
       const modified = new Date().toISOString().slice(0, 10);
@@ -510,6 +516,7 @@
       });
       if (signature) signatureDropped = true;
     }
+    text = editFrontmatter(text, edit, true);
     afterEdit();
   }
 
@@ -556,14 +563,15 @@
 
   /** Remembers the author once on this device and writes it into the unit. */
   function rememberAuthor(): void {
-    if (typeof window !== 'undefined' && savedAuthor) {
-      try {
-        window.localStorage.setItem(AUTHOR_KEY, savedAuthor);
-      } catch {
-        // The name applies to this visit where the browser cannot remember it.
-      }
+    const name = authorDraft.trim();
+    if (!name) return;
+    savedAuthor = name;
+    try {
+      window.localStorage.setItem(AUTHOR_KEY, name);
+    } catch {
+      // The name applies to this visit where the browser cannot remember it.
     }
-    setField('author', savedAuthor);
+    setField('author', name);
   }
 
   /**
@@ -648,16 +656,6 @@
     guardDraft(() => openIntakeText(template));
   }
 
-  /**
-   * @param event the textarea's event
-   * @returns the 1-based line the cursor is on
-   */
-  function lineAtCursor(event: Event): number {
-    const element = event.currentTarget as HTMLTextAreaElement;
-    const position = element.selectionStart ?? 0;
-    return text.slice(0, position).split('\n').length;
-  }
-
   /** Reads the cursor's line and selects its state in the structure. */
   function updateCursorFromTextarea(): void {
     if (!textareaElement) return;
@@ -726,14 +724,8 @@
     }
   }
 
-  /** @returns the level label the difference compares against */
-  function targetLevelLabel(project: string | null): string {
-    return project ? $t('designer.level.project') : $t('designer.level.machine');
-  }
-
-  /** Opens the placement's target choice. */
+  /** Opens the placement's target choice; _Place…_ is enabled only for a valid, current result. */
   function openPlace(): void {
-    if (!result?.valid || outdated) return;
     placeTargetProject = projectId;
     placeStage = 'target';
     landingError = '';
@@ -812,10 +804,16 @@
   }
 
   /**
-   * Places the open unit at the chosen level.
+   * Places the open unit at the chosen level; the dialogue opens only for a valid, current result.
    */
   async function place(): Promise<void> {
-    if (!result?.valid) return;
+    // The text can still be edited behind the open dialogue: only a valid, current result is placed,
+    // the same predicate the header's _Place…_ button applies.
+    if (!result?.valid || outdated) {
+      placeStage = 'idle';
+      notice = $t('designer.validate.outdated');
+      return;
+    }
     isPlacing = true;
     landingError = '';
     placeOutcomeUnknown = false;
@@ -830,10 +828,13 @@
         digest: placeDigest,
       });
       landingSteps = placed.steps ?? [];
+      // The result names the unit's display name, author, and modification date from what was
+      // placed: the placed text's frontmatter, where the runtime's answer names no author.
+      const placedFields = parseUnit(text).fields;
       placeMessage = $t('designer.place.result', {
-        name: unitName,
-        author: placed.author ?? 'you',
-        date: placed.release ?? '',
+        name: placedFields.displayName || unitName,
+        author: placed.author ?? placedFields.author,
+        date: placedFields.modified,
         digest: placed.digest ?? '',
       });
       placeStage = 'done';
@@ -841,7 +842,6 @@
       touched = false;
       clearDraft();
       digest = placed.digest ?? placeDigest ?? digest;
-      placeAgainst = targetLevelLabel(placeTargetProject);
       try {
         // Refresh the installed units without replacing the placed text the editor holds.
         await fetchAll();
@@ -849,9 +849,8 @@
         // The placement already landed; a failed refresh leaves the placed text on screen.
       }
     } catch (err: unknown) {
-      // A refusal that names a conflict opens the card; every other failure reads its sentence.
-      const refusal = err instanceof Error ? err.message : '';
-      if (/conflict/i.test(refusal)) {
+      // The refusal `conflict` opens the card; every other failure reads its sentence.
+      if (errorCodeOf(err) === 'conflict') {
         await showConflict();
       } else {
         placeStage = 'failed';
@@ -1204,7 +1203,7 @@
               <input
                 id="designer-author"
                 class="frontmatter__input"
-                bind:value={savedAuthor}
+                bind:value={authorDraft}
                 data-testid="designer-author-input"
               />
               <Button
@@ -1387,7 +1386,11 @@
     <div class="designer__preview" data-testid="composed-preview">
       <div class="designer__preview-head">
         <h2 class="designer__preview-title">
-          {$t('designer.preview.title', { project: projectLabel || $t('designer.level.machine') })}
+          {$t('designer.preview.title', {
+            // The project the process was composed for; at machine scope the runtime composes
+            // against an enrolled project, never against "this machine's copy".
+            project: displayNameFor(result.composed.project.project_id),
+          })}
         </h2>
         <Button variant="ghost" on:click={() => (previewOpen = false)} data-testid="preview-close">
           {$t('web.common.close')}
@@ -1524,26 +1527,8 @@
         <h2 id="place-title" class="designer__modal-title">
           {$t('designer.place.progress', { unit: unitName })}
         </h2>
-        {#if landingSteps.length === 0}
-          <p class="text-muted text-sm">{$t('designer.place.starting')}</p>
-        {/if}
-        <ul class="designer__landing" data-testid="designer-landing">
-          {#each landingSteps as step}
-            <li class="designer__landing-step">
-              <span aria-hidden="true"><Icon name="state.check" size={16} /></span>
-              {$t('designer.place.step', {
-                step,
-                path: targetPath(),
-                commit: '',
-              })}
-            </li>
-          {/each}
-        </ul>
-        <div class="designer__modal-actions">
-          {#if !isPlacing}
-            <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>
-          {/if}
-        </div>
+        <!-- The landing's steps arrive with the result, which ends this stage. -->
+        <p class="text-muted text-sm">{$t('designer.place.starting')}</p>
       {:else if placeStage === 'failed'}
         <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
         <p class="designer__notice" role="alert" data-testid="designer-place-failed">
@@ -1580,6 +1565,18 @@
         </div>
       {:else if placeStage === 'done'}
         <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
+        <ul class="designer__landing" data-testid="designer-landing">
+          {#each landingSteps as step}
+            <li class="designer__landing-step">
+              <span aria-hidden="true"><Icon name="state.check" size={16} /></span>
+              {$t('designer.place.step', {
+                step,
+                path: targetPath(),
+                commit: '',
+              })}
+            </li>
+          {/each}
+        </ul>
         <p class="designer__placed" data-testid="designer-place-done">{placeMessage}</p>
         <div class="designer__modal-actions">
           <Button variant="primary" onclick={closePlace}>{$t('web.common.close')}</Button>

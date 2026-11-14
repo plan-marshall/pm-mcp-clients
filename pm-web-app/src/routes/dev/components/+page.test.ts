@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
 import { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
@@ -7,6 +7,10 @@ import { PHASES } from '../../../lib/components/PhaseLabel.svelte';
 import { MARKERS } from '../../../lib/components/Marker.svelte';
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
+
+// Each test renders the whole component showroom; run beside the rest of the suite it can pass
+// the five seconds of vitest's default, though it takes about one second alone.
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('/dev/components page fixture', () => {
   afterEach(() => {
