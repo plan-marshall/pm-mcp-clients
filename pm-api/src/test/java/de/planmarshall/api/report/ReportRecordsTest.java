@@ -1268,7 +1268,7 @@ class ReportRecordsTest {
         @MethodSource("countMembers")
         @DisplayName("should read a whole count written with a zero fraction as that count")
         void shouldReadAWholeCountWithAZeroFraction(String member, RecordReader reader, String template,
-                CountOf count) throws Exception {
+                                                    CountOf count) throws Exception {
             var whole = Generators.integers(0, 1_000_000).next();
             var object = JsonTree.asObject(JsonTree.parse(template.formatted(whole + ".0")));
 
