@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Clock;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
@@ -74,16 +75,18 @@ public final class QuestionsCommand implements Callable<Integer> {
                                 && isWaiver(m, text(m.get("id"))));
 
             if (allWaivers) {
-                out.printf("Waiver Requests · %d pending%n", list.size());
+                out.println(MessageCatalogue.format(locale, "operator.questions.waivers_pending",
+                                    Map.of("count", list.size())));
             } else {
-                out.printf("Open Questions · %d pending%n", list.size());
+                out.println(MessageCatalogue.format(locale, "operator.questions.open_pending",
+                                    Map.of("count", list.size())));
             }
 
             for (var item : list) {
                 printQuestionItem(out, item, locale, clock);
             }
         } else {
-            out.println("No open questions.");
+            out.println(MessageCatalogue.format(locale, "operator.questions.none", Map.of()));
         }
         out.flush();
     }
@@ -96,11 +99,11 @@ public final class QuestionsCommand implements Callable<Integer> {
         var id = text(q.get("id"));
         var scope = scopeOf(q);
         var title = titleOf(q);
-        var waitingStr = waitingSince(q, clock);
+        var waitingStr = waitingSince(q, locale, clock);
         if (isWaiver(q, id)) {
             printWaiver(out, q, locale, id, scope, title, waitingStr);
         } else {
-            printDecision(out, q, id, scope, title, waitingStr);
+            printDecision(out, q, locale, id, scope, title, waitingStr);
         }
     }
 
@@ -110,16 +113,18 @@ public final class QuestionsCommand implements Callable<Integer> {
         if (gate == null) {
             gate = q.get("gate");
         }
+        var gateFallback = MessageCatalogue.format(locale, "operator.questions.gate_fallback", Map.of());
         var gateStr = gate != null
                             ? Display.gate(locale, OutputSafety.stripControlSequences(gate.toString()))
-                            : "gate";
-        out.printf("  %-4s  %-15s waiver request: %s%n", id, scope, gateStr);
+                            : gateFallback;
+        var waiverPrefix = MessageCatalogue.format(locale, "operator.questions.waiver_prefix", Map.of());
+        out.printf("  %-4s  %-15s %s %s%n", id, scope, waiverPrefix, gateStr);
         if (!title.isEmpty()) {
             out.printf("        \"%s\"%s%n", title, waitingStr);
         }
     }
 
-    private static void printDecision(PrintWriter out, Map<?, ?> q, String id, String scope,
+    private static void printDecision(PrintWriter out, Map<?, ?> q, String locale, String id, String scope,
                         String title, String waitingStr) {
         var phase = q.get("asking_phase");
         if (phase == null) {
@@ -128,13 +133,22 @@ public final class QuestionsCommand implements Callable<Integer> {
         var phaseStr = phase != null ? OutputSafety.stripControlSequences(phase.toString()) : "";
 
         var blocks = q.get("blocks");
-        var blocksKey = blocks != null ? "decision.blocks." + blocks.toString().toLowerCase() : "decision.blocks.plan";
+        var blocksKey = blocks != null
+                            ? "decision.blocks." + blocks.toString().toLowerCase(Locale.ROOT)
+                            : "decision.blocks.plan";
+        var blocksWord = MessageCatalogue.hasKey(locale, blocksKey)
+                            ? MessageCatalogue.format(locale, blocksKey, Map.of())
+                            : MessageCatalogue.format(locale, "common.unknown", Map.of());
+
         var rev = q.get("reversibility");
         var revKey = rev != null
-                            ? "decision.reversibility." + rev.toString().toLowerCase()
+                            ? "decision.reversibility." + rev.toString().toLowerCase(Locale.ROOT)
                             : "decision.reversibility.reversible";
+        var revWord = MessageCatalogue.hasKey(locale, revKey)
+                            ? MessageCatalogue.format(locale, revKey, Map.of())
+                            : MessageCatalogue.format(locale, "common.unknown", Map.of());
 
-        var metaParts = List.of(phaseStr, MessageCatalogue.get(blocksKey), MessageCatalogue.get(revKey)).stream()
+        var metaParts = List.of(phaseStr, blocksWord, revWord).stream()
                             .filter(s -> s != null && !s.isBlank()).toList();
         out.printf("  %-6s %-15s %s%n", id, scope, String.join(" \u00b7 ", metaParts));
         out.printf("         \"%s\"%s%n", title, waitingStr);
@@ -163,13 +177,14 @@ public final class QuestionsCommand implements Callable<Integer> {
         return text(titleObj);
     }
 
-    private static String waitingSince(Map<?, ?> q, Clock clock) {
+    private static String waitingSince(Map<?, ?> q, String locale, Clock clock) {
         var deliveredAt = q.get("delivered_at");
         if (deliveredAt == null) {
             return "";
         }
         var ws = Display.eventTime(OutputSafety.stripControlSequences(deliveredAt.toString()), clock);
-        return ws.isEmpty() ? "" : "   waiting since " + ws;
+        return ws.isEmpty() ? "" : "   " + MessageCatalogue.format(locale, "operator.questions.waiting_since",
+                            Map.of("time", ws));
     }
 
     private static String text(@Nullable Object raw) {

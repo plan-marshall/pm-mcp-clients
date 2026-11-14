@@ -28,6 +28,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
@@ -190,6 +191,29 @@ class WebDevicesCommandTest {
                             () -> assertTrue(output.contains("paired 2 Jun from loopback")),
                             () -> assertTrue(output.contains("last used last month")),
                             () -> assertTrue(output.contains("Network listener: on."))
+        );
+    }
+
+    @Test
+    @DisplayName("paired date in German carries the dot after the day and uses German month names")
+    void pairedDateGermanDot() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var inStream = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
+        var terminal = new DumbTerminal(inStream, new ByteArrayOutputStream());
+        var clientEnv = new ClientEnvironment("de", false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute();
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("12. Mai"), output),
+                () -> assertTrue(output.contains("20. Mai"), output),
+                () -> assertTrue(output.contains("2. Juni"), output)
         );
     }
 

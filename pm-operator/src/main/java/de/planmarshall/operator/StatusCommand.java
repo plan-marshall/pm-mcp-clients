@@ -477,9 +477,7 @@ final class StatusCommand implements Callable<Integer> {
 
     private static String landingStateWord(String locale, AlongsideLanding landing) {
         var rawState = landing.state() != null ? landing.state() : "running";
-        return MessageCatalogue.hasKey(locale, "state.landing." + rawState)
-                            ? Display.word(locale, "landing", rawState)
-                            : OutputSafety.stripControlSequences(rawState);
+        return Display.word(locale, "landing", rawState);
     }
 
     static String formatRelativeTime(String locale, @Nullable Object raw, Clock clock) {

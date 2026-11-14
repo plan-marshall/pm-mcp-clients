@@ -89,6 +89,13 @@ class CleanupCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
+    private int executeWithLocale(Clock clock, String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            clientEnv, null, null, clock);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
     private CleanupJob sampleJob() {
         var items1 = List.of(
                             new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null),
@@ -507,6 +514,27 @@ class CleanupCommandTest {
         execute(clock, "cleanup", "--remind");
 
         assertTrue(out.toString().contains("The same items come back 16 Oct."), out.toString());
+    }
+
+    @Test
+    @DisplayName("the reminder's date is counted from the clock and in German carries the dot after the day")
+    void cleanupRemindCountsFromTheClockGerman() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_after_days\":3}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC);
+
+        executeWithLocale(clock, "de", "cleanup", "--remind");
+
+        assertTrue(out.toString().contains("16. Okt."), out.toString());
     }
 
     @Test

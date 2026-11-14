@@ -164,9 +164,9 @@ final class PlanViewFormatting {
             return MessageCatalogue.format(locale, "common.none", Map.of());
         }
         var key = prefix + value.toLowerCase(Locale.ROOT);
-        return MessageCatalogue.hasKey(key)
+        return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : clean(value);
+                            : MessageCatalogue.format(locale, "common.unknown", Map.of());
     }
 
     /**

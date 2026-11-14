@@ -71,7 +71,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         var rows = new ArrayList<TuiRow>();
         rows.add(TuiRow.leaf("completion:summary", summary(locale)));
         rows.add(entry("completion:outcome", locale, "report.completion.outcome",
-                            description(locale, report.terminalReason() != null ? report.terminalReason() : report.outcome())));
+                            formatOutcome(locale, report.terminalReason() != null ? report.terminalReason() : report.outcome())));
         rows.add(entry("completion:reason", locale, "report.completion.reason",
                             report.reason() != null && !report.reason().isBlank()
                                                 ? report.reason()
@@ -96,7 +96,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         var parts = new ArrayList<String>();
         parts.add(MessageCatalogue.format(locale, "report.completion.title",
                             Map.of("plan", PlanViewFormatting.clean(report.planId()))));
-        parts.add(PlanViewFormatting.clean(report.outcome()));
+        parts.add(formatOutcome(locale, report.outcome()));
         if (report.pullRequestNumber() != null) {
             parts.add("#" + report.pullRequestNumber());
         }
@@ -121,7 +121,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             rows.add(TuiRow.leaf("completion:deliverable:" + index++,
                                 INDENT + INDENT + MessageCatalogue.format(locale,
                                                     "operator.plan.completion.deliverable",
-                                                    Map.of("state", PlanViewFormatting.clean(deliverable.state()),
+                                                    Map.of("state", formatDeliverableState(locale, deliverable.state()),
                                                                         "name", PlanViewFormatting.clean(deliverable.name())))));
         }
     }
@@ -261,7 +261,19 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
                             + PlanViewFormatting.clean(value));
     }
 
-    private static String description(String locale, @Nullable String value) {
-        return value != null ? value : MessageCatalogue.format(locale, "common.unknown", Map.of());
+    public static String formatOutcome(String locale, @Nullable String value) {
+        if (value == null || value.isBlank()) {
+            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+        }
+        var cleaned = PlanViewFormatting.clean(value).trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        return MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", cleaned));
+    }
+
+    public static String formatDeliverableState(String locale, @Nullable String state) {
+        if (state == null || state.isBlank()) {
+            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+        }
+        var clean = PlanViewFormatting.clean(state);
+        return Display.word(locale, "task", clean);
     }
 }

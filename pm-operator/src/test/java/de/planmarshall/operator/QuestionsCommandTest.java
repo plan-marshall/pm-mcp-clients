@@ -70,10 +70,15 @@ class QuestionsCommandTest {
     }
 
     private int execute(String... args) {
+        return executeWithLocale(ClientEnvironment.DEFAULT_LOCALE, args);
+    }
+
+    private int executeWithLocale(String locale, String... args) {
         var inStream = new ByteArrayInputStream(new byte[0]);
         var outStream = new ByteArrayOutputStream();
         OperatorContext.TerminalProvider termProvider = () -> new DumbTerminal(inStream, outStream);
-        var context = new OperatorContext(fixture.environment(), tempDir, true, ClientEnvironment.capture(fixture.environment()), termProvider, null);
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, termProvider, null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -147,6 +152,68 @@ class QuestionsCommandTest {
         int code = execute("questions");
         assertEquals(0, code);
         assertTrue(out.toString().contains("No open questions."));
+    }
+
+    @Test
+    @DisplayName("questions reports in German when empty, for waivers, and for unknown decision meta")
+    void questionsGermanAndUnknownMeta() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int codeEmpty = executeWithLocale("de", "questions");
+        assertEquals(0, codeEmpty);
+        assertTrue(out.toString().contains("Keine offenen Fragen."));
+
+        // Waivers in German
+        fixture.close();
+        fixture = RuntimeFixture.create();
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions".equals(request.target())) {
+                response.json(200, """
+                        [
+                          {"id":"WR-1","kind":"waiver","title":"Approve","gate":"coverage:pm-api","delivered_at":"2026-10-20T12:00:00Z"}
+                        ]
+                        """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        out = new StringWriter();
+        int codeWaiver = executeWithLocale("de", "questions");
+        assertEquals(0, codeWaiver);
+        var waiverText = out.toString();
+        assertTrue(waiverText.contains("Waiver-Anfragen · 1 offen"), waiverText);
+        assertTrue(waiverText.contains("Waiver-Anfrage:"), waiverText);
+        assertTrue(waiverText.contains("wartet seit"), waiverText);
+
+        // Unknown blocks and reversibility in German
+        fixture.close();
+        fixture = RuntimeFixture.create();
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions".equals(request.target())) {
+                response.json(200, """
+                        [
+                          {"id":"Q-1","blocks":"unknown_scope","reversibility":"unknown_rev","title":"Question"}
+                        ]
+                        """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        out = new StringWriter();
+        int codeDec = executeWithLocale("de", "questions");
+        assertEquals(0, codeDec);
+        var decText = out.toString();
+        assertFalse(decText.contains("decision.blocks"), decText);
+        assertFalse(decText.contains("decision.reversibility"), decText);
+        assertTrue(decText.contains("unbekannt"), decText);
     }
 
     @Test

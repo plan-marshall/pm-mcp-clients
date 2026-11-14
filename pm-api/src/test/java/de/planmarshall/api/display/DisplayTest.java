@@ -94,12 +94,14 @@ class DisplayTest {
     }
 
     @Test
-    @DisplayName("word reads the shared state key and refuses a raw value with no text")
+    @DisplayName("word reads the shared state key and falls back to common.unknown for an unknown value")
     void wordReadsStateKey() {
         assertEquals("running", Display.word("en", "plan", "running"));
         assertEquals("läuft", Display.word("de", "plan", "running"));
-        assertThrows(IllegalArgumentException.class, () -> Display.word("en", "plan", "raw_state_id"));
-        assertThrows(IllegalArgumentException.class, () -> Display.word("en", "plan", null));
+        assertEquals("unknown", Display.word("en", "plan", "raw_state_id"));
+        assertEquals("unbekannt", Display.word("de", "plan", "raw_state_id"));
+        assertEquals("unknown", Display.word("en", "plan", null));
+        assertEquals("unbekannt", Display.word("de", "plan", null));
     }
 
     @Test
@@ -137,14 +139,18 @@ class DisplayTest {
     }
 
     @Test
-    @DisplayName("gate renders its catalogue word and the plain scope in both languages")
+    @DisplayName("gate renders its catalogue word and the plain scope in both languages, keeping module hyphenation and unknown gate rule")
     void gate() {
         assertEquals("", Display.gate("en", null));
         assertEquals("", Display.gate("en", "  "));
-        assertEquals("CI check \u00b7 integration tests", Display.gate("en", "ci_check:integration-tests"));
-        assertEquals("CI-Pr\u00fcfung \u00b7 integration tests", Display.gate("de", "ci_check:integration-tests"));
+        assertEquals("CI check \u00b7 integration-tests", Display.gate("en", "ci_check:integration-tests"));
+        assertEquals("CI-Pr\u00fcfung \u00b7 integration-tests", Display.gate("de", "ci_check:integration-tests"));
+        assertEquals("coverage \u00b7 pm-api", Display.gate("en", "coverage:pm-api"));
+        assertEquals("Abdeckung \u00b7 pm-api", Display.gate("de", "coverage:pm-api"));
         assertEquals("coverage", Display.gate("en", "coverage"));
-        assertEquals("custom gate \u00b7 smoke tests", Display.gate("en", "custom_gate:smoke-tests"));
-        assertEquals("custom gate", Display.gate("en", "custom_gate"));
+        assertEquals("unknown \u00b7 smoke-tests", Display.gate("en", "custom_gate:smoke-tests"));
+        assertEquals("unbekannt \u00b7 smoke-tests", Display.gate("de", "custom_gate:smoke-tests"));
+        assertEquals("unknown", Display.gate("en", "custom_gate"));
+        assertEquals("unbekannt", Display.gate("de", "custom_gate"));
     }
 }

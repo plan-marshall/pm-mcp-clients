@@ -62,9 +62,14 @@ class RolesCommandTest {
     }
 
     private int execute(String input, String... args) {
+        return executeWithLocale(ClientEnvironment.DEFAULT_LOCALE, input, args);
+    }
+
+    private int executeWithLocale(String locale, String input, String... args) {
         var environment = fixture.environment();
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
         var context = new OperatorContext(environment, tempDir, true,
-                            ClientEnvironment.capture(environment),
+                            clientEnv,
                             () -> new DumbTerminal(
                                                 new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)),
                                                 new ByteArrayOutputStream()),
@@ -294,5 +299,21 @@ class RolesCommandTest {
 
         assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
         assertTrue(err.toString().contains("scorer_not_independent"), err.toString());
+    }
+
+    @Test
+    @DisplayName("roles show in German uses German catalogue words")
+    void rolesInGerman() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/roles/implementer".equals(request.target())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(200, "[]");
+            }
+        });
+
+        assertEquals(0, executeWithLocale("de", "", "roles", "show", "implementer"));
+        var showOutput = out.toString();
+        assertTrue(showOutput.contains("Werkzeugsatz"), showOutput);
     }
 }

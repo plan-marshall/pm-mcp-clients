@@ -393,7 +393,7 @@ public final class EpicCommand implements Callable<Integer> {
         if (MessageCatalogue.hasKey(locale, "state.task." + state)) {
             return Display.word(locale, "task", state);
         }
-        return state;
+        return Display.word(locale, "landing", state);
     }
 
     @Command(name = "add", description = "Starts an epic from its sources or adopts one.")

@@ -104,23 +104,24 @@ public final class RolesCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
             var err = spec.commandLine().getErr();
+            var locale = context.clientEnvironment().locale();
             var response = context.runtime(true).send(HttpRequest.get(rolesTarget(project)));
 
             if (response.status() == 200) {
                 var roles = RoleSummaryResource.listFromJson(response.bodyText());
                 if (roles.isEmpty()) {
-                    out.println(MessageCatalogue.get("operator.roles.empty"));
+                    out.println(MessageCatalogue.get(locale, "operator.roles.empty"));
                 } else {
-                    out.println(MessageCatalogue.format("operator.roles.list.title",
+                    out.println(MessageCatalogue.format(locale, "operator.roles.list.title",
                                         Map.of("count", roles.size())));
-                    printHeader(out);
-                    roles.forEach(role -> printRow(out, role));
+                    printHeader(out, locale);
+                    roles.forEach(role -> printRow(out, role, locale));
                 }
                 out.flush();
                 return 0;
             }
             if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format("operator.roles.failed",
+                err.println(MessageCatalogue.format(locale, "operator.roles.failed",
                                     Map.of(FIELD_STATUS, response.status())));
                 err.flush();
                 return 1;
@@ -128,49 +129,49 @@ public final class RolesCommand implements Callable<Integer> {
             throw new OperatorRefusedException("roles list", response);
         }
 
-        private static void printHeader(PrintWriter out) {
-            printRow(out,
-                                MessageCatalogue.get("operator.roles.header.role"),
-                                MessageCatalogue.get("operator.roles.header.set"),
-                                MessageCatalogue.get("operator.roles.header.class"),
-                                MessageCatalogue.get("operator.roles.header.form"),
-                                MessageCatalogue.get("operator.roles.header.harness"),
-                                MessageCatalogue.get("operator.roles.header.model"),
-                                MessageCatalogue.get("operator.roles.header.effort"),
-                                MessageCatalogue.get("operator.roles.header.qualification"),
-                                MessageCatalogue.get("operator.roles.header.guard"));
+        private static void printHeader(PrintWriter out, String locale) {
+            printRow(out, locale,
+                                MessageCatalogue.get(locale, "operator.roles.header.role"),
+                                MessageCatalogue.get(locale, "operator.roles.header.set"),
+                                MessageCatalogue.get(locale, "operator.roles.header.class"),
+                                MessageCatalogue.get(locale, "operator.roles.header.form"),
+                                MessageCatalogue.get(locale, "operator.roles.header.harness"),
+                                MessageCatalogue.get(locale, "operator.roles.header.model"),
+                                MessageCatalogue.get(locale, "operator.roles.header.effort"),
+                                MessageCatalogue.get(locale, "operator.roles.header.qualification"),
+                                MessageCatalogue.get(locale, "operator.roles.header.guard"));
         }
 
-        private static void printRow(PrintWriter out, RoleSummaryResource role) {
-            var guard = MessageCatalogue.get("operator.roles.guard.none");
+        private static void printRow(PrintWriter out, RoleSummaryResource role, String locale) {
+            var guard = MessageCatalogue.get(locale, "operator.roles.guard.none");
             if (role.startFailureGuardHeld()) {
-                guard = MessageCatalogue.get("operator.roles.guard.held");
+                guard = MessageCatalogue.get(locale, "operator.roles.guard.held");
             }
-            printRow(out,
+            printRow(out, locale,
                                 role.role(),
-                                valueOrDash(role.sourceSet()),
-                                valueOrDash(role.roleClass()),
-                                valueOrDash(role.form()),
-                                valueWithLevel(role.harness(), role.harnessLevel()),
-                                valueWithLevel(role.model(), role.modelLevel()),
-                                valueWithLevel(role.effort(), role.effortLevel()),
+                                valueOrDash(role.sourceSet(), locale),
+                                valueOrDash(role.roleClass(), locale),
+                                valueOrDash(role.form(), locale),
+                                valueWithLevel(role.harness(), role.harnessLevel(), locale),
+                                valueWithLevel(role.model(), role.modelLevel(), locale),
+                                valueWithLevel(role.effort(), role.effortLevel(), locale),
                                 role.qualificationState().wire(),
                                 guard);
         }
 
-        private static void printRow(PrintWriter out, String... values) {
+        private static void printRow(PrintWriter out, String locale, String... values) {
             var line = new StringBuilder();
             for (var index = 0; index < values.length; index++) {
                 if (index > 0) {
                     line.append(' ');
                 }
-                line.append(pad(values[index], LIST_WIDTHS[index]));
+                line.append(pad(values[index], LIST_WIDTHS[index], locale));
             }
             out.println(line);
         }
 
-        private static String pad(@Nullable String value, int width) {
-            var safe = OutputSafety.stripControlSequences(value == null ? MessageCatalogue.get("common.none") : value);
+        private static String pad(@Nullable String value, int width, String locale) {
+            var safe = OutputSafety.stripControlSequences(value == null ? MessageCatalogue.get(locale, "common.none") : value);
             if (safe.length() > width) {
                 safe = width <= 1 ? safe.substring(0, width) : safe.substring(0, width - 1) + "…";
             }
@@ -181,8 +182,8 @@ public final class RolesCommand implements Callable<Integer> {
             return padded.toString();
         }
 
-        private static String valueWithLevel(@Nullable String value, @Nullable String level) {
-            var safeValue = valueOrDash(value);
+        private static String valueWithLevel(@Nullable String value, @Nullable String level, String locale) {
+            var safeValue = valueOrDash(value, locale);
             return level == null || level.isBlank() ? safeValue
                                 : safeValue + " (" + OutputSafety.stripControlSequences(level) + ")";
         }
@@ -216,19 +217,20 @@ public final class RolesCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var response = context.runtime(true).send(HttpRequest.get(roleTarget(role, project)));
 
+            var locale = context.clientEnvironment().locale();
             if (response.status() == 200) {
-                renderDetail(out, RoleDetailResource.fromJson(response.bodyText()));
+                renderDetail(out, RoleDetailResource.fromJson(response.bodyText()), locale);
                 out.flush();
                 return 0;
             }
             if (response.status() == 404) {
-                err.println(MessageCatalogue.format("operator.roles.show.not_found",
+                err.println(MessageCatalogue.format(locale, "operator.roles.show.not_found",
                                     Map.of("role", OutputSafety.stripControlSequences(role))));
                 err.flush();
                 return 1;
             }
             if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format("operator.roles.show.failed",
+                err.println(MessageCatalogue.format(locale, "operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
                                                         FIELD_STATUS, response.status())));
                 err.flush();
@@ -237,46 +239,46 @@ public final class RolesCommand implements Callable<Integer> {
             throw new OperatorRefusedException("roles show " + role, response);
         }
 
-        private static void renderDetail(PrintWriter out, RoleDetailResource detail) {
-            out.println(MessageCatalogue.format("operator.roles.show.title",
+        private static void renderDetail(PrintWriter out, RoleDetailResource detail, String locale) {
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.title",
                                 Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
-            out.println(MessageCatalogue.format("operator.roles.show.description",
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.description",
                                 Map.of("description", OutputSafety.stripControlSequences(detail.description()))));
-            out.println(MessageCatalogue.format("operator.roles.show.class", Map.of(
-                                "class", valueOrDash(stringParameter(detail, "class")),
-                                "form", valueOrDash(stringParameter(detail, "form")))));
-            out.println(MessageCatalogue.format("operator.roles.show.effective", configuration(detail)));
-            out.println(MessageCatalogue.format("operator.roles.show.tools",
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.class", Map.of(
+                                "class", valueOrDash(stringParameter(detail, "class"), locale),
+                                "form", valueOrDash(stringParameter(detail, "form"), locale))));
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.effective", configuration(detail, locale)));
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.tools",
                                 Map.of("tools", detail.advisoryToolSet().isEmpty()
-                                                    ? MessageCatalogue.get("common.none")
+                                                    ? MessageCatalogue.get(locale, "common.none")
                                                     : OutputSafety.stripControlSequences(
                                                     String.join(", ", detail.advisoryToolSet())))));
-            out.println(MessageCatalogue.format("operator.roles.show.narrowed",
-                                Map.of(PARAM_EFFORT, narrowedText(detail.narrowedEffort()))));
-            out.println(MessageCatalogue.format("operator.roles.show.qualification",
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.narrowed",
+                                Map.of(PARAM_EFFORT, narrowedText(detail.narrowedEffort(), locale))));
+            out.println(MessageCatalogue.format(locale, "operator.roles.show.qualification",
                                 Map.of("state", detail.qualification().state().wire())));
             if (detail.qualification().reason() != null) {
-                out.println("  " + MessageCatalogue.format("operator.roles.show.reason",
+                out.println("  " + MessageCatalogue.format(locale, "operator.roles.show.reason",
                                     Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
                                                         detail.qualification().reason()))));
             }
             if (!detail.qualification().criteria().isEmpty()) {
-                out.println("  " + MessageCatalogue.format("operator.roles.show.criteria",
+                out.println("  " + MessageCatalogue.format(locale, "operator.roles.show.criteria",
                                     Map.of("criteria", OutputSafety.stripControlSequences(
                                                         String.join(", ", detail.qualification().criteria())))));
             }
             if (!detail.configurationParameters().isEmpty()) {
-                out.println(MessageCatalogue.get("operator.roles.show.parameters"));
+                out.println(MessageCatalogue.get(locale, "operator.roles.show.parameters"));
                 detail.configurationParameters().forEach((key, value) -> out.printf(Locale.ROOT,
                                     "  %-" + (LABEL_WIDTH + 8) + "s %s%n",
-                                    OutputSafety.stripControlSequences(key), displayValue(value)));
+                                    OutputSafety.stripControlSequences(key), displayValue(value, locale)));
             }
             out.flush();
         }
 
-        private static String narrowedText(@Nullable NarrowedEffort narrowed) {
+        private static String narrowedText(@Nullable NarrowedEffort narrowed, String locale) {
             if (narrowed == null) {
-                return MessageCatalogue.get("common.none");
+                return MessageCatalogue.get(locale, "common.none");
             }
             var text = OutputSafety.stripControlSequences(narrowed.category());
             if (narrowed.description() == null) {
@@ -315,34 +317,35 @@ public final class RolesCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var err = spec.commandLine().getErr();
+            var locale = context.clientEnvironment().locale();
             var safeRole = OutputSafety.stripControlSequences(role);
             var detailResponse = context.runtime(true).send(HttpRequest.get(roleTarget(role, project)));
 
             if (detailResponse.status() == 404) {
-                err.println(MessageCatalogue.format("operator.roles.qualify.not_found",
+                err.println(MessageCatalogue.format(locale, "operator.roles.qualify.not_found",
                                     Map.of("role", safeRole)));
                 err.flush();
                 return 1;
             }
             if (detailResponse.status() != 200) {
-                err.println(MessageCatalogue.format("operator.roles.qualify.failed",
+                err.println(MessageCatalogue.format(locale, "operator.roles.qualify.failed",
                                     Map.of("role", safeRole, FIELD_STATUS, detailResponse.status())));
                 err.flush();
                 return 1;
             }
 
             var detail = RoleDetailResource.fromJson(detailResponse.bodyText());
-            renderQualificationPreview(out, detail);
+            renderQualificationPreview(out, detail, locale);
 
             if (!yes) {
                 if (noInput) {
-                    out.println(MessageCatalogue.get("operator.roles.qualify.confirm"));
-                    out.println("  " + MessageCatalogue.get("operator.roles.qualify.confirm_required"));
+                    out.println(MessageCatalogue.get(locale, "operator.roles.qualify.confirm"));
+                    out.println("  " + MessageCatalogue.get(locale, "operator.roles.qualify.confirm_required"));
                     out.flush();
                     return 3;
                 }
-                if (!confirm()) {
-                    out.println(MessageCatalogue.get("operator.roles.qualify.declined"));
+                if (!confirm(locale)) {
+                    out.println(MessageCatalogue.get(locale, "operator.roles.qualify.declined"));
                     out.flush();
                     return 1;
                 }
@@ -352,7 +355,7 @@ public final class RolesCommand implements Callable<Integer> {
                                 HttpRequest.json("POST", qualifyTarget(role, project), "{}")
                                                     .withHeader("Idempotency-Key", UUID.randomUUID().toString()));
             if (response.status() == 202) {
-                out.println(MessageCatalogue.format("operator.roles.qualify.pending",
+                out.println(MessageCatalogue.format(locale, "operator.roles.qualify.pending",
                                     Map.of("role", safeRole)));
                 out.flush();
                 return 1;
@@ -360,18 +363,18 @@ public final class RolesCommand implements Callable<Integer> {
             if (response.status() == 200 || response.status() == 201) {
                 var measurements = measurements(response.bodyText());
                 if (measurements == null) {
-                    err.println(MessageCatalogue.format("operator.roles.qualify.incomplete",
+                    err.println(MessageCatalogue.format(locale, "operator.roles.qualify.incomplete",
                                         Map.of("role", safeRole)));
                     err.flush();
                     return 1;
                 }
-                out.println(MessageCatalogue.format("operator.roles.qualify.done", Map.of("role", safeRole)));
-                printMeasurements(out, measurements);
+                out.println(MessageCatalogue.format(locale, "operator.roles.qualify.done", Map.of("role", safeRole)));
+                printMeasurements(out, measurements, locale);
                 out.flush();
                 return 0;
             }
             if (response.status() == 400 || response.status() == 404 || response.status() == 409) {
-                err.println(MessageCatalogue.format("operator.roles.qualify.refused",
+                err.println(MessageCatalogue.format(locale, "operator.roles.qualify.refused",
                                     Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
                                                         refusalReason(response.bodyText())))));
                 err.flush();
@@ -380,12 +383,12 @@ public final class RolesCommand implements Callable<Integer> {
             throw new OperatorRefusedException("roles qualify " + safeRole, response);
         }
 
-        private boolean confirm() throws IOException {
+        private boolean confirm(String locale) throws IOException {
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 String line;
                 try {
-                    line = reader.readLine(MessageCatalogue.get("operator.roles.qualify.confirm") + " \u203a ");
+                    line = reader.readLine(MessageCatalogue.get(locale, "operator.roles.qualify.confirm") + " \u203a ");
                 } catch (UserInterruptException _) {
                     // The interrupt is the exit-code table's 130, not a declined confirmation.
                     throw new StartPrompt.InterruptException();
@@ -400,26 +403,26 @@ public final class RolesCommand implements Callable<Integer> {
             }
         }
 
-        private static void renderQualificationPreview(PrintWriter out, RoleDetailResource detail) {
-            out.println(MessageCatalogue.format("operator.roles.qualify.title",
+        private static void renderQualificationPreview(PrintWriter out, RoleDetailResource detail, String locale) {
+            out.println(MessageCatalogue.format(locale, "operator.roles.qualify.title",
                                 Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
-            out.println(MessageCatalogue.format("operator.roles.qualify.configuration", configuration(detail)));
-            printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics");
-            printParameter(out, "operator.roles.qualify.items", detail, "item_counts");
-            var none = MessageCatalogue.get("common.none");
-            var tokens = displayValue(detail.configurationParameters().get("expected_tokens"));
-            var time = displayValue(detail.configurationParameters().get("expected_time"));
+            out.println(MessageCatalogue.format(locale, "operator.roles.qualify.configuration", configuration(detail, locale)));
+            printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics", locale);
+            printParameter(out, "operator.roles.qualify.items", detail, "item_counts", locale);
+            var none = MessageCatalogue.get(locale, "common.none");
+            var tokens = displayValue(detail.configurationParameters().get("expected_tokens"), locale);
+            var time = displayValue(detail.configurationParameters().get("expected_time"), locale);
             if (!none.equals(tokens) || !none.equals(time)) {
-                out.println(MessageCatalogue.format("operator.roles.qualify.expected",
+                out.println(MessageCatalogue.format(locale, "operator.roles.qualify.expected",
                                     Map.of("tokens", tokens, "time", time)));
             }
             out.flush();
         }
 
-        private static void printParameter(PrintWriter out, String key, RoleDetailResource detail, String parameter) {
-            var value = displayValue(detail.configurationParameters().get(parameter));
-            if (!MessageCatalogue.get("common.none").equals(value)) {
-                out.println(MessageCatalogue.format(key, Map.of("value", value)));
+        private static void printParameter(PrintWriter out, String key, RoleDetailResource detail, String parameter, String locale) {
+            var value = displayValue(detail.configurationParameters().get(parameter), locale);
+            if (!MessageCatalogue.get(locale, "common.none").equals(value)) {
+                out.println(MessageCatalogue.format(locale, key, Map.of("value", value)));
             }
         }
 
@@ -447,21 +450,21 @@ public final class RolesCommand implements Callable<Integer> {
             };
         }
 
-        private static void printMeasurements(PrintWriter out, Map<String, Object> measurements) {
-            out.println(MessageCatalogue.get("operator.roles.qualify.measurements"));
-            MEASUREMENT_LABELS.forEach((field, key) -> printMeasurement(out, measurements, field, key));
+        private static void printMeasurements(PrintWriter out, Map<String, Object> measurements, String locale) {
+            out.println(MessageCatalogue.get(locale, "operator.roles.qualify.measurements"));
+            MEASUREMENT_LABELS.forEach((field, key) -> printMeasurement(out, measurements, field, key, locale));
             var recordPath = measurements.get(RECORD_PATH);
             if (recordPath != null) {
-                out.println(MessageCatalogue.format("operator.roles.qualify.record",
+                out.println(MessageCatalogue.format(locale, "operator.roles.qualify.record",
                                     Map.of("path", OutputSafety.stripControlSequences(String.valueOf(recordPath)))));
             }
         }
 
-        private static void printMeasurement(PrintWriter out, Map<String, Object> map, String parameter, String key) {
+        private static void printMeasurement(PrintWriter out, Map<String, Object> map, String parameter, String key, String locale) {
             var value = map.get(parameter);
             if (value != null) {
-                out.println("  " + MessageCatalogue.format(key,
-                                    Map.of("value", OutputSafety.stripControlSequences(displayValue(value)))));
+                out.println("  " + MessageCatalogue.format(locale, key,
+                                    Map.of("value", OutputSafety.stripControlSequences(displayValue(value, locale)))));
             }
         }
 
@@ -496,22 +499,22 @@ public final class RolesCommand implements Callable<Integer> {
         return Collections.unmodifiableMap(labels);
     }
 
-    private static Map<String, Object> configuration(RoleDetailResource detail) {
+    private static Map<String, Object> configuration(RoleDetailResource detail, String locale) {
         return Map.of(
-                            PARAM_HARNESS, valueOrDash(stringParameter(detail, PARAM_HARNESS)),
-                            PARAM_MODEL, valueOrDash(stringParameter(detail, PARAM_MODEL)),
-                            PARAM_EFFORT, valueOrDash(stringParameter(detail, PARAM_EFFORT)));
+                            PARAM_HARNESS, valueOrDash(stringParameter(detail, PARAM_HARNESS), locale),
+                            PARAM_MODEL, valueOrDash(stringParameter(detail, PARAM_MODEL), locale),
+                            PARAM_EFFORT, valueOrDash(stringParameter(detail, PARAM_EFFORT), locale));
     }
 
     private static @Nullable String stringParameter(RoleDetailResource detail, String parameter) {
         return detail.configurationParameters().get(parameter) instanceof String value ? value : null;
     }
 
-    private static String displayValue(@Nullable Object value) {
+    private static String displayValue(@Nullable Object value, String locale) {
         return switch (value) {
-            case null -> MessageCatalogue.get("common.none");
+            case null -> MessageCatalogue.get(locale, "common.none");
             case JsonNumber(String text) -> text;
-            case List<?> list -> list.isEmpty() ? MessageCatalogue.get("common.none")
+            case List<?> list -> list.isEmpty() ? MessageCatalogue.get(locale, "common.none")
                                 : OutputSafety.stripControlSequences(
                                 String.join(", ", list.stream().map(String::valueOf).toList()));
             case Map<?, ?> map -> OutputSafety.stripControlSequences(JsonTree.write(map));
@@ -519,9 +522,9 @@ public final class RolesCommand implements Callable<Integer> {
         };
     }
 
-    private static String valueOrDash(@Nullable String value) {
+    private static String valueOrDash(@Nullable String value, String locale) {
         return value == null || value.isBlank()
-                            ? MessageCatalogue.get("common.none")
+                            ? MessageCatalogue.get(locale, "common.none")
                             : OutputSafety.stripControlSequences(value);
     }
 
