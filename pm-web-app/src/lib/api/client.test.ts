@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiClient } from './client';
+import { scenario, type ScenarioName } from './scenarioMockFetch';
 
 describe('ApiClient', () => {
   let client: ApiClient;
@@ -2402,4 +2403,391 @@ describe('ApiClient routes', () => {
       expect(sent).toEqual([{ url: `http://localhost:7420${path}`, method, body }]);
     },
   );
+});
+
+/**
+ * The four records of the intent and outline design (`intent-and-outline.adoc`): a plan's intent, its
+ * outline, the epic's intent, and the `over_size` distribution. The client's types are the wire's, so
+ * every field the contract carries is pinned against the mock's own record, and a record that does
+ * not fit the contract fails closed instead of reaching a panel half read.
+ */
+describe('ApiClient intent and outline records', () => {
+  let client: ApiClient;
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_secret');
+    client = new ApiClient('http://localhost:7420');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * @param name the canonical scenario the runtime serves
+   * @param route the route key of the scenario file
+   * @returns the record the mock answers that route with
+   */
+  function served(name: ScenarioName, route: string): unknown {
+    return scenario(name).routes[route].representation;
+  }
+
+  /**
+   * @param body the answer the runtime gives
+   * @param status the status of the answer
+   */
+  function answer(body: unknown, status = 200): void {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: status < 400,
+      status,
+      json: async () => body,
+    });
+  }
+
+  it('reads a plan intent with every field of the contract', async () => {
+    // Arrange: the mock's own record for fix-relay
+    answer(served('running-work', 'GET /api/v1/plans/fix-relay/intent'));
+
+    // Act
+    const record = await client.getPlanIntent('fix-relay');
+
+    // Assert
+    expect(record).toEqual({
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect without losing queued events.',
+      criteria: [
+        {
+          id: 'AC-001',
+          text: 'When a relay connection drops, the relay shall reconnect within five seconds.',
+          satisfies: [1, 2],
+          status: 'met',
+          status_reason: 'The reconnection and backoff tests pass.',
+        },
+        {
+          id: 'AC-002',
+          text: 'While the relay reconnects, the queue shall keep every accepted event.',
+          satisfies: [2, 3],
+          status: 'met',
+        },
+        {
+          id: 'AC-003',
+          text: 'The relay shall report the number of reconnects it performed.',
+          satisfies: [3],
+          status: 'not_verified',
+          status_reason: 'The mock harness does not expose the reconnect counter.',
+        },
+        {
+          id: 'AC-004',
+          text: 'The old relay endpoint shall keep serving existing clients.',
+          satisfies: [1],
+          status: 'not_met',
+          status_reason: 'The compatibility test still fails for the legacy event shape.',
+        },
+      ],
+      non_goals: [
+        { id: 'NG-1', text: 'Change the on-disk queue format.' },
+        { id: 'NG-2', text: 'Support more than one relay per machine.' },
+      ],
+      decisions: [
+        {
+          id: 'DC-001',
+          text: 'Retry with exponential backoff.',
+          decider: 'operator',
+          options_weighed: ['fixed interval', 'exponential backoff'],
+          question_id: 'Q-007',
+          adr: { adr_id: 'ADR-0001', relation: 'follows' },
+        },
+        {
+          id: 'DC-002',
+          text: 'The quorum set the backoff ceiling at five minutes.',
+          decider: 'quorum',
+          options_weighed: ['30 seconds', '5 minutes'],
+          question_id: 'Q-008',
+        },
+        {
+          id: 'DC-003',
+          text: 'The transport stays HTTP/2.',
+          decider: 'role',
+          options_weighed: ['HTTP/1.1', 'HTTP/2'],
+        },
+        {
+          id: 'DC-004',
+          text: 'The existing queue already persists each accepted event.',
+          decider: 'fact',
+          options_weighed: [],
+          evidence: 'pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java',
+        },
+        {
+          id: 'DC-005',
+          text: 'The reconnect count leaves the status resource for now.',
+          decider: 'operator',
+          options_weighed: ['keep the count', 'leave it out'],
+          question_id: 'Q-009',
+          adr: { adr_id: 'ADR-0002', relation: 'contradicts' },
+        },
+      ],
+      open_questions: ['Does the relay need IPv6 support?'],
+      deferred: [
+        {
+          id: 'DF-001',
+          text: 'Add reconnect metrics to the status resource.',
+          reason: "No metrics endpoint is in this plan's scope.",
+        },
+      ],
+      builder_check: {
+        resolution: 'pending',
+        questions: [
+          {
+            id: 'BQ-001',
+            text: 'Which timeout applies when the queue is full during a reconnect?',
+            sort: 'operator',
+            recommended: true,
+            state: 'open',
+          },
+          {
+            id: 'BQ-002',
+            text: 'Use the existing retry helper from cui-http.',
+            sort: 'minor',
+            recommended: false,
+            state: 'open',
+          },
+          {
+            id: 'BQ-003',
+            text: 'AC-002 answers the event-retention question.',
+            sort: 'answered',
+            recommended: false,
+            state: 'answered',
+            answer: 'AC-002',
+          },
+        ],
+      },
+    });
+  });
+
+  it('reads a plan outline with every field of the contract', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/plans/fix-relay/outline'));
+
+    // Act
+    const record = await client.getPlanOutline('fix-relay');
+
+    // Assert
+    expect(record).toEqual({
+      plan_id: 'fix-relay',
+      revision: 2,
+      summary: 'Reconnect the relay with backoff and keep the queue durable.',
+      deliverables: [
+        {
+          number: 1,
+          title: 'Reconnect the relay',
+          intent_gloss: 'Reconnect with exponential backoff.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/RelayConnection.java',
+              intent: 'write-replace',
+            },
+            {
+              path: 'pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java',
+              intent: 'write-new',
+            },
+          ],
+          depends_on: [],
+          satisfies: ['AC-001', 'AC-004'],
+          verification: 'RelayConnectionTest covers reconnect and legacy event shapes.',
+        },
+        {
+          number: 2,
+          title: 'Keep the queue durable',
+          intent_gloss: 'Persist every accepted event before acknowledging it.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java',
+              intent: 'write-new',
+            },
+            {
+              path: 'pm-relay/src/test/java/de/planmarshall/relay/EventQueueTest.java',
+              intent: 'write-new',
+            },
+          ],
+          depends_on: [1],
+          satisfies: ['AC-002'],
+          verification: 'EventQueueTest restarts the queue with a full buffer.',
+        },
+        {
+          number: 3,
+          title: 'Expose the reconnect count',
+          intent_gloss: 'Report reconnects on the status resource.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/RelayStatus.java',
+              intent: 'write-conditional',
+            },
+          ],
+          depends_on: [1],
+          satisfies: ['AC-003'],
+        },
+      ],
+      added_dependencies: [
+        {
+          name: 'de.cuioss:cui-http',
+          version: '2.1.0',
+          justification: 'The retry adapter carries the backoff policy.',
+          deliverable: 1,
+        },
+      ],
+    });
+  });
+
+  it('reads the epic intent with its checks, its plans, and the strings it carries', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/epics/relay-hardening/intent'));
+
+    // Act
+    const record = await client.getEpicIntent('relay-hardening');
+
+    // Assert
+    expect(record).toEqual({
+      epic_id: 'relay-hardening',
+      destination: 'The relay survives a dropped connection without losing an event.',
+      done_when: [
+        {
+          text: 'The relay reconnects within five seconds after a dropped connection.',
+          verdict: 'met',
+          evidence: [
+            'pm://plans/fix-relay/report',
+            'pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java',
+          ],
+        },
+        {
+          text: 'Every accepted event survives a relay restart.',
+          verdict: 'met',
+          evidence: ['pm://plans/fix-relay/report'],
+        },
+        {
+          text: 'The reconnect count is observable on the status resource.',
+          verdict: 'not_met',
+          evidence: ['pm://plans/fix-relay/report'],
+        },
+        {
+          text: 'The legacy relay endpoint keeps serving existing clients.',
+          verdict: 'pending',
+          evidence: [],
+        },
+      ],
+      non_goals: ['Change the on-disk queue format.', 'Support more than one relay per machine.'],
+      not_yet_specified: [
+        'Does the relay need IPv6 support?',
+        'Should reconnects be rate-limited per client?',
+      ],
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          done_when: [
+            'The relay reconnects within five seconds.',
+            'The queue keeps every accepted event.',
+          ],
+        },
+        {
+          plan_id: 'queue-format',
+          title: 'Keep the Queue',
+          done_when: ['The queue survives a restart.'],
+        },
+      ],
+    });
+  });
+
+  it('reads the over_size distribution with its multiple and its buckets', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
+
+    // Act
+    const record = await client.getOverSize('pm-mcp-clients');
+
+    // Assert
+    expect(record).toEqual({
+      project_id: 'pm-mcp-clients',
+      role: 'implement',
+      current_multiple: 3,
+      proposed_multiple: 2,
+      buckets: [
+        { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
+        { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
+        { label: '2-3x', from_multiple: 2, to_multiple: 3, task_count: 3, flagged_tasks: 3 },
+        { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 4, flagged_tasks: 4 },
+      ],
+    });
+  });
+
+  it('sends each request to the record route of its own id', async () => {
+    // Arrange: every answer is a valid record of its own kind
+    const urls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      urls.push(url);
+      const body = url.includes('/metrics/oversize')
+        ? served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize')
+        : url.includes('/epics/')
+          ? served('running-work', 'GET /api/v1/epics/relay-hardening/intent')
+          : url.endsWith('/outline')
+            ? served('running-work', 'GET /api/v1/plans/fix-relay/outline')
+            : served('running-work', 'GET /api/v1/plans/fix-relay/intent');
+      return Promise.resolve({ ok: true, status: 200, json: async () => body });
+    });
+
+    // Act: an id with a space is encoded into one path segment
+    await client.getPlanIntent('fix relay');
+    await client.getPlanOutline('fix relay');
+    await client.getEpicIntent('relay hardening');
+    await client.getOverSize('pm mcp clients');
+
+    // Assert
+    expect(urls).toEqual([
+      'http://localhost:7420/api/v1/plans/fix%20relay/intent',
+      'http://localhost:7420/api/v1/plans/fix%20relay/outline',
+      'http://localhost:7420/api/v1/epics/relay%20hardening/intent',
+      'http://localhost:7420/api/v1/projects/pm%20mcp%20clients/metrics/oversize',
+    ]);
+  });
+
+  it('answers an absent record with null, so a panel can say refine has not written it yet', async () => {
+    // Arrange: the runtime has no record for the plan
+    answer({ error: 'intent_not_found', message: 'No intent record' }, 404);
+
+    // Act
+    const record = await client.getPlanIntent('not-refined-yet');
+
+    // Assert
+    expect(record).toBeNull();
+  });
+
+  it('fails closed on a malformed record instead of answering it half read', async () => {
+    // Arrange: a 200 whose record breaks the contract in three places
+    answer({
+      plan_id: 'fix-relay',
+      revision: 'three',
+      criteria: [{ id: 'AC-001', text: 'x', satisfies: ['one'] }],
+      non_goals: [],
+    });
+
+    // Act & Assert
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/invalid_response/);
+  });
+
+  it('refuses an unknown closed value and a distribution without buckets', async () => {
+    // Arrange: a verdict outside the closed list, and an empty distribution
+    answer({
+      epic_id: 'relay-hardening',
+      destination: 'd',
+      done_when: [{ text: 't', verdict: 'maybe', evidence: [] }],
+      non_goals: ['n'],
+      not_yet_specified: [],
+      plans: [],
+    });
+    await expect(client.getEpicIntent('relay-hardening')).rejects.toThrow(/invalid_response/);
+
+    answer({ project_id: 'p', role: 'implement', current_multiple: 3, buckets: [] });
+    await expect(client.getOverSize('p')).rejects.toThrow(/invalid_response/);
+  });
 });
