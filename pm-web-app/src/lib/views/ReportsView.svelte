@@ -993,7 +993,7 @@
           {#if items.length > 0}
             <Button
               variant="secondary"
-              size="small"
+              size="sm"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
               aria-disabled={isMarkingAll ? 'true' : undefined}
@@ -1012,7 +1012,7 @@
     {#if actionError}
       <div class="error-line" role="alert">
         <p>{actionError}</p>
-        <Button variant="ghost" size="small" onclick={retryFailedAction}>
+        <Button variant="ghost" size="sm" onclick={retryFailedAction}>
           {$t('common.action.retry')}
         </Button>
       </div>
@@ -1070,7 +1070,7 @@
               {:else}
                 <Button
                   variant="ghost"
-                  size="small"
+                  size="sm"
                   aria-label={$t('report.from.open_project', { project: pGroup.key })}
                   onclick={() =>
                     navigateTo('projects', { explorerProjectId: pGroup.key })}
@@ -1088,7 +1088,7 @@
                     <span class="epic-glyph" aria-hidden="true">◇</span>
                     <Button
                       variant="ghost"
-                      size="small"
+                      size="sm"
                       aria-label={$t('report.from.open_epic', { epic: epicName })}
                       onclick={() => openFromPart('epic', epicItems[0])}
                     >
@@ -1192,7 +1192,7 @@
         {#if item.from?.project}
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_project', { project: item.from.project })}
             onclick={() => openFromPart('project', item)}
           >
@@ -1205,7 +1205,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
             onclick={() => openFromPart('epic', item)}
           >
@@ -1216,7 +1216,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
             onclick={() => openFromPart('plan', item)}
           >
@@ -1244,7 +1244,7 @@
       {#if overflowingBodies.has(item.id)}
         <Button
           variant="ghost"
-          size="small"
+          size="sm"
           aria-expanded={bodyOpen}
           aria-label={bodyToggleLabel(item, bodyOpen)}
           onclick={() => (shownBodies[item.id] = !bodyOpen)}
@@ -1258,7 +1258,7 @@
       {#if hasDetail(item)}
         <Button
           variant="secondary"
-          size="small"
+          size="sm"
           data-testid="report-details"
           disabled={item.subject_deleted}
           disabledReason={item.subject_deleted
@@ -1287,7 +1287,6 @@
           size="sm"
           data-testid="report-row-menu"
           label={rowMenuLabel(item)}
-          visibleLabel={$t('report.list.row_menu')}
           advisory={$t('report.list.row_menu.title')}
           items={[
             {

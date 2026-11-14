@@ -272,7 +272,6 @@
         <RowMenu
           items={rowMenuItems}
           label="{$t('dev.section.row_menu')} ({$t('web.common.more')}, {$t(`dev.theme.${theme}`)})"
-          visibleLabel={$t('web.common.more')}
         />
         <RowMenu
           items={rowMenuItems}
@@ -526,7 +525,6 @@
             <RowMenu
               items={rowMenuItems}
               label="{$t('dev.row_link.menu')} ({$t(`dev.theme.${theme}`)})"
-              visibleLabel={$t('web.common.more')}
             />
           {/snippet}
         </RowLink>
@@ -573,7 +571,6 @@
           <RowMenu
             items={rowMenuItems}
             label="{$t('dev.examples.menu')} ({$t(`dev.theme.${theme}`)})"
-            visibleLabel={$t('web.common.more')}
           />
         {/snippet}
       </RowLink>

@@ -142,7 +142,8 @@ describe('Compose', () => {
       const { field } = renderCompose({ disabled: true, disabledReason: 'Type a message.' });
       const act = screen.getByRole('button', { name: 'Send' });
 
-      expect(act).toBeDisabled();
+      expect(act).not.toBeDisabled();
+      expect(act).toHaveAttribute('aria-disabled', 'true');
       expect(act).toHaveAccessibleDescription('Type a message.');
       expect(field).toBeEnabled();
     });

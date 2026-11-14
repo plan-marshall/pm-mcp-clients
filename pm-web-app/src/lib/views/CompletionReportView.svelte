@@ -152,7 +152,7 @@
 <div class="completion-report" bind:this={rootEl}>
   <div class="completion-report__nav">
     {#if onClose}
-      <Button variant="ghost" size="small" icon="act.back" onclick={closeReport}>
+      <Button variant="ghost" size="sm" icon="act.back" onclick={closeReport}>
         {$t('web.common.back')}
       </Button>
     {/if}
@@ -404,7 +404,7 @@
             </svelte:element>
             <Button
               variant="secondary"
-              size="small"
+              size="sm"
               onclick={() => (showRawComponents = !showRawComponents)}
               aria-expanded={showRawComponents}
             >

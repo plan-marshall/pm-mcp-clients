@@ -23,6 +23,6 @@
   <svelte:fragment slot="footer">
     <Button variant="ghost" on:click={() => (open = false)}>{cancelLabel}</Button>
     <Button variant="danger" on:click={() => (open = false)}>{confirmLabel}</Button>
-    <Button variant="ghost" disabled disabledReason={disabledLabel}>{disabledLabel}</Button>
+    <Button variant="ghost" disabled>{disabledLabel}</Button>
   </svelte:fragment>
 </Dialog>

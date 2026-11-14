@@ -67,10 +67,10 @@ describe('ActionBar', () => {
       },
     });
 
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Next' }).getAttribute('title')).toBe(
-      'Every slot is busy',
-    );
+    const next = screen.getByRole('button', { name: 'Next' });
+    expect(next).not.toBeDisabled();
+    expect(next).toHaveAttribute('aria-disabled', 'true');
+    expect(next.getAttribute('title')).toBe('Every slot is busy');
   });
 
   it('carries the advisory of an act, primary included', () => {

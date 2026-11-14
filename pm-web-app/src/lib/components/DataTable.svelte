@@ -118,7 +118,6 @@
                   icon="act.more"
                   size="sm"
                   label={menuNameOf(row)}
-                  visibleLabel={menuLabel}
                   on:click={() => onMenu(row.id)}
                 />
               </td>

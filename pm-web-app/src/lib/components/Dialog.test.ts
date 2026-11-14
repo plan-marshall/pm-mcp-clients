@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import Dialog from './Dialog.svelte';
@@ -183,5 +185,16 @@ describe('Dialog', () => {
     await fireEvent.keyDown(window, { key: 'Escape' });
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('conforms to design tokens: radius-lg 12px, shadow-overlay, layer-dialog, text-xl title, right-aligned footer', () => {
+    const content = fs.readFileSync(path.resolve(__dirname, './Dialog.svelte'), 'utf-8');
+    const style = content.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
+
+    expect(style).toContain('z-index: var(--layer-dialog)');
+    expect(style).toContain('border-radius: var(--radius-lg)');
+    expect(style).toContain('box-shadow: var(--shadow-overlay)');
+    expect(style).toContain('font-size: var(--text-xl)');
+    expect(style).toContain('justify-content: flex-end');
   });
 });

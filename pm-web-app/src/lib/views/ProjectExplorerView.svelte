@@ -678,7 +678,7 @@
                 <div class="being-added-card__actions">
                   <Button
                     variant="primary"
-                    size="small"
+                    size="sm"
                     onclick={() => handleContinueOnboarding(being)}
                     data-testid="continue-onboarding-btn"
                   >
@@ -686,7 +686,7 @@
                   </Button>
                   <Button
                     variant="secondary"
-                    size="small"
+                    size="sm"
                     onclick={() => {
                       abandonTarget = being;
                       abandonError = null;

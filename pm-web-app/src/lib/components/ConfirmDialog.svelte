@@ -78,7 +78,7 @@
 
   <svelte:fragment slot="footer">
     <Button
-      variant="secondary"
+      variant="ghost"
       data-testid="confirm-dialog-cancel"
       disabled={busy}
       on:click={close}

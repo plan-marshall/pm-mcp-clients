@@ -1096,7 +1096,7 @@
                     {$t('decision.recommendation.on_request')}
                   </p>
                   <Button
-                    size="small"
+                    size="sm"
                     variant="secondary"
                     onclick={() => (revealed[dec.id] = true)}
                   >
@@ -1194,7 +1194,7 @@
                         ></textarea>
                         <div class="own-words-actions">
                           <Button
-                            size="small"
+                            size="sm"
                             variant="secondary"
                             disabled={!ownWordsTexts[keyOf(dec, part, pIdx)]?.trim() ||
                               isInterpreting[keyOf(dec, part, pIdx)]}
@@ -1217,7 +1217,7 @@
                           </p>
                           <div class="readback-actions">
                             <Button
-                              size="small"
+                              size="sm"
                               variant="primary"
                               data-advisory={$t('decision.readback.confirm.title')}
                               disabled={isChatting(dec)}
@@ -1226,7 +1226,7 @@
                               {$t('decision.readback.confirm')}
                             </Button>
                             <Button
-                              size="small"
+                              size="sm"
                               variant="secondary"
                               onclick={() => {
                                 interpretations[keyOf(dec, part, pIdx)] = null;
@@ -1235,7 +1235,7 @@
                               {$t('decision.readback.edit')}
                             </Button>
                             <Button
-                              size="small"
+                              size="sm"
                               variant="secondary"
                               onclick={() => {
                                 ownWordsMode[keyOf(dec, part, pIdx)] = false;
@@ -1397,7 +1397,7 @@
     {#if errorMessage}
       <div class="error-banner" role="alert">
         <p>{errorMessage}</p>
-        <Button variant="secondary" size="small" onclick={loadDecisions}
+        <Button variant="secondary" size="sm" onclick={loadDecisions}
           >{$t('common.action.retry')}</Button
         >
       </div>
