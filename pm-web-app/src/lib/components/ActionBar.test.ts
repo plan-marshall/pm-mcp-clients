@@ -151,7 +151,7 @@ describe('ActionBar', () => {
     expect(onAct).not.toHaveBeenCalled();
   });
 
-  it('keeps the reason of a disabled menu entry out of the menu itself', async () => {
+  it('describes the reason of a disabled menu entry and shows it on focus', async () => {
     render(ActionBar, {
       props: {
         acts: [
@@ -165,16 +165,15 @@ describe('ActionBar', () => {
     });
 
     await fireEvent.click(screen.getByTestId('action-bar-overflow'));
-    const menu = screen.getByRole('menu');
-    // A menu holds menu items; the reason is described, not drawn as an entry of its own.
-    expect(menu.querySelector('span')).toBeNull();
-
-    const later = screen.getByRole('menuitem', { name: 'Later' });
+    const later = screen.getByRole('menuitem', { name: /Later/ });
     const describedBy = later.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
-    expect(document.getElementById(describedBy as string)).toHaveTextContent('Not yet');
-    // The described element sits outside the menu, whatever element carries it.
-    expect(menu.contains(document.getElementById(describedBy as string))).toBe(false);
+    const reasonEl = document.getElementById(describedBy as string);
+    expect(reasonEl).toHaveTextContent('Not yet');
+
+    expect(reasonEl).not.toHaveClass('act-menu__reason--visible');
+    await fireEvent.focus(later);
+    expect(reasonEl).toHaveClass('act-menu__reason--visible');
   });
 
   it('closes on Tab and gives the focus back to the button', async () => {
@@ -298,5 +297,44 @@ describe('ActionBar', () => {
 
     await fireEvent.click(screen.getByTestId('action-bar-overflow'));
     expect(screen.getByTestId('action-archive')).toBeInTheDocument();
+  });
+
+  it('edge: draws nothing when acts is empty', () => {
+    const { container } = render(ActionBar, { props: { acts: [] } });
+    expect(container.querySelector('[data-testid="action-bar"]')).toBeNull();
+  });
+
+  it('edge: destructive entry in overflow reports onAct for view confirmation', async () => {
+    const onAct = vi.fn();
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next' },
+          { id: 'pause', label: 'Pause' },
+          { id: 'chat', label: 'Chat' },
+          { id: 'settings', label: 'Settings' },
+          { id: 'delete', label: 'Delete epic', destructive: true },
+        ],
+        onAct,
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    const item = screen.getByRole('menuitem', { name: 'Delete epic' });
+    await fireEvent.click(item);
+
+    expect(onAct).toHaveBeenCalledWith('delete');
+  });
+
+  it('edge: busy renders the overflow trigger and entries inert', async () => {
+    render(ActionBar, {
+      props: {
+        acts: FIVE_ACTS,
+        busy: true,
+      },
+    });
+
+    const overflow = screen.getByTestId('action-bar-overflow');
+    expect(overflow).toBeDisabled();
   });
 });
