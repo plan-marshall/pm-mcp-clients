@@ -128,6 +128,18 @@ class RefusalRendererTest {
         assertTrue(output.contains("→ Check the id or pick the entry from the list again."));
     }
 
+    @Test
+    @DisplayName("render(PrintWriter, String, OperatorRefusedException) renders exception")
+    void renderOperatorRefusedException() {
+        var sw = new StringWriter();
+        var pw = new PrintWriter(sw);
+        var ore = new OperatorRefusedException(ApiErrorCode.SCOPE_NOT_FOUND);
+        RefusalRenderer.render(pw, "de", ore);
+        var output = sw.toString();
+        assertTrue(output.contains("✗ Diesen Eintrag gibt es nicht"));
+        assertTrue(output.contains("Kein Plan, kein Epic, keine Entscheidung"));
+    }
+
     private static void assertNoLeaks(List<String> lines) {
         for (var line : lines) {
             assertFalse(line.contains("HTTP "), "Should not leak HTTP status: " + line);
