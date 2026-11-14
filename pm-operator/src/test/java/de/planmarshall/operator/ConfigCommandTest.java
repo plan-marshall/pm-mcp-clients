@@ -815,6 +815,84 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config cleanup --project conflict kept with k reports durations kept")
+    void cleanupProjectConflictKeptWithKReportsDurationsKept() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[]");
+            } else if (request.target().contains("/cleanup.plans_after_days")) {
+                response.json(409, conflictOf("cleanup.plans_after_days", "30", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("k\n", "config", "cleanup", "--project", ".", "--plans", "60", "--yes");
+        var text = out.toString();
+        assertAll(
+                () -> assertEquals(0, code, text),
+                () -> assertTrue(text.contains("Durations kept: Archived plans after 60 days."), text),
+                () -> assertFalse(text.contains("Durations recorded:"), text));
+    }
+
+    @Test
+    @DisplayName("config cleanup machine conflict goes through conflict handling and retries")
+    void cleanupMachineConflictGoesThroughConflictHandling() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target()) && "PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":6,\"current_value\":\"30\"}");
+                } else {
+                    response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":7}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n", "config", "cleanup", "--plans", "60", "--yes");
+        var text = out.toString();
+        assertAll(
+                () -> assertEquals(0, code, text),
+                () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                () -> assertFalse(text.contains("HTTP 409"), text),
+                () -> assertTrue(text.contains("Durations recorded: Archived plans after 60 days."), text),
+                () -> assertEquals(2, bodies.size(), bodies.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --project editor d option removes project own values returning to inheritance")
+    void cleanupProjectEditorRemovesOwnValues() throws Exception {
+        var deleted = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (request.target().startsWith("/api/v1/config") && "GET".equals(request.method())) {
+                response.json(200, "[{\"key\":\"cleanup.plans_after_days\",\"origin\":\"project\",\"value\":90,\"revision\":3}]");
+            } else if ("DELETE".equals(request.method())) {
+                deleted.add(request.target());
+                response.send(204, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("d\n", "config", "cleanup", "--project", "pm-mcp-core");
+        var text = out.toString();
+        assertAll(
+                () -> assertEquals(0, code, text),
+                () -> assertTrue(text.contains("d) remove its own values"), text),
+                () -> assertEquals(1, deleted.size(), deleted.toString()),
+                () -> assertTrue(deleted.get(0).contains("/project/cleanup.plans_after_days"), deleted.get(0)));
+    }
+
+    @Test
     @DisplayName("the editor takes a kind's name and refuses an unreadable day count")
     void cleanupEditorTakesAKindNameAndRefusesBadDays() throws Exception {
         serveSettings(body -> {
@@ -1494,5 +1572,12 @@ class ConfigCommandTest {
                 MessageCatalogue.format("en", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
         assertEquals("1 Tag, Erinnerung 1 Tag",
                 MessageCatalogue.format("de", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+    }
+
+    @Test
+    @DisplayName("parseDays accepts nie for never in German")
+    void parseDaysAcceptsNie() {
+        assertEquals(Integer.valueOf(-1), ConfigCleanupCommand.parseDays("nie"));
+        assertEquals(Integer.valueOf(-1), ConfigCleanupCommand.parseDays("never"));
     }
 }

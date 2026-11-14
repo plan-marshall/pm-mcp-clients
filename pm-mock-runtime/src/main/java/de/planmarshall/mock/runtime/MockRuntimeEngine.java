@@ -4070,7 +4070,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return false;
             }
             if ("GET".equals(request.method()) && act == null) {
-                response.json(200, projectOnboardingEntryState(entryId, false));
+                boolean isLater = being.stepNumber() > 2;
+                String stateId = isLater ? "project.team" : PROJECT_SETUP_IDENTITY;
+                var body = new LinkedHashMap<String, Object>();
+                body.put(KEY_STATE, stateId);
+                body.put(KEY_STEP, being.stepNumber());
+                body.put(KEY_TOTAL_STEPS, being.totalSteps());
+                body.put("id", entryId);
+                body.put("name", entryId);
+                body.put("pilot", false);
+                body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                        PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
+                response.json(200, body);
                 return true;
             }
             if (METHOD_POST.equals(request.method()) && "set".equals(act)) {
@@ -4089,10 +4100,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         false,
                         false);
                 beingAddedProjects.remove(being);
-                enrolledProjects.removeIf(candidate -> candidate.projectId().equals(enrolled.projectId()));
-                enrolledProjects.add(enrolled);
+                boolean exists = enrolledProjects.stream().anyMatch(candidate -> candidate.projectId().equals(enrolled.projectId()));
+                if (!exists) {
+                    enrolledProjects.add(enrolled);
+                }
                 broadcastEvent(ProjectChangedEvent.EVENT_NAME,
-                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "enrolled", enrolled.projectId()));
+                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, enrolled.projectId(),
+                                "enrolled", enrolled.projectId()));
                 response.json(200, projectOnboardingEntryState(entryId, true));
                 return true;
             }
@@ -7698,15 +7712,28 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (onboardingLock) {
             var body = new LinkedHashMap<String, Object>();
             body.put("revision", machineSettingsRevision);
-            body.put("aspects", List.of(
-                    aspectSummary(OnboardingAspect.LANGUAGE, languageSummary(), machineLanguageInterface),
-                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
-                    aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
-                    aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
-                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
-                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
-                    aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
-                            String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
+            var runtime = stateRuntimeFixture(fixtureStateId.get());
+            if (runtime != null && runtime.get("aspects") instanceof List<?> list) {
+                var customAspects = new ArrayList<Map<String, Object>>();
+                for (var item : list) {
+                    if (item instanceof Map<?, ?> map) {
+                        var m = new LinkedHashMap<String, Object>();
+                        map.forEach((k, v) -> m.put(String.valueOf(k), v));
+                        customAspects.add(m);
+                    }
+                }
+                body.put("aspects", customAspects);
+            } else {
+                body.put("aspects", List.of(
+                        aspectSummary(OnboardingAspect.LANGUAGE, languageSummary(), machineLanguageInterface),
+                        aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
+                        aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
+                        aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
+                        aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
+                        aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
+                        aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
+                                String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
+            }
             body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
             body.put(KEY_LANGUAGE_MODEL, machineLanguageModel);
             body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
@@ -8945,8 +8972,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         String id = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
         if (id.isBlank()) id = "new-project";
 
+        final var finalPath = path;
+        final var finalId = id;
         synchronized (projectsLock) {
-            var beingAdded = new BeingAddedProject(
+            var existing = beingAddedProjects.stream()
+                    .filter(candidate -> candidate.checkoutPath().equals(finalPath)
+                            || candidate.checkoutPath().endsWith("/" + finalId)
+                            || (candidate.continueLink() != null && candidate.continueLink().contains(finalId)))
+                    .findFirst()
+                    .orElse(null);
+            var beingAdded = existing != null ? existing : new BeingAddedProject(
                     path,
                     STEP_IDENTITY,
                     2,
@@ -8954,7 +8989,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     PATH_ENTRIES_PREFIX + encodedEntryId(id) + "/continue",
                     PATH_ENTRIES_PREFIX + encodedEntryId(id) + SUFFIX_ABANDON
             );
-            beingAddedProjects.add(beingAdded);
+            if (existing == null) {
+                beingAddedProjects.add(beingAdded);
+            }
             lastBuildEnvironment = buildEnvironment;
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
@@ -8962,9 +8999,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
                     "continue_link", beingAdded.continueLink(),
-                    "current_step", STEP_IDENTITY,
-                    "step_number", 2,
-                    KEY_TOTAL_STEPS, 10
+                    "current_step", beingAdded.currentStep(),
+                    "step_number", beingAdded.stepNumber(),
+                    KEY_TOTAL_STEPS, beingAdded.totalSteps()
             ));
         }
     }

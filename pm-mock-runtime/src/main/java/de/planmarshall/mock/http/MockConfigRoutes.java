@@ -456,6 +456,12 @@ public final class MockConfigRoutes {
         return AspectOwnedKeys.isAspectOwned(key);
     }
 
+    private static final java.util.Set<String> PROJECT_CLEANUP_KEYS = java.util.Set.of(
+            "cleanup.plans_after_days",
+            "cleanup.epics_after_days",
+            "cleanup.logs_after_days"
+    );
+
     /**
      * @param level the level the change addresses
      * @param key   the key a change addresses
@@ -467,7 +473,9 @@ public final class MockConfigRoutes {
         if (!AspectOwnedKeys.isAspectOwned(key)) {
             return false;
         }
-        return !(key.startsWith(CLEANUP_KEY_PREFIX)
-                && (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM));
+        if (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM) {
+            return !PROJECT_CLEANUP_KEYS.contains(key);
+        }
+        return true;
     }
 }

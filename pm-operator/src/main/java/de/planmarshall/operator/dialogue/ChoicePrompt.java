@@ -112,6 +112,7 @@ public final class ChoicePrompt {
     private @Nullable String keepLabel;
     private boolean keyed;
     private @Nullable String leaveKeyLabel;
+    private @Nullable String consentPromptLabel;
 
     /**
      * Creates a choice prompt over a JLine {@link LineReader}.
@@ -251,6 +252,17 @@ public final class ChoicePrompt {
      */
     public ChoicePrompt leaveKeyLabel(String label) {
         this.leaveKeyLabel = Objects.requireNonNull(label, "leaveKeyLabel");
+        return this;
+    }
+
+    /**
+     * Overrides the consent prompt text (such as {@code Delete? y) yes   n) no, back}).
+     *
+     * @param label the rendered prompt text before the optional {@code ?} and prompt suffix
+     * @return this prompt
+     */
+    public ChoicePrompt consentPromptLabel(String label) {
+        this.consentPromptLabel = Objects.requireNonNull(label, "label");
         return this;
     }
 
@@ -693,7 +705,8 @@ public final class ChoicePrompt {
     }
 
     private String renderConsentPrompt() {
-        var question = MessageCatalogue.format(locale, "operator.dialogue.consent.prompt_yn", Map.of());
+        var question = consentPromptLabel != null ? consentPromptLabel
+                : MessageCatalogue.format(locale, "operator.dialogue.consent.prompt_yn", Map.of());
         if (hasExplanation()) {
             question = question + "   ?";
         }
@@ -828,7 +841,10 @@ public final class ChoicePrompt {
     }
 
     private String consentOffered() {
-        var offered = new StringBuilder(isGerman() ? "j" : "y").append(", n, ").append(isGerman() ? "v" : "q");
+        var offered = new StringBuilder(isGerman() ? "j, n" : "y, n");
+        if (consentPromptLabel == null) {
+            offered.append(", ").append(isGerman() ? "v" : "q");
+        }
         if (hasExplanation()) {
             offered.append(", ?");
         }

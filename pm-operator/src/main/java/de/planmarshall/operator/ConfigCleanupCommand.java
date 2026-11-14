@@ -25,6 +25,7 @@ import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
+import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
@@ -44,6 +45,9 @@ final class ConfigCleanupCommand implements Callable<Integer> {
 
     /** The value that means nothing is ever removed. */
     static final int NEVER = -1;
+
+    private static final String VALUE = "value";
+    private static final int RECORD_KEPT = -1;
 
     private static final String KIND_PLANS = "plans";
     private static final String KIND_EPICS = "epics";
@@ -193,7 +197,10 @@ final class ConfigCleanupCommand implements Callable<Integer> {
      * @param value a configuration value as the tree holds it
      * @return its whole number, or {@code null} when it is none
      */
-    private static @Nullable Integer numberValue(Object value) {
+    private static @Nullable Integer numberValue(@Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
         if (value instanceof JsonNumber(String text)) {
             try {
                 return Integer.valueOf(text.trim());
@@ -274,7 +281,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         while (true) {
             printRows(out, locale, durations);
             out.flush();
-            var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.durations.keep",
+            var promptKey = project == null ? "operator.cleanup.durations.keep" : "operator.cleanup.durations.keep_project";
+            var answer = prompt.askRaw(MessageCatalogue.format(locale, promptKey,
                                 Map.of("range", "1-" + kinds.size())), DURATIONS_STATE, "durations", null);
             if (ChoicePrompt.isLeave(locale, answer)) {
                 // q leaves the dialogue with nothing sent, whatever was changed on screen.
@@ -283,8 +291,38 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             if (answer.isBlank() || "k".equalsIgnoreCase(answer)) {
                 return changes.isEmpty() ? 0 : write(out, locale, settings, durations, changes);
             }
+            if (project != null && "d".equalsIgnoreCase(answer.trim())) {
+                return deleteProjectDurations(out, locale);
+            }
             changeOne(prompt, out, locale, kinds, answer, durations, changes);
         }
+    }
+
+    private int deleteProjectDurations(PrintWriter out, String locale) throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(
+                            OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null)));
+        if (response.status() != 200) {
+            return 0;
+        }
+        var values = ConfigCommand.parseValues(response.bodyText());
+        for (var value : values) {
+            if (value.origin() == ConfigOrigin.PROJECT && kindOfKey(value.key()) != null) {
+                var write = ConfigCommand.CONFIG_PATH + "/" + ConfigOrigin.PROJECT.wire() + "/"
+                                    + OperatorUrlUtil.encodePathSegment(value.key());
+                var change = new ConfigCommand.Change(out, spec.commandLine().getErr(), locale,
+                                    OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null),
+                                    OperatorUrlUtil.appendScope(write, project, null), value.key(), "",
+                                    "operator.config.unset_failed");
+                var outcome = ConfigCommand.writeWithRevision(context, change, true, null, noInput);
+                if (outcome == ConfigCommand.WriteOutcome.FAILED) {
+                    return PmOperator.EXIT_FAILURE;
+                }
+                if (outcome == ConfigCommand.WriteOutcome.NEEDS_INPUT) {
+                    return ConfigAspectRun.EXIT_MISSING_INPUT;
+                }
+            }
+        }
+        return 0;
     }
 
     /**
@@ -320,8 +358,10 @@ final class ConfigCleanupCommand implements Callable<Integer> {
 
     private @Nullable Integer askDays(StartPrompt prompt, String locale, String kind) {
         var out = spec.commandLine().getOut();
+        var askKey = KIND_REMIND.equals(kind) ? "operator.cleanup.ask_days.remind" : "operator.cleanup.ask_days";
+        var minKey = KIND_REMIND.equals(kind) ? "operator.cleanup.durations.minimum.remind" : "operator.cleanup.durations.minimum";
         while (true) {
-            var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.cleanup.ask_days",
+            var answer = prompt.askRaw(MessageCatalogue.format(locale, askKey,
                                 Map.of("min", minimumOf(kind))), DURATIONS_STATE, kind, null);
             if (answer.isBlank()) {
                 return null;
@@ -330,7 +370,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             if (days != null && isAllowed(kind, days)) {
                 return days;
             }
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.minimum",
+            out.println(MessageCatalogue.format(locale, minKey,
                                 Map.of("min", minimumOf(kind))));
         }
     }
@@ -340,7 +380,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         if (!yes) {
             if (!context.isInteractiveTerminal() || noInput) {
                 printRows(out, locale, durations);
-                out.println("Needs a choice: --yes");
+                out.println(MessageCatalogue.format(locale, "operator.config.needs_choice", Map.of("option", "--yes")));
                 out.flush();
                 return 3;
             }
@@ -350,16 +390,20 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                 return edit(out, locale, settings, durations, changes);
             }
         }
-        var recorded = project == null
-                            ? recordMachine(out, locale, settings, durations)
-                            : recordProject(out, locale, changes);
-        if (recorded != 0) {
-            return recorded;
+        if (project == null) {
+            var recorded = recordMachine(out, locale, settings, durations);
+            if (recorded == RECORD_KEPT) {
+                return 0;
+            }
+            if (recorded != 0) {
+                return recorded;
+            }
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.recorded",
+                                Map.of("what", whatOf(locale, changes))));
+            out.flush();
+            return 0;
         }
-        out.println(MessageCatalogue.format(locale, "operator.cleanup.recorded",
-                            Map.of("what", whatOf(locale, changes))));
-        out.flush();
-        return 0;
+        return recordProject(out, locale, changes);
     }
 
     private int recordMachine(PrintWriter out, String locale, MachineSettingsRecord settings,
@@ -367,20 +411,61 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         var recordDurations = new CleanupDurations(daysOf(durations, KIND_PLANS), daysOf(durations, KIND_EPICS),
                             daysOf(durations, KIND_LOGS), daysOf(durations, KIND_REPORTS),
                             daysOf(durations, KIND_UNENROLLED), daysOf(durations, KIND_REMIND));
-        var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, recordDurations.toJson(),
-                            settings.revision());
-        var response = context.runtime(true).send(
-                            HttpRequest.json("PUT", ConfigCommand.MACHINE_SETTINGS_PATH, request.toJson()));
-        if (response.status() == 200) {
-            return 0;
+        var targetRevision = settings.revision();
+        while (true) {
+            var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, recordDurations.toJson(),
+                                targetRevision);
+            var response = context.runtime(true).send(
+                                HttpRequest.json("PUT", ConfigCommand.MACHINE_SETTINGS_PATH, request.toJson()));
+            if (response.status() == 200 || response.status() == 204) {
+                return 0;
+            }
+            if (response.status() == 409) {
+                var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());
+                var rendered = renderedCleanupConflict(locale, conflict.currentValue());
+                if (noInput) {
+                    out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(VALUE, rendered)));
+                    out.flush();
+                    return ConfigAspectRun.EXIT_MISSING_INPUT;
+                }
+                out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
+                out.flush();
+                if (!context.isInteractiveTerminal()) {
+                    out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
+                    out.flush();
+                    return ConfigAspectRun.EXIT_MISSING_INPUT;
+                }
+                if (!ConfigCommand.applyAgain(context, locale)) {
+                    out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
+                    out.flush();
+                    return RECORD_KEPT;
+                }
+                targetRevision = conflict.revision();
+                continue;
+            }
+            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
+                                Map.of("status", response.status())));
+            out.flush();
+            return PmOperator.EXIT_FAILURE;
         }
-        out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                            Map.of("status", response.status())));
-        out.flush();
-        return PmOperator.EXIT_FAILURE;
+    }
+
+    private static String renderedCleanupConflict(String locale, @Nullable String currentValue) {
+        if (currentValue == null || currentValue.isBlank()) {
+            return "";
+        }
+        try {
+            var durations = CleanupDurations.fromJson(currentValue);
+            return MessageCatalogue.format(locale, "operator.settings.cleanup.value",
+                                Map.of("days", durations.plansAfterDays(), "remind", durations.remindAfterDays()));
+        } catch (IOException _) {
+            return currentValue;
+        }
     }
 
     private int recordProject(PrintWriter out, String locale, Map<String, Integer> changes) throws IOException {
+        var applied = new LinkedHashMap<String, Integer>();
+        var kept = new LinkedHashMap<String, Integer>();
         for (var entry : changes.entrySet()) {
             var key = CLEANUP_KEY_PREFIX + entry.getKey() + AFTER_DAYS_SUFFIX;
             var write = ConfigCommand.CONFIG_PATH + "/" + ConfigOrigin.PROJECT.wire() + "/"
@@ -389,11 +474,28 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null),
                                 OperatorUrlUtil.appendScope(write, project, null), key, "",
                                 "operator.config.set_failed");
-            var code = ConfigCommand.writeWithRevision(context, change, false, entry.getValue(), noInput);
-            if (code != 0) {
-                return code;
+            var outcome = ConfigCommand.writeWithRevision(context, change, false, entry.getValue(), noInput);
+            if (outcome == ConfigCommand.WriteOutcome.FAILED) {
+                return PmOperator.EXIT_FAILURE;
+            }
+            if (outcome == ConfigCommand.WriteOutcome.NEEDS_INPUT) {
+                return ConfigAspectRun.EXIT_MISSING_INPUT;
+            }
+            if (outcome == ConfigCommand.WriteOutcome.APPLIED) {
+                applied.put(entry.getKey(), entry.getValue());
+            } else if (outcome == ConfigCommand.WriteOutcome.KEPT) {
+                kept.put(entry.getKey(), entry.getValue());
             }
         }
+        if (!applied.isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.recorded",
+                                Map.of("what", whatOf(locale, applied))));
+        }
+        if (!kept.isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.kept",
+                                Map.of("what", whatOf(locale, kept))));
+        }
+        out.flush();
         return 0;
     }
 
@@ -442,7 +544,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
      */
     static @Nullable Integer parseDays(String text) {
         var trimmed = text.trim();
-        if ("never".equalsIgnoreCase(trimmed)) {
+        if ("never".equalsIgnoreCase(trimmed) || "nie".equalsIgnoreCase(trimmed)) {
             return NEVER;
         }
         try {

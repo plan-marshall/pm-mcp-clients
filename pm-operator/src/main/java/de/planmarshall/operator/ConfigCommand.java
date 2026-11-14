@@ -93,7 +93,7 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String CONFLICT = "conflict";
     private static final String ERROR = "error";
     private static final String SHOW_UNREADABLE = "operator.config.show.unreadable";
-    private static final String NO_SETTING = "operator.settings.no_setting";
+    static final String NO_SETTING = "operator.settings.no_setting";
     private static final String APPLY_AGAIN = "operator.settings.apply_again";
     private static final String KEY = "key";
     private static final String COUNT = "count";
@@ -604,6 +604,24 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
+     * Outcome of writing a configuration value with revision.
+     */
+    enum WriteOutcome {
+        APPLIED,
+        KEPT,
+        FAILED,
+        NEEDS_INPUT;
+
+        int exitCode() {
+            return switch (this) {
+                case APPLIED, KEPT -> 0;
+                case FAILED -> PmOperator.EXIT_FAILURE;
+                case NEEDS_INPUT -> ConfigAspectRun.EXIT_MISSING_INPUT;
+            };
+        }
+    }
+
+    /**
      * Sends one change against the revision the value was read with, and answers a {@code conflict}
      * as the design says: the current value, then apply yours again or keep it
      * ({@code work-actions.adoc#conflict}).
@@ -613,10 +631,10 @@ public final class ConfigCommand implements Callable<Integer> {
      * @param deletion whether the change removes the value
      * @param value    the value to set, or {@code null} for a deletion
      * @param noInput  whether the verb stops at a conflict instead of asking
-     * @return the exit code
+     * @return the outcome of the change attempt
      * @throws IOException on transport failure
      */
-    static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
+    static WriteOutcome writeWithRevision(OperatorContext context, Change change, boolean deletion,
                         @Nullable Object value, boolean noInput) throws IOException {
         long revision;
         try {
@@ -627,17 +645,18 @@ public final class ConfigCommand implements Callable<Integer> {
                                 Map.of(STATUS, failure.status()))
                                 : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
             change.out().flush();
-            return PmOperator.EXIT_FAILURE;
+            return WriteOutcome.FAILED;
         }
         var response = sendChange(context, deletion, change.writePath(), value, revision);
         if (response.status() == 200 || response.status() == 204) {
             change.out().println(change.doneLine());
             change.out().flush();
-            return 0;
+            return WriteOutcome.APPLIED;
         }
         var conflict = response.status() == 409 ? conflictOf(response.bodyText()) : null;
         if (conflict == null) {
-            return failed(change, response.status());
+            failed(change, response.status());
+            return WriteOutcome.FAILED;
         }
         return resolveConflict(context, change, deletion, value, noInput, conflict);
     }
@@ -674,7 +693,7 @@ public final class ConfigCommand implements Callable<Integer> {
         return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
     }
 
-    private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
+    private static WriteOutcome resolveConflict(OperatorContext context, Change change, boolean deletion,
                         @Nullable Object value, boolean noInput, ConfigValueResource current) throws IOException {
         var currentConflict = current;
         var targetRevision = current.revision();
@@ -684,7 +703,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
                                     Map.of(VALUE, rendered)));
                 change.out().flush();
-                return ConfigAspectRun.EXIT_MISSING_INPUT;
+                return WriteOutcome.NEEDS_INPUT;
             }
             change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
                                 Map.of(VALUE, rendered)));
@@ -692,18 +711,18 @@ public final class ConfigCommand implements Callable<Integer> {
             if (!context.isInteractiveTerminal()) {
                 change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
                 change.out().flush();
-                return ConfigAspectRun.EXIT_MISSING_INPUT;
+                return WriteOutcome.NEEDS_INPUT;
             }
             if (!applyAgain(context, change.locale())) {
                 change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
                 change.out().flush();
-                return 0;
+                return WriteOutcome.KEPT;
             }
             var retry = sendChange(context, deletion, change.writePath(), value, targetRevision);
             if (retry.status() == 200 || retry.status() == 204) {
                 change.out().println(change.doneLine());
                 change.out().flush();
-                return 0;
+                return WriteOutcome.APPLIED;
             }
             if (retry.status() == 409) {
                 var next = conflictOf(retry.bodyText());
@@ -713,7 +732,8 @@ public final class ConfigCommand implements Callable<Integer> {
                     continue;
                 }
             }
-            return failed(change, retry.status());
+            failed(change, retry.status());
+            return WriteOutcome.FAILED;
         }
     }
 
@@ -724,7 +744,7 @@ public final class ConfigCommand implements Callable<Integer> {
         return 1;
     }
 
-    private static boolean applyAgain(OperatorContext context, String locale) throws IOException {
+    static boolean applyAgain(OperatorContext context, String locale) throws IOException {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
@@ -865,7 +885,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.set_failed");
-            return writeWithRevision(context, change, false, value, noInput);
+            return writeWithRevision(context, change, false, value, noInput).exitCode();
         }
 
         private String levelPath() {
@@ -928,7 +948,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.unset_failed");
-            return writeWithRevision(context, change, true, null, noInput);
+            return writeWithRevision(context, change, true, null, noInput).exitCode();
         }
 
         private String levelPath() {

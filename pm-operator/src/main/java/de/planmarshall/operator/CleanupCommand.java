@@ -30,8 +30,10 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.CleanupDecidedEvent;
+import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupKeptItem;
@@ -670,7 +672,13 @@ public final class CleanupCommand implements Callable<Integer> {
          * @return the rendered label
          */
         String label(String locale) {
-            return MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
+            return label(locale, CleanupDurations.DEFAULT_REMIND_DAYS);
+        }
+
+        String label(String locale, int remindDays) {
+            return this == REMIND
+                    ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of("days", remindDays))
+                    : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 
         /**
@@ -710,6 +718,7 @@ public final class CleanupCommand implements Callable<Integer> {
         printWholeJobActionNote(out);
 
         int itemIndex = 1;
+        boolean filterProject = project != null && !".".equals(project);
         for (var prj : job.projectItems()) {
             var isUnenrolled = isUnenrolled(prj.projectId());
             out.println(isUnenrolled ? MessageCatalogue.get(locale, "operator.cleanup.durations.kind.unenrolled")
@@ -717,13 +726,13 @@ public final class CleanupCommand implements Callable<Integer> {
             int shown = 0;
             for (var item : prj.items()) {
                 items.add(item);
-                if (shown < PAGE_SIZE) {
+                if (filterProject || shown < PAGE_SIZE) {
                     printItem(out, item, leftOut, isUnenrolled, itemIndex);
                     shown++;
                 }
                 itemIndex++;
             }
-            if (project == null && prj.items().size() > PAGE_SIZE) {
+            if (!filterProject && prj.items().size() > PAGE_SIZE) {
                 printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }
@@ -852,10 +861,23 @@ public final class CleanupCommand implements Callable<Integer> {
         var prompt = prompts.create(DECISION_STATE, cleanupLabel(locale), out)
                             .keyed()
                             .leaveKeyLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.leave", Map.of()));
-        for (var choice : decisionChoices(locale)) {
+        for (var choice : decisionChoices(locale, reminderDays())) {
             prompt.addChoice(choice);
         }
         return prompt;
+    }
+
+    private int reminderDays() {
+        try {
+            var response = context.runtime(true).send(HttpRequest.get(ConfigCommand.MACHINE_SETTINGS_PATH));
+            if (response.status() == 200) {
+                var settings = MachineSettingsRecord.fromJson(response.bodyText());
+                return settings.cleanupDurations().remindAfterDays();
+            }
+        } catch (IOException _) {
+            // fall back to default
+        }
+        return CleanupDurations.DEFAULT_REMIND_DAYS;
     }
 
     /**
@@ -863,8 +885,17 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the five decisions of the bar, in the order they are drawn
      */
     static List<ChoicePrompt.Choice> decisionChoices(String locale) {
+        return decisionChoices(locale, CleanupDurations.DEFAULT_REMIND_DAYS);
+    }
+
+    /**
+     * @param locale     the interface locale
+     * @param remindDays the reminder interval in days
+     * @return the five decisions of the bar, in the order they are drawn
+     */
+    static List<ChoicePrompt.Choice> decisionChoices(String locale, int remindDays) {
         return Arrays.stream(Decision.values())
-                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale)))
+                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale, remindDays)))
                             .toList();
     }
 
@@ -891,6 +922,8 @@ public final class CleanupCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var consent = prompts.create(CONFIRM_STATE, cleanupLabel(locale), out);
         consent.title(consentTitle(preview, unchecked, locale, project != null && !".".equals(project)));
+        consent.consentPromptLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.delete_prompt", Map.of()));
+        consent.explanation(MessageCatalogue.format(locale, "operator.cleanup.delete.explain", Map.of()));
         return consent.askConsent();
     }
 

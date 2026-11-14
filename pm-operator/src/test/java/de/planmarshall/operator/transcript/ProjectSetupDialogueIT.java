@@ -103,7 +103,7 @@ class ProjectSetupDialogueIT {
                                 session.rawOutput());
             DialogueHarness.type(session, "q\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
-            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertEquals(3, session.exitCode(), session.rawOutput());
         }
     }
 }

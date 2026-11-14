@@ -426,7 +426,7 @@
         },
         "current_phase": "execute",
         "phase_state": "running",
-        "activity": "execute.envelope · TASK-003",
+        "activity": "execute.envelope \u00b7 TASK-003",
         "needs_operator": false,
         "instance_version": 1,
         "tokens_so_far": {
@@ -592,7 +592,7 @@
         },
         "current_phase": "execute",
         "phase_state": "running",
-        "activity": "execute · land",
+        "activity": "execute \u00b7 land",
         "needs_operator": false,
         "instance_version": 1,
         "tokens_so_far": {
@@ -714,7 +714,7 @@
             "timestamp": "14:02:14",
             "kind": "tool_call",
             "tool_name": "read",
-            "tool_target": "pm-relay/src/main/java/…/Transport.java",
+            "tool_target": "pm-relay/src/main/java/\u2026/Transport.java",
             "tool_failed": false
           },
           {
@@ -729,7 +729,7 @@
             "timestamp": "14:03:02",
             "kind": "file_changed",
             "files": [
-              "pm-relay/src/main/java/…/Transport.java"
+              "pm-relay/src/main/java/\u2026/Transport.java"
             ]
           },
           {
@@ -775,7 +775,7 @@
             "timestamp": "13:41:10",
             "kind": "file_changed",
             "files": [
-              "pm-relay/src/main/java/…/Transport.java"
+              "pm-relay/src/main/java/\u2026/Transport.java"
             ]
           },
           {
@@ -831,7 +831,7 @@
           }
         ],
         "alongside_landings": [
-          "remediation.ci-failure · done"
+          "remediation.ci-failure \u00b7 done"
         ],
         "tokens_so_far": {
           "total": 520000,
@@ -1493,7 +1493,7 @@
         },
         "current_phase": "execute",
         "phase_state": "running",
-        "activity": "execute.session-log · TASK-003",
+        "activity": "execute.session-log \u00b7 TASK-003",
         "needs_operator": false,
         "instance_version": 1,
         "tokens_so_far": {
@@ -1648,14 +1648,14 @@
             "timestamp": "12:10:18",
             "kind": "tool_call",
             "tool_name": "read",
-            "tool_target": "pm-mcp-core/src/main/java/…/SessionLog.java",
+            "tool_target": "pm-mcp-core/src/main/java/\u2026/SessionLog.java",
             "tool_failed": false
           },
           {
             "timestamp": "12:11:04",
             "kind": "file_changed",
             "files": [
-              "pm-mcp-core/src/main/java/…/SessionLog.java"
+              "pm-mcp-core/src/main/java/\u2026/SessionLog.java"
             ]
           },
           {
@@ -1709,14 +1709,14 @@
             "timestamp": "12:20:15",
             "kind": "tool_call",
             "tool_name": "read",
-            "tool_target": "pm-mcp-core/src/main/java/…/GenerationStore.java",
+            "tool_target": "pm-mcp-core/src/main/java/\u2026/GenerationStore.java",
             "tool_failed": false
           },
           {
             "timestamp": "12:20:42",
             "kind": "file_changed",
             "files": [
-              "pm-mcp-core/src/main/java/…/GenerationStore.java"
+              "pm-mcp-core/src/main/java/\u2026/GenerationStore.java"
             ]
           },
           {
@@ -1979,7 +1979,7 @@
                       {
                         "label": "control.archive.rows_ended",
                         "passed": true,
-                        "note": "11 shipped · 1 cancelled"
+                        "note": "11 shipped \u00b7 1 cancelled"
                       },
                       {
                         "label": "control.archive.open_findings",
@@ -1998,7 +1998,7 @@
                       {
                         "label": "control.archive.carried",
                         "passed": true,
-                        "note": "3 kept findings · 5 watches"
+                        "note": "3 kept findings \u00b7 5 watches"
                       }
                     ],
                     "carried_findings": 3,
@@ -2019,7 +2019,7 @@
                           "rules": [
                             "a fix must hold for every transport; covered by a test that drops the connection between delivery and cursor write"
                           ],
-                          "origin": "landing of relay-reconnect (#211) · 2 days ago",
+                          "origin": "landing of relay-reconnect (#211) \u00b7 2 days ago",
                           "trust": "trusted",
                           "state": "open",
                           "proposal": "Promote to a plan: it needs a change across two modules"
@@ -3672,7 +3672,7 @@
           "level": "machine"
         },
         "facts": {
-          "summary": "Providers · Checking the providers that use github",
+          "summary": "Providers \u00b7 Checking the providers that use github",
           "kind": "verify_providers",
           "current": "os",
           "key": "github",
@@ -3824,6 +3824,35 @@
           "method": "POST",
           "href": "/api/v1/onboarding/defaults/set",
           "next": "settings.choose"
+        }
+      }
+    },
+    "settings.reduced-aspects": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.reduced-aspects",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Machine settings with reduced aspects",
+          "runtime": {
+            "aspects": [
+              {
+                "aspect": "language",
+                "summary": "English, models English",
+                "current": "en"
+              },
+              {
+                "aspect": "harness",
+                "summary": "Claude Code 2.4.1 (default), OpenCode 1.9.0",
+                "current": "claude"
+              }
+            ]
+          }
         }
       }
     }

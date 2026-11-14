@@ -747,6 +747,7 @@ class CleanupCommandTest {
                             () -> assertEquals(List.of("d", "r", "i", "x", "o"),
                                                 choices.stream().map(ChoicePrompt.Choice::key).toList()),
                             () -> assertEquals("delete…", choices.get(0).label()),
+                            () -> assertEquals("ask me again in 3 days", choices.get(1).label()),
                             () -> assertEquals("leave items out", choices.get(3).label())
         );
     }
@@ -980,6 +981,29 @@ class CleanupCommandTest {
                             () -> assertFalse(output.contains("21) ▸ item-21"), output),
                             () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output),
                             () -> assertTrue(posted.get().contains("\"item-25\""), posted.get())
+        );
+    }
+
+    @Test
+    @DisplayName("a project-filtered cleanup prints every item beyond twenty and omits the more line")
+    void projectPaginationShowsAllItemsForSpecificProject() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system/cleanup") && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--project", "pm-mcp-clients", "--no-input");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("25) ▸ item-25"), output),
+                            () -> assertFalse(output.contains("more: cleanup --project"), output)
         );
     }
 
