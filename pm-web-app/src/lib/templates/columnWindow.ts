@@ -55,6 +55,14 @@ const INSET_BELOW = 480;
 /** The container width below which the layout is the phone's, one column and no strip. */
 const PHONE_BELOW = 768;
 
+/**
+ * @param container the container's width in px
+ * @returns the page inset on each side the width calls for
+ */
+export function pageInset(container: number): number {
+  return container < INSET_BELOW ? PHONE_INSET : PAGE_INSET;
+}
+
 /** What stands for the levels a window hides: nothing, their names, or their marks only. */
 export type Strip = 'none' | 'names' | 'marks';
 
@@ -152,8 +160,7 @@ const EMPTY: NavWindow = Object.freeze({
  * @returns the content width `W`: the container less the page inset the width calls for
  */
 export function contentWidth(container: number): number {
-  const inset = container < INSET_BELOW ? PHONE_INSET : PAGE_INSET;
-  return Math.max(0, Math.round(container) - 2 * inset);
+  return Math.max(0, Math.round(container) - 2 * pageInset(container));
 }
 
 /**

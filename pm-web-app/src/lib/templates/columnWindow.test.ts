@@ -86,8 +86,10 @@ interface SideRow {
   viewport: number;
   /** The rail's width for the row. */
   rail: number;
-  /** The side column's width; `0` when it takes the space. */
+  /** The side column's width. */
   side: number;
+  /** Whether the side column takes the window's space. */
+  takesSpace: boolean;
   /** The number of navigation columns shown beside the chat. */
   columns: number;
   /** The width of each list column. */
@@ -99,14 +101,23 @@ interface SideRow {
 }
 
 const OPEN: readonly SideRow[] = [
-  { viewport: 1024, rail: RAIL.expanded, side: 0, columns: 0, list: 0, object: 0, strip: 'none' },
-  { viewport: 1024, rail: RAIL.collapsed, side: SIDE_NARROW, columns: 1, list: 0, object: 512, strip: 'none' },
-  { viewport: 1280, rail: RAIL.expanded, side: SIDE_WIDE, columns: 1, list: 0, object: 520, strip: 'none' },
-  { viewport: 1280, rail: RAIL.collapsed, side: SIDE_NARROW, columns: 2, list: 244, object: 480, strip: 'marks' },
-  { viewport: 1440, rail: RAIL.expanded, side: SIDE_NARROW, columns: 2, list: 236, object: 480, strip: 'marks' },
-  { viewport: 1440, rail: RAIL.collapsed, side: SIDE_WIDE, columns: 2, list: 232, object: 480, strip: 'names' },
-  { viewport: 1920, rail: RAIL.expanded, side: SIDE_WIDE, columns: 3, list: 272, object: 480, strip: 'names' },
-  { viewport: 1920, rail: RAIL.collapsed, side: SIDE_WIDE, columns: 4, list: 237, object: 481, strip: 'names' },
+  {
+    viewport: 1024,
+    rail: RAIL.expanded,
+    side: 744,
+    takesSpace: true,
+    columns: 0,
+    list: 0,
+    object: 0,
+    strip: 'none',
+  },
+  { viewport: 1024, rail: RAIL.collapsed, side: SIDE_NARROW, takesSpace: false, columns: 1, list: 0, object: 512, strip: 'none' },
+  { viewport: 1280, rail: RAIL.expanded, side: SIDE_WIDE, takesSpace: false, columns: 1, list: 0, object: 520, strip: 'none' },
+  { viewport: 1280, rail: RAIL.collapsed, side: SIDE_NARROW, takesSpace: false, columns: 2, list: 244, object: 480, strip: 'marks' },
+  { viewport: 1440, rail: RAIL.expanded, side: SIDE_NARROW, takesSpace: false, columns: 2, list: 236, object: 480, strip: 'marks' },
+  { viewport: 1440, rail: RAIL.collapsed, side: SIDE_WIDE, takesSpace: false, columns: 2, list: 232, object: 480, strip: 'names' },
+  { viewport: 1920, rail: RAIL.expanded, side: SIDE_WIDE, takesSpace: false, columns: 3, list: 272, object: 480, strip: 'names' },
+  { viewport: 1920, rail: RAIL.collapsed, side: SIDE_WIDE, takesSpace: false, columns: 4, list: 237, object: 481, strip: 'names' },
 ];
 
 describe('the page inset', () => {
@@ -165,7 +176,7 @@ describe('the window of the deepest chain, chat open', () => {
         object: row.object,
         strip: row.strip,
         side: row.side,
-        takesSpace: row.side === 0,
+        takesSpace: row.takesSpace,
       });
     },
   );
@@ -300,22 +311,18 @@ describe('a peek', () => {
 });
 
 describe('the widths add up to the content width', () => {
-  it.each([336, 488, 656, 744, 835, 836, 912, 1000, 1160, 1168, 1328, 1640, 1808])(
-    'fills a content width of %i px without a horizontal scroll',
-    (width) => {
+  it.each([360, 536, 704, 792, 883, 884, 960, 1048, 1160, 1208, 1216, 1376, 1688, 1856])(
+    'fills a container of %i px without a horizontal scroll',
+    (container) => {
       for (const sideOpen of [false, true]) {
-        const layout = windowFor({
-          container: containerForContent(width),
-          depth: DEEPEST_CHAIN,
-          sideOpen,
-        });
+        const layout = windowFor({ container, depth: DEEPEST_CHAIN, sideOpen });
         const listTotal = layout.sideTakesSpace ? 0 : (layout.columns - 1) * layout.listWidth;
         const objectWidth = layout.sideTakesSpace ? 0 : layout.objectWidth;
 
         expect(
           listTotal + objectWidth + layout.stripWidth + layout.sideWidth,
-          `sum at ${width} px, side ${sideOpen ? 'open' : 'closed'}`,
-        ).toBe(width);
+          `sum in ${container} px, side ${sideOpen ? 'open' : 'closed'}`,
+        ).toBe(layout.width);
       }
     },
   );
