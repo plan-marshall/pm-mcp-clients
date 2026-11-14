@@ -24,6 +24,10 @@
   import Link from '../../../lib/components/Link.svelte';
   import ExternalLink from '../../../lib/components/ExternalLink.svelte';
   import PrChip from '../../../lib/components/PrChip.svelte';
+  import RowLink from '../../../lib/components/RowLink.svelte';
+  import PhaseLabel, { PHASES } from '../../../lib/components/PhaseLabel.svelte';
+  import Marker, { MARKERS } from '../../../lib/components/Marker.svelte';
+  import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
 
@@ -507,6 +511,72 @@
           <FormStatus tone={status.tone} message={$t(status.key)} />
         {/each}
       </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.row_link')}</h3>
+      <div class="dev__rows">
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.title')}>
+          {#snippet kind()}<KindMark kind="plan" />{/snippet}
+          {#snippet tags()}
+            <PhaseLabel phase="execute" />
+            <StatusLabel tone="running" label={$t('state.plan.running')} />
+          {/snippet}
+          {#snippet acts()}
+            <Chip value={CHIP_VALUE} />
+            <IconButton icon="act.favourite" label={$t('dev.row_link.favourite')} />
+            <RowMenu
+              items={rowMenuItems}
+              label="{$t('dev.row_link.menu')} ({$t(`dev.theme.${theme}`)})"
+              visibleLabel={$t('web.common.more')}
+            />
+          {/snippet}
+        </RowLink>
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.plain')} />
+        <RowLink href="/plans/fix-relay" title={$t('dev.row_link.current')} current>
+          {#snippet kind()}<KindMark kind="plan" />{/snippet}
+          {#snippet tags()}<StatusLabel tone="success" label={$t('state.task.done')} />{/snippet}
+        </RowLink>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.reason_badge')}</h3>
+      <div class="dev__row">
+        {#each REASONS as reason (reason)}
+          <ReasonBadge {reason} />
+        {/each}
+        <ReasonBadge reason="decision" count={2} />
+        <ReasonBadge reason="landing_failed" />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.phase_label')}</h3>
+      <div class="dev__row">
+        {#each PHASES as phase (phase)}
+          <PhaseLabel {phase} />
+        {/each}
+        <PhaseLabel phase="execute" role="implement" />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.marker')}</h3>
+      <div class="dev__row">
+        {#each MARKERS as kind (kind)}
+          <Marker {kind} />
+        {/each}
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.tag_examples')}</h3>
+      <RowLink href="/plans/drop-legacy-api" title={$t('dev.examples.title')}>
+        {#snippet kind()}<KindMark kind="plan" />{/snippet}
+        {#snippet tags()}
+          <ReasonBadge reason="decision" />
+          <PhaseLabel phase="finalize" />
+          <StatusLabel tone="attention" label={$t('state.plan.waiting_for_you')} />
+        {/snippet}
+        {#snippet acts()}
+          <RowMenu
+            items={rowMenuItems}
+            label="{$t('dev.examples.menu')} ({$t(`dev.theme.${theme}`)})"
+            visibleLabel={$t('web.common.more')}
+          />
+        {/snippet}
+      </RowLink>
     </section>
   {/each}
 </div>
@@ -585,6 +655,16 @@
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: 40rem;
+  }
+
+  /*
+   * The row fixtures take the theme block's whole width, so a row shows its own 40 px height: its
+   * title never wraps (a long one is cut) and only the controls wrap on a narrow screen.
+   */
+  .dev__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .dev__grounds {

@@ -255,7 +255,7 @@ image::../../resources/diagrams/web-component-row-link.svg[A row whose title lin
 
 A row or a card that opens the object it stands for: its title is the link, and the link's target is stretched over the whole row, so the whole row takes the hover, the pointer and the focus ring, and a click anywhere on it opens the object. The controls inside the row — its `RowMenu`, a favourite `Toggle`, a copy `Chip` — lie above the link as separate targets and never open it. The selected row of a list carries `aria-current="true"` and the brand-subtle ground.
 
-Source and surface: `pm-web-app/src/lib/components/RowLink.svelte` (new), tests beside it; the props are `href`, `current` and the slots of the row.
+Source and surface: `pm-web-app/src/lib/components/RowLink.svelte` (new), tests beside it; the props are `href`, `title`, `current`, `compact` and the slots of the row (`kind`, `tags`, `acts`).
 
 [#segmented-control]
 === SegmentedControl

@@ -163,6 +163,19 @@ class OverviewCatalogueTest {
     }
 
     @Test
+    @DisplayName("should name the completion review reason and the badge text in both languages")
+    void shouldNameTheCompletionReviewReason() {
+        assertAll(
+                () -> assertEquals("completion review",
+                        MessageCatalogue.getMessages("en", "overview").get("overview.needs.completion_review")),
+                () -> assertEquals("Abschlussprüfung",
+                        MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")),
+                // The badge template is not in a text table of the overview documents; it is pinned here.
+                () -> assertTrue(MessageCatalogue.getMessages("en", "overview").containsKey("overview.needs.badge")),
+                () -> assertTrue(MessageCatalogue.getMessages("de", "overview").containsKey("overview.needs.badge")));
+    }
+
+    @Test
     @DisplayName("should normalize locale and handle fallback languages")
     void shouldNormalizeLocale() {
         assertEquals("en", MessageCatalogue.normalizeLocale(null));
