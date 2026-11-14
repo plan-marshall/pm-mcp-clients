@@ -134,6 +134,12 @@ above is NOT widened now (a parked row is not in the disjointness gate populatio
 
 PLAN-111 merged (`bb30d71e`) and deleted `pm-web-app/src/lib/stores/viewLayout.ts` and `pm-web-app/src/lib/components/ViewLayoutToggle.svelte` (struck from the Expected Surface); its "layout toggle is removed for decisions" clause is done. `DecisionView.svelte` has no detail pane now: `selectedDecisionId` only marks a card (`aria-current="true"`, `.decision-card--selected`) after the palette deep-link clears a hiding filter and scrolls to it (guarded while `isLoading`); the plan's "next decision selected after deciding" and `RowLink` work reuses or replaces that mark and adds no second one. `decisions.split.select` and `common.layout.*` no longer exist. Re-ground every line number (the file lost about 225 lines). Include the pre-existing prettier drift of `DecisionView.svelte` (~833, ~1068) and `DecisionView.test.ts` (~187, ~526, ~591) and the browser check of `/decisions` (mark and scroll at 390×844, de/en, light/dark) that PLAN-111 could not run.
 
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `PhaseLabel`'s role words: the six `role.name.*` come from the mock scenarios; the runtime's `askingRole` is a free string
+  (`DecisionEnvelope.java:57`), and `PhaseLabel.svelte:90` drops an unknown role silently. Settle the role set with the runtime docs (or
+  show an unknown role with the catalogue's unknown word); list consumers of `RowLink` and `StatusLabel` as in `PLAN-49`'s amendment.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

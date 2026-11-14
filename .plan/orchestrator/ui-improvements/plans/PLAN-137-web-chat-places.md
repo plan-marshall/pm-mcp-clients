@@ -177,6 +177,18 @@ Re-read every named view at the then-current HEAD; settle the HYPOTHESES; re-run
 - D4: `getEndedChat`/`acceptFollowUp` signatures carry `subjectKind`, `turnId` since `a139ec62`.
 - D2 (review chat) and the decomposition chat need the O10 route builders in `ChatRoutes`, absent at `a139ec62`; see the epic's Open Items.
 
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+- D4 ("accepting the follow-up opens the start") and D3 (the decision chat address) rest on contract surfaces that do not exist at `dc811fb3`:
+  the accept answers a `ChatResource` with no entry id and `StartRegistry.openFollowUp` broadcasts no `start.*` event; the decision envelope
+  lacks the subject id for epic, entry and machine scopes. Both are in the epic's **contract Open Item** (with O10): this plan waits for it
+  for D3, D4 and D2.
+- Today the web shows `control.chat.follow_up.opened` ("go on with its sources") with no way there; the decision chat keeps "no chat"
+  (operator decisions in #429).
+- D5 deletes the old client including the dead decision-chat methods (`client.ts:3807-3860`, old shape, unserved route).
+- The review chat now speaks the EPIC chat address (`EpicView.svelte:474`): review and epic share one transcript until O10.
+- `StartChatResource`/`FollowUpProposalResource` deletion is `PLAN-140`'s, not this plan's.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

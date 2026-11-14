@@ -95,6 +95,12 @@ the disjointness gate population). When restarted:
 - A node row = `RowLink` + a disclosure button with `aria-current` for the selected node; **plain arrows stay with the tree**,
   `Ctrl+←/→` move between columns (007, 003 §7).
 
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `RowLink` (PLAN-148) supports no tree role and has no covered-safe place for a disclosure button except `acts`; the spec's "RowLink + a
+  disclosure button with aria-current; plain arrows stay with the tree" (`:95`) must be re-designed at outline (read `RowLink.svelte` at
+  HEAD and `PLAN-49`'s changes to it).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

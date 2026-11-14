@@ -130,8 +130,10 @@ Re-read every file above at the then-current HEAD. Run `corpus surfaces` against
 
 ## PLAN-133 Landing Residue (Amendment 2026-11-13)
 
-- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) is knowingly broken against the mock until `PLAN-161`
-  (chat bridge) lands; `PLAN-148` marks the failing `showroom.spec.js` chat step `test.fixme`. An e2e failure at this plan's head that traces
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
   to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
 - The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
   must satisfy it.

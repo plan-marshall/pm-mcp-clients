@@ -170,6 +170,21 @@ Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run
 - Operator-client lesson from PLAN-133: track transcript progress by turn id and status, not by a count; test against streamed timing and a
   transcript longer than one page.
 
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+Operator decision 2026-11-14 ("Fold into PLAN-135/138"):
+
+- **Open a chat:** the terminal only reads (`WorkActionsClient.java:320` `chat` throws `OperatorRefusedException` on an unopened subject).
+  Open the chat (`POST …/chat`) before the first turn; test on an unseeded plan of `running-work`.
+- `WorkActionsClient.awaitReply` (`:395`): a failing `readChat` after the turn was recorded throws and loses the reply; keep and show the last
+  snapshot (the web does).
+- `WorkChatDialogue.java:142-144`: `accepted == null ? null : followUp(accepted)` followed by an unconditional `accepted.turnId()`; settle the
+  nullability.
+- D1: `ChatReadBackResource` is already deleted; the OBSERVED lines on `WorkActionsClient`/`WorkChatDialogue` are stale.
+- D4 ("Enter … opens `plan add` at its sources") collides with the runtime accept PLAN-161 added: the ended-work accept already asks the
+  runtime to open the follow-up start; a second `plan add` would start twice. Which entry opened is not observable (see the epic's contract
+  Open Item); re-design D4 on that item.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

@@ -157,11 +157,33 @@ Re-read every file above at the then-current HEAD. Run `corpus surfaces` against
 
 ## PLAN-133 Landing Residue (Amendment 2026-11-13)
 
-- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) is knowingly broken against the mock until `PLAN-161`
-  (chat bridge) lands; `PLAN-148` marks the failing `showroom.spec.js` chat step `test.fixme`. An e2e failure at this plan's head that traces
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
   to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
 - The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
   must satisfy it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+Operator decision 2026-11-14 ("Fold into PLAN-149"). PLAN-148 (#427, `25137445`) added `StatusLabel`'s list slot, with two defects that
+must be fixed before its first adopter (`PLAN-49`, then 51, 52, 55, 62, 154):
+
+- **D6 (new) — `StatusLabel`'s list slot works in a template.**
+  - The prop is named `slot` (`StatusLabel.svelte:13`), Svelte's reserved attribute: `<StatusLabel slot />` directly inside a snippet or a
+    component's children is a compile error (`slot_attribute_invalid`, svelte 5.57 `validate_slot_attribute`). Rename it (e.g. `fixed`)
+    and update `components-tags.adoc` / `components.adoc` and the dev page.
+  - The "fixed-width state slot" (`:47-57`, `inline-grid; grid-template-columns: auto minmax(0,1fr)`) has no width, so it shrink-wraps
+    and the dots do not stand one under the other (`components-tags.adoc:102`). Give it a width from a token (the longest state word of
+    both locales, or a named size); if the design names none, stop and ask.
+  - Tests: one TEMPLATE fixture (a `.svelte` test harness rendering the label inside a snippet and inside a component's children) that
+    compiles; a browser check of three labels of different word length in a list, both themes, en/de, measuring that the dots' x-positions
+    are equal. `StatusLabel.test.ts:49-67` pins CSS strings only: replace those with the measured check.
+  - Persona: plan-marshall:persona-implementer. Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing.
+  - Done when: the template fixture compiles and renders; the browser check shows equal dot positions (evidence order `none`); the rename
+    fails on a revert of the old prop name in the fixture (evidence order `test-first`).
+- Surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, `pm-web-app/src/lib/components/StatusLabel.test.ts` (present at `25137445`).
 
 ## Hand-Off Command
 

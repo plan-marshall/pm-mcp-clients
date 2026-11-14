@@ -99,6 +99,12 @@ widened now (a parked row is not in the disjointness gate population). When rest
 - Row slots (006), `RowLink` and `RowMenu` at the row (007), the ended-work chat read-only (009).
 - Message 002: the start-page toggle is gone (`PLAN-110`); this plan never reintroduces it.
 
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `PhaseLabel`'s role words: the six `role.name.*` come from the mock scenarios; the runtime's `askingRole` is a free string
+  (`DecisionEnvelope.java:57`), and `PhaseLabel.svelte:90` drops an unknown role silently. Settle the role set with the runtime docs (or
+  show an unknown role with the catalogue's unknown word); list consumers of `RowLink` and `StatusLabel` as in `PLAN-49`'s amendment.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

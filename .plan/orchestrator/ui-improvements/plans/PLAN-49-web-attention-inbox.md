@@ -113,6 +113,17 @@ design sessions' output, and a parked row is not in the disjointness gate popula
 - The empty state uses the mascot "nothing waits" pose or the source bust (005).
 - The bottom bar becomes What waits · Running work · Decisions · More; Reports moves into More with its unread count (003).
 
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- First adopter of `RowLink` and `StatusLabel`'s list slot (after `PLAN-149` D6 renames the prop; never write `<StatusLabel slot>`).
+- `RowLink` contract at `25137445`: `title` is a plain string on one line with ellipsis; slots `kind`/`tags`/`acts`; only `acts` and a `.chip`
+  in `tags` sit above the stretched link (the `kind` slot and any other control in `tags` are covered, `RowLink.svelte:100-103`, `:137`,
+  `:146`). The second detail line this plan needs (path / since / blocks, `:111-112`) is not in `RowLink`: add it to `RowLink` here, with
+  its stacking.
+- a11y to settle as first adopter: `aria-current` sits on the wrapper `<div>` (`RowLink.svelte:47`), not the anchor — move it to the anchor
+  (`aria-current="page"`/`true`); `.row-link:focus-within` (`:87-90`) rings the row on a mouse click into a nested control and doubles the
+  anchor's own ring — use `:has(a:focus-visible)`. Test in a browser, not by CSS strings.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

@@ -215,6 +215,26 @@ Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run
   `ChatResource` reads through one normaliser). This plan replaces that adaptation and deletes it; the OBSERVED `client.ts` line refs are
   stale since `a139ec62` (ended-work calls already migrated there) — re-ground at outline.
 
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+Operator decision 2026-11-14 ("Fold into PLAN-135/138"). PLAN-161 (#429, `dc811fb3`) bridged the web chat to B1. Add to this plan:
+
+- **Open a chat (new item for D1/D5).** The web only READS a chat (`client.ts:3631` `getChat` is GET). `POST …/chat` opens one
+  (`ChatRoutes.chat()`, `web-app/chat.adoc:249`; `work-actions.adoc:384`: the runtime never opens a chat by itself) and is called for the
+  entry only (`openEntryChat` `:2483`). Against the mock, every plan, epic, review or ended subject without a seeded chat answers 404 and the
+  panel shows "chat closed" (4 running plans of `running-work`). The decomposition read-back (`StartView.svelte:851` `onChat`) sets
+  `chatOpen` without opening a chat and sends turns to an unopened chat (`target_not_found`). Open the chat before the first turn on every
+  subject; test on an UNSEEDED subject (unit, e2e, browser).
+- **StartView's refresh machinery** (`refreshChat`/`chatGeneration`/`chatReadSeq`, `:225`, about 110 lines) has no test
+  (`subscribeEntryEvents` is stubbed in `StartView.test.ts:20`, `.scenarios.test.ts:23`). A refresh started during a pending answer or send
+  captures the bumped generation, and answered/closed results never bump `chatReadSeq`, so a late snapshot can bring back an answered
+  proposal (CodeRabbit's last word on #429 thread `StartView:241`, unanswered). Replace or fix with tests of the event refresh, read order,
+  entry change and that race.
+- **Try again keeps the turn id:** today `client_turn_id` is reused only for one automatic retry inside one `chatTurn` call
+  (`client.ts:3721`); the operator's Try again draws a new id and can double-send.
+- This plan replaces the bridge (one normaliser `normaliseChat` `client.ts:1656`; the follow rule `:1710`, `:3763`). The OBSERVED `client.ts`
+  line refs are stale. Empty-text `notice` turns would draw an empty line (PLAN-136).
+
 ## Hand-Off Command
 
 Lane: `runbook`.

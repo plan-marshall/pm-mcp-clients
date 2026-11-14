@@ -288,6 +288,13 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Decisions
 
+- 2026-11-14 (operator, PLAN-148 landing): the integrity hold is named **`integrity_hold`** — the work package
+  `doc/plans/harness-decision-log-hold-names.adoc` stands and renames the code (`NeedsOperatorKind.INTEGRITY_PAUSE` → `INTEGRITY_HOLD`). PLAN-148's
+  "assumed" D-2 went the other way: it flipped `needs-and-find.adoc:42` and `components-tags.adoc` to `integrity_pause` and added
+  `ReasonBadge` with `overview.needs.integrity_pause` (`ReasonBadge.test.ts:152-159` pins `integrity_hold` as "another reason"). The package
+  must ALSO flip those two documents back and update `ReasonBadge` (`REASONS`, `DANGER_REASONS`, the key) and its test; its task list in
+  `doc/plans/` needs that addition (a repository doc edit, not a ledger write: the operator's or a direct change).
+
 - 2026-10-25 — Parallelization scope 3, stated by the operator in the invocation.
 - 2026-10-25 — Operator decisions of VD-S-00 and the dependency questions (AskUserQuestion): Inter is
   self-hosted (PLAN-12); own SVG icon set, no Lucide (PLAN-19); axe-core may be added to `pm-web-e2e`
@@ -798,9 +805,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   interrupt). The spec said "16 files"; the PR changed 86 and exhausted the review budget three times. CodeRabbit did not review the merge
   head (allowed by the one-review rule); 16/16 threads replied and resolved, 4 body items closed without a fix (2 web Majors → `PLAN-161`);
   Sonar 0 issues, 0 hotspots. PR body checkboxes stale, no counts (seventh landing without counts in the PR body).
-- **Open Item (O10 route builders), 2026-11-13:** `ChatRoutes` has no builders for the review and decomposition chats (PLAN-133 D1 "left
-  out until O10"; the amendment's "once PLAN-132 has the route builders" never happened). No staged plan owns them plus the mock. Once the
-  N3 runtime documents name the addresses, stage a small plan (pm-api builders + mock) BEFORE `PLAN-137` D2 and `PLAN-140` D2.
+- **Open Item — the chat contract gaps (O10 + PLAN-161), 2026-11-13, merged 2026-11-14 (operator):** one pm-api + mock plan, staged once
+  the N3 runtime documents name the surfaces, BEFORE `PLAN-137` D2–D4, `PLAN-138` D4 and `PLAN-140` D1/D2. It carries: (1) `ChatRoutes`
+  builders for the review and decomposition chats (O10; PLAN-133 D1 left them out, the amendment's "once PLAN-132 has the route builders"
+  never happened); (2) the new start entry of an accepted ended-work follow-up — the accept answers a `ChatResource` with no entry id,
+  `StartRegistry.openFollowUp` broadcasts no `start.*` event, no project-entries listing exists (settled.md's old "F9 … needs a decision" is
+  the same gap); (3) the decision envelope's subject id for every scope (today plan/project only; epic, entry and machine only as free text),
+  so the decision chat can be addressed. Today the web shows `control.chat.follow_up.opened` with no way there and the decision chat says
+  "no chat" (operator decisions in #429).
+
+- PLAN-148 (#427, `25137445`) and PLAN-161 (#429, `dc811fb3`), 2026-11-14: no blocker; Sonar 0/0 both; threads 8/8 and 9/9 replied and
+  resolved (the `review_body_findings_*` keys count inline threads; real body items 0 on both). PLAN-148: `StatusLabel`'s `slot` prop is a
+  Svelte reserved name and the list slot has no width → `PLAN-149` D6; the "assumed" D-2 reversed an open work package's direction
+  (Decision above); the main checkout was edited once in error and restored (self-reported, guard `none`). PLAN-161: chats are never OPENED
+  (GET only) → unseeded subjects unreachable → `PLAN-135`/`PLAN-138`; the follow-up entry and decision address → contract Open Item; the
+  divergence was recorded only in the merged PR body (lesson). Two #429 threads end on CodeRabbit's "not addressed" (StartView race, tests)
+  → `PLAN-135`.
 
 ## Watches
 

@@ -177,6 +177,10 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; check which of PLAN-45, 55, 62 landed.
 
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+- `control.chat.follow_up.opened` ("go on with its sources") is shown by the bridge with no path to the start: reword it until the contract Open Item lands. Notices with empty text must not draw an empty line.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

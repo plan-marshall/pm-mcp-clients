@@ -147,6 +147,14 @@ Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run
 - `PLAN-161` adapts `WorkActionsClient`/`WorkChatDialogue` to B1 first; this plan and `PLAN-138` replace that adaptation.
 - D2 (review/decomposition chat) needs the O10 route builders in `ChatRoutes` (absent at `a139ec62`); see the epic's Open Items.
 
+## PLAN-161 Landing Residue (Amendment 2026-11-14)
+
+- The terminal's ended-work menu and `h) chat` need the same new-entry surface as `PLAN-138` D4, and D1's decision chat address needs the
+  decision envelope's subject id: both in the epic's contract Open Item.
+- Owner of the orphaned old-shape `pm-api` chat types: after deleting `StartChatResource`/`FollowUpProposalResource`, this plan also deletes
+  `control.ChatTurnResource`, `ChatProposalResource`, `ChatScope`, `ChatState`, `ChatRole` and `StartStateResource.chat` with their codecs
+  and tests, if nothing else uses them.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

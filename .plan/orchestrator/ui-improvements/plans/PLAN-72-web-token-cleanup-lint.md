@@ -85,6 +85,12 @@ row is not in the disjointness gate population). When restarted:
   **warnings**; this plan, after the per-view packages, switches them to **errors** and keeps its token and stylelint work.
 - No `{@html}` in the markdown renderer (009).
 
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- `--color-success-subtle` has its own value since `25137445` (`#E9F6EE` light, `#15271D` dark): drop it from this plan's list. The
+  verdict evidence `tokens.css:102-126` shifted (alias line removed, token added at `:88`/`:205`); `ALIASES` in `tokens.test.ts:147-150` is
+  one shorter. `theme-readability.adoc` says success ≥3:1 while the test enforces 4.5:1: align the document.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
