@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +25,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,10 +42,12 @@ import de.planmarshall.api.chat.ChatTurnAccepted;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.RecipePlanId;
@@ -423,10 +427,13 @@ class StartContractTest {
         void epicActs() throws Exception {
             try (var runtime = MockRuntime.start(state("start.epic-adopt"))) {
                 var auth = "Bearer " + runtime.token();
-                var refused = client(runtime).send(HttpRequest.json("POST",
+                var notAdopted = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-7a2e4f01/links/adopt:storage-migration", "{}")
                         .withHeader("Authorization", auth));
-                assertEquals(409, refused.status(), "the ledger cannot be adopted");
+                assertEquals(200, notAdopted.status(),
+                        "a ledger that cannot be adopted is the start's state, not a refused act");
+                assertEquals(StartState.EPIC_ADOPT_FAILED, StartStateResource.fromJson(notAdopted.bodyText()).state(),
+                        "the ledger cannot be adopted");
                 var failed = fetch(runtime, "ent-7a2e4f01");
                 assertEquals(StartState.EPIC_ADOPT_FAILED, failed.state());
                 assertEquals(AdoptionFailureReason.LEDGER_UNREADABLE, failed.adoptionFailure().reason());
@@ -445,6 +452,39 @@ class StartContractTest {
                 assertEquals("relay-hardening",
                         StartStateResource.fromJson(adopted.bodyText()).entry().planId());
             }
+        }
+
+        @Test
+        @DisplayName("an unreadable opening request and a refused act answer the catalogue's codes")
+        void refusalsInTheCataloguesCodes() throws Exception {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
+                var auth = "Bearer " + runtime.token();
+                var unreadable = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/projects/pm-mcp-clients/entries",
+                        JsonTree.write(Map.of("kind", "kind-" + Generators.letterStrings(4, 10).next())))
+                        .withHeader("Authorization", auth));
+                var unknownMode = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/documents_mode:"
+                                + Generators.letterStrings(4, 10).next().toLowerCase(), "{}")
+                        .withHeader("Authorization", auth));
+                var notOffered = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/unknown-" + Generators.letterStrings(4, 10).next(),
+                        "{}")
+                        .withHeader("Authorization", auth));
+
+                assertAll(
+                        () -> assertEquals(ApiErrorCode.INVALID_ARGUMENTS.status(), unreadable.status()),
+                        () -> assertEquals(ApiErrorCode.INVALID_ARGUMENTS, errorOf(unreadable)),
+                        () -> assertEquals(ApiErrorCode.INVALID_ARGUMENTS.status(), unknownMode.status()),
+                        () -> assertEquals(ApiErrorCode.INVALID_ARGUMENTS, errorOf(unknownMode)),
+                        () -> assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE.status(), notOffered.status()),
+                        () -> assertEquals(ApiErrorCode.ACT_NOT_AVAILABLE, errorOf(notOffered)));
+            }
+        }
+
+        private static @Nullable ApiErrorCode errorOf(HttpResponse response) throws IOException {
+            return ApiErrorCode.fromWireOrNull(
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "error"));
         }
 
         @Test

@@ -86,6 +86,18 @@ public record TaskActivity(
         return JsonTree.write(toMap());
     }
 
+    /**
+     * Reads a task's activity from a JSON object.
+     * <p>
+     * The reader is lenient by design: an entry of {@code entries} that is not an object is skipped,
+     * not refused. This is deliberate tolerance of shapes the reader does not know, so a newer runtime
+     * that adds a kind of entry still shows the rest of the activity; it is not an oversight to be
+     * closed. A missing {@code task_id} is still refused.
+     *
+     * @param map the JSON object
+     * @return the task's activity
+     * @throws IOException if the object carries no task id or a nested record is malformed
+     */
     public static TaskActivity fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var taskId = JsonTree.string(map, "task_id");
@@ -128,11 +140,12 @@ public record TaskActivity(
         var gapNum = JsonTree.number(map, "gap_count");
         int gapCount = gapNum != null ? gapNum.intValue() : 0;
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new TaskActivity(
                 taskId,
-                role != null ? role : "implement",
-                harness != null ? harness : "agent",
-                model != null ? model : "default",
+                role,
+                harness,
+                model,
                 attempt,
                 durationSeconds,
                 tokensSoFar,

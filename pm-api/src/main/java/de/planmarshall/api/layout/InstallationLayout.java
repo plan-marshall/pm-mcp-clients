@@ -117,16 +117,14 @@ public final class InstallationLayout {
                     + " is not one of the binaries of an installation (" + CLIENT_BINARY + ", " + OPERATOR_BINARY
                     + ", " + DAEMON_BINARY + ", " + LAUNCHER_BINARY + ")");
         }
+        // a real path with a file name is absolute, so it has a parent; the filesystem root has no name
         var bin = real.getParent();
-        if (bin == null || !BIN_DIRECTORY.equals(bin.getFileName() == null ? null : bin.getFileName().toString())) {
+        if (!BIN_DIRECTORY.equals(String.valueOf(bin.getFileName()))) {
             throw new InstallationLayoutException("The running executable " + binary + " does not lie in a "
                     + BIN_DIRECTORY + "/ directory of an installation");
         }
+        // bin/ has a name, so it is not the filesystem root and has a parent
         var home = bin.getParent();
-        if (home == null) {
-            throw new InstallationLayoutException(
-                    "The running executable " + binary + " lies too high in the filesystem to name an installation");
-        }
         var installRoot = home.getParent();
         if (writableByOthers(bin) || writableByOthers(home) || writableByOthers(installRoot)) {
             throw new InstallationLayoutException("Refusing the installation " + home
@@ -170,8 +168,8 @@ public final class InstallationLayout {
     public static Optional<String> resolveVersion(Path executable) throws IOException {
         Objects.requireNonNull(executable, "executable");
         var bin = realPath(executable).getParent();
-        if (bin == null || !BIN_DIRECTORY.equals(bin.getFileName() == null ? null : bin.getFileName().toString())
-                || bin.getParent() == null) {
+        // a bin/ directory has a name, so it is not the filesystem root and has a parent
+        if (bin == null || !BIN_DIRECTORY.equals(String.valueOf(bin.getFileName()))) {
             return Optional.empty();
         }
         return versionOf(bin.getParent());
@@ -195,7 +193,7 @@ public final class InstallationLayout {
     }
 
     private static Optional<String> versionOf(Path directory) {
-        if (directory == null || directory.getFileName() == null) {
+        if (directory.getFileName() == null) {
             return Optional.empty();
         }
         var name = directory.getFileName().toString();
@@ -345,9 +343,7 @@ public final class InstallationLayout {
         if (version == null) {
             return Optional.of("the installation directory " + home + " is not named by a version");
         }
-        if (installRoot == null) {
-            return Optional.of("the installation directory " + home + " has no installation root");
-        }
+        // resolved from the binary, the home is a named real path, so its parent, the root, exists
         if (Files.isSymbolicLink(installRoot)) {
             return Optional.of(INSTALLATION_ROOT + installRoot + " is a symbolic link");
         }

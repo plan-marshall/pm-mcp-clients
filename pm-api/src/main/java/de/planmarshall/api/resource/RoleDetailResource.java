@@ -306,8 +306,8 @@ public record RoleDetailResource(
             case Short number -> JsonNumber.of(number.longValue());
             case Integer number -> JsonNumber.of(number.longValue());
             case Long number -> JsonNumber.of(number);
-            case Float number -> new JsonNumber(number.toString());
-            case Double number -> new JsonNumber(number.toString());
+            case Float number -> finite(number.doubleValue(), number.toString());
+            case Double number -> finite(number, number.toString());
             case BigDecimal number -> new JsonNumber(number.toPlainString());
             case BigInteger number -> new JsonNumber(number.toString());
             case String text -> text;
@@ -317,6 +317,13 @@ public record RoleDetailResource(
             default -> throw new IllegalArgumentException(
                     "Not a JSON value in configuration_parameters: " + value.getClass().getName());
         };
+    }
+
+    private static JsonNumber finite(double value, String text) {
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException("Not a JSON number in configuration_parameters: " + text);
+        }
+        return new JsonNumber(text);
     }
 
     private static Map<String, Object> asStringMap(Map<?, ?> map) {

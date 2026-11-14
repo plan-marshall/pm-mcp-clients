@@ -217,7 +217,7 @@ public final class MockRuntime implements AutoCloseable {
 
         // 3. Initialize engine
         var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret, config.isRecordActBodies(),
-                config.getTiming());
+                config.getTiming(), config.getScheduler());
 
         // 4. Start Unix domain socket listener
         MockHttpServer unixServer;

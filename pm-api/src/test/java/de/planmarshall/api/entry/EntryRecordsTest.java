@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -44,6 +45,128 @@ class EntryRecordsTest {
     private static final JsonFactory FACTORY = new JsonFactory();
     private static final Instant PAIRED_AT = Instant.parse("2026-05-12T10:00:00Z");
     private static final Instant USED_AT = Instant.parse("2026-10-16T14:02:00Z");
+
+    @Nested
+    @DisplayName("RuntimeEntryResource read from the legacy shape")
+    class RuntimeEntryLegacyShape {
+
+        @Test
+        @DisplayName("should derive both listeners, the host, and onboarding from the legacy members")
+        void shouldDeriveFromLegacyMembers() throws Exception {
+            var port = Generators.integers(1024, 65535).next();
+            var lanPort = Generators.integers(1024, 65535).next();
+            var fingerprint = Generators.nonBlankStrings().next();
+            var host = Generators.nonBlankStrings().next();
+            var paired = Generators.integers(0, 20).next();
+            var json = JsonTree.write(Map.of(
+                    "web", Map.of("enabled", true, "port", port, "lan", true, "lan_port", lanPort,
+                            "lan_fingerprint", fingerprint, "paired_devices_count", paired),
+                    "machine", Map.of("host", host, "onboarded", true)));
+
+            var entry = RuntimeEntryResource.fromJson(json);
+
+            assertEquals(List.of(
+                            new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
+                                    "http://127.0.0.1:" + port, null),
+                            new ListenerResource(ListenerKind.LAN, ListenerState.OPEN, lanPort, null, fingerprint)),
+                    entry.listeners());
+            assertEquals(host, entry.host());
+            assertTrue(entry.onboarded());
+            assertEquals(OnboardingProgress.complete(), entry.onboarding());
+            assertEquals(paired, entry.pairedDevicesCount());
+        }
+
+        @Test
+        @DisplayName("should give a closed LAN listener no fingerprint and an open loopback without port no URL")
+        void shouldKeepClosedListenerWithoutFingerprint() throws Exception {
+            var fingerprint = Generators.nonBlankStrings().next();
+            var json = JsonTree.write(Map.of("web", Map.of("open", true, "lan", false,
+                    "lan_fingerprint", fingerprint)));
+
+            var listeners = RuntimeEntryResource.fromJson(json).listeners();
+
+            assertEquals(List.of(
+                    new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, null, null, null),
+                    new ListenerResource(ListenerKind.LAN, ListenerState.CLOSED, null, null, null)), listeners);
+        }
+
+        @Test
+        @DisplayName("should refuse a legacy port out of range as a malformed member")
+        void shouldRefuseLegacyPortOutOfRange() {
+            var port = Generators.integers(65536, 1_000_000).next();
+            var json = JsonTree.write(Map.of("web", Map.of("open", true, "port", port)));
+
+            assertThrows(JsonFormatException.class, () -> RuntimeEntryResource.fromJson(json));
+        }
+
+        @Test
+        @DisplayName("should read an empty status as not onboarded, without listeners, host, or devices")
+        void shouldReadEmptyStatus() throws Exception {
+            var entry = RuntimeEntryResource.fromJson("{}");
+
+            assertTrue(entry.listeners().isEmpty());
+            assertNull(entry.host());
+            assertFalse(entry.onboarded());
+            assertEquals(OnboardingProgress.notStarted(), entry.onboarding());
+            assertEquals(0, entry.pairedDevicesCount());
+            assertEquals(Set.of("onboarded", "onboard", "listeners", "paired_devices_count"),
+                    entry.toMap().keySet());
+        }
+
+        @Test
+        @DisplayName("should take onboarding as completed from the onboard object's completed flag or state")
+        void shouldReadOnboardedFromOnboardObject() throws Exception {
+            var byFlag = RuntimeEntryResource.fromMap(Map.of("onboard",
+                    Map.of("completed", true)));
+            var byState = RuntimeEntryResource.fromMap(Map.of("onboard",
+                    Map.of("state", "onboard.completed")));
+            var running = RuntimeEntryResource.fromMap(Map.of("onboard",
+                    Map.of("state", Generators.nonBlankStrings().next()), "machine",
+                    Map.of("onboarded", false)));
+
+            assertTrue(byFlag.onboarded());
+            assertTrue(byState.onboarded());
+            assertFalse(running.onboarded());
+        }
+
+        @Test
+        @DisplayName("should take a negative device count of the status as none")
+        void shouldReadNegativeDeviceCountAsNone() throws Exception {
+            var count = Generators.integers(-100, -1).next();
+
+            var entry = RuntimeEntryResource.fromMap(Map.of("paired_devices_count", count));
+
+            assertEquals(0, entry.pairedDevicesCount());
+        }
+
+        @Test
+        @DisplayName("should refuse listeners that are no array of objects and a status that is no object")
+        void shouldRefuseMalformedShapes() throws Exception {
+            var text = Generators.nonBlankStrings().next();
+            var notArray = Map.<String, Object>of("listeners", text);
+            var notObjects = Map.<String, Object>of("listeners", List.of(text));
+
+            assertThrows(JsonFormatException.class, () -> RuntimeEntryResource.fromMap(notArray));
+            assertThrows(JsonFormatException.class, () -> RuntimeEntryResource.fromMap(notObjects));
+            assertThrows(JsonFormatException.class, () -> RuntimeEntryResource.fromJson("[]"));
+            try (JsonParser parser = FACTORY.createParser("[]")) {
+                assertThrows(JsonFormatException.class, () -> RuntimeEntryResource.readFrom(parser));
+            }
+        }
+
+        @Test
+        @DisplayName("should replace absent listeners of a constructed entry and refuse a negative device count")
+        void shouldValidateConstructedEntry() {
+            var count = Generators.integers(-100, -1).next();
+            var progress = OnboardingProgress.notStarted();
+
+            var entry = new RuntimeEntryResource(null, null, null, null, false, progress, null, 0);
+
+            assertTrue(entry.listeners().isEmpty());
+            assertThrows(IllegalArgumentException.class,
+                    () -> new RuntimeEntryResource(null, null, null, null, false, progress, null, count));
+        }
+    }
 
     @Nested
     @DisplayName("ListenerKind")

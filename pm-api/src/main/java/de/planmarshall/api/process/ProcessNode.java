@@ -104,6 +104,19 @@ public record ProcessNode(
         return JsonTree.write(toMap());
     }
 
+    /**
+     * Reads a node from a JSON object.
+     * <p>
+     * The reader is lenient by design: an entry of {@code sub_nodes} or {@code leaf_tasks} that is not
+     * an object, and a link whose value is {@code null}, are skipped, not refused. This is deliberate
+     * tolerance of shapes the reader does not know, so a newer runtime that adds a kind of entry still
+     * shows the rest of the node; it is not an oversight to be closed. A missing {@code node_id} is
+     * still refused.
+     *
+     * @param map the JSON object
+     * @return the node
+     * @throws IOException if the object carries no node id or a nested record is malformed
+     */
     public static ProcessNode fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var nodeId = JsonTree.string(map, "node_id");
@@ -165,11 +178,12 @@ public record ProcessNode(
             }
         }
 
+        // absent members stay null here: the canonical constructor supplies the defaults
         return new ProcessNode(
                 nodeId,
-                title != null ? title : nodeId,
-                kind != null ? kind : "state",
-                state != null ? state : "planned",
+                title,
+                kind,
+                state,
                 runCount,
                 currentRun,
                 durationSeconds,

@@ -43,6 +43,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("DecisionsScenario (UC-PLN-2)")
@@ -374,6 +375,144 @@ class DecisionsScenarioTest {
         }
     }
 
+    @Nested
+    @DisplayName("Refusals in the catalogue's codes")
+    class Refusals {
+
+        @Test
+        @DisplayName("an unknown decision is scope_not_found when read, answered, withdrawn, or interpreted")
+        void unknownDecision() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var unknown = "/api/v1/decisions/Q-" + Generators.integers(500, 999).next();
+                var refusals = List.of(
+                        get(runtime, unknown),
+                        post(runtime, unknown + "/answer", JsonTree.write(Map.of("option", "1"))),
+                        post(runtime, unknown + "/withdraw", "{}"),
+                        post(runtime, unknown + "/interpret", JsonTree.write(Map.of("words", "rebase"))));
+                for (var refusal : refusals) {
+                    assertEquals(404, refusal.status());
+                    assertEquals(ApiErrorCode.SCOPE_NOT_FOUND, ApiErrorCode.fromWireOrNull(errorOf(refusal)),
+                            refusal.bodyText());
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("a body that is no answer object is refused and chooses nothing for the operator")
+        void unreadableAnswer() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var unreadable = post(runtime, "/api/v1/decisions/Q-007/answer",
+                        "{" + Generators.letterStrings(4, 12).next());
+                assertEquals(400, unreadable.status());
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS, ApiErrorCode.fromWireOrNull(errorOf(unreadable)));
+                assertEquals(200, get(runtime, "/api/v1/decisions/Q-007").status(),
+                        "the decision stays open");
+            }
+        }
+
+        @Test
+        @DisplayName("an answer that names no choice is refused and the decision stays open")
+        void answerWithoutChoice() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var noChoice = post(runtime, "/api/v1/decisions/Q-007/answer",
+                        JsonTree.write(Map.of("channel", "cli",
+                                "note", Generators.letterStrings(4, 12).next())));
+
+                assertEquals(400, noChoice.status());
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS, ApiErrorCode.fromWireOrNull(errorOf(noChoice)));
+                assertEquals(200, get(runtime, "/api/v1/decisions/Q-007").status(),
+                        "an answer that chooses nothing leaves the decision open");
+            }
+        }
+
+        @Test
+        @DisplayName("words that are no object are refused, words under own_words are read")
+        void interpretBody() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var unreadable = post(runtime, "/api/v1/decisions/Q-007/interpret",
+                        "[\"" + Generators.letterStrings(4, 12).next() + "\"]");
+                assertEquals(400, unreadable.status());
+                assertEquals(ApiErrorCode.INVALID_ARGUMENTS, ApiErrorCode.fromWireOrNull(errorOf(unreadable)));
+
+                var ownWords = post(runtime, "/api/v1/decisions/Q-007/interpret",
+                        JsonTree.write(Map.of("own_words", "neither, squash it")));
+                assertEquals(200, ownWords.status());
+                assertEquals(InterpretationType.OWN_OPTION,
+                        DecisionInterpretation.fromJson(ownWords.bodyText()).interpretationType());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("The question and plan forms of a decision")
+    class OtherForms {
+
+        @Test
+        @DisplayName("a question is read at its own path and only its answers act answers it")
+        void questionPath() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var read = DecisionEnvelope.fromJson(get(runtime, "/api/v1/questions/Q-007").bodyText());
+                assertEquals("Q-007", read.id());
+
+                var noAct = "/api/v1/questions/Q-007/" + Generators.letterStrings(4, 10).next().toLowerCase();
+                assertEquals(404, post(runtime, noAct, JsonTree.write(Map.of("option", "2"))).status());
+                assertEquals(200, get(runtime, "/api/v1/decisions/Q-007").status(),
+                        "a request that names no answer leaves the question open");
+
+                var option = String.valueOf(Generators.integers(1, 3).next());
+                var answered = post(runtime, "/api/v1/questions/Q-007/answers",
+                        JsonTree.write(Map.of("option", option, "channel", "cli")));
+                assertEquals(200, answered.status());
+                var body = JsonTree.asObject(JsonTree.parse(answered.body()));
+                assertEquals("answered", JsonTree.string(body, "status"));
+                assertEquals(option, JsonTree.string(body, "answer"));
+                assertEquals(404, get(runtime, "/api/v1/questions/Q-007").status());
+            }
+        }
+
+        @Test
+        @DisplayName("serves a plan's decisions at the plan's path and answers one there in own words")
+        void planPath() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var listed = (List<?>) JsonTree.parse(get(runtime, "/api/v1/plans/fix-relay/decisions").body());
+                assertFalse(listed.isEmpty());
+                for (var item : listed) {
+                    assertEquals("fix-relay", ((Map<?, ?>) item).get("plan"));
+                }
+
+                assertEquals("Q-007", DecisionEnvelope.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/decisions/Q-007").bodyText()).id());
+                var words = "words " + Generators.letterStrings(4, 12).next();
+                var answered = post(runtime, "/api/v1/plans/fix-relay/decisions/Q-007/answer",
+                        JsonTree.write(Map.of("words", words, "channel", "cli")));
+                assertEquals(200, answered.status());
+                assertEquals(words, JsonTree.string(JsonTree.asObject(JsonTree.parse(answered.body())), "answer"));
+                assertEquals(404, get(runtime, "/api/v1/plans/fix-relay/decisions/Q-007").status());
+            }
+        }
+
+        @Test
+        @DisplayName("a waiver put off for later stays open and is then declined with its reason")
+        void waiverLaterThenDeclined() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var later = post(runtime, "/api/v1/decisions/WR-2/answer",
+                        JsonTree.write(Map.of("option", "later")));
+                assertEquals(200, later.status());
+                assertEquals("open", JsonTree.string(JsonTree.asObject(JsonTree.parse(later.body())), "status"));
+                assertEquals(200, get(runtime, "/api/v1/decisions/WR-2").status());
+
+                var reason = Generators.letterStrings(4, 12).next();
+                var declined = post(runtime, "/api/v1/decisions/WR-2/answer",
+                        JsonTree.write(Map.of("action", "decline", "reason", reason)));
+                assertEquals(200, declined.status());
+                var body = JsonTree.asObject(JsonTree.parse(declined.body()));
+                assertEquals("declined", JsonTree.string(body, "status"));
+                assertEquals(reason, JsonTree.string(body, "reason"));
+                assertEquals(404, get(runtime, "/api/v1/decisions/WR-2").status());
+            }
+        }
+    }
+
     @Test
     @DisplayName("keeps a decision added at runtime")
     void addedDecision() throws Exception {
@@ -393,6 +532,10 @@ class DecisionsScenarioTest {
                 JsonTree.write(Map.of("words", words)));
         assertEquals(200, response.status());
         return DecisionInterpretation.fromJson(response.bodyText());
+    }
+
+    private static String errorOf(HttpResponse response) throws Exception {
+        return JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error");
     }
 
     private static HttpResponse get(MockRuntime runtime, String path) throws Exception {

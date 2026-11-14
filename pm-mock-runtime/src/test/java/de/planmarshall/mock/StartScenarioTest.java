@@ -734,6 +734,9 @@ class StartScenarioTest {
                         "/api/v1/entries/ent-7a2e4f01/links/adopt:storage-migration", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(409, failed.status());
+                assertEquals("act_not_available",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(failed.bodyText())), "error"),
+                        "an epic that started offers no further adoption");
             }
         }
 

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
 import java.util.List;
 
 
@@ -194,8 +195,8 @@ class ReportsScenarioTest {
                 var refusal = JsonTree.asObject(JsonTree.parse(res.bodyText()));
 
                 assertAll(
-                        () -> assertEquals(422, res.status(), "body: " + body),
-                        () -> assertEquals("report_ids_required", JsonTree.string(refusal, "error"), "body: " + body),
+                        () -> assertEquals(400, res.status(), "body: " + body),
+                        () -> assertEquals("invalid_arguments", JsonTree.string(refusal, "error"), "body: " + body),
                         () -> assertNotNull(JsonTree.string(refusal, "message"), "body: " + body));
             }
 
@@ -226,6 +227,9 @@ class ReportsScenarioTest {
             assertEquals(3, report.deliverables().size());
             assertEquals(1, report.replanningRecords().size());
             assertEquals(2, report.decisionRecords().size());
+            // The mock serves the plan's own start and end times, which the client reads as they are.
+            assertEquals(Instant.parse("2026-10-16T08:40:00Z"), report.startedAt());
+            assertEquals(Instant.parse("2026-10-16T11:20:00Z"), report.endedAt());
 
             assertNotNull(report.tokenUsage());
             assertEquals(412000L, report.tokenUsage().totalTokens());
@@ -296,7 +300,8 @@ class ReportsScenarioTest {
             assertEquals(409, res.status());
 
             var body = JsonTree.asObject(JsonTree.parse(res.body()));
-            assertEquals("plan_running", JsonTree.string(body, "error"));
+            // A running plan does not offer its completion report yet: the catalogue's act_not_available.
+            assertEquals("act_not_available", JsonTree.string(body, "error"));
             assertTrue(JsonTree.string(body, "message").contains("running"));
         }
     }

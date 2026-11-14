@@ -123,6 +123,19 @@ public record ProcessTree(
         return JsonTree.write(toMap());
     }
 
+    /**
+     * Reads a process tree from a JSON object.
+     * <p>
+     * The reader is lenient by design: an entry of {@code nodes} that is not an object, and a
+     * {@code null} entry of {@code current_position_path}, are skipped, not refused. This is deliberate
+     * tolerance of shapes the reader does not know, so a newer runtime that adds a kind of entry still
+     * shows the rest of the tree; it is not an oversight to be closed. A missing {@code plan_id} is
+     * still refused.
+     *
+     * @param map the JSON object
+     * @return the process tree
+     * @throws IOException if the object carries no plan id or a nested record is malformed
+     */
     public static ProcessTree fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var planId = JsonTree.string(map, "plan_id");
@@ -140,9 +153,10 @@ public record ProcessTree(
         if (projObj != null) {
             project = ProcessProjectRef.fromMap(projObj);
         } else {
+            // the flat members follow the reference's own rule: an absent name is the project id
             var projId = JsonTree.string(map, "project_id");
-            var projName = JsonTree.string(map, "project_name");
-            project = new ProcessProjectRef(projId != null ? projId : "project", projName != null ? projName : "Project", null);
+            project = new ProcessProjectRef(projId != null ? projId : "project",
+                    JsonTree.string(map, "project_name"), null);
         }
 
         ProcessEpicRef epic = null;
@@ -152,8 +166,7 @@ public record ProcessTree(
         } else {
             var epicId = JsonTree.string(map, "epic_id");
             if (epicId != null) {
-                var epicTitle = JsonTree.string(map, "epic_title");
-                epic = new ProcessEpicRef(epicId, epicTitle != null ? epicTitle : epicId, null);
+                epic = new ProcessEpicRef(epicId, JsonTree.string(map, "epic_title"), null);
             }
         }
 
@@ -165,13 +178,9 @@ public record ProcessTree(
         var verNum = JsonTree.number(map, "instance_version");
         int instanceVersion = verNum != null ? verNum.intValue() : 1;
 
-        ProcessTokens tokensSoFar = null;
+        // an absent member stays null here: the canonical constructor supplies the defaults
         var tokensObj = JsonTree.asObject(map.get("tokens_so_far"));
-        if (tokensObj != null) {
-            tokensSoFar = ProcessTokens.fromMap(tokensObj);
-        } else {
-            tokensSoFar = new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
-        }
+        var tokensSoFar = tokensObj != null ? ProcessTokens.fromMap(tokensObj) : null;
 
         var nodes = new ArrayList<ProcessNode>();
         if (map.get("nodes") instanceof List<?> list) {
@@ -205,11 +214,11 @@ public record ProcessTree(
 
         return new ProcessTree(
                 planId,
-                title != null ? title : planId,
+                title,
                 project,
                 epic,
-                currentPhase != null ? currentPhase : "execute",
-                phaseState != null ? phaseState : "running",
+                currentPhase,
+                phaseState,
                 activity,
                 needsOperator,
                 instanceVersion,

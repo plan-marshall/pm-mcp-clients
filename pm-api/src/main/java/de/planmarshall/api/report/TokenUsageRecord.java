@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.report;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -17,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -131,21 +131,22 @@ public record TokenUsageRecord(
      *
      * @param map tree map
      * @return parsed token usage record
+     * @throws IOException if a count is a number with a fraction
      */
-    public static TokenUsageRecord fromMap(Map<String, Object> map) {
+    public static TokenUsageRecord fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        long total = getLong(map.get(FIELD_TOTAL_TOKENS));
-        if (total == 0L) total = getLong(map.get("total"));
-        long input = getLong(map.get(FIELD_INPUT_TOKENS));
-        if (input == 0L) input = getLong(map.get("input"));
-        long output = getLong(map.get(FIELD_OUTPUT_TOKENS));
-        if (output == 0L) output = getLong(map.get("output"));
-        long duration = getLong(map.get(FIELD_DURATION_SECONDS));
-        if (duration == 0L) duration = getLong(map.get("duration"));
-        int workers = (int) getLong(map.get(FIELD_WORKERS_COUNT));
-        int models = (int) getLong(map.get(FIELD_MODELS_COUNT));
-        int measured = (int) getLong(map.get(FIELD_TASKS_MEASURED));
-        int tasksTotal = (int) getLong(map.get(FIELD_TASKS_TOTAL));
+        long total = getLong(map, FIELD_TOTAL_TOKENS);
+        if (total == 0L) total = getLong(map, "total");
+        long input = getLong(map, FIELD_INPUT_TOKENS);
+        if (input == 0L) input = getLong(map, "input");
+        long output = getLong(map, FIELD_OUTPUT_TOKENS);
+        if (output == 0L) output = getLong(map, "output");
+        long duration = getLong(map, FIELD_DURATION_SECONDS);
+        if (duration == 0L) duration = getLong(map, "duration");
+        int workers = (int) getLong(map, FIELD_WORKERS_COUNT);
+        int models = (int) getLong(map, FIELD_MODELS_COUNT);
+        int measured = (int) getLong(map, FIELD_TASKS_MEASURED);
+        int tasksTotal = (int) getLong(map, FIELD_TASKS_TOTAL);
         boolean floor = Boolean.TRUE.equals(map.get(FIELD_IS_FLOOR)) || Boolean.TRUE.equals(map.get("floor"));
         var reason = JsonTree.string(map, FIELD_UNMEASURED_REASON);
 
@@ -163,14 +164,15 @@ public record TokenUsageRecord(
     private record CoverageInfo(int workers, int models, int tasksTotal, int measured, @Nullable String reason) {
     }
 
-    private static CoverageInfo parseCoverage(Map<String, Object> map, int workers, int models, int tasksTotal, int measured, @Nullable String reason) {
-        if (map.get("coverage") instanceof Map<?, ?> cm) {
-            if (workers == 0) workers = (int) getLong(cm.get("workers"));
-            if (models == 0) models = (int) getLong(cm.get("models"));
-            if (tasksTotal == 0) tasksTotal = (int) getLong(cm.get("total_tasks"));
-            int unmeasured = (int) getLong(cm.get("unmeasured"));
+    private static CoverageInfo parseCoverage(Map<String, Object> map, int workers, int models, int tasksTotal, int measured, @Nullable String reason) throws IOException {
+        var cm = JsonTree.asObject(map.get("coverage"));
+        if (cm != null) {
+            if (workers == 0) workers = (int) getLong(cm, "workers");
+            if (models == 0) models = (int) getLong(cm, "models");
+            if (tasksTotal == 0) tasksTotal = (int) getLong(cm, "total_tasks");
+            int unmeasured = (int) getLong(cm, "unmeasured");
             if (measured == 0 && tasksTotal > 0) measured = tasksTotal - unmeasured;
-            if (reason == null) reason = JsonTree.string(JsonTree.asObject(cm), "reason");
+            if (reason == null) reason = JsonTree.string(cm, "reason");
         }
         return new CoverageInfo(workers, models, tasksTotal, measured, reason);
     }
@@ -178,14 +180,14 @@ public record TokenUsageRecord(
     private record WasteInfo(List<TokenWasteRecord> list, long totalWaste, int wasteShare) {
     }
 
-    private static WasteInfo parseWaste(Map<String, Object> map) {
+    private static WasteInfo parseWaste(Map<String, Object> map) throws IOException {
         var wasteList = parseWasteRecords(map.get(FIELD_WASTE_RECORDS));
-        long totalWaste = getLong(map.get(FIELD_TOTAL_WASTE_TOKENS));
-        int wasteShare = (int) getLong(map.get(FIELD_WASTE_SHARE_PERCENT));
+        long totalWaste = getLong(map, FIELD_TOTAL_WASTE_TOKENS);
+        int wasteShare = (int) getLong(map, FIELD_WASTE_SHARE_PERCENT);
         return applyLegacyWaste(map.get("waste"), wasteList, totalWaste, wasteShare);
     }
 
-    private static List<TokenWasteRecord> parseWasteRecords(Object wasteObj) {
+    private static List<TokenWasteRecord> parseWasteRecords(Object wasteObj) throws IOException {
         if (!(wasteObj instanceof List<?> wl)) {
             return new ArrayList<>();
         }
@@ -199,35 +201,33 @@ public record TokenUsageRecord(
         return list;
     }
 
-    private static WasteInfo applyLegacyWaste(Object wasteObj, List<TokenWasteRecord> wasteList, long totalWaste, int wasteShare) {
+    private static WasteInfo applyLegacyWaste(Object wasteObj, List<TokenWasteRecord> wasteList, long totalWaste, int wasteShare) throws IOException {
         long effectiveTotal = totalWaste;
         int effectiveShare = wasteShare;
-        if (wasteObj instanceof Map<?, ?> wm) {
-            var wasteMap = JsonTree.asObject(wm);
-            if (wasteMap != null) {
-                if (effectiveTotal == 0L) effectiveTotal = getLong(wasteMap.get("total"));
-                if (effectiveShare == 0) effectiveShare = (int) getLong(wasteMap.get("share_percent"));
-                if (wasteList.isEmpty()) {
-                    populateLegacyWaste(wasteMap, wasteList);
-                }
+        var wasteMap = JsonTree.asObject(wasteObj);
+        if (wasteMap != null) {
+            if (effectiveTotal == 0L) effectiveTotal = getLong(wasteMap, "total");
+            if (effectiveShare == 0) effectiveShare = (int) getLong(wasteMap, "share_percent");
+            if (wasteList.isEmpty()) {
+                populateLegacyWaste(wasteMap, wasteList);
             }
         }
         return new WasteInfo(wasteList, effectiveTotal, effectiveShare);
     }
 
-    private static void populateLegacyWaste(Map<String, Object> wasteMap, List<TokenWasteRecord> wasteList) {
-        long noProductTokens = getLong(wasteMap.get("no_product_tokens"));
-        int noProductTasks = (int) getLong(wasteMap.get("no_product_tasks"));
+    private static void populateLegacyWaste(Map<String, Object> wasteMap, List<TokenWasteRecord> wasteList) throws IOException {
+        long noProductTokens = getLong(wasteMap, "no_product_tokens");
+        int noProductTasks = (int) getLong(wasteMap, "no_product_tasks");
         if (noProductTokens > 0 || noProductTasks > 0) {
             wasteList.add(new TokenWasteRecord("no_product", noProductTokens, 0, noProductTasks, null));
         }
-        long retriesTokens = getLong(wasteMap.get("retries_tokens"));
+        long retriesTokens = getLong(wasteMap, "retries_tokens");
         var retriesCauses = wasteMap.get("retries_causes");
         var retriesCausesStr = retriesCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
         if (retriesTokens > 0) {
             wasteList.add(new TokenWasteRecord("retries", retriesTokens, 0, 1, retriesCausesStr));
         }
-        long remediationTokens = getLong(wasteMap.get("remediation_tokens"));
+        long remediationTokens = getLong(wasteMap, "remediation_tokens");
         var remediationCauses = wasteMap.get("remediation_causes");
         var remediationCausesStr = remediationCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
         if (remediationTokens > 0) {
@@ -236,7 +236,7 @@ public record TokenUsageRecord(
     }
 
 
-    private static List<TokenBreakdownItem> parseBreakdownList(Object listObj) {
+    private static List<TokenBreakdownItem> parseBreakdownList(Object listObj) throws IOException {
         if (!(listObj instanceof List<?> list)) return List.of();
         var result = new ArrayList<TokenBreakdownItem>(list.size());
         for (var elem : list) {
@@ -246,9 +246,7 @@ public record TokenUsageRecord(
         return result;
     }
 
-    private static long getLong(Object obj) {
-        if (obj instanceof JsonNumber jn) return jn.longValue();
-        if (obj instanceof Number n) return n.longValue();
-        return 0L;
+    private static long getLong(Map<String, Object> map, String field) throws IOException {
+        return ReportNumbers.whole(map.get(field), field);
     }
 }

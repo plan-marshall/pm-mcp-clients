@@ -30,10 +30,14 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("ProfileDocumentReader")
 class ProfileDocumentReaderTest {
@@ -51,6 +55,61 @@ class ProfileDocumentReaderTest {
                     "process_markers": [], "ai_agent_prefixes": [], "reaches": [ "command" ] },
                   "identity": { "version_probe": null, "version_pattern": null } }
                 """.formatted(clientId, precedence);
+    }
+
+    private static final String VALID_DETECTION = "\"precedence\": 1, \"primary_signals\": [], \"secondary_signals\": []";
+    private static final String VALID_IDENTITY = "\"version_probe\": null, \"version_pattern\": null";
+
+    /** A document of the client id {@code fixture} with the given members of its identity object. */
+    private static String withIdentity(String identityMembers) {
+        return "{ \"client_id\": \"fixture\", \"detection\": { " + VALID_DETECTION + " }, \"identity\": { "
+                + identityMembers + " } }";
+    }
+
+    /** A document of the client id {@code fixture} with the given members of its detection object. */
+    private static String withDetection(String detectionMembers) {
+        return "{ \"client_id\": \"fixture\", \"detection\": { " + detectionMembers + " }, \"identity\": { "
+                + VALID_IDENTITY + " } }";
+    }
+
+    private static String withSignal(String signalMembers) {
+        return withDetection("\"precedence\": 1, \"secondary_signals\": [], \"primary_signals\": [ { "
+                + signalMembers + " } ]");
+    }
+
+    /** Each document breaks exactly one rule of the closed form; the expectation is the refusal. */
+    static Stream<Arguments> documentsOutsideTheClosedForm() {
+        return Stream.of(
+                Arguments.of("empty input", ""),
+                Arguments.of("document is no object", "[]"),
+                Arguments.of("client_id absent", "{ \"detection\": { " + VALID_DETECTION + " }, \"identity\": { "
+                        + VALID_IDENTITY + " } }"),
+                Arguments.of("client_id is no string", "{ \"client_id\": 7, \"detection\": { " + VALID_DETECTION
+                        + " }, \"identity\": { " + VALID_IDENTITY + " } }"),
+                Arguments.of("identity absent", "{ \"client_id\": \"fixture\", \"detection\": { "
+                        + VALID_DETECTION + " } }"),
+                Arguments.of("identity is no object", "{ \"client_id\": \"fixture\", \"detection\": { "
+                        + VALID_DETECTION + " }, \"identity\": [] }"),
+                Arguments.of("precedence absent", withDetection("\"primary_signals\": [], \"secondary_signals\": []")),
+                Arguments.of("precedence is no integer", withDetection(
+                        "\"precedence\": 1.5, \"primary_signals\": [], \"secondary_signals\": []")),
+                Arguments.of("primary_signals absent", withDetection("\"precedence\": 1, \"secondary_signals\": []")),
+                Arguments.of("secondary_signals absent", withDetection("\"precedence\": 1, \"primary_signals\": []")),
+                Arguments.of("signals are no array", withDetection(
+                        "\"precedence\": 1, \"primary_signals\": {}, \"secondary_signals\": []")),
+                Arguments.of("signal is no object", withDetection(
+                        "\"precedence\": 1, \"primary_signals\": [ \"FIXTURE\" ], \"secondary_signals\": []")),
+                Arguments.of("signal variable absent", withSignal("\"equals\": null")),
+                Arguments.of("signal variable blank", withSignal("\"variable\": \" \", \"equals\": null")),
+                Arguments.of("version_pattern absent", withIdentity("\"version_probe\": null")),
+                Arguments.of("version_probe without pattern", withIdentity(
+                        "\"version_probe\": [ \"fixture\" ], \"version_pattern\": null")),
+                Arguments.of("version_probe is no array", withIdentity(
+                        "\"version_probe\": \"fixture\", \"version_pattern\": \"x\"")),
+                Arguments.of("version_probe holds no string", withIdentity(
+                        "\"version_probe\": [ 1 ], \"version_pattern\": \"x\"")),
+                Arguments.of("version_probe empty", withIdentity("\"version_probe\": [], \"version_pattern\": \"x\"")),
+                Arguments.of("provisional is no boolean", withIdentity(VALID_IDENTITY + ", \"provisional\": \"yes\"")));
     }
 
     /** A class loader whose single classpath entry is an archive with a catalog and its documents. */
@@ -133,6 +192,28 @@ class ProfileDocumentReaderTest {
         void refusesAnEmptyCatalog(@TempDir Path temp) throws Exception {
             try (var loader = archiveOf(temp, "# no documents\n")) {
                 assertThrows(IllegalStateException.class, () -> ProfileDocumentReader.readShippedProfiles(loader));
+            }
+        }
+
+        @Test
+        @DisplayName("refuse a class loader without the catalog")
+        void refusesAMissingCatalog(@TempDir Path temp) throws Exception {
+            try (var loader = new URLClassLoader(new URL[]{temp.toUri().toURL()}, null)) {
+                var thrown = assertThrows(IllegalStateException.class,
+                        () -> ProfileDocumentReader.readShippedProfiles(loader));
+
+                assertTrue(thrown.getMessage().contains("META-INF/pm-api/profiles.index"));
+            }
+        }
+
+        @Test
+        @DisplayName("read a catalog with blank lines, comments, and padded entries")
+        void readsACatalogWithBlankLinesAndComments(@TempDir Path temp) throws Exception {
+            try (var loader = archiveOf(temp, "# shipped\n\n  fixture  \n", "fixture.json", document("fixture", 3))) {
+                var profiles = ProfileDocumentReader.readShippedProfiles(loader);
+
+                assertEquals(List.of("fixture"), profiles.stream().map(ProfileDocumentReader.Profile::clientId)
+                        .toList());
             }
         }
 
@@ -306,6 +387,37 @@ class ProfileDocumentReaderTest {
                       "detection": { "precedence": 1, "primary_signals": [], "secondary_signals": [] },
                       "identity": { "version_pattern": null } }
                     """));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("de.planmarshall.api.host.ProfileDocumentReaderTest#documentsOutsideTheClosedForm")
+        @DisplayName("refuses a document outside the closed form of the two objects")
+        void refusesDocumentOutsideTheClosedForm(String violation, String json) {
+            var thrown = assertThrows(IllegalStateException.class, () -> parse(json));
+
+            assertFalse(thrown.getMessage().isBlank(), violation);
+        }
+
+        @Test
+        @DisplayName("keeps the model source declared for a null or blank model_source")
+        void keepsDeclaredModelSourceForNullOrBlank() {
+            var nullSource = parse(withIdentity("\"version_probe\": null, \"version_pattern\": null, "
+                    + "\"model_source\": null"));
+            var blankSource = parse(withIdentity("\"version_probe\": null, \"version_pattern\": null, "
+                    + "\"model_source\": \" \""));
+
+            assertAll(
+                    () -> assertEquals("declared", nullSource.identity().modelSource()),
+                    () -> assertEquals("declared", blankSource.identity().modelSource()));
+        }
+
+        @Test
+        @DisplayName("skips an unrelated member of a signal")
+        void skipsUnrelatedSignalMember() {
+            var profile = parse(withDetection("\"precedence\": 1, \"secondary_signals\": [], \"primary_signals\": "
+                    + "[ { \"variable\": \"FIXTURE\", \"equals\": null, \"note\": { \"a\": [ 1 ] } } ]"));
+
+            assertEquals(List.of(new HostDetection.Signal("FIXTURE", null)), profile.detection().primarySignals());
         }
 
         @Test

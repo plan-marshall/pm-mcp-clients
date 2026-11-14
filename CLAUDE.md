@@ -32,6 +32,11 @@ holds only what is specific to this repository.
 - Quality gate: `./mvnw verify -Ppre-commit` (rewrites files: licence headers, OpenRewrite recipes, import order;
   review every resulting diff and commit it, then run the full verify again)
 - Full verify: `./mvnw verify`
+- Scoped verify while working in one module: `./mvnw verify -pl <module> -am` (measured against the whole tree's
+  10:20 min: about 1 min for `pm-web-app`, 8 min for `pm-operator`). The full verify and the quality gate stay
+  mandatory before a pull request.
+- Playwright suite: runs only with `-Pe2e` (`./mvnw verify -Pe2e -pl pm-web-e2e -am`, about 7 min); the default
+  build runs lint and the ports guard of `pm-web-e2e` only. Run it locally when `pm-web-app` or `pm-web-e2e` changed.
 - Coverage: `./mvnw verify -Pcoverage` (minimum 80% instruction and branch coverage per module)
 - Integration tests: `./mvnw verify -Pintegration-tests`
 - Native binaries and their integration tests: `./mvnw verify -Pnative,integration-tests` with `GRAALVM_HOME` and
