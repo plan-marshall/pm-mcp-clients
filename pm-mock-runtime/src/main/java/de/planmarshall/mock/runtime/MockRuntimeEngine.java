@@ -473,6 +473,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_ARG_PHASE = "phase";
     private static final String KNOWS_ARG_VERSION = "version";
     private static final String ACTIVITY_RUNNING = "running";
+    private static final String ACTIVITY_PAUSING = "pausing";
     private static final String KEY_PHASE_STATE = "phase_state";
     private static final String KEY_CURRENT_PHASE = "current_phase";
     private static final String KEY_NEW_PHASE = "new_phase";
@@ -1987,32 +1988,64 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         synchronized (controlLock) {
-            if (EventName.PHASE_CHANGED.wire().equals(event)) {
-                var phase = stringMember(payload, KEY_NEW_PHASE);
-                if (phase == null) {
-                    phase = stringMember(payload, KEY_PHASE);
-                }
-                if (phase != null) {
-                    planPhases.put(planId, phase);
-                }
-            } else if (EventName.ACTIVITY_CHANGED.wire().equals(event)) {
-                var activity = stringMember(payload, KEY_ACTIVITY);
-                if (activity != null) {
-                    planActivities.put(planId, activity);
-                }
-            } else if (PlanControlEvent.EVENT_PAUSED.equals(event)) {
-                planActivities.put(planId, "pausing");
-            } else if (PlanControlEvent.EVENT_RESUMED.equals(event)) {
-                planActivities.put(planId, "running");
-            } else if (PlanControlEvent.EVENT_CANCELLED.equals(event) || EventName.SCOPE_ENDED.wire().equals(event)) {
-                planActivities.put(planId, "ended");
-            } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
-                var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
-                if (version != null) {
-                    planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
-                }
+            recordProgressOf(event, payload, planId);
+        }
+    }
+
+    /**
+     * Records one event's contribution to a plan's progress; call under the control lock.
+     *
+     * @param event   the event's name
+     * @param payload the event's payload
+     * @param planId  the plan's id
+     */
+    private void recordProgressOf(String event, Map<String, Object> payload, String planId) {
+        if (EventName.PHASE_CHANGED.wire().equals(event)) {
+            var phase = phaseOf(payload);
+            if (phase != null) {
+                planPhases.put(planId, phase);
+            }
+        } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
+            var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
+            if (version != null) {
+                planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
+            }
+        } else {
+            var activity = activityOf(event, payload);
+            if (activity != null) {
+                planActivities.put(planId, activity);
             }
         }
+    }
+
+    /**
+     * @param payload the event's payload
+     * @return the phase the event names, the typed event's {@code new_phase} or the plain {@code phase}
+     */
+    private static @Nullable String phaseOf(Map<String, Object> payload) {
+        var phase = stringMember(payload, KEY_NEW_PHASE);
+        return phase != null ? phase : stringMember(payload, KEY_PHASE);
+    }
+
+    /**
+     * @param event   the event's name
+     * @param payload the event's payload
+     * @return the activity the event reports or implies, or {@code null} for an event that names none
+     */
+    private static @Nullable String activityOf(String event, Map<String, Object> payload) {
+        if (EventName.ACTIVITY_CHANGED.wire().equals(event)) {
+            return stringMember(payload, KEY_ACTIVITY);
+        }
+        if (PlanControlEvent.EVENT_PAUSED.equals(event)) {
+            return ACTIVITY_PAUSING;
+        }
+        if (PlanControlEvent.EVENT_RESUMED.equals(event)) {
+            return ACTIVITY_RUNNING;
+        }
+        if (PlanControlEvent.EVENT_CANCELLED.equals(event) || EventName.SCOPE_ENDED.wire().equals(event)) {
+            return STATE_ENDED;
+        }
+        return null;
     }
 
     /**
