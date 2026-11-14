@@ -480,6 +480,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_TASKS_TOTAL = "tasks_total";
     private static final String STATE_ENDED = "ended";
     private static final String STATE_MERGED = "merged";
+    private static final String STATE_WAITING_FOR_YOU = "waiting_for_you";
     private static final String KEY_NODES = "nodes";
     private static final String KEY_SUB_NODES = "sub_nodes";
     private static final String KEY_LEAF_TASKS = "leaf_tasks";
@@ -5839,7 +5840,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 CONST_FIX_RELAY,
                 CONST_FIX_RELAY,
                 new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
-                "merged",
+                STATE_MERGED,
                 "the pull request #214 was merged into main",
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
@@ -9638,14 +9639,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         int tasksQueued;
         int activeProjects;
         if (projectFilter != null && !projectFilter.isBlank()) {
-            plansByState = Map.of(ACTIVITY_RUNNING, 2, "waiting_for_you", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 2, STATE_WAITING_FOR_YOU, 1);
             epicsByState = Map.of(ACTIVITY_RUNNING, 1);
             tasksRunning = 2;
             tasksQueued = 3;
             activeProjects = 1;
         } else {
-            plansByState = Map.of(ACTIVITY_RUNNING, 3, "waiting_for_you", 1, "held", 1, "paused", 2);
-            epicsByState = Map.of(ACTIVITY_RUNNING, 1, "waiting_for_you", 1);
+            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, "held", 1, "paused", 2);
+            epicsByState = Map.of(ACTIVITY_RUNNING, 1, STATE_WAITING_FOR_YOU, 1);
             tasksRunning = 4;
             tasksQueued = 6;
             activeProjects = 3;
@@ -10983,7 +10984,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         copy.put(KEY_CURRENT_PHASE, phase);
         copy.put(KEY_PHASE_STATE, phaseState);
-        if ("waiting_for_you".equals(phaseState)) {
+        if (STATE_WAITING_FOR_YOU.equals(phaseState)) {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
         copy.put(KEY_INSTANCE_VERSION, 1);
