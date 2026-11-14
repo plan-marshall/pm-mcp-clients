@@ -75,7 +75,7 @@ class PicocliLanguageTest {
         int code = runWithEnv(Map.of("LC_ALL", "de_DE.UTF-8"), "bogus");
         assertEquals(2, code);
         String errorOutput = err.toString();
-        assertTrue(errorOutput.contains("✗ bogus ist kein Verb. → help listet sie auf."), "Expected refusal line in: " + errorOutput);
+        assertTrue(errorOutput.contains("✗ bogus ist kein Verb. → pm-operator --help listet sie auf."), "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }
@@ -86,7 +86,7 @@ class PicocliLanguageTest {
         int code = runWithEnv(Map.of("LC_ALL", "en_US.UTF-8"), "bogus");
         assertEquals(2, code);
         String errorOutput = err.toString();
-        assertTrue(errorOutput.contains("✗ bogus is not a verb. → help lists them."), "Expected refusal line in: " + errorOutput);
+        assertTrue(errorOutput.contains("✗ bogus is not a verb. → pm-operator --help lists them."), "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }
