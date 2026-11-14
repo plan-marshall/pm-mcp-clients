@@ -28,6 +28,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -62,6 +63,26 @@ class StatusCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    @Test
+    @DisplayName("a project id is one encoded query value in the preliminary status read too")
+    void projectIdIsOneEncodedQueryValue() throws Exception {
+        var project = Generators.letterStrings(3, 8).next() + "&" + Generators.letterStrings(3, 8).next() + "+"
+                            + Generators.letterStrings(3, 8).next();
+        var targets = new CopyOnWriteArrayList<String>();
+        fixture.start((request, response) -> {
+            targets.add(request.target());
+            response.json(200, "{\"project_id\":\"p\"}");
+        });
+
+        int code = execute("status", "--json", "--project", project);
+
+        var status = targets.stream().filter(target -> target.startsWith("/api/v1/status")).toList();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals(List.of("/api/v1/status?project=" + OperatorUrlUtil.encodeQueryValue(project)),
+                                                status, targets.toString()));
     }
 
     @ParameterizedTest(name = "status {0} names the project as one path segment")

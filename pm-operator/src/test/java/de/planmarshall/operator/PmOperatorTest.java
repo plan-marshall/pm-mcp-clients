@@ -528,6 +528,23 @@ class PmOperatorTest {
             assertEquals(PmOperator.EXIT_FAILURE, run("web", "pair"));
         }
 
+        @ParameterizedTest(name = "web pair refuses the answer {0} and shows no made-up code")
+        @ValueSource(strings = {"{}", "{\"code\":\"\"}", "{\"code\":\"   \"}", "{\"url\":\"http://127.0.0.1:7420/pair\"}"})
+        @DisplayName("web pair refuses an answer without a usable code")
+        void pairRefusesAnAnswerWithoutACode(String answer) throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/web/pairings".equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(201, answer);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(PmOperator.EXIT_FAILURE, run("web", "pair", "--label", "my-phone"));
+            assertFalse(out.toString().contains("Pairing code"), out.toString());
+            assertFalse(out.toString().contains("CODE"), out.toString());
+        }
+
         @Test
         @DisplayName("web pair prints URL returned by runtime on ephemeral port rather than default 7420")
         void pairPrintsUrlReturnedByRuntimeOnEphemeralPort() throws Exception {

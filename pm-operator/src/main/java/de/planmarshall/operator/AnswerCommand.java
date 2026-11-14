@@ -155,7 +155,13 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int showDecision(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
-        var qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        HttpResponse qResponse;
+        try {
+            qResponse = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        } catch (IOException _) {
+            // a read that never reached an answer is as unreadable as one the runtime refused
+            return unreadable(out, locale);
+        }
         if (qResponse.status() == 404) {
             out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
             out.flush();
@@ -471,7 +477,13 @@ public final class AnswerCommand implements Callable<Integer> {
      * @return the decision, or {@code null} when the read failed or returned another decision
      */
     private @Nullable DecisionEnvelope readEnvelope(RuntimeClient runtime, String safeQid) throws IOException {
-        var response = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        HttpResponse response;
+        try {
+            response = runtime.send(HttpRequest.get(resolveDecisionPath(safeQid)));
+        } catch (IOException _) {
+            // the submission is not part of this catch: a failed write is not "nothing was sent"
+            return null;
+        }
         if (response.status() == 404) {
             throw new OperatorRefusedException("answer " + questionId, response);
         }

@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -231,6 +232,25 @@ class CleanupCommandTest {
                             () -> assertFalse(output.contains("durations"), output),
                             () -> assertFalse(output.contains("Removed by itself"), output),
                             () -> assertFalse(output.contains("temporary files"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("a durations object that leaves a member out is malformed and shows no default as the runtime's figure")
+    void partialDurationsAreRefused() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var partial = new LinkedHashMap<>(CleanupDurations.defaults().toMap());
+        partial.remove("logs_after_days");
+        var body = Map.<String, Object>of("open", false, "next_check_at", "tomorrow 03:00", "durations", partial);
+        fixture.start((request, response) -> response.json(200, JsonTree.write(body)));
+
+        int code = execute("cleanup");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertNotEquals(0, code, output),
+                            () -> assertFalse(output.contains("durations 30 days"), output),
+                            () -> assertTrue(err.toString().contains("logs_after_days"), err.toString())
         );
     }
 
@@ -704,6 +724,37 @@ class CleanupCommandTest {
                             () -> assertEquals(0, accepted),
                             () -> assertEquals(1, puts.get()),
                             () -> assertTrue(out.toString().contains("✓ 2 items go back to the cleanup"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("cleanup --release --all without a terminal is refused by the act gate and sends nothing")
+    void cleanupReleaseAllWithoutATerminalIsRefused() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var keptJson = """
+                            [
+                              {"id": "token-usage", "kind": "plan", "title": "token-usage", "how": "exclude", "kept_at": "13 Oct", "who": "the console"}
+                            ]
+                            """;
+        var puts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("PUT".equals(request.method())) {
+                puts.incrementAndGet();
+                response.json(200, "[]");
+            } else {
+                response.json(200, keptJson);
+            }
+        });
+        var context = new OperatorContext(fixture.environment(), tempDir, false);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                            "cleanup", "--release", "--all");
+
+        assertAll(
+                            () -> assertEquals(4, code, err.toString()),
+                            () -> assertEquals(0, puts.get()),
+                            () -> assertTrue(err.toString().contains("not attached to an interactive terminal"),
+                                                err.toString())
         );
     }
 

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
  * The machine settings of the terminal (UC-ONB-10): the settings screen, the withdrawal of a
  * remembered consent, and the documents mode with the concurrent-change conflict.
  */
+@EnableGeneratorController
 @DisplayName("config settings, consents, and documents")
 class ConfigSettingsTest {
 

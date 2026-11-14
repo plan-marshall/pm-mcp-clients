@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -173,6 +174,23 @@ class PmConsoleEventsTest {
             var console = new PmConsole(context(rendered));
             console.enterFullScreen();
             console.applyConsoleEvent("report.sent", Map.of("count", count, "scope", "pm-mcp-clients"), reader);
+            var printed = new StringWriter();
+            console.leaveFullScreen(new PrintWriter(printed));
+            assertTrue(printed.toString().contains(count + " new reports"), printed.toString());
+        }
+    }
+
+    @Test
+    @DisplayName("a report count that arrives serialized, as the stream delivers it, is summarized with that count")
+    void aSerializedReportCountIsSummarized() throws Exception {
+        var count = Generators.integers(2, 50).next();
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var console = new PmConsole(context(rendered));
+            console.enterFullScreen();
+            console.handleSseEvent(new SseEvent("report.sent",
+                                "{\"count\":" + count + ",\"scope\":\"pm-mcp-clients\"}", "1"), reader);
             var printed = new StringWriter();
             console.leaveFullScreen(new PrintWriter(printed));
             assertTrue(printed.toString().contains(count + " new reports"), printed.toString());

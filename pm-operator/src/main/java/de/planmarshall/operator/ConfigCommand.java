@@ -721,7 +721,7 @@ public final class ConfigCommand implements Callable<Integer> {
             while (true) {
                 String line;
                 try {
-                    line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of()));
+                    line = reader.readLine(MessageCatalogue.format(locale, APPLY_AGAIN, Map.of("keep", keep)));
                 } catch (EndOfFileException _) {
                     line = null;
                 }

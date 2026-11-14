@@ -1002,7 +1002,7 @@ public final class PlanCommand implements Callable<Integer> {
             var by = decision.by();
             var channel = decision.channel();
             if ("operator".equals(by) && (channel == null || channel.isBlank())) {
-                return "you";
+                return MessageCatalogue.format(locale, "operator.actions.chat.you", Map.of());
             }
             return MessageCatalogue.format(locale, "report.completion.decision_by", Map.of(
                                 "by", ConsoleNotice.stripControlSequences(by),

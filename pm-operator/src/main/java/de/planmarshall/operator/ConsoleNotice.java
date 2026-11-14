@@ -16,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorKind;
@@ -434,7 +435,7 @@ public final class ConsoleNotice {
     static String formatOperatorWait(String locale, String scope, @Nullable String detail, boolean epic) {
         return BULLET + MessageCatalogue.format(locale, epic ? "operator.console.notice.operator_wait.epic"
                                                 : "operator.console.notice.operator_wait",
-                            Map.of("name", TerminalSanitizer.sanitizeLine(scope), "what", TerminalSanitizer.sanitize(detail)));
+                            Map.of("name", TerminalSanitizer.sanitizeLine(scope), "what", TerminalSanitizer.sanitizeLine(detail)));
     }
 
     /**
@@ -717,6 +718,24 @@ public final class ConsoleNotice {
     }
 
     /**
+     * Reads a count the runtime sent: the parsed event tree carries its numbers as {@link JsonNumber}.
+     *
+     * @param value the count, or {@code null}
+     * @return the count clamped to the whole numbers of an {@code int}, or {@code 0} when the value is no
+     *         whole number
+     */
+    static int wholeCount(@Nullable Object value) {
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return Math.clamp(jsonNumber.longValue(), 0, Integer.MAX_VALUE);
+            } catch (NumberFormatException _) {
+                return 0;
+            }
+        }
+        return value instanceof Number number ? Math.clamp(number.longValue(), 0, Integer.MAX_VALUE) : 0;
+    }
+
+    /**
      * Formats a quiet notice for an incoming report pushed over SSE.
      *
      * @param locale the interface locale
@@ -724,10 +743,11 @@ public final class ConsoleNotice {
      * @return formatted quiet notice string
      */
     public static @Nullable String formatReportNotice(String locale, Map<String, Object> event) {
-        if (event.containsKey(COUNT) && event.get(COUNT) instanceof Number num && num.intValue() > 1) {
+        var count = wholeCount(event.get(COUNT));
+        if (count > 1) {
             var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
-                                Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitizeLine(scope)));
+                                Map.of(COUNT, count, SCOPE, TerminalSanitizer.sanitizeLine(scope)));
         }
         var id = String.valueOf(event.getOrDefault(ID, ""));
         var subject = stringOf(event, SUBJECT);

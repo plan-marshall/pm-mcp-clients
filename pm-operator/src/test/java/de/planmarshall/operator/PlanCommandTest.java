@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -443,6 +444,25 @@ class PlanCommandTest {
                                 () -> assertTrue(output.contains("Q-3 (withdrawn)"), output),
                                 () -> assertTrue(output.contains("Q-4 (you, web)"), output),
                                 () -> assertFalse(output.contains("delegated"), output));
+        }
+
+        @Test
+        @DisplayName("names an operator decision without a channel in the interface language")
+        void operatorDecisionWithoutChannelInGerman() throws Exception {
+            var path = "/api/v1/plans/" + planId + "/completion";
+            serve(path, "{\"plan_id\":\"" + planId + "\",\"outcome\":\"merged\","
+                                + "\"decisions\":[{\"id\":\"Q-9\",\"by\":\"operator\"}]}");
+            var env = new HashMap<>(fixture.environment());
+            env.put("LC_ALL", "de_DE.UTF-8");
+            var context = new OperatorContext(env, tempDir, true);
+
+            int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                "plan", "report", planId);
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("Q-9 (du)"), out.toString()),
+                                () -> assertFalse(out.toString().contains("(you)"), out.toString()));
         }
 
         @Test

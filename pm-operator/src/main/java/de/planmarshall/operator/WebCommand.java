@@ -190,7 +190,12 @@ public final class WebCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 201) {
                 var json = JsonTree.asObject(JsonTree.parse(response.body()));
-                var code = json != null && json.get("code") instanceof String c ? c : "CODE";
+                // only the runtime issues a code: an answer without one is refused, never shown as a made-up code
+                if (json == null || !(json.get("code") instanceof String issued) || issued.isBlank()) {
+                    throw new IOException(MessageCatalogue.format(localeFor(context), "operator.entry.no_code",
+                                        Map.of("status", response.status())));
+                }
+                var code = issued;
                 var url = json != null && json.get("url") instanceof String u && !u.isBlank()
                                     ? u
                                     : LOOPBACK_URL_PREFIX + DEFAULT_PORT + "/pair#code=" + code;

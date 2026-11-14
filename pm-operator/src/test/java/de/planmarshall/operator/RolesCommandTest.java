@@ -357,9 +357,12 @@ class RolesCommandTest {
     void confirmationLeft(String input) throws Exception {
         var server = fixture.start((request, response) -> response.json(200, detail("implementer").toJson()));
 
-        assertEquals(1, execute(input, "roles", "qualify", "implementer"));
+        assertEquals(3, execute(input, "roles", "qualify", "implementer"));
 
-        assertEquals(1, server.requests().size(), "no qualification request may be sent");
+        assertAll(
+                            () -> assertEquals(1, server.requests().size(), "no qualification request may be sent"),
+                            () -> assertFalse(out.toString().contains("Qualification was not run."), out.toString())
+        );
     }
 
     @Test

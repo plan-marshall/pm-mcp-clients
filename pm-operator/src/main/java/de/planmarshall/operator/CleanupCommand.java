@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
@@ -282,8 +283,16 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int releaseAll(PrintWriter out, RuntimeClient runtime, int keptCount) throws IOException {
-        if (!yes && !confirmReleaseAll(out, keptCount)) {
-            return noInput ? 3 : 0;
+        if (!yes) {
+            if (noInput) {
+                // a release that nothing can answer sends nothing: the question and its option, exit code 3
+                // (a run without a terminal never gets here: the act gate refused it first)
+                printReleaseAllNeedsChoice(out, keptCount);
+                return 3;
+            }
+            if (!confirmReleaseAll(out, keptCount)) {
+                return 0;
+            }
         }
         var putBody = JsonTree.write(Map.of("item_ids", List.of()));
         var res = runtime.send(HttpRequest.put(KEPT_API).withBody(putBody));
@@ -347,9 +356,8 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     /**
-     * Asks the one confirmation of {@code --release --all} ({@code 26-cleanup.adoc#t-kept}): with
-     * {@code --no-input} it names the question and the option that answers it, and otherwise asks
-     * {@code y}/{@code n} on the interactive terminal the operator checks require.
+     * Asks the one confirmation of {@code --release --all} ({@code 26-cleanup.adoc#t-kept}) with
+     * {@code y}/{@code n} on the interactive terminal; a run without one never reaches it.
      *
      * @param out   the verb's writer
      * @param count how many items are kept
@@ -358,15 +366,16 @@ public final class CleanupCommand implements Callable<Integer> {
     private boolean confirmReleaseAll(PrintWriter out, int count) {
         var locale = context.clientEnvironment().locale();
         var question = MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of(COUNT_PARAM, count));
-        if (noInput) {
-            out.println(question);
-            out.println("Needs a choice: --yes");
-            out.flush();
-            return false;
-        }
         var consent = prompts.create(CONFIRM_STATE, cleanupLabel(locale), out);
         consent.title(question);
         return consent.askConsent();
+    }
+
+    private void printReleaseAllNeedsChoice(PrintWriter out, int count) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.kept.confirm_all",
+                            Map.of(COUNT_PARAM, count)));
+        out.println("Needs a choice: --yes");
+        out.flush();
     }
 
     private void printReleased(PrintWriter out, int count) {
@@ -708,7 +717,16 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private static @Nullable CleanupDurations durationsOf(Map<String, Object> state) throws IOException {
         var object = JsonTree.asObject(state.get("durations"));
-        return object != null ? CleanupDurations.fromMap(object) : null;
+        if (object == null) {
+            return null;
+        }
+        // a durations object that leaves a member out is malformed: no default is shown as the runtime's figure
+        for (var member : CleanupDurations.defaults().toMap().keySet()) {
+            if (object.get(member) == null) {
+                throw new JsonFormatException("durations misses " + member + " in the cleanup state");
+            }
+        }
+        return CleanupDurations.fromMap(object);
     }
 
     private static List<CleanupResidue> residuesOf(Map<String, Object> state) throws IOException {

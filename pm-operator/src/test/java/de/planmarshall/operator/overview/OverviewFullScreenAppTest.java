@@ -568,6 +568,24 @@ class OverviewFullScreenAppTest {
     }
 
     @Test
+    @DisplayName("switching the project view with the help open replaces the level, never stacks a second one")
+    void switchingTheViewWithHelpOpenKeepsTheDepth() throws Exception {
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.loadInitialData(createContext(virtual).runtime(false));
+        var handler = app.keyHandler();
+        app.stack().select("pm-mcp-clients");
+        assertTrue(handler.handle(TuiKeyAction.OPEN));
+        var depth = app.stack().depth();
+        assertTrue(handler.handle(TuiKeyAction.HELP));
+
+        assertTrue(handler.handle(TuiKeyAction.SWITCH_VIEW));
+
+        assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+        assertEquals(depth, app.stack().depth());
+    }
+
+    @Test
     @DisplayName("keyHandler covers view switching, jump to epic, and drill-down")
     void keyHandlerViewsAndDrillDown() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
@@ -606,6 +624,25 @@ class OverviewFullScreenAppTest {
         // (coverage-fix: drillDownWorkItem refused plan; it opened a made-up plan level before).
         assertTrue(handler.handle(TuiKeyAction.OPEN));
         assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
+                            app.buildScreen().rows().getLast().line().trim());
+    }
+
+    @Test
+    @DisplayName("an ended plan whose process the runtime refuses opens nothing and names the refusal on the status line")
+    void endedPlanRefusalIsNamed() throws Exception {
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        app.loadInitialData(createContext(virtual).runtime(false));
+        var handler = app.keyHandler();
+        app.stack().select("pm-mcp-clients");
+        assertTrue(handler.handle(TuiKeyAction.OPEN));
+        assertTrue(handler.handle(TuiKeyAction.ENDED));
+        app.stack().select("pln-relay-drops");
+
+        assertTrue(handler.handle(TuiKeyAction.OPEN));
+
+        assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         assertEquals(ErrorTexts.title("en", "not_found") + " " + ErrorTexts.cause("en", "not_found"),
                             app.buildScreen().rows().getLast().line().trim());
     }

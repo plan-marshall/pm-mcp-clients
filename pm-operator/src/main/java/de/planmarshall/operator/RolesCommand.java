@@ -345,7 +345,12 @@ public final class RolesCommand implements Callable<Integer> {
                     out.flush();
                     return 3;
                 }
-                if (!confirm(out, locale)) {
+                var consent = confirm(out, locale);
+                if (consent == Consent.LEFT) {
+                    // leaving the confirmation is no answer: nothing was run and nothing is declined
+                    return 3;
+                }
+                if (consent == Consent.NO) {
                     out.println(text(locale, "operator.roles.qualify.declined"));
                     out.flush();
                     return 1;
@@ -384,6 +389,9 @@ public final class RolesCommand implements Callable<Integer> {
             throw new OperatorRefusedException("roles qualify " + safeRole, response);
         }
 
+        /** The answers of the qualification's confirmation: yes, an explicit no, or leaving it unanswered. */
+        private enum Consent {YES, NO, LEFT}
+
         /**
          * Asks the confirmation as every consent is asked ({@code 03-dialogues.adoc#keys}):
          * {@code y}/{@code n} in the interface language ({@code j}/{@code n} in German), an empty or
@@ -393,9 +401,9 @@ public final class RolesCommand implements Callable<Integer> {
          *
          * @param out    the verb's writer
          * @param locale the interface locale
-         * @return {@code true} when the qualification may run
+         * @return the answer: yes, an explicit no, or the confirmation left unanswered
          */
-        private boolean confirm(PrintWriter out, String locale) throws IOException {
+        private Consent confirm(PrintWriter out, String locale) throws IOException {
             var yesKey = locale.toLowerCase(Locale.ROOT).startsWith("de") ? "j" : "y";
             var prompt = text(locale, "operator.roles.qualify.confirm") + "  "
                                 + text(locale, "operator.dialogue.consent.prompt_yn") + " › ";
@@ -409,14 +417,17 @@ public final class RolesCommand implements Callable<Integer> {
                         // The interrupt is the exit-code table's 130, not a declined confirmation.
                         throw new StartPrompt.InterruptException();
                     } catch (EndOfFileException _) {
-                        return false;
+                        return Consent.LEFT;
                     }
                     var answer = line.trim();
                     if (yesKey.equalsIgnoreCase(answer)) {
-                        return true;
+                        return Consent.YES;
                     }
-                    if ("n".equalsIgnoreCase(answer) || ChoicePrompt.isLeave(locale, answer)) {
-                        return false;
+                    if ("n".equalsIgnoreCase(answer)) {
+                        return Consent.NO;
+                    }
+                    if (ChoicePrompt.isLeave(locale, answer)) {
+                        return Consent.LEFT;
                     }
                     out.println(MessageCatalogue.format(locale, answer.isEmpty()
                                                             ? "operator.dialogue.consent.type_yn" : "operator.dialogue.not_offered",

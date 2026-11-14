@@ -854,9 +854,9 @@ public final class PmConsole {
 
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
         var payload = ConsoleNotice.payloadOf(eventMap);
-        if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && payload.get("count") instanceof Number number && number.intValue() > 1) {
-            return Math.min(number.intValue(), 10_000);
+        var count = ConsoleNotice.wholeCount(payload.get("count"));
+        if (category == ConsoleNoticeBuffer.Category.REPORT && count > 1) {
+            return Math.min(count, 10_000);
         }
         return 1;
     }

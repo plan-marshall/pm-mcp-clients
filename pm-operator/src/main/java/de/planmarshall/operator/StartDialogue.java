@@ -588,7 +588,7 @@ final class StartDialogue {
         // may have been changed, so an answer that names none is a broken contract, never a start
         // to announce under a guessed or an empty name.
         var name = created != null ? created.planId() : null;
-        if (name == null) {
+        if (name == null || name.isBlank()) {
             throw new JsonFormatException("The runtime's answer to create names no " + kind.wireValue() + " id");
         }
         prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(name)));

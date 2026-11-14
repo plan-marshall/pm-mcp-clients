@@ -377,7 +377,7 @@ final class DecompositionSupport {
 
     /**
      * Prints the read-back of the words, old against new: the plan the words named, else the plan
-     * they added; words that named and added no plan (a rewrite of the cut) show the cut again.
+     * they added; words that named no plan and added none or several (a rewrite of the cut) show the cut again.
      *
      * @param out    the writer
      * @param locale the interface locale
@@ -388,7 +388,7 @@ final class DecompositionSupport {
     static void printReadBack(PrintWriter out, String locale, EpicDecomposition before, EpicDecomposition after,
                         @Nullable String planId) {
         var target = planId != null ? planId : addedPlanId(before, after);
-        if (target == null) {
+        if (target == null || planId == null && addedPlanCount(before, after) > 1) {
             printTree(out, locale, after);
             return;
         }
@@ -423,6 +423,18 @@ final class DecompositionSupport {
         var label = MessageCatalogue.format(locale, labelKey, Map.of());
         out.printf("  - %-14s %s%n", label, OutputSafety.stripControlSequences(oldValue));
         out.printf("  + %-14s %s%n", label, OutputSafety.stripControlSequences(newValue));
+    }
+
+    private static int addedPlanCount(EpicDecomposition before, EpicDecomposition after) {
+        var count = 0;
+        for (var workstream : after.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                if (before.plan(plan.planId()) == null) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static @Nullable String addedPlanId(EpicDecomposition before, EpicDecomposition after) {

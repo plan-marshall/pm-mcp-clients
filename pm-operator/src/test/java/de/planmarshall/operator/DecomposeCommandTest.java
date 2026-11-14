@@ -200,7 +200,7 @@ class DecomposeCommandTest {
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains("Epic ep-001 not found."), out.toString()),
-                            () -> assertTrue(targets.stream().noneMatch(target -> target.contains("/decomposition/")),
+                            () -> assertTrue(targets.stream().noneMatch(target -> target.contains("/decomposition")),
                                                 targets.toString())
         );
     }
@@ -469,6 +469,32 @@ class DecomposeCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(output.contains("relay-hardening · decomposition"), output),
                             () -> assertTrue(output.contains("WS-1  Reconnect"), output),
+                            () -> assertFalse(output.contains("old against new"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("a rewrite that adds several plans shows the whole cut, not only the first added plan")
+    void rewriteAddingSeveralPlansShowsTheCut() throws Exception {
+        var first = Generators.letterStrings(6, 12).next().toLowerCase();
+        var second = first + "x";
+        var extra = "{\"plan_id\":\"%s\",\"title\":\"t\",\"objective\":\"o\",\"expected_surface\":[],"
+                            + "\"dependencies\":[],\"status\":\"new\"}";
+        var after = CUT_PASSING.replace("\"status\":\"staged\"}]}]",
+                            "\"status\":\"staged\"}," + extra.formatted(first) + "," + extra.formatted(second) + "]}]");
+        fixture.start((request, response) -> {
+            if (!answersEpic(request, response)) {
+                response.json(200, request.target().endsWith("/instruct") ? after : CUT_PASSING);
+            }
+        });
+
+        var code = execute("epic", "instruct", "ep-001", "--action", "rewrite", "--instruction", "split it");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains(first), output),
+                            () -> assertTrue(output.contains(second), output),
                             () -> assertFalse(output.contains("old against new"), output)
         );
     }

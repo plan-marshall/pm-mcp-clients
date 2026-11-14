@@ -519,7 +519,7 @@ final class StatusCommand implements Callable<Integer> {
     private Map<String, Object> fetchProjectStatus() throws IOException {
         var path = RuntimeClient.STATUS_PATH;
         if (project != null && !".".equals(project)) {
-            path += "?project=" + project;
+            path += "?project=" + OperatorUrlUtil.encodeQueryValue(project);
         }
         var response = context.runtime(false).send(HttpRequest.get(path));
         if (response.status() != 200) {

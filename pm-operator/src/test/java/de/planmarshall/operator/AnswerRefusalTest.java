@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Every response is checked before the dialogue prints success, and the nouns of the result lines
@@ -245,6 +246,28 @@ class AnswerRefusalTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
                             () -> assertFalse((out.toString() + err).contains("HTTP " + status), out + " " + err),
+                            () -> assertTrue(posted.isEmpty(), posted.toString()));
+    }
+
+    @ParameterizedTest(name = "a first read that never reaches an answer, for {0}")
+    @ValueSource(strings = {"answer Q-001 --no-input", "answer Q-001 1", "answer Q-001 later"})
+    @DisplayName("a transport failure on the first read is as unreadable as a refused one: the line, exit 1, nothing sent")
+    void transportFailureOnTheFirstReadIsUnreadable(String command) throws Exception {
+        var posted = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.raw("this is no http response\r\n\r\n");
+            } else {
+                posted.add(request.target());
+                response.json(200, "{\"ok\":true}");
+            }
+        });
+
+        var code = run("en", new byte[0], command.split(" "));
+
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
                             () -> assertTrue(posted.isEmpty(), posted.toString()));
     }
 

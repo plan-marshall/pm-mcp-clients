@@ -2391,6 +2391,9 @@ public final class OverviewFullScreenApp {
         private void replaceProjectLevel(ProjectDetailResponse detail, boolean byEpic, @Nullable String selectId) {
             var currentFilter = stack.filter();
             var newLevelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
+            // back() closes an open help overlay or clears a filter before it pops: both go first,
+            // so the project level is replaced, never stacked twice
+            stack.closeHelp();
             stack.filter("");
             stack.back();
             stack.push(newLevelModel.level(locale), newLevelModel.rows(locale, clock, stack.helpVisible()), selectId);
@@ -2535,10 +2538,15 @@ public final class OverviewFullScreenApp {
                                 item.outcome() != null ? item.outcome() : "completed",
                                 item.reason(),
                                 OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock));
+            // an ended plan the runtime refuses opens nothing: the level stays and names the refusal
+            LoadRefusal refusal;
             try {
-                openPlan(context.runtime(true), item.id(), endedInfo);
+                refusal = readPlan(context.runtime(true), item.id(), endedInfo);
             } catch (IOException _) {
-                // best effort
+                refusal = LoadRefusal.unreachable(locale, PLAN_LEVEL);
+            }
+            if (refusal != null) {
+                statusMessage = refusal.line();
             }
         }
 
@@ -2690,6 +2698,7 @@ public final class OverviewFullScreenApp {
             }
             if (belowIsProject(TuiLevel.Kind.PROJECT_BY_PLAN, view.projectId())) {
                 stack.back();
+                refreshPoppedLevel();
                 return;
             }
             openProject(runtime, view.projectId(), false, null);
@@ -2704,6 +2713,7 @@ public final class OverviewFullScreenApp {
             // level below the plan.
             if (belowIsEpic(view.epicId())) {
                 stack.back();
+                refreshPoppedLevel();
                 return;
             }
             if (openEpicView(view.epicId())) {
@@ -2713,6 +2723,7 @@ public final class OverviewFullScreenApp {
             // project's view by epic.
             if (belowIsProject(TuiLevel.Kind.PROJECT_BY_EPIC, view.projectId())) {
                 stack.back();
+                refreshPoppedLevel();
                 return;
             }
             openProject(runtime, view.projectId(), true, view.epicId());

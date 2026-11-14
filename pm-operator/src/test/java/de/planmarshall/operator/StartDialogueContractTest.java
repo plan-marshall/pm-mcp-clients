@@ -46,6 +46,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The starting dialogue against answers of the start contract the mock runtime does not stage: a
@@ -114,14 +116,16 @@ class StartDialogueContractTest {
                             () -> assertFalse(outcome.rendered().contains(machineRecipe), outcome.rendered()));
     }
 
-    @Test
-    @DisplayName("an answer to create that names no work is refused, never announced under a guessed name")
-    void createAnswerWithoutAnIdIsRefused() throws Exception {
+    @ParameterizedTest(name = "an answer to create with the id \"{0}\"")
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "   "})
+    @DisplayName("an answer to create that names no work, or a blank one, is refused, never announced under a guessed name")
+    void createAnswerWithoutAnIdIsRefused(@Nullable String answeredId) throws Exception {
         var requested = Generators.letterStrings(4, 12).next();
         var title = Generators.letterStrings(4, 12).next();
         var ready = state(entry(StartState.READY, requested, List.of(described())),
                             StartReadyResource.ofPlan(title, requested, null), List.of());
-        var nameless = state(entry(StartState.READY, null, List.of(described())), null, List.of());
+        var nameless = state(entry(StartState.READY, answeredId, List.of(described())), null, List.of());
         var outcome = run((request, response) -> response.json(200,
                                                 (ENTRY_TARGET + "/links/create").equals(request.target())
                                                                     ? nameless.toJson() : ready.toJson()),
