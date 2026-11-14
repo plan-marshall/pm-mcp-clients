@@ -288,6 +288,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Decisions
 
+- 2026-11-14 (operator, `analyze` of `analyze-fix-build-time-002.md` / `-003.md`, deferred items of #435 and #436): the tests-only items fold into
+  PLAN-79 (Generators sweep, parameterize, the two console-settings transcripts, a `refreshPoppedLevel()` test; its surface gains the two transcript
+  files; the sweep is PLAN-79's own work, so it is not duplicated in a second plan); the main-code and web items go to ONE new plan, **PLAN-165** `derive-lists-from-one-definition` (WS-05, runbook: the offered keys of
+  `EpicDecompositionDialogue`, `CleanupCommand.durationsText` from `CleanupKind`, one refresh-event set per web stream; deliverable 2 waits for PLAN-30;
+  #436 merged as `83d9d150`, so nothing unmerged blocks it). The Sonar coverage exclusion is NOT in it: Watch below, the operator decides the threshold first.
+  Message 001's open decisions stand routed, none is left open: items 1 (chat fixture on `ChatRegistry`) in PLAN-140, 2 and 3 (`AnswerCommand`, cleanup
+  catalogue copies) in the PLAN-30 mailbox, 4 (`!`) decided (above), 5 and 10 (chat events, route-table rows) in PLAN-135, 8 in PLAN-79, 9 in PLAN-149;
+  6 (parent-POM recipe) and 7 (coverage profiles, documentation) stay Watches with owners outside this repository.
+
 - 2026-11-14 (operator, `analyze-fix-build-time` finding #432): `!` on a needs item runs exactly the command the row prints — for a
   plan's hold, failed landing and condition it opens nothing in the full screen. One rule; no subject-specific opening.
 
@@ -657,6 +666,11 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
+- `analyze-fix-build-time-002` item 9 (2026-11-14), owner plan-marshall (runbook lane): when a branch is split into several pull requests
+  (#432 -> #434, #435, #436: too large for CodeRabbit at 226 files and for Sourcery at 20,000 lines), CodeRabbit's free quota can run out while a
+  later part waits; one review per pull request is the merge rule, so that part waits for the reset (about 30 minutes). The lane has no quota-aware
+  order of the parts. Not an epic plan; ledger only. Check at the next split landing (memory: split large PRs, wait out the quota).
+
 - PLAN-126 (2026-11-12), owner plan-marshall (runbook lane), **recurring in three landings in a row** (PLAN-159, PLAN-32, PLAN-126): the
   lane reports every review-body item handled while body-only items (outside-diff, nitpick, "additional comments") have no reply and
   some are not fixed; the PR body's counts are written once and go stale. The lane must reply on the PR to each body item and re-read the
@@ -878,6 +892,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   documentation (`project-setup.adoc`) should say to run them separately — owner plan-marshall-documentation; PLAN-79 measures with
   `-Pcoverage` alone. Routed: PLAN-30 mailbox (answer fail-closed read, cleanup key), PLAN-140 (role_unqualified rebuild), PLAN-135
   (`chat.ended` refresh, chat route tests), PLAN-79 (branch margin), PLAN-149 (test timeout policy); decision on `!` above.
+  → 2026-11-14 (`analyze-fix-build-time-002`, `-003`; #434 `c6a05fa8`, #435 `b6c90174` and #436 `83d9d150` merged): (3) recurrence of item (1):
+  the quality gate also reformats files it has no business with (whitespace only, e.g. `pm-api/.../ReportRecordsTest.java`); each full gate run dirties
+  unrelated files that are reverted by hand: same recipe family, owner `pm-mcp-parent`; PLAN-165's Standing Constraints say to revert them. (4) **Sonar
+  coverage exclusion, awaits the operator:** `pm-web-app/pom.xml:25` `sonar.coverage.exclusions=**/*` (read at `b6c90174`) predates the split and excludes every
+  web source from Sonar coverage, so the LCOV report path beside it contributes nothing; removing it puts the web app under the new-code coverage condition of
+  the gate: the operator decides the threshold first, then the exclusion is narrowed or dropped (a decision of the operator and a one-line change, or a package;
+  not staged). Routed: PLAN-79 (tests-only items), PLAN-165 (derived lists); decision above.
 
 > ↪ Relocated to `settled.md` § "Landing watches 2026-10-31 to 2026-11-10" — 22 landed-plan watch entries (PLAN-82 … PLAN-45); their landing files carry the record and their open items were routed at the time (cleanup 2026-11-14, operator).
 

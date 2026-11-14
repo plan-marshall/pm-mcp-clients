@@ -63,6 +63,7 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 ## Expected Surface
 
 - OBSERVED: `pm-operator/src/test/java/` — present at HEAD 7e2b4b61
+- OBSERVED: `pm-operator/src/test/resources/transcript/console-settings.transcript`, `pm-operator/src/test/resources/transcript/console-settings-de.transcript` — present at `b6c90174` (added by the `analyze-fix-build-time` fold of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -126,6 +127,25 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
   for the least covered branches, chosen for behaviour, not for lines; report the before/after in the pull request.
 - `-Pcoverage,integration-tests` in ONE invocation under-reports (the agent is prepared twice and the second run overwrites
   `jacoco.exec`: 63 % instead of 94.2 %). Measure coverage with `-Pcoverage` alone, and state that in this plan's verification.
+
+## Fold 2026-11-14 (`analyze-fix-build-time-002`, review of #435)
+
+Source: `inbox/archive/analyze-fix-build-time/analyze-fix-build-time-002.md` items 1, 4, 5 and 6 (the sender's account of what CodeRabbit asked for
+on #435 and the build-time plan deferred on purpose; #435 merged as `b6c90174`). Read at `b6c90174`. Items 2 and 3 (offered keys, cleanup kinds) are
+main code and ride PLAN-165, not this plan. Tests only; behaviour unchanged.
+
+1. **Generators sweep: about 28 review findings.** The sender counts about 28 hand-written literals in pm-operator tests that are input and
+   not expectations. This is the work of deliverables 1 and 2 above, so no new deliverable: sweep once by class, do not answer finding by finding.
+2. **Parameterize.** Where a test class repeats a case three or more times with other values, use `@ParameterizedTest` (the project rule).
+3. **Console settings transcripts.** `console-settings.transcript` and `console-settings-de.transcript` are captured while onboarding is still
+   open when `config` runs. Capture them after leaving onboarding, and review the new bytes (this is the one place the "screen-capture set is
+   byte-identical" clause of deliverable 2 does not hold: name the two files and why in the progress record).
+4. **`refreshPoppedLevel()` after the jumps.** `OverviewFullScreenApp.jumpToPlanProject` and `jumpToPlanEpic` now call `refreshPoppedLevel()`
+   (`OverviewFullScreenApp.java:2701-2726`, `:3054`); no test shows its effect on the level shown. Add one in `OverviewFullScreenAppTest`
+   that fails when the call is removed.
+
+Surface: widened by the two transcript files above (stated in the Expected Surface in this same edit); everything else lies below the claimed
+`pm-operator/src/test/java/`.
 
 ## Hand-Off Command
 
