@@ -38,9 +38,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jspecify.annotations.Nullable;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.system.CleanupItemEntry;
@@ -63,13 +62,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import org.jspecify.annotations.Nullable;
-
 import picocli.CommandLine;
 
 @EnableGeneratorController
 @DisplayName("CleanupCommand")
-@EnableGeneratorController
 class CleanupCommandTest {
 
     @TempDir
@@ -540,114 +536,114 @@ class CleanupCommandTest {
     @DisplayName("what the acts refuse")
     class Refusals {
 
-    @ParameterizedTest(name = "cleanup {0} --exclude is refused")
-    @ValueSource(strings = {"--ignore", "--remind", "--kept", "--release", "--project=pm-mcp-core",
-                        "--delete --kept", "--delete --release", "--delete --all", "--delete --remind", "--delete --ignore"})
-    @DisplayName("--exclude goes with --delete only and is refused with every other form, nothing sent")
-    void excludeIsRefusedWithoutDelete(String form) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var requests = new AtomicInteger();
-        fixture.start((request, response) -> {
-            requests.incrementAndGet();
-            response.send(404, null, "");
-        });
-        var args = new ArrayList<String>(List.of("cleanup"));
-        args.addAll(List.of(form.split(" ")));
-        args.addAll(List.of("--exclude", "plan:" + Generators.letterStrings(4, 9).next()));
+        @ParameterizedTest(name = "cleanup {0} --exclude is refused")
+        @ValueSource(strings = {"--ignore", "--remind", "--kept", "--release", "--project=pm-mcp-core",
+                            "--delete --kept", "--delete --release", "--delete --all", "--delete --remind", "--delete --ignore"})
+        @DisplayName("--exclude goes with --delete only and is refused with every other form, nothing sent")
+        void excludeIsRefusedWithoutDelete(String form) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var requests = new AtomicInteger();
+            fixture.start((request, response) -> {
+                requests.incrementAndGet();
+                response.send(404, null, "");
+            });
+            var args = new ArrayList<String>(List.of("cleanup"));
+            args.addAll(List.of(form.split(" ")));
+            args.addAll(List.of("--exclude", "plan:" + Generators.letterStrings(4, 9).next()));
 
-        int code = execute(args.toArray(String[]::new));
+            int code = execute(args.toArray(String[]::new));
 
-        assertAll(
-                            () -> assertEquals(2, code),
-                            () -> assertTrue(err.toString().contains("--exclude goes with --delete only."), err.toString()),
-                            () -> assertEquals(0, requests.get())
-        );
-    }
+            assertAll(
+                                () -> assertEquals(2, code),
+                                () -> assertTrue(err.toString().contains("--exclude goes with --delete only."), err.toString()),
+                                () -> assertEquals(0, requests.get())
+            );
+        }
 
-    @Test
-    @DisplayName("an --exclude that names no item of the open job is refused and sends no delete")
-    void deleteRefusesAnExcludeOutsideTheJob() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        var deletes = new AtomicInteger();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/delete")) {
-                deletes.incrementAndGet();
-            }
-            response.json(200, JsonTree.write(job.toMap()));
-        });
-        var unknown = "plan:" + Generators.letterStrings(10, 14).next();
-
-        int code = execute("cleanup", "--delete", "--exclude", unknown, "--yes");
-
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."), out.toString()),
-                            () -> assertEquals(0, deletes.get())
-        );
-    }
-
-    @Test
-    @DisplayName("an --exclude by number or kind:id sends the item's own id once")
-    void deleteSendsTheExcludedItemsIdOnce() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        var sent = new ArrayDeque<String>();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/delete")) {
-                sent.add(request.bodyText());
-                response.json(200, "{\"status\":\"deleted\"}");
-            } else {
+        @Test
+        @DisplayName("an --exclude that names no item of the open job is refused and sends no delete")
+        void deleteRefusesAnExcludeOutsideTheJob() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            var deletes = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/delete")) {
+                    deletes.incrementAndGet();
+                }
                 response.json(200, JsonTree.write(job.toMap()));
-            }
-        });
+            });
+            var unknown = "plan:" + Generators.letterStrings(10, 14).next();
 
-        int code = execute("cleanup", "--delete", "--exclude", "4", "--exclude", "plan:token-usage", "--yes");
+            int code = execute("cleanup", "--delete", "--exclude", unknown, "--yes");
 
-        assertAll(
-                            () -> assertEquals(0, code, err.toString()),
-                            () -> assertEquals(List.of(JsonTree.write(Map.of("unchecked_ids", List.of("token-usage")))),
-                                                List.copyOf(sent)),
-                            () -> assertTrue(out.toString().contains("✓ Deleted 11 plans"), out.toString())
-        );
-    }
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."), out.toString()),
+                                () -> assertEquals(0, deletes.get())
+            );
+        }
 
-    @Test
-    @DisplayName("a cleanup the runtime refuses sends no remind")
-    void remindRefusedAtTheJobSendsNothing() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var reminds = new AtomicInteger();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/remind")) {
-                reminds.incrementAndGet();
-            }
-            response.send(500, null, "{\"error\":\"internal\"}");
-        });
+        @Test
+        @DisplayName("an --exclude by number or kind:id sends the item's own id once")
+        void deleteSendsTheExcludedItemsIdOnce() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            var sent = new ArrayDeque<String>();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/delete")) {
+                    sent.add(request.bodyText());
+                    response.json(200, "{\"status\":\"deleted\"}");
+                } else {
+                    response.json(200, JsonTree.write(job.toMap()));
+                }
+            });
 
-        int code = execute("cleanup", "--remind");
+            int code = execute("cleanup", "--delete", "--exclude", "4", "--exclude", "plan:token-usage", "--yes");
 
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertEquals(0, reminds.get()),
-                            () -> assertFalse(out.toString().contains("Nothing was deleted"), out.toString())
-        );
-    }
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertEquals(List.of(JsonTree.write(Map.of("unchecked_ids", List.of("token-usage")))),
+                                                    List.copyOf(sent)),
+                                () -> assertTrue(out.toString().contains("✓ Deleted 11 plans"), out.toString())
+            );
+        }
 
-    @ParameterizedTest(name = "a cleanup answered with {0} is refused")
-    @ValueSource(strings = {"[]", "{\"open\":false}", "{\"open\":false,\"next_check_at\":\" \"}"})
-    @DisplayName("a cleanup that is no object, or names no next check, is refused rather than stood in for")
-    void malformedCleanupIsRefused(String body) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.json(200, body));
+        @Test
+        @DisplayName("a cleanup the runtime refuses sends no remind")
+        void remindRefusedAtTheJobSendsNothing() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var reminds = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/remind")) {
+                    reminds.incrementAndGet();
+                }
+                response.send(500, null, "{\"error\":\"internal\"}");
+            });
 
-        int code = execute("cleanup", "--ignore");
+            int code = execute("cleanup", "--remind");
 
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertFalse(out.toString().contains("tomorrow"), out.toString()),
-                            () -> assertTrue(err.toString().contains("cleanup --ignore"), err.toString())
-        );
-    }
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertEquals(0, reminds.get()),
+                                () -> assertFalse(out.toString().contains("Nothing was deleted"), out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "a cleanup answered with {0} is refused")
+        @ValueSource(strings = {"[]", "{\"open\":false}", "{\"open\":false,\"next_check_at\":\" \"}"})
+        @DisplayName("a cleanup that is no object, or names no next check, is refused rather than stood in for")
+        void malformedCleanupIsRefused(String body) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> response.json(200, body));
+
+            int code = execute("cleanup", "--ignore");
+
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertFalse(out.toString().contains("tomorrow"), out.toString()),
+                                () -> assertTrue(err.toString().contains("cleanup --ignore"), err.toString())
+            );
+        }
     }
 
     @Test
@@ -1161,358 +1157,358 @@ class CleanupCommandTest {
     @DisplayName("the decision in the console")
     class Dialogue {
 
-    @Test
-    @DisplayName("o with a plan's number opens it read-only through the plan verb, by its bare work id")
-    void openRunsThePlanVerb() throws Exception {
-        var planId = Generators.letterStrings(6, 12).next().toLowerCase();
-        var items = List.of(new CleanupItemEntry("plan:" + planId, "plan", planId, "merged", "12 Sep", 1L, 0, 0, null));
-        var targets = new ArrayDeque<String>();
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            targets.add(request.target());
-            response.send(404, null, "{\"error\":\"scope_not_found\"}");
-        });
-        var command = commandAnswering("1");
+        @Test
+        @DisplayName("o with a plan's number opens it read-only through the plan verb, by its bare work id")
+        void openRunsThePlanVerb() throws Exception {
+            var planId = Generators.letterStrings(6, 12).next().toLowerCase();
+            var items = List.of(new CleanupItemEntry("plan:" + planId, "plan", planId, "merged", "12 Sep", 1L, 0, 0, null));
+            var targets = new ArrayDeque<String>();
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                targets.add(request.target());
+                response.send(404, null, "{\"error\":\"scope_not_found\"}");
+            });
+            var command = commandAnswering("1");
 
-        command.openItem(new PrintWriter(out), new PrintWriter(err), items);
+            command.openItem(new PrintWriter(out), new PrintWriter(err), items);
 
-        assertTrue(targets.stream().anyMatch(target -> target.contains("/" + planId)
-                            && !target.contains("plan:")), targets.toString());
-    }
+            assertTrue(targets.stream().anyMatch(target -> target.contains("/" + planId)
+                                && !target.contains("plan:")), targets.toString());
+        }
 
-    @ParameterizedTest(name = "o answered ''{0}'' opens nothing")
-    @NullAndEmptySource
-    @ValueSource(strings = "q")
-    @DisplayName("o left at once, answered empty, or at the end of input opens nothing and says nothing")
-    void openLeftOpensNothing(@Nullable String answer) throws Exception {
-        var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
-        var requests = new AtomicInteger();
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            requests.incrementAndGet();
-            response.send(404, null, "");
-        });
+        @ParameterizedTest(name = "o answered ''{0}'' opens nothing")
+        @NullAndEmptySource
+        @ValueSource(strings = "q")
+        @DisplayName("o left at once, answered empty, or at the end of input opens nothing and says nothing")
+        void openLeftOpensNothing(@Nullable String answer) throws Exception {
+            var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
+            var requests = new AtomicInteger();
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                requests.incrementAndGet();
+                response.send(404, null, "");
+            });
 
-        commandAnswering(answer).openItem(new PrintWriter(out), new PrintWriter(err), items);
+            commandAnswering(answer).openItem(new PrintWriter(out), new PrintWriter(err), items);
 
-        assertAll(
-                            () -> assertEquals(0, requests.get()),
-                            () -> assertEquals("", out.toString())
-        );
-    }
+            assertAll(
+                                () -> assertEquals(0, requests.get()),
+                                () -> assertEquals("", out.toString())
+            );
+        }
 
-    @Test
-    @DisplayName("o with a number past the job names it as no item of the job")
-    void openOutsideTheJob() {
-        var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
-        var number = String.valueOf(Generators.integers(2, 99).next());
+        @Test
+        @DisplayName("o with a number past the job names it as no item of the job")
+        void openOutsideTheJob() {
+            var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
+            var number = String.valueOf(Generators.integers(2, 99).next());
 
-        commandAnswering(number).openItem(new PrintWriter(out), new PrintWriter(err), items);
+            commandAnswering(number).openItem(new PrintWriter(out), new PrintWriter(err), items);
 
-        assertTrue(out.toString().contains(number + " is not an item of this cleanup job."), out.toString());
-    }
+            assertTrue(out.toString().contains(number + " is no item of the open cleanup."), out.toString());
+        }
 
-    @Test
-    @DisplayName("x left at once changes nothing the delete counts")
-    void leaveOutLeftChangesNothing() throws Exception {
-        var job = sampleJob();
-        var answers = new ArrayDeque<>(List.of("x\n", "d\n", "y\n"));
-        var sent = new ArrayDeque<String>();
-        var command = new CleanupCommand(
-                            new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(
-                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
-                                                new PrintWriter(out), "en", state).leaveLabel(leave),
-                            (question, state, writer) -> null);
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/delete")) {
-                sent.add(request.bodyText());
-            }
-            response.json(200, "{\"status\":\"deleted\"}");
-        });
-
-        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
-
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertEquals(List.of(JsonTree.write(Map.of("unchecked_ids", List.of()))), List.copyOf(sent)),
-                            () -> assertFalse(out.toString().contains("✎ kept for good"), out.toString())
-        );
-    }
-
-    @ParameterizedTest(name = "the bar''s {0} sends {1}")
-    @CsvSource({"r,/remind,The same items come back", "i,/ignore,items are kept for good"})
-    @DisplayName("r and i of the bar send their act on the job shown, without the whole-job note")
-    void dialogSendsRemindAndIgnore(String key, String act, String done) throws Exception {
-        var job = sampleJob();
-        var acts = new ArrayDeque<String>();
-        var command = new CleanupCommand(
-                            new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(
-                                                new BufferedReader(new StringReader(key + "\n")),
-                                                new PrintWriter(out), "en", state).leaveLabel(leave),
-                            (question, state, writer) -> null);
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            if ("POST".equals(request.method())) {
-                acts.add(request.target());
-            }
-            response.json(200, "{\"status\":\"done\"}");
-        });
-
-        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
-
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertEquals(List.of("/api/v1/system/cleanup/cln-0007" + act), List.copyOf(acts)),
-                            () -> assertTrue(out.toString().contains(done), out.toString()),
-                            () -> assertFalse(out.toString().contains("acts on the whole job"), out.toString())
-        );
-    }
-
-    @ParameterizedTest(name = "cleanup {0} refused by the runtime exits 1")
-    @CsvSource({"--remind,/remind", "--ignore,/ignore", "--delete --yes,/delete"})
-    @DisplayName("an act the runtime refuses exits 1 and claims no result")
-    void refusedActExitsOne(String options, String act) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith(act)) {
-                response.send(500, null, "{\"error\":\"internal\"}");
-            } else {
-                response.json(200, JsonTree.write(job.toMap()));
-            }
-        });
-        var args = new ArrayList<String>(List.of("cleanup"));
-        args.addAll(List.of(options.split(" ")));
-
-        int code = execute(args.toArray(String[]::new));
-
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertFalse(out.toString().contains("✓"), out.toString())
-        );
-    }
-
-    @ParameterizedTest(name = "cleanup {0} refused at the release exits 1")
-    @ValueSource(strings = {"--all", "1"})
-    @DisplayName("a release the runtime refuses exits 1 and claims no item given back")
-    void refusedReleaseExitsOne(String target) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            if ("PUT".equals(request.method())) {
-                response.send(409, null, "{\"error\":\"conflict\"}");
-            } else {
-                response.json(200, "[{\"id\":\"token-usage\",\"kind\":\"plan\",\"title\":\"token-usage\"}]");
-            }
-        });
-
-        int code = execute("cleanup", "--release", target, "--yes");
-
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertFalse(out.toString().contains("go back"), out.toString())
-        );
-    }
-
-    @ParameterizedTest(name = "a remind answered {0} names no date")
-    @ValueSource(strings = {"[]", "not json", "{\"remind_at\":\"  \"}"})
-    @DisplayName("a remind whose answer names no readable date says the items come back at the next check")
-    void remindWithoutAReadableDate(String answer) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/remind")) {
-                response.json(200, answer);
-            } else {
-                response.json(200, JsonTree.write(job.toMap()));
-            }
-        });
-
-        int code = execute("cleanup", "--remind");
-
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back at the next check."),
-                                                out.toString())
-        );
-    }
-
-    @ParameterizedTest(name = "--delete on a terminal answered {0}")
-    @CsvSource({"y,1", "n,0"})
-    @DisplayName("--delete on a terminal asks its confirmation, naming the whole job under a project filter")
-    void deleteOnATerminalAsks(String answer, int deletes) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        var sent = new AtomicInteger();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/delete")) {
-                sent.incrementAndGet();
+        @Test
+        @DisplayName("x left at once changes nothing the delete counts")
+        void leaveOutLeftChangesNothing() throws Exception {
+            var job = sampleJob();
+            var answers = new ArrayDeque<>(List.of("x\n", "d\n", "y\n"));
+            var sent = new ArrayDeque<String>();
+            var command = new CleanupCommand(
+                                new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(
+                                                    new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                    new PrintWriter(out), "en", state).leaveLabel(leave),
+                                (question, state, writer) -> null);
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/delete")) {
+                    sent.add(request.bodyText());
+                }
                 response.json(200, "{\"status\":\"deleted\"}");
-            } else {
+            });
+
+            int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertEquals(List.of(JsonTree.write(Map.of("unchecked_ids", List.of()))), List.copyOf(sent)),
+                                () -> assertFalse(out.toString().contains("✎ kept for good"), out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "the bar''s {0} sends {1}")
+        @CsvSource({"r,/remind,The same items come back", "i,/ignore,items are kept for good"})
+        @DisplayName("r and i of the bar send their act on the job shown, without the whole-job note")
+        void dialogSendsRemindAndIgnore(String key, String act, String done) throws Exception {
+            var job = sampleJob();
+            var acts = new ArrayDeque<String>();
+            var command = new CleanupCommand(
+                                new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(
+                                                    new BufferedReader(new StringReader(key + "\n")),
+                                                    new PrintWriter(out), "en", state).leaveLabel(leave),
+                                (question, state, writer) -> null);
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                if ("POST".equals(request.method())) {
+                    acts.add(request.target());
+                }
+                response.json(200, "{\"status\":\"done\"}");
+            });
+
+            int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertEquals(List.of("/api/v1/system/cleanup/cln-0007" + act), List.copyOf(acts)),
+                                () -> assertTrue(out.toString().contains(done), out.toString()),
+                                () -> assertFalse(out.toString().contains("acts on the whole job"), out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "cleanup {0} refused by the runtime exits 1")
+        @CsvSource({"--remind,/remind", "--ignore,/ignore", "--delete --yes,/delete"})
+        @DisplayName("an act the runtime refuses exits 1 and claims no result")
+        void refusedActExitsOne(String options, String act) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(act)) {
+                    response.send(500, null, "{\"error\":\"internal\"}");
+                } else {
+                    response.json(200, JsonTree.write(job.toMap()));
+                }
+            });
+            var args = new ArrayList<String>(List.of("cleanup"));
+            args.addAll(List.of(options.split(" ")));
+
+            int code = execute(args.toArray(String[]::new));
+
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertFalse(out.toString().contains("✓"), out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "cleanup {0} refused at the release exits 1")
+        @ValueSource(strings = {"--all", "1"})
+        @DisplayName("a release the runtime refuses exits 1 and claims no item given back")
+        void refusedReleaseExitsOne(String target) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                if ("PUT".equals(request.method())) {
+                    response.send(409, null, "{\"error\":\"conflict\"}");
+                } else {
+                    response.json(200, "[{\"id\":\"token-usage\",\"kind\":\"plan\",\"title\":\"token-usage\"}]");
+                }
+            });
+
+            int code = execute("cleanup", "--release", target, "--yes");
+
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertFalse(out.toString().contains("go back"), out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "a remind answered {0} names no date")
+        @ValueSource(strings = {"[]", "not json", "{\"remind_at\":\"  \"}"})
+        @DisplayName("a remind whose answer names no readable date says the items come back at the next check")
+        void remindWithoutAReadableDate(String answer) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/remind")) {
+                    response.json(200, answer);
+                } else {
+                    response.json(200, JsonTree.write(job.toMap()));
+                }
+            });
+
+            int code = execute("cleanup", "--remind");
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back at the next check."),
+                                                    out.toString())
+            );
+        }
+
+        @ParameterizedTest(name = "--delete on a terminal answered {0}")
+        @CsvSource({"y,1", "n,0"})
+        @DisplayName("--delete on a terminal asks its confirmation, naming the whole job under a project filter")
+        void deleteOnATerminalAsks(String answer, int deletes) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            var sent = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/delete")) {
+                    sent.incrementAndGet();
+                    response.json(200, "{\"status\":\"deleted\"}");
+                } else {
+                    response.json(200, JsonTree.write(job.toMap()));
+                }
+            });
+            var command = new CleanupCommand(new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(new BufferedReader(new StringReader(answer + "\n")),
+                                                    writer, "en", state).leaveLabel(leave),
+                                (question, state, writer) -> null);
+            var commandLine = new CommandLine(command);
+            commandLine.setOut(new PrintWriter(out));
+            commandLine.setErr(new PrintWriter(err));
+
+            int code = commandLine.execute("--delete", "--project", "pm-mcp-clients");
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertEquals(deletes, sent.get()),
+                                () -> assertTrue(out.toString().contains("The delete removes the whole job"), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("the preview subtracts every kind left out, a read-reports row by its count")
+        void deletePreviewSubtractsEveryKind() {
+            int reports = Generators.integers(2, 9).next();
+            var items = List.of(
+                                new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "10 Sep", 10L, 0, 0, null),
+                                new CleanupItemEntry("reports-a", "read_reports", "read reports", null, null, 0L, 0, reports, null),
+                                new CleanupItemEntry("reports-b", "read_reports", "read reports", null, null, 0L, 0, 0, null),
+                                new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 20L, 4, 0, null),
+                                new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", null, null, 30L, 0, 0, null),
+                                new CleanupItemEntry("odd", "archive", "odd", null, null, 0L, 0, 0, null));
+            var summary = new CleanupSummary(0, 3, 10, 20, 2, 100L, 0, null, "tomorrow 03:00");
+            var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary,
+                                List.of(new CleanupProjectItem("pm-mcp-clients", 0, 3, 10, 20, 100L, items)), Map.of());
+
+            var preview = CleanupCommand.deletePreview(job,
+                                List.of("relay-hardening", "reports-a", "reports-b", "relay-docs", "legacy-portal", "odd"));
+
+            assertEquals(new CleanupCommand.DeletePreview(0, 2, 6, 20 - reports - 1, 1, 40L), preview);
+        }
+
+        @Test
+        @DisplayName("durations never offered for every kind are named per kind")
+        void durationsAllNever() {
+            var text = CleanupCommand.durationsText("en", new CleanupDurations(-1, -1, -1, -1, -1, 3));
+
+            assertTrue(text.startsWith("Archived plans never, Archived epics never"), text);
+        }
+
+        @Test
+        @DisplayName("a residue entry that is no object is not drawn")
+        void residueEntryThatIsNoObject() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> response.json(200,
+                                "{\"open\":false,\"next_check_at\":\"tomorrow 03:00\",\"residue\":[1]}"));
+
+            int code = execute("cleanup");
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertFalse(out.toString().contains("Removed by itself"), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("x skips blank tokens, refuses 0, and names a bare id as itself")
+        void leaveOutEdges() {
+            var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
+            var leftOut = new LinkedHashSet<String>();
+
+            var unknown = CleanupCommand.toggleLeftOut(items, leftOut, ", 0 fix-relay");
+
+            assertAll(
+                                () -> assertEquals(List.of("0"), unknown),
+                                () -> assertEquals(Set.of("fix-relay"), leftOut),
+                                () -> assertEquals("fix-relay", CleanupCommand.workId(items.getFirst()))
+            );
+        }
+
+        @ParameterizedTest(name = "x answered ''{0}'' prints nothing")
+        @ValueSource(strings = {"", "q"})
+        @DisplayName("x left with an empty answer or the leave key marks nothing")
+        void leaveOutEmptyOrLeave(String answer) throws Exception {
+            var job = sampleJob();
+            var answers = new ArrayDeque<>(List.of("x\n", "q\n"));
+            var command = new CleanupCommand(
+                                new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(
+                                                    new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                    new PrintWriter(out), "en", state).leaveLabel(leave),
+                                (question, state, writer) -> answer);
+
+            assertThrows(StartPrompt.StartLeftException.class,
+                                () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
+
+            assertFalse(out.toString().contains("✎ kept for good"), out.toString());
+        }
+
+        @Test
+        @DisplayName("x names a number past the job back and o returns to the bar")
+        void dialogNamesUnknownItemsAndReturnsFromOpen() throws Exception {
+            var job = sampleJob();
+            var answers = new ArrayDeque<>(List.of("x\n", "o\n", "q\n"));
+            var freeText = new ArrayDeque<>(List.of("99", "q"));
+            var command = new CleanupCommand(
+                                new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(
+                                                    new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                    new PrintWriter(out), "en", state).leaveLabel(leave),
+                                (question, state, writer) -> freeText.poll());
+
+            assertThrows(StartPrompt.StartLeftException.class,
+                                () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
+
+            var output = out.toString();
+            assertAll(
+                                () -> assertTrue(output.contains("99 is no item of the open cleanup."), output),
+                                () -> assertTrue(freeText.isEmpty(), "the open question was asked"),
+                                () -> assertTrue(answers.isEmpty(), "the bar was asked again after o")
+            );
+        }
+
+        @ParameterizedTest(name = "cleanup in the console with {0} asks the decision: {1}")
+        @CsvSource({"'',true", "--no-input,false"})
+        @DisplayName("cleanup in the console asks the decision after printing, and with --no-input only prints")
+        void consoleAsksTheDecision(String option, boolean asks) throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            var job = sampleJob();
+            var acts = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if ("POST".equals(request.method())) {
+                    acts.incrementAndGet();
+                }
                 response.json(200, JsonTree.write(job.toMap()));
-            }
-        });
-        var command = new CleanupCommand(new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(new BufferedReader(new StringReader(answer + "\n")),
-                                                writer, "en", state).leaveLabel(leave),
-                            (question, state, writer) -> null);
-        var commandLine = new CommandLine(command);
-        commandLine.setOut(new PrintWriter(out));
-        commandLine.setErr(new PrintWriter(err));
+            });
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            context.setConsoleActive(true);
+            var command = new CleanupCommand(context,
+                                (state, leave, writer) -> new ChoicePrompt(new BufferedReader(new StringReader("q\n")),
+                                                    writer, "en", state).leaveLabel(leave),
+                                (question, state, writer) -> null);
+            var commandLine = new CommandLine(command);
+            commandLine.setOut(new PrintWriter(out));
+            commandLine.setErr(new PrintWriter(err));
 
-        int code = commandLine.execute("--delete", "--project", "pm-mcp-clients");
+            commandLine.execute(option.isEmpty() ? new String[0] : new String[]{option});
 
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertEquals(deletes, sent.get()),
-                            () -> assertTrue(out.toString().contains("The delete removes the whole job"), out.toString())
-        );
-    }
+            var output = out.toString();
+            assertAll(
+                                () -> assertTrue(output.contains("Cleanup cln-0007 · due since today 03:00"), output),
+                                () -> assertEquals(asks, output.contains("ask me again"), output),
+                                () -> assertEquals(0, acts.get())
+            );
+        }
 
-    @Test
-    @DisplayName("the preview subtracts every kind left out, a read-reports row by its count")
-    void deletePreviewSubtractsEveryKind() {
-        int reports = Generators.integers(2, 9).next();
-        var items = List.of(
-                            new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "10 Sep", 10L, 0, 0, null),
-                            new CleanupItemEntry("reports-a", "read_reports", "read reports", null, null, 0L, 0, reports, null),
-                            new CleanupItemEntry("reports-b", "read_reports", "read reports", null, null, 0L, 0, 0, null),
-                            new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 20L, 4, 0, null),
-                            new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", null, null, 30L, 0, 0, null),
-                            new CleanupItemEntry("odd", "archive", "odd", null, null, 0L, 0, 0, null));
-        var summary = new CleanupSummary(0, 3, 10, 20, 2, 100L, 0, null, "tomorrow 03:00");
-        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary,
-                            List.of(new CleanupProjectItem("pm-mcp-clients", 0, 3, 10, 20, 100L, items)), Map.of());
-
-        var preview = CleanupCommand.deletePreview(job,
-                            List.of("relay-hardening", "reports-a", "reports-b", "relay-docs", "legacy-portal", "odd"));
-
-        assertEquals(new CleanupCommand.DeletePreview(0, 2, 6, 20 - reports - 1, 1, 40L), preview);
-    }
-
-    @Test
-    @DisplayName("durations never offered for every kind are named per kind")
-    void durationsAllNever() {
-        var text = CleanupCommand.durationsText("en", new CleanupDurations(-1, -1, -1, -1, -1, 3));
-
-        assertTrue(text.startsWith("Archived plans never, Archived epics never"), text);
-    }
-
-    @Test
-    @DisplayName("a residue entry that is no object is not drawn")
-    void residueEntryThatIsNoObject() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.json(200,
-                            "{\"open\":false,\"next_check_at\":\"tomorrow 03:00\",\"residue\":[1]}"));
-
-        int code = execute("cleanup");
-
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertFalse(out.toString().contains("Removed by itself"), out.toString())
-        );
-    }
-
-    @Test
-    @DisplayName("x skips blank tokens, refuses 0, and names a bare id as itself")
-    void leaveOutEdges() {
-        var items = List.of(new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null));
-        var leftOut = new LinkedHashSet<String>();
-
-        var unknown = CleanupCommand.toggleLeftOut(items, leftOut, ", 0 fix-relay");
-
-        assertAll(
-                            () -> assertEquals(List.of("0"), unknown),
-                            () -> assertEquals(Set.of("fix-relay"), leftOut),
-                            () -> assertEquals("fix-relay", CleanupCommand.workId(items.getFirst()))
-        );
-    }
-
-    @ParameterizedTest(name = "x answered ''{0}'' prints nothing")
-    @ValueSource(strings = {"", "q"})
-    @DisplayName("x left with an empty answer or the leave key marks nothing")
-    void leaveOutEmptyOrLeave(String answer) throws Exception {
-        var job = sampleJob();
-        var answers = new ArrayDeque<>(List.of("x\n", "q\n"));
-        var command = new CleanupCommand(
-                            new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(
-                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
-                                                new PrintWriter(out), "en", state).leaveLabel(leave),
-                            (question, state, writer) -> answer);
-
-        assertThrows(StartPrompt.StartLeftException.class,
-                            () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
-
-        assertFalse(out.toString().contains("✎ kept for good"), out.toString());
-    }
-
-    @Test
-    @DisplayName("x names a number past the job back and o returns to the bar")
-    void dialogNamesUnknownItemsAndReturnsFromOpen() throws Exception {
-        var job = sampleJob();
-        var answers = new ArrayDeque<>(List.of("x\n", "o\n", "q\n"));
-        var freeText = new ArrayDeque<>(List.of("99", "q"));
-        var command = new CleanupCommand(
-                            new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(
-                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
-                                                new PrintWriter(out), "en", state).leaveLabel(leave),
-                            (question, state, writer) -> freeText.poll());
-
-        assertThrows(StartPrompt.StartLeftException.class,
-                            () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
-
-        var output = out.toString();
-        assertAll(
-                            () -> assertTrue(output.contains("99 is not an item of this cleanup job."), output),
-                            () -> assertTrue(freeText.isEmpty(), "the open question was asked"),
-                            () -> assertTrue(answers.isEmpty(), "the bar was asked again after o")
-        );
-    }
-
-    @ParameterizedTest(name = "cleanup in the console with {0} asks the decision: {1}")
-    @CsvSource({"'',true", "--no-input,false"})
-    @DisplayName("cleanup in the console asks the decision after printing, and with --no-input only prints")
-    void consoleAsksTheDecision(String option, boolean asks) throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var job = sampleJob();
-        var acts = new AtomicInteger();
-        fixture.start((request, response) -> {
-            if ("POST".equals(request.method())) {
-                acts.incrementAndGet();
-            }
-            response.json(200, JsonTree.write(job.toMap()));
-        });
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
-        context.setConsoleActive(true);
-        var command = new CleanupCommand(context,
-                            (state, leave, writer) -> new ChoicePrompt(new BufferedReader(new StringReader("q\n")),
-                                                writer, "en", state).leaveLabel(leave),
-                            (question, state, writer) -> null);
-        var commandLine = new CommandLine(command);
-        commandLine.setOut(new PrintWriter(out));
-        commandLine.setErr(new PrintWriter(err));
-
-        commandLine.execute(option.isEmpty() ? new String[0] : new String[] {option});
-
-        var output = out.toString();
-        assertAll(
-                            () -> assertTrue(output.contains("Cleanup cln-0007 · due since today 03:00"), output),
-                            () -> assertEquals(asks, output.contains("ask me again"), output),
-                            () -> assertEquals(0, acts.get())
-        );
-    }
-
-    private CleanupCommand commandAnswering(@Nullable String answer) {
-        return new CleanupCommand(
-                            new OperatorContext(fixture.environment(), tempDir, true),
-                            (state, leave, writer) -> new ChoicePrompt(
-                                                new BufferedReader(new StringReader("q\n")), new PrintWriter(out), "en", state),
-                            (question, state, writer) -> answer);
-    }
+        private CleanupCommand commandAnswering(@Nullable String answer) {
+            return new CleanupCommand(
+                                new OperatorContext(fixture.environment(), tempDir, true),
+                                (state, leave, writer) -> new ChoicePrompt(
+                                                    new BufferedReader(new StringReader("q\n")), new PrintWriter(out), "en", state),
+                                (question, state, writer) -> answer);
+        }
     }
 
     @Test

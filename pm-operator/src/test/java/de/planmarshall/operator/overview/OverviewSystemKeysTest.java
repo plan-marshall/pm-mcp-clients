@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Clock;
@@ -24,11 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.jspecify.annotations.Nullable;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupSummary;
 import de.planmarshall.api.system.ModelMetric;
@@ -219,7 +218,7 @@ class OverviewSystemKeysTest {
 
     @Test
     @DisplayName("the work figure opens the overview as a level where the system sits above a project")
-    void workOpensOverviewAboveProject() throws IOException {
+    void workOpensOverviewAboveProject() throws Exception {
         open();
         app.stack().select(project);
         keys.handle(TuiKeyAction.OPEN);
@@ -307,7 +306,7 @@ class OverviewSystemKeysTest {
 
     @Test
     @DisplayName("p without a project with running work shows all projects and says why")
-    void perProjectWithoutProject() throws IOException {
+    void perProjectWithoutProject() throws Exception {
         projectsJson.set("{\"projects\":[]}");
         openSystem();
 
@@ -329,7 +328,7 @@ class OverviewSystemKeysTest {
 
         @Test
         @DisplayName("a and Enter on the runtime offer stop, restart and the upgrade the runtime supports")
-        void upgradeOffered() throws IOException {
+        void upgradeOffered() throws Exception {
             openSystem();
 
             keys.handle(Generators.fixedValues(TuiKeyAction.ACTIONS, TuiKeyAction.OPEN).next());
@@ -339,7 +338,7 @@ class OverviewSystemKeysTest {
 
         @Test
         @DisplayName("a runtime that knows no newer version offers the check instead of the upgrade")
-        void checkOffered() throws IOException {
+        void checkOffered() throws Exception {
             snapshotJson.set(snapshot(null, false));
             openSystem();
 
@@ -350,7 +349,7 @@ class OverviewSystemKeysTest {
 
         @Test
         @DisplayName("a key the menu does not hold leaves it open, the arrows move in it, and Esc closes it")
-        void modalMenu() throws IOException {
+        void modalMenu() throws Exception {
             openSystem();
             keys.handle(TuiKeyAction.ACTIONS);
 

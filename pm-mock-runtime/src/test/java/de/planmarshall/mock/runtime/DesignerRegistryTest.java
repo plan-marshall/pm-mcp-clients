@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -177,8 +178,7 @@ class DesignerRegistryTest {
 
             assertEquals(List.of(UnitPlacingResult.STEP_WRITTEN, UnitPlacingResult.STEP_COMMITTED,
                     UnitPlacingResult.STEP_LANDED), placed.steps());
-            assertFalse(before.equals(registry.digest(project)),
-                    "placing in a project the scenario did not seed changes its digest, so the app reloads");
+            assertNotEquals(before, registry.digest(project), "placing in a project the scenario did not seed changes its digest, so the app reloads");
             assertEquals(registry.digest(project), registry.projectCatalogue(project).digest());
             assertNotNull(registry.findUnit(project, name));
             assertNotNull(registry.findUnit(project, name).frontmatter());

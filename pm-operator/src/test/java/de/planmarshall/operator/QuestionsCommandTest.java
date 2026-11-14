@@ -1289,7 +1289,7 @@ class QuestionsCommandTest {
 
     @Test
     @DisplayName("direct answer actions waive and decline require reason")
-    void answerDirectActionsRequireReason() throws IOException {
+    void answerDirectActionsRequireReason() throws Exception {
         serveWaiver("WR-1");
         int codeWaive = execute("answer", "WR-1", "--action", "waive");
         assertEquals(3, codeWaive);

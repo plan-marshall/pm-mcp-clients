@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -876,7 +875,7 @@ class ScenarioLoaderTest {
 
         @Test
         @DisplayName("loads a scenario file named by its path")
-        void loadsAFile(@TempDir Path directory) throws IOException {
+        void loadsAFile(@TempDir Path directory) throws Exception {
             var file = directory.resolve(Generators.letterStrings(4, 10).next() + ".json");
             Files.writeString(file, doc("{\"a\":{\"representation\":" + REP_A + "}}"));
 

@@ -247,7 +247,7 @@ class ControlScenarioTest {
                         "the refusal is a member of the closed catalogue");
                 assertEquals("the base branch of pm-mcp-clients is protected", JsonTree.string(refusal, "reason"));
                 assertEquals(8, PlanSettingsRecord.fromJson(
-                        get(runtime, "/api/v1/plans/fix-relay/settings").bodyText()).revision(),
+                                get(runtime, "/api/v1/plans/fix-relay/settings").bodyText()).revision(),
                         "a refused value changes nothing");
 
                 var tooLate = put(runtime, "/api/v1/plans/docs-typo/settings",

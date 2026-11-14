@@ -66,9 +66,9 @@ class EntryRecordsTest {
             var entry = RuntimeEntryResource.fromJson(json);
 
             assertEquals(List.of(
-                    new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
-                            "http://127.0.0.1:" + port, null),
-                    new ListenerResource(ListenerKind.LAN, ListenerState.OPEN, lanPort, null, fingerprint)),
+                            new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
+                                    "http://127.0.0.1:" + port, null),
+                            new ListenerResource(ListenerKind.LAN, ListenerState.OPEN, lanPort, null, fingerprint)),
                     entry.listeners());
             assertEquals(host, entry.host());
             assertTrue(entry.onboarded());

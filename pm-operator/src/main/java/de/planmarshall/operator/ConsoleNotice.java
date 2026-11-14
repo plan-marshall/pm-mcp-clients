@@ -433,7 +433,7 @@ public final class ConsoleNotice {
      */
     static String formatOperatorWait(String locale, String scope, @Nullable String detail, boolean epic) {
         return BULLET + MessageCatalogue.format(locale, epic ? "operator.console.notice.operator_wait.epic"
-                            : "operator.console.notice.operator_wait",
+                                                : "operator.console.notice.operator_wait",
                             Map.of("name", TerminalSanitizer.sanitizeLine(scope), "what", TerminalSanitizer.sanitize(detail)));
     }
 

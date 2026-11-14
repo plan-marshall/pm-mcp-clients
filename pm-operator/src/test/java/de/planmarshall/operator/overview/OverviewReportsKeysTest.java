@@ -10,8 +10,11 @@
 package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Clock;
@@ -24,8 +27,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -320,7 +321,7 @@ class OverviewReportsKeysTest {
             keys.handle(TuiKeyAction.MARK_READ);
 
             assertEquals(List.of("POST /api/v1/reports/rep-epic/read {}"), calls);
-            assertTrue(!reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-epic"), reportRowIds().toString());
+            assertFalse(reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-epic"), reportRowIds().toString());
             assertTrue(app.stack().selected().id().startsWith(ReportsLevel.REPORT_PREFIX));
         }
 
@@ -445,7 +446,7 @@ class OverviewReportsKeysTest {
 
         @Test
         @DisplayName("a running plan's report opens the plan view and reads the report")
-        void planReportOpensThePlan() throws IOException {
+        void planReportOpensThePlan() throws Exception {
             extraReports.add(report("rep-started", ",\"plan_id\":\"" + plan + "\"", "plan.started"));
             serveProcess();
             open(Map.of());
@@ -460,7 +461,7 @@ class OverviewReportsKeysTest {
 
         @Test
         @DisplayName("a plan the runtime does not serve opens the epic of the report instead")
-        void refusedPlanOpensTheEpic() throws IOException {
+        void refusedPlanOpensTheEpic() throws Exception {
             extraReports.add(report("rep-revised", ",\"plan_id\":\"" + plan + "\",\"epic_id\":\"" + epic + "\"",
                                 "plan.revised"));
             serveEpic();
@@ -475,7 +476,7 @@ class OverviewReportsKeysTest {
 
         @Test
         @DisplayName("an epic's report opens the epic's view when the runtime serves it, and Esc returns to the reports")
-        void epicReportOpensTheEpic() throws IOException {
+        void epicReportOpensTheEpic() throws Exception {
             serveEpic();
             open(Map.of());
             selectReport("rep-epic");
@@ -486,12 +487,12 @@ class OverviewReportsKeysTest {
             assertEquals(List.of("POST /api/v1/reports/rep-epic/read {}"), calls);
             keys.handle(TuiKeyAction.BACK);
             assertEquals(TuiLevel.Kind.REPORTS, app.stack().level().kind());
-            assertTrue(!reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-epic"), reportRowIds().toString());
+            assertFalse(reportRowIds().contains(ReportsLevel.REPORT_PREFIX + "rep-epic"), reportRowIds().toString());
         }
 
         @Test
         @DisplayName("a report of the machine that is no cleanup has no detail: it says so and stays unread")
-        void machineReportWithoutDetail() throws IOException {
+        void machineReportWithoutDetail() throws Exception {
             extraReports.add("{\"id\":\"rep-machine\",\"from\":{\"project_id\":\"this_machine\"},\"kind\":"
                                 + "\"source.flagged\",\"subject\":\"flagged\",\"created_at\":\"2026-10-20T11:05:00Z\","
                                 + "\"sent_at\":\"2026-10-20T11:05:00Z\"}");
@@ -509,7 +510,7 @@ class OverviewReportsKeysTest {
 
     @Test
     @DisplayName("a report sent while another level is shown counts it and leaves that level's rows")
-    void reportArrivesBelowAnotherLevel() throws IOException {
+    void reportArrivesBelowAnotherLevel() throws Exception {
         open(Map.of());
         keys.handle(TuiKeyAction.BACK);
         assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
@@ -527,7 +528,7 @@ class OverviewReportsKeysTest {
 
     @Test
     @DisplayName("an act the operator gate refuses names the refusal, not a failure of the runtime")
-    void gateRefusalStands() throws IOException {
+    void gateRefusalStands() throws Exception {
         open(Map.of("CLAUDECODE", "1"));
 
         selectReport("rep-epic");

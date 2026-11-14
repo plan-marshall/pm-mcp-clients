@@ -5174,8 +5174,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 // code for a request value the endpoint refuses is invalid_arguments (400).
                 response.json(ApiErrorCode.INVALID_ARGUMENTS.status(),
                         Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
-                        KEY_REASON, "the base branch of pm-mcp-clients is protected",
-                        "value", update.value()));
+                                KEY_REASON, "the base branch of pm-mcp-clients is protected",
+                                "value", update.value()));
                 return;
             }
             var values = controlSettings.computeIfAbsent(planId, _ -> new LinkedHashMap<>());

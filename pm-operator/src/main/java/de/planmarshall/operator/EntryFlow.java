@@ -274,7 +274,7 @@ public final class EntryFlow {
                                 : MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
                                 "input", TerminalSanitizer.sanitizeLine(line),
                                 "offered", (isSsh ? "h, w, " : "w, h, ")
-                                                    + (locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q") + ", ?")));
+                                + (locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q") + ", ?")));
             out.flush();
         }
     }
@@ -546,7 +546,7 @@ public final class EntryFlow {
                         return dev.get("label") instanceof String label && !label.isBlank()
                                             ? label
                                             : MessageCatalogue.format(context.clientEnvironment().locale(),
-                                                                "operator.entry.local_browser", Map.of());
+                                            "operator.entry.local_browser", Map.of());
                     }
                 }
             }

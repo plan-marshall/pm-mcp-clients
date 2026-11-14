@@ -351,7 +351,7 @@ class PlanCommandTest {
                             // a task at work is `executing` and draws the running glyph (16-plan-view.adoc#full-screen-leaf)
                             () -> assertTrue(output.contains("▶ executing " + taskId + " (implement)"), output),
                             () -> assertTrue(server.requests().stream()
-                                                .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
+                                                                    .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
                                                 server.requests().toString())
         );
     }
@@ -367,7 +367,7 @@ class PlanCommandTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains("Plan " + planId + " not found."), out.toString()),
                             () -> assertTrue(server.requests().stream()
-                                                .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
+                                                                    .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
                                                 server.requests().toString())
         );
     }

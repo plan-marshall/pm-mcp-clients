@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -24,9 +26,6 @@ import java.util.HashMap;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,11 +44,13 @@ import org.junit.jupiter.api.condition.OS;
 class WorkChatDialogueTest {
 
     private static final String CHAT_PROPOSAL = """
-                        {"chat_id":"C-1","subject_id":"p","subject_kind":"plan","role":"replan",
-                         "scope":"plan","state":"read-back","turns":[
-                           {"role":"operator","text":"Add SSE","at":"2026-10-16T10:00:00Z","untrusted":false}],
-                         "proposal":{"summary":"a test per transport","before":"one transport",
-                           "after":"websocket and SSE","applies":"after the current task"}}
+                        {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                         "role":{"name":"replan","model":"sonnet"},"scope":"archive",
+                         "state":"chat.read-back","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                         "turns":[],
+                         "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"follow_up",
+                           "summary":"a test per transport","before":"one transport",
+                           "after":"websocket and SSE","state":"open"}}
                         """;
 
     private RuntimeFixture fixture;
@@ -101,7 +102,7 @@ class WorkChatDialogueTest {
                             () -> assertTrue(text.contains("Nothing more is explained here"), text),
                             () -> assertFalse(text.contains("is kept with"), text),
                             () -> assertEquals(0, server.requests().stream()
-                                                .filter(recorded -> !"GET".equals(recorded.method())).count(),
+                                                                    .filter(recorded -> !"GET".equals(recorded.method())).count(),
                                                 "nothing is sent: " + server.requests()));
     }
 }

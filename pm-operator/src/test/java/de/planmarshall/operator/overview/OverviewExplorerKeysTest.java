@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Clock;
@@ -26,8 +28,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -129,7 +129,7 @@ class OverviewExplorerKeysTest {
         var releasedRow = row.formatted(released, released, "released", false, true, "");
         var being = withBeingAdded
                             ? "{\"checkout_path\":\"" + checkout + "\",\"current_step\":\"Identity\",\"step_number\":2,"
-                                                + "\"total_steps\":10,\"abandon_link\":\"/api/v1/entries/ent-1/abandon\"}"
+                            + "\"total_steps\":10,\"abandon_link\":\"/api/v1/entries/ent-1/abandon\"}"
                             : "";
         return "{\"favourites\":[" + readyRow + "," + secondRow + "],\"recent\":[" + notReadyRow + "],"
                             + "\"all_projects\":[" + readyRow + "," + secondRow + "," + notReadyRow + "," + releasedRow + "],"
@@ -619,7 +619,7 @@ class OverviewExplorerKeysTest {
 
     @Test
     @DisplayName("a run without an abandon link is deleted at its onboarding, and the explorer refuses no more")
-    void abandonWithoutLink() throws IOException {
+    void abandonWithoutLink() throws Exception {
         bodyOf.put(PROJECTS_PATH, explorer(true).replace(",\"abandon_link\":\"/api/v1/entries/ent-1/abandon\"", ""));
         app = new OverviewFullScreenApp(context, virtual.terminal(),
                             OverviewFullScreenApp.InitialSelection.explorerRoot(), clock,

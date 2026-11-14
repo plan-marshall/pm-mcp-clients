@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,11 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -173,7 +172,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("an ended plan's chat reads the plan's chat and returns to the ended work")
-        void endedPlan() throws IOException {
+        void endedPlan() throws Exception {
             openEnded(plan, "plan");
 
             var menu = openMenu();
@@ -191,7 +190,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("an ended epic's chat reads the epic's chat, never a plan's")
-        void endedEpic() throws IOException {
+        void endedEpic() throws Exception {
             var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
             openEnded(epic, "epic");
 
@@ -203,7 +202,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("the plan view of an ended plan offers the same chat")
-        void endedPlanView() throws IOException {
+        void endedPlanView() throws Exception {
             bodyOf.put("/api/v1/plans/" + plan + "/process", process(plan, "merged"));
             openEnded(plan, "plan");
             keys.handle(TuiKeyAction.OPEN);
@@ -230,7 +229,7 @@ class OverviewActionsMenuTest {
 
     @Test
     @DisplayName("a on a completion report offers the chat about its ended plan")
-    void completionReport() throws IOException {
+    void completionReport() throws Exception {
         bodyOf.put("/api/v1/reports", "{\"items\":[{\"id\":\"rep-1\",\"from\":{\"project_id\":\"" + project
                             + "\",\"plan_id\":\"" + plan + "\"},\"kind\":\"plan.ended\",\"subject\":\"ended\","
                             + "\"created_at\":\"2026-10-20T11:00:00Z\",\"sent_at\":\"2026-10-20T11:00:00Z\"}],"
@@ -257,7 +256,7 @@ class OverviewActionsMenuTest {
 
     @Test
     @DisplayName("a on a task's activity reads the actions of the task's plan")
-    void taskActivity() throws IOException {
+    void taskActivity() throws Exception {
         bodyOf.put("/api/v1/plans/" + plan + "/process", process(plan, "running")
                             .replace("\"state\":\"done\"", "\"state\":\"running\"")
                             .replace("\"status\":\"done\"", "\"status\":\"running\""));
@@ -333,7 +332,7 @@ class OverviewActionsMenuTest {
 
     @Test
     @DisplayName("a on a plan the runtime offers no action for names that, and opens no menu")
-    void noActions() throws IOException {
+    void noActions() throws Exception {
         bodyOf.put("/api/v1/plans/" + plan + "/process", process(plan, "running")
                             .replace("\"state\":\"done\"", "\"state\":\"running\""));
         bodyOf.put("/api/v1/plans/" + plan + "/actions", "{\"subject_id\":\"" + plan
@@ -352,7 +351,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("offers the decision first, and its entry opens that decision")
-        void decideOpensTheDecision() throws IOException {
+        void decideOpensTheDecision() throws Exception {
             bodyOf.put("/api/v1/plans/" + plan + "/process", process(plan, "waiting")
                                 .replace("\"state\":\"done\"", "\"state\":\"running\""));
             bodyOf.put("/api/v1/plans/" + plan + "/actions", "{\"subject_id\":\"" + plan
@@ -462,7 +461,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("without an epic view opened before")
-        void noEpicViewOpened() throws IOException {
+        void noEpicViewOpened() throws Exception {
             openProjectByEpic();
 
             var label = nextLabel();
@@ -472,7 +471,7 @@ class OverviewActionsMenuTest {
 
         @Test
         @DisplayName("after another epic's view was opened and left")
-        void anotherEpicViewShownBefore() throws IOException {
+        void anotherEpicViewShownBefore() throws Exception {
             openProjectByEpic();
             app.stack().select(shown);
             keys.handle(TuiKeyAction.OPEN);

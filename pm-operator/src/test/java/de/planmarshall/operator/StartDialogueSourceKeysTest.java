@@ -14,10 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.planmarshall.mock.StandardScenarios;
-
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,10 +37,10 @@ class StartDialogueSourceKeysTest {
 
     @ParameterizedTest(name = "{0} asks \"{1}\" and adds the {2}")
     @CsvSource(delimiter = '|', textBlock = """
-            i | Number or URL of the issue        | Issue comments API
-            l | Lesson                            | Retire lessons when a plan lands
-            p | Number or URL of the pull request | Add the Codeberg provider
-            """)
+                        i | Number or URL of the issue        | Issue comments API
+                        l | Lesson                            | Retire lessons when a plan lands
+                        p | Number or URL of the pull request | Add the Codeberg provider
+                        """)
     @DisplayName("a key of an outside source asks its reference and adds the source")
     void externalSourceKeyAddsTheSource(String key, String question, String stored) throws Exception {
         var reference = Generators.letterStrings(4, 12).next();
@@ -54,10 +54,10 @@ class StartDialogueSourceKeysTest {
 
     @ParameterizedTest(name = "an empty answer to {0} adds no {1}")
     @CsvSource(delimiter = '|', textBlock = """
-            i | Issue comments API
-            l | Retire lessons when a plan lands
-            p | Add the Codeberg provider
-            """)
+                        i | Issue comments API
+                        l | Retire lessons when a plan lands
+                        p | Add the Codeberg provider
+                        """)
     @DisplayName("an empty answer to the reference adds nothing")
     void emptyReferenceAddsNothing(String key, String stored) throws Exception {
         var rendered = run(StandardScenarios.START_SOURCES, key + "\n\nq\n",

@@ -727,8 +727,8 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             statusMessage = LoadRefusal.of(locale, response, PROJECT_LEVEL).line();
-        } catch (IOException failure) {
-            statusMessage = LoadRefusal.of(locale, failure, PROJECT_LEVEL).line();
+        } catch (IOException _) {
+            statusMessage = LoadRefusal.unreachable(locale, PROJECT_LEVEL).line();
         }
         return false;
     }
@@ -842,8 +842,8 @@ public final class OverviewFullScreenApp {
                                 view.breadcrumb(locale, null));
             stack.push(level, view.rows(locale), view.initialRowId());
             return null;
-        } catch (IOException failure) {
-            return LoadRefusal.of(locale, failure, PLAN_LEVEL);
+        } catch (IOException _) {
+            return LoadRefusal.unreachable(locale, PLAN_LEVEL);
         } catch (IllegalArgumentException failure) {
             return LoadRefusal.of(locale, failure.getMessage(), PLAN_LEVEL);
         }
@@ -2814,8 +2814,8 @@ public final class OverviewFullScreenApp {
             LoadRefusal refusal;
             try {
                 refusal = readPlan(context.runtime(true), itemId, null);
-            } catch (IOException failure) {
-                refusal = LoadRefusal.of(locale, failure, PLAN_LEVEL);
+            } catch (IOException _) {
+                refusal = LoadRefusal.unreachable(locale, PLAN_LEVEL);
             }
             if (refusal != null) {
                 statusMessage = refusal.line();

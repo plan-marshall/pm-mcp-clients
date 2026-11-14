@@ -419,9 +419,9 @@ public final class RolesCommand implements Callable<Integer> {
                         return false;
                     }
                     out.println(MessageCatalogue.format(locale, answer.isEmpty()
-                                        ? "operator.dialogue.consent.type_yn" : "operator.dialogue.not_offered",
+                                                            ? "operator.dialogue.consent.type_yn" : "operator.dialogue.not_offered",
                                         Map.of("input", OutputSafety.stripControlSequences(answer),
-                                                            "offered", yesKey + ", n, " + (yesKey.equals("j") ? "v" : "q"))));
+                                                            "offered", yesKey + ", n, " + ("j".equals(yesKey) ? "v" : "q"))));
                     out.flush();
                 }
             }

@@ -647,7 +647,7 @@ public final class AnswerCommand implements Callable<Integer> {
      * @param edit    edit the own words at the read-back
      */
     private record Keys(String leave, String back, String note, String later, String waive, String decline,
-                        String edit) {
+    String edit) {
 
         private static final Keys ENGLISH = new Keys("q", "b", "m", "l", "y", "d", "e");
         private static final Keys GERMAN = new Keys("v", "z", "n", "s", "w", "a", "b");

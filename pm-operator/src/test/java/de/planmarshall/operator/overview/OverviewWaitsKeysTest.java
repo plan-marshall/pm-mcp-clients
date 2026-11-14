@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,11 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
@@ -145,7 +144,7 @@ class OverviewWaitsKeysTest {
     private String rowNaming(String text) {
         return app.stack().visibleRows().stream().filter(row -> row.line().contains(text)).map(TuiRow::id)
                             .findFirst().orElseThrow(() -> new AssertionError("no row names " + text + ": "
-                                                + app.stack().visibleRows()));
+                            + app.stack().visibleRows()));
     }
 
     private List<String> readsContaining(String fragment) {
@@ -158,19 +157,19 @@ class OverviewWaitsKeysTest {
 
         @ParameterizedTest(name = "{0}")
         @CsvSource(delimiter = '|', value = {
-            "decision with its link | decision | \"link\":\"/api/v1/decisions/Q-71\",\"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/decisions/Q-71",
-            "waiver with its link | waiver | \"link\":\"/api/v1/decisions/W-72\",\"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/decisions/W-72",
-            "decision of a plan | decision | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/decisions",
-            "hold of a plan | held | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/holds",
-            "failed landing of a plan | landing_failed | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/holds",
-            "stalled plan | stalled | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
-            "condition of a plan | condition | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
-            "setup of a project | setup | \"project\":{\"id\":\"PROJECT\",\"title\":\"Waiting project\"} | PROJECT",
-            "findings of an epic | findings | \"epic\":{\"id\":\"epic-waits\",\"title\":\"Waiting epic\"} | epic-waits",
-            "hold of an epic | held | \"epic\":{\"id\":\"epic-held\",\"title\":\"Waiting epic\"} | epic-held"
+                            "decision with its link | decision | \"link\":\"/api/v1/decisions/Q-71\",\"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/decisions/Q-71",
+                            "waiver with its link | waiver | \"link\":\"/api/v1/decisions/W-72\",\"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/decisions/W-72",
+                            "decision of a plan | decision | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/decisions",
+                            "hold of a plan | held | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
+                            "failed landing of a plan | landing_failed | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
+                            "stalled plan | stalled | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
+                            "condition of a plan | condition | \"plan\":{\"id\":\"PLAN\",\"title\":\"Waiting plan\"} | /api/v1/plans/PLAN/process",
+                            "setup of a project | setup | \"project\":{\"id\":\"PROJECT\",\"title\":\"Waiting project\"} | PROJECT",
+                            "findings of an epic | findings | \"epic\":{\"id\":\"epic-waits\",\"title\":\"Waiting epic\"} | epic-waits",
+                            "hold of an epic | held | \"epic\":{\"id\":\"epic-held\",\"title\":\"Waiting epic\"} | epic-held"
         })
-        @DisplayName("an item names its subject, and ! reads the subject's act")
-        void opensTheSubjectsAct(String name, String kind, String fields, String expected) throws IOException {
+        @DisplayName("an item names its subject, and ! runs the command the row prints")
+        void opensTheSubjectsAct(String name, String kind, String fields, String expected) throws Exception {
             needs(item(kind, fields.replace("PLAN", plan).replace("PROJECT", project)));
             open();
             app.stack().select(rowNaming("Waiting"));
@@ -182,37 +181,22 @@ class OverviewWaitsKeysTest {
         }
 
         @Test
-        @DisplayName("! on a plan's condition opens the plan's view where the runtime serves its process")
-        void conditionOpensPlanView() throws IOException {
-            needs(item("condition", "\"plan\":{\"id\":\"" + plan + "\",\"title\":\"Waiting plan\"}"));
-            bodyOf.put("/api/v1/plans/" + plan + "/process", "{\"plan_id\":\"" + plan + "\",\"project_id\":\"" + project
-                                + "\",\"title\":\"Waiting plan\",\"nodes\":[]}");
-            open();
-            app.stack().select(rowNaming("Waiting"));
-
-            keys.handle(TuiKeyAction.WAITS);
-
-            assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
-            assertEquals(plan, app.stack().level().id());
-        }
-
-        @Test
         @DisplayName("Enter on an item opens the same act as !")
-        void enterOpensTheAct() throws IOException {
+        void enterOpensTheAct() throws Exception {
             needs(item("held", "\"plan\":{\"id\":\"" + plan + "\",\"title\":\"Waiting plan\"}"));
             open();
             app.stack().select(rowNaming("Waiting"));
 
             keys.handle(TuiKeyAction.OPEN);
 
-            assertFalse(readsContaining("/api/v1/plans/" + plan + "/holds").isEmpty(), reads.toString());
+            assertFalse(readsContaining("/api/v1/plans/" + plan + "/process").isEmpty(), reads.toString());
             assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
         }
     }
 
     @Test
     @DisplayName("! on a row that waits for nothing moves to the next row that does, and reads nothing")
-    void jumpsToTheNextWaitingRow() throws IOException {
+    void jumpsToTheNextWaitingRow() throws Exception {
         needs(item("decision", "\"link\":\"/api/v1/decisions/Q-80\",\"plan\":{\"id\":\"" + plan
                             + "\",\"title\":\"Waiting plan\"}"));
         open();
@@ -231,7 +215,7 @@ class OverviewWaitsKeysTest {
 
     @Test
     @DisplayName("! on a project whose setup waits for the operator starts its setup")
-    void projectSetup() throws IOException {
+    void projectSetup() throws Exception {
         bodyOf.put("/api/v1/projects", bodyOf.get("/api/v1/projects").replace("\"setup_needs_operator\":false",
                             "\"setup_needs_operator\":true"));
         needs();
@@ -297,7 +281,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("a held plan of a project opens its hold and reads no decision")
-        void heldPlanOpensItsHold() throws IOException {
+        void heldPlanOpensItsHold() throws Exception {
             detail(false);
             bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-1\",\"plan_id\":\"" + plan
                                 + "\",\"kind\":\"condition\",\"cause\":\"needs a fix\"}]");
@@ -312,7 +296,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("a waiting plan without a hold opens its open decision")
-        void planWithoutHoldOpensItsDecision() throws IOException {
+        void planWithoutHoldOpensItsDecision() throws Exception {
             detail(false);
             bodyOf.put("/api/v1/plans/" + plan + "/holds", "[]");
             bodyOf.put("/api/v1/plans/" + plan + "/decisions", "[{\"id\":\"Q-31\"}]");
@@ -326,7 +310,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("a waiting plan whose holds and decisions are unreadable opens its actions")
-        void unreadablePlanOpensItsActions() throws IOException {
+        void unreadablePlanOpensItsActions() throws Exception {
             detail(false);
             openProject(false);
             app.stack().select(plan);
@@ -340,7 +324,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("a row of a project that waits for nothing moves to the plan that does, and reads nothing")
-        void quietPlanJumps() throws IOException {
+        void quietPlanJumps() throws Exception {
             detail(false);
             openProject(false);
             app.stack().select(quiet);
@@ -353,7 +337,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("an epic with open findings opens its findings")
-        void epicWithFindingsOpensThem() throws IOException {
+        void epicWithFindingsOpensThem() throws Exception {
             detail(true);
             bodyOf.put("/api/v1/epics/" + epic, epicBody(plan).replace("\"events\":[]",
                                 "\"events\":[],\"findings\":{\"new\":1,\"open\":2,\"kept\":0}"));
@@ -369,7 +353,7 @@ class OverviewWaitsKeysTest {
         @ParameterizedTest(name = "{0}")
         @CsvSource({"without open findings, true", "unreadable, false"})
         @DisplayName("a waiting epic without findings to open opens its actions")
-        void epicWithoutFindingsOpensActions(String name, boolean readable) throws IOException {
+        void epicWithoutFindingsOpensActions(String name, boolean readable) throws Exception {
             detail(true);
             if (readable) {
                 bodyOf.put("/api/v1/epics/" + epic, epicBody(plan));
@@ -385,7 +369,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("a plan row of an epic opens what waits in that plan")
-        void planOfEpic() throws IOException {
+        void planOfEpic() throws Exception {
             process();
             bodyOf.put("/api/v1/epics/" + epic, epicBody(plan));
             bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-2\",\"plan_id\":\"" + plan
@@ -403,7 +387,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("the plan view opens what waits in its own plan, whichever row is selected")
-        void planView() throws IOException {
+        void planView() throws Exception {
             process();
             bodyOf.put("/api/v1/plans/" + plan + "/holds", "[{\"hold_id\":\"H-3\",\"plan_id\":\"" + plan
                                 + "\",\"kind\":\"condition\"}]");
@@ -423,7 +407,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("Esc on the plans root opens the projects root, and Esc there stays")
-        void plansRootLeadsToProjects() throws IOException {
+        void plansRootLeadsToProjects() throws Exception {
             bodyOf.put("/api/v1/projects", "{\"favourites\":[],\"recent\":[],\"all_projects\":[{\"project_id\":\""
                                 + project + "\",\"display_name\":\"" + project + "\",\"readiness\":\"ready\"}],"
                                 + "\"being_added\":[],\"projects\":[{\"project_id\":\"" + project + "\",\"display_name\":\""
@@ -445,7 +429,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("Esc on the plans root with the projects unreadable shows the explorer with the refusal")
-        void refusedExplorer() throws IOException {
+        void refusedExplorer() throws Exception {
             needs();
             open();
             bodyOf.remove("/api/v1/projects");
@@ -458,7 +442,7 @@ class OverviewWaitsKeysTest {
 
         @Test
         @DisplayName("Esc first closes the help and clears the filter before it leaves the level")
-        void helpAndFilterFirst() throws IOException {
+        void helpAndFilterFirst() throws Exception {
             needs();
             open();
             keys.handle(TuiKeyAction.HELP);

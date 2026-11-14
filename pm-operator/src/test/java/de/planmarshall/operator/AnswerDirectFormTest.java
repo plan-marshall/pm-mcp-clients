@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,8 +31,6 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -87,7 +87,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "answer Q-31 {0}")
         @ValueSource(strings = {"1", "later", "withdraw", "--no-input", "-i"})
         @DisplayName("a decision returned with another id is refused and nothing is sent")
-        void otherIdIsRefused(String argument) throws IOException {
+        void otherIdIsRefused(String argument) throws Exception {
             var other = "Q-" + Generators.integers(100, 999).next();
             serve("Q-31", decision(other));
 
@@ -96,7 +96,7 @@ class AnswerDirectFormTest {
             assertAll(
                                 () -> assertEquals(PmOperator.EXIT_FAILURE, code),
                                 () -> assertTrue(err.toString().contains(
-                                                    "The runtime returned the decision " + other + " for Q-31; nothing was sent."),
+                                                                        "The runtime returned the decision " + other + " for Q-31; nothing was sent."),
                                                     err.toString()),
                                 () -> assertFalse(out.toString().contains(other), out.toString()),
                                 () -> assertTrue(acts.isEmpty(), acts.toString()));
@@ -104,7 +104,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("the German refusal names both ids")
-        void otherIdIsRefusedInGerman() throws IOException {
+        void otherIdIsRefusedInGerman() throws Exception {
             serve("Q-31", decision("Q-77"));
 
             var code = run("de", "", "answer", "Q-31");
@@ -117,7 +117,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "answer Q-31 {0}")
         @ValueSource(strings = {"1", "later", "withdraw"})
         @DisplayName("a decision returned without an id is refused on every direct path and nothing is sent")
-        void missingIdIsRefused(String argument) throws IOException {
+        void missingIdIsRefused(String argument) throws Exception {
             serve("Q-31", "{\"title\":\"" + Generators.letterStrings(4, 12).next() + "\"}");
 
             var code = run("en", "", "answer", "Q-31", argument);
@@ -130,7 +130,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "answer Q-31 {0}")
         @ValueSource(strings = {"1", "later", "withdraw"})
         @DisplayName("a decision the runtime does not return is its refusal, and nothing is sent")
-        void unknownDecisionIsRefused(String argument) throws IOException {
+        void unknownDecisionIsRefused(String argument) throws Exception {
             fixture.start((request, response) -> {
                 if ("POST".equals(request.method())) {
                     acts.add(request.target());
@@ -147,7 +147,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("a refused read of the decision is shown as the refusal, not read as a decision")
-        void refusedReadIsTheRefusal() throws IOException {
+        void refusedReadIsTheRefusal() throws Exception {
             fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
 
             var code = run("en", "", "answer", "Q-31");
@@ -165,7 +165,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "option {0}")
         @ValueSource(strings = {"l", "x", "d", "y", "s"})
         @DisplayName("an option keyed like a dialogue key is answered as that option")
-        void optionKeyedLikeADialogueKey(String key) throws IOException {
+        void optionKeyedLikeADialogueKey(String key) throws Exception {
             serve("Q-32", decisionWithOption("Q-32", key));
 
             var code = run("de", "", "answer", "Q-32", key);
@@ -181,7 +181,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"l", "s", "x"})
         @DisplayName("a dialogue key is no act of the command line: it is sent as the option it names")
-        void dialogueKeyIsNoAct(String key) throws IOException {
+        void dialogueKeyIsNoAct(String key) throws Exception {
             serve("Q-33", decision("Q-33"));
 
             var code = run("de", "", "answer", "Q-33", key);
@@ -195,7 +195,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("later is the same word in German and leaves the decision open")
-        void laterInGerman() throws IOException {
+        void laterInGerman() throws Exception {
             serve("Q-33", decision("Q-33"));
 
             var code = run("de", "", "answer", "Q-33", "later");
@@ -208,7 +208,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "--action {0}")
         @ValueSource(strings = {"waive", "decline", "bogus"})
         @DisplayName("an act a decision does not offer is answered with one line, exit 3, and nothing is sent")
-        void actNotOfferedOnADecision(String act) throws IOException {
+        void actNotOfferedOnADecision(String act) throws Exception {
             serve("Q-33", decision("Q-33"));
 
             var code = run("en", "", "answer", "Q-33", "--action", act, "--reason",
@@ -221,7 +221,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("--action answer without an option or words has nothing to send")
-        void answerWithoutAChoice() throws IOException {
+        void answerWithoutAChoice() throws Exception {
             serve("Q-33", decision("Q-33"));
 
             var code = run("en", "", "answer", "Q-33", "--action", "answer");
@@ -233,7 +233,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("--action answer with an option answers it with the option's label")
-        void answerWithAnOption() throws IOException {
+        void answerWithAnOption() throws Exception {
             serve("Q-33", decision("Q-33"));
 
             var code = run("en", "", "answer", "Q-33", "2", "--action", "answer");
@@ -251,7 +251,7 @@ class AnswerDirectFormTest {
         @ParameterizedTest(name = "{0}: answer WR-9 {1}")
         @CsvSource({"en, y", "en, d", "de, w", "de, a", "en, 1", "en, withdraw"})
         @DisplayName("a value that is no act of a waiver names the three acts and sends nothing")
-        void valueNotOffered(String locale, String value) throws IOException {
+        void valueNotOffered(String locale, String value) throws Exception {
             serve("WR-9", waiver());
 
             var code = run(locale, "", "answer", "WR-9", value, "--reason", Generators.letterStrings(4, 12).next());
@@ -265,7 +265,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("own words do not answer a waiver request")
-        void ownWordsNotOffered() throws IOException {
+        void ownWordsNotOffered() throws Exception {
             serve("WR-9", waiver());
 
             var code = run("en", "", "answer", "WR-9", "--words", Generators.letterStrings(4, 12).next());
@@ -277,7 +277,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("decline in German declines with the reason, and names the plan of the request")
-        void declineInGerman() throws IOException {
+        void declineInGerman() throws Exception {
             serve("WR-9", waiver());
             var reason = Generators.letterStrings(6, 20).next();
 
@@ -292,7 +292,7 @@ class AnswerDirectFormTest {
 
         @Test
         @DisplayName("waive names the plan the request belongs to, not a fallback")
-        void waiveNamesThePlan() throws IOException {
+        void waiveNamesThePlan() throws Exception {
             serve("WR-9", waiver());
 
             var code = run("en", "", "answer", "WR-9", "--action", "WAIVE", "--reason",

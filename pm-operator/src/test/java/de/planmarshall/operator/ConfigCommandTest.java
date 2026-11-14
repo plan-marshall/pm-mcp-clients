@@ -1395,6 +1395,7 @@ class ConfigCommandTest {
                          "facts":{"summary":"The models run again","aspect":"catalogue"},
                          "links":[{"id":"set","rel":"submit","method":"POST","href":"/api/v1/onboarding/catalogue/set","preselected":true}]}
                         """;
+
     @Test
     @DisplayName("config set at a conflict asks an answer it does not offer again and keeps the other client's value")
     void conflictAnswerNotOfferedIsAskedAgain() throws Exception {

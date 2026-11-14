@@ -14,10 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.planmarshall.mock.StandardScenarios;
-
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

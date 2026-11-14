@@ -98,8 +98,8 @@ class MockHttpServerTest {
         var message = Generators.letterStrings(2, 6).next() + "\\path \"quoted\"\n"
                 + Generators.letterStrings(2, 6).next();
         try (var server = MockHttpServer.startTcp(0, (req, res) -> {
-            throw new IllegalStateException(message);
-        })) {
+                 throw new IllegalStateException(message);
+             })) {
             var response = rawExchange(server.port(), "GET /fail HTTP/1.1\r\nHost: x\r\n\r\n");
 
             assertTrue(response.startsWith("HTTP/1.1 500"), response);
@@ -114,8 +114,8 @@ class MockHttpServerTest {
     @DisplayName("answers a request the handler leaves unanswered with internal_fault")
     void unansweredRequest() throws Exception {
         try (var server = MockHttpServer.startTcp(0, (req, res) -> {
-            // answers nothing
-        })) {
+                 // answers nothing
+             })) {
             var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(
                     URI.create("http://127.0.0.1:" + server.port() + "/" + Generators.letterStrings(4, 10).next()))
                     .GET().build(), HttpResponse.BodyHandlers.ofString());

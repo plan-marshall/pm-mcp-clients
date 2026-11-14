@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -45,9 +47,6 @@ import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.epicview.EpicViewLevel;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +56,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The control contract as the dialogues and the client read and write it: every dialogue's
@@ -1559,7 +1559,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "the conflict answered with \"{0}\" applies nothing again")
-        @CsvSource({"q", "k", "zz"})
+        @ValueSource(strings = {"q", "k", "zz"})
         @DisplayName("a conflict applies the value again only on Enter")
         void conflictAppliedOnlyOnEnter(String answer) throws Exception {
             var server = serveSettings(SETTINGS, PlanSettingsUpdateResult.conflict(8, "landing.main"),
@@ -1673,7 +1673,7 @@ class ControlDialoguesTest {
 
         @ParameterizedTest(name = "{0}: answered \"{1}\" -> {2}")
         @CsvSource({"findings,1,kept", "findings,2,watch", "findings,'',kept", "watches,1,watch",
-            "watches,2,kept"})
+                            "watches,2,kept"})
         @DisplayName("keeping an item keeps it in its register or moves it to the other")
         void keepOrMove(String register, String answer, String disposition) throws Exception {
             var server = serveReview(REVIEW.replace("\"register\":\"findings\"", "\"register\":\"" + register + "\""));
@@ -1687,7 +1687,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "q at the {0} question sends nothing")
-        @CsvSource({"k", "d"})
+        @ValueSource(strings = {"k", "d"})
         @DisplayName("leaving at the keep or the drop question sends nothing")
         void leaveSendsNothing(String key) throws Exception {
             var server = serveReview(REVIEW);
@@ -1732,7 +1732,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "{0} over a drafted plan")
-        @CsvSource({"p", "e"})
+        @ValueSource(strings = {"p", "e"})
         @DisplayName("promote and edit are not offered: the key is answered and the same prompt asked again")
         void promoteAndEditNotOffered(String key) throws Exception {
             var drafted = REVIEW.replace("\"items\":[", "\"drafted_plan\":{\"plan_id\":\"relay-fix\","
@@ -1776,7 +1776,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "without input over {0}")
-        @CsvSource({"an open item", "a decided review"})
+        @ValueSource(strings = {"an open item", "a decided review"})
         @DisplayName("without input the review stops where it would ask")
         void noInputStops(String state) throws Exception {
             var server = serveReview("an open item".equals(state) ? REVIEW : REVIEW_KEPT);
@@ -1958,7 +1958,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "\"{0}\" at an open plan")
-        @CsvSource({"k", "b", "''", "q"})
+        @ValueSource(strings = {"k", "b", "", "q"})
         @DisplayName("keep, back, Enter and q at an open plan return to the cut and send nothing")
         void planBackToCut(String answer) throws Exception {
             var server = serveDecomposition(CUT);
@@ -2008,7 +2008,7 @@ class ControlDialoguesTest {
         }
 
         @ParameterizedTest(name = "empty words after {0}")
-        @CsvSource({"r", "+", "2 e"})
+        @ValueSource(strings = {"r", "+", "2 e"})
         @DisplayName("empty words send no instruction, read nothing back and keep the cut")
         void emptyWordsSendNothing(String keys) throws Exception {
             var server = serveDecomposition(CUT);

@@ -2235,7 +2235,7 @@ class MockRuntimeEngineTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @CsvSource({"recycle", "grant", "add_credential", "raise_budget", "give_up_removal"})
+    @ValueSource(strings = {"recycle", "grant", "add_credential", "raise_budget", "give_up_removal"})
     @DisplayName("a hold resolved by one of its releasing acts is cleared and its plan goes on")
     void releasingActClearsTheHold(String act) throws Exception {
         var holdId = "H-" + Generators.integers(2000, 9999).next();

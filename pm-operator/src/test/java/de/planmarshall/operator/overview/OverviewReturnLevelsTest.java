@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,11 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -140,7 +139,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("Tab on a project the operator returned to switches that project's view, not the one opened above it")
-    void projectLevelKeepsItsProject() throws IOException {
+    void projectLevelKeepsItsProject() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "," + summary(second) + "]}");
         bodyOf.put("/api/v1/projects/" + first, detail(first));
         bodyOf.put("/api/v1/projects/" + second, detail(second));
@@ -169,7 +168,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("e on a plan of a filtered project moves to its epic by epic, and Tab back keeps the filter")
-    void epicAndSwitchKeepTheFilter() throws IOException {
+    void epicAndSwitchKeepTheFilter() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
         bodyOf.put("/api/v1/projects/" + first, detail(first));
         open(OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -194,7 +193,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("Enter on a plan whose process the runtime refuses stays on the project and names the refusal")
-    void refusedPlanOfProject() throws IOException {
+    void refusedPlanOfProject() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
         bodyOf.put("/api/v1/projects/" + first, detail(first));
         open(OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -212,7 +211,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("a refresh read for another project or another level leaves the rows of the level shown")
-    void lateRefreshKeepsTheLevelShown() throws IOException {
+    void lateRefreshKeepsTheLevelShown() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "," + summary(second) + "]}");
         bodyOf.put("/api/v1/projects/" + first, detail(first));
         open(OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -238,7 +237,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("G on the last row of ended work reads the older page and shows its work below")
-    void endedWorkReadsTheOlderPage() throws IOException {
+    void endedWorkReadsTheOlderPage() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
         bodyOf.put("/api/v1/projects/" + first + "/ended?page=1", endedPage(first, 1, true, "newer-plan"));
         bodyOf.put("/api/v1/projects/" + first + "/ended?page=2", endedPage(first, 2, false, "older-plan"));
@@ -256,7 +255,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("G on the last row of ended work whose older page is refused keeps the rows it has")
-    void endedWorkOlderPageRefused() throws IOException {
+    void endedWorkOlderPageRefused() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
         bodyOf.put("/api/v1/projects/" + first + "/ended?page=1", endedPage(first, 1, true, "newer-plan"));
         open(OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -271,7 +270,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("e on a plan that belongs to no epic stays on the plan")
-    void epicOfPlanWithoutEpic() throws IOException {
+    void epicOfPlanWithoutEpic() throws Exception {
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
         bodyOf.put("/api/v1/projects/" + first, detail(first).replace(",\"epic_id\":\"" + first + "-epic\"", ""));
         open(OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -287,7 +286,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("the header of a plan the operator returned to names that plan, not the one opened from its epic")
-    void planLevelKeepsItsPlan() throws IOException {
+    void planLevelKeepsItsPlan() throws Exception {
         var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
         var firstPlan = first + "-plan";
         var secondPlan = second + "-plan";
@@ -320,7 +319,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("a completion report opened from the reports belongs to its own project, not to the plan view below")
-    void completionKeepsItsProject() throws IOException {
+    void completionKeepsItsProject() throws Exception {
         var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
         var firstPlan = first + "-plan";
         var endedPlan = second + "-plan";
@@ -361,7 +360,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("Esc to a completion report under another one names its own plan and belongs to its own project")
-    void completionLevelKeepsItsReport() throws IOException {
+    void completionLevelKeepsItsReport() throws Exception {
         var firstPlan = first + "-plan";
         var secondPlan = second + "-plan";
         bodyOf.put("/api/v1/projects", "{\"projects\":[" + summary(first) + "]}");
@@ -409,7 +408,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("Esc to a task's activity under another one names that task, and a reload keeps it")
-    void activityLevelKeepsItsTask() throws IOException {
+    void activityLevelKeepsItsTask() throws Exception {
         var firstPlan = first + "-plan";
         var secondPlan = second + "-plan";
         var firstTask = first + "-task";
@@ -461,7 +460,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("close on a plan of an epic moves to its workstream, closes it there, and * opens it again")
-    void closeAndExpandInTheEpic() throws IOException {
+    void closeAndExpandInTheEpic() throws Exception {
         openEpicOfPlan();
         var planRow = EpicViewLevel.PLAN_PREFIX + first + "-plan";
         var workstream = EpicViewLevel.WORKSTREAM_PREFIX + "WS-1";
@@ -485,7 +484,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("p on an epic opens its project above it, and Esc returns to the epic")
-    void projectAboveEpic() throws IOException {
+    void projectAboveEpic() throws Exception {
         bodyOf.put("/api/v1/projects/" + first, detail(first));
         openEpicOfPlan();
         var epicLevel = app.stack().level().id();
@@ -501,7 +500,7 @@ class OverviewReturnLevelsTest {
 
     @Test
     @DisplayName("p on an epic whose project the runtime refuses stays on the epic and names the refusal")
-    void refusedProjectOfEpic() throws IOException {
+    void refusedProjectOfEpic() throws Exception {
         openEpicOfPlan();
         var epicLevel = app.stack().level().id();
 

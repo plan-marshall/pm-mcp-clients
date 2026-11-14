@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,11 +26,8 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
@@ -150,7 +149,7 @@ class OverviewReloadKeysTest {
 
         @Test
         @DisplayName("r reads the plan's process again and shows what changed")
-        void reloadShowsChange() throws IOException {
+        void reloadShowsChange() throws Exception {
             var before = "phase " + Generators.letterStrings(5, 10).next();
             var after = "phase " + Generators.letterStrings(5, 10).next();
             bodyOf.put(processPath, process(before));
@@ -166,7 +165,7 @@ class OverviewReloadKeysTest {
 
         @Test
         @DisplayName("r the runtime refuses keeps the plan as the level shows it")
-        void refusedReloadKeepsRows() throws IOException {
+        void refusedReloadKeepsRows() throws Exception {
             var before = "phase " + Generators.letterStrings(5, 10).next();
             bodyOf.put(processPath, process(before));
             openPlan();
