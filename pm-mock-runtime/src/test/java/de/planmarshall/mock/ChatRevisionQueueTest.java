@@ -196,6 +196,26 @@ class ChatRevisionQueueTest {
         }
 
         @Test
+        @DisplayName("refuses it where the task it waits for has already ended")
+        void refusesAPassedBoundary() throws Exception {
+            var routes = ChatRoutes.plan(PLAN);
+            try (var runtime = ordered(CHAT_STATE)) {
+                open(runtime, routes);
+                var proposal = propose(runtime, routes);
+                broadcast(runtime, "task.ended", Map.of(PLAN_ID, PLAN, TASK_ID, "TASK-4", STATUS, "done"));
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertAll("the passed boundary",
+                        () -> assertEquals(ProposalState.REFUSED,
+                                Objects.requireNonNull(read(runtime, routes).proposal()).state()),
+                        () -> assertEquals("chat.finding.check_failed",
+                                Objects.requireNonNull(read(runtime, routes).proposal()).finding().key()),
+                        () -> assertNull(process(runtime).get(QUEUED_REVISION), "nothing was queued"));
+            }
+        }
+
+        @Test
         @DisplayName("lapses a proposal whose plan left the revision window first")
         void lapsesWhenTheWindowCloses() throws Exception {
             var routes = ChatRoutes.plan(PLAN);

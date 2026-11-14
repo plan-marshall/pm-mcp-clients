@@ -475,6 +475,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String ACTIVITY_RUNNING = "running";
     private static final String KEY_PHASE_STATE = "phase_state";
     private static final String KEY_CURRENT_PHASE = "current_phase";
+    private static final String KEY_NEW_PHASE = "new_phase";
     private static final String KEY_INSTANCE_VERSION = "instance_version";
     private static final String KEY_TOKENS_SO_FAR = "tokens_so_far";
     private static final String KEY_TASKS_TOTAL = "tasks_total";
@@ -1035,12 +1036,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     @Override
     public boolean offersAct(ChatSubject subject, String act) {
-        if (subject.kind() != ChatSubjectKind.PLAN) {
-            return false;
-        }
         synchronized (controlLock) {
-            return buildPlanActions(subject.id()).actions().stream()
-                    .anyMatch(action -> act.equals(action.action()) && action.available());
+            var actions = switch (subject.kind()) {
+                case PLAN -> buildPlanActions(subject.id()).actions();
+                case EPIC -> buildEpicActions(subject.id()).actions();
+                default -> List.<ActionAvailability>of();
+            };
+            return actions.stream().anyMatch(action -> act.equals(action.action()) && action.available());
         }
     }
 
@@ -1986,7 +1988,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         synchronized (controlLock) {
             if (EventName.PHASE_CHANGED.wire().equals(event)) {
-                var phase = stringMember(payload, KEY_PHASE);
+                var phase = stringMember(payload, KEY_NEW_PHASE);
+                if (phase == null) {
+                    phase = stringMember(payload, KEY_PHASE);
+                }
                 if (phase != null) {
                     planPhases.put(planId, phase);
                 }
@@ -1995,6 +2000,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 if (activity != null) {
                     planActivities.put(planId, activity);
                 }
+            } else if (PlanControlEvent.EVENT_PAUSED.equals(event)) {
+                planActivities.put(planId, "pausing");
+            } else if (PlanControlEvent.EVENT_RESUMED.equals(event)) {
+                planActivities.put(planId, "running");
+            } else if (PlanControlEvent.EVENT_CANCELLED.equals(event) || EventName.SCOPE_ENDED.wire().equals(event)) {
+                planActivities.put(planId, "ended");
             } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
                 var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
                 if (version != null) {
@@ -5300,6 +5311,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         String eventName;
         Map<String, Object> event;
+        Map<String, Object> resp;
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
                 response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
@@ -5345,16 +5357,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     event = null;
                 }
             }
-            var resp = new LinkedHashMap<String, Object>();
-            resp.put(KEY_STATUS, "ok");
-            resp.putAll(buildPlanActions(planId).toMap());
-            response.json(200, resp);
+            var built = new LinkedHashMap<String, Object>();
+            built.put(KEY_STATUS, "ok");
+            built.putAll(buildPlanActions(planId).toMap());
+            resp = built;
         }
-        // The event is broadcast after the control lock is released: the chat registry takes its own
-        // lock and calls back into these facts, so the two must never be held in the other order.
+        // The transition is published before the answer is written, and after the control lock is
+        // released: the chat registry takes its own lock and calls back into these facts, so the two
+        // must never be held in the other order, and a failed write must not silence the transition.
         if (eventName != null && event != null) {
             broadcastEvent(eventName, event);
         }
+        response.json(200, resp);
     }
 
     private void handleEpicAction(MockHttpRequest request, MockHttpResponse response, String epicId, String action)
