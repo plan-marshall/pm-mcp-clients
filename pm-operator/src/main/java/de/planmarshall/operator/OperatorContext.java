@@ -138,29 +138,40 @@ public final class OperatorContext {
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider,
                         @Nullable BrowserOpener browserOpener, @Nullable Clock clock) {
-        this(environment, userHome, interactiveTerminal, clientEnvironment, terminalProvider, browserOpener,
-                            clock, StateDialogue.WORKING_TIMEOUT);
+        this(environment, userHome, interactiveTerminal, clientEnvironment,
+                            new Seams(terminalProvider, browserOpener, clock, StateDialogue.WORKING_TIMEOUT));
     }
 
     /**
-     * Creates an operator context whose project setup dialogue gives up on a working state after
-     * the given bound instead of {@link StateDialogue#WORKING_TIMEOUT}.
+     * What a test injects into a context: the terminal, the browser, the clock and the bound after
+     * which the project setup dialogue gives up on a working state.
      *
-     * @param environment                the process environment
-     * @param userHome                   the user's home directory
-     * @param interactiveTerminal        {@code true} if attached to an interactive terminal
-     * @param clientEnvironment          the captured client environment
      * @param terminalProvider           provider for JLine terminal, {@code null} for default
      * @param browserOpener              browser opener, {@code null} for default
      * @param clock                      the clock to use, {@code null} for {@link Clock#systemDefaultZone()}
      * @param projectSetupWorkingTimeout how long a working state of a project setup may stay
      *                                   without a link before the dialogue gives up
      */
+    record Seams(@Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener,
+    @Nullable Clock clock, Duration projectSetupWorkingTimeout) {
+    }
+
+    /**
+     * Creates an operator context whose project setup dialogue gives up on a working state after
+     * the bound the seams carry instead of {@link StateDialogue#WORKING_TIMEOUT}.
+     *
+     * @param environment         the process environment
+     * @param userHome            the user's home directory
+     * @param interactiveTerminal {@code true} if attached to an interactive terminal
+     * @param clientEnvironment   the captured client environment
+     * @param seams               what is injected: terminal, browser, clock and the working bound
+     */
     OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
-                        ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider,
-                        @Nullable BrowserOpener browserOpener, @Nullable Clock clock,
-                        Duration projectSetupWorkingTimeout) {
-        this.projectSetupWorkingTimeout = Objects.requireNonNull(projectSetupWorkingTimeout,
+                        ClientEnvironment clientEnvironment, Seams seams) {
+        var terminalProvider = seams.terminalProvider();
+        var browserOpener = seams.browserOpener();
+        var clock = seams.clock();
+        this.projectSetupWorkingTimeout = Objects.requireNonNull(seams.projectSetupWorkingTimeout(),
                             "projectSetupWorkingTimeout");
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
         this.userHome = Objects.requireNonNull(userHome, "userHome");

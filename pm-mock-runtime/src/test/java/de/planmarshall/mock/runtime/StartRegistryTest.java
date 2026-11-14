@@ -61,18 +61,18 @@ class StartRegistryTest {
         var projectId = Generators.letterStrings(3, 8).next().toLowerCase();
         var entryId = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
         var recipeKey = "recipe-" + Generators.letterStrings(3, 8).next().toLowerCase();
-        var registry = new StartRegistry(_ -> {
+        var seeded = new StartRegistry(_ -> {
         });
-        registry.init(scenario(
+        seeded.init(scenario(
                 Map.of("start", Map.of("recipes", List.of(Map.of("key", recipeKey, "name", recipeKey)))),
                 Map.of("start", Map.of("project_id", projectId, "kind", "plan", "state", "start.sources",
                         "entry_id", entryId, "sources", List.of()))), START_STATE);
 
-        var entry = registry.find(entryId);
+        var entry = seeded.find(entryId);
         assertNotNull(entry);
         assertEquals(projectId, entry.entry().projectId());
-        assertEquals(1, registry.recipes(projectId).size());
-        assertEquals(recipeKey, registry.recipes(projectId).getFirst().key());
+        assertEquals(1, seeded.recipes(projectId).size());
+        assertEquals(recipeKey, seeded.recipes(projectId).getFirst().key());
     }
 
     @Test
@@ -81,16 +81,16 @@ class StartRegistryTest {
         var projectId = Generators.letterStrings(3, 8).next().toLowerCase();
         var entryId = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
         var recipeKey = "recipe-" + Generators.letterStrings(3, 8).next().toLowerCase();
-        var registry = new StartRegistry(_ -> {
+        var seeded = new StartRegistry(_ -> {
         });
-        registry.init(scenario(Map.of(),
+        seeded.init(scenario(Map.of(),
                 Map.of("start", Map.of("project_id", projectId, "kind", "plan", "state", "start.sources",
                         "entry_id", entryId)),
                 Map.of("GET /api/v1/recipes", RouteDefinition.of(Map.of("recipes",
                         List.of(Map.of("key", recipeKey, "name", recipeKey)))))), START_STATE);
 
-        assertNotNull(registry.find(entryId));
-        assertEquals(recipeKey, registry.recipes(projectId).getFirst().key());
+        assertNotNull(seeded.find(entryId));
+        assertEquals(recipeKey, seeded.recipes(projectId).getFirst().key());
     }
 
     @ParameterizedTest(name = "{0}")
@@ -110,7 +110,7 @@ class StartRegistryTest {
 
     @Test
     @DisplayName("refuses a source kind no start carries with act_not_available")
-    void refusesAnUnknownSourceKind() throws Exception {
+    void refusesAnUnknownSourceKind() {
         var entryId = seedPlanEntry();
         var unknownKind = Generators.letterStrings(4, 10).next().toLowerCase();
 
@@ -558,7 +558,7 @@ class StartRegistryTest {
 
     @Test
     @DisplayName("answers nothing for an entry it does not hold")
-    void unknownEntry() throws Exception {
+    void unknownEntry() {
         seedPlanEntry();
         var unknown = "ent-" + lowerLetters() + "-unknown";
 

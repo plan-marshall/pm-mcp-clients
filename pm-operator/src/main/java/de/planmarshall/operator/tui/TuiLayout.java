@@ -487,7 +487,7 @@ public final class TuiLayout {
             offset = start;
         }
         // More lines than the body holds: the window of inner lines always lies inside them.
-        offset = Math.max(0, Math.min(offset, total - inner));
+        offset = Math.clamp(offset, 0, total - inner);
 
         var view = new ArrayList<AttributedString>(height);
         if (indicators) {

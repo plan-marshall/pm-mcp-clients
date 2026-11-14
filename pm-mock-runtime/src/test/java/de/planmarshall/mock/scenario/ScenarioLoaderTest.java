@@ -888,7 +888,9 @@ class ScenarioLoaderTest {
         @Test
         @DisplayName("reports a path that cannot be read as such")
         void reportsAnUnreadablePath(@TempDir Path directory) {
-            assertThrows(UncheckedIOException.class, () -> ScenarioLoader.load(directory.toString()));
+            var path = directory.toString();
+
+            assertThrows(UncheckedIOException.class, () -> ScenarioLoader.load(path));
         }
     }
 

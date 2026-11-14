@@ -97,7 +97,7 @@ class IntentJsonTest {
 
     @Test
     @DisplayName("should yield nothing for an absent optional member or list, a null optional member, and keep a blank raw text")
-    void shouldYieldNothingForAbsentOptionalMembers() throws Exception {
+    void shouldYieldNothingForAbsentOptionalMembers() {
         var blank = " ".repeat(Generators.integers(1, 5).next());
         var absent = Map.<String, Object>of();
         var nullMember = member(null);
@@ -115,7 +115,7 @@ class IntentJsonTest {
 
     @Test
     @DisplayName("should read numbers of a map built in memory")
-    void shouldReadNumbersOfAMapInMemory() throws Exception {
+    void shouldReadNumbersOfAMapInMemory() {
         var value = Generators.integers(0, 10).next();
 
         assertAll(

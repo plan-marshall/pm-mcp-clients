@@ -103,7 +103,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         var ended = report.ended();
         parts.add(ended != null && !ended.isBlank()
                             ? PlanViewFormatting.clean(ended)
-                            : MessageCatalogue.format(locale, "common.unknown", Map.of()));
+                            : unknown(locale));
         return String.join(PlanViewFormatting.DOT_SEPARATOR, parts);
     }
 
@@ -192,7 +192,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             var target = ownCall.conflictTarget();
             var item = target != null && !target.isBlank()
                                 ? PlanViewFormatting.clean(target)
-                                : MessageCatalogue.format(locale, "common.unknown", Map.of());
+                                : unknown(locale);
             return MessageCatalogue.format(locale, "report.completion.own_call_conflicts", Map.of("item", item));
         }
         if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
@@ -263,6 +263,10 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
     }
 
     private static String description(String locale, @Nullable String value) {
-        return value != null ? value : MessageCatalogue.format(locale, "common.unknown", Map.of());
+        return value != null ? value : unknown(locale);
+    }
+
+    private static String unknown(String locale) {
+        return MessageCatalogue.format(locale, "common.unknown", Map.of());
     }
 }

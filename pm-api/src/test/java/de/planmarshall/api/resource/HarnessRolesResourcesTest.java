@@ -316,7 +316,7 @@ class HarnessRolesResourcesTest {
 
     @Test
     @DisplayName("RoleDetailResource defaults its display name to the role and an absent member to none")
-    void roleDetailDefaults() throws Exception {
+    void roleDetailDefaults() {
         var qualification = new RoleDetailResource.Qualification(RoleQualificationState.UNQUALIFIED, null, null);
 
         var detail = new RoleDetailResource("judge", " ", null, null, null, qualification, null);
@@ -371,7 +371,7 @@ class HarnessRolesResourcesTest {
 
     @Test
     @DisplayName("nested parameters are normalized throughout and a null parameter stays JSON null")
-    void nestedParametersNormalize() throws Exception {
+    void nestedParametersNormalize() {
         var count = Generators.integers(0, 100).next();
         var parameters = new LinkedHashMap<String, Object>();
         parameters.put("limits", Map.of("count", count));

@@ -84,6 +84,8 @@ public final class CleanupCommand implements Callable<Integer> {
 
     /** The cleanup resource of the runtime's API. */
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
+    private static final String KEPT_API = CLEANUP_API + "/kept";
+    private static final String COUNT_PARAM = "count";
 
     private final OperatorContext context;
     private final PromptFactory prompts;
@@ -266,7 +268,7 @@ public final class CleanupCommand implements Callable<Integer> {
      */
     private static List<CleanupKeptItem> keptItems(RuntimeClient runtime, String verb)
                         throws IOException {
-        var res = runtime.send(HttpRequest.get(CLEANUP_API + "/kept"));
+        var res = runtime.send(HttpRequest.get(KEPT_API));
         if (res.status() != 200) {
             throw new OperatorRefusedException(verb, res);
         }
@@ -276,39 +278,32 @@ public final class CleanupCommand implements Callable<Integer> {
     private int executeRelease(PrintWriter out) throws IOException {
         var runtime = context.runtime(true);
         var keptItems = keptItems(runtime, all ? "cleanup --release --all" : "cleanup --release");
+        return all ? releaseAll(out, runtime, keptItems.size()) : releaseNamed(out, runtime, keptItems);
+    }
 
-        if (all) {
-            if (!yes && !confirmReleaseAll(out, keptItems.size())) {
-                return noInput ? 3 : 0;
-            }
-            var putBody = JsonTree.write(Map.of("item_ids", List.of()));
-            var res = runtime.send(HttpRequest.put(CLEANUP_API + "/kept").withBody(putBody));
-            if (res.status() == 200) {
-                printReleased(out, keptItems.size());
-                return 0;
-            }
-            throw new OperatorRefusedException("cleanup --release --all", res);
+    private int releaseAll(PrintWriter out, RuntimeClient runtime, int keptCount) throws IOException {
+        if (!yes && !confirmReleaseAll(out, keptCount)) {
+            return noInput ? 3 : 0;
         }
+        var putBody = JsonTree.write(Map.of("item_ids", List.of()));
+        var res = runtime.send(HttpRequest.put(KEPT_API).withBody(putBody));
+        if (res.status() == 200) {
+            printReleased(out, keptCount);
+            return 0;
+        }
+        throw new OperatorRefusedException("cleanup --release --all", res);
+    }
 
+    /** Releases the kept items the operator named by their number in the list, their id, or kind:id. */
+    private int releaseNamed(PrintWriter out, RuntimeClient runtime, List<CleanupKeptItem> keptItems)
+                        throws IOException {
         // without --all the verb was dispatched for --release, so its list is present
-        var toReleaseIndices = new ArrayList<Integer>();
-        var toReleaseIds = new ArrayList<String>();
-        for (var target : Objects.requireNonNull(release, "release")) {
-            try {
-                int num = Integer.parseInt(target);
-                toReleaseIndices.add(num);
-            } catch (NumberFormatException _) {
-                toReleaseIds.add(target);
-            }
-        }
-
+        var named = Objects.requireNonNull(release, "release");
         var remainingIds = new ArrayList<String>();
         int countReleased = 0;
         for (int i = 0; i < keptItems.size(); i++) {
             var item = keptItems.get(i);
-            int idx = i + 1;
-            if (toReleaseIndices.contains(idx) || toReleaseIds.contains(item.id())
-                                || toReleaseIds.contains(kindWord(item.kind()) + ":" + item.id())) {
+            if (isNamedForRelease(named, i + 1, item)) {
                 countReleased++;
             } else {
                 remainingIds.add(item.id());
@@ -316,12 +311,39 @@ public final class CleanupCommand implements Callable<Integer> {
         }
 
         var putBody = JsonTree.write(Map.of("item_ids", remainingIds));
-        var res = runtime.send(HttpRequest.put(CLEANUP_API + "/kept").withBody(putBody));
+        var res = runtime.send(HttpRequest.put(KEPT_API).withBody(putBody));
         if (res.status() == 200) {
             printReleased(out, countReleased);
             return 0;
         }
         throw new OperatorRefusedException("cleanup --release", res);
+    }
+
+    /**
+     * @param named  the tokens of {@code --release}
+     * @param number the item's number in the list, from one
+     * @param item   the kept item
+     * @return whether a token names the item by its number, its id, or its kind and id; a token that
+     *         reads as a number names a position only
+     */
+    private static boolean isNamedForRelease(List<String> named, int number, CleanupKeptItem item) {
+        var kindAndId = kindWord(item.kind()) + ":" + item.id();
+        for (var token : named) {
+            var position = positionOf(token);
+            var names = position != null ? position == number : token.equals(item.id()) || token.equals(kindAndId);
+            if (names) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static @Nullable Integer positionOf(String token) {
+        try {
+            return Integer.parseInt(token);
+        } catch (NumberFormatException _) {
+            return null;
+        }
     }
 
     /**
@@ -335,7 +357,7 @@ public final class CleanupCommand implements Callable<Integer> {
      */
     private boolean confirmReleaseAll(PrintWriter out, int count) {
         var locale = context.clientEnvironment().locale();
-        var question = MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of("count", count));
+        var question = MessageCatalogue.format(locale, "system.cleanup.kept.confirm_all", Map.of(COUNT_PARAM, count));
         if (noInput) {
             out.println(question);
             out.println("Needs a choice: --yes");
@@ -349,7 +371,7 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private void printReleased(PrintWriter out, int count) {
         out.println("✓ " + MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "system.cleanup.kept.released", Map.of("count", count)));
+                            "system.cleanup.kept.released", Map.of(COUNT_PARAM, count)));
         out.flush();
     }
 
@@ -488,7 +510,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
         out.println(MessageCatalogue.format(locale, "operator.cleanup.ignored.count",
-                            Map.of("count", totalItems)));
+                            Map.of(COUNT_PARAM, totalItems)));
     }
 
     /**
@@ -943,7 +965,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private void printMore(PrintWriter out, int remaining, String projectId) {
         var command = "cleanup --project " + OutputSafety.stripControlSequences(projectId);
         out.println("   …  " + MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "operator.cleanup.more", Map.of("count", remaining, "command", command)));
+                            "operator.cleanup.more", Map.of(COUNT_PARAM, remaining, "command", command)));
     }
 
     /**

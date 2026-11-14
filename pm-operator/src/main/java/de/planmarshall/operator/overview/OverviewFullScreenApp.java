@@ -1258,32 +1258,31 @@ public final class OverviewFullScreenApp {
      * @param trigger the menu's mnemonic, or the empty string to close the menu
      * @return {@code true} to keep the view open
      */
-    private boolean handleMenu(String trigger) {
+    private void handleMenu(String trigger) {
         var openRuntimeMenu = runtimeMenu;
         if (openRuntimeMenu != null) {
             handleRuntimeMenu(openRuntimeMenu, trigger);
-            return true;
+            return;
         }
         if (actionsMenu == null) {
-            return true;
+            return;
         }
         if (trigger.isEmpty()) {
             actionsMenu = null;
-            return true;
+            return;
         }
         var entry = actionsMenu.entry(trigger);
         if (entry == null) {
-            return true;
+            return;
         }
         if (!entry.enabled()) {
             statusMessage = entry.reason() != null ? entry.reason() : "";
-            return true;
+            return;
         }
         var menu = actionsMenu;
         actionsMenu = null;
         runMenuEntry(menu, entry);
         refreshActiveLevels();
-        return true;
     }
 
     private void runMenuEntry(ActionsMenu menu, TuiMenuEntry entry) {
@@ -2132,18 +2131,6 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    /**
-     * Says that an act failed, unless the operator gate or the runtime refused it: the refusal
-     * already stands on the status line and names why, which the general failure would hide.
-     *
-     * @param key the catalogue key of the failure
-     */
-    private void failedUnlessRefused(String key) {
-        if (statusMessage == null) {
-            statusMessage = MessageCatalogue.format(locale, key, Map.of());
-        }
-    }
-
     private static @Nullable String firstReportRowId(List<TuiRow> rows) {
         for (var row : rows) {
             if (ReportsLevel.reportIdOf(row.id()) != null) {
@@ -2195,6 +2182,18 @@ public final class OverviewFullScreenApp {
         private OverviewKeyHandler() {
         }
 
+        /**
+         * Says that an act failed, unless the operator gate or the runtime refused it: the refusal
+         * already stands on the status line and names why, which the general failure would hide.
+         *
+         * @param key the catalogue key of the failure
+         */
+        private void failedUnlessRefused(String key) {
+            if (statusMessage == null) {
+                statusMessage = MessageCatalogue.format(locale, key, Map.of());
+            }
+        }
+
         @Override
         public boolean handle(TuiKeyAction action) {
             synchronized (OverviewFullScreenApp.this) {
@@ -2210,9 +2209,11 @@ public final class OverviewFullScreenApp {
                 var openProjectMenu = projectMenu;
                 if (openProjectMenu != null) {
                     handleProjectMenu(openProjectMenu, trigger);
-                    return true;
+                } else {
+                    handleMenu(trigger);
                 }
-                return handleMenu(trigger);
+                // A menu key never leaves the view.
+                return true;
             }
         }
 
@@ -2460,7 +2461,8 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             if (kind == TuiLevel.Kind.REPORTS) {
-                return openSelectedReport(selectedId);
+                openSelectedReport(selectedId);
+                return true;
             }
             if (kind == TuiLevel.Kind.SYSTEM) {
                 systemOpenSelected();
@@ -2901,26 +2903,24 @@ public final class OverviewFullScreenApp {
          * Opens the report's detail in the same view and reads the report in the same act
          * ({@code doc/design/terminal-client/24-reports.adoc#full-screen}).
          *
-         * @return {@code true} to keep the view open
          */
-        private boolean openSelectedReport(String selectedId) {
+        private void openSelectedReport(String selectedId) {
             var level = currentReports.get();
             var report = level != null ? level.reportOf(selectedId) : null;
             if (report == null) {
-                return true;
+                return;
             }
             if (!openReportDetail(report)) {
                 failedUnlessRefused("report.list.load_failed");
-                return true;
+                return;
             }
             if (!markReportRead(report.id())) {
                 failedUnlessRefused("report.list.mark_read_failed");
-                return true;
+                return;
             }
             var updated = level.without(report.id());
             currentReports.set(updated);
             unreadReports.set(updated.unreadCount());
-            return true;
         }
 
         private boolean openReportDetail(ReportItem report) {

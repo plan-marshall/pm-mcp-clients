@@ -218,8 +218,10 @@ final class InstructCommand implements Callable<Integer> {
 }
 
 /**
- * The shared HTTP and printing surface of the decomposition verbs.
+ * The shared HTTP and printing surface of the decomposition verbs. The resource paths are the runtime's
+ * wire contract, not a setting of the client.
  */
+@SuppressWarnings("java:S1075")
 final class DecompositionSupport {
 
     private static final String PATH_PROJECTS = "/api/v1/projects/";

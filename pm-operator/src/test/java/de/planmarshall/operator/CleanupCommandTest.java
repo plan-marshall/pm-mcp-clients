@@ -1429,7 +1429,7 @@ class CleanupCommandTest {
         @ParameterizedTest(name = "x answered ''{0}'' prints nothing")
         @ValueSource(strings = {"", "q"})
         @DisplayName("x left with an empty answer or the leave key marks nothing")
-        void leaveOutEmptyOrLeave(String answer) throws Exception {
+        void leaveOutEmptyOrLeave(String answer) {
             var job = sampleJob();
             var answers = new ArrayDeque<>(List.of("x\n", "q\n"));
             var command = new CleanupCommand(
@@ -1447,7 +1447,7 @@ class CleanupCommandTest {
 
         @Test
         @DisplayName("x names a number past the job back and o returns to the bar")
-        void dialogNamesUnknownItemsAndReturnsFromOpen() throws Exception {
+        void dialogNamesUnknownItemsAndReturnsFromOpen() {
             var job = sampleJob();
             var answers = new ArrayDeque<>(List.of("x\n", "o\n", "q\n"));
             var freeText = new ArrayDeque<>(List.of("99", "q"));

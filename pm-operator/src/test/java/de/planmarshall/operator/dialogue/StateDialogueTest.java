@@ -450,13 +450,13 @@ class StateDialogueTest {
         var out = new PrintWriter(new StringWriter());
         Function<String, ChoicePrompt> prompts = stateId -> new ChoicePrompt(
                             new BufferedReader(new StringReader("")), out, "en", stateId);
+        var negative = Duration.ofMillis(-1);
 
         assertAll(
                             () -> assertThrows(IllegalArgumentException.class,
                                                 () -> new StateDialogue(source, out, "en", prompts, Duration.ZERO)),
                             () -> assertThrows(IllegalArgumentException.class,
-                                                () -> new StateDialogue(source, out, "en", prompts,
-                                                                    Duration.ofMillis(-1))));
+                                                () -> new StateDialogue(source, out, "en", prompts, negative)));
     }
 
     @Test

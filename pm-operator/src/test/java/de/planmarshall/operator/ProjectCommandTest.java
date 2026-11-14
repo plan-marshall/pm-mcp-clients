@@ -95,8 +95,8 @@ class ProjectCommandTest {
         var outStream = new ByteArrayOutputStream();
         var terminal = new DumbTerminal(inStream, outStream);
         var context = new OperatorContext(fixture.environment(), tempDir, true,
-                            ClientEnvironment.capture(fixture.environment()), () -> terminal, null, null,
-                            workingTimeout);
+                            ClientEnvironment.capture(fixture.environment()),
+                            new OperatorContext.Seams(() -> terminal, null, null, workingTimeout));
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
         out.write(outStream.toString(StandardCharsets.UTF_8));
         return code;

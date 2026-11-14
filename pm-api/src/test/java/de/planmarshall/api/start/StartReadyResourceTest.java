@@ -75,7 +75,7 @@ class StartReadyResourceTest {
 
         @Test
         @DisplayName("should fix the id of a recipe's plan and show the recipe's resolved parameters")
-        void shouldFixTheIdOfARecipePlan() throws Exception {
+        void shouldFixTheIdOfARecipePlan() {
             var parameters = List.of(parameter(), parameter());
             var recipe = recipe(parameters);
             var title = Generators.nonBlankStrings().next();

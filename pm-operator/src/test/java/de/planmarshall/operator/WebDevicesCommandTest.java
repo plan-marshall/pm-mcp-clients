@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -42,7 +43,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import picocli.CommandLine;
 
@@ -603,9 +606,11 @@ class WebDevicesCommandTest {
         );
     }
 
-    @Test
+    @ParameterizedTest(name = "a refused {0} in the interactive list leaves with 1 and the refusal")
+    @MethodSource("refusedInteractiveActs")
     @DisplayName("a refused act in the interactive list leaves with 1 and the refusal")
-    void aRefusedInteractiveActLeavesWithOne() throws Exception {
+    void aRefusedInteractiveActLeavesWithOne(String act, String refusedMethod, String typed, String refusal)
+                        throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var deviceId = Generators.letterStrings(4, 8).next();
         var label = Generators.letterStrings(4, 8).next();
@@ -618,15 +623,14 @@ class WebDevicesCommandTest {
                 response.json(200, """
                                     [{"device_id":"%s","label":"%s"}]
                                     """.formatted(deviceId, label));
-            } else if ("DELETE".equals(request.method())) {
+            } else if (refusedMethod.equals(request.method())) {
                 response.json(400, "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        // Choose the one device, revoke it, and confirm the prompt.
-        var context = createContext("1\nx\n\n");
+        var context = createContext(typed);
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
@@ -636,82 +640,20 @@ class WebDevicesCommandTest {
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains("Failed to revoke: HTTP 400"), output)
+                            () -> assertTrue(output.contains(refusal), output)
         );
     }
 
-    @Test
-    @DisplayName("a refused rename in the interactive list leaves with 1 and the refusal")
-    void aRefusedInteractiveRenameLeavesWithOne() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var deviceId = Generators.letterStrings(4, 8).next();
-        var label = Generators.letterStrings(4, 8).next();
-        fixture.start((request, response) -> {
-            if ("/api/v1/status".equals(request.target())) {
-                response.json(200, """
-                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
-                                    """);
-            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, """
-                                    [{"device_id":"%s","label":"%s"}]
-                                    """.formatted(deviceId, label));
-            } else if ("PUT".equals(request.method())) {
-                response.json(400, "{\"error\":\"refused\"}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        // Choose device 1, rename 'r', enter new label
-        var context = createContext("1\nr\nrenamed-device\n");
-        var writer = new StringWriter();
-        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
-        cmd.setOut(new PrintWriter(writer));
-
-        int code = cmd.execute("-i");
-
-        var output = writer.toString();
-        assertAll(
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
-        );
-    }
-
-    @Test
-    @DisplayName("a refused listener-off in the interactive list leaves with 1 and the refusal")
-    void aRefusedInteractiveListenerOffLeavesWithOne() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        var deviceId = Generators.letterStrings(4, 8).next();
-        var label = Generators.letterStrings(4, 8).next();
-        fixture.start((request, response) -> {
-            if ("/api/v1/status".equals(request.target())) {
-                response.json(200, """
-                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
-                                    """);
-            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, """
-                                    [{"device_id":"%s","label":"%s"}]
-                                    """.formatted(deviceId, label));
-            } else if ("DELETE".equals(request.method())) {
-                response.json(400, "{\"error\":\"refused\"}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        // Choose listener-off 'n'
-        var context = createContext("n\n");
-        var writer = new StringWriter();
-        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
-        cmd.setOut(new PrintWriter(writer));
-
-        int code = cmd.execute("-i");
-
-        var output = writer.toString();
-        assertAll(
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
-        );
+    /** The act, the method the runtime refuses, what the operator types, and the line the refusal names. */
+    private static Stream<Arguments> refusedInteractiveActs() {
+        return Stream.of(
+                            // choose the one device, revoke it, and confirm the prompt
+                            Arguments.of("revoke", "DELETE", "1\nx\n\n", "Failed to revoke: HTTP 400"),
+                            // choose device 1, rename with 'r', enter the new label
+                            Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n",
+                                                "Failed to rename device: HTTP 400"),
+                            // choose listener-off 'n'
+                            Arguments.of("listener-off", "DELETE", "n\n", "Failed to turn listener off: HTTP 400"));
     }
 
     @Test

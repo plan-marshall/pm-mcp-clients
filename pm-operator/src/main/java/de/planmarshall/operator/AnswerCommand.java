@@ -79,6 +79,8 @@ public final class AnswerCommand implements Callable<Integer> {
     private static final String ACTION_LATER = "later";
     private static final String ACTION_WITHDRAW = "withdraw";
     private static final String ACTION_ANSWER = "answer";
+    /** The catalogue parameter that carries the label of a part's answer. */
+    private static final String ANSWER_PARAM = ACTION_ANSWER;
     private static final String KEY_OWN_WORDS = "w";
     private static final String KEY_NONE_FITS = "x";
     private static final String KEY_CHOOSE_OPTION = "o";
@@ -1292,7 +1294,7 @@ public final class AnswerCommand implements Callable<Integer> {
             for (int i = 0; i < parts.size(); i++) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.part_answer_line", Map.of(
                                     "n", i + 1,
-                                    "answer", answerLabel(parts.get(i), answers.get(i)))));
+                                    ANSWER_PARAM, answerLabel(parts.get(i), answers.get(i)))));
                 var answer = answers.get(i);
                 if (!answer.ownWords()) {
                     var option = pickOption(parts.get(i), answer.value());
@@ -1478,18 +1480,19 @@ public final class AnswerCommand implements Callable<Integer> {
                 interp = clarification.interpretation();
                 interpretedWords = clarification.words();
             }
-            var readBack = readBack(session, envelope, interp, interpretedWords, locale);
+            var readBack = readBack(session, interp, interpretedWords, locale);
             if (!readBack.repeat()) {
                 return readBack.answer();
             }
         }
     }
 
-    private static ReadBack readBack(DialogueSession session, DecisionEnvelope envelope,
-                        DecisionInterpretation interp, String wordsInput, String locale) {
+    private static ReadBack readBack(DialogueSession session, DecisionInterpretation interp, String wordsInput,
+                        String locale) {
         var out = session.out();
         out.println();
-        var reading = Objects.requireNonNullElse(interp.readBackText(), wordsInput);
+        var readBackText = interp.readBackText();
+        final String reading = readBackText != null ? readBackText : wordsInput;
         var understood = MessageCatalogue.format(locale, "decision.readback.understood",
                             Map.of("reading", TerminalSanitizer.sanitizeLine(reading)));
         out.println(understood);

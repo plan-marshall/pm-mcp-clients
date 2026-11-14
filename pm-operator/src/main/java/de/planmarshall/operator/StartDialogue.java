@@ -655,39 +655,11 @@ final class StartDialogue {
         var parameters = resolvedParameters(recipe);
         renderer.parameters(recipe, parameters);
         if (parameters.stream().anyMatch(parameter -> !parameter.available())) {
-            var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
-                                text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
-                                entry.entryId());
-            if ("b".equalsIgnoreCase(answer)) {
-                recipeSelected = false;
-                state = act("back", Map.of());
-                return;
-            }
-            if (leaves(answer)) {
-                throw new StartPrompt.StartLeftException();
-            }
-            // Only b and q remain while a parameter has no option.
-            unoffered(answer, "b, " + leaveKey());
+            answerUnavailableParameter(entry);
             return;
         }
-        if (prompt.asks()) {
-            var answer = prompt.askRaw(text("start.recipe.set", Map.of("range",
-                                "1-" + parameters.size())), KEY_STATE_RECIPE_PARAMETERS,
-                                text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
-                                entry.entryId());
-            if ("b".equalsIgnoreCase(answer)) {
-                recipeSelected = false;
-                state = act("back", Map.of());
-                return;
-            }
-            if (leaves(answer)) {
-                throw new StartPrompt.StartLeftException();
-            }
-            if (!answer.isEmpty() && !changeParameter(parameters, answer)) {
-                // An answer that names no parameter sends nothing; the parameters are shown again.
-                unoffered(answer, range(parameters.size()) + ", b, " + leaveKey() + ", ?");
-                return;
-            }
+        if (prompt.asks() && !askParameters(entry, recipe, parameters)) {
+            return;
         }
         var body = new LinkedHashMap<String, Object>();
         var values = new LinkedHashMap<String, Object>();
@@ -698,6 +670,50 @@ final class StartDialogue {
         }
         body.put(KEY_PARAMETERS, values);
         state = act("set", body);
+    }
+
+    /** Only b and q remain while a parameter has no option. */
+    private void answerUnavailableParameter(EntryResource entry) throws IOException {
+        var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
+                            text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
+                            entry.entryId());
+        if ("b".equalsIgnoreCase(answer)) {
+            recipeSelected = false;
+            state = act("back", Map.of());
+            return;
+        }
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        unoffered(answer, "b, " + leaveKey());
+    }
+
+    /**
+     * Asks which parameter to change.
+     *
+     * @return {@code true} when the parameters are to be set now, {@code false} when the answer went
+     *         back or named no parameter, so the state is shown again
+     */
+    private boolean askParameters(EntryResource entry, RecipeRef recipe, List<RecipeParameter> parameters)
+                        throws IOException {
+        var answer = prompt.askRaw(text("start.recipe.set", Map.of("range",
+                            "1-" + parameters.size())), KEY_STATE_RECIPE_PARAMETERS,
+                            text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
+                            entry.entryId());
+        if ("b".equalsIgnoreCase(answer)) {
+            recipeSelected = false;
+            state = act("back", Map.of());
+            return false;
+        }
+        if (leaves(answer)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        if (!answer.isEmpty() && !changeParameter(parameters, answer)) {
+            // An answer that names no parameter sends nothing; the parameters are shown again.
+            unoffered(answer, range(parameters.size()) + ", b, " + leaveKey() + ", ?");
+            return false;
+        }
+        return true;
     }
 
     private List<RecipeParameter> resolvedParameters(RecipeRef recipe) {

@@ -76,13 +76,14 @@ class EpicIntentResourceTest {
         var checks = checks(3);
         var nonGoals = List.of(Generators.nonBlankStrings().next());
         var text = Generators.nonBlankStrings().next();
+        var blankEntries = List.of(" ");
 
         assertAll(
                 () -> assertThrows(IllegalArgumentException.class, () -> epic(null, nonGoals, null, null)),
                 () -> assertThrows(IllegalArgumentException.class, () -> epic(checks, null, null, null)),
-                () -> assertThrows(IllegalArgumentException.class, () -> epic(checks, List.of(" "), null, null)),
+                () -> assertThrows(IllegalArgumentException.class, () -> epic(checks, blankEntries, null, null)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> epic(checks, nonGoals, List.of(" "), null)),
+                        () -> epic(checks, nonGoals, blankEntries, null)),
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> new EpicIntentResource(" ", text, checks, nonGoals, null, null)),
                 () -> assertThrows(IllegalArgumentException.class,
@@ -111,6 +112,7 @@ class EpicIntentResourceTest {
         var planId = Generators.nonBlankStrings().next();
         var title = Generators.nonBlankStrings().next();
         var criterion = List.of(Generators.nonBlankStrings().next());
+        var blankCriterion = List.of(" ");
 
         assertAll(
                 () -> assertThrows(IllegalArgumentException.class, () -> new PlanDoneWhen(" ", title, criterion)),
@@ -119,7 +121,7 @@ class EpicIntentResourceTest {
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> new PlanDoneWhen(planId, title, Collections.emptyList())),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> new PlanDoneWhen(planId, title, List.of(" "))));
+                        () -> new PlanDoneWhen(planId, title, blankCriterion)));
     }
 
     @Test

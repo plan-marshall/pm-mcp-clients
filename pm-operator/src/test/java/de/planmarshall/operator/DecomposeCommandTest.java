@@ -513,7 +513,7 @@ class DecomposeCommandTest {
 
     @Test
     @DisplayName("epic instruct requires words, and a plan to edit")
-    void instructRequiresWordsAndAPlan() throws Exception {
+    void instructRequiresWordsAndAPlan() {
         var noWords = execute("epic", "instruct", "ep-001", "--plan", "relay-auth-v2");
         var noPlan = execute("epic", "instruct", "ep-001", "--instruction", "words");
 

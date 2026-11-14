@@ -676,7 +676,7 @@ class ReportRecordsTest {
             var measured = Generators.integers(1, tasksTotal).next();
             var reason = Generators.nonBlankStrings().next();
             var wasteTotal = (long) Generators.integers(1, 1_000_000).next();
-            var record = new TokenWasteRecord("retries", wasteTotal, 3, 1, null);
+            var wasteRecord = new TokenWasteRecord("retries", wasteTotal, 3, 1, null);
             var row = new TokenBreakdownItem("execute", 10, 8, 2, 0, false, null, null);
             var map = new LinkedHashMap<String, Object>();
             map.put("workers_count", (long) workers);
@@ -686,7 +686,7 @@ class ReportRecordsTest {
             map.put("unmeasured_reason", reason);
             map.put("coverage", Map.of("workers", 99L, "models", 99L, "total_tasks", 99L, "unmeasured", 1L,
                     "reason", "other"));
-            map.put("waste_records", List.of(record.toMap(), "not-an-object"));
+            map.put("waste_records", List.of(wasteRecord.toMap(), "not-an-object"));
             map.put("total_waste_tokens", wasteTotal);
             map.put("waste_share_percent", 3L);
             map.put("waste", Map.of("total", 99L, "share_percent", 99L, "retries_tokens", 99L));
@@ -700,7 +700,7 @@ class ReportRecordsTest {
                     () -> assertEquals(tasksTotal, usage.tasksTotal()),
                     () -> assertEquals(measured, usage.tasksMeasured()),
                     () -> assertEquals(reason, usage.unmeasuredReason()),
-                    () -> assertEquals(List.of(record), usage.wasteRecords()),
+                    () -> assertEquals(List.of(wasteRecord), usage.wasteRecords()),
                     () -> assertEquals(wasteTotal, usage.totalWasteTokens()),
                     () -> assertEquals(3, usage.wasteSharePercent()),
                     () -> assertEquals(List.of(row), usage.byPhase()));

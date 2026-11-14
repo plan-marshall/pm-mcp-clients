@@ -261,22 +261,36 @@ public final class EntryFlow {
             }
             var answer = line == null ? "" : line.trim().toLowerCase(Locale.ROOT);
             if (answer.isEmpty()) {
-                return isSsh ? "h" : "w";
+                return preselectedWhere(isSsh);
             }
-            if ("w".equals(answer) || "h".equals(answer)) {
+            if (isWhereChoice(answer)) {
                 return answer;
             }
             if (ChoicePrompt.isLeave(locale, answer)) {
                 return null;
             }
-            out.println("?".equals(answer)
-                                ? MessageCatalogue.format(locale, "operator.dialogue.no_explanation", Map.of())
-                                : MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
-                                "input", TerminalSanitizer.sanitizeLine(line),
-                                "offered", (isSsh ? "h, w, " : "w, h, ")
-                                + (locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q") + ", ?")));
+            out.println(notOfferedWhere(locale, answer, line, isSsh));
             out.flush();
         }
+    }
+
+    /** @return {@code "h"} in an SSH session, {@code "w"} on a desktop */
+    private static String preselectedWhere(boolean isSsh) {
+        return isSsh ? "h" : "w";
+    }
+
+    private static boolean isWhereChoice(String answer) {
+        return "w".equals(answer) || "h".equals(answer);
+    }
+
+    private static String notOfferedWhere(String locale, String answer, @Nullable String line, boolean isSsh) {
+        if ("?".equals(answer)) {
+            return MessageCatalogue.format(locale, "operator.dialogue.no_explanation", Map.of());
+        }
+        var leave = locale.toLowerCase(Locale.ROOT).startsWith("de") ? "v" : "q";
+        var offered = (isSsh ? "h, w, " : "w, h, ") + leave + ", ?";
+        return MessageCatalogue.format(locale, "operator.dialogue.not_offered", Map.of(
+                            "input", TerminalSanitizer.sanitizeLine(line), "offered", offered));
     }
 
     /**

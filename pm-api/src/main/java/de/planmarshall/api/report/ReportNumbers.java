@@ -34,12 +34,12 @@ class ReportNumbers {
      * @throws IOException if the value is a number with a fraction or out of range
      */
     static @Nullable Long wholeOrNull(@Nullable Object value, String field) throws IOException {
-        final String text;
-        if (value instanceof JsonNumber(String raw)) {
-            text = raw;
-        } else if (value instanceof Number raw) {
-            text = raw.toString();
-        } else {
+        final var text = switch (value) {
+            case JsonNumber(String raw) -> raw;
+            case Number number -> number.toString();
+            case null, default -> null;
+        };
+        if (text == null) {
             return null;
         }
         try {

@@ -153,10 +153,8 @@ public record DecisionEnvelope(
         if (id == null || id.isBlank()) {
             throw new JsonFormatException("Missing id in DecisionEnvelope");
         }
-        var rev = JsonTree.integer(map, "revision") != null ? JsonTree.integer(map, "revision") : 1;
-        var title = JsonTree.string(map, "title");
-        if (title == null) title = "";
-        var header = JsonTree.string(map, "header");
+        var rev = Objects.requireNonNullElse(JsonTree.integer(map, "revision"), 1);
+        var title = Objects.requireNonNullElse(JsonTree.string(map, "title"), "");
         var subject = JsonTree.string(map, "subject");
         if (subject == null) {
             var plan = JsonTree.string(map, "plan");
@@ -165,52 +163,51 @@ public record DecisionEnvelope(
 
         var scopeStr = JsonTree.string(map, "scope");
         var scope = scopeStr != null ? DecisionScope.fromValue(scopeStr) : DecisionScope.PLAN;
-        var askingPhase = JsonTree.string(map, "asking_phase");
-        if (askingPhase == null) askingPhase = JsonTree.string(map, "phase");
-        var askingRole = JsonTree.string(map, "asking_role");
-        if (askingRole == null) askingRole = JsonTree.string(map, "role");
-        var blocks = JsonTree.string(map, "blocks");
-        if (blocks == null) blocks = "plan";
-
         var revStr = JsonTree.string(map, "reversibility");
         var reversibility = revStr != null ? Reversibility.fromValue(revStr) : Reversibility.REVERSIBLE;
-        var description = JsonTree.string(map, "description");
+        var isWaiver = Boolean.TRUE.equals(JsonTree.bool(map, "is_waiver")) || id.startsWith("WR-")
+                || "waiver".equalsIgnoreCase(JsonTree.string(map, "kind"));
 
-        Map<String, Object> evidence = null;
-        var evObj = map.get("evidence");
-        if (evObj instanceof Map<?, ?> em) {
-            evidence = new LinkedHashMap<>();
-            for (var entry : em.entrySet()) {
-                evidence.put(String.valueOf(entry.getKey()), entry.getValue());
-            }
+        return new DecisionEnvelope(
+                id, rev, title, JsonTree.string(map, "header"), subject, scope,
+                firstString(map, "asking_phase", "phase"), firstString(map, "asking_role", "role"),
+                Objects.requireNonNullElse(JsonTree.string(map, "blocks"), "plan"), reversibility,
+                JsonTree.string(map, "description"), evidenceOf(map.get("evidence")), partsOf(map.get("parts")),
+                deliveredAt(JsonTree.string(map, "delivered_at")),
+                isWaiver, firstString(map, "waiver_gate", "gate"), firstString(map, "waiver_result", "result"),
+                firstString(map, "waiver_reason", "reason"),
+                JsonTree.string(map, "project"), JsonTree.string(map, "plan")
+        );
+    }
+
+    /** The member under the current name, else the one under the legacy name. */
+    private static @Nullable String firstString(Map<String, Object> map, String current, String legacy) {
+        var value = JsonTree.string(map, current);
+        return value != null ? value : JsonTree.string(map, legacy);
+    }
+
+    private static @Nullable Map<String, Object> evidenceOf(@Nullable Object evidence) {
+        if (!(evidence instanceof Map<?, ?> source)) {
+            return null;
         }
+        var copy = new LinkedHashMap<String, Object>();
+        for (var entry : source.entrySet()) {
+            copy.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return copy;
+    }
 
-        var partsList = new ArrayList<DecisionPart>();
-        if (map.get("parts") instanceof List<?> list) {
+    private static List<DecisionPart> partsOf(@Nullable Object parts) throws IOException {
+        var result = new ArrayList<DecisionPart>();
+        if (parts instanceof List<?> list) {
             for (var item : list) {
-                var pm = JsonTree.asObject(item);
-                if (pm != null) {
-                    partsList.add(DecisionPart.fromMap(pm));
+                var part = JsonTree.asObject(item);
+                if (part != null) {
+                    result.add(DecisionPart.fromMap(part));
                 }
             }
         }
-
-        var deliveredAt = deliveredAt(JsonTree.string(map, "delivered_at"));
-
-        var isWaiver = Boolean.TRUE.equals(JsonTree.bool(map, "is_waiver")) || id.startsWith("WR-") || "waiver".equalsIgnoreCase(JsonTree.string(map, "kind"));
-        var waiverGate = JsonTree.string(map, "waiver_gate");
-        if (waiverGate == null) waiverGate = JsonTree.string(map, "gate");
-        var waiverResult = JsonTree.string(map, "waiver_result");
-        if (waiverResult == null) waiverResult = JsonTree.string(map, "result");
-        var waiverReason = JsonTree.string(map, "waiver_reason");
-        if (waiverReason == null) waiverReason = JsonTree.string(map, "reason");
-
-        return new DecisionEnvelope(
-                id, rev, title, header, subject, scope, askingPhase, askingRole,
-                blocks, reversibility, description, evidence, partsList, deliveredAt,
-                isWaiver, waiverGate, waiverResult, waiverReason,
-                JsonTree.string(map, "project"), JsonTree.string(map, "plan")
-        );
+        return result;
     }
 
     /**

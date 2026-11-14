@@ -38,6 +38,7 @@ import de.planmarshall.operator.dialogue.ChoicePrompt;
 final class ReviewDialogue {
 
     private static final String STATE_ID = "control.review";
+    private static final String COUNT_PARAM = "count";
     private static final String REGISTER_FINDINGS = "findings";
     private static final String REGISTER_WATCHES = "watches";
 
@@ -181,7 +182,7 @@ final class ReviewDialogue {
         if (review.openItems().size() > 1) {
             offer(offered, options, key("accept_remaining"), Decision.REMAINING,
                                 MessageCatalogue.format(prompt.locale(), "operator.actions.review.remaining",
-                                                    Map.of("count", review.openItems().size())));
+                                                    Map.of(COUNT_PARAM, review.openItems().size())));
         }
         options.append(key("finish")).append(") ").append(text("operator.actions.review.finish"))
                             .append(StartPrompt.SUFFIX);
@@ -271,10 +272,10 @@ final class ReviewDialogue {
         }
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
                             "control.review.accept_remaining_confirm",
-                            Map.of("count", open.size())) + "   " + text("operator.actions.yes_no")
+                            Map.of(COUNT_PARAM, open.size())) + "   " + text("operator.actions.yes_no")
                             + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.review.accept_remaining",
-                                                Map.of("count", open.size())), epicId);
+                                                Map.of(COUNT_PARAM, open.size())), epicId);
         if (!Answers.isYes(answer)) {
             return review;
         }

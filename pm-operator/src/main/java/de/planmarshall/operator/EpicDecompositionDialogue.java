@@ -136,9 +136,17 @@ final class EpicDecompositionDialogue {
     }
 
     private String offered(EpicDecomposition cut) {
-        var count = cut.stagedPlanCount();
-        var plans = count == 0 ? "" : count == 1 ? "1, " : "1-" + count + ", ";
-        return plans + "+, r, " + leaveKey() + ", ?";
+        return plansOffered(cut.stagedPlanCount()) + "+, r, " + leaveKey() + ", ?";
+    }
+
+    private static String plansOffered(int count) {
+        if (count == 0) {
+            return "";
+        }
+        if (count == 1) {
+            return "1, ";
+        }
+        return "1-" + count + ", ";
     }
 
     private String leaveKey() {
@@ -209,15 +217,18 @@ final class EpicDecompositionDialogue {
     }
 
     private EpicDecomposition edit(EpicDecomposition before, StagedPlanRecord plan) throws IOException {
-        var first = instructEdit(before, plan);
-        if (first == null) {
+        var words = askEditWords(plan);
+        if (words.isEmpty()) {
             // No words: the role was asked nothing, so there is no change to read back.
             return before;
         }
-        var after = first;
+        var after = instructEdit(before, plan, words);
         var answer = readBackDecision();
         while ("i".equalsIgnoreCase(answer)) {
-            after = Objects.requireNonNullElse(instructEdit(after, plan), after);
+            var more = askEditWords(plan);
+            if (!more.isEmpty()) {
+                after = instructEdit(after, plan, more);
+            }
             answer = readBackDecision();
         }
         if ("x".equalsIgnoreCase(answer)) {
@@ -228,14 +239,14 @@ final class EpicDecompositionDialogue {
         return after;
     }
 
-    /** Sends the operator's words for one plan and reads the change back; {@code null} for no words. */
-    private @Nullable EpicDecomposition instructEdit(EpicDecomposition before, StagedPlanRecord plan)
+    /** Asks for the operator's words for one plan; empty for no words. */
+    private String askEditWords(StagedPlanRecord plan) {
+        return askWords("start.decomposition.instruct.title", Map.of(KEY_PLAN, clean(plan.planId())));
+    }
+
+    /** Sends the operator's words for one plan and reads the change back. */
+    private EpicDecomposition instructEdit(EpicDecomposition before, StagedPlanRecord plan, String words)
                         throws IOException {
-        var words = askWords("start.decomposition.instruct.title",
-                            Map.of(KEY_PLAN, clean(plan.planId())));
-        if (words.isEmpty()) {
-            return null;
-        }
         var after = api.instruct(project, epicId,
                             new DecompositionInstructRequest(plan.planId(), words, InstructAction.EDIT));
         prompt.raw(readBack(before, after, plan.planId()));

@@ -47,7 +47,7 @@ class FollowUpProposalResourceTest {
     @ParameterizedTest(name = "a disabled chat about an ended {0} goes to {1}")
     @CsvSource({"PLAN, REPLAN", "EPIC, DECOMPOSE"})
     @DisplayName("should route a disabled chat by its subject's kind and keep its reason")
-    void shouldRouteADisabledChat(EntryKind kind, ChatRole role) throws Exception {
+    void shouldRouteADisabledChat(EntryKind kind, ChatRole role) {
         var chat = FollowUpProposalResource.disabled(Generators.nonBlankStrings().next(), kind, REASON_KEY);
 
         assertAll(

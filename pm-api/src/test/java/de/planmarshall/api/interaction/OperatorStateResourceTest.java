@@ -302,14 +302,16 @@ class OperatorStateResourceTest {
 
         var defaulted = new OperatorStateResource(scope, "onboarding", null, null, null, null, null, null, null,
                 null, null, null, null);
+        var itemList = List.of(item);
+        var linkList = List.of(link);
 
         assertAll(
                 () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
                         "onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), List.of(),
                         revision, List.of())),
                 () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
-                        "onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), List.of(item),
-                        null, List.of(link))),
+                        "onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), itemList,
+                        null, linkList)),
                 () -> assertThrows(IllegalArgumentException.class, () -> new OperatorStateResource(scope,
                         "Onboarding", null, null, null, null, null, List.of(), Map.of(), List.of(), List.of(),
                         null, List.of())),

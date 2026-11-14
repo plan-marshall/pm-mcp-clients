@@ -47,6 +47,7 @@ import de.planmarshall.operator.system.SystemLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLevel;
 import de.planmarshall.operator.tui.TuiMenuEntry;
+import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
@@ -265,7 +266,7 @@ class OverviewSystemKeysTest {
 
         private String modelsLine() {
             return app.stack().rows().stream().filter(row -> SystemLevel.ROW_MODELS.equals(row.id()))
-                                .map(row -> row.line()).findFirst().orElse("");
+                                .map(TuiRow::line).findFirst().orElse("");
         }
 
         @Test

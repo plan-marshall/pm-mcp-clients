@@ -38,6 +38,7 @@ import de.planmarshall.operator.reports.ReportsLevel;
 import de.planmarshall.operator.system.SystemLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLevel;
+import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
@@ -175,7 +176,7 @@ class OverviewReportsKeysTest {
     }
 
     private List<String> reportRowIds() {
-        return app.stack().rows().stream().map(row -> row.id())
+        return app.stack().rows().stream().map(TuiRow::id)
                             .filter(id -> id.startsWith(ReportsLevel.REPORT_PREFIX)).toList();
     }
 
@@ -221,7 +222,7 @@ class OverviewReportsKeysTest {
         @Test
         @DisplayName("down from the last report of a group passes its next group's heading")
         void downPassesTheNextHeading() {
-            var rows = app.stack().rows().stream().map(row -> row.id()).toList();
+            var rows = app.stack().rows().stream().map(TuiRow::id).toList();
             var heading = rows.stream().skip(1).filter(ReportsLevel::isHeading).findFirst()
                                 .orElseThrow(() -> new AssertionError("one group only: " + rows));
             app.stack().select(rows.get(rows.indexOf(heading) - 1));

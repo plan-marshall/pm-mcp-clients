@@ -650,6 +650,7 @@ class IntentContractTest {
             var text = sentence();
             var withNull = new ArrayList<String>();
             withNull.add(null);
+            var blankOption = List.of(" ");
 
             assertAll(
                     () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
@@ -657,7 +658,7 @@ class IntentContractTest {
                     () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
                             "DC-027", " ", IntentDecider.ROLE, List.of(), null, null, null)),
                     () -> assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource.Decision(
-                            "DC-028", text, IntentDecider.ROLE, List.of(" "), null, null, null)),
+                            "DC-028", text, IntentDecider.ROLE, blankOption, null, null, null)),
                     () -> assertThrows(NullPointerException.class, () -> new PlanIntentResource.Decision(
                             "DC-029", text, IntentDecider.ROLE, withNull, null, null, null)));
         }

@@ -373,6 +373,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_UNENROLLED = "unenrolled";
     /** How a kept item came to be kept: left out of a delete ({@code cleanup-texts.adoc#texts-kept}). */
     private static final String KEPT_EXCLUDE = "exclude";
+    private static final String ACTOR_CONSOLE = "the console";
+    private static final String ACTOR_WEB_APP = "the web app";
+    private static final String ACTOR_IPAD_WEB_APP = "the web app (iPad)";
+    private static final String KEPT_AT_2_OCT = "2 Oct";
+    private static final String ITEM_TOKEN_USAGE = "token-usage";
+    private static final String KIND_READ_REPORTS = "read_reports";
+    private static final String KEY_ANSWER = "answer";
     /** How a kept item came to be kept: the job was ignored. */
     private static final String KEPT_IGNORE = "ignore";
     private static final String PATH_ENROL = "/api/v1/enrol";
@@ -5005,7 +5012,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlEpicStates.containsKey(epicId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, epicNotFound(epicId)));
                 return;
             }
             var availability = buildEpicActions(epicId).action(action);
@@ -5197,7 +5204,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (controlLock) {
             var resource = controlEpics.get(epicId);
             if (resource == null) {
-                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, epicNotFound(epicId)));
                 return;
             }
             var map = new LinkedHashMap<>(resource.toMap());
@@ -7981,10 +7988,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             keptItems.clear();
             // how is the wire value the catalogue selects on: ignore or exclude
-            keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", KEPT_EXCLUDE, "13 Oct", "the console"));
-            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", "read_reports", "3 read reports", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
-            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", KEPT_IGNORE, "2 Oct", "the web app (iPad)"));
+            keptItems.add(new CleanupKeptItem(ITEM_TOKEN_USAGE, "plan", ITEM_TOKEN_USAGE, KEPT_EXCLUDE, "13 Oct", ACTOR_CONSOLE));
+            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
+            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", KIND_READ_REPORTS, "3 read reports", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
+            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", KEPT_IGNORE, KEPT_AT_2_OCT, ACTOR_IPAD_WEB_APP));
 
             cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
             cleanupResidues.clear();
@@ -7999,11 +8006,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     new CleanupItemEntry(CONST_DOCS_TYPO, CLEANUP_KIND_PLAN, CONST_DOCS_TYPO, "no change", "11 Sep", 2097152L, 1, 0, null),
                     new CleanupItemEntry(CONST_RELAY_HARDENING, CLEANUP_KIND_EPIC, CONST_RELAY_HARDENING, FIELD_COMPLETED, "10 Sep", 12582912L, 0, 0, null),
                     new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
-                    new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
+                    new CleanupItemEntry("reports-clients", KIND_READ_REPORTS, "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
             );
             var coreEntries = List.of(
-                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
-                    new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
+                    new CleanupItemEntry(ITEM_TOKEN_USAGE, "plan", ITEM_TOKEN_USAGE, "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
+                    new CleanupItemEntry("reports-core", KIND_READ_REPORTS, "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
             );
             var unenrolledEntries = List.of(
                     new CleanupItemEntry(CONST_LEGACY_PORTAL, "unenrolled_project", CONST_LEGACY_PORTAL, "unenrolled 2 Sep · 7 plans, 1 epic", null, 1181116000L, 0, 0, null)
@@ -9304,7 +9311,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, ITEM_TOKEN_USAGE),
                 new WorkerMetric("reviewer", CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
         );
 
@@ -9423,7 +9430,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     canWithdrawStop = true;
                 }
                 if (!repeated || drainingBy == null) {
-                    drainingBy = isWeb ? "the web app" : "the console";
+                    drainingBy = isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE;
                 }
                 drainThen = THEN_RESTART.equalsIgnoreCase(thenVal) ? THEN_RESTART : THEN_EXIT;
                 var generation = drainGeneration.incrementAndGet();
@@ -9550,7 +9557,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                     KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
-                    "draining_by", drainingBy != null ? drainingBy : "the console",
+                    "draining_by", drainingBy != null ? drainingBy : ACTOR_CONSOLE,
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
                     KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
                     "can_withdraw", canWithdrawStop,
@@ -9755,7 +9762,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var entry = cleanupEntry(un);
                 if (entry != null) {
                     keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
-                            KEPT_EXCLUDE, "today", isWeb ? "the web app" : "the console"));
+                            KEPT_EXCLUDE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
                 }
             }
 
@@ -9888,7 +9895,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             for (var prj : activeCleanupJob.projectItems()) {
                 for (var entry : prj.items()) {
-                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), KEPT_IGNORE, "today", isWeb ? "the web app" : "the console"));
+                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), KEPT_IGNORE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
                 }
             }
 
@@ -10053,6 +10060,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return "pm-mcp-clients";
     }
 
+    private static String epicNotFound(String epicId) {
+        return "Epic not found: " + epicId;
+    }
+
+    private static String questionNotFound(String decisionId) {
+        return "Question " + decisionId + " not found.";
+    }
+
     private boolean handleDecisionRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         var method = request.method();
@@ -10068,40 +10083,54 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        // 2. Decision specific routes: the decision, question and plan-scoped forms all name the id and
-        // then the act; a question names its act like a decision does, so only /answers answers it.
-        String sub = null;
+        // 2. Decision specific routes
+        var sub = decisionSubPath(path);
+        return sub != null && handleDecisionAct(request, response, method, sub);
+    }
+
+    /**
+     * The decision, question and plan-scoped forms all name the id and then the act; a question names
+     * its act like a decision does, so only /answers answers it.
+     *
+     * @return the path after the forms' prefix, or {@code null} when the path is no decision route
+     */
+    private static @Nullable String decisionSubPath(String path) {
         if (path.startsWith(API_DECISIONS_PATH)) {
-            sub = path.substring(API_DECISIONS_PATH.length());
-        } else if (path.startsWith(API_QUESTIONS_PATH)) {
-            sub = path.substring(API_QUESTIONS_PATH.length());
-        } else if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
-            sub = path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
+            return path.substring(API_DECISIONS_PATH.length());
         }
+        if (path.startsWith(API_QUESTIONS_PATH)) {
+            return path.substring(API_QUESTIONS_PATH.length());
+        }
+        if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
+            return path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
+        }
+        return null;
+    }
 
-        if (sub != null) {
-            int slash = sub.indexOf('/');
-            var decisionId = slash < 0 ? sub : sub.substring(0, slash);
-            var action = slash < 0 ? null : sub.substring(slash + 1);
-            if ("GET".equals(method) && action == null) {
-                handleGetDecision(response, decisionId);
-                return true;
+    private boolean handleDecisionAct(MockHttpRequest request, MockHttpResponse response, String method,
+            String sub) throws IOException {
+        int slash = sub.indexOf('/');
+        var decisionId = slash < 0 ? sub : sub.substring(0, slash);
+        var action = slash < 0 ? null : sub.substring(slash + 1);
+        if (action == null) {
+            if (!"GET".equals(method)) {
+                return false;
             }
-            if (METHOD_POST.equals(method) && ("answer".equals(action) || "answers".equals(action))) {
-                handleAnswerDecision(request, response, decisionId);
-                return true;
-            }
-            if (METHOD_POST.equals(method) && "interpret".equals(action)) {
-                handleInterpretDecision(request, response, decisionId);
-                return true;
-            }
-            if (METHOD_POST.equals(method) && "withdraw".equals(action)) {
-                handleWithdrawDecision(request, response, decisionId);
-                return true;
+            handleGetDecision(response, decisionId);
+            return true;
+        }
+        if (!METHOD_POST.equals(method)) {
+            return false;
+        }
+        switch (action) {
+            case KEY_ANSWER, "answers" -> handleAnswerDecision(request, response, decisionId);
+            case "interpret" -> handleInterpretDecision(request, response, decisionId);
+            case "withdraw" -> handleWithdrawDecision(request, response, decisionId);
+            default -> {
+                return false;
             }
         }
-
-        return false;
+        return true;
     }
 
     private void handleListDecisions(MockHttpRequest request, MockHttpResponse response, @Nullable String planFromPath) throws IOException {
@@ -10157,7 +10186,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             map.put("project", extractProject(envelope));
             response.json(200, map);
         } else {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
         }
     }
 
@@ -10167,7 +10196,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             envelope = openDecisions.get(decisionId);
         }
         if (envelope == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
             return;
         }
 
@@ -10242,9 +10271,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
-                "answer", chosen
+                KEY_ANSWER, chosen
         ));
-        response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, "answer", chosen));
+        response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, KEY_ANSWER, chosen));
     }
 
     /**
@@ -10256,7 +10285,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             @Nullable String device) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", decisionId);
-        payload.put("answer", answer);
+        payload.put(KEY_ANSWER, answer);
         if (channel != null) {
             payload.put("channel", channel);
         }
@@ -10273,7 +10302,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             open = openDecisions.containsKey(decisionId);
         }
         if (!open) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
             return;
         }
         // A body that is no object is refused like the runtime does, never read as words that pick option 2.
@@ -10331,7 +10360,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             removed = openDecisions.remove(decisionId);
         }
         if (removed == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "Question " + decisionId + " not found."));
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
             return;
         }
 
@@ -10434,7 +10463,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (!epicId.contains("/")) {
                 if (!knowsEpic(epicId)) {
                     response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                            KEY_MESSAGE, "Epic not found: " + epicId));
+                            KEY_MESSAGE, epicNotFound(epicId)));
                     return true;
                 }
                 var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");

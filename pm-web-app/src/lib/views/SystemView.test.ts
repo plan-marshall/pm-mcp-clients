@@ -783,7 +783,7 @@ describe('SystemView component', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'Check now' }));
 
       expect(await screen.findByRole(failure ? 'alert' : 'status')).toHaveTextContent(line);
-      expect(snapshotSpy.mock.calls.length).toBe(failure ? readsBefore : readsBefore + 1);
+      expect(snapshotSpy.mock.calls).toHaveLength(failure ? readsBefore : readsBefore + 1);
     });
 
     it('restarts now with its own note and confirmation', async () => {
@@ -877,7 +877,7 @@ describe('SystemView component', () => {
 
         eventHandler?.(event, {});
 
-        await waitFor(() => expect(fetchSpy.mock.calls.length).toBe(readsBefore + 1));
+        await waitFor(() => expect(fetchSpy.mock.calls).toHaveLength(readsBefore + 1));
       },
     );
 
