@@ -131,6 +131,9 @@
   let mounted = false;
   let loadedEntryId: string | null = entryId;
   let entryGeneration = 0;
+  /** Numbers the entry reads in the order they started; `appliedEntryRead` is the newest one applied. */
+  let entryReadSeq = 0;
+  let appliedEntryRead = 0;
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
@@ -271,16 +274,20 @@
     const target = entry?.entry_id;
     if (!target) return;
     const generation = entryGeneration;
+    const read = ++entryReadSeq;
     try {
       const resource = await apiClient.getEntry(target);
       if (
         destroyed ||
         generation !== entryGeneration ||
+        // an older read that completes after a newer one has applied must not restore what it saw
+        read < appliedEntryRead ||
         resource.start.entry?.entry_id !== target ||
         target !== (entryId ?? target)
       ) {
         return;
       }
+      appliedEntryRead = read;
       apply(resource);
     } catch {
       // A refresh that fails leaves the shown representation as it is.

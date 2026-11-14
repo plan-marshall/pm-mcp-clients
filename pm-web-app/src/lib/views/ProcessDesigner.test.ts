@@ -518,6 +518,27 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(editor.value.slice(0, editor.selectionStart).split('\n')).toHaveLength(2);
   });
 
+  it('places nothing when the text was edited after validation behind the open dialogue', async () => {
+    const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit');
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state edited behind the dialogue\n` },
+    });
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    expect(placeSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('place-dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('designer-notice')).toHaveTextContent(
+      'The text changed since: validate again.',
+    );
+  });
+
   it('shows the side-by-side difference before placing and lands it', async () => {
     const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit');
     render(ProcessDesigner);
@@ -887,7 +908,6 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
 
   it.each([
     ['frontmatter-description', 'Settles the plan and lands it.', 'description: Settles the plan and lands it.'],
-    ['frontmatter-type', 'workflow', 'type: workflow'],
     ['frontmatter-icon', 'phase.execute', 'icon: phase.execute'],
     ['frontmatter-author', 'Grace Hopper', 'author: Grace Hopper'],
     ['frontmatter-modified', '2026-01-02', 'modified: 2026-01-02'],
@@ -901,9 +921,28 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(editorText().split('\n')).toContain(line);
   });
 
-  it('writes the entries and exits typed into the panel as interface lines', async () => {
+  /** Opens a pasted unit that no installed unit holds, with its frontmatter added: nothing is replaced. */
+  async function openNewUnit(): Promise<void> {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.input(screen.getByTestId('designer-paste'), {
+      target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
+    });
+    await fireEvent.click(screen.getByTestId('designer-paste-open'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Add the frontmatter' }));
+  }
+
+  it('writes the type typed into the panel of a new unit into the text', async () => {
+    await openNewUnit();
+
+    await fireEvent.input(screen.getByTestId('frontmatter-type'), { target: { value: 'workflow' } });
+
+    expect(editorText().split('\n')).toContain('type: workflow');
+  });
+
+  it('writes the entries and exits typed into the panel of a new unit as interface lines', async () => {
+    await openNewUnit();
 
     await fireEvent.input(screen.getByTestId('frontmatter-entries'), {
       target: { value: 'start, resume' },
@@ -917,6 +956,16 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
       expect.arrayContaining(['entry start', 'entry resume', 'exit merged', 'exit abandoned']),
     );
   });
+
+  it.each(['frontmatter-type', 'frontmatter-entries', 'frontmatter-exits'])(
+    'keeps %s read only while the open unit replaces an installed one',
+    async (field) => {
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+      expect(screen.getByTestId(field)).toHaveAttribute('readonly');
+    },
+  );
 
   it('adds a frontmatter to a unit that has none, named after the unit', async () => {
     render(ProcessDesigner);

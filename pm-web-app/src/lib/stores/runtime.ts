@@ -775,6 +775,7 @@ function handleLifecycleEvent(event: string, data: unknown): void {
       ...s,
       isDraining: true,
       isStopped: false,
+      stoppedInfo: null,
       drainInfo: drainInfoOf(
         items,
         payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
@@ -786,7 +787,13 @@ function handleLifecycleEvent(event: string, data: unknown): void {
   } else if (isRestart(data)) {
     // A restart has its successor started on the same release: the drain ends, but the runtime
     // is not stopped, so no page tells the operator to start it on the machine.
-    runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null, isStopped: false }));
+    runtimeStore.update((s) => ({
+      ...s,
+      isDraining: false,
+      drainInfo: null,
+      isStopped: false,
+      stoppedInfo: null,
+    }));
   } else {
     runtimeStore.update((s) => ({
       ...s,

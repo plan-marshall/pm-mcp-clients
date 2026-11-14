@@ -334,6 +334,22 @@ describe('the runtime store', () => {
     });
   });
 
+  it.each([
+    ['a drain', 'runtime.draining', { who: 'the console', count: 1 }],
+    ['a restart', 'runtime.stopping', { lifecycle_state: 'stopping', then: 'restart' }],
+  ])('forgets who stopped the runtime once %s shows it running again', (_case, event, payload) => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isStopped: true, stoppedInfo: { who: 'by the console', time: 'noon' } }),
+    );
+
+    // Act
+    handleRuntimeEvent(event, payload);
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isStopped: false, stoppedInfo: null });
+  });
+
   it('reads the who and remaining_count draining fields', () => {
     // Arrange
     runtimeStore.set(makeRuntimeState({ isStopped: true }));

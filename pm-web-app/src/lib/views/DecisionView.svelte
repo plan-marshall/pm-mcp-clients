@@ -304,11 +304,20 @@
       change: change || $t('decision.changed'),
     });
     clearDecisionState(revised.id);
+    // A proposal the chat made for the old question must not be taken for the revised one.
+    if (chatDecisionId === revised.id) closeChatPanel();
     decisions = decisions.map((entry) => (entry.id === revised.id ? revised : entry));
   }
 
+  /**
+   * Counts the times a decision's state was dropped: an interpretation that was asked before the
+   * drop and answers after it belongs to a question that no longer stands.
+   */
+  const stateEpochs: Record<string, number> = {};
+
   /** Drops every answer, note, interpretation, and submission the decision carried. */
   function clearDecisionState(id: string): void {
+    stateEpochs[id] = (stateEpochs[id] ?? 0) + 1;
     const prefix = `${id}:`;
     delete partAnswers[id];
     delete reopened[id];
@@ -619,14 +628,19 @@
     const key = keyOf(dec, part, index);
     const words = ownWordsTexts[key]?.trim() || '';
     if (!words) return;
+    const epoch = stateEpochs[dec.id] ?? 0;
     isInterpreting[key] = true;
     try {
-      interpretations[key] = await apiClient.interpretDecision(dec.id, words);
+      const interpretation = await apiClient.interpretDecision(dec.id, words);
+      // A revision dropped this decision's state while the request ran: its answer is stale.
+      if ((stateEpochs[dec.id] ?? 0) !== epoch) return;
+      interpretations[key] = interpretation;
       clearActFailure(`interpret:${key}`);
     } catch (err: unknown) {
+      if ((stateEpochs[dec.id] ?? 0) !== epoch) return;
       showActFailure(`interpret:${key}`, actFailureText(err, $t('decision.interpret.failed')));
     } finally {
-      isInterpreting[key] = false;
+      if ((stateEpochs[dec.id] ?? 0) === epoch) isInterpreting[key] = false;
     }
   }
 
@@ -713,12 +727,14 @@
   /**
    * Drops an answered or withdrawn decision from the list.
    *
-   * Its chat needs no closing here: every answer is disabled while the decision's chat is open
-   * (`isChatting`), so the chat was already closed when the operator answered.
+   * Its chat closes with it, whichever way the answer was reached: the own-words confirmation is
+   * disabled while the chat is open (`isChatting`), and a chat that opened after the readback is
+   * closed here, so no continuation of it outlives the card.
    *
    * @param id the decision
    */
   function closeDecision(id: string) {
+    if (chatDecisionId === id) closeChatPanel();
     decisions = decisions.filter((d) => d.id !== id);
     void refreshDecisionsCount();
   }
@@ -1204,6 +1220,7 @@
                               size="small"
                               variant="primary"
                               data-advisory={$t('decision.readback.confirm.title')}
+                              disabled={isChatting(dec)}
                               onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
                             >
                               {$t('decision.readback.confirm')}

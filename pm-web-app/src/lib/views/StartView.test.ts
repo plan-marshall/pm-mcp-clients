@@ -158,6 +158,31 @@ describe('StartView', () => {
       },
     );
 
+    it('does not let an older read that completes last restore what a newer read replaced', async () => {
+      arrangeOpen(sources({ sources: [source({ title: 'Shown before' })] }));
+      const { emit } = arrangeEvents();
+      let finishOlder: (resource: ReturnType<typeof sources>) => void = () => {};
+      const older = new Promise<ReturnType<typeof sources>>((resolve) => {
+        finishOlder = resolve;
+      });
+      const read = vi
+        .spyOn(apiClient, 'getEntry')
+        .mockReturnValueOnce(older)
+        .mockResolvedValueOnce(sources({ sources: [source({ title: 'After the removal' })] }));
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByText('Shown before');
+
+      emit('source.added');
+      emit('source.removed');
+      expect(await screen.findByText('After the removal')).toBeInTheDocument();
+      finishOlder(sources({ sources: [source({ title: 'Restored by the older read' })] }));
+
+      await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+      await Promise.resolve();
+      expect(screen.queryByText('Restored by the older read')).toBeNull();
+      expect(screen.getByText('After the removal')).toBeInTheDocument();
+    });
+
     it('keeps what it shows when the re-read fails', async () => {
       arrangeOpen(sources({ sources: [source({ title: 'Shown before' })] }));
       const { emit } = arrangeEvents();

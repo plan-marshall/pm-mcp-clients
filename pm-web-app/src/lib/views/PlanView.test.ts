@@ -1248,14 +1248,16 @@ describe('PlanView component', () => {
   );
 
   it('says the attempt in the interface language, in the task row and the activity head', async () => {
-    const { setLocale, messagesStore } = await import('../i18n');
+    const { setLocale, messagesStore, currentLocale } = await import('../i18n');
     const { loadMessages } = await import('../../test/catalogue-fixture');
+    vi.spyOn(apiClient, 'getMessages').mockImplementation(async (locale) => loadMessages(locale));
     render(PlanView);
     await screen.findByTestId('activity-feed');
 
     try {
-      messagesStore.set(loadMessages('de'));
       await setLocale('de');
+      // the switch itself succeeded: the language changed, and the texts below are its catalogue's
+      expect(get(currentLocale)).toBe('de');
 
       await waitFor(() =>
         expect(screen.getByTestId('activity-attempt')).toHaveTextContent('Versuch 1'),

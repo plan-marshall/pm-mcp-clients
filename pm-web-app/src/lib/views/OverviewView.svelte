@@ -53,6 +53,8 @@
   let detailError: string | null = null;
   /** The code of a failed read of the ended-work page, or `null`. */
   let endedError: string | null = null;
+  // The page that failed to load: Try again asks for it, not for the page that was open before.
+  let failedEndedPage = 1;
 
   let unsubscribeEvents: (() => void) | null = null;
   /** The plan or epic whose actions the operator opened from its row. */
@@ -435,6 +437,7 @@
       // A page that could not be read is a failure with its code, never "no ended work".
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = null;
+        failedEndedPage = page;
         endedError = errorCodeOf(err);
       }
     } finally {
@@ -672,7 +675,7 @@
             <ErrorState
               code={endedError}
               actionLabel={$t('common.action.retry')}
-              onAct={() => void loadEndedWork(selectedProjectId ?? '', currentEndedPage)}
+              onAct={() => void loadEndedWork(selectedProjectId ?? '', failedEndedPage)}
               titleLevel={3}
             />
           </div>

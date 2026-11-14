@@ -365,6 +365,24 @@ describe('OverviewView component', () => {
     expect(await screen.findByText('Relay drops events on reconnect')).toBeInTheDocument();
   });
 
+  it('retries the ended-work page that failed, not the one that was open before it', async () => {
+    let secondPageFails = true;
+    const ended = vi.spyOn(apiClient, 'getEndedWork').mockImplementation(async (_project, page) => {
+      if (page === 2 && secondPageFails) throw new ClientError('timeout');
+      return mockEndedPage;
+    });
+    render(OverviewView);
+    await fireEvent.click(await screen.findByText('Ended work'));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Older' }));
+    await screen.findByTestId('overview-ended-error');
+
+    secondPageFails = false;
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(ended).toHaveBeenLastCalledWith('pm-mcp-clients', 2));
+    expect(screen.queryByTestId('overview-ended-error')).toBeNull();
+  });
+
   it.each<[string, string[], string | null]>([
     ['moves to the first project left when the open one is gone', ['pm-mcp-core'], 'pm-mcp-core'],
     ['empties the running work when no project is left', [], null],

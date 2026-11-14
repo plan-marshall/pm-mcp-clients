@@ -1126,6 +1126,36 @@ describe('DecisionView component', () => {
       );
     });
 
+    it('drops an interpretation that answers after a revision replaced the question it read', async () => {
+      const emit = captureEvents();
+      let finish: (reading: { interpretation_type: string; mapped_option_key: string; read_back_text: string }) => void =
+        () => {};
+      vi.spyOn(apiClient, 'interpretDecision').mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      );
+      render(DecisionView);
+      await fireEvent.click(await screen.findByText('in my own words'));
+      await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+        target: { value: 'Use rebase please' },
+      });
+      await fireEvent.click(screen.getByText('Read back'));
+      await emit('decision.changed', { decision: { ...mockDecision, revision: 2 } });
+
+      await act(() =>
+        finish({
+          interpretation_type: 'OPTION',
+          mapped_option_key: 'rebase',
+          read_back_text: 'Rebase onto main',
+        }),
+      );
+      await fireEvent.click(await screen.findByText('in my own words'));
+
+      expect(screen.queryByText('I understood: Rebase onto main')).toBeNull();
+      expect(screen.getByPlaceholderText('State your decision in your own words…')).toBeInTheDocument();
+    });
+
     it('adds a changed decision the list does not hold yet', async () => {
       const emit = captureEvents();
       render(DecisionView);
@@ -1243,6 +1273,15 @@ describe('DecisionView component', () => {
 
         expect(screen.queryByTestId('chat-panel')).toBeNull();
         expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
+      });
+
+      it('closes the chat when the decision is revised, so its proposal cannot answer the new question', async () => {
+        const emit = await openTheChat();
+
+        await emit('decision.changed', { decision: { ...mockDecision, revision: 2 } });
+
+        expect(screen.queryByTestId('chat-panel')).toBeNull();
+        expect(await screen.findByTestId('decision-revised-dec-101')).toBeInTheDocument();
       });
 
       it('sends a message and shows the reply', async () => {
@@ -1538,6 +1577,16 @@ describe('DecisionView component', () => {
       await fireEvent.click(screen.getByText('Read back'));
       await screen.findByText('I understood: Rebase onto main');
     }
+
+    it('does not let the readback be confirmed while the decision’s chat is open', async () => {
+      await readBack();
+      vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+
+      await fireEvent.click(screen.getByText('chat about it first'));
+      await screen.findByTestId('chat-transcript');
+
+      expect(screen.getByRole('button', { name: 'Correct' })).toBeDisabled();
+    });
 
     it('goes back to the words to edit them', async () => {
       await readBack();

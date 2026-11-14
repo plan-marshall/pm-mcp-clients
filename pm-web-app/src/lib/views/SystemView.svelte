@@ -289,7 +289,8 @@
         if (modalWhen === 'drain') {
           runtimeStore.update((s) => ({ ...s, isDraining: true }));
         } else {
-          runtimeStore.update((s) => ({ ...s, isStopped: true }));
+          // This stop has no recorded attribution yet: a previous stop's must not be shown for it.
+          runtimeStore.update((s) => ({ ...s, isStopped: true, stoppedInfo: null }));
         }
       } else {
         await apiClient.stopRuntime(modalWhen, 'restart');

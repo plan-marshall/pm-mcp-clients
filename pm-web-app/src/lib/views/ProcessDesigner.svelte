@@ -807,6 +807,13 @@
    * Places the open unit at the chosen level; the dialogue opens only for a valid, current result.
    */
   async function place(): Promise<void> {
+    // The text can still be edited behind the open dialogue: only a valid, current result is placed,
+    // the same predicate the header's _Place…_ button applies.
+    if (!result?.valid || outdated) {
+      placeStage = 'idle';
+      notice = $t('designer.validate.outdated');
+      return;
+    }
     isPlacing = true;
     landingError = '';
     placeOutcomeUnknown = false;
