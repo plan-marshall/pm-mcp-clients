@@ -1,10 +1,11 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
 import { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';
 import { REASONS } from '../../../lib/components/ReasonBadge.svelte';
 import { PHASES } from '../../../lib/components/PhaseLabel.svelte';
 import { MARKERS } from '../../../lib/components/Marker.svelte';
+import { apiClient, type OutlineRecord, type PlanIntentRecord } from '../../../lib/api/client';
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
 
@@ -13,7 +14,17 @@ import { loadMessages } from '../../../test/catalogue-fixture';
 vi.setConfig({ testTimeout: 20_000 });
 
 describe('/dev/components page fixture', () => {
+  beforeEach(() => {
+    // The intent, outline and builder-check fixtures read the runtime through the client. A read that
+    // never settles keeps them in their waiting state, so the counts of the other fixtures stay the
+    // fixture's own and do not depend on timing.
+    vi.spyOn(apiClient, 'getPlanIntent').mockReturnValue(new Promise(() => {}));
+    vi.spyOn(apiClient, 'getPlanOutline').mockReturnValue(new Promise(() => {}));
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
     currentLocale.set('en');
     messagesStore.set(loadMessages('en'));
   });
@@ -230,6 +241,95 @@ describe('/dev/components page fixture', () => {
     expect(tableEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
     expect(tableEmpty?.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'kind.plan');
     expect(iconEmpty?.querySelector('[data-testid="mascot-figure"]')).toBeNull();
+  });
+
+  describe('the intent and outline fixtures (D4)', () => {
+    /** The plan record the mock serves, as the fixture reads it. */
+    const PLAN_INTENT: PlanIntentRecord = {
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect without losing queued events.',
+      criteria: [
+        {
+          id: 'AC-001',
+          text: 'When a relay connection drops, the relay shall reconnect within five seconds.',
+          satisfies: [1],
+          status: 'met',
+        },
+      ],
+      non_goals: [{ id: 'NG-1', text: 'Change the on-disk queue format.' }],
+      decisions: [
+        {
+          id: 'DC-001',
+          text: 'Retry with exponential backoff.',
+          decider: 'operator',
+          options_weighed: ['fixed interval', 'exponential backoff'],
+          question_id: 'Q-007',
+        },
+      ],
+      open_questions: ['Does the relay need IPv6 support?'],
+      deferred: [],
+      builder_check: {
+        resolution: 'pending',
+        questions: [
+          {
+            id: 'BQ-001',
+            text: 'Which timeout applies when the queue is full?',
+            sort: 'operator',
+            recommended: true,
+            state: 'open',
+          },
+        ],
+      },
+    };
+
+    /** The outline the mock serves. */
+    const PLAN_OUTLINE: OutlineRecord = {
+      plan_id: 'fix-relay',
+      revision: 2,
+      summary: 'Reconnect the relay and keep the queue durable.',
+      deliverables: [
+        {
+          number: 1,
+          title: 'Reconnect the relay',
+          intent_gloss: 'Reconnect with exponential backoff.',
+          affected_files: [
+            { path: 'pm-relay/src/main/java/RelayConnection.java', intent: 'write-replace' },
+          ],
+          depends_on: [],
+          satisfies: ['AC-001'],
+        },
+      ],
+      added_dependencies: [],
+    };
+
+    it.each(['en', 'de'] as const)(
+      'draws both panels in both themes, in %s',
+      async (locale) => {
+        vi.spyOn(apiClient, 'getPlanIntent').mockResolvedValue(PLAN_INTENT);
+        vi.spyOn(apiClient, 'getPlanOutline').mockResolvedValue(PLAN_OUTLINE);
+
+        currentLocale.set(locale);
+        messagesStore.set(loadMessages(locale));
+        render(DevComponentsPage);
+
+        for (const theme of ['light', 'dark']) {
+          const block = document.querySelector(`[data-theme="${theme}"]`) as HTMLElement;
+          const fixture = within(block).getByTestId('intent-fixture');
+
+          await waitFor(() =>
+            expect(within(fixture).getByTestId('plan-intent-panel')).toBeInTheDocument(),
+          );
+          expect(within(fixture).getByTestId('outline-panel')).toBeInTheDocument();
+          expect(within(fixture).getByTestId('intent-head')).toHaveTextContent('fix-relay');
+          expect(within(fixture).getByTestId('outline-deliverable-1')).toBeInTheDocument();
+          // The criterion and the deliverable point at each other, one step away.
+          expect(
+            within(fixture).getByTestId('outline-satisfies-1').querySelector('a'),
+          ).toHaveAttribute('href', '/dev/components#criterion-AC-001');
+        }
+      },
+    );
   });
 
   describe('the tag fixtures (D5)', () => {

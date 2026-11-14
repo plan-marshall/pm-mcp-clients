@@ -226,7 +226,7 @@
     <h3 class="intent-panel__title">{$t('intent.criteria.title')}</h3>
     <ul class="intent-criteria">
       {#each record.criteria as criterion (criterion.id)}
-        <li class="intent-criterion" data-testid={`criterion-${criterion.id}`}>
+        <li class="intent-criterion" id={`criterion-${criterion.id}`} data-testid={`criterion-${criterion.id}`}>
           <span class="intent-criterion__id">{criterion.id}</span>
           <span class="intent-criterion__text" data-testid={`criterion-text-${criterion.id}`}>
             {safe(criterion.text)}

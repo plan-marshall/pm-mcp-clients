@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../../../lib/i18n';
+  import { apiClient, type BuilderCheckRecord } from '../../../lib/api/client';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import RowMenu from '../../../lib/components/RowMenu.svelte';
   import Button from '../../../lib/components/Button.svelte';
@@ -30,6 +32,9 @@
   import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
+  import PlanIntentPanel from '../../../lib/components/PlanIntentPanel.svelte';
+  import OutlinePanel from '../../../lib/components/OutlinePanel.svelte';
+  import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -190,6 +195,36 @@
     { tone: 'success', key: 'dev.form_status.success' },
     { tone: 'danger', key: 'dev.form_status.danger' },
   ] as const;
+
+  /**
+   * The plan whose intent and outline the fixture shows. The mock runtime serves its records for any
+   * id (it answers from the `fix-relay` fixture), so the fixture reads the one the design's sketches
+   * name through the real client.
+   */
+  const INTENT_PLAN_ID = 'fix-relay';
+
+  /** The builder check the fixture shows, read from the plan's own record. */
+  let builderCheck: BuilderCheckRecord | null = null;
+
+  onMount(async () => {
+    try {
+      const record = await apiClient.getPlanIntent(INTENT_PLAN_ID);
+      builderCheck = record?.builder_check ?? null;
+    } catch {
+      // An unpaired page draws the panels' own error state; the check then stays a title alone.
+      builderCheck = null;
+    }
+  });
+
+  /** @param number the deliverable's number @returns the address of its row in this fixture */
+  function deliverableHref(number: number): string {
+    return `/dev/components#deliverable-${number}`;
+  }
+
+  /** @param criterionId the criterion's id @returns the address of its row in this fixture */
+  function criterionHref(criterionId: string): string {
+    return `/dev/components#criterion-${criterionId}`;
+  }
 </script>
 
 <div class="dev">
@@ -577,6 +612,22 @@
           />
         {/snippet}
       </RowLink>
+
+      <h3 class="dev__section-title">{$t('intent.tab.title')}</h3>
+      <div class="dev__grid" data-testid="intent-fixture">
+        <Card title={$t('intent.tab.title')} titleLevel={4}>
+          <PlanIntentPanel
+            planId={INTENT_PLAN_ID}
+            {deliverableHref}
+          />
+        </Card>
+        <Card title={$t('intent.outline.title')} titleLevel={4}>
+          <OutlinePanel planId={INTENT_PLAN_ID} {criterionHref} />
+        </Card>
+        <Card title={$t('intent.builder.title')} titleLevel={4}>
+          <BuilderCheckList check={builderCheck} />
+        </Card>
+      </div>
     </section>
   {/each}
 </div>

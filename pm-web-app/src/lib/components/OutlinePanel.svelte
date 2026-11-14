@@ -133,7 +133,11 @@
     {#if record !== null}
       <ul class="outline-deliverables">
         {#each record.deliverables as deliverable (deliverable.number)}
-          <li class="outline-deliverable" data-testid={`outline-deliverable-${deliverable.number}`}>
+          <li
+            class="outline-deliverable"
+            id={`deliverable-${deliverable.number}`}
+            data-testid={`outline-deliverable-${deliverable.number}`}
+          >
             <h3 class="outline-deliverable__title">
               {$t('intent.outline.deliverable', {
                 number: deliverable.number,
