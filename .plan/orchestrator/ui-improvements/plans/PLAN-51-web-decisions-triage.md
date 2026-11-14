@@ -214,3 +214,10 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150` (`RadioGroup`, `TextArea`) and `PLAN-143` (`/decisions/{id}`).
+- Re-ground at outline: start from `DecisionView` without layout modes (PLAN-111 done), and re-ground its line numbers.
+- `askingRole` is a free string.
+- The chat deliverable is dropped (PLAN-137 owns it).

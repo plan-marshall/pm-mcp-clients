@@ -224,3 +224,9 @@ at the then-current HEAD, stop and loop back to the orchestrator for the order; 
 
 Expected Surface (when restarted; the parked rule above still holds until then): unchanged files; the tab's layout lives in
 `PlanView.svelte` and `PlanView.test.ts`, already listed. No new file.
+
+## Parked Gate Check 2026-11-14 (cleanup)
+
+**Stays parked (operator, 2026-11-14: "Stage plan-changes rows").** The Changes tab needs the plan-changes contract, which is now staged as `PLAN-162` (contract and mock), `PLAN-163` (terminal) and `PLAN-164` (the web tab's content, mounted in today's `PlanView`).
+- Unpark when `PLAN-164`, `PLAN-144` and `PLAN-145` have landed. This plan then carries the Changes tab into its tab set and does not build it.
+- Re-ground at outline: the "new claims" this spec says were added were never added.

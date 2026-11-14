@@ -176,3 +176,9 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-53`, `PLAN-146` (the chart mounted on the setup tab) and `PLAN-150`.
+- Re-ground at outline: the order in `project-explorer.adoc:38-40` differs from `plan-overview.adoc:55`.
+- The routes `/projects/{id}` and `/project-onboarding/{entry}` are missing from the surface.

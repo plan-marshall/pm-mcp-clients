@@ -263,3 +263,12 @@ PLAN-134 (#428, `7adb56c2`) moved `MockRuntimeEngine.java` line refs:
 
 `ChatRegistry.java` is now 2428 lines, with route parsing at :2054-2145. Re-ground every engine and registry line
 ref in this spec at restart.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Every gate is met: `PLAN-159` (#417: `Decision.adr`/evidence, `NonGoal`, reason, optional `proposedMultiple` on main), D6, `StatusLabel` and `Link`. `PLAN-143` is soft. It can be emitted now.
+- Re-ground at outline:
+  - Claim 2 is superseded by `PLAN-159`.
+  - Deliverable 5 sits inside `## Claim Labels`; move it under Deliverables.
+  - `MockRuntimeEngine` line refs moved by about +430 (PLAN-134).
+- Do not run it alongside `PLAN-164`; both change `PlanView.svelte`.

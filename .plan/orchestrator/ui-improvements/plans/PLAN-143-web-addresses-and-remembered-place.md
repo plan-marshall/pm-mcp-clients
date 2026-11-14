@@ -257,3 +257,12 @@ Lane: `runbook`.
 ## Write-Boundary
 
 The session implementing this spec touches only its own repository source and tests. It creates and edits NO file under `.plan/orchestrator/` other than its own `inbox/{sender}-{seq}` message. The orchestrator owns every other ledger write. The session reports its outcome through its PR and its inbox message (`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary).
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Gates met (`PLAN-45`, `PLAN-129`, D6). Run it in series with `PLAN-142`, since both change `ReportsView.svelte` and `reports.spec.js`; emit it after 142 lands.
+- Running alongside `PLAN-149` is allowed (operator, 2026-11-14). They share `CommandPalette`, `DecisionView`, `ProjectExplorerView` and `ReportsView`; the second to land rebases.
+- Re-ground at outline:
+  - `CommandPalette` has no `navigateTo`; it uses `pushRoute` (:205, :226, :232).
+  - `openStartPage` is still at `NavRail:98`, and `pm_start_route` is gone.
+  - The Expected Surface is at `1cc0e10e`.

@@ -297,3 +297,10 @@ The packages this spec names by placeholder were staged on 2026-11-10: the D1 fo
 PLAN-134 landed (#428, `7adb56c2`). The transcript now receives `notice` turns (cumulative lines,
 possibly re-completed under the same turn id) and `chat.turn.started.context`. The core renderer must ignore or
 render them without breaking, even if this plan lands before PLAN-136.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-142` and `PLAN-144` D4 (plan and epic routes on the engine). Met: `PLAN-130`, `PLAN-132` to `PLAN-134`, `PLAN-147`, and O1/O2/O6/O7.
+- Re-ground at outline: there is no chat place on `TriagePage` yet (claim 10).
+- It carries residue from `PLAN-161`, the `#432` finding and `PLAN-134` (see the amendments above).
+- The `marked` dependency is operator-approved.

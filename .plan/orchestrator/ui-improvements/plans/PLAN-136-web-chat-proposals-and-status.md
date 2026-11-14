@@ -243,3 +243,9 @@ Two things are still open, and the operator decided both on 2026-11-14. PLAN-140
 
 The scenario files carry no narrative and no decision chat yet; PLAN-140 D-R134 adds them. Until then, the browser
 check drives events through `/mock/broadcast`. Re-ground :38-44 and :69-77 against `7adb56c2`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-135` lands.
+- Re-ground at outline: the Overview rows have no second-line slot (claim 5).
+- The scenario files carry no narrative until `PLAN-140` D-R134; until then, drive the browser check through `/mock/broadcast`.

@@ -179,3 +179,10 @@ Dependencies: D1 foundation (field system, FormStatus, Button hierarchy), D2 nav
 New claim bullets:
 
 New claims of this re-grounding are in `## Claim Labels`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150` (`SecretField`, `NumberField`, `SelectField`) and `PLAN-143` (tab addresses).
+- Re-ground at outline: the rail already maps machine-settings to settings (#274).
+- `SettingsView.test` overlaps the `PLAN-85` tab.
+- Transcribe belongs to the voice package.

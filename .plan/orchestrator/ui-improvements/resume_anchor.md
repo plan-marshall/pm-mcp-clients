@@ -1,1 +1,1 @@
-2026-11-14 analyzed PLAN-134 (#428) shipped; residue in PLAN-140 D-R134. Running: PLAN-30. Free slots: 3. Unlanded ledger commits pending 'land'. Open for operator: integrity_hold package, Dependabot #405/#419/#430.
+2026-11-14 full cleanup: 19 rows unparked, plan-changes staged PLAN-162..164; PLAN-134 analyzed (residue PLAN-140 D-R134). Running: PLAN-30. Free slots: 3; proposed emit now PLAN-149, 142, 145. Open for operator: pm-mcp-core state-catalogue edit (chat proposal contract), integrity_hold package, Dependabot #405/#419/#430.

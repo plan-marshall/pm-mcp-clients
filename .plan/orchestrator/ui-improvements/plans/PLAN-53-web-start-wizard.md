@@ -165,3 +165,8 @@ New claims of this re-grounding are in `## Claim Labels`.
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Chat adoption:** `PLAN-137` (web chat places) replaces every `ChatPanel` call site and the project-onboarding chat drawer and deletes `ChatPanel`. This plan drops its own chat deliverable or chat lines; it only places the `Chat` side column in its redesigned layout where the design shows it.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-150`, and after `PLAN-155` and `PLAN-156`, to avoid collisions on `StartView` and its modals.
+- Re-ground at outline: claims 1 and 5 are contradicted. The 15 s bound, `Skeleton`/`ErrorState`/retry (#399) and the `StartView` tests exist. The 20 s figure is not done.

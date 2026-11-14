@@ -628,6 +628,33 @@ plan spec names the plan, proposal and finding documents it comes from.
   and mock minors; `DecisionView`'s absent channel/device → PLAN-136; lessons adopted (rule 5) and archived. PLAN-133 was
   emitted on the operator's word as a fifth plan beside N=4.
 
+- 2026-11-14 — Parked-gate check (read-only sub-agent; evidence spot-checked at `7adb56c2`), with the operator's answers
+  (AskUserQuestion), in the full cleanup:
+  - **(1) "Gates met + chained": 19 rows unparked to `staged`.**
+    - Gates met now: 142, 143 and 145.
+    - Chained behind staged rows: 144, 146, 135, 136, 49, 51, 52, 53, 58, 59, 60, 62, 64, 66, 85 and 88.
+    - Each spec carries `## Unparked 2026-11-14` with its emit-after gates and its re-ground notes.
+    - Still parked:
+      - 137 (the chat contract gaps plan, and 136, 155, 156);
+      - 55 (plan-changes);
+      - 70, 72, 73 and 74 (theme and token tail);
+      - 29, 41, 65, 71 and 75 (verification tail).
+  - **(2) "Stage plan-changes rows".** The work package `doc/plans/plan-changes.adoc` is staged as three runbook rows:
+    - `PLAN-162` `plan-changes-contract-and-mock` (WS-01; tasks 1 and 4 for the contract);
+    - `PLAN-163` `cli-plan-changes` (WS-05; tasks 2 and 4);
+    - `PLAN-164` `web-plan-changes-tab` (WS-03; tasks 3 and 4; builds the tab content in today's `PlanView`).
+
+    `PLAN-55` stays parked until 164, 144 and 145 land, then carries the tab into its tab set. `PLAN-62` waits behind 55.
+  - **(3) PLAN-146: "Extend contract + mock".** A new D0 gives the over-size answer a roles list, so it can draw one chart per role.
+  - **(4) "Allow concurrent".** PLAN-142 and 143 may run beside PLAN-149 on their shared files; the second to land rebases.
+    PLAN-142 → 143 → 144 stays in series.
+  - **Proposed emit order** (3 slots while PLAN-30 runs):
+    - now: PLAN-149, 142 and 145;
+    - then 162, 143, 146 and 150;
+    - then 144, 151, 152 and 88;
+    - then 135, 49 and the views 153–157;
+    - then 60, 51, 52, 53, 136, 58, 59, 64/66 and 85, and the plan-changes clients 163 and 164.
+
 ## Open Defects
 
 - PLAN-126 (2026-11-12), owner plan-marshall (runbook lane), **recurring in three landings in a row** (PLAN-159, PLAN-32, PLAN-126): the

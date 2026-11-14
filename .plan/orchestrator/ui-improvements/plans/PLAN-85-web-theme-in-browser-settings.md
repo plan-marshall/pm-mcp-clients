@@ -166,3 +166,10 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the entry pages are restyled by PLAN-157 (no theme or language control is added there, option A).
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-60` (tab host), `PLAN-144` (`BottomBar`) and `PLAN-150` (`RadioGroup`). `PLAN-109` is met.
+- Option A applies: only the tab and the `BottomBar` duplicate toggle.
+- Claim 4 is refuted.
+- The Write-Boundary still lists the old pairing/revoked surface; trim it at outline.

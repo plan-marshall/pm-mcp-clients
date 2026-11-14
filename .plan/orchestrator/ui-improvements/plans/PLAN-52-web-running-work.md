@@ -191,3 +191,10 @@ bullet of `## Operator Decisions 2026-11-10`.
 
 Dependencies added: `PLAN-143` (the remembered place, its entry points, the app's mark), `PLAN-144` (Up and the lens segment).
 Expected Surface: unchanged.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-144` and `PLAN-149` (`RowMenu` `disabledReason`).
+- Re-ground at outline: ended-work paging is done (#59).
+- Dropped: the filter chip row, the DataTable tab, and `pm_overview_show_ended`/`ended_page`.
+- The rail opens running work (D6).

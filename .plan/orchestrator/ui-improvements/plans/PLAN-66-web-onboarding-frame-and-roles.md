@@ -184,3 +184,9 @@ sole sanctioned write mechanism are stated in
 - OBSERVED: `doc/design/web-app/onboarding-texts.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/onboarding.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/onboarding.de.properties` — present at HEAD 1cc0e10e
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-64`, in the same wave.
+- Re-ground at outline: the monogram fallback is done.
+- Still due: the stray `/>` at `HarnessChoice:151-152`, and the choices on the field set.

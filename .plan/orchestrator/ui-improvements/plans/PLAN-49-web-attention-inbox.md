@@ -172,3 +172,10 @@ Dependencies: D1 foundation (KindMark, ReasonBadge, RowLink, CountBadge), D2 nav
 New claim bullets:
 
 New claims of this re-grounding are in `## Claim Labels`.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-144` lands (`nav.ts`, `NavRail`, `BottomBar`, routes). `RowLink` is met (PLAN-148).
+- Re-ground at outline: `RowLink` needs a second detail line, `aria-current` on the anchor and `:has(a:focus-visible)`.
+- Do not use `StatusLabel`'s `slot` prop; `PLAN-149` D6 renames it.
+- The `integrity_hold` rename touches `ReasonBadge` (soft).

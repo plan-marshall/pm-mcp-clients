@@ -219,3 +219,7 @@ Lane: `runbook`.
 
 The session implementing this spec touches only its own repository source and tests. It creates and edits NO file under `.plan/orchestrator/` other than its own `inbox/{sender}-{seq}` message.
 The orchestrator owns every other ledger write (`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary).
+
+## Parked Gate Check 2026-11-14 (cleanup)
+
+`PLAN-142` and `PLAN-143`, unparked 2026-11-14, may run alongside this plan (operator). The shared files are `ReportsView.svelte`, `routes/dev/components/+page.svelte`, `doc/design/web-app/components.adoc`, `CommandPalette`, `DecisionView` and `ProjectExplorerView`. The second to land rebases.

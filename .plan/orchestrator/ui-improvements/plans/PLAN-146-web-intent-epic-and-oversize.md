@@ -163,3 +163,14 @@ D6 (`PLAN-141`, #403, `8568b56e`) answered Q4 (a) and (d): a done-when check's v
 named by its resource (`OverSizeDistributionResource`, per project and role); without a proposal it shows the distribution under the
 multiple in force and no flagged comparison; the contract grows to carry an absent proposal (`PLAN-159`). The deliverables above are
 amended in place. Removed: "PLAN-59 or PLAN-60, as D6 decided" (PLAN-59 it is). New dependency: `PLAN-159`. Surface: unchanged.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-145` lands (`PLAN-159` and D6 met).
+
+**Operator decision 2026-11-14: extend the contract and the mock.** Claim 6 is refuted: the over-size route takes a project id and serves one role (`MockRuntimeEngine` ~:5587), while the design wants one chart per role. Add **D0** as the first deliverable:
+- give the over-size answer a roles list (or a `role` parameter) in `pm-api`, with its contract test;
+- make the mock serve every role of the project;
+- then draw one chart per role as designed.
+
+D0's surface adds the over-size record in `pm-api`, `MockRuntimeEngine.java` and its scenario test. Do not run it alongside `PLAN-140` D-R134 or `PLAN-162`, which touch the engine.

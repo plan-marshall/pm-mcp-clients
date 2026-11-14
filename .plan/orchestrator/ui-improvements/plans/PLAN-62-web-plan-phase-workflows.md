@@ -176,3 +176,10 @@ Source: the D6 design session `PLAN-141`, merged as #403 (`8568b56e`, 2026-11-10
 
 Dependencies added: `PLAN-143` (the one address writer, `node=`), `PLAN-145` (the catalogue area `intent` for `intent.tab.title`).
 Expected Surface: unchanged.
+
+## Unparked 2026-11-14 (cleanup, operator)
+
+Emit after `PLAN-55`. **PLAN-55 stays parked on the plan-changes rows `PLAN-162` and `PLAN-164`, so this row waits behind it.**
+- Re-ground at outline: `RowLink` has no tree role, so redesign the row and its disclosure.
+- Claim 4 is refuted: the toggle is inert at `PlanView:899-921`.
+- The not-in-plan box is done (#70).
