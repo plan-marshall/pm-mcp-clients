@@ -291,3 +291,9 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: the D1 foundation part with KindMark, Link, ExternalLink, PrChip, Compose and FormStatus is PLAN-147; the side column is decided by PLAN-141 (D6).
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 landed (#428, `7adb56c2`). The transcript now receives `notice` turns (cumulative lines,
+possibly re-completed under the same turn id) and `chat.turn.started.context`. The core renderer must ignore or
+render them without breaking, even if this plan lands before PLAN-136.

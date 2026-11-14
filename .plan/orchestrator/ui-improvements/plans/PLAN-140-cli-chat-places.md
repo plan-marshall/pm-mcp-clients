@@ -206,3 +206,57 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - `AnswerCommand` line refs are stale since `98cea294` (no `chat` yet: the PLAN-140 premise holds). `EpicCommand` chat now at `:699`,
   `PlanCommand` chat at `:799`, `ActionSupport.chat` at `:350-386`. The EOF contract (`StartPrompt.StartLeftException`) and the
   `readOwnWords`/`clarified` path are shared with the answer verb.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 (#428, `7adb56c2`) landed without its fixtures and with open review findings. The operator's
+routing on 2026-11-14 folds all of PLAN-134's mock residue into this plan. Do it as **D-R134** before the CLI
+deliverables, in the same commit stream as the `role_unqualified` work on `ChatRegistry`, which edits the same files.
+Line refs are at `7adb56c2`: CR = `pm-mock-runtime/.../ChatRegistry.java`, ME = `.../MockRuntimeEngine.java`.
+
+1. **Scenarios (PLAN-134 D5, not shipped).** Extend `running-work.json` and `fully-onboarded.json` with:
+   - a plan with a running task, and narrative events on it;
+   - a plan decision chat that carries a revision proposal;
+   - an ended plan;
+   - knows and narrative for an epic and an entry.
+
+   All of it must pass the load validation. PLAN-136, PLAN-137 and PLAN-139 consume these fixtures. Until they
+   exist, their browser and PTY checks drive the events through `/mock/broadcast`.
+2. **D-new-1 (m2 from PLAN-133, not shipped).** `applyChatProposal` (ME:918-931) only bumps an epic's rows or
+   draft revision. Make it apply `after`, and update `ChatProposalsTest:216-232`.
+3. **Race test.** Add a test for the replaced-worker race. The fix shipped untested: the check and replace in
+   `playFailure` happen under one lock (CR:688-699).
+4. **Review findings left unfixed (CodeRabbit "not marking addressed"), each with a test:**
+   - **M1.** `scope.ended` does not close the revision window. `revisionWindowOpen` (ME:994-1014) ignores
+     `planActivities`. A revision accepted from that plan's decision chat queues and never settles. It must be
+     refused as lapsed. Thread 4573728016.
+   - **m1.** `plan.paused`, whose state is `pausing`, is narrated as `paused` (CR:1195-1198). The later real
+     `paused` is then deduplicated away (CR:1166). Thread 4573726390.
+   - **m2.** `planFor` (ME:1024-1038) binds an epic or entry decision `X/Q-9` to a plan named `X` by id prefix.
+     Thread 4569017923.
+   - **m4.** An infeasible task outcome is narrated as done (CR:1115-1117).
+   - **m5.** A `chat.proposal` ACCEPTED sent through `/mock/broadcast` (CR:1885-1897) skips `revisionRefusal`. It
+     also overwrites a queued revision and can throw an NPE that the IOException-only catch at CR:1791 does not catch.
+5. **Operator decision 2026-11-14, REFUSED stays rejectable.** A proposal refused for no plan, a passed boundary or
+   a failed check must accept `reject`. Today `answer` (CR:1618) needs `isOpen()`, which is true for OPEN only
+   (`ChatProposal:103`). Extend `isOpen()` to REFUSED for reject only, and state this in
+   `doc/design/shared/state-catalogue.adoc`. Thread 4573384117.
+6. **Operator decision 2026-11-14, the conflict and lapse notice gets a line key.** `state-catalogue.adoc:138`
+   says conflict and lapse are "told by a notice", but the closed line catalogue (:148-167) has no key for it.
+   - Add the key to the catalogue and to `control.en/de.properties` (`ChatMessageKeysTest`).
+   - Emit it as a notice turn on a conflict and on a lapse.
+7. **Test pins PLAN-134 left out.** For apply, refuse, lapse, chat-end and decision, assert `plan.revision_queued`,
+   the overview row, `activity.changed` and their order. Today only accept is pinned (`ChatRevisionQueueTest:100-128`).
+   Assert "reject still taken" per refusal, and add a test for "another subject".
+8. **Narrative completeness (PLAN-134 D1/D2 partly shipped):**
+   - the "pull request merged" line;
+   - epic and entry lines (`row_*`, `source_*`, `auto_changed`);
+   - knows for epics and entries beyond `description` (ME:952-953): sources, rows, items;
+   - pins for native `decision.opened` and for pausing.
+9. **Smaller items:**
+   - The hard-coded hold `H-1` in later plan replies (`ChatScripts:51,148-152`).
+   - No `instance.changed` is emitted on an applied revision (CR:1318-1329).
+   - Check against the contract that re-sending `chat.turn.completed` per notice extension is allowed (CR:602-622).
+
+This is about 9 items, which breaks the ~6 scope guard. If the plan grows past it, split D-R134 into its own PR
+first. It must land before PLAN-136, PLAN-137 and PLAN-139 need the fixtures.

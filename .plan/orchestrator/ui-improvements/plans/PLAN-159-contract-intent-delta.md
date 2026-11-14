@@ -200,3 +200,12 @@ never writes it). It creates and edits NO file under `.plan/orchestrator/` other
 orchestrator owns every other ledger write — and reports its outcome through its PR and its inbox message. The inbox exception's
 qualifiers and the sole sanctioned write mechanism are stated in `persona-plan-orchestrator/standards/orchestration-model.md`
 § Ledger Write-Boundary.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 (#428, `7adb56c2`) moved `MockRuntimeEngine.java` line refs:
+- refs past line ~5000 shift by about +430 (5386→5813, 5407→5834, 5459→5886);
+- the ref at 491 shifts by +31 (→522).
+
+`ChatRegistry.java` is now 2428 lines, with route parsing at :2054-2145. Re-ground every engine and registry line
+ref in this spec at restart.

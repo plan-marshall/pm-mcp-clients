@@ -254,3 +254,12 @@ PLAN-159 merged as `835e7024` (#417): the contract carries `Decision.adr` and `e
 scenarios serve them (`fully-onboarded` a `not_run` check with a reason and a distribution without a proposal; `running-work` a
 `pending` check and a distribution with one). D1's types mirror these. Deliverable 5 is added by the operator's routing of the
 landing (`landings/PLAN-159.md`). Settled HYPOTHESES: the over-size route serves one role with no role parameter (`MockRuntimeEngine.java:5459-5465`) — `PLAN-146`'s; `reason` and `proposed_multiple` are named by the design alone (no engine schema defines them). Surface: +3 paths (`BuilderCheckResource.java`, `IntentJson.java`, `IntentContractTest.java`); `PlanIntentResource.java` stays read only.
+
+## PLAN-134 Landing Residue (Amendment 2026-11-14)
+
+PLAN-134 (#428, `7adb56c2`) moved `MockRuntimeEngine.java` line refs:
+- refs past line ~5000 shift by about +430 (5386→5813, 5407→5834, 5459→5886);
+- the ref at 491 shifts by +31 (→522).
+
+`ChatRegistry.java` is now 2428 lines, with route parsing at :2054-2145. Re-ground every engine and registry line
+ref in this spec at restart.
