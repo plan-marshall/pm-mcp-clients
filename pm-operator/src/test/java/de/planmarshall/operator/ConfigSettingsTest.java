@@ -292,6 +292,6 @@ class ConfigSettingsTest {
         fixture.start((request, response) -> response.send(500, null, ""));
         var code = run(context(""), "config");
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Unable to load settings: HTTP 500"), out.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 }

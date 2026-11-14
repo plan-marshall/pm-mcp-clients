@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -66,6 +68,28 @@ public final class MessageCatalogue {
 
     private MessageCatalogue() {
         // Utility class
+    }
+
+    /**
+     * Returns a {@link java.util.ResourceBundle} for the given locale backed by this MessageCatalogue.
+     *
+     * @param locale the requested locale
+     * @return ResourceBundle containing messages for all areas
+     */
+    public static ResourceBundle resourceBundle(String locale) {
+        String effectiveLocale = normalizeLocale(locale);
+        Map<String, String> messages = getMessages(effectiveLocale, "all");
+        return new ResourceBundle() {
+            @Override
+            protected Object handleGetObject(String key) {
+                return messages.get(key);
+            }
+
+            @Override
+            public Enumeration<String> getKeys() {
+                return Collections.enumeration(messages.keySet());
+            }
+        };
     }
 
     /**
@@ -170,6 +194,17 @@ public final class MessageCatalogue {
      */
     public static String get(String key) {
         return format(DEFAULT_LOCALE, key, Map.of());
+    }
+
+    /**
+     * Retrieves a message template in the specified locale without parameter substitution.
+     *
+     * @param locale the requested locale
+     * @param key    the message key
+     * @return the message string
+     */
+    public static String get(String locale, String key) {
+        return format(locale, key, Map.of());
     }
 
     /**

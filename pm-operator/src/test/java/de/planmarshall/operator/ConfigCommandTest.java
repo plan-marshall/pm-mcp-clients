@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +37,7 @@ import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -329,6 +331,40 @@ class ConfigCommandTest {
                             () -> assertEquals(0, code, text),
                             () -> assertTrue(text.contains("No setting changed."), text),
                             () -> assertEquals(1, bodies.size(), bodies.toString()));
+    }
+
+    @Test
+    @DisplayName("a second conflict on retry prints the conflict line again and allows retrying")
+    void secondConflictPrintsConflictLineAgain() throws Exception {
+        var key = "custom." + Generators.letterStrings(4, 8).next();
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[" + valueOf(key, "30", 4) + "]");
+            } else if ("PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, conflictOf(key, "30", 5));
+                } else if (bodies.size() == 2) {
+                    response.json(409, conflictOf(key, "45", 6));
+                } else {
+                    response.json(200, valueOf(key, "60", 7));
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n\n", "config", "set", key, "60");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 45. Yours was not applied."), text),
+                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertEquals(3, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(2).contains("\"revision\":6"), bodies.get(2)));
     }
 
     @Test
@@ -781,6 +817,84 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config cleanup --project conflict kept with k reports durations kept")
+    void cleanupProjectConflictKeptWithKReportsDurationsKept() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[]");
+            } else if (request.target().contains("/cleanup.plans_after_days")) {
+                response.json(409, conflictOf("cleanup.plans_after_days", "30", 5));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("k\n", "config", "cleanup", "--project", ".", "--plans", "60", "--yes");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Durations kept: Archived plans after 60 days."), text),
+                            () -> assertFalse(text.contains("Durations recorded:"), text));
+    }
+
+    @Test
+    @DisplayName("config cleanup machine conflict goes through conflict handling and retries")
+    void cleanupMachineConflictGoesThroughConflictHandling() throws Exception {
+        var bodies = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/machine/settings".equals(request.target()) && "PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":6,\"current_value\":\"30\"}");
+                } else {
+                    response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":7}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n", "config", "cleanup", "--plans", "60", "--yes");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertTrue(text.contains("Durations recorded: Archived plans after 60 days."), text),
+                            () -> assertEquals(2, bodies.size(), bodies.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --project editor d option removes project own values returning to inheritance")
+    void cleanupProjectEditorRemovesOwnValues() throws Exception {
+        var deleted = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (request.target().startsWith("/api/v1/config") && "GET".equals(request.method())) {
+                response.json(200, "[{\"key\":\"cleanup.plans_after_days\",\"origin\":\"project\",\"value\":90,\"revision\":3}]");
+            } else if ("DELETE".equals(request.method())) {
+                deleted.add(request.target());
+                response.send(204, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("d\n", "config", "cleanup", "--project", "pm-mcp-core");
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("d) remove its own values"), text),
+                            () -> assertEquals(1, deleted.size(), deleted.toString()),
+                            () -> assertTrue(deleted.get(0).contains("/project/cleanup.plans_after_days"), deleted.get(0)));
+    }
+
+    @Test
     @DisplayName("the editor takes a kind's name and refuses an unreadable day count")
     void cleanupEditorTakesAKindNameAndRefusesBadDays() throws Exception {
         serveSettings(body -> {
@@ -1059,6 +1173,29 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("the overview names network listener unknown when status is unreadable")
+    void overviewShowsUnknownForUnreadableListener() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"id\":\"dev-1\",\"label\":\"Terminal\"}]");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.send(500, null, "error");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("config");
+        var devices = rowOfLabel(out.toString(), "Paired devices");
+
+        assertAll(
+                            () -> assertNotNull(devices, out.toString()),
+                            () -> assertTrue(devices.contains("1 device \u00b7 network listener unknown"), devices));
+    }
+
+    @Test
     @DisplayName("the overview strips a control sequence from a runtime-served key")
     void overviewStripsAControlSequence() throws Exception {
         fixture.start((request, response) -> {
@@ -1238,7 +1375,8 @@ class ConfigCommandTest {
         int code = execute("config", "language");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
-                            () -> assertTrue(err.toString().contains("The run of language failed"), err.toString()));
+                            () -> assertTrue(err.toString().contains("✗"), err.toString()),
+                            () -> assertTrue(err.toString().contains("the machine settings are not reachable"), err.toString()));
     }
 
     @Test
@@ -1466,4 +1604,46 @@ class ConfigCommandTest {
                          "links":[{"id":"no","rel":"alt","method":"POST","href":"/api/v1/onboarding/harness/decline"},
                                   {"id":"yes","rel":"next","method":"POST","href":"/api/v1/onboarding/harness/scan","preselected":true}]}
                         """;
+
+    @Test
+    @DisplayName("an unreachable aspect run prints the refusal to err and exits 1")
+    void unreachableAspectRunPrintsRefusal() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, """
+                                    {
+                                      "state": {
+                                        "state_id": "unrelated.state",
+                                        "kind": "operator_wait"
+                                      },
+                                      "total_steps": 1,
+                                      "links": []
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language");
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("✗"), err.toString());
+        assertFalse(err.toString().contains("reported no state"), err.toString());
+    }
+
+    @Test
+    @DisplayName("cleanup value renders singular for 1 day in en and de")
+    void cleanupValueSingular() {
+        assertEquals("1 day, reminder 1 day",
+                            MessageCatalogue.format("en", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+        assertEquals("1 Tag, Erinnerung 1 Tag",
+                            MessageCatalogue.format("de", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+    }
+
+    @Test
+    @DisplayName("parseDays accepts nie for never in German")
+    void parseDaysAcceptsNie() {
+        assertEquals(Integer.valueOf(-1), ConfigCleanupCommand.parseDays("nie"));
+        assertEquals(Integer.valueOf(-1), ConfigCleanupCommand.parseDays("never"));
+    }
 }

@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -226,24 +227,40 @@ public final class ProjectCommand implements Callable<Integer> {
                 return refusalExit;
             }
 
+            return runAddDialogue(response, safePath, locale, out, err);
+        }
+
+        private Integer runAddDialogue(HttpResponse response, String safePath, String locale,
+                            PrintWriter out, PrintWriter err) {
             Started started = null;
             var startPrompt = new StartPrompt(context, out, locale, noInput);
+            var pilotUsed = new AtomicBoolean(false);
             try {
                 started = resolveSource(response);
                 var dialogue = new StateDialogue(started.source(), out, locale, stateId -> {
                     if ("project.identity".equals(stateId) && pilot) {
+                        pilotUsed.set(true);
                         return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
                     }
                     return new ChoicePrompt(startPrompt, stateId);
                 }, context.projectSetupWorkingTimeout());
                 var finalFrame = dialogue.run();
+                if (pilot && !pilotUsed.get()) {
+                    out.println(MessageCatalogue.format(locale, "operator.config.argument_unused",
+                                        Map.of("argument", "--pilot")));
+                }
+                out.flush();
                 return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
             } catch (StartPrompt.MissingInputException missing) {
+                if (pilot && !pilotUsed.get()) {
+                    out.println(MessageCatalogue.format(locale, "operator.config.argument_unused",
+                                        Map.of("argument", "--pilot")));
+                }
                 return stopAtMissingInput(out, locale, missing, started);
             } catch (StartPrompt.InterruptException _) {
                 return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
-                return 0;
+                return EXIT_NEEDS_INPUT;
             } catch (IOException _) {
                 err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
                                     Map.of(PARAM_PROJECT, safePath)));

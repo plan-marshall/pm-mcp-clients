@@ -279,6 +279,13 @@ public final class OperatorContext {
     }
 
     /**
+     * @return the normalized client locale
+     */
+    public String locale() {
+        return clientEnvironment.locale();
+    }
+
+    /**
      * Creates or returns the JLine terminal.
      *
      * <p>While a scoped terminal is set, this is that terminal: the console, and every full-screen

@@ -215,7 +215,7 @@ class DecomposeCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(err.toString().contains("epic ep-001"), err.toString())
+                            () -> assertTrue(err.toString().contains("ep-001"), err.toString())
         );
     }
 
@@ -533,7 +533,7 @@ class DecomposeCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(err.toString().contains("epic instruct"), err.toString())
+                            () -> assertTrue(err.toString().contains("This entry does not exist"), err.toString())
         );
     }
 
@@ -566,8 +566,7 @@ class DecomposeCommandTest {
         assertAll(
                             () -> assertEquals(1, decompose),
                             () -> assertEquals(1, review),
-                            () -> assertTrue(err.toString().contains("epic decompose"), err.toString()),
-                            () -> assertTrue(err.toString().contains("epic review"), err.toString())
+                            () -> assertTrue(err.toString().contains("The runtime refused: internal"), err.toString())
         );
     }
 

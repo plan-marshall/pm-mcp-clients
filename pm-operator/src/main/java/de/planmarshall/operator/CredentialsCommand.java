@@ -26,6 +26,8 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.MachineSettingsRecord;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -80,6 +82,9 @@ public final class CredentialsCommand implements Callable<Integer> {
     /** The project scope, or {@code null} for the machine. */
     @Nullable
     String projectScope;
+
+    /** Non-interactive run. */
+    boolean noInput;
 
     CredentialsCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -244,26 +249,40 @@ public final class CredentialsCommand implements Callable<Integer> {
     private int verifyProviders(PrintWriter out, PrintWriter err, String key, String store, Terminal terminal)
                         throws IOException {
         var locale = locale();
-        out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
-                            Map.of("action", MessageCatalogue.format(locale,
-                                                "common.consent.kind.verify_providers", Map.of()))));
-        out.flush();
+        MachineSettingsRecord settings = null;
+        try {
+            settings = new ConfigCommand(context).readSettingsQuiet();
+        } catch (OperatorRefusedException e) {
+            RefusalRenderer.render(err, locale, e);
+            return PmOperator.EXIT_FAILURE;
+        }
+
+        var hasConsent = settings != null
+                            && settings.consents().stream().anyMatch(c -> c.kind() == ConsentKind.VERIFY_PROVIDERS);
+        if (hasConsent) {
+            out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
+                                Map.of("action", MessageCatalogue.format(locale,
+                                                    "common.consent.kind.verify_providers", Map.of()))));
+            out.flush();
+        }
         var facts = new LinkedHashMap<String, String>();
         facts.put("current", store);
         var outcome = ConfigAspectRun.runFor(context, out, err, CREDENTIALS,
-                            new ConfigAspectRun.Answers(facts, List.of("verify_providers"), false, false, false,
-                                                false),
+                            new ConfigAspectRun.Answers(facts, hasConsent ? List.of("verify_providers") : List.of(),
+                                                false, false, false, noInput),
                             terminal);
         if (outcome.exitCode() != 0) {
             return outcome.exitCode();
         }
         var reported = outcome.facts();
-        if (Boolean.TRUE.equals(reported.get("failed"))) {
+        if ("providers.failed".equals(outcome.lastStateId())
+                            || Boolean.TRUE.equals(reported.get("failed"))
+                            || reported.containsKey("cause")) {
             out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
                                 Map.of(REASON, TerminalSanitizer.sanitize(
                                                     Objects.toString(reported.get("cause"), "")))));
             out.flush();
-            return 0;
+            return PmOperator.EXIT_FAILURE;
         }
         var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";
         var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
@@ -309,6 +328,9 @@ public final class CredentialsCommand implements Callable<Integer> {
         @Option(names = {"-y", "--yes"}, description = "Store without the confirmation")
         boolean yes;
 
+        @Option(names = "--no-input", description = "Non-interactive run")
+        boolean noInput;
+
         RotateCommand(OperatorContext context) {
             this.context = context;
         }
@@ -318,6 +340,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
+            command.noInput = noInput;
             var status = command.readStatus(out, key);
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
@@ -351,6 +374,9 @@ public final class CredentialsCommand implements Callable<Integer> {
         @Option(names = {"-y", "--yes"}, description = "Store without the confirmation")
         boolean yes;
 
+        @Option(names = "--no-input", description = "Non-interactive run")
+        boolean noInput;
+
         SetCommand(OperatorContext context) {
             this.context = context;
         }
@@ -360,6 +386,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
+            command.noInput = noInput;
             command.entryKind = kind;
             command.projectScope = project;
             var status = command.readStatus(out, key);

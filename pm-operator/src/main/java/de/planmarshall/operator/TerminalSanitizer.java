@@ -113,14 +113,13 @@ public final class TerminalSanitizer {
 
     /**
      * The embedding, override, and isolate controls and the implicit direction marks that reorder what
-     * the terminal shows, and the line and paragraph separators that break a line the console did not.
+     * the terminal shows.
      */
     private static boolean isBidiControl(int codePoint) {
         return (codePoint >= BIDI_EMBEDDING_FIRST && codePoint <= BIDI_EMBEDDING_LAST)
                             || (codePoint >= BIDI_ISOLATE_FIRST && codePoint <= BIDI_ISOLATE_LAST)
                             || codePoint == LEFT_TO_RIGHT_MARK || codePoint == RIGHT_TO_LEFT_MARK
-                            || codePoint == ARABIC_LETTER_MARK || codePoint == LINE_SEPARATOR
-                            || codePoint == PARAGRAPH_SEPARATOR;
+                            || codePoint == ARABIC_LETTER_MARK;
     }
 
     /** The characters that take no width and so hide between the visible ones. */
@@ -142,7 +141,8 @@ public final class TerminalSanitizer {
      * @return the neutralized single-line text
      */
     public static String sanitizeLine(@Nullable String text) {
-        return sanitize(text).replace(LF, ' ').replace(TAB, ' ');
+        return sanitize(text).replace(LF, ' ').replace(TAB, ' ').replace((char) LINE_SEPARATOR, ' ')
+                            .replace((char) PARAGRAPH_SEPARATOR, ' ');
     }
 
     /**

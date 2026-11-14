@@ -623,6 +623,23 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("settings.verify-providers records providers.enabled as verified when scenario declares ready")
+        void verifyProvidersRecordsVerified() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                runtime.goToState("settings.verify-providers");
+                var step = step(client, auth, "yes");
+                assertEquals("providers.verified", step.get("state"));
+
+                var config = client.send(HttpRequest.get("/api/v1/config").withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, config.status());
+                assertTrue(new String(config.body(), StandardCharsets.UTF_8).contains("github (verified)"));
+            }
+        }
+
+        @Test
         @DisplayName("adds and verifies a harness the binary does not know, failing the usage stage")
         void shouldAddAnUnknownHarness() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_UNKNOWN_HARNESS)) {

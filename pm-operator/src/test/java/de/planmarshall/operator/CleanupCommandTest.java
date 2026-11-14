@@ -101,6 +101,13 @@ class CleanupCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
+    private int executeWithLocale(Clock clock, String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            clientEnv, null, null, clock);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
     private CleanupJob sampleJob() {
         var items1 = List.of(
                             new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null),
@@ -844,6 +851,27 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("the reminder's date is counted from the clock and in German carries the dot after the day")
+    void cleanupRemindCountsFromTheClockGerman() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_after_days\":3}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC);
+
+        executeWithLocale(clock, "de", "cleanup", "--remind");
+
+        assertTrue(out.toString().contains("16. Okt."), out.toString());
+    }
+
+    @Test
     @DisplayName("cleanup --remind without a date names the next check")
     void cleanupRemindWithoutADate() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -1119,6 +1147,7 @@ class CleanupCommandTest {
                             () -> assertEquals(List.of("d", "r", "i", "x", "o"),
                                                 choices.stream().map(ChoicePrompt.Choice::key).toList()),
                             () -> assertEquals("delete…", choices.get(0).label()),
+                            () -> assertEquals("ask me again in 3 days", choices.get(1).label()),
                             () -> assertEquals("leave items out", choices.get(3).label())
         );
     }
@@ -1710,6 +1739,29 @@ class CleanupCommandTest {
                             () -> assertFalse(output.contains("21) ▸ item-21"), output),
                             () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output),
                             () -> assertTrue(posted.get().contains("\"item-25\""), posted.get())
+        );
+    }
+
+    @Test
+    @DisplayName("a project-filtered cleanup prints every item beyond twenty and omits the more line")
+    void projectPaginationShowsAllItemsForSpecificProject() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system/cleanup") && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--project", "pm-mcp-clients", "--no-input");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("25) ▸ item-25"), output),
+                            () -> assertFalse(output.contains("more: cleanup --project"), output)
         );
     }
 

@@ -131,7 +131,8 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             var status = StatusCommand.fetch(context.runtime(true));
             var out = spec.commandLine().getOut();
-            out.println("runtime   running (pid " + status.get("pid") + ")");
+            var locale = context.clientEnvironment().locale();
+            out.println(MessageCatalogue.format(locale, "operator.runtime.status_running", Map.of("pid", status.get("pid"))));
             out.flush();
             return 0;
         }
@@ -295,7 +296,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", OPERATOR_STOP, JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
-                out.println("runtime   restarting");
+                out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.status_restarting"));
                 out.flush();
                 return 0;
             }
@@ -361,7 +362,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (response.status() == 200) {
                 out.println(response.bodyText());
             } else {
-                out.println("No release notes found.");
+                out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.upgrade.no_release_notes"));
             }
             out.flush();
             return 0;
@@ -369,10 +370,11 @@ public final class RuntimeCommand implements Callable<Integer> {
 
         private int runCheck(PrintWriter out) throws IOException {
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade/check", "{}"));
+            var locale = context.clientEnvironment().locale();
             if (response.status() == 200) {
-                out.println("✓ Version check completed");
+                out.println(MessageCatalogue.get(locale, "operator.runtime.upgrade.check_completed"));
             } else {
-                out.printf("Version check failed: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.runtime.upgrade.check_failed", Map.of("status", response.status())));
             }
             out.flush();
             return 0;
@@ -380,10 +382,11 @@ public final class RuntimeCommand implements Callable<Integer> {
 
         private int withdrawUpgrade(PrintWriter out) throws IOException {
             var response = context.runtime(false).send(HttpRequest.delete("/api/v1/operator/runtime/upgrade"));
+            var locale = context.clientEnvironment().locale();
             if (response.status() == 200 || response.status() == 204) {
-                out.println("runtime   upgrade withdrawn");
+                out.println(MessageCatalogue.get(locale, "operator.runtime.status_upgrade_withdrawn"));
             } else {
-                out.printf("Failed to withdraw upgrade: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.runtime.upgrade.withdraw_failed", Map.of("status", response.status())));
             }
             out.flush();
             return 0;
@@ -410,7 +413,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
-                out.println("runtime   upgrading");
+                out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.status_upgrading"));
                 out.flush();
                 return 0;
             }

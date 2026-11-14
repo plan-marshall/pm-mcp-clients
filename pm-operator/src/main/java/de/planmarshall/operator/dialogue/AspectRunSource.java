@@ -23,6 +23,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.OperatorGate;
+import de.planmarshall.operator.OperatorRefusedException;
 import de.planmarshall.operator.StartPrompt;
 
 /**
@@ -86,6 +87,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private boolean started;
     private boolean returned;
     private Map<String, Object> lastFacts = Map.of();
+    private String lastStateId = "";
 
     /**
      * The boolean answers a verb carries.
@@ -166,6 +168,13 @@ public final class AspectRunSource implements StateDialogue.Source {
         return lastFacts;
     }
 
+    /**
+     * @return the state id of the last state the run reported before it returned to the settings
+     */
+    public String lastStateId() {
+        return lastStateId;
+    }
+
     @Override
     public StateDialogue.Frame fetch() throws IOException {
         var frame = read();
@@ -190,6 +199,7 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return asFinal(current);
             }
             lastFacts = current.facts();
+            lastStateId = current.stateId();
             if (current.isFinal()) {
                 return current;
             }
@@ -234,12 +244,12 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return send(linkId, current);
             }
             if (current.links().stream().noneMatch(link -> SETTINGS_LINK.equals(link.id()))) {
-                throw new IOException("the machine settings are not reachable: the runtime offers neither "
+                throw new OperatorRefusedException("the machine settings are not reachable: the runtime offers neither "
                                     + SETTINGS_LINK + " nor " + linkId);
             }
             current = send(SETTINGS_LINK);
         }
-        throw new IOException("the machine settings were not reached");
+        throw new OperatorRefusedException("the machine settings were not reached");
     }
 
     private @Nullable String answerFor(StateDialogue.Frame frame) {
@@ -294,7 +304,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private StateDialogue.Frame read() throws IOException {
         var response = runtime.send(HttpRequest.get(STATE_PATH));
         if (response.status() != 200) {
-            throw new RefusedException("the onboarding state", response.status());
+            throw new OperatorRefusedException("the onboarding state", response);
         }
         return StateDialogue.fromJson(response.bodyText(), 1, false);
     }
@@ -324,7 +334,7 @@ public final class AspectRunSource implements StateDialogue.Source {
         }
         var response = runtime.send(HttpRequest.json("POST", OnboardingSource.STEP_PATH, JsonTree.write(body)));
         if (response.status() != 200) {
-            throw new RefusedException("the onboarding step", response.status());
+            throw new OperatorRefusedException("the onboarding step", response);
         }
         return StateDialogue.fromJson(response.bodyText(), 1, false);
     }

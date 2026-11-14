@@ -163,9 +163,12 @@ public final class ConsolePrompt {
      * @param locale the interface locale
      * @param kind   the item kind
      * @return the shared word of the resolved kind ({@code overview.needs.<kind>}), or the word of a
-     *         reason this version does not know ({@code overview.needs.other}) — never the wire word
+     *         reason this version does not know ({@code common.unknown}) — never the wire word
      */
-    static String kindWord(String locale, String kind) {
+    static String kindWord(String locale, @Nullable String kind) {
+        if (kind == null || kind.isBlank()) {
+            return MessageCatalogue.format(locale, "common.unknown", Map.of());
+        }
         var resolved = NeedsOperatorKind.fromWireOrOther(kind);
         return MessageCatalogue.format(locale, "overview.needs." + resolved.value(), Map.of());
     }

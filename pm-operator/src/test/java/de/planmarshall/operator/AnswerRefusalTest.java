@@ -48,8 +48,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @EnableGeneratorController
 class AnswerRefusalTest {
 
-    private static final String REFUSED = "refused by the runtime";
-
     @TempDir
     Path tempDir;
 
@@ -89,7 +87,7 @@ class AnswerRefusalTest {
         var code = run("en", "x\n\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -115,7 +113,7 @@ class AnswerRefusalTest {
         var code = run("en", ("w\n" + words + "\n\n").getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -125,8 +123,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-999", "later");
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
     }
 
     @Test
@@ -216,8 +214,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", planId);
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
         assertTrue(targets.stream().noneMatch(t -> t.contains("/api/v1/questions/")), targets.toString());
     }
 

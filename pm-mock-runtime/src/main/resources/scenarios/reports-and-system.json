@@ -143,7 +143,7 @@
         "terminal_reason": "the pull request #214 was merged into main",
         "pull_request_number": 214,
         "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-        "reason": "—",
+        "reason": "\u2014",
         "started_at": "2026-10-16T08:40:00Z",
         "ended_at": "2026-10-16T11:20:00Z",
         "duration_seconds": 9600,
@@ -207,7 +207,7 @@
           }
         ],
         "change_map": {
-          "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+          "diagram": "relay \u2500\u2500> cursor \u2500\u2500> fsync\n  \u2514\u2500\u2500\u2500\u2500> sse \u2500\u2500\u2500\u2500\u2500\u2500> websocket (not traced)",
           "state": "partial",
           "cause": "the vendored tree is not tracked"
         },
@@ -271,7 +271,7 @@
               "output_tokens": 8000,
               "unmeasured_tasks": 0,
               "is_floor": false,
-              "details": "claude:opus-5.5 · high"
+              "details": "claude:opus-5.5 \u00b7 high"
             },
             {
               "label": "implementer",
@@ -280,7 +280,7 @@
               "output_tokens": 23000,
               "unmeasured_tasks": 0,
               "is_floor": false,
-              "details": "claude:sonnet-5.5 · medium"
+              "details": "claude:sonnet-5.5 \u00b7 medium"
             },
             {
               "label": "reviewer",
@@ -289,7 +289,7 @@
               "output_tokens": 1000,
               "unmeasured_tasks": 3,
               "is_floor": true,
-              "details": "codex:gpt-5 · low"
+              "details": "codex:gpt-5 \u00b7 low"
             }
           ],
           "by_model": [
@@ -331,7 +331,7 @@
               "tokens": 21000,
               "share_percent": 5,
               "tasks_count": 2,
-              "cause_summary": "retryable 1 · stall 1"
+              "cause_summary": "retryable 1 \u00b7 stall 1"
             },
             {
               "waste_class": "remediation",
@@ -356,7 +356,7 @@
         },
         "outcome": "no_change",
         "terminal_reason": "no changes produced",
-        "reason": "—",
+        "reason": "\u2014",
         "started_at": "2026-10-16T08:40:00Z",
         "ended_at": "2026-10-16T09:00:00Z",
         "duration_seconds": 1200,
@@ -534,7 +534,7 @@
               "tokens": 9000,
               "share_percent": 9,
               "tasks_count": 3,
-              "cause_summary": "retryable 2 · stall 1"
+              "cause_summary": "retryable 2 \u00b7 stall 1"
             }
           ],
           "total_waste_tokens": 9000,
@@ -786,7 +786,7 @@
           }
         ],
         "facts": {
-          "summary": "Reports · 7 unread",
+          "summary": "Reports \u00b7 7 unread",
           "runtime": {
             "reports": [
               {
@@ -922,7 +922,7 @@
                 "terminal_reason": "the pull request #214 was merged into main",
                 "pull_request_number": 214,
                 "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T11:20:00Z",
                 "duration_seconds": 9600,
@@ -992,7 +992,7 @@
                   }
                 ],
                 "change_map": {
-                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "diagram": "relay \u2500\u2500> cursor \u2500\u2500> fsync\n  \u2514\u2500\u2500\u2500\u2500> sse \u2500\u2500\u2500\u2500\u2500\u2500> websocket (not traced)",
                   "state": "partial",
                   "cause": "the vendored tree is not tracked"
                 },
@@ -1056,7 +1056,7 @@
                       "output_tokens": 8000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:opus-5.5 · high"
+                      "details": "claude:opus-5.5 \u00b7 high"
                     },
                     {
                       "label": "implementer",
@@ -1065,7 +1065,7 @@
                       "output_tokens": 23000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:sonnet-5.5 · medium"
+                      "details": "claude:sonnet-5.5 \u00b7 medium"
                     },
                     {
                       "label": "reviewer",
@@ -1074,7 +1074,7 @@
                       "output_tokens": 1000,
                       "unmeasured_tasks": 3,
                       "is_floor": true,
-                      "details": "codex:gpt-5 · low"
+                      "details": "codex:gpt-5 \u00b7 low"
                     }
                   ],
                   "by_model": [
@@ -1116,7 +1116,7 @@
                       "tokens": 21000,
                       "share_percent": 5,
                       "tasks_count": 2,
-                      "cause_summary": "retryable 1 · stall 1"
+                      "cause_summary": "retryable 1 \u00b7 stall 1"
                     },
                     {
                       "waste_class": "remediation",
@@ -1139,7 +1139,7 @@
                 },
                 "outcome": "no_change",
                 "terminal_reason": "no changes produced",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T09:00:00Z",
                 "duration_seconds": 1200,
@@ -1313,7 +1313,7 @@
                       "tokens": 9000,
                       "share_percent": 9,
                       "tasks_count": 3,
-                      "cause_summary": "retryable 2 · stall 1"
+                      "cause_summary": "retryable 2 \u00b7 stall 1"
                     }
                   ],
                   "total_waste_tokens": 9000,
@@ -1381,7 +1381,7 @@
         },
         "links": [],
         "facts": {
-          "summary": "Reports · 2 unread",
+          "summary": "Reports \u00b7 2 unread",
           "runtime": {
             "reports": [
               {
@@ -1530,7 +1530,7 @@
                 "terminal_reason": "the pull request #214 was merged into main",
                 "pull_request_number": 214,
                 "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T11:20:00Z",
                 "duration_seconds": 9600,
@@ -1600,7 +1600,7 @@
                   }
                 ],
                 "change_map": {
-                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "diagram": "relay \u2500\u2500> cursor \u2500\u2500> fsync\n  \u2514\u2500\u2500\u2500\u2500> sse \u2500\u2500\u2500\u2500\u2500\u2500> websocket (not traced)",
                   "state": "partial",
                   "cause": "the vendored tree is not tracked"
                 },
@@ -1664,7 +1664,7 @@
                       "output_tokens": 8000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:opus-5.5 · high"
+                      "details": "claude:opus-5.5 \u00b7 high"
                     },
                     {
                       "label": "implementer",
@@ -1673,7 +1673,7 @@
                       "output_tokens": 23000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:sonnet-5.5 · medium"
+                      "details": "claude:sonnet-5.5 \u00b7 medium"
                     },
                     {
                       "label": "reviewer",
@@ -1682,7 +1682,7 @@
                       "output_tokens": 1000,
                       "unmeasured_tasks": 3,
                       "is_floor": true,
-                      "details": "codex:gpt-5 · low"
+                      "details": "codex:gpt-5 \u00b7 low"
                     }
                   ],
                   "by_model": [
@@ -1724,7 +1724,7 @@
                       "tokens": 21000,
                       "share_percent": 5,
                       "tasks_count": 2,
-                      "cause_summary": "retryable 1 · stall 1"
+                      "cause_summary": "retryable 1 \u00b7 stall 1"
                     },
                     {
                       "waste_class": "remediation",
@@ -1747,7 +1747,7 @@
                 },
                 "outcome": "no_change",
                 "terminal_reason": "no changes produced",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T09:00:00Z",
                 "duration_seconds": 1200,
@@ -1921,7 +1921,7 @@
                       "tokens": 9000,
                       "share_percent": 9,
                       "tasks_count": 3,
-                      "cause_summary": "retryable 2 · stall 1"
+                      "cause_summary": "retryable 2 \u00b7 stall 1"
                     }
                   ],
                   "total_waste_tokens": 9000,
@@ -1945,7 +1945,7 @@
         },
         "links": [],
         "facts": {
-          "summary": "Reports · nothing yet",
+          "summary": "Reports \u00b7 nothing yet",
           "runtime": {
             "reports": [],
             "completion_reports": []
@@ -1990,7 +1990,7 @@
                 "terminal_reason": "the pull request #214 was merged into main",
                 "pull_request_number": 214,
                 "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T11:20:00Z",
                 "duration_seconds": 9600,
@@ -2060,7 +2060,7 @@
                   }
                 ],
                 "change_map": {
-                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "diagram": "relay \u2500\u2500> cursor \u2500\u2500> fsync\n  \u2514\u2500\u2500\u2500\u2500> sse \u2500\u2500\u2500\u2500\u2500\u2500> websocket (not traced)",
                   "state": "partial",
                   "cause": "the vendored tree is not tracked"
                 },
@@ -2124,7 +2124,7 @@
                       "output_tokens": 8000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:opus-5.5 · high"
+                      "details": "claude:opus-5.5 \u00b7 high"
                     },
                     {
                       "label": "implementer",
@@ -2133,7 +2133,7 @@
                       "output_tokens": 23000,
                       "unmeasured_tasks": 0,
                       "is_floor": false,
-                      "details": "claude:sonnet-5.5 · medium"
+                      "details": "claude:sonnet-5.5 \u00b7 medium"
                     },
                     {
                       "label": "reviewer",
@@ -2142,7 +2142,7 @@
                       "output_tokens": 1000,
                       "unmeasured_tasks": 3,
                       "is_floor": true,
-                      "details": "codex:gpt-5 · low"
+                      "details": "codex:gpt-5 \u00b7 low"
                     }
                   ],
                   "by_model": [
@@ -2184,7 +2184,7 @@
                       "tokens": 21000,
                       "share_percent": 5,
                       "tasks_count": 2,
-                      "cause_summary": "retryable 1 · stall 1"
+                      "cause_summary": "retryable 1 \u00b7 stall 1"
                     },
                     {
                       "waste_class": "remediation",
@@ -2244,7 +2244,7 @@
                 },
                 "outcome": "no_change",
                 "terminal_reason": "no changes produced",
-                "reason": "—",
+                "reason": "\u2014",
                 "started_at": "2026-10-16T08:40:00Z",
                 "ended_at": "2026-10-16T09:00:00Z",
                 "duration_seconds": 1200,
@@ -2492,7 +2492,7 @@
                       "tokens": 9000,
                       "share_percent": 9,
                       "tasks_count": 3,
-                      "cause_summary": "retryable 2 · stall 1"
+                      "cause_summary": "retryable 2 \u00b7 stall 1"
                     }
                   ],
                   "total_waste_tokens": 9000,
@@ -3384,6 +3384,331 @@
             }
           ],
           "summary": "5 sweep steps left 1.5 GiB behind"
+        }
+      }
+    },
+    "cleanup.items-25": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.items-25",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "delete",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0025/delete",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "remind",
+            "rel": "loop_back",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0025/remind",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "ignore",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0025/ignore",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "open": true,
+          "job": {
+            "job_id": "cln-0025",
+            "state": "open",
+            "due_since": "2 Sep",
+            "summary": {
+              "plans_count": 25,
+              "epics_count": 0,
+              "logs_count": 50,
+              "reports_count": 0,
+              "projects_count": 1,
+              "freed_bytes": 1048576000,
+              "kept_for_good_count": 0,
+              "last_sweep_at": "today 03:00",
+              "next_check_at": "tomorrow 03:00"
+            },
+            "project_items": [
+              {
+                "project_id": "pm-mcp-clients",
+                "plans_count": 25,
+                "epics_count": 0,
+                "logs_count": 50,
+                "read_reports_count": 0,
+                "total_bytes": 1048576000,
+                "items": [
+                  {
+                    "id": "plan-01",
+                    "kind": "plan",
+                    "title": "plan-01",
+                    "outcome": "merged (#1)",
+                    "ended_at": "1 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-02",
+                    "kind": "plan",
+                    "title": "plan-02",
+                    "outcome": "merged (#2)",
+                    "ended_at": "2 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-03",
+                    "kind": "plan",
+                    "title": "plan-03",
+                    "outcome": "merged (#3)",
+                    "ended_at": "3 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-04",
+                    "kind": "plan",
+                    "title": "plan-04",
+                    "outcome": "merged (#4)",
+                    "ended_at": "4 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-05",
+                    "kind": "plan",
+                    "title": "plan-05",
+                    "outcome": "merged (#5)",
+                    "ended_at": "5 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-06",
+                    "kind": "plan",
+                    "title": "plan-06",
+                    "outcome": "merged (#6)",
+                    "ended_at": "6 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-07",
+                    "kind": "plan",
+                    "title": "plan-07",
+                    "outcome": "merged (#7)",
+                    "ended_at": "7 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-08",
+                    "kind": "plan",
+                    "title": "plan-08",
+                    "outcome": "merged (#8)",
+                    "ended_at": "8 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-09",
+                    "kind": "plan",
+                    "title": "plan-09",
+                    "outcome": "merged (#9)",
+                    "ended_at": "9 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-10",
+                    "kind": "plan",
+                    "title": "plan-10",
+                    "outcome": "merged (#10)",
+                    "ended_at": "10 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-11",
+                    "kind": "plan",
+                    "title": "plan-11",
+                    "outcome": "merged (#11)",
+                    "ended_at": "11 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-12",
+                    "kind": "plan",
+                    "title": "plan-12",
+                    "outcome": "merged (#12)",
+                    "ended_at": "12 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-13",
+                    "kind": "plan",
+                    "title": "plan-13",
+                    "outcome": "merged (#13)",
+                    "ended_at": "13 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-14",
+                    "kind": "plan",
+                    "title": "plan-14",
+                    "outcome": "merged (#14)",
+                    "ended_at": "14 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-15",
+                    "kind": "plan",
+                    "title": "plan-15",
+                    "outcome": "merged (#15)",
+                    "ended_at": "15 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-16",
+                    "kind": "plan",
+                    "title": "plan-16",
+                    "outcome": "merged (#16)",
+                    "ended_at": "16 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-17",
+                    "kind": "plan",
+                    "title": "plan-17",
+                    "outcome": "merged (#17)",
+                    "ended_at": "17 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-18",
+                    "kind": "plan",
+                    "title": "plan-18",
+                    "outcome": "merged (#18)",
+                    "ended_at": "18 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-19",
+                    "kind": "plan",
+                    "title": "plan-19",
+                    "outcome": "merged (#19)",
+                    "ended_at": "19 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-20",
+                    "kind": "plan",
+                    "title": "plan-20",
+                    "outcome": "merged (#20)",
+                    "ended_at": "20 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-21",
+                    "kind": "plan",
+                    "title": "plan-21",
+                    "outcome": "merged (#21)",
+                    "ended_at": "21 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-22",
+                    "kind": "plan",
+                    "title": "plan-22",
+                    "outcome": "merged (#22)",
+                    "ended_at": "22 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-23",
+                    "kind": "plan",
+                    "title": "plan-23",
+                    "outcome": "merged (#23)",
+                    "ended_at": "23 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-24",
+                    "kind": "plan",
+                    "title": "plan-24",
+                    "outcome": "merged (#24)",
+                    "ended_at": "24 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  },
+                  {
+                    "id": "plan-25",
+                    "kind": "plan",
+                    "title": "plan-25",
+                    "outcome": "merged (#25)",
+                    "ended_at": "25 Sep",
+                    "size_bytes": 41943040,
+                    "logs_count": 2
+                  }
+                ]
+              }
+            ],
+            "links": {
+              "delete": "/api/v1/system/cleanup/cln-0025/delete",
+              "remind": "/api/v1/system/cleanup/cln-0025/remind",
+              "ignore": "/api/v1/system/cleanup/cln-0025/ignore"
+            }
+          },
+          "durations": {
+            "plans_after_days": 30,
+            "epics_after_days": 30,
+            "logs_after_days": 30,
+            "reports_after_days": 30,
+            "unenrolled_after_days": 30,
+            "remind_after_days": 3
+          },
+          "summary": "25 plans are due"
+        }
+      },
+      "links": {
+        "delete": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0025/delete",
+          "next": "cleanup.running"
+        },
+        "remind": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0025/remind",
+          "next": "cleanup.idle"
+        },
+        "ignore": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0025/ignore",
+          "next": "cleanup.idle"
         }
       }
     }

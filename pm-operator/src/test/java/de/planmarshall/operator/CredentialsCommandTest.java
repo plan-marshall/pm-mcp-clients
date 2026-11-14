@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -92,10 +93,18 @@ class CredentialsCommandTest {
      * @param failed whether the check reports a failure instead of the plans it released
      */
     private void verification(boolean failed) throws Exception {
-        stub("os", 1, failed);
+        verification(failed, true);
+    }
+
+    private void verification(boolean failed, boolean rememberedConsent) throws Exception {
+        stub("os", 1, failed, rememberedConsent);
     }
 
     private void stub(String tokenPath, int dropped, boolean failed) throws Exception {
+        stub(tokenPath, dropped, failed, true);
+    }
+
+    private void stub(String tokenPath, int dropped, boolean failed, boolean rememberedConsent) throws Exception {
         var current = new AtomicReference<>("settings.choose");
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
@@ -105,6 +114,12 @@ class CredentialsCommandTest {
                 response.json(200, "{\"derived_tokens_dropped\":" + dropped + "}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "DELETE".equals(request.method())) {
                 response.send(204, null, "");
+            } else if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                if (rememberedConsent) {
+                    response.json(200, "{\"revision\":1,\"consents\":[{\"kind\":\"verify_providers\",\"status\":\"remembered\",\"remember\":true}]}");
+                } else {
+                    response.json(200, "{\"revision\":1,\"consents\":[]}");
+                }
             } else if ("/api/v1/onboarding/state".equals(request.target())) {
                 response.json(200, state(current.get(), failed));
             } else if ("/api/v1/onboarding/step".equals(request.target())) {
@@ -203,9 +218,22 @@ class CredentialsCommandTest {
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         var text = out.toString();
 
-        assertEquals(0, code, text + " | " + err);
+        assertEquals(1, code, text + " | " + err);
         assertTrue(text.contains("The check failed: 401 Invalid token. The hold stays."), text);
         assertTrue(text.contains("Token github stored"), text);
+    }
+
+    @Test
+    @DisplayName("rotate without recorded consent needs consent and exits 3 under --no-input")
+    void rotateWithoutRecordedConsentNeedsConsent() throws Exception {
+        verification(false, false);
+
+        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes", "--no-input");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(3, code, text + " | " + err),
+                            () -> assertFalse(text.contains("Consent remembered"), text));
     }
 
     @Test

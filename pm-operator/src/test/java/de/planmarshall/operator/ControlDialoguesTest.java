@@ -849,15 +849,32 @@ class ControlDialoguesTest {
     }
 
     @Test
-    @DisplayName("next over an unknown running count asks and sends nothing until answered")
+    @DisplayName("a launchable plan over an unknown running count is launched without the raise question")
     void workActionNextUnknownRunning() throws Exception {
         var server = serveNext();
-        virtual.type("n\n");
+        virtual.endOfInput();
         var unknown = EPIC_WITHOUT_RUNNING;
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(unknown), null));
         var text = out.toString();
+        assertFalse(text.contains("How many plans run is not known"), text);
+        assertTrue(text.contains("next-plan started (? of 3 at once)"), text);
+        assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
+                                                && request.bodyText().contains("\"raise_scope\":false")),
+                            server.requests().toString());
+    }
+
+    @Test
+    @DisplayName("leaving a scope-blocked raise prompt with n prints the leave line")
+    void workActionNextScopeBlockedLeaveLine() throws Exception {
+        var server = serveNext();
+        virtual.type("n\n");
+        var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(blocked), null));
+        var text = out.toString();
         assertTrue(text.contains("How many plans run is not known"), text);
+        assertTrue(text.contains("Left epic.raise-scope. Nothing was sent."), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
                             server.requests().toString());
     }
@@ -867,9 +884,9 @@ class ControlDialoguesTest {
     void workActionNextUnknownRunningEmptyAnswer() throws Exception {
         var server = serveNext();
         virtual.type("\nn\n");
-        var unknown = EPIC_WITHOUT_RUNNING;
+        var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(unknown), null));
+                            EpicResource.fromJson(blocked), null));
         var text = out.toString();
         assertTrue(text.contains("How many plans run is not known"), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
@@ -881,9 +898,9 @@ class ControlDialoguesTest {
     void workActionNextUnknownRunningRaise() throws Exception {
         var server = serveNext();
         virtual.type("r\n");
-        var unknown = EPIC_WITHOUT_RUNNING;
+        var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(unknown), null));
+                            EpicResource.fromJson(blocked), null));
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
                                                 && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());
@@ -938,8 +955,9 @@ class ControlDialoguesTest {
     void workActionNextInvalidAnswerReprompts() throws Exception {
         var server = serveNext();
         virtual.type("x\nr\n");
+        var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(EPIC_WITHOUT_RUNNING), null));
+                            EpicResource.fromJson(blocked), null));
         var text = out.toString();
         assertTrue(text.contains("Type r to raise the scope or n to leave it."), text);
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)

@@ -370,6 +370,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_ACTIVITY = "activity";
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
+    private static final String KEY_PILOT = "pilot";
+    private static final String KEY_READY = "ready";
+    private static final String KEY_ASPECTS = "aspects";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
     private static final String CONST_TIME_10_14 = "2026-10-14T10:00:00Z";
     private static final String CONST_PROJECTS = "projects";
@@ -829,7 +832,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /** The credential store a later run of the store aspect chose. */
     private String machineCredentialStore = "os";
     /** Whether the providers' later run verified them. */
-    private boolean machineProvidersVerified;
+    private volatile boolean machineProvidersVerified;
 
     /** How many items of what waits one page of {@code GET /api/v1/machine/needs-operator} serves. */
     private static final int NEEDS_PAGE_SIZE = 20;
@@ -4525,7 +4528,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return false;
             }
             if ("GET".equals(request.method()) && act == null) {
-                response.json(200, projectOnboardingEntryState(entryId, false));
+                boolean isLater = being.stepNumber() > 2;
+                String stateId = isLater ? "project.team" : PROJECT_SETUP_IDENTITY;
+                var body = new LinkedHashMap<String, Object>();
+                body.put(KEY_STATE, stateId);
+                body.put(KEY_STEP, being.stepNumber());
+                body.put(KEY_TOTAL_STEPS, being.totalSteps());
+                body.put("id", entryId);
+                body.put("name", entryId);
+                body.put(KEY_PILOT, false);
+                body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                        PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
+                response.json(200, body);
                 return true;
             }
             if (METHOD_POST.equals(request.method()) && "set".equals(act)) {
@@ -4544,10 +4558,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         false,
                         false);
                 beingAddedProjects.remove(being);
-                enrolledProjects.removeIf(candidate -> candidate.projectId().equals(enrolled.projectId()));
-                enrolledProjects.add(enrolled);
+                boolean exists = enrolledProjects.stream().anyMatch(candidate -> candidate.projectId().equals(enrolled.projectId()));
+                if (!exists) {
+                    enrolledProjects.add(enrolled);
+                }
                 broadcastEvent(ProjectChangedEvent.EVENT_NAME,
-                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "enrolled", enrolled.projectId()));
+                        Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, enrolled.projectId(),
+                                "enrolled", enrolled.projectId()));
                 response.json(200, projectOnboardingEntryState(entryId, true));
                 return true;
             }
@@ -4580,7 +4597,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         body.put("id", entryId);
         body.put("name", entryId);
-        body.put("pilot", false);
+        body.put(KEY_PILOT, false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
                 PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
         return body;
@@ -7733,11 +7750,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * @param path a request path
      * @return whether the act is a decision answer, withdrawal or interpretation whose body a
-     *         dialogue test asserts; every other body (credentials, device secrets) stays out of
-     *         the act log
+     *         dialogue test asserts; every other body (credentials, device secrets, decision chat)
+     *         stays out of the act log
      */
     private static boolean carriesDecisionBody(String path) {
-        return path.contains(SEGMENT_DECISIONS) || path.startsWith(API_QUESTIONS_PATH);
+        if (!path.contains(SEGMENT_DECISIONS) && !path.startsWith(API_QUESTIONS_PATH)) {
+            return false;
+        }
+        return path.endsWith("/answer") || path.endsWith("/answers") || path.endsWith("/withdraw")
+                || path.endsWith("/interpret");
     }
 
     private void handleControlActs(MockHttpResponse response) throws IOException {
@@ -7996,7 +8017,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 || previousState.startsWith("language.reconfigure"))) {
             recordInterfaceLanguage(body, previousState, linkName);
         }
-        if (previousState != null && previousState.endsWith(".reconfigure")) {
+        if (previousState != null && (previousState.endsWith(".reconfigure")
+                || previousState.startsWith("settings.verify-providers"))) {
             recordAspectAnswer(previousState, linkName, body);
         }
         String newState;
@@ -8061,6 +8083,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @param body     the step's request body
      */
     private void recordAspectAnswer(String state, @Nullable String linkName, Map<String, Object> body) {
+        if (state.startsWith("settings.verify-providers")) {
+            if ("yes".equals(linkName) || LINK_SET.equals(linkName) || linkName == null) {
+                machineProvidersVerified = providerCheckSucceeds(state);
+            }
+            return;
+        }
         if (!LINK_SET.equals(linkName)) {
             return;
         }
@@ -8082,20 +8110,49 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (state.startsWith("providers.reconfigure")) {
             var verify = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
-            machineProvidersVerified = verify && providerCheckSucceeds();
+            machineProvidersVerified = verify && providerCheckSucceeds(state);
         }
     }
 
     /**
+     * @param stateId optional state id to look up facts for, or {@code null} to use the current state
      * @return whether the scenario declares its providers ready, so a verify that found no ready
      *         provider records the failure instead of trusting the request's flag
      */
-    private boolean providerCheckSucceeds() {
+    private boolean providerCheckSucceeds(@Nullable String stateId) {
+        var id = stateId != null ? stateId : currentStateId.get();
+        var facts = id != null ? stateFacts(id) : null;
+        if (facts != null) {
+            var providers = facts.get("providers");
+            if (providers instanceof List<?> list && !list.isEmpty()) {
+                return anyProviderReady(list);
+            }
+            if (facts.containsKey(KEY_READY)) {
+                return isReady(facts.get(KEY_READY));
+            }
+        }
+        return isStatusProviderReady();
+    }
+
+    private static boolean anyProviderReady(List<?> list) {
+        for (var item : list) {
+            if (item instanceof Map<?, ?> m && isReady(m.get(KEY_READY))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isReady(@Nullable Object r) {
+        return Boolean.TRUE.equals(r) || "true".equalsIgnoreCase(String.valueOf(r));
+    }
+
+    private boolean isStatusProviderReady() {
         var route = currentScenario.get().route("GET", "/api/v1/status");
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return false;
         }
-        return Boolean.TRUE.equals(map.get("providers_ready"));
+        return isReady(map.get("providers_ready"));
     }
 
     /**
@@ -8195,15 +8252,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (onboardingLock) {
             var body = new LinkedHashMap<String, Object>();
             body.put("revision", machineSettingsRevision);
-            body.put("aspects", List.of(
-                    aspectSummary(OnboardingAspect.LANGUAGE, languageSummary(), machineLanguageInterface),
-                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
-                    aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
-                    aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
-                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
-                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
-                    aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
-                            String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
+            body.put(KEY_ASPECTS, resolveAspects());
             body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
             body.put(KEY_LANGUAGE_MODEL, machineLanguageModel);
             body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
@@ -8213,6 +8262,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             body.put("credentials", machineCredentials);
             return body;
         }
+    }
+
+    private List<?> resolveAspects() {
+        var runtime = stateRuntimeFixture(fixtureStateId.get());
+        if (runtime != null && runtime.get(KEY_ASPECTS) instanceof List<?> list) {
+            var customAspects = new ArrayList<Map<String, Object>>();
+            for (var item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    var m = new LinkedHashMap<String, Object>();
+                    map.forEach((k, v) -> m.put(String.valueOf(k), v));
+                    customAspects.add(m);
+                }
+            }
+            return customAspects;
+        }
+        return List.of(
+                aspectSummary(OnboardingAspect.LANGUAGE, languageSummary(), machineLanguageInterface),
+                aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
+                aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
+                aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
+                aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", machineCredentialStore),
+                aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", CONST_GITHUB),
+                aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
+                        String.valueOf(machinePlanDefaults.get(KEY_LANDING))));
     }
 
     /** @return the language aspect's summary, as the recorded choice reads */
@@ -9443,8 +9516,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         String id = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
         if (id.isBlank()) id = "new-project";
 
+        final var finalPath = path;
+        final var finalId = id;
         synchronized (projectsLock) {
-            var beingAdded = new BeingAddedProject(
+            var existing = beingAddedProjects.stream()
+                    .filter(candidate -> candidate.checkoutPath().equals(finalPath)
+                            || candidate.checkoutPath().endsWith("/" + finalId)
+                            || (candidate.continueLink() != null && candidate.continueLink().contains(finalId)))
+                    .findFirst()
+                    .orElse(null);
+            var beingAdded = existing != null ? existing : new BeingAddedProject(
                     path,
                     STEP_IDENTITY,
                     2,
@@ -9452,7 +9533,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     PATH_ENTRIES_PREFIX + encodedEntryId(id) + "/continue",
                     PATH_ENTRIES_PREFIX + encodedEntryId(id) + SUFFIX_ABANDON
             );
-            beingAddedProjects.add(beingAdded);
+            if (existing == null) {
+                beingAddedProjects.add(beingAdded);
+            }
             lastBuildEnvironment = buildEnvironment;
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
@@ -9460,9 +9543,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
                     "continue_link", beingAdded.continueLink(),
-                    "current_step", STEP_IDENTITY,
-                    "step_number", 2,
-                    KEY_TOTAL_STEPS, 10
+                    "current_step", beingAdded.currentStep(),
+                    "step_number", beingAdded.stepNumber(),
+                    KEY_TOTAL_STEPS, beingAdded.totalSteps()
             ));
         }
     }
@@ -9643,7 +9726,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         body.put(KEY_STEP, 2);
         body.put("id", projectId);
         body.put("name", displayNameOf(projectId));
-        body.put("pilot", false);
+        body.put(KEY_PILOT, false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
                 PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
         return body;
@@ -9893,73 +9976,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         Map<String, Object> stopNowBody = null;
         synchronized (systemLock) {
             if (stopNow) {
-                // Stopping now ends a running drain: its steps and its events stop with it.
-                cancelDrainTasks();
-                drainGeneration.incrementAndGet();
-                drainingBy = null;
-                canWithdrawStop = false;
-                drainRemainingItems.set(List.of());
-                lifecycleState = RuntimeLifecycleState.STOPPING;
-                broadcastEvent(EVENT_RUNTIME_STOPPING, Map.of(
-                        KEY_LIFECYCLE_STATE, LIFECYCLE_STOPPING,
-                        KEY_THEN, thenVal
-                ));
-                // Answered after the scenario has moved on (below), so a client that reads the
-                // scenario's state on the answer finds the state the act declares.
-                stopNowBody = Map.of(
-                        KEY_STATUS, LIFECYCLE_STOPPING,
-                        KEY_STATE, LIFECYCLE_STOPPING,
-                        KEY_THEN, thenVal
-                );
+                stopNowBody = executeStopNow(thenVal);
             } else {
-                // A new drain replaces a running one; the state's own events and auto transition
-                // keep running, only the earlier drain's steps end. A repeated request on a running
-                // drain keeps who started it and whether it can be withdrawn: a drain of a signal
-                // stays one, and only a drain of a runtime that did not drain is withdrawable.
-                var repeated = lifecycleState == RuntimeLifecycleState.DRAINING;
-                cancelDrainTasks();
-                lifecycleState = RuntimeLifecycleState.DRAINING;
-                if (!repeated) {
-                    canWithdrawStop = true;
-                }
-                if (!repeated || drainingBy == null) {
-                    drainingBy = isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE;
-                }
-                drainThen = THEN_RESTART.equalsIgnoreCase(thenVal) ? THEN_RESTART : THEN_EXIT;
-                var generation = drainGeneration.incrementAndGet();
-                // The scenario names what it still runs; the engine's own list stands where none
-                // is declared.
-                var facts = stateFacts(currentStateId.get());
-                var declared = facts != null ? drainItemNames(facts) : List.<String>of();
-                var drainItems = declared.isEmpty()
-                        ? List.of(
-                        "execute task of fix-relay",
-                        "build of fix-relay",
-                        "task of relay-metrics",
-                        "plan relay-auth-v2"
-                )
-                        : declared;
-                drainRemainingItems.set(drainItems);
-                var by = Objects.requireNonNull(drainingBy);
-                var withdrawable = canWithdrawStop;
-                broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
-                        KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
-                        "draining_by", by,
-                        KEY_REMAINING_ITEMS, drainItems,
-                        KEY_REMAINING_WORK_COUNT, drainItems.size(),
-                        "can_withdraw", withdrawable,
-                        KEY_DRAIN_GENERATION, generation
-                ));
-                response.json(200, Map.of(
-                        KEY_STATUS, LIFECYCLE_DRAINING,
-                        KEY_STATE, LIFECYCLE_DRAINING,
-                        "draining_by", by,
-                        KEY_REMAINING_ITEMS, drainItems,
-                        KEY_REMAINING_WORK_COUNT, drainItems.size(),
-                        "can_withdraw", withdrawable
-                ));
-                // The work finishes one item at a time: the list and its count shrink as it does.
-                scheduleDrainShrink(drainItems.size());
+                executeDrain(response, isWeb, thenVal);
             }
         }
         if (stopNowBody != null) {
@@ -9967,6 +9986,68 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             followStopNowLink(request);
             response.json(200, stopNowBody);
         }
+    }
+
+    private Map<String, Object> executeStopNow(String thenVal) {
+        cancelDrainTasks();
+        drainGeneration.incrementAndGet();
+        drainingBy = null;
+        canWithdrawStop = false;
+        drainRemainingItems.set(List.of());
+        lifecycleState = RuntimeLifecycleState.STOPPING;
+        broadcastEvent(EVENT_RUNTIME_STOPPING, Map.of(
+                KEY_LIFECYCLE_STATE, LIFECYCLE_STOPPING,
+                KEY_THEN, thenVal
+        ));
+        return Map.of(
+                KEY_STATUS, LIFECYCLE_STOPPING,
+                KEY_STATE, LIFECYCLE_STOPPING,
+                KEY_THEN, thenVal
+        );
+    }
+
+    private void executeDrain(MockHttpResponse response, boolean isWeb, String thenVal) throws IOException {
+        var repeated = lifecycleState == RuntimeLifecycleState.DRAINING;
+        cancelDrainTasks();
+        lifecycleState = RuntimeLifecycleState.DRAINING;
+        if (!repeated) {
+            canWithdrawStop = true;
+        }
+        if (!repeated || drainingBy == null) {
+            drainingBy = isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE;
+        }
+        drainThen = THEN_RESTART.equalsIgnoreCase(thenVal) ? THEN_RESTART : THEN_EXIT;
+        var generation = drainGeneration.incrementAndGet();
+        var facts = stateFacts(currentStateId.get());
+        var declared = facts != null ? drainItemNames(facts) : List.<String>of();
+        var drainItems = declared.isEmpty()
+                ? List.of(
+                "execute task of fix-relay",
+                "build of fix-relay",
+                "task of relay-metrics",
+                "plan relay-auth-v2"
+        )
+                : declared;
+        drainRemainingItems.set(drainItems);
+        var by = Objects.requireNonNull(drainingBy);
+        var withdrawable = canWithdrawStop;
+        broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
+                KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
+                "draining_by", by,
+                KEY_REMAINING_ITEMS, drainItems,
+                KEY_REMAINING_WORK_COUNT, drainItems.size(),
+                "can_withdraw", withdrawable,
+                KEY_DRAIN_GENERATION, generation
+        ));
+        response.json(200, Map.of(
+                KEY_STATUS, LIFECYCLE_DRAINING,
+                KEY_STATE, LIFECYCLE_DRAINING,
+                "draining_by", by,
+                KEY_REMAINING_ITEMS, drainItems,
+                KEY_REMAINING_WORK_COUNT, drainItems.size(),
+                "can_withdraw", withdrawable
+        ));
+        scheduleDrainShrink(drainItems.size());
     }
 
     /**

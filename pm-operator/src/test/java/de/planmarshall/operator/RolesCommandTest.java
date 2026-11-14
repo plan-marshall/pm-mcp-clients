@@ -158,7 +158,7 @@ class RolesCommandTest {
         fixture.start((request, response) -> response.json(500, "{\"code\":\"internal_fault\"}"));
 
         assertEquals(1, execute("", "roles", "list"));
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertTrue(err.toString().contains("The runtime hit an unexpected fault"), err.toString());
     }
 
     @Test
@@ -310,6 +310,22 @@ class RolesCommandTest {
 
         assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
         assertTrue(err.toString().contains("scorer_not_independent"), err.toString());
+    }
+
+    @Test
+    @DisplayName("roles show in German uses German catalogue words")
+    void rolesInGerman() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/roles/implementer".equals(request.target())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(200, "[]");
+            }
+        });
+
+        assertEquals(0, executeInGerman("", "roles", "show", "implementer"));
+        var showOutput = out.toString();
+        assertTrue(showOutput.contains("Werkzeugsatz"), showOutput);
     }
 
     @Test
@@ -469,7 +485,7 @@ class RolesCommandTest {
 
         assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
 
-        assertTrue(err.toString().contains("roles qualify implementer"), err.toString());
+        assertTrue(err.toString().contains("The runtime refused: internal"), err.toString());
     }
 
     @Test

@@ -294,6 +294,12 @@ class ControlResourcesTest {
         void validIsRead() throws Exception {
             assertEquals(2, EpicResource.fromJson(epic(",\"running\":2")).running().intValue());
         }
+
+        @Test
+        @DisplayName("is read when the value is zero")
+        void zeroIsRead() throws Exception {
+            assertEquals(0, EpicResource.fromJson(epic(",\"running\":0")).running().intValue());
+        }
     }
 
     @Nested
@@ -307,7 +313,9 @@ class ControlResourcesTest {
         void readsNumbers() {
             assertAll(
                     () -> assertEquals(Integer.valueOf(3), ControlJson.optCount(Map.of(KEY, 3), KEY)),
-                    () -> assertEquals(Integer.valueOf(3), ControlJson.optCount(Map.of(KEY, "3"), KEY))
+                    () -> assertEquals(Integer.valueOf(3), ControlJson.optCount(Map.of(KEY, "3"), KEY)),
+                    () -> assertEquals(Integer.valueOf(0), ControlJson.optCount(Map.of(KEY, 0), KEY)),
+                    () -> assertEquals(Integer.valueOf(0), ControlJson.optCount(Map.of(KEY, "0"), KEY))
             );
         }
 

@@ -40,6 +40,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 
 import picocli.CommandLine.Command;
@@ -344,7 +345,11 @@ public final class AnswerCommand implements Callable<Integer> {
             laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
             var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
             if (!isAccepted(laterResponse.status())) {
-                throw new OperatorRefusedException("later " + questionId, laterResponse);
+                var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
+                if (isDecisionRefusal(refusal.code())) {
+                    return handleDecisionRefusal(out, envelope, refusal, locale);
+                }
+                throw refusal;
             }
             printLaterDone(out, envelope, locale);
             return 0;
@@ -357,7 +362,11 @@ public final class AnswerCommand implements Callable<Integer> {
                 printNoneFitsDone(out, envelope, locale);
                 return 0;
             }
-            throw new OperatorRefusedException("withdraw " + questionId, resp);
+            var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
+            if (isDecisionRefusal(refusal.code())) {
+                return handleDecisionRefusal(out, envelope, refusal, locale);
+            }
+            throw refusal;
         }
 
         return submitAnswerPayload(runtime, out, safeQid, envelope, effectiveAction, locale);
@@ -425,7 +434,11 @@ public final class AnswerCommand implements Callable<Integer> {
             printAnswerSuccess(out, envelope, effectiveAction, locale);
             return 0;
         }
-        throw new OperatorRefusedException("answer " + questionId, response);
+        var refusal = new OperatorRefusedException("answer " + questionId, response);
+        if (envelope != null && isDecisionRefusal(refusal.code())) {
+            return handleDecisionRefusal(out, envelope, refusal, locale);
+        }
+        throw refusal;
     }
 
     private LinkedHashMap<String, Object> directPayload(String effectiveAction) {
@@ -771,7 +784,7 @@ public final class AnswerCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException {
+    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException, OperatorRefusedException {
         printQuestionDetail(session.out(), envelope, session.locale());
         session.out().println();
 
@@ -785,20 +798,57 @@ public final class AnswerCommand implements Callable<Integer> {
                 return result.exitCode().getAsInt();
             }
             progress = result.progress();
-            if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
-                return submitAnswers(session, envelope, parts, answers, progress.note());
+            try {
+                var step = processConfirmation(session, envelope, parts, answers, progress.note());
+                if (step.exitCode().isPresent()) {
+                    return step.exitCode().getAsInt();
+                }
+                var reopenIndex = step.reopenIndex();
+                progress = new Progress(reopenIndex, progress.note());
+                answers.keySet().removeIf(key -> key >= reopenIndex);
+            } catch (OperatorRefusedException refused) {
+                var exit = handleInteractiveRefusal(session, envelope, refused);
+                if (exit.isPresent()) {
+                    return exit.getAsInt();
+                }
             }
-            var confirm = confirmAnswers(session, envelope, parts, answers);
-            if (confirm.submit()) {
-                return submitAnswers(session, envelope, parts, answers, progress.note());
-            }
-            var reopenIndex = confirm.reopenIndex();
-            if (reopenIndex == null) {
-                return confirm.exitCode();
-            }
-            progress = new Progress(reopenIndex, progress.note());
-            answers.keySet().removeIf(key -> key >= reopenIndex);
         }
+    }
+
+    private record ConfirmStep(OptionalInt exitCode, @Nullable Integer reopenIndex) {
+    }
+
+    private ConfirmStep processConfirmation(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers, @Nullable String note) throws IOException {
+        if (parts.size() == 1 && envelope.reversibility() == Reversibility.REVERSIBLE) {
+            return new ConfirmStep(OptionalInt.of(submitAnswers(session, envelope, parts, answers, note)), null);
+        }
+        var confirm = confirmAnswers(session, envelope, parts, answers);
+        if (confirm.submit()) {
+            return new ConfirmStep(OptionalInt.of(submitAnswers(session, envelope, parts, answers, note)), null);
+        }
+        if (confirm.reopenIndex() == null) {
+            return new ConfirmStep(OptionalInt.of(confirm.exitCode()), null);
+        }
+        return new ConfirmStep(OptionalInt.empty(), confirm.reopenIndex());
+    }
+
+    private OptionalInt handleInteractiveRefusal(DialogueSession session, DecisionEnvelope envelope,
+                        OperatorRefusedException refused) throws OperatorRefusedException {
+        if (refused.code() == ApiErrorCode.INVALID_ANSWER || refused.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
+            var wire = refused.code().wire();
+            var refusalReason = refused.serverMessage() != null ? refused.serverMessage() : "";
+            session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
+                                REASON_KEY, refusalReason,
+                                "n", 1
+            )));
+            session.out().flush();
+            return OptionalInt.empty();
+        }
+        if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
+            return OptionalInt.of(handleDecisionRefusal(session.out(), envelope, refused, session.locale()));
+        }
+        throw refused;
     }
 
     private record WalkOutcome(OptionalInt exitCode, Progress progress) {
@@ -1663,6 +1713,27 @@ public final class AnswerCommand implements Callable<Integer> {
             return "operator.decision.confirm_title_parts";
         }
         return "operator.decision.confirm_title";
+    }
+
+    private static boolean isDecisionRefusal(@Nullable ApiErrorCode code) {
+        return code == ApiErrorCode.CONFLICT
+                            || code == ApiErrorCode.ALREADY_ANSWERED
+                            || code == ApiErrorCode.INVALID_ANSWER
+                            || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
+    }
+
+    private int handleDecisionRefusal(PrintWriter out, DecisionEnvelope envelope,
+                        OperatorRefusedException refusal, String locale) {
+        printDecisionDetail(out, envelope, locale);
+        var wire = refusal.code() != null ? refusal.code().wire() : "conflict";
+        var key = "decision.refused." + wire;
+        var refusalReason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
+        out.println(MessageCatalogue.format(locale, key, Map.of(
+                            REASON_KEY, refusalReason,
+                            "n", 1
+        )));
+        out.flush();
+        return 1;
     }
 
     private static String getMessage(String locale, String key) {

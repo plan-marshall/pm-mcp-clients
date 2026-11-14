@@ -76,8 +76,6 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ROLES = "roles";
     private static final String PROVIDERS = "providers";
     private static final String PLAN_DEFAULTS = "plan-defaults";
-    private static final String HARNESS_PREFIX = "harness.";
-    private static final String PLAN_DEFAULTS_PREFIX = "plan_defaults.";
     private static final String DOCUMENTS_TEXT_PREFIX = "onboard.settings.documents.";
     private static final String ONE_LEVEL = "operator.config.one_level";
     private static final String CONFIG_VERB = "config";
@@ -97,7 +95,7 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String CONFLICT = "conflict";
     private static final String ERROR = "error";
     private static final String SHOW_UNREADABLE = "operator.config.show.unreadable";
-    private static final String NO_SETTING = "operator.settings.no_setting";
+    static final String NO_SETTING = "operator.settings.no_setting";
     private static final String APPLY_AGAIN = "operator.settings.apply_again";
     private static final String KEY = "key";
     private static final String COUNT = "count";
@@ -121,16 +119,6 @@ public final class ConfigCommand implements Callable<Integer> {
             case PLANS -> PLAN_DEFAULTS;
         };
     }
-
-    /** The key prefix each `config <aspect>` name owns, for `config show <aspect>`. */
-    private static final Map<String, String> ASPECT_PREFIXES = Map.of(
-                        LANGUAGE, LANGUAGE + ".",
-                        HARNESSES, HARNESS_PREFIX,
-                        MODELS, MODELS + ".",
-                        ROLES, ROLES + ".",
-                        CREDENTIALS, CREDENTIALS + ".",
-                        PROVIDERS, PROVIDERS + ".",
-                        PLAN_DEFAULTS, PLAN_DEFAULTS_PREFIX);
 
     /** The catalogue prefixes a configuration value's text is looked up in, in this order. */
     private static final List<String> VALUE_TEXT_KEYS = List.of(
@@ -208,14 +196,17 @@ public final class ConfigCommand implements Callable<Integer> {
     @Nullable
     MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
-        if (response.status() != 200) {
+        if (response.status() == 404) {
             return null;
         }
-        try {
-            return MachineSettingsRecord.fromJson(response.bodyText());
-        } catch (IOException _) {
-            return null;
+        if (response.status() == 200) {
+            try {
+                return MachineSettingsRecord.fromJson(response.bodyText());
+            } catch (IOException _) {
+                throw new OperatorRefusedException(CONFIG_VERB, response);
+            }
         }
+        throw new OperatorRefusedException(CONFIG_VERB, response);
     }
 
     /**
@@ -285,7 +276,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var listener = switch (WebCommand.networkListenerState(context.runtime(true))) {
             case "on" -> "operator.settings.devices.listener_on";
             case "off" -> "operator.settings.devices.listener_off";
-            default -> "devices.list.listener_unknown";
+            default -> "operator.settings.devices.listener_unknown";
         };
         return new Item(null, MessageCatalogue.format(locale, "operator.settings.devices.title", Map.of()),
                             MessageCatalogue.format(locale, "operator.settings.devices.value", Map.of(
@@ -293,7 +284,6 @@ public final class ConfigCommand implements Callable<Integer> {
                                                 "listener", MessageCatalogue.format(locale, listener, Map.of()))),
                             List.of(WEB_VERB, DEVICES_VERB));
     }
-
     /**
      * The overview of a runtime that reports no machine settings: the effective values it serves
      * through {@code GET /api/v1/config} ({@code 02-levels.adoc#origins}).
@@ -441,11 +431,10 @@ public final class ConfigCommand implements Callable<Integer> {
         if (key == null || key.isBlank()) {
             return values;
         }
-        var aspectPrefix = ASPECT_PREFIXES.get(key);
         var selected = new ArrayList<ConfigValueResource>();
         for (var value : values) {
             if (value.key().equals(key) || value.key().startsWith(key + ".")
-                                || (aspectPrefix != null && value.key().startsWith(aspectPrefix))) {
+                                || AspectOwnedKeys.owningAspect(value.key()).map(key::equals).orElse(false)) {
                 selected.add(value);
             }
         }
@@ -600,6 +589,24 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
+     * Outcome of writing a configuration value with revision.
+     */
+    enum WriteOutcome {
+        APPLIED,
+        KEPT,
+        FAILED,
+        NEEDS_INPUT;
+
+        int exitCode() {
+            return switch (this) {
+                case APPLIED, KEPT -> 0;
+                case FAILED -> PmOperator.EXIT_FAILURE;
+                case NEEDS_INPUT -> ConfigAspectRun.EXIT_MISSING_INPUT;
+            };
+        }
+    }
+
+    /**
      * Sends one change against the revision the value was read with, and answers a {@code conflict}
      * as the design says: the current value, then apply yours again or keep it
      * ({@code work-actions.adoc#conflict}).
@@ -609,10 +616,10 @@ public final class ConfigCommand implements Callable<Integer> {
      * @param deletion whether the change removes the value
      * @param value    the value to set, or {@code null} for a deletion
      * @param noInput  whether the verb stops at a conflict instead of asking
-     * @return the exit code
+     * @return the outcome of the change attempt
      * @throws IOException on transport failure
      */
-    static int writeWithRevision(OperatorContext context, Change change, boolean deletion,
+    static WriteOutcome writeWithRevision(OperatorContext context, Change change, boolean deletion,
                         @Nullable Object value, boolean noInput) throws IOException {
         long revision;
         try {
@@ -623,17 +630,18 @@ public final class ConfigCommand implements Callable<Integer> {
                                 Map.of(STATUS, failure.status()))
                                 : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
             change.out().flush();
-            return PmOperator.EXIT_FAILURE;
+            return WriteOutcome.FAILED;
         }
         var response = sendChange(context, deletion, change.writePath(), value, revision);
         if (response.status() == 200 || response.status() == 204) {
             change.out().println(change.doneLine());
             change.out().flush();
-            return 0;
+            return WriteOutcome.APPLIED;
         }
         var conflict = response.status() == 409 ? conflictOf(response.bodyText()) : null;
         if (conflict == null) {
-            return failed(change, response.status());
+            failed(change, response.status());
+            return WriteOutcome.FAILED;
         }
         return resolveConflict(context, change, deletion, value, noInput, conflict);
     }
@@ -670,35 +678,48 @@ public final class ConfigCommand implements Callable<Integer> {
         return context.runtime(true).send(HttpRequest.json(deletion ? "DELETE" : "PUT", writePath, body));
     }
 
-    private static int resolveConflict(OperatorContext context, Change change, boolean deletion,
+    private static WriteOutcome resolveConflict(OperatorContext context, Change change, boolean deletion,
                         @Nullable Object value, boolean noInput, ConfigValueResource current) throws IOException {
-        var rendered = renderedValue(change.locale(), current);
-        if (noInput) {
-            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
+        var currentConflict = current;
+        var targetRevision = current.revision();
+        while (true) {
+            var rendered = renderedValue(change.locale(), currentConflict);
+            if (noInput) {
+                change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
+                                    Map.of(VALUE, rendered)));
+                change.out().flush();
+                return WriteOutcome.NEEDS_INPUT;
+            }
+            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
                                 Map.of(VALUE, rendered)));
             change.out().flush();
-            return ConfigAspectRun.EXIT_MISSING_INPUT;
+            if (!context.isInteractiveTerminal()) {
+                change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+                change.out().flush();
+                return WriteOutcome.NEEDS_INPUT;
+            }
+            if (!applyAgain(context, change.out(), change.locale())) {
+                change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+                change.out().flush();
+                return WriteOutcome.KEPT;
+            }
+            var retry = sendChange(context, deletion, change.writePath(), value, targetRevision);
+            if (retry.status() == 200 || retry.status() == 204) {
+                change.out().println(change.doneLine());
+                change.out().flush();
+                return WriteOutcome.APPLIED;
+            }
+            if (retry.status() == 409) {
+                var next = conflictOf(retry.bodyText());
+                if (next != null) {
+                    currentConflict = next;
+                    targetRevision = next.revision();
+                    continue;
+                }
+            }
+            failed(change, retry.status());
+            return WriteOutcome.FAILED;
         }
-        change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
-                            Map.of(VALUE, rendered)));
-        change.out().flush();
-        if (!context.isInteractiveTerminal()) {
-            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
-            change.out().flush();
-            return ConfigAspectRun.EXIT_MISSING_INPUT;
-        }
-        if (!applyAgain(context, change.out(), change.locale())) {
-            change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
-            change.out().flush();
-            return 0;
-        }
-        var retry = sendChange(context, deletion, change.writePath(), value, current.revision());
-        if (retry.status() == 200 || retry.status() == 204) {
-            change.out().println(change.doneLine());
-            change.out().flush();
-            return 0;
-        }
-        return failed(change, retry.status());
     }
 
     private static int failed(Change change, int status) {
@@ -714,7 +735,7 @@ public final class ConfigCommand implements Callable<Integer> {
      * any other answer is not offered and is asked again, so a typo never overwrites another
      * client's value.
      */
-    private static boolean applyAgain(OperatorContext context, PrintWriter out, String locale) throws IOException {
+    static boolean applyAgain(OperatorContext context, PrintWriter out, String locale) throws IOException {
         var keep = MessageCatalogue.format(locale, KEEP_CURRENT, Map.of());
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
@@ -789,7 +810,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var path = OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan);
             var response = context.runtime(true).send(HttpRequest.get(path));
             if (response.status() != 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
+                out.println(MessageCatalogue.format(locale, "operator.config.settings_failed",
                                     Map.of(STATUS, response.status())));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
@@ -875,7 +896,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.set_failed");
-            return writeWithRevision(context, change, false, value, noInput);
+            return writeWithRevision(context, change, false, value, noInput).exitCode();
         }
 
         private String levelPath() {
@@ -938,7 +959,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.unset_failed");
-            return writeWithRevision(context, change, true, null, noInput);
+            return writeWithRevision(context, change, true, null, noInput).exitCode();
         }
 
         private String levelPath() {
@@ -1264,7 +1285,15 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             var owner = new ConfigCommand(context);
-            var settings = owner.readSettingsQuiet();
+            MachineSettingsRecord settings;
+            try {
+                settings = owner.readSettingsQuiet();
+            } catch (OperatorRefusedException e) {
+                out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                    Map.of(STATUS, e.status() > 0 ? String.valueOf(e.status()) : "unreachable")));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             if (settings == null) {
                 out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
                                     Map.of(STATUS, "unreachable")));
@@ -1397,7 +1426,14 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             var owner = new ConfigCommand(context);
-            var settings = owner.readSettingsQuiet();
+            MachineSettingsRecord settings;
+            try {
+                settings = owner.readSettingsQuiet();
+            } catch (OperatorRefusedException _) {
+                out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
             if (settings == null) {
                 out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
                 out.flush();

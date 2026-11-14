@@ -159,7 +159,7 @@ class PlanViewFormattingTest {
                             () -> assertEquals("Fehlschlag", PlanViewFormatting.taskOutcome("de", "failure")),
                             () -> assertEquals("l\u00e4uft", PlanViewFormatting.jobStatus("de", "running")),
                             () -> assertEquals("Fehlschlag", PlanViewFormatting.jobOutcome("de", "failure")),
-                            () -> assertEquals("submitted", PlanViewFormatting.taskStatus("de", "submitted")),
+                            () -> assertEquals("unbekannt", PlanViewFormatting.taskStatus("de", "submitted")),
                             () -> assertEquals("keine", PlanViewFormatting.taskOutcome("de", null))
         );
         assertEquals("TASK-1 \u00b7 implement \u00b7 agent default \u00b7 Versuch 1 \u00b7 fertig \u00b7 Erfolg",

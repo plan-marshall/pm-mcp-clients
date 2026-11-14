@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -177,6 +178,12 @@ class PlanCommandTest {
     private int execute(PrintWriter console, String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, console, new PrintWriter(err), args);
+    }
+
+    private int executeWithLocale(String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, null, null);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
     private void serve(String path, String body) throws IOException {
@@ -366,7 +373,7 @@ class PlanCommandTest {
         int code = execute("plan", planId, "--print");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Plan " + planId + " not found."), out.toString()),
+                            () -> assertTrue(out.toString().contains("This entry does not exist"), out.toString()),
                             () -> assertTrue(server.requests().stream()
                                                                     .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
                                                 server.requests().toString())
@@ -752,7 +759,7 @@ class PlanCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains(planId + " · completion report · no_change · unknown"), output));
+                            () -> assertTrue(output.contains(planId + " · completion report · no change · unknown"), output));
     }
 
     @Test
@@ -770,6 +777,21 @@ class PlanCommandTest {
                             () -> assertTrue(output.contains("cursor write order")),
                             () -> assertTrue(output.contains("after the base moved (09:55): TASK-5 added")),
                             () -> assertTrue(output.contains("plan report fix-relay --tokens"))
+        );
+    }
+
+    @Test
+    @DisplayName("plan report renders completion report in German through the catalogue")
+    void planReportInGerman() throws Exception {
+        startCompletionReportFixture();
+
+        int code = executeWithLocale("de", "plan", "report", "fix-relay");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Abschlussbericht"), output),
+                            () -> assertTrue(output.contains("zusammengeführt"), output),
+                            () -> assertFalse(output.contains("completion report"), output)
         );
     }
 
@@ -855,7 +877,7 @@ class PlanCommandTest {
 
         int code = execute("plan", "report", "non-existent");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Plan non-existent not found."));
+        assertTrue(out.toString().contains("This entry does not exist"));
     }
 
     @Test

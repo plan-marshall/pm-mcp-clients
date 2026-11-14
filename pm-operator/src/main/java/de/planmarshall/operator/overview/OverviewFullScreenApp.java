@@ -99,6 +99,7 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreen;
 import de.planmarshall.operator.tui.TuiScreenDriver;
+import de.planmarshall.operator.tui.TuiScreenDriver.Result;
 import de.planmarshall.operator.tui.TuiViewStack;
 
 /**
@@ -309,10 +310,10 @@ public final class OverviewFullScreenApp {
      * Runs the full-screen overview.
      *
      * @param out output writer for notice summaries and fallback messages
-     * @return the driver execution result
+     * @return the driver execution result, or {@code null} if initial selection failed to load
      * @throws IOException on terminal or network error
      */
-    public TuiScreenDriver.Result run(PrintWriter out) throws IOException {
+    public @Nullable Result run(PrintWriter out) throws IOException {
         if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
             var driver = new TuiScreenDriver(terminal, locale);
             return driver.run(this::buildScreen, _ -> false);
@@ -320,6 +321,9 @@ public final class OverviewFullScreenApp {
 
         var runtime = context.runtime(true);
         loadInitialData(runtime);
+        if (initialSelection.plan() != null && currentPlanView.get() == null) {
+            return null;
+        }
 
         noticeBuffer.activate();
         Thread sseThread = startEventListener();

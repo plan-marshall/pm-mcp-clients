@@ -15,11 +15,14 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
 import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.PmVersion;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -175,24 +178,77 @@ public final class PmOperator implements Callable<Integer> {
         var commandLine = new CommandLine(new PmOperator(context), new Factory(context));
         commandLine.setOut(out);
         commandLine.setErr(err);
-        commandLine.setExecutionExceptionHandler((exception, command, parseResult) -> {
-            if (exception instanceof StartPrompt.InterruptException
-                                || exception instanceof UserInterruptException) {
-                return StartPrompt.EXIT_INTERRUPTED;
-            }
-            if (exception instanceof OperatorSecurityException ose) {
-                err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(ose.getMessage()));
-                err.flush();
-                return ose.exitCode();
-            }
-            err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(exception.getMessage()));
-            err.flush();
-            return EXIT_FAILURE;
-        });
+        var bundle = MessageCatalogue.resourceBundle(context.locale());
+        applyResourceBundle(commandLine, bundle);
+        commandLine.setParameterExceptionHandler((ex, parseArgs) ->
+                            handleParameterException(ex, context));
+        commandLine.setExecutionExceptionHandler((exception, command, parseResult) ->
+                            handleExecutionException(exception, command, parseResult, context, err));
         var code = commandLine.execute(selection.args().toArray(String[]::new));
         out.flush();
         err.flush();
         return code;
+    }
+
+    private static int handleParameterException(CommandLine.ParameterException ex, OperatorContext context) {
+        var writer = ex.getCommandLine().getErr();
+        var locale = context.locale();
+        if (ex instanceof CommandLine.UnmatchedArgumentException uae && !uae.getUnmatched().isEmpty()) {
+            var first = TerminalSanitizer.sanitizeLine(uae.getUnmatched().get(0)).strip();
+            var msg = formatUnmatchedMessage(ex.getCommandLine(), first, locale);
+            writer.println(msg);
+            writer.flush();
+            return CommandLine.ExitCode.USAGE;
+        }
+        writer.println(TerminalSanitizer.sanitizeLine(ex.getMessage()));
+        writer.flush();
+        return CommandLine.ExitCode.USAGE;
+    }
+
+    private static String formatUnmatchedMessage(CommandLine cmd, String first, String locale) {
+        if (cmd.getParent() == null) {
+            if (!first.startsWith("-")) {
+                return MessageCatalogue.format(locale, "operator.cli.unknown_verb", Map.of("verb", first));
+            }
+            return MessageCatalogue.format(locale, "operator.cli.unknown_option", Map.of("option", first));
+        }
+        if (first.startsWith("-")) {
+            return MessageCatalogue.format(locale, "operator.cli.unknown_option", Map.of("option", first));
+        }
+        return MessageCatalogue.format(locale, "operator.cli.unknown_argument", Map.of("argument", first));
+    }
+
+    private static int handleExecutionException(Exception exception, CommandLine command,
+                        CommandLine.ParseResult parseResult, OperatorContext context, PrintWriter err) {
+        if (exception instanceof StartPrompt.InterruptException
+                            || exception instanceof UserInterruptException) {
+            return StartPrompt.EXIT_INTERRUPTED;
+        }
+        if (exception instanceof OperatorSecurityException ose) {
+            err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(ose.getMessage()));
+            err.flush();
+            return ose.exitCode();
+        }
+        if (exception instanceof OperatorRefusedException ore) {
+            if (ore.exitCode() == 4) {
+                err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(ore.getMessage()));
+                err.flush();
+                return 4;
+            }
+            RefusalRenderer.render(err, context.locale(), ore);
+            err.flush();
+            return ore.exitCode();
+        }
+        err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(exception.getMessage()));
+        err.flush();
+        return EXIT_FAILURE;
+    }
+
+    private static void applyResourceBundle(CommandLine commandLine, ResourceBundle bundle) {
+        commandLine.setResourceBundle(bundle);
+        for (var sub : commandLine.getSubcommands().values()) {
+            applyResourceBundle(sub, bundle);
+        }
     }
 
     /** Creates the commands with the process context. */
