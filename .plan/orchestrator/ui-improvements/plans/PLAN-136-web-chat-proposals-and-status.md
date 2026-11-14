@@ -239,7 +239,7 @@ PLAN-134 landed (#428, `7adb56c2`). The facts this plan builds on:
 
 Two things are still open, and the operator decided both on 2026-11-14. PLAN-140 D-R134 takes them:
 - REFUSED stays **rejectable**: the UI offers reject on a refused proposal.
-- Conflict and lapse get a catalogue line, emitted as a notice.
+- Conflict and lapse get a catalogue line, emitted as a notice (named first in pm-mcp-core `state-catalogue.adoc`).
 
 The scenario files carry no narrative and no decision chat yet; PLAN-140 D-R134 adds them. Until then, the browser
 check drives events through `/mock/broadcast`. Re-ground :38-44 and :69-77 against `7adb56c2`.

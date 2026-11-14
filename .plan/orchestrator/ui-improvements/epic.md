@@ -816,6 +816,23 @@ plan spec names the plan, proposal and finding documents it comes from.
   the same gap); (3) the decision envelope's subject id for every scope (today plan/project only; epic, entry and machine only as free text),
   so the decision chat can be addressed. Today the web shows `control.chat.follow_up.opened` with no way there and the decision chat says
   "no chat" (operator decisions in #429).
+- **Open Item — the chat proposal contract (PLAN-134 landing), 2026-11-14 (operator):** a cross-repo edit in **pm-mcp-core**
+  `doc/specification/state-catalogue.adoc`, to be made before `PLAN-140` D-R134 items 5–6. It carries two decisions:
+  - (1) **REFUSED stays rejectable.** § `chat-proposal-states` promises reject only for `conflict`; a proposal refused by a check
+    (no plan, a passed boundary, a failed check) must also take `reject`.
+  - (2) **Conflict and lapse get a line key.** The same section says they are "told by a notice", but the closed `chat.line.*`
+    table (§ `chat-narrative`) has no key for that notice. Name one there, for example `proposal_conflict` and
+    `proposal_lapsed`; the mock and the pm-api catalogue then mirror it.
+
+  It is a work package of pm-mcp-core, done by a direct session or the operator, not a plan of this epic. Until it lands,
+  D-R134 items 5–6 wait.
+- **PLAN-134** (#428, `7adb56c2`), 2026-11-14:
+  - **Shipped partly.** D5 scenarios and D-new-1 are not shipped.
+  - **Defects:** M1, `scope.ended` does not close the revision window; minors m1–m5. CodeRabbit marked 4 findings
+    "not addressed", and they were unfixed at merge.
+  - **Routed:** all residue goes to `PLAN-140` D-R134 (operator).
+  - **Sonar** 0/0.
+  - **Lessons** `2026-11-14-14-001..007`.
 
 - PLAN-148 (#427, `25137445`) and PLAN-161 (#429, `dc811fb3`), 2026-11-14: no blocker; Sonar 0/0 both; threads 8/8 and 9/9 replied and
   resolved (the `review_body_findings_*` keys count inline threads; real body items 0 on both). PLAN-148: `StatusLabel`'s `slot` prop is a

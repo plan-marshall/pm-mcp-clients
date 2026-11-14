@@ -30,7 +30,7 @@ The landing's "D3/D4 met" and the PR body's "every plan, epic or entry event" ov
 ## Three-Layer Analysis
 
 - **Layer 1 (specified): sound, with gaps.**
-  - D4 "asserts the notice" cannot be met: `state-catalogue.adoc:138` names a notice that the closed line
+  - D4 "asserts the notice" cannot be met: pm-mcp-core `state-catalogue.adoc` § `chat-proposal-states` names a notice that the closed line
     catalogue lacks.
   - D2 left out epic and entry events.
   - The plan had 8 items, over the ~6 scope guard. The dropped items were the last ones: the fixtures that
@@ -90,10 +90,10 @@ Operator decisions 2026-11-14 (AskUserQuestion):
   - the D3/D4 pins;
   - narrative completeness;
   - m6, m7 and m9.
-- [x] **D4 notice:** "Add a line key". Catalogue, `control.en/de.properties`, and a notice turn on conflict and on
-  lapse (PLAN-140 D-R134).
-- [x] **REFUSED:** "Rejectable". `isOpen` is extended for reject only, and `state-catalogue.adoc` says so
-  (PLAN-140 D-R134). The PLAN-136 and PLAN-138 UIs offer reject.
+- [x] **D4 notice:** "Add a line key". The key is named first in pm-mcp-core `state-catalogue.adoc` § `chat-narrative`
+  (epic Open Item). The mock, `control.en/de.properties` and a notice turn follow in PLAN-140 D-R134.
+- [x] **REFUSED:** "Rejectable". `isOpen` is extended for reject only (PLAN-140 D-R134). The contract text is
+  edited in pm-mcp-core `state-catalogue.adoc` (epic Open Item "chat proposal contract"). The PLAN-136 and PLAN-138 UIs offer reject.
 - [x] **Amendments:**
   - PLAN-136: facts, decisions and the fixture fallback through `/mock/broadcast`.
   - PLAN-139: the verdict is corroborated, plus the pause bug.

@@ -141,6 +141,19 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/control/ControlCataloguesTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartCodecTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartContractTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatScripts.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatProposalsTest.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatRevisionQueueTest.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatContextNarrativeTest.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatListenerAndResidueTest.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatProposal.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `7adb56c2` (D-R134)
 
 ## Dependencies and Sequencing
 
@@ -239,10 +252,13 @@ Line refs are at `7adb56c2`: CR = `pm-mock-runtime/.../ChatRegistry.java`, ME = 
      also overwrites a queued revision and can throw an NPE that the IOException-only catch at CR:1791 does not catch.
 5. **Operator decision 2026-11-14, REFUSED stays rejectable.** A proposal refused for no plan, a passed boundary or
    a failed check must accept `reject`. Today `answer` (CR:1618) needs `isOpen()`, which is true for OPEN only
-   (`ChatProposal:103`). Extend `isOpen()` to REFUSED for reject only, and state this in
-   `doc/design/shared/state-catalogue.adoc`. Thread 4573384117.
-6. **Operator decision 2026-11-14, the conflict and lapse notice gets a line key.** `state-catalogue.adoc:138`
-   says conflict and lapse are "told by a notice", but the closed line catalogue (:148-167) has no key for it.
+   (`ChatProposal:103`). Extend `isOpen()` to REFUSED for reject only. Thread 4573384117. The contract text lives in **pm-mcp-core**
+   `doc/specification/state-catalogue.adoc` § `chat-proposal-states` (epic Open Item "chat proposal contract"),
+   not in this repo.
+6. **Operator decision 2026-11-14, the conflict and lapse notice gets a line key.** pm-mcp-core
+   `state-catalogue.adoc` § `chat-proposal-states` says conflict and lapse are "told by a notice", but its closed
+   `chat.line.*` table (§ `chat-narrative`) has no key for it. The key is named there first (epic Open Item
+   "chat proposal contract"); this plan mirrors the named key.
    - Add the key to the catalogue and to `control.en/de.properties` (`ChatMessageKeysTest`).
    - Emit it as a notice turn on a conflict and on a lapse.
 7. **Test pins PLAN-134 left out.** For apply, refuse, lapse, chat-end and decision, assert `plan.revision_queued`,
