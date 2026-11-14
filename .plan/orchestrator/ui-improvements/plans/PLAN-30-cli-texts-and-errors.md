@@ -48,7 +48,6 @@ Source of this plan (read before scoping):
    - Done when:
      - `ExitCodesTest` checks success, refusal and usage error of every verb (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 5. **What the display layer left (from the landing of PLAN-123, folded 2026-11-11 on the operator's decision)**
    - What: read `landings/PLAN-123.md` of the epic; lines are as read at `1bdfede6`.
      - `QuestionsCommand`: the English literals `Waiver Requests · %d pending` (`:77`), `No open questions.` (`:86`), `waiver request:` (`:116`), the fallback `gate` (`:115`) and `waiting since` (`:172`) go into the catalogue; `printDecision` (`:133-139`) builds `decision.blocks.<wire>` / `decision.reversibility.<wire>` and reads them with `MessageCatalogue.get` in the default locale, which prints the raw key when one is missing: use the session's locale and the display rule for an unknown value.
@@ -61,17 +60,155 @@ Source of this plan (read before scoping):
    - Done when:
      - A test per item fails before the change (evidence order: `test-first`); `git grep -n "MessageCatalogue.get(" -- pm-operator/src/main` names no call without a locale on a screen this plan touches (evidence order: `none`).
 
+6. **What `config` left (from the landing of PLAN-32, folded 2026-11-12 on the operator's decision)**
+   - What: lines are as read at `948c51a1`.
+     - A refused read exits 1 (`01-commands.adoc#exit-codes`, PLAN-26). `ConfigCommand.readSettingsQuiet` (`ConfigCommand.java:193-203`) turns a
+       403, a 500 or a malformed body of `/api/v1/machine/settings` into a silent fallback to the plain value list, and exits 0 when
+       `/api/v1/config` answers. Only a 404 may fall back; any other refusal prints the refusal (D2) and exits 1. `ReadVerbExitCodesTest`
+       passes today only because both reads are refused: add the case where only the settings read is refused.
+     - `ConfigAspectRun.java:131-135` and `AspectRunSource.java:227` swallow the "machine settings not reachable" `IOException`, and the
+       operator reads "the runtime reported no state". Print the refusal. Stopped goes to `out` while failed and refused go to `err`: one
+       rule for the aspect run, as for the other verbs.
+     - Texts: `operator.credentials.verify_with` is defined twice in `operator.en.properties` (`:240`, `:302`); `operator.settings.cleanup.value`
+       `{days} days` has no plural form ("1 days") in en and de; the German `verify_with` ("Die Provider, die {key} nutzen, prüft: …") is
+       ungrammatical (if `PLAN-160` has removed the key, skip it); the key `operator.config.setelines_failed` (`ConfigCommand.java:569`) is
+       misspelt: rename it with its use.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A test per item fails before the change (a refused settings read exits 1; an unreachable aspect run prints the refusal; the duplicate
+       key is caught by a catalogue test that fails on any duplicate key in a pack; `1` day renders singular in en and de). Evidence order: `test-first`.
+
+7. **What PLAN-160 left in `credentials rotate`, the config conflict and the mock (from the landing of PLAN-160, folded 2026-11-12 on the operator's decision)**
+   - What: read `landings/PLAN-160.md`; lines are as read at `37f51af7`.
+     - **Rotate follows the catalogue.** `CredentialsCommand.verifyProviders` (`CredentialsCommand.java:244-277`) reads the facts `plans`,
+       `failed`, `cause` and a state `providers.verified` that only the mock (`onboarding.json:2857-2910`) and the test stub define. The
+       onboarding state catalogue (`14-machine-onboarding.adoc:147-158`) ends a failed check in `providers.failed`, a choice state, and releases
+       held plans by the hold's own retry. Follow the catalogue: a failed check shows `providers.failed` as the dialogue does, and the
+       verb exits 1 when the check fails (today 0, pinned by `rotateReportsAFailedCheck`). Name the plans that go on only from what the
+       runtime reports. If the catalogue carries no such fact, drop that part of the line and say so. Rule 2: `rotateReportsAFailedCheck`'s exit-0
+       assertion is replaced.
+     - **No consent granted by the client.** Rotate prints "✓ Consent remembered" and sends `consents=["verify_providers"]` before any run,
+       without reading the recorded consents (`:244-257`). A consent is the operator's (PM-SEC-8): read the recorded consent; if it is there,
+       print the remembered line; if not, ask as `providers.verify-consent` does (`--no-input`: exit 3).
+     - **The mock's readiness is the scenario's.** `MockRuntimeEngine.providerCheckSucceeds` (`:7503-7518`) reads a `providers_ready` flag
+       on the served `/api/v1/status`. The `settings.verify-providers` path ignores it, and `fully-onboarded` says `github ready:true` in one state
+       and records failure in another. Take readiness from the scenario's provider facts and make the verify path consult it. Add the
+       positive case (a ready provider is recorded verified); the negative case must fail when verify does nothing.
+     - **Minors.** A second conflict on the retry prints `set_failed` with `HTTP 409` (`ConfigCommand.java:701-711`): print the conflict line
+       again. `ASPECT_PREFIXES` (`:124-131`) is a second prefix table beside `AspectOwnedKeys`: derive the display selection from it.
+       `fully-onboarded`'s `settings.choose` offers only `language` (`fully-onboarded.json:3055+`): offer every aspect the design lists.
+       `MockConfigRoutes` reads (`byLevel`, `effective`, `clear`, `:264-306`) race the synchronized writes: guard them. `01-commands.adoc`
+       lists `--project <id>|.|?` and `--plan <id>|?`, which `config` does not accept, and omits `--no-input` for set/unset: make them
+       agree. `ScreenCaptureIT.settled` (`:293-298`) was widened to any `›` for every capture: narrow it to what the captures need, or record why
+       not. New `ConfigCommandTest` cases use hand-written input: draw it from `Generators`. `listenerOff()` reports "on" for an unreadable
+       status (`:291-300`): show it as unknown.
+     - **Review replies.** #421: thread `4550425785` has no reply; #415: the reply on thread `4543426060` names the wrong commits (the fix is
+       #415's own `8471f56`..`818c96b`), and the correction for `4545310611` went to the PR, not into the thread
+       (`POST /pulls/415/comments/{id}/replies`). Reply in each thread.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A failed rotate check exits 1 and shows the failure state; rotate without a recorded consent asks; a ready provider is recorded
+       verified and an unready one is not; a second conflict prints the conflict line. Each test fails on a revert. Evidence order: `test-first`.
+     - Landing obligation (rule 4): the three thread replies are posted. Report them in the landing message.
+
+8. **What PLAN-128 left in `cleanup`, `project add` and `config cleanup` (from the landing of PLAN-128, folded 2026-11-13 on the operator's decision)**
+   - What: read `landings/PLAN-128.md`; lines are as read at `56e1ad37`.
+     - **Review campaign on #425.** Four threads are unresolved with no reply (`ConfigCleanupCommand` `d)`; `MockRuntimeEngine.java:3976`
+       onboarding replaces an existing enrolment; `:3979` `project.changed` lacks `project_id`; `ConfigCleanupCommand.java:392` a kept value
+       reported as recorded). The four body-only items of CodeRabbit's reviews (outside-diff "Kept for good", "terminal-free preview
+       unreachable", "pending changes lost"; nitpick "non-interactive delete via the command") have no reply on GitHub. Five replies say
+       "Fixed in cf940bcb" for changes that commit does not contain (below). The `d)` deferral was posted under the JSON-number thread. Fix
+       what is fixable here, then reply in each thread (and to each body item where the reviewer reads it) with the fixing commit of THIS
+       pull request, correct the five false replies, and resolve.
+     - **Project view hides items 21 and up.** `CleanupCommand.java:707-718` caps at `PAGE_SIZE` unconditionally and suppresses the "more"
+       line when `project != null` (also for `--project .`, which means unfiltered); `printMore` points at `cleanup --project <id>`, which
+       prints the same 20. A project-filtered view shows every item of the project; `.` behaves like the unfiltered view. Test both.
+     - **The five false-fixed items.** (1) The reminder choice reads `r) ask me again in 3 days` (`26-cleanup.adoc:64`) from the configured
+       reminder duration, not the bare `operator.cleanup.choose.remind`. (2) `project.add.no_input` (`projects.{en,de}.properties:141`) no
+       longer says "or answer that state" after the entry is closed. (3) `MockConfigRoutes.java:466-471` refuses at PROJECT/TEAM the
+       `cleanup.*` keys `config cleanup --project` refuses (`reports`, `unenrolled`, `remind`). (4) `ConfigCleanupCommand.parseDays`
+       (`:443-445`) accepts the catalogue's word for never in the operator's language (`nie`), or the prompt (`operator.de.properties:717`)
+       stops offering it; for `remind`, `ask_days` and `durations.minimum` do not offer "never" at all (`:436` refuses it). (5) The mock's
+       onboarding `set` (`MockRuntimeEngine.java:3976-3979`) emits the enrolment event with `project_id` and does not replace an existing
+       enrolment of the same basename; test it.
+     - **Decision 7: the code follows the doc** (operator 2026-11-13). The cleanup choice bar and the delete confirmation render as
+       `26-cleanup.adoc:64-75,159-164` draws them (`r) ask me again in {days} days … q) leave`, `Delete? y) yes   n) no, back   ?`), within 80
+       columns (wrap the bar if it does not fit; amend the doc's picture to the wrapped form in that case); `?` explains the delete.
+     - **`project add`.** `q` or Ctrl+D exits 3, not 0 (`ProjectCommand.java:245-246`; `ProjectSetupDialogueIT.java:106` pins 0 and is
+       replaced, rule 2). An argument no state asked for is reported as `01-commands.adoc:172` says (`operator.config.argument_unused`, today
+       only in `ConfigAspectRun.java:208`).
+     - **`config cleanup`.** `recordProject` (`ConfigCleanupCommand.java:383-398`) reports "Durations recorded" only for what was written; a
+       kept value (`k` on a conflict) is reported as kept. A 409 on the machine write (`recordMachine`) goes through the conflict handling,
+       not `settings.list_failed`. Add `d) remove its own values` to the `--project` editor as `26-cleanup.adoc#t-durations` draws it (the
+       project returns to inheritance). `"Needs a choice: --yes"` (`:343`) uses `operator.config.needs_choice`.
+     - **Sonar.** `java:S4449` at `ConfigCleanupCommand.java:181` (nullable `value.value()` into `numberValue`) is fixed. It was open at
+       #425's merge although the landing reported 0.
+     - **Captures.** `PLAN-128.txt`'s header claims cleanup, `project add`, the release block and the step overview but holds only
+       `config cleanup`; capture the four missing areas (a 25-item job, also with `--project`; `project add` at a later state; the release
+       block; a reduced aspect list) in en and de, and correct the header.
+     - **Minor.** `PmConsole.java:881-885` was already repaired by #425 (PLAN-127's item); a blank line at EOF of `26-cleanup.adoc:382`.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
+   - Done when:
+     - Tests: a 25-item job under `--project X` and `--project .` shows every item / the "more" line; the reminder label carries the days;
+       `nie` is accepted (or not offered); `remind` offers no "never"; a kept conflict value is not reported as recorded; `q` in `project add`
+       exits 3; an unasked argument is reported; `d)` returns the project to inheritance; the mock refuses the project-level `cleanup.*` keys
+       and emits the enrolment event with `project_id`. Each fails on a revert. Evidence order: `test-first`.
+     - Terminal check through `ScreenCaptureIT` of the choice bar, the delete confirmation and the four areas above, en and de, 120 × 30 and
+       80 × 24 (evidence order: `none`).
+     - Landing obligation (rule 4): the #425 replies are posted in their threads and the threads resolved. Report them in the landing message.
+
 Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
+
+9. **What PLAN-127 left in `answer`, `epic next` and the sanitizer (from the landing of PLAN-127, #426, `98cea294`, routed 2026-11-13)**
+ - What:
+   - `epic next` (`WorkActionDialogue.java:336-339`) asks to raise whenever `running == null || running >= scope` and a launchable or
+     scope-blocked plan exists; `terminal-client/19-actions.adoc:188` asks only "with no plan launchable". Make the code follow the
+     document (an unknown running count with a launchable plan launches it); leaving with `--no-raise` or `n` (`:339-341`) prints the
+     design's leave line, not nothing. If the document is silent on the unknown count, stop and ask.
+   - `AnswerCommand` repeats the accepted check at `:727`, `:1355`, `:1374`, `:1532` beside its helper `isAccepted` (`:1615`): use the
+     helper (these are the refusal sites D2's renderer rewrites anyway).
+   - `StatusCommand.java:403` returns the English literal `"attention"` and pads localized words with `%-8s`: catalogue key and width by
+     display columns. `ConsolePrompt.kindWord` falls back to `overview.needs.other` while D5 plans one `Display` rule with
+     `common.unknown`: one rule for an unknown value.
+   - `TerminalSanitizer.sanitizeLine` (`:118-123`, `:144-146`) drops U+2028/U+2029; map them to a space (`"a\u2028b"` reads `a b`), and
+     pin it in `TerminalSanitizerTest` (today `:128` pins removal).
+   - `ControlResourcesTest`: assert that a `running` of 0 is read as known (#382 nitpick, "noted, not changed").
+   - Mock: `MockRuntimeEngine.recordActBodies` (`:7211-7213`) guards by path only and also matches decision-chat routes; narrow it to
+     the answer routes and add a credential-path test (secrets never recorded).
+   - `MockRuntimeCli.java` on `main` is not in formatter shape (`-Ppre-commit` rewrites it on every branch): commit the rewrite as its
+     own commit in this plan.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - `EpicCommandTest`/`ControlDialoguesTest`: a launchable plan with an unknown count is launched without the raise question; `n`
+     prints the leave line. `TerminalSanitizerTest`: U+2028 reads as a space. `StatusCommandTest`: no English literal in German.
+     A mock test: an act body on a credential path is not recorded. Each fails on a revert. Evidence order: `test-first`.
 
 ## Standing Constraints
 
-- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api,pm-mock-runtime verify`, and `./mvnw verify -Ppre-commit` with every rewrite reviewed (commit only rewrites inside this plan's footprint).
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
 - Terminal check of the rendered output through the screen capture harness of `cli-pty-dialogue-harness` (`ScreenCaptureIT`, command line in `doc/design/terminal-client/27-tui-testing.adoc`): write this plan's captures to `pm-operator/src/test/resources/screen-captures/{plan}.txt`, run the set BEFORE the change and copy `pm-operator/target/screens/{plan}/` to `.plan/temp/terminal/{plan}/before/`, then run it AFTER and copy to `.../after/`. Capture at 120 × 30 and 80 × 24 in `en_US.UTF-8` and `de_DE.UTF-8` unless the target names other sizes or environments. Read every `.txt` and `.attrs.txt` with the file tools and compare them with the deliverable; the screen text shows no raw id, link name, state id, `-` placeholder, ISO time or HTTP status, and no text of a previous level. Never run `pm-operator` in the agent's own shell: the operator gate refuses a coding agent by design (`PM-SEC-3`) and is never worked around; only the harness, which clears the environment like every PTY test, runs it. If the harness is not available, the terminal Done-when clauses are NOT met — a blocker, never skipped.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
+
+- **The merge rule:**
+  - At least one CodeRabbit review of some head with its findings handled. If CodeRabbit refuses on quota, stop and ask the operator.
+  - Every review thread replied and resolved, and every review body item (outside-diff, nitpick, "additional comments") answered on the
+    pull request. Read the state from GitHub's thread state (`isResolved`, a reply present), never from a count kept in memory; an
+    `unknown` count blocks the merge. The pull request body states `unresolved_review_threads=`, `review_body_findings_total=`,
+    `review_body_findings_handled=` as read at the merge head.
+  - An optional review bot that refuses structurally (Sourcery's size cap) is recorded as such in the pull request and does not block.
+  - The run merges the pull request itself once these gates hold (`CLAUDE.md`, Git Workflow). Commits end with
+    `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer.
+- Size: this plan is large (D1–D9). If the diff passes about 60 files, stop after the deliverable in progress and ask the operator whether
+  to split the remainder into a follow-up plan.
 
 ## Claim Labels
 
@@ -98,6 +235,11 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: EpicCommand.NextCommand holds English option descriptions and the success literal — read at `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` :406-410,423
 
 ## Expected Surface
+
+- OBSERVED (present at `98cea294`; added by the PLAN-127 fold): `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java`,
+  `pm-operator/src/main/java/de/planmarshall/operator/ConsolePrompt.java`, `pm-operator/src/main/java/de/planmarshall/operator/TerminalSanitizer.java`,
+  `pm-operator/src/test/java/de/planmarshall/operator/TerminalSanitizerTest.java`, `pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java`,
+  `pm-api/src/test/java/de/planmarshall/api/control/ControlResourcesTest.java`, `pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java`
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD c4dc9bb4
@@ -143,10 +285,32 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RolesCommand.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WebDevicesCommandTest.java` — present at `1bdfede6` (PLAN-123 residue, folded 2026-11-11)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigAspectRun.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/AspectRunSource.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at `948c51a1` (PLAN-32 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CredentialsCommand.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CredentialsCommandTest.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockConfigRoutes.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ConfigRoutesTest.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java` — present at `37f51af7` (PLAN-160 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCleanupCommand.java` — present at `56e1ad37` (PLAN-128 residue, folded 2026-11-13)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCleanupCommandTest.java` — absent at `56e1ad37`; created by this plan if `ConfigCommandTest` does not hold the cases (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectCommand.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ProjectCommandTest.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ProjectSetupDialogueIT.java` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-128.txt` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at `56e1ad37` (PLAN-128 residue)
+- OBSERVED: `doc/design/terminal-client/26-cleanup.adoc` — present at `56e1ad37` (PLAN-128 residue)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
+- Depends on: `PLAN-127` (shipped, #426, `98cea294`), `PLAN-160` (`cli-config-residue`, the same `ConfigCommand.java`), `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: touches the dialogue classes of WS-04: runs after them
 - Adjacent to: none
 
@@ -250,3 +414,61 @@ are both wide. The earlier suggestion stands: split into "strings and guard" and
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Exit code of a decision refusal (decision 4):** exit 1 (the refusal row of the exit table), with the decision printed as it stands.
+
+## PLAN-32 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-32.md` (operator, AskUserQuestion): deliverable 6 takes the refused settings read (exit 1), the swallowed aspect-run
+refusal, and the `config` texts (a duplicate key, the plural, the German grammar, a misspelt key). Surface +4 paths. Runs after `PLAN-160`.
+Six deliverables now; the "Not split" note above counts five.
+
+## PLAN-160 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-160.md` (operator, AskUserQuestion — "Fold into PLAN-30"): deliverable 7 makes `credentials rotate` follow the
+catalogue (failure exits 1, no consent granted by the client), takes the mock's readiness from the scenario, and fixes the config minors and
+the review replies. Surface +8 paths. PLAN-30 now has seven deliverables and spans pm-operator, the mock and the catalogue:
+re-check its lane by the size rule at emit (likely `plan-marshall`).
+
+## PLAN-128 Residue Fold 2026-11-13 (Amendment)
+
+From `landings/PLAN-128.md` (operator, AskUserQuestion — "Fold into PLAN-30"; decision 7 "Code follows the doc"): deliverable 8 runs
+#425's unfinished review campaign, fixes the project-view cap, the five false-fixed items, `project add`'s exit and unasked argument, the
+`config cleanup` reporting, `d)`, the open Sonar issue and the missing captures. Surface +11 paths. Re-grounding owed at outline: every
+`CleanupCommand`/`ConfigCommand` line of deliverables 1, 6 and 7 is stale after #425 (+251 lines); `CleanupCommand` gained literals
+(`"   …  "` `:743`, `"Unenrolled projects"` `:705`, `"The runtime is stopping…"` `:933`) and `"Needs a choice: --yes"` is now in three places;
+the "Kept for good … 30 days … 3 days" line (`CleanupCommand.java:721`) takes the option "read them from the runtime" (decided by
+the PLAN-128 fold, since `config cleanup` now records other durations); `operator.cleanup.durations.after` joins deliverable 6's plural item
+("after 1 days"). Eight deliverables: the emit form is the runbook lane (operator 2026-11-13).
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+Re-grounding at `98cea294` (PLAN-127 landing analysis; re-read each at HEAD before editing):
+
+1. D1 "`EpicCommand.NextCommand` holds English option descriptions and the success literal (`:406-410`, `:423`)" is void: the options are
+   catalogue keys `control.epic.next.option.{raise_scope,no_raise,no_input}` (in `control.*`) with English `description=` fallbacks; the
+   success line is `operator.actions.result.next_started` from `WorkActionDialogue`.
+2. D3: `EpicCommand.NextCommand.bindSpec` installs a per-verb picocli bundle (`CatalogueBundle`, keys from `@Option.descriptionKey`). The
+   global `setResourceBundle` must absorb or reuse it (a verb-level bundle shadows the root one).
+3. D2 / R1: the `OperatorRefusedException` rethrow sites are now `AnswerCommand.java:155` (new: non-200 first read), `:322`, `:346`, `:396`,
+   `:739`, `:1361`, `:1381`, `:1395`, `:1518`, `:1547`. New local refusals print directly: `parts_unreadable` (exit 1), `parts_direct_refused`
+   (exit 3) at `:404-422`, `not_found` exit 1 at `:148`. EOF at a prompt exits 0 with the "Left" line (operator decision 5): `ExitCodesTest`
+   keeps it. `AnswerRefusalTest` grew 184 lines; build on it.
+4. D1 guard: `LiteralTextGuardTest` unchanged; the inversion will find `StatusCommand.java:403 "attention"` (D9) and the `NextCommand`
+   `description=` defaults; the structural decor literals of `AnswerCommand` (`" · "`, `"   › "`) need an exception.
+5. D5: `StatusCommand` lines shifted (hunks at 346, 391, 396); `EpicCommand:387-396` about +3; `Display`, `PlanCompletionLevel`,
+   `PlanCommand`, `RolesCommand`, `QuestionsCommand` untouched.
+6. D6: `verify_with` now about `operator.en/de.properties:241/:303`. Renamed: `operator.console.badge.waiver_requests` → `badge.waivers`,
+   `notice.waiver_request(_plain)` → `notice.waiver(_plain)`; new: `operator.needs.page_beyond`, `operator.decision.parts_unreadable`;
+   removed: `overview.needs.waiver_request`.
+7. D7/D8: `MockRuntimeEngine.java:3976-3979` → about `:3978-3981`, `:7503-7518` → about `:7508-7523` (shifts only); `ConfigCleanupCommand`,
+   `CleanupCommand`, `ProjectCommand` untouched; `PmConsole` OSC literal now `:904`.
+8. NEW coupling: `ControlCatalogueTest`, `OverviewCatalogueTest`, `DecisionCatalogueTest` derive their keys from the design tables
+   (`SpecificationTables` reads `doc/design/`). Every key this plan adds, renames or removes in those packs is mirrored in
+   `work-actions-texts.adoc`, `plan-overview.adoc` or `15-overview.adoc` in the same pull request, or `pm-api` tests fail.
+9. `04-console.adoc:59-61,114,363,455` still say `integrity_hold` (code: `integrity_pause`; `OverviewCatalogueTest.java:66` `PENDING_RENAME`)
+   — owned by the doc work package `harness-decision-log-hold-names`; do not rename here.
+10. PLAN-133 (`a139ec62`) rewrote `ChatDialogue`/`StartApi` (`ApiErrorCode` via `StartActException.code()`, new `control.chat.wait_ended`);
+   `LiteralTextGuardTest` `GUARDED` still names `ChatDialogue` and `StartDialogue`. `PLAN-161` (running) touches `WorkActionsClient`,
+   `WorkChatDialogue`, `ActionSupport`: the second to land rebases.
+11. `-Ppre-commit` on a rebased tree may rewrite files outside this plan's footprint: commit only D9's `MockRuntimeCli.java` rewrite;
+   restore any other.
+

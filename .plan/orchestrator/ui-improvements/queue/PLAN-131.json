@@ -2,10 +2,10 @@
   "id": "PLAN-131",
   "slug": "web-mascot-figure-and-surfaces",
   "workstream": "WS-02",
-  "status": "staged",
-  "lane": "runbook",
+  "status": "shipped",
+  "lane": "plan-marshall",
   "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "pr": "422",
+  "landing": "landings/PLAN-131.md",
   "seq": 131
 }

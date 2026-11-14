@@ -63,8 +63,7 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) on `reports-and-system` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots recorded; the contrast audit `theme-readability.spec.js` passes for both views (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) on `reports-and-system` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); the contrast audit `theme-readability.spec.js` passes for both views (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -78,20 +77,28 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: `SystemView.svelte` draws three `btn-toggle` buttons for the window (lines 530-550), a `↻` button (556-562), a project `<select>` (515), `badge`/`status-tag` spans (885, 900, 929, 984, 1033, 1149-1156), two `<table class="data-table">` (994, 1101), two hand-drawn dialogs (1181, 1293) with `<input>` elements (1237, 1253, 1316, 1332) and `z-index: 100` (1811) — read at the file
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: SystemView drifted ~+8: select :520, btn-toggle :537-559, arrow glyph :567, badge/status-tag :893-1164, tables :1002 :1109, dialogs :1189 :1301, inputs :1245 :1261 :1324 :1340, z-index :1819
 - OBSERVED: `CleanupView.svelte` has a `back-link` button (268), `badge`, `badge--kind` and `freed-badge` spans (366, 385, 451, 548), checkboxes (443, 532), a hand-drawn modal (559) and `z-index: 100` (874) — read at the file
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CleanupView drifted: back-link :281, badge/badge--kind/freed-badge :384 :403 :469 :566, checkboxes :462 :551, modal :577, z-index :892
 - OBSERVED: `SystemView` uses `ActionBar`, `Button`, `Icon`, `Spinner` and sits on a page template; `CleanupView` uses `Button` and `Spinner` and sits on none — read at the imports and by the PLAN-45/batch-1 report (templates)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: SystemView imports ActionBar Button Icon DashboardPage but ErrorState+Skeleton, no Spinner; CleanupView imports Button ErrorState Skeleton, no Spinner (#399); CleanupView sits on no template | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `SystemView.svelte` carries the deferred-reload state (`reloadWaitsForInput`, lines 52, 211-237), which PLAN-152 touches — read at the file
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: SystemView reloadWaitsForInput :54 and :212-244 (was 52, 211-237)
 - OBSERVED: `SystemView.test.ts`, `CleanupView.test.ts` and `pm-web-e2e/tests/system.spec.js` exist; there is no `cleanup` e2e spec — read in the directories
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: SystemView.test.ts CleanupView.test.ts system.spec.js exist; no cleanup e2e spec in pm-web-e2e/tests
 - HYPOTHESIS: `DataTable`'s column spec (`id`, `header`, `width`, `numeric`) carries the unit and the split columns (in, out) of the models table — confirm/refute at `DataTable.svelte` § props and `SystemView.svelte:1100-1150` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: DataTable columns carry id header width numeric (no unit; models tokens column is one formatSplit string) and DataTable cells are plain text so the status badge cells do not fit | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: `SystemView` sits on `DashboardPage` or `TriagePage`; its page cap needs no change — confirm/refute at `SystemView.svelte` § template wrapper (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: SystemView renders in DashboardPage (:24,:508) capped at 1440px (DashboardPage:43); SystemView sets no page cap
 - Verify-first clause: re-read both views after PLAN-45, PLAN-149 to PLAN-152 landed; re-run `lint:vocabulary` for both and take its finding list as the work list of deliverables 1 to 3.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
 
 ## Expected Surface
 
@@ -122,6 +129,29 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-45, PLAN-149 to PLAN-152). Settle each HYPOTHESIS. Re-run the lint for the two views.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+- PLAN-148 looked at 5 of 13 `--color-success-subtle` places in a browser. This plan's browser check includes its own: `SystemView.svelte:1598,1779`, `CleanupView.svelte:732,874`
+  (both themes; contrast of the text on the block).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 2 contradicted: SystemView imports ActionBar Button Icon DashboardPage but ErrorState+Skeleton, no Spinner; CleanupView imports Button ErrorState Skeleton, no Spinner (#399); CleanupView sits on no template
+- Claim 5 contradicted: DataTable columns carry id header width numeric (no unit; models tokens column is one formatSplit string) and DataTable cells are plain text so the status badge cells do not fit
+- Views use `ErrorState`+`Skeleton`, not `Spinner` (#399). `DataTable` cells are plain text and its columns have no unit, so the status badge cells do not fit as stated.
 
 ## Hand-Off Command
 

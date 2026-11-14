@@ -76,8 +76,7 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
  - Persona: plan-marshall:persona-integration-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
-   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots recorded (evidence order: `none`).
-   - The open-issue read at the pull request head is recorded (open Sonar issue count and rules left open; `unknown` for a failed read, never `0`); a confirmed `0` or every open issue dismissed (evidence order: `none`).
+   - Browser check (Playwright MCP) of `/dev/components` at 1440×900 and 390×844, `de` and `en`, both themes; screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -91,22 +90,32 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
 - **The merge rule:**
   - At least one CodeRabbit review of some head with its findings handled; every review BODY answered where the reviewer reads it; every thread replied and resolved. If CodeRabbit refuses on quota, stop and ask the operator.
   - The pull request body states `unresolved_review_threads=N` and `review_body_findings_total/handled`, read through `ci pr comments`.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): 0 open new-code issues, every open issue fixed in a commit of THIS pull request; state `sonar_open_new_issues=N` in the landing message.
   A dismissal is made only on the operator's selection through `sonar_rest transition`; the lane never records one of its own.
 
 ## Claim Labels
 
 - OBSERVED: `tokens.css` declares no `--layer-*` token; numeric `z-index` is written in the components `DataTable` (1), `BottomBar` (20), `RowMenu` (30), `ActionBar` (10), `Toast` (90), `Dialog` (100), `CommandPalette` (100) — read by `git grep -n z-index -- pm-web-app/src`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css has no --layer-*; z-index DataTable:158=1 BottomBar:361=20 RowMenu:261=30 (drift) ActionBar:274=10 Toast:73=90 Dialog:166=100 CommandPalette:515=100
 - OBSERVED: the further `z-index` literals sit in `FindingsReviewModal` 50, `PlanSettingsModal` 50, `GrantModal` 60, `GitSourceIntakeModal` 50, `LanListenerModal` 100, `HoldResolutionModal` 50, `ConfinedFilePicker` 60, `LessonSourceModal` 50, `StartWorkModal` 50, `EpicDecompositionView` 50, `SystemView` 100, `ProjectOnboardingView` 100 and 110, `CleanupView` 100, `MachineSettingsView` 100, `ProjectExplorerView` 100 (twice), `ProcessDesigner` 100 — same read
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: All 18 further literals match: Findings/PlanSettings/GitSource/Hold/Lesson/StartWork/EpicDecomp 50; Grant/Picker 60; Lan/System/Cleanup/Machine/ProcessDesigner 100; Onboarding 100+110; Explorer 100x2
 - OBSERVED: `RowMenu.svelte` filters disabled entries out of the keyboard walk (lines 89-91) and returns on a disabled item (129); `ActionBar.svelte` draws its own `role="menu"` (line 223) — read at both files
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowMenu.svelte menuEntries filters disabled at :100-102 and openMenu/item returns on disabled at :141 (drift from 89-91,129); ActionBar.svelte:223 role=menu
 - OBSERVED: `Button.svelte` passes the native `disabled` (`disabled={disabled || loading}`), types `size` as `'sm'|'md'|'lg'|'small'`, and `size="small"` occurs 19 times (`CompletionReportView` 2, `DecisionView` 6, `ProjectExplorerView` 2, `ReportsView` 9) — read at `Button.svelte` and by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Button.svelte:47 disabled={disabled||loading}; :21 size sm|md|lg|small; size=small x19 (CompletionReport 2 Decision 6 ProjectExplorer 2 Reports 9)
 - OBSERVED: `visibleLabel` is passed by `DataTable.svelte:121` and `ReportsView.svelte:1171` — read by `git grep visibleLabel`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visibleLabel DataTable.svelte:121; ReportsView now passes it at :1290 (was 1171) to RowMenu; RowMenu.svelte:27 and IconButton.svelte:22 also declare it; dev page passes it 3x
 - OBSERVED: `RowMenu` is used by `ReportsView.svelte` and the dev page; `ActionBar` by `WorkControlPanel.svelte`, `SettingsView.svelte`, `SystemView.svelte`, `routes/+layout.svelte` and the dev page — read by `git grep "<RowMenu\|<ActionBar"`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowMenu consumers ReportsView:1285 + dev page; ActionBar consumers WorkControlPanel:824,828 SettingsView:375,450 SystemView:782 routes/+layout.svelte:334 dev page
 - OBSERVED: no `SegmentedControl`, `Toggle` or `ActMenu` exists; `role="radiogroup"` is hand-written in `OverviewView.svelte:782` and `DecisionView.svelte`, `aria-pressed` in `StepBar.svelte` and `PlanView.svelte` — read by `git grep`
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No SegmentedControl/Toggle/ActMenu tracked; radiogroup OverviewView:802 (was 782) DecisionView:1038; aria-pressed StepBar:52 PlanView:926
 - OBSERVED: `reports.adoc:148` has the word beside the glyph "from the tablet width up" while `components.adoc` § `#icon-button` says `IconButton` never shows its label — read in both documents
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: shared/reports.adoc:148 still has word beside glyph from tablet width up; components.adoc:161 says IconButton never shows its label
 - HYPOTHESIS: `Dialog.svelte` and `ConfirmDialog.svelte` already meet most of § `#dialog` and § `#confirm-dialog` — confirm/refute at `Dialog.test.ts` and `ConfirmDialog.test.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dialog.svelte has radius-lg 12px shadow-overlay text-xl labelledby focus trap Escape danger list footer right; ConfirmDialog has busy confirmDisabled typedName; tests 14 and 9
 - Verify-first clause: re-read `RowMenu`, `ActionBar`, `Button` and every consumer at the current HEAD after PLAN-129 and PLAN-45; add any new consumer's fields and edges to deliverables 2 and 4.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction for the implementing session, not a code fact; no new RowMenu or ActionBar consumer at HEAD
 
 ## Expected Surface
 
@@ -140,6 +149,12 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/row-menu.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/reports.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/StatusLabel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/StatusLabel.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/IconButton.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/components-tags.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `doc/design/web-app/README.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -155,6 +170,36 @@ Read first: `doc/design/web-app/components.adoc` (§ `#controls`, `#button`, `#i
 ## Re-Grounding at Restart
 
 Re-read every file above at the then-current HEAD. Run `corpus surfaces` against what landed since (PLAN-45, PLAN-129, PLAN-147, PLAN-148). Settle each HYPOTHESIS. Re-count the `z-index` literals and the 19 `size` values; re-check the operator's answer to D-4.
+
+## PLAN-133 Landing Residue (Amendment 2026-11-13)
+
+- Premise: since `a139ec62` the web chat (entry, plan, epic, review, ended work) was broken against the mock until `PLAN-161`
+  (chat bridge). RESOLVED 2026-11-14: `PLAN-161` (#429, `dc811fb3`) landed and removed `PLAN-148`'s `test.fixme`; no `fixme` remains in
+  `pm-web-e2e/tests`. Still open: a chat that is not seeded is never OPENED by the clients (GET only) — `PLAN-135`/`PLAN-138` own that;
+  an e2e failure on an unseeded chat is theirs, name it in the pull request. An e2e failure at this plan's head that traces
+  to the chat contract is not this plan's to fix: name it in the pull request with `PLAN-161` as owner.
+- The scenario fixtures are validated at load against the B1 catalogue (unknown chat keys fail closed): a fixture edit in a `chats` block
+  must satisfy it.
+
+## PLAN-148 Landing Residue (Amendment 2026-11-14)
+
+Operator decision 2026-11-14 ("Fold into PLAN-149"). PLAN-148 (#427, `25137445`) added `StatusLabel`'s list slot, with two defects that
+must be fixed before its first adopter (`PLAN-49`, then 51, 52, 55, 62, 154):
+
+- **D6 (new) — `StatusLabel`'s list slot works in a template.**
+  - The prop is named `slot` (`StatusLabel.svelte:13`), Svelte's reserved attribute: `<StatusLabel slot />` directly inside a snippet or a
+    component's children is a compile error (`slot_attribute_invalid`, svelte 5.57 `validate_slot_attribute`). Rename it (e.g. `fixed`)
+    and update `components-tags.adoc` / `components.adoc` and the dev page.
+  - The "fixed-width state slot" (`:47-57`, `inline-grid; grid-template-columns: auto minmax(0,1fr)`) has no width, so it shrink-wraps
+    and the dots do not stand one under the other (`components-tags.adoc:102`). Give it a width from a token (the longest state word of
+    both locales, or a named size); if the design names none, stop and ask.
+  - Tests: one TEMPLATE fixture (a `.svelte` test harness rendering the label inside a snippet and inside a component's children) that
+    compiles; a browser check of three labels of different word length in a list, both themes, en/de, measuring that the dots' x-positions
+    are equal. `StatusLabel.test.ts:49-67` pins CSS strings only: replace those with the measured check.
+  - Persona: plan-marshall:persona-implementer. Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing.
+  - Done when: the template fixture compiles and renders; the browser check shows equal dot positions (evidence order `none`); the rename
+    fails on a revert of the old prop name in the fixture (evidence order `test-first`).
+- Surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, `pm-web-app/src/lib/components/StatusLabel.test.ts` (present at `25137445`).
 
 ## Hand-Off Command
 

@@ -41,8 +41,9 @@ Run the checks of the onboarding screen registry and variations against the merg
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/use-cases/verification.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/verification.adoc has UC-V-02, UC-V-03, UC-V-05; UC-V-03 replaced (entry.* fallback) in the 2026-11-10 Amendment
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/verification.adoc has UC-V-02 (:36) UC-V-03 (:42) UC-V-05 (:53); results file absent (correct)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; PLAN-64 not landed at HEAD (views/onboarding absent) so checks would be not verified
 
 ## Expected Surface
 

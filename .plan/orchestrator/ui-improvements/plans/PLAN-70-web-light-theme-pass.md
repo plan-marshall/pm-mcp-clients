@@ -23,17 +23,17 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `theme-readability.spec.js` passes in light for every declared view (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in light; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in light; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
 2. **Design record**
    - What: `theme-readability.adoc` states the light theme as designed, with the tuned values.
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
      - The document passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20700 PM_WEB_PORT=20701 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
@@ -44,14 +44,21 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-07`, `doc/claude_review/visual-design/findings.adoc#VD-F-10` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 1cc0e10ec2ca617853b99a23dcfed8e5e2fed1bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:58 VD-S-07; findings.adoc:100 VD-F-10; tokens.css and theme-readability.spec.js present; scope widened to D1/D3/D4 tokens in the 2026-11-10 Amendment
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:58 VD-S-07; findings.adoc:100-101 VD-F-10; tokens.css, tokens.test.ts, theme-readability.spec.js present
 - Re-grounded note (2026-10-30, operator request): `PLAN-85` (`web-theme-in-browser-settings`) moves the theme control from the rail foot and the More sheet to the pairing page and a new Settings view "This browser"; the storage stays `localStorage` `pm_theme`. The contrast audit's theme switch (`helpers/contrast.js` `setTheme`, `theme-readability.spec.js`) keeps working if it sets the storage; a check of this plan that "chooses" a theme through the rail control uses the new places or sets the storage.
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Superseded: PLAN-85 Operator Decisions 2026-11-10 option A keeps theme control in rail/More sheet; NavRail.svelte:168 fieldset theme-choice still there; no BrowserSettingsView | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Re-grounded note at HEAD bf8ddb31 (2026-10-31): `web-standards-conformance` (PLAN-80, shipped, PR #281) changed `helpers/contrast.js` (a bounded quiet-frame wait) and `theme-readability.spec.js`, and its run reports that the contrast matrix calls `setTheme` before `page.goto` while `app.html` re-derives `data-theme` from a `localStorage.pm_theme` nothing writes, so the "dark" half of the audit may audit the light theme. Before this plan's light pass relies on the audit, it asserts that `document.documentElement.dataset.theme` equals the theme the test requested, in both themes, and reports any audit that ran under the wrong one. A light-theme verdict from a matrix that cannot show dark is not a verdict.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js calls setTheme before page.goto (:655,:735..); contrast.js:8-12 sets only data-theme, quiet-frame wait present; app.html:20 reads pm_theme; no dataset.theme assert
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): The wrong-theme concern is partly still live: helpers/contrast.js setTheme sets data-theme on documentElement after navigation and waits for transitions, but theme-readability.spec.js has no assertion that dataset.theme equals the requested theme, so the spec's planned assertion is still due; PLAN-37 axe-core (c5bfb1ca) also changed these files.
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: No dataset.theme assertion in theme-readability.spec.js or helpers/contrast.js; setTheme (contrast.js:8) sets attribute only, so planned assertion still due
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
 - OBSERVED: tokens.css:5 names both [data-theme='light'] and [data-theme='dark'] in its header comment and :9 opens :root, so Button.test.ts:167-173 blockOf resolves both themes to :root — read at `pm-web-app/src/styles/tokens.css` :5-9 and `pm-web-app/src/lib/components/Button.test.ts` § `blockOf` at 1cc0e10e
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.test.ts:171-172 now strips comments before blockOf (d1a9e63a PLAN-129); light block at tokens.css:182 dark :220 resolve correctly. tokens.css:5 comment and :9 :root still as stated | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: RowMenu.test.ts ~285-310 asserts hex values read by a regex that is true by construction and never reads bg-subtle or the prefers-color-scheme block — confirm/refute at `pm-web-app/src/lib/components/RowMenu.test.ts` (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: RowMenu.test.ts:306-330 pins no literal hex (0913d6f3): ratios computed, dark read from last [data-theme='dark'] block; light brand from :root by design | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - HYPOTHESIS: some pair of Button's 4.5:1 table fails in the real dark palette — confirm/refute by running the corrected test (verify-at-outline)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Computed all 5 Button pairs from tokens.css blocks at HEAD: dark 5.81/5.91/14.35/8.47/5.13, light 6.04/5.51/17.76/9.78/5.06; all >=4.5, no pair fails | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -80,6 +87,16 @@ tones, reason colours, field look, the mascot (pairing page, empty states, rail 
 above it), the chat (including the diff tokens), the new cog icon (`PLAN-109`, in its rail evidence) and the Running-work
 heading without the start-page button (`PLAN-110`). The kind tints exist in both themes and fall under the token lint. **The
 route baselines are re-taken after the views move** (003).
+
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 1 contradicted: Superseded: PLAN-85 Operator Decisions 2026-11-10 option A keeps theme control in rail/More sheet; NavRail.svelte:168 fieldset theme-choice still there; no BrowserSettingsView
+- Claim 5 contradicted: Button.test.ts:171-172 now strips comments before blockOf (d1a9e63a PLAN-129); light block at tokens.css:182 dark :220 resolve correctly. tokens.css:5 comment and :9 :root still as stated
+- Claim 6 contradicted: RowMenu.test.ts:306-330 pins no literal hex (0913d6f3): ratios computed, dark read from last [data-theme='dark'] block; light brand from :root by design
+- Claim 7 contradicted: Computed all 5 Button pairs from tokens.css blocks at HEAD: dark 5.81/5.91/14.35/8.47/5.13, light 6.04/5.51/17.76/9.78/5.06; all >=4.5, no pair fails
+- Claim 1 is superseded by PLAN-85's operator decision (option A: theme control stays in the rail and More sheet). Claims 5–7 are resolved: `blockOf` strips comments (d1a9e63a, #406), `RowMenu.test.ts` computes ratios (0913d6f3, #394), and every Button pair passes in both themes. Still due from D4: the palettes-differ guard and the mutation evidence. `theme-readability.adoc:71` says success ≥3:1 while the test enforces 4.5:1.
 
 ## Hand-Off Command
 

@@ -95,6 +95,69 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
    - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open
      (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed. Evidence order: `none`.
 
+5. **The needs surfaces made consistent (PLAN-126 residue, folded 2026-11-12 on the operator's decision)**
+ - What: read `landings/PLAN-126.md`; lines are as read at `496ac925`.
+   - **The first addition is announced.** `NeedsOperatorNotices.java:88-96` takes the first summary of a place as a baseline and returns no
+     notice, and `lastSeen` is never seeded. A credential arriving as the first event after the console starts raises no notice,
+     notification or bell. The class Javadoc (`:39-41`) says the opposite. Seed `lastSeen` from the status read's `needs_operator` at console
+     start (the console and `OverviewFullScreenApp`'s own instance), keep the baseline rule only for what the status read already showed,
+     and correct the Javadoc. CodeRabbit review `5870515770` ("Seed the baseline") raised it.
+   - **`!` is the printed derivation.** `OverviewFullScreenApp.openNeedsItemAct` (`:1396-1470`) derives the act separately from
+     `OverviewFormatting.formatNeedsItemCommand` (`:463`), against PLAN-126's "one derivation serves `needs`, the rows and `!`". Cases that
+     differ today: a plan's `landing_failed` prints `epic <e>` but `!` opens the plan's hold dialogue (`:1428`); an epic-only
+     `condition`/`stalled`/`waits_for_you` prints `epic <id>` but `openPlanAct` (`:1463`) does nothing; a decision without a link falls back to
+     a bare `answer` (`:1424`). Make `!` run exactly the printed command, from one function.
+   - **The printed command resolves.** `landing_failed` with a plan only prints `epic <planId>` (`OverviewFormatting.java:485-493`), an id no
+     epic has. `held` with a plan prints `plan <id>`, while `04-console.adoc:76-80` says `epic <id>`. Print what the design table says and
+     what resolves. If the table itself names an unresolvable command, stop and ask. PLAN-126's spec pinned `epic <planId>`: that pin is wrong.
+   - **Names and pages.** `04-console.adoc:74-82` names the badge key `waiver_request` while the contract's kind is `waiver` (both render):
+     one name, as the contract says. `needs --page` and the runtime's `?page=` (added by PLAN-126) are in neither `01-commands.adoc:124` nor
+     `doc/design/shared/needs-and-find.adoc`: document them, and make `--page` beyond the last page say so instead of "Nothing waits" while
+     `total` > 0. `overview.needs.other` goes into the design's text table. An `OTHER` notice prints the raw word `other`: use the catalogue.
+     The subject's fallback to a raw id (`OverviewFormatting.java:395`) follows `Display.title`'s rule.
+   - **The mock serves one list.** `MockRuntimeEngine.mergeMachineNeeds` (`:5807`) is a fallback that emits `waiver_request` where the list
+     path emits `waiver`: remove it or make it emit the contract's kind.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-documents:ref-asciidoc
+ - Done when:
+   - `ConsoleNeedsNoticeTest`: a credential that arrives as the first event after a start whose status read showed none raises one notice;
+     an item the status read already showed raises none. Fails on a revert. Evidence order: `test-first`.
+   - A test drives `!` on every kind and asserts it runs the printed command (one parameterised case per kind, including the three cases
+     above). Fails on a revert. Evidence order: `test-first`.
+   - Terminal check of the needs group and `needs` at 120 × 30 and 80 × 24, en and de, taken at the PR head (PLAN-126's capture was taken
+     before its last change and is stale). Evidence order: `none`.
+6. **The tests PLAN-126 left weak, the raw-mode sibling, and the review items**
+ - What:
+   - **`find` lease.** The shell-path lease fix in `FindCommand.open` (`:394-405`) has no test (PLAN-126 D5 not met). Model one on
+     `FindCommandTest.leaveIsNotFinished`: a DumbTerminal, input `1\n`, the chosen number reaching the reader, and the terminal supplier called
+     exactly once. If that cannot reproduce the shell path, say why in the landing.
+   - **`SecretReader` raw mode.** `SecretReader.java:56-66` keeps ISIG on after `enterRawMode`: a Ctrl+C while the echo is off ends the JVM
+     before the `finally` restore, and the terminal can stay echo-off. Handle it as `FindCommand.readField` does (`:421-440`: ISIG cleared,
+     Ctrl+C read as a key, the attributes restored), with a `SecretReaderTest` case that fails on a revert.
+   - **D4 of PLAN-126.** `NeedsIT` starts at project level (`:40`, `:59`), so nothing calls `openNeedsItemAct` (only `openWhatWaits`,
+     `OverviewFullScreenApp.java:1264-1270`): add a start at the overview. `needsItemFormattingExhaustive` becomes a `@ParameterizedTest` per
+     kind. `NeedsOneCountTest.sameCountsAcrossFourSurfaces` pins only the total: assert the counts per kind. `NeedsCommandTest:73-76` asserts
+     catalogue text, not lowercase substrings. `OverviewFormattingTest:299,314` drop the `fr`→`en` fallback assertions. `NeedsIT.selectByTitle`
+     loses its always-null `marker` parameter. `TuiCapabilityIT:245` derives the level list instead of hard-coding it. `ConsoleNeedsNoticeTest`,
+     `NeedsSelectionTest` and `OverviewLoadFailureTest` draw input from `Generators`. `rowIdOf` must not collide for two items of one kind and link.
+   - **Refusals.** `LoadRefusal.of(.., IOException)` prints a raw, unlocalised exception message as the cause: print the catalogue cause.
+     The refusal fields of `OverviewFullScreenApp` are written by the refresh thread and read by the render thread: make them safe to share.
+   - **Javadoc artefacts.** A stray `/**` inside `PmConsole.notifyOperator`'s Javadoc (`PmConsole.java:885`); in `MockRuntimeEngine.java:778-780`
+     the merge put `NEEDS_PAGE_SIZE` between the operator-channel Javadoc and `OPERATOR_FIELD`; `NeedsOperatorNotices.java:49` says the place of
+     a due cleanup is empty (the code gives the "machine" word); `TuiKeyRegistry.keepCells` lost `@param more`; `ConsoleBadge.java` has no
+     newline at the end.
+   - **#416.** Three CodeRabbit body items have no reply: the additional comment on `TuiCapabilityIT:245` (review `5867641766`), and
+     "status stale after answer" and "Seed the baseline" (review `5870515770`). The mock-page outside-diff item of `5870515770` was fixed in
+     `33182e1b`; its only reply sits on an unrelated thread. Reply to each on #416 with the commit of this plan that settles it, or with the
+     reason it is declined. Check "status stale after answer" against the head first.
+ - Persona: plan-marshall:persona-module-tester
+ - Skills: pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing
+ - Done when:
+   - The `find` lease test and the `SecretReader` Ctrl+C test each fail on a revert of their fix. Evidence order: `mutation-after` for
+     `find` (the fix exists), `test-first` for `SecretReader`.
+   - `NeedsOneCountTest` fails when one kind's count changes and the total does not. Evidence order: `mutation-after`.
+   - Landing obligation (rule 4): `ci pr comments --pr-number 416` shows a reply to each of the four items. Report it in the landing message.
+
 ## Standing Constraints
 
 - Build and test through Maven only (`CLAUDE.md`). Besides the session's own checks, `./mvnw -pl pm-api,pm-mock-runtime,pm-operator verify`
@@ -110,11 +173,11 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
   time: never stop or reuse a process this worktree did not start.
 - Write-set discipline: the main checkout is never edited; work only in the session's own worktree and branch.
 - **The merge rule:**
-  - The merge question is asked only when every review thread on this pull request has a reply and is resolved, and every review
+  - The run merges only when every review thread on this pull request has a reply and is resolved, and every review
     body is answered; at least one CodeRabbit review of some head must exist (if CodeRabbit refuses on quota, stop and ask the operator).
   - The pull request body states the thread count, the resolved count and the review-body items with their count, read through
     `ci pr comments`, never from memory. A landing message whose review counts disagree with the PR is a defect of the run.
-  - The pull request is merged only on the operator's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
+  - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
     The pull request body carries no generator footer.
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project
   `plan-marshall_pm-mcp-clients`), every open issue fixed in a commit of THIS pull request. State `sonar_open_new_issues=N` in the
@@ -160,21 +223,43 @@ The printing and exit of REFUSALS is not here: it belongs to the refusal rendere
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/AcceptEditDialogueIT.java` — present at `344515f9` (accept-edit gap of CLI-CC-V-06, folded 2026-11-10)
 - OBSERVED: `pm-mock-runtime/README.adoc` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/19-actions.adoc` — present at `1cc0e10e` (only if OPEN DECISION 6 softens the sentence)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsOperatorNotices.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFormatting.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/FindCommand.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/SecretReader.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/FindCommandTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SecretReaderTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConsoleNeedsNoticeTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsOneCountTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsCommandTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/overview/NeedsSelectionTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/overview/OverviewFormattingTest.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/NeedsIT.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at `496ac925` (D5/D6, PLAN-126 residue, folded 2026-11-12)
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-127.txt` — absent; created by this plan
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-124` (shipped, #385), `PLAN-120` (shipped, #382), `PLAN-123` (running: `AnswerCommand` waiver seam, the printed epic in `EpicCommand`)
 - Overlaps with: `PLAN-30` (`AnswerCommand`, `OperatorRefusedException`, `EpicCommand` literals: this plan runs BEFORE it),
-  `PLAN-126` and `PLAN-128` (`EpicCommand`, the catalogue pairs: run in series), `PLAN-44` (`AnswerCommand`: starts after),
+  `PLAN-126` (shipped, #416, `496ac925`: this plan carries its residue), `PLAN-128` (`EpicCommand`, the catalogue pairs: run in series), `PLAN-133` and `PLAN-160` (running: `MockRuntimeEngine.java`; the second to land rebases), `PLAN-44` (`AnswerCommand`: starts after),
   `PLAN-79` (rewrites every `pm-operator` test: last)
 - Adjacent to: `PLAN-33` (verifies the answer verb; records the commit it verified, does not wait)
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (re-set 2026-11-12 by the operator's size rule: six deliverables and about 40 paths after the PLAN-126 fold).
+Overlaps now running: PLAN-133 (#424, `MockRuntimeEngine.java`); whichever lands second rebases.
 
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-127-cli-answer-and-epic-next-residue.md
+```text
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-127-cli-answer-and-epic-next-residue.md"
+```
 
 ## Write-Boundary
 
@@ -190,3 +275,10 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 - **Sanitizer scope (decision 3):** strip bidi controls, zero-width characters (including U+200D) and tag characters from all operator-visible model text; the emoji-joiner loss is accepted.
 - **EOF at an answer prompt (decision 5):** exit 0 with the `Left` line.
 - **`epic next` (decision 6):** the verb reads the epic and asks as `19-actions.adoc:190` says; `--no-raise` is honoured.
+
+## PLAN-126 Residue Fold 2026-11-12 (Amendment)
+
+From `landings/PLAN-126.md` (operator, AskUserQuestion — "Fold into PLAN-127"; side items "Both in the residue plan"): deliverable 5 makes the
+needs surfaces consistent (the first addition announced, `!` as the printed command, resolvable commands, names and pages, one mock list);
+deliverable 6 strengthens PLAN-126's tests, fixes the `SecretReader` raw-mode sibling and two Javadoc artefacts, and answers the four #416
+review items. Surface +19 paths. The plan is now large for the runbook lane: re-check the lane by the size rule at emit.

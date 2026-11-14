@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-160",
+  "slug": "cli-config-residue",
+  "workstream": "WS-04",
+  "status": "shipped",
+  "lane": "runbook",
+  "plan_marshall_plan_id": "rb-160-cli-config-residue",
+  "pr": "421",
+  "landing": "landings/PLAN-160.md",
+  "seq": 160
+}

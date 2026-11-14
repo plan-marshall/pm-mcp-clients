@@ -26,10 +26,10 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
    - Done when:
      - A count is recorded before and after for the transcript and IT classes, as in deliverable 1 (evidence order: `none`)
      - `./mvnw -pl pm-operator verify -Pintegration-tests` passes and the screen-capture set is byte-identical before and after (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
+- ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`.
 - No new dependency or plugin: `cui-test-generator` is already declared by `pm-operator`.
 - `pm-operator` does not log: no `LogMessages` class and no `LogAsserts` test is created here.
@@ -41,23 +41,24 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 ## Claim Labels
 
 - OBSERVED: no `pm-operator` test class uses `Generators` or `@EnableGeneratorController` (0 of 116 `*Test.java` and `*IT.java`) although `pm-operator/pom.xml` declares `cui-test-generator` and `cui-test-juli-logger` — read at HEAD 7e2b4b61
-  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: 25 of 140 test classes annotated, 22 use Generators; ~115 remain (Re-grounding 2026-11-10)
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: 47 of 149 test classes carry @EnableGeneratorController (44 reference Generators); 125 *Test + 24 *IT; about 102 remain; pom declares both CUI test artifacts | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - OBSERVED: `pm-operator` main code has no logger (`CuiLogger`, `java.util.logging`, SLF4J: none) — read by a repository-wide search at HEAD 7e2b4b61
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: no logger in pm-operator main; pom declares cui-test-generator and juli-logger
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: no Logger, CuiLogger, JUL or SLF4J reference under pm-operator/src/main/java; pom.xml:92,97 declares cui-test-generator and juli-logger
 - HYPOTHESIS: most `pm-operator` tests assert catalogue texts and screen text, so the share of classes that can use generated input is small — confirm/refute by the before count (verify-at-outline); a finding that fewer than a third of the classes take incidental input is reported to the operator, not forced
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: outline-time count
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: outline-time count; note 47 of 149 (32 percent) are already converted
 - Re-grounded note at HEAD e83a9ee2 (2026-10-31): `cui-standards-foundation` (PLAN-77, shipped, PR #282) landed the rule in `CLAUDE.md` and converted the two small modules as the pilot; `pm-operator` already declared the CUI test artifacts. Follow the pilot's pattern: draw `Generators` values inside the test or a `@BeforeEach`, not in field initialisers (flagged as not seed-controlled); a class whose values are the contract is listed input-free, not converted; expected values that derive from a generated input are re-derived from it, and contract values (catalogue texts, screen text, scripted answers) stay literal. All 11 `package-info.java` of this module carry `@NullMarked` since PLAN-77.
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: 11 package-info.java all @NullMarked
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: all 11 main package-info.java carry @NullMarked; PLAN-77 landed as #282 (e83a9ee2)
 - Pull request size (PLAN-78's run, 2026-10-31): the required reviewer CodeRabbit refuses a pull request of more than 100 files (it refused PLAN-78's 197-file first PR, and the optional Sourcery refuses above 150,000 diff characters), and a pull request it never reviewed cannot be merged. This plan converts about 116 test classes: its set will exceed 100 files. The `pre-commit` gate also rewrites the import grouping of main sources that drifted on `main` (171 `pm-api` files in PLAN-78's run): such a rewrite is not part of this plan and is restored from `origin/main` before the pull request (the operator authorised exactly that in PLAN-78). If the converted set still passes 100 files, stop and ask the operator to split the plan in two (unit tests; integration and transcript tests, which are this spec's two deliverables) before opening the pull request.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: consistent: ~115 conversions exceed 100 files; split 79a/79b
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CodeRabbit refusal above 100 files is an external fact; consistent: about 102 classes remain, split 79a/79b stands
 - HOLD (design audit 2026-11-02): it rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol, which the D25 (drain: signal the pid of state/runtime.json, withdraw as 'runtime stop --withdraw'), D26 and R7-7 (accept-edit enrolment <project_id>) package changes. Sequence it after that package; also sequence it with PLAN-92 (shared handler tests).
-  - verdict: contradicted | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 landed; orphan Enrol/Start/Onboard tests remain
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 (d8efe35f) landed; EnrolCommandTest, StartCommandTest, OnboardCommandTest still exist with no EnrolCommand, StartCommand or OnboardCommand in main | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 - Verify-first clause: before each deliverable, re-read the test tree at the current HEAD; `PLAN-77` must have landed. The terminal plans in flight edit these files; re-read which of them landed. A refuted claim re-scopes the deliverable and is reported.
-  - verdict: unverifiable | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
 
 - Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; they are the three deliverables of PLAN-97 (staged 2026-11-04 on the operator's word): sequence this plan after PLAN-97. PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
-  - verdict: corroborated | checked_at: cc0d62af | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-97 #358 landed; c7d9dcb8 ancestor of main
+  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-97 landed #358 d8efe35f; PLAN-92 c7d9dcb8 (#309) is an ancestor of HEAD
 - OBSERVED: AnswerSanitizationTest, AnswerMultipartTest, AnswerRefusalTest, AnswerDialogueIT, CleanupCommandTest, StateDialogueTest and DialogueSourceTest carry no @EnableGeneratorController — read by git grep -c at 1cc0e10e
+  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: all seven now carry @EnableGeneratorController: Answer* x4 since 98cea294 (#426); CleanupCommandTest, StateDialogueTest, DialogueSourceTest since 56e1ad37 (#425) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
 
 ## Expected Surface
 
@@ -110,6 +111,15 @@ This section supersedes the spec text and earlier notes where they differ.
 - Sequencing: only when no terminal plan runs (PLAN-123, PLAN-84 running; PLAN-30/42 next), last in the terminal queue.
 - Disposition: AMEND (counts, split) and HOLD until the terminal queue is empty.
 
+## Re-Grounding 2026-11-14 (cleanup)
+
+Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
+
+- Claim 0 contradicted: 47 of 149 test classes carry @EnableGeneratorController (44 reference Generators); 125 *Test + 24 *IT; about 102 remain; pom declares both CUI test artifacts
+- Claim 5 contradicted: HOLD cleared: PLAN-97 #358 (d8efe35f) landed; EnrolCommandTest, StartCommandTest, OnboardCommandTest still exist with no EnrolCommand, StartCommand or OnboardCommand in main
+- Claim 8 contradicted: all seven now carry @EnableGeneratorController: Answer* x4 since 98cea294 (#426); CleanupCommandTest, StateDialogueTest, DialogueSourceTest since 56e1ad37 (#425)
+- About 102 of 149 test classes remain without `@EnableGeneratorController` (47 done: #426, #425, #358). The HOLD on PLAN-97 is cleared (#358); `EnrolCommandTest`, `StartCommandTest`, `OnboardCommandTest` remain with no command in main. The 2026-11-13 amendment is partly wrong: `NeedsCommandTest`/`NeedsIT` lack the annotation, `DrainCommandTest` builds bounds from production constants, `ActionMenusTest` has no German assertion.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
@@ -138,3 +148,9 @@ Generators rule. No new deliverable; the classes are named so that none is skipp
   `EnrolCommandTest`, `CleanupCommandTest`, `ControlDialoguesTest`, `EpicCommandTest`, `dialogue/StateDialogueTest`,
   `DialogueSourceTest`.
 - A class that PLAN-126, PLAN-127 or PLAN-128 already converted is not touched again.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Scope shrinks: `@EnableGeneratorController` is already on the Answer*, Needs*, `ConsoleNeedsNoticeTest` and `OverviewLoadFailureTest`
+  classes; `DialogueHarnessActsTest`, `StatusPlanRowKindTest`, `SpecificationTables` are new.
+- **New item (#382 nitpick):** `ControlDialoguesTest.workActionNextInvalidAnswerReprompts` asserts no `next` request is sent on `x`.
