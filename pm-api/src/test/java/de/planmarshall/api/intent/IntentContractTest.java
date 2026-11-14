@@ -154,7 +154,7 @@ class IntentContractTest {
         }
 
         @Test
-        @DisplayName("the outline keeps its deliverables, files, and missing key link")
+        @DisplayName("the outline keeps its deliverables and files")
         void outlineDetails() throws Exception {
             var parsed = OutlineResource.fromJson(outline().toJson());
 
@@ -163,7 +163,6 @@ class IntentContractTest {
             assertNull(parsed.deliverable(9));
             assertEquals(1, parsed.satisfying("AC-001").size());
             assertEquals(3, parsed.affectedFiles().size());
-            assertTrue(parsed.hasMissingKeyLink());
             assertEquals(2, parsed.deliverable(1).writtenFiles().size());
         }
 
@@ -275,12 +274,10 @@ class IntentContractTest {
             var orphan = new DependencyJustification("x", null, "needed", 7);
             var orphans = List.of(orphan);
             List<DependencyJustification> noDependencies = List.of();
-            List<String> noTexts = List.of();
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", duplicates, noDependencies, noTexts,
-                            noTexts, null));
+                    () -> new OutlineResource("p", 1, "summary", duplicates, noDependencies));
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", one, orphans, noTexts, noTexts, null));
+                    () -> new OutlineResource("p", 1, "summary", one, orphans));
             var orphanedDeliverable = new DeliverableRecord(1, "t", "g", List.of(), List.of(7),
                     List.of(), null);
             var selfDependent = new DeliverableRecord(1, "t", "g", List.of(), List.of(1),
@@ -288,11 +285,9 @@ class IntentContractTest {
             var orphaned = List.of(orphanedDeliverable);
             var self = List.of(selfDependent);
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", orphaned, noDependencies, noTexts, noTexts,
-                            null));
+                    () -> new OutlineResource("p", 1, "summary", orphaned, noDependencies));
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", self, noDependencies, noTexts, noTexts,
-                            null));
+                    () -> new OutlineResource("p", 1, "summary", self, noDependencies));
         }
 
         @Test
@@ -348,7 +343,7 @@ class IntentContractTest {
             assertThrows(JsonFormatException.class, () -> OutlineResource.fromJson(
                     "{\"plan_id\":\"p\",\"revision\":1,\"summary\":\"summary\",\"deliverables\":["
                             + "{\"number\":1,\"title\":\"t\",\"intent_gloss\":\"g\",\"depends_on\":[],"
-                            + "\"satisfies\":[7]}],\"interfaces\":[],\"key_links\":[]}"));
+                            + "\"satisfies\":[7]}]}"));
         }
     }
 
@@ -710,8 +705,7 @@ class IntentContractTest {
                                 List.of(new DeliverableRecord.AffectedFile("pm-relay/src/main/java/Queue.java",
                                         DeliverableRecord.FileIntent.WRITE_NEW)),
                                 List.of(1), List.of("AC-003"), null)),
-                List.of(dependency()), List.of("RelayConnection"), List.of("queue → relay"),
-                "queue → relay");
+                List.of(dependency()));
     }
 
     private static DoneWhenCheck doneWhen() {

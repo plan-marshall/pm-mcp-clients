@@ -26,30 +26,20 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * A plan's outline record as both clients show it (Store Schemas, Outline Record; design
  * <em>Intent and Outline</em>): the deliverables with the files they affect and the criteria they
- * satisfy, the added dependencies with their justification, the declared interfaces and key links,
- * and a key link missing from the verification sweep.
- * <p>
- * A missing key link is not an error the client derives: the runtime states it, and the client shows
- * it beside the declared links so that the operator sees what the sweep could not confirm.
+ * satisfy, and the added dependencies with their justification.
  *
  * @param planId            the plan's id
  * @param revision          the outline record's revision, from 1
  * @param summary           the outline's summary
  * @param deliverables      the deliverables, at least one
  * @param addedDependencies the dependencies the outline adds
- * @param interfaces        the interfaces the outline declares
- * @param keyLinks          the key links the outline declares
- * @param missingKeyLink    a key link the verification sweep could not confirm, or {@code null}
  */
 public record OutlineResource(
         String planId,
         int revision,
         String summary,
         List<DeliverableRecord> deliverables,
-        List<DependencyJustification> addedDependencies,
-        List<String> interfaces,
-        List<String> keyLinks,
-        @Nullable String missingKeyLink
+        List<DependencyJustification> addedDependencies
 ) {
 
     public static final String FIELD_PLAN_ID = "plan_id";
@@ -57,14 +47,10 @@ public record OutlineResource(
     public static final String FIELD_SUMMARY = "summary";
     public static final String FIELD_DELIVERABLES = "deliverables";
     public static final String FIELD_ADDED_DEPENDENCIES = "added_dependencies";
-    public static final String FIELD_INTERFACES = "interfaces";
-    public static final String FIELD_KEY_LINKS = "key_links";
-    public static final String FIELD_MISSING_KEY_LINK = "missing_key_link";
 
     private static final String TYPE = "OutlineResource";
     private static final Set<String> KNOWN_FIELDS = Set.of(
-            FIELD_PLAN_ID, FIELD_REVISION, FIELD_SUMMARY, FIELD_DELIVERABLES, FIELD_ADDED_DEPENDENCIES,
-            FIELD_INTERFACES, FIELD_KEY_LINKS, FIELD_MISSING_KEY_LINK);
+            FIELD_PLAN_ID, FIELD_REVISION, FIELD_SUMMARY, FIELD_DELIVERABLES, FIELD_ADDED_DEPENDENCIES);
 
     public OutlineResource {
         Objects.requireNonNull(planId, FIELD_PLAN_ID);
@@ -82,8 +68,6 @@ public record OutlineResource(
         var numbers = new HashSet<>(deliverables.stream().map(DeliverableRecord::number).toList());
         validateDependencies(deliverables, numbers);
         addedDependencies = requireDependencies(addedDependencies, numbers);
-        interfaces = copyTexts(interfaces, FIELD_INTERFACES);
-        keyLinks = copyTexts(keyLinks, FIELD_KEY_LINKS);
     }
 
     private static void validateDependencies(List<DeliverableRecord> deliverables, Set<Integer> numbers) {
@@ -123,14 +107,6 @@ public record OutlineResource(
         return dependencies;
     }
 
-    private static List<String> copyTexts(List<String> value, String name) {
-        var texts = value == null ? List.<String>of() : List.copyOf(value);
-        if (texts.stream().anyMatch(text -> text == null || text.isBlank())) {
-            throw new IllegalArgumentException(name + " must not carry a blank entry");
-        }
-        return texts;
-    }
-
     /**
      * @param number the deliverable's number
      * @return the deliverable, or {@code null}
@@ -156,13 +132,6 @@ public record OutlineResource(
     }
 
     /**
-     * @return {@code true} if the verification sweep could not confirm a key link
-     */
-    public boolean hasMissingKeyLink() {
-        return missingKeyLink != null;
-    }
-
-    /**
      * @return the map representation
      */
     public Map<String, Object> toMap() {
@@ -173,11 +142,6 @@ public record OutlineResource(
         map.put(FIELD_DELIVERABLES, deliverables.stream().map(DeliverableRecord::toMap).toList());
         map.put(FIELD_ADDED_DEPENDENCIES,
                 addedDependencies.stream().map(DependencyJustification::toMap).toList());
-        map.put(FIELD_INTERFACES, interfaces);
-        map.put(FIELD_KEY_LINKS, keyLinks);
-        if (missingKeyLink != null) {
-            map.put(FIELD_MISSING_KEY_LINK, missingKeyLink);
-        }
         return map;
     }
 
@@ -202,9 +166,6 @@ public record OutlineResource(
         IntentJson.writeArray(generator, FIELD_DELIVERABLES, deliverables, DeliverableRecord::writeTo);
         IntentJson.writeArray(generator, FIELD_ADDED_DEPENDENCIES, addedDependencies,
                 DependencyJustification::writeTo);
-        IntentJson.writeStrings(generator, FIELD_INTERFACES, interfaces);
-        IntentJson.writeStrings(generator, FIELD_KEY_LINKS, keyLinks);
-        IntentJson.writeOptionalString(generator, FIELD_MISSING_KEY_LINK, missingKeyLink);
         generator.writeEndObject();
     }
 
@@ -224,10 +185,7 @@ public record OutlineResource(
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DELIVERABLES),
                             DeliverableRecord::fromMap),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_ADDED_DEPENDENCIES),
-                            DependencyJustification::fromMap),
-                    IntentJson.readStrings(map, FIELD_INTERFACES),
-                    IntentJson.readStrings(map, FIELD_KEY_LINKS),
-                    IntentJson.optionalText(map, FIELD_MISSING_KEY_LINK, TYPE));
+                            DependencyJustification::fromMap));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
         }

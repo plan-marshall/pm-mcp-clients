@@ -222,18 +222,6 @@ Keys of the area `intent` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{coordinates} {version} · added by {deliverable}: {justification}
 |{coordinates} {version} · hinzugefügt von {deliverable}: {justification}
 
-|`intent.outline.interfaces`
-|Interfaces
-|Schnittstellen
-
-|`intent.outline.key_links`
-|Key links
-|Schlüsselverbindungen
-
-|`intent.outline.missing_link`
-|missing: {link}
-|fehlt: {link}
-
 |`intent.epic.destination`
 |Destination
 |Endziel
