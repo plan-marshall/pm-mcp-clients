@@ -154,3 +154,9 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- `epic next` now has `--raise-scope`, `--no-raise` and `--no-input` (`EpicCommand.java:466-485`), `ActionSupport.FlagPair.RAISE` and
+  `ActionSupport.contradicts`. **New item:** `terminal-client/01-commands.adoc:65` lists only `[--raise-scope]` and `19-actions.adoc:31`
+  lacks `--no-input`: bring both documents to the three flags (verb modes are this plan's). Re-read `EpicCommand` at HEAD.

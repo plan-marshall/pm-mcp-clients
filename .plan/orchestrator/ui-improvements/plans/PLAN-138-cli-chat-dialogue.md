@@ -189,3 +189,9 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 
 - **`plan chat --message` (O8):** removed (the design lists `plan chat <plan_id>` and `epic chat <epic_id>` only; pre-1.0, no shim).
 - **Input while the role writes (O9):** line-based: `s`+Enter stops, `q`+Enter leaves, any other line is held and offered as the next first line once the reply has ended.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- `AnswerCommand` line refs are stale since `98cea294` (no `chat` yet: the PLAN-140 premise holds). `EpicCommand` chat now at `:699`,
+  `PlanCommand` chat at `:799`, `ActionSupport.chat` at `:350-386`. The EOF contract (`StartPrompt.StartLeftException`) and the
+  `readOwnWords`/`clarified` path are shared with the answer verb.

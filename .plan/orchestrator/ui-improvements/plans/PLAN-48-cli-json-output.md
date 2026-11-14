@@ -143,3 +143,9 @@ any text here that differs.
   (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
 - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
   request body carries no generator footer.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Re-ground at `98cea294`: `NeedsCommand` gained `--page` and the beyond-the-end line (`operator.needs.page_beyond`); `NeedsOneCountTest`
+  pins per-kind counts across four surfaces (`needs --json` keeps them); `NeedsOperatorKind.fromWireOrOther` exists — re-check the premise
+  "`fromMap` throws on unknown".

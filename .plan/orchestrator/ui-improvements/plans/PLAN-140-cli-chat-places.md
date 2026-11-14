@@ -165,3 +165,9 @@ own `inbox/{sender}-{seq}` message; the orchestrator owns every other ledger wri
 Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle the open points above and supersede any text here that differs.
 
 - **Review and decomposition chats (O10):** own addresses, as PLAN-132 records; this plan follows them.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- `AnswerCommand` line refs are stale since `98cea294` (no `chat` yet: the PLAN-140 premise holds). `EpicCommand` chat now at `:699`,
+  `PlanCommand` chat at `:799`, `ActionSupport.chat` at `:350-386`. The EOF contract (`StartPrompt.StartLeftException`) and the
+  `readOwnWords`/`clarified` path are shared with the answer verb.

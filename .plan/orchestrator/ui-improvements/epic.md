@@ -804,6 +804,12 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-127 (#426, `98cea294`, 2026-11-13): (1) the D5 terminal check (`ScreenCaptureIT -Dpm.screens=PLAN-127`, needs at 120 × 30 and
+  80 × 24, en/de) was never run or read (`work.log:3660` "still owed"); the functional review's operator-override close hid it. Owner: the
+  operator or PLAN-33 (verifies the answer verb). (2) The startup-notice baseline counts per kind (`NeedsOperatorNotices.java:224-241`); a
+  replaced item of the same kind goes unannounced. The real fix needs item identities in `status` from the runtime (runtime epic; the #416
+  reply promised "should be raised", nothing was filed). PLAN-50 seeds from every page meanwhile.
+
 - PLAN-33 (running, verification) filed three findings 2026-11-10 (`rb-33-verify-cli-acts-001`…`003`, at `0913d6f3`,
   drained as observed, archived): (1) `CLI-UC-V-06` — `onboard --auto --yes` has no verb (exit 2); the automatic
   onboarding is the entry dialogue's first choice since PLAN-22, so the CHECK's wording is outdated (route: the review

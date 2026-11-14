@@ -195,3 +195,9 @@ any text here that differs.
   (`unresolved_review_threads=`, `review_body_findings_total=`, `review_body_findings_handled=`), read through `ci pr comments`.
 - The run merges the pull request itself once these gates hold, without a further word of the operator (`CLAUDE.md`, Git Workflow, #423). Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. The pull
   request body carries no generator footer.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Re-ground at `98cea294`: `ConsoleNotice` (+90, question body printed line by line behind an indent), `OverviewFormatting` (+114), the
+  `TerminalSanitizer` classes, the OSC literal now `PmConsole.java:904` (was `:851`), `TuiKeyRegistry` (Javadoc only). Re-read the colour
+  sites of `AnswerCommand`.

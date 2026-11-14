@@ -138,3 +138,9 @@ Generators rule. No new deliverable; the classes are named so that none is skipp
   `EnrolCommandTest`, `CleanupCommandTest`, `ControlDialoguesTest`, `EpicCommandTest`, `dialogue/StateDialogueTest`,
   `DialogueSourceTest`.
 - A class that PLAN-126, PLAN-127 or PLAN-128 already converted is not touched again.
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+- Scope shrinks: `@EnableGeneratorController` is already on the Answer*, Needs*, `ConsoleNeedsNoticeTest` and `OverviewLoadFailureTest`
+  classes; `DialogueHarnessActsTest`, `StatusPlanRowKindTest`, `SpecificationTables` are new.
+- **New item (#382 nitpick):** `ControlDialoguesTest.workActionNextInvalidAnswerReprompts` asserts no `next` request is sent on `x`.

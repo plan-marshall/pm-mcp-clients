@@ -162,16 +162,53 @@ Source of this plan (read before scoping):
 
 Not split: five deliverables; deliverable 5 is PLAN-123's text residue the operator folded here (2026-11-11), because this plan owns the operator's texts. Rationale recorded by the orchestrator.
 
+9. **What PLAN-127 left in `answer`, `epic next` and the sanitizer (from the landing of PLAN-127, #426, `98cea294`, routed 2026-11-13)**
+ - What:
+   - `epic next` (`WorkActionDialogue.java:336-339`) asks to raise whenever `running == null || running >= scope` and a launchable or
+     scope-blocked plan exists; `terminal-client/19-actions.adoc:188` asks only "with no plan launchable". Make the code follow the
+     document (an unknown running count with a launchable plan launches it); leaving with `--no-raise` or `n` (`:339-341`) prints the
+     design's leave line, not nothing. If the document is silent on the unknown count, stop and ask.
+   - `AnswerCommand` repeats the accepted check at `:727`, `:1355`, `:1374`, `:1532` beside its helper `isAccepted` (`:1615`): use the
+     helper (these are the refusal sites D2's renderer rewrites anyway).
+   - `StatusCommand.java:403` returns the English literal `"attention"` and pads localized words with `%-8s`: catalogue key and width by
+     display columns. `ConsolePrompt.kindWord` falls back to `overview.needs.other` while D5 plans one `Display` rule with
+     `common.unknown`: one rule for an unknown value.
+   - `TerminalSanitizer.sanitizeLine` (`:118-123`, `:144-146`) drops U+2028/U+2029; map them to a space (`"a\u2028b"` reads `a b`), and
+     pin it in `TerminalSanitizerTest` (today `:128` pins removal).
+   - `ControlResourcesTest`: assert that a `running` of 0 is read as known (#382 nitpick, "noted, not changed").
+   - Mock: `MockRuntimeEngine.recordActBodies` (`:7211-7213`) guards by path only and also matches decision-chat routes; narrow it to
+     the answer routes and add a credential-path test (secrets never recorded).
+   - `MockRuntimeCli.java` on `main` is not in formatter shape (`-Ppre-commit` rewrites it on every branch): commit the rewrite as its
+     own commit in this plan.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - `EpicCommandTest`/`ControlDialoguesTest`: a launchable plan with an unknown count is launched without the raise question; `n`
+     prints the leave line. `TerminalSanitizerTest`: U+2028 reads as a space. `StatusCommandTest`: no English literal in German.
+     A mock test: an act body on a credential path is not recorded. Each fails on a revert. Evidence order: `test-first`.
+
 ## Standing Constraints
 
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
-- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api,pm-mock-runtime verify`, and `./mvnw verify -Ppre-commit` with every rewrite reviewed (commit only rewrites inside this plan's footprint).
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
 - Terminal check of the rendered output through the screen capture harness of `cli-pty-dialogue-harness` (`ScreenCaptureIT`, command line in `doc/design/terminal-client/27-tui-testing.adoc`): write this plan's captures to `pm-operator/src/test/resources/screen-captures/{plan}.txt`, run the set BEFORE the change and copy `pm-operator/target/screens/{plan}/` to `.plan/temp/terminal/{plan}/before/`, then run it AFTER and copy to `.../after/`. Capture at 120 × 30 and 80 × 24 in `en_US.UTF-8` and `de_DE.UTF-8` unless the target names other sizes or environments. Read every `.txt` and `.attrs.txt` with the file tools and compare them with the deliverable; the screen text shows no raw id, link name, state id, `-` placeholder, ISO time or HTTP status, and no text of a previous level. Never run `pm-operator` in the agent's own shell: the operator gate refuses a coding agent by design (`PM-SEC-3`) and is never worked around; only the harness, which clears the environment like every PTY test, runs it. If the harness is not available, the terminal Done-when clauses are NOT met — a blocker, never skipped.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
+
+- **The merge rule:**
+  - At least one CodeRabbit review of some head with its findings handled. If CodeRabbit refuses on quota, stop and ask the operator.
+  - Every review thread replied and resolved, and every review body item (outside-diff, nitpick, "additional comments") answered on the
+    pull request. Read the state from GitHub's thread state (`isResolved`, a reply present), never from a count kept in memory; an
+    `unknown` count blocks the merge. The pull request body states `unresolved_review_threads=`, `review_body_findings_total=`,
+    `review_body_findings_handled=` as read at the merge head.
+  - An optional review bot that refuses structurally (Sourcery's size cap) is recorded as such in the pull request and does not block.
+  - The run merges the pull request itself once these gates hold (`CLAUDE.md`, Git Workflow). Commits end with
+    `Co-Authored-By: plan-marshall <noreply@cuioss.de>`; the pull request body carries no generator footer.
+- Size: this plan is large (D1–D9). If the diff passes about 60 files, stop after the deliverable in progress and ask the operator whether
+  to split the remainder into a follow-up plan.
 
 ## Claim Labels
 
@@ -198,6 +235,11 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 - OBSERVED: EpicCommand.NextCommand holds English option descriptions and the success literal — read at `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` :406-410,423
 
 ## Expected Surface
+
+- OBSERVED (present at `98cea294`; added by the PLAN-127 fold): `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java`,
+  `pm-operator/src/main/java/de/planmarshall/operator/ConsolePrompt.java`, `pm-operator/src/main/java/de/planmarshall/operator/TerminalSanitizer.java`,
+  `pm-operator/src/test/java/de/planmarshall/operator/TerminalSanitizerTest.java`, `pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java`,
+  `pm-api/src/test/java/de/planmarshall/api/control/ControlResourcesTest.java`, `pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java`
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD c4dc9bb4
@@ -268,7 +310,7 @@ Not split: five deliverables; deliverable 5 is PLAN-123's text residue the opera
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-160` (`cli-config-residue`, the same `ConfigCommand.java`), `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
+- Depends on: `PLAN-127` (shipped, #426, `98cea294`), `PLAN-160` (`cli-config-residue`, the same `ConfigCommand.java`), `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: touches the dialogue classes of WS-04: runs after them
 - Adjacent to: none
 
@@ -396,3 +438,37 @@ From `landings/PLAN-128.md` (operator, AskUserQuestion — "Fold into PLAN-30"; 
 the "Kept for good … 30 days … 3 days" line (`CleanupCommand.java:721`) takes the option "read them from the runtime" (decided by
 the PLAN-128 fold, since `config cleanup` now records other durations); `operator.cleanup.durations.after` joins deliverable 6's plural item
 ("after 1 days"). Eight deliverables: the emit form is the runbook lane (operator 2026-11-13).
+
+## PLAN-127 Landing Residue (Amendment 2026-11-13)
+
+Re-grounding at `98cea294` (PLAN-127 landing analysis; re-read each at HEAD before editing):
+
+1. D1 "`EpicCommand.NextCommand` holds English option descriptions and the success literal (`:406-410`, `:423`)" is void: the options are
+   catalogue keys `control.epic.next.option.{raise_scope,no_raise,no_input}` (in `control.*`) with English `description=` fallbacks; the
+   success line is `operator.actions.result.next_started` from `WorkActionDialogue`.
+2. D3: `EpicCommand.NextCommand.bindSpec` installs a per-verb picocli bundle (`CatalogueBundle`, keys from `@Option.descriptionKey`). The
+   global `setResourceBundle` must absorb or reuse it (a verb-level bundle shadows the root one).
+3. D2 / R1: the `OperatorRefusedException` rethrow sites are now `AnswerCommand.java:155` (new: non-200 first read), `:322`, `:346`, `:396`,
+   `:739`, `:1361`, `:1381`, `:1395`, `:1518`, `:1547`. New local refusals print directly: `parts_unreadable` (exit 1), `parts_direct_refused`
+   (exit 3) at `:404-422`, `not_found` exit 1 at `:148`. EOF at a prompt exits 0 with the "Left" line (operator decision 5): `ExitCodesTest`
+   keeps it. `AnswerRefusalTest` grew 184 lines; build on it.
+4. D1 guard: `LiteralTextGuardTest` unchanged; the inversion will find `StatusCommand.java:403 "attention"` (D9) and the `NextCommand`
+   `description=` defaults; the structural decor literals of `AnswerCommand` (`" · "`, `"   › "`) need an exception.
+5. D5: `StatusCommand` lines shifted (hunks at 346, 391, 396); `EpicCommand:387-396` about +3; `Display`, `PlanCompletionLevel`,
+   `PlanCommand`, `RolesCommand`, `QuestionsCommand` untouched.
+6. D6: `verify_with` now about `operator.en/de.properties:241/:303`. Renamed: `operator.console.badge.waiver_requests` → `badge.waivers`,
+   `notice.waiver_request(_plain)` → `notice.waiver(_plain)`; new: `operator.needs.page_beyond`, `operator.decision.parts_unreadable`;
+   removed: `overview.needs.waiver_request`.
+7. D7/D8: `MockRuntimeEngine.java:3976-3979` → about `:3978-3981`, `:7503-7518` → about `:7508-7523` (shifts only); `ConfigCleanupCommand`,
+   `CleanupCommand`, `ProjectCommand` untouched; `PmConsole` OSC literal now `:904`.
+8. NEW coupling: `ControlCatalogueTest`, `OverviewCatalogueTest`, `DecisionCatalogueTest` derive their keys from the design tables
+   (`SpecificationTables` reads `doc/design/`). Every key this plan adds, renames or removes in those packs is mirrored in
+   `work-actions-texts.adoc`, `plan-overview.adoc` or `15-overview.adoc` in the same pull request, or `pm-api` tests fail.
+9. `04-console.adoc:59-61,114,363,455` still say `integrity_hold` (code: `integrity_pause`; `OverviewCatalogueTest.java:66` `PENDING_RENAME`)
+   — owned by the doc work package `harness-decision-log-hold-names`; do not rename here.
+10. PLAN-133 (`a139ec62`) rewrote `ChatDialogue`/`StartApi` (`ApiErrorCode` via `StartActException.code()`, new `control.chat.wait_ended`);
+   `LiteralTextGuardTest` `GUARDED` still names `ChatDialogue` and `StartDialogue`. `PLAN-161` (running) touches `WorkActionsClient`,
+   `WorkChatDialogue`, `ActionSupport`: the second to land rebases.
+11. `-Ppre-commit` on a rebased tree may rewrite files outside this plan's footprint: commit only D9's `MockRuntimeCli.java` rewrite;
+   restore any other.
+
