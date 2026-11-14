@@ -1,4 +1,4 @@
-# PLAN-165: Lists Derived From One Definition (Terminal Dialogue Keys, Cleanup Kinds, Web Refresh Events)
+# PLAN-165: Lists Derived From One Definition, Playwright Green and Web Coverage in Sonar (Follow-Up of the Build-Time Plan)
 
 epic: ui-improvements
 workstream: WS-05
@@ -12,6 +12,11 @@ workstream: WS-05
 Three lists are kept by hand next to the code or the data they must agree with, so a new member leaves the code and its tests green while the
 two disagree: the keys a terminal prompt offers, the kinds `cleanup` prints durations for, and the event names the web views refresh on. Each
 becomes one definition that the code and its tests both read. Behaviour is unchanged: no text, key, exit code or event the user sees moves.
+Beside that, the web app's end-to-end suite is made known green and its unit coverage is brought under Sonar's coverage condition: the build-time
+plan (`analyze-fix-build-time`, closed 2026-11-14) left `sonar.coverage.exclusions=**/*` in `pm-web-app/pom.xml` because the web branch
+coverage (78.7 % at its last measurement) is below the 80 % minimum and CI's Sonar job does not run the coverage run. Folded into this spec on the
+operator's word of 2026-11-14 (`analyze` of `-004` and `-005`: "Fold into PLAN-165"); the scope-bloat guard is accepted unsplit on that word, see
+the epic Decisions.
 
 ## Deliverables
 
@@ -50,6 +55,43 @@ Read first:
  - Done when:
    - Each view's refresh predicate and its test read the exported set, and a test fails when an event name in the set is not in the `EventName` catalogue (evidence order: `test-first`).
    - `pm-web-app` `lint` and `test:ci` pass and the views refresh on exactly the events they refreshed on before (evidence order: `none`).
+4. **The Playwright suite is run and green, or its failures fixed**
+ - What: Run `./mvnw verify -Pe2e -pl pm-web-e2e -am` FIRST, at the head, before any other web deliverable, and record the result. The sender's run of
+   2026-11-13 failed in the `run-playwright` step, and two specs were recorded as failing on `main`: `showroom.spec.js` "opens the start entry with
+   its sources, refinement chat, and file tree" (`StartView.openChat` posts the entry act `chat` and renders `ChatPanel` from `state.chat`, which the
+   chat work moved into `ChatRegistry`) and `designer.spec.js` (intermittent: the test fills `workflow-text` before `loadAll()` resolves and
+   `openUnit(units[0])` then overwrites the text and resets `dirty`). Whether #428 or #436 fixed them is unknown. Fix what still fails: a test that
+   waits on a condition the code produces (an awaited event or `waitFor`), never an arbitrary timer; a spec that tests a behaviour the code no
+   longer has is rewritten to the new behaviour, with the reason in the progress record.
+ - Persona: plan-marshall:persona-integration-tester
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+ - Done when:
+   - The progress record states the result of the first `-Pe2e` run (green, or the failing specs by name), and the run at the head is green (evidence order: `none`).
+   - For each spec that failed in the first run, a revert of its fix makes it fail again (evidence order: `test-first`).
+5. **Web unit coverage reaches the Sonar job**
+ - What: In CI the Sonar job runs `verify -Psonar` (reusable workflow `cuioss-organization`, `reusable-maven-build.yml`), not `-Pcoverage`, so `pm-web-app`
+   writes no `target/coverage/lcov.info` there and `sonar.javascript.lcov.reportPaths` points at nothing. Add a module-local Maven profile `sonar` to
+   `pm-web-app/pom.xml` that carries the same `npm-test` override as the profile `coverage` (`run test:coverage`), with no change to the CI
+   files. `sonar.coverage.exclusions` STAYS in this deliverable: dropping it first would make Sonar report every web source as 0 % covered.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript
+ - Done when:
+   - `./mvnw verify -Psonar -pl pm-web-app -am` writes `pm-web-app/target/coverage/lcov.info` (evidence order: `none`).
+   - The pull request's own Sonar job on this plan reads a web LCOV report (the number of files with coverage data is stated, `unknown` for a failed read, never `0`) (evidence order: `none`).
+6. **Web branch coverage at the 80 % minimum, thresholds on, exclusion dropped**
+ - What: Branch coverage of `pm-web-app` was 78.7 % (lines 91.3 %, of 8,094 branches) at the sender's last measurement of 2026-11-13, so the gap is
+   about 1.3 points; the views still below the threshold were ReportsView, SystemView, EpicView, EpicDecompositionView, CommandPalette,
+   CompletionReportView, ProjectOnboardingView, MachineSettingsView, SettingsView, CleanupView and the small components. Re-measure at the head first
+   (`./mvnw verify -Pcoverage -pl pm-web-app -am`, run alone, never with `integration-tests`), then add tests chosen for behaviour, not for lines, for the
+   least covered branches. Then enable the 80 % thresholds in `pm-web-app/vite.config.ts` (`test.coverage`) and remove
+   `sonar.coverage.exclusions=**/*` from `pm-web-app/pom.xml`. A branch no input can reach is not covered by a contrived test: report it (the
+   sender's findings name 33 such dead branches and 44 redundant guards project-wide, clustered in `client.ts` and `runtime.ts` for the web).
+ - Persona: plan-marshall:persona-module-tester
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+ - Done when:
+   - The branch coverage before and after is recorded per changed file, and `./mvnw verify -Pcoverage -pl pm-web-app -am` passes with the 80 % thresholds on (evidence order: `none`).
+   - The pull request's Sonar read after the push shows the web sources under the new-code coverage condition, 0 open issues (evidence order: `none`).
+   - Deliverable 5 is merged or part of the same pull request: the exclusion is not dropped before the Sonar job reads the web LCOV report.
 
 ## Standing Constraints
 
@@ -78,7 +120,16 @@ Read first:
   - verdict: corroborated | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep at origin/main 83d9d150 finds ENTRY_REFRESH_EVENTS (StartView.svelte:117) and PROJECT_EVENTS (runtime.ts:814) since #436 merged
 - HYPOTHESIS: `ProjectExplorerView` selects its three project event names by a literal list that equals `PROJECT_EVENTS` — confirm/refute at `pm-web-app/src/lib/views/ProjectExplorerView.svelte` and `stores/runtime.ts` (verify-at-outline)
   - verdict: unverifiable | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+- OBSERVED: `pm-web-app/pom.xml` declares one coverage profile, `coverage` (`npm-test` runs `test:coverage`), and no profile `sonar`; `sonar.coverage.exclusions=**/*` is at `:25` and `sonar.javascript.lcov.reportPaths` points at `target/coverage/lcov.info` at `:28`; `vite.config.ts` `test.coverage` (`:169-187`) sets no thresholds — read at `83d9d150`
+  - verdict: corroborated | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: git show origin/main:pm-web-app/pom.xml: only profile id coverage at :189, exclusions at :25, lcov path at :28; vite.config.ts :169-187 has no thresholds
+- HYPOTHESIS: CI's Sonar job runs `verify -Psonar`, not `-Pcoverage`, so the web app writes no LCOV report there — confirm/refute at `.github/project.yml` (its `maven-profiles-snapshot` is empty) and the reusable workflow `reusable-maven-build.yml` of `cuioss-organization` (outside this repository; verify-at-outline, and re-check on the pull request's own Sonar job)
+  - verdict: unverifiable | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+- HYPOTHESIS: `showroom.spec.js` (start entry opened with its chat) and `designer.spec.js` (race between `loadAll()` and the first fill) still fail on `main` after #428 and #436 — confirm/refute by the first `./mvnw verify -Pe2e -pl pm-web-e2e -am` run (verify-at-outline; the sender's evidence dates from 2026-11-13)
+  - verdict: unverifiable | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+- HYPOTHESIS: web branch coverage is 78.7 % (lines 91.3 %) and the listed views are the ones below the threshold — confirm/refute by `./mvnw verify -Pcoverage -pl pm-web-app -am` at the head (the figure predates the review fixes of #436)
+  - verdict: unverifiable | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
 - Verify-first clause: before deliverable 3, re-read the three web files at the then-current HEAD (#436 merged as `83d9d150`; `PLAN-135` may have changed `StartView` since). Before deliverable 2, re-read `CleanupCommand.java` after PLAN-30 lands (it owns the cleanup texts).
+  - verdict: unverifiable | checked_at: 83d9d150 | by: ui-improvements/analyze | rescoped: n/a | evidence: process clause
 
 ## Expected Surface
 
@@ -93,6 +144,11 @@ Read first:
 - OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at `b6c90174`
 - OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.test.ts` — present at `b6c90174`
 - OBSERVED: `pm-web-app/src/lib/views/PlanView.test.ts` — present at `b6c90174`
+- OBSERVED: `pm-web-app/pom.xml` — present at `83d9d150`
+- OBSERVED: `pm-web-app/vite.config.ts` — present at `83d9d150`
+- OBSERVED: `pm-web-e2e/tests/showroom.spec.js` — present at `83d9d150`
+- OBSERVED: `pm-web-e2e/tests/designer.spec.js` — present at `83d9d150`
+- HYPOTHESIS: new or extended test files beside the sources that deliverable 6 covers, below `pm-web-app/src/lib/views/` and `pm-web-app/src/lib/components/` (swept at outline from the measured coverage report, and every file named in the progress record; a directory is claimed here only so the gate sees the breadth: it overlaps every staged web plan)
 
 ## Dependencies and Sequencing
 
@@ -101,7 +157,9 @@ Read first:
   - `PLAN-30` (running): `CleanupCommand.java` and `operator.*.properties`. Start deliverable 2 after it lands, or the second rebases.
   - `PLAN-79` (staged): `pm-operator/src/test/java/` (directory claim). The test sweep rewrites `CleanupCommandTest`; start after it or in a different half.
   - `PLAN-135` (staged): `StartView.svelte` (`chat.ended` refresh) and `PlanView.test.ts`; `PLAN-143`/`PLAN-144`/`PLAN-149` touch `StartView` or the same stores: check at outline.
-- Adjacent to: the Sonar coverage exclusion of `pm-web-app/pom.xml` (epic Watch; the operator decides the threshold first, this plan does not touch it).
+- Order inside the plan: deliverable 4 (the `-Pe2e` run) first, deliverable 5 (the `sonar` profile) before deliverable 6; deliverable 6 drops the exclusion only after 5 reads the report.
+- Sequencing: deliverables 4 and 6 touch the web tests broadly, so this plan is emitted when no web plan runs, or in halves (operator decides at emit). The operator's call of 2026-11-14 stands: not emitted yet.
+- Not in this plan (Watches in `epic.md`): D6 build-time report, D11 behavioural review of the new tests, the contract questions, design-document gaps, dead-code leads and the `@NullMarked` gap of `pm-api` (messages `-004` and `-005`).
 
 ## Hand-Off Command
 
