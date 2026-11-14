@@ -22,8 +22,9 @@ import de.planmarshall.api.json.JsonTree;
  * The origin of a change a chat led to, {@code {kind: chat, chat_id, turn_id}}: the chat and the turn
  * of the accepted proposal that made it.
  * <p>
- * This change places it on a staged plan row a chat changed ({@code StagedPlanRecord.origin}) only.
- * The other origin forms of the catalogue go with the packages that adopt the chat.
+ * The origin travels on the record of the change: a staged plan row a chat changed
+ * ({@code StagedPlanRecord.origin}), a change of the decomposition's draft, an item's disposition or
+ * rewrite, a stored description, and the plan resource a chat's revision made a new version of.
  *
  * @param chatId the chat's id
  * @param turnId the turn id of the accepted proposal

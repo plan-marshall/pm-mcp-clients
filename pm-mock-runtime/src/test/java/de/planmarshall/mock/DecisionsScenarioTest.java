@@ -304,24 +304,26 @@ class DecisionsScenarioTest {
     class AnsweredPayload {
 
         @Test
-        @DisplayName("an answer without a device writes no device, so a client renders the variant without one")
+        @DisplayName("an answer on the Unix socket is the terminal's, and names no device whatever the body says")
         void answerWithoutDevice() throws Exception {
             var data = answeredData("{\"option\":\"2\",\"channel\":\"web\"}");
 
             assertAll(
                     () -> assertEquals("Q-007", data.get("id")),
-                    () -> assertEquals("web", data.get("channel")),
+                    () -> assertEquals("cli", data.get("channel"), "the channel is the listener's"),
                     () -> assertFalse(data.containsKey("device"), data.toString()));
         }
 
         @Test
-        @DisplayName("an answer with a device writes it")
+        @DisplayName("an answer carries no device on the socket, even one the body names")
         void answerWithDevice() throws Exception {
             var device = Generators.letterStrings(3, 12).next();
 
             var data = answeredData("{\"option\":\"2\",\"channel\":\"web\",\"device\":\"" + device + "\"}");
 
-            assertEquals(device, data.get("device"));
+            assertAll(
+                    () -> assertEquals("cli", data.get("channel"), "the channel is the listener's"),
+                    () -> assertFalse(data.containsKey("device"), data.toString()));
         }
 
         private static Map<String, Object> answeredData(String answer) throws Exception {

@@ -341,18 +341,19 @@ class ChatReplyEventsTest {
         }
 
         @Test
-        @DisplayName("names the entry's close")
+        @DisplayName("deletes the entry's transcript with the abandoned entry, and announces no close")
         void entryClosed() throws Exception {
             var entryId = "ent-" + id();
             var routes = ChatRoutes.entry(entryId);
-            try (var runtime = start(MockTiming.ORDERED);
-                 var stream = open(runtime, RUNTIME_EVENTS)) {
-                var chat = openChat(runtime, routes);
+            try (var runtime = start(MockTiming.ORDERED)) {
+                openChat(runtime, routes);
+                assertNotNull(read(runtime, routes), "the chat is open before the abandon");
 
                 runtime.engine().broadcast("entry.abandoned", Map.of("entry_id", entryId));
 
-                assertEquals(ChatEndedEvent.EndedBy.ENTRY_CLOSED, endedBy(stream, chat.id()));
-                assertEquals(ChatStatus.END, read(runtime, routes).state());
+                var after = new UnixSocketHttpClient(runtime.socketPath()).send(HttpRequest.get(routes.chat())
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(404, after.status(), "abandoning the entry deletes its transcript");
             }
         }
 
