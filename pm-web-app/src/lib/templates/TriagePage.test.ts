@@ -262,7 +262,7 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     reportBox(screen.getByTestId('triage-page'), 1216, 800);
     await tick();
 
-    const field = screen.getByRole('textbox', { name: 'Filter' });
+    const field = screen.getAllByRole('textbox', { name: 'Filter' })[0];
     field.focus();
     const start = document.querySelector('.triage-page__window')?.getAttribute('data-start');
 

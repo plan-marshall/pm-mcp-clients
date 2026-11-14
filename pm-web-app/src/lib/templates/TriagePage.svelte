@@ -29,7 +29,9 @@
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import KindMark from '../components/KindMark.svelte';
+  import { tick } from 'svelte';
+  import KindMark, { KIND_WORD_KEYS } from '../components/KindMark.svelte';
+  import GapStrip from './GapStrip.svelte';
   import { t } from '../i18n';
   import { pageInset, windowFor, type ColumnWindow } from './columnWindow';
 
@@ -71,14 +73,28 @@
 
   /** The measuring frame: the template's own container. */
   let frame = $state<HTMLElement | null>(null);
+  /** The window itself, which holds the rendered columns. */
+  let windowEl = $state<HTMLElement | null>(null);
   /** The container's measured width; `0` until the observer's first report. */
   let measured = $state(0);
+  /** The level a peek starts the window at; `null` while the window shows the object. */
+  let peek = $state<number | null>(null);
+  /** What the polite live region announces after a shift. */
+  let announcement = $state('');
 
   /** The container's width the window is computed from. */
   const container = $derived(measured > 0 ? measured : PROVISIONAL_WIDTH);
 
   /** The window the chain gets in that container. */
-  const layout: ColumnWindow = $derived(windowFor({ container, depth: levels.length }));
+  const layout: ColumnWindow = $derived(windowFor({ container, depth: levels.length, peek }));
+
+  /** The levels the window hides to its left, with their index in the chain. */
+  const hidden = $derived(
+    levels.slice(0, layout.start).map((level, index) => ({ level, index })),
+  );
+
+  /** The object's title, for the return strip and the announcement. */
+  const objectTitle = $derived(levels[levels.length - 1]?.title ?? '');
 
   /** The level indices the window renders, left to right. */
   const visible = $derived(
@@ -126,6 +142,128 @@
     observer.observe(element);
     return () => observer.disconnect();
   });
+
+  /** The element tags that hold the focus as a field, where the column keys stay with the field. */
+  const FIELD_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+  /**
+   * @param target the event's target
+   * @returns whether the focus is in a field, where `[` and `]` are the field's own keys
+   */
+  function isField(target: EventTarget | null): boolean {
+    const element = target as HTMLElement | null;
+    return element !== null && (FIELD_TAGS.has(element.tagName) || element.isContentEditable);
+  }
+
+  /**
+   * Moves the focus to the heading of a rendered column, and gives the column the focus when it
+   * carries no heading of its own.
+   *
+   * @param index the level's index in the chain
+   */
+  function focusColumn(index: number): void {
+    const column = windowEl?.querySelector<HTMLElement>(`[data-column-index="${index}"]`);
+    if (!column) {
+      return;
+    }
+    const heading = column.querySelector<HTMLElement>('h1, h2, h3, h4, h5, h6');
+    const target = heading ?? column;
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+    }
+    target.focus();
+  }
+
+  /**
+   * @param index the level's index in the chain
+   */
+  function announce(index: number): void {
+    const level = levels[index];
+    if (level === undefined) {
+      return;
+    }
+    announcement = $t('web.nav.announce', {
+      name: level.title,
+      kind: $t(KIND_WORD_KEYS[level.kind]),
+    });
+  }
+
+  /**
+   * Peeks at a level: the window starts there, the focus moves to its heading and the shift is
+   * announced. No selection, no address and no history change.
+   *
+   * @param index the level's index in the chain
+   */
+  async function peekAt(index: number): Promise<void> {
+    peek = index;
+    await tick();
+    focusColumn(index);
+    announce(index);
+  }
+
+  /**
+   * Returns from a peek to the object: the window ends at the object again, the focus moves to the
+   * heading now in view and the shift is announced.
+   */
+  async function returnToObject(): Promise<void> {
+    peek = null;
+    await tick();
+    focusColumn(layout.start);
+    announce(levels.length - 1);
+  }
+
+  /**
+   * @returns the index of the column that holds the focus, or `null` when none does
+   */
+  function focusedColumn(): number | null {
+    const active = document.activeElement as HTMLElement | null;
+    const column = active?.closest<HTMLElement>('[data-column-index]');
+    return column === null || column === undefined ? null : Number(column.dataset.columnIndex);
+  }
+
+  /**
+   * Moves the focus to the neighbour column, shifting the window where that column is hidden.
+   *
+   * @param direction `-1` for the column on the left, `1` for the one on the right
+   */
+  async function moveFocus(direction: -1 | 1): Promise<void> {
+    if (layout.columns === 0) {
+      return;
+    }
+    const current = focusedColumn() ?? layout.start;
+    const next = current + direction;
+    if (next < 0 || next > levels.length - 1) {
+      return;
+    }
+    if (next < layout.start) {
+      await peekAt(next);
+      return;
+    }
+    if (next >= layout.start + layout.columns) {
+      if (layout.peek) {
+        await peekAt(next - layout.columns + 1);
+      }
+      return;
+    }
+    focusColumn(next);
+    announce(next);
+  }
+
+  /**
+   * @param event the key press on the window or one of its columns
+   */
+  function onKeydown(event: KeyboardEvent): void {
+    if (isField(event.target)) {
+      return;
+    }
+    const back = event.key === '[' || (event.key === 'ArrowLeft' && event.ctrlKey);
+    const forward = event.key === ']' || (event.key === 'ArrowRight' && event.ctrlKey);
+    if (!back && !forward) {
+      return;
+    }
+    event.preventDefault();
+    void moveFocus(back ? -1 : 1);
+  }
 </script>
 
 <div
@@ -140,7 +278,19 @@
     aria-label={label}
     data-columns={layout.columns}
     data-start={layout.start}
+    bind:this={windowEl}
+    onkeydown={onKeydown}
   >
+    {#if layout.strip !== 'none'}
+      <GapStrip
+        hidden={hidden}
+        names={layout.strip === 'names'}
+        label={$t('web.nav.strip.label')}
+        width={layout.stripWidth}
+        onPeek={(index) => void peekAt(index)}
+      />
+    {/if}
+
     {#each visible as entry (entry.level.key)}
       <section
         class="triage-page__column"
@@ -165,7 +315,19 @@
         {/if}
       </section>
     {/each}
+
+    {#if layout.returnStrip}
+      <GapStrip
+        placement="end"
+        label={$t('web.nav.strip.label')}
+        objectTitle={objectTitle}
+        width={layout.stripWidth}
+        onReturn={() => void returnToObject()}
+      />
+    {/if}
   </div>
+
+  <div class="sr-only" aria-live="polite" data-testid="triage-announce">{announcement}</div>
 </div>
 
 <style>
