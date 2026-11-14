@@ -820,7 +820,7 @@ class StartScenarioTest {
         }
 
         @Test
-        @DisplayName("abandoning the entry ends its routed chat, and the entry answers without a chat member")
+        @DisplayName("abandoning the entry deletes its routed chat with the entry, and the entry answers without one")
         void abandonEndsTheChat() throws Exception {
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(state("start.chat"))
                          .timing(MockTiming.ORDERED).build())) {
@@ -830,7 +830,9 @@ class StartScenarioTest {
 
                 assertEquals(200, abandoned.status());
                 assertNull(StartStateResource.fromJson(abandoned.bodyText()).chat());
-                assertEquals(ChatStatus.END, entryChat(runtime).state());
+                var after = client(runtime).send(HttpRequest.get(ENTRY_CHAT.chat())
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(404, after.status(), "the transcript goes with the abandoned entry");
             }
         }
 
