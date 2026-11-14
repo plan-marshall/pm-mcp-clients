@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -183,5 +183,101 @@ describe('TriagePage as the column engine', () => {
     expect(source).not.toContain('hasFilters');
     expect(source).not.toContain('slot="filters"');
     expect(source).not.toContain('2fr');
+  });
+});
+
+describe('the gap strip, the peek, the focus and the keys', () => {
+  it('names the levels the window hides to the left', async () => {
+    await renderWindow(1168);
+
+    const strip = screen.getByRole('group', { name: 'Hidden levels' });
+
+    expect(strip).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'report, Lens list' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'project, Project column' })).toBeInTheDocument();
+    // The names stand beside the marks, so the names popover is not offered.
+    expect(screen.queryByRole('button', { name: 'Names' })).toBeNull();
+  });
+
+  it('stands for the hidden levels with marks only where the names would leave one column', async () => {
+    await renderWindow(744);
+
+    expect(screen.getByRole('button', { name: 'Names' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'project, Project column' }),
+    ).toHaveAttribute('title', 'Show this level; the selection stays');
+  });
+
+  it('peeks at a hidden level, then returns to the object', async () => {
+    await renderWindow(1168);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    const window_ = document.querySelector('.triage-page__window');
+    expect(window_).toHaveAttribute('data-start', '0');
+    expect(screen.queryByText('Object body')).toBeNull();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Back to Object column' }));
+
+    expect(window_).toHaveAttribute('data-start', '2');
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+  });
+
+  it('moves the focus to the heading of the column now in view and announces it', async () => {
+    await renderWindow(1168);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    expect(document.activeElement).toHaveTextContent('Lens list');
+    expect(screen.getByTestId('triage-announce')).toHaveTextContent('Lens list, report');
+  });
+
+  it('moves the focus to the neighbour column with the keys, shifting the window where it is hidden', async () => {
+    await renderWindow(1168);
+    const window_ = document.querySelector('.triage-page__window');
+    const heading = screen.getByRole('heading', { name: 'Epic column' });
+    heading.focus();
+
+    await fireEvent.keyDown(heading, { key: 'ArrowLeft', ctrlKey: true });
+
+    expect(window_).toHaveAttribute('data-start', '1');
+    expect(document.activeElement).toHaveTextContent('Project column');
+
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
+
+    expect(document.activeElement).toHaveTextContent('Epic column');
+    expect(screen.getByTestId('triage-announce')).toHaveTextContent('Epic column, epic');
+  });
+
+  it('leaves the keys to a focused field', async () => {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        fieldLabel: 'Filter',
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), 1216, 800);
+    await tick();
+
+    const field = screen.getByRole('textbox', { name: 'Filter' });
+    field.focus();
+    const start = document.querySelector('.triage-page__window')?.getAttribute('data-start');
+
+    await fireEvent.keyDown(field, { key: 'ArrowLeft', ctrlKey: true });
+    await fireEvent.keyDown(field, { key: '[' });
+
+    expect(document.activeElement).toBe(field);
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', start);
+  });
+
+  it('slides a shift for the base duration and not at all under reduced motion', () => {
+    const style = styleOf(SOURCE);
+
+    expect(style).toContain('animation: triage-page-shift var(--duration-base)');
+    const reduced = style.slice(style.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(reduced).toContain('animation: none');
   });
 });

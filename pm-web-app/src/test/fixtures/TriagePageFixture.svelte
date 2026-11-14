@@ -2,10 +2,10 @@
   import TriagePage, { type Level, type PinnedRow } from '../../lib/templates/TriagePage.svelte';
 
   /**
-   * A test fixture for the column engine: a chain of levels, each column's body a text the test
-   * hands in, the object column's body separately, and an optional pinned row. It is the position a
-   * view draws itself in — not a component of the page. The texts arrive as props, so the catalogue
-   * guard sees no literal copy in a screen.
+   * A test fixture for the column engine: a chain of levels, each column's body a heading and a
+   * text the test hands in, the object column's body separately, an optional pinned row and an
+   * optional field to hold the focus. It is the position a view draws itself in — not a component of
+   * the page. The texts arrive as props, so the catalogue guard sees no literal copy in a screen.
    */
   interface Props {
     levels: Level[];
@@ -14,9 +14,18 @@
     objectBody?: string;
     withObject?: boolean;
     pinned?: PinnedRow | null;
+    fieldLabel?: string;
   }
 
-  let { levels, label, bodies, objectBody = '', withObject = true, pinned = null }: Props = $props();
+  let {
+    levels,
+    label,
+    bodies,
+    objectBody = '',
+    withObject = true,
+    pinned = null,
+    fieldLabel = '',
+  }: Props = $props();
 
   /**
    * @param level a level of the chain
@@ -29,6 +38,10 @@
 </script>
 
 {#snippet columnPane(level: Level)}
+  <h2 class="fixture-heading" tabindex="-1">{level.title}</h2>
+  {#if fieldLabel}
+    <input aria-label={fieldLabel} />
+  {/if}
   <p class="fixture-column">{bodyOf(level)}</p>
 {/snippet}
 
