@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -630,9 +631,25 @@ class EpicCommandTest {
     @Test
     @DisplayName("epic chat communicates with epic")
     void epicChat() throws Exception {
+        var answered = new AtomicBoolean();
+        var chat = """
+                            {"id":"C-2","subject":{"kind":"epic","id":"ep-001"},
+                             "role":{"name":"decompose","model":"sonnet"},"scope":"epic","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[
+                               {"turn_id":"T-1","kind":"message","author":"operator","status":"complete",
+                                "format":"plain","untrusted":false,"text":"status please","steps":[],"refs":[],
+                                "at":"2026-10-16T10:00:00Z"},
+                               {"turn_id":"T-2","kind":"message","author":"decompose","status":"complete",
+                                "format":"markdown","untrusted":false,"model":"sonnet",
+                                "text":"the epic runs two plans","steps":[],"refs":[],
+                                "at":"2026-10-16T10:01:00Z"}]}
+                            """;
         fixture.start((request, response) -> {
-            if ("/api/v1/epics/ep-001/chat".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"reply\":\"hi\"}");
+            if ("/api/v1/epics/ep-001/chat/turns".equals(request.target())) {
+                answered.set(true);
+                response.json(202, "{\"turn_id\":\"T-1\"}");
+            } else if ("/api/v1/epics/ep-001/chat".equals(request.target())) {
+                response.json(200, chat);
             } else {
                 response.send(404, null, "");
             }
@@ -640,7 +657,8 @@ class EpicCommandTest {
 
         int code = execute("epic", "chat", "ep-001", "--message", "status please");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("reply"));
+        assertTrue(answered.get(), "the message was not sent as a chat turn");
+        assertTrue(out.toString().contains("the epic runs two plans"), out.toString());
     }
 
     @Test

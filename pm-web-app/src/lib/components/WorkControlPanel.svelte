@@ -21,7 +21,7 @@
     type PlanSettingsRecord,
     type WorkActions,
   } from '../api/client';
-  import { navigateTo, openCompletionReport } from '../stores/runtime';
+  import { openCompletionReport } from '../stores/runtime';
 
   interface SettingsConflict {
     aspect: string;
@@ -88,6 +88,8 @@
   let chatOpen = $state(false);
   let chatBusy = $state(false);
   let chatNotice = $state('');
+  /** Whether the notice reports a success (a follow-up start being prepared) rather than a refusal. */
+  let chatNoticeIsInfo = $state(false);
   let endedProposal = $state<ChatProposal | null>(null);
   let endedRole = $state('');
 
@@ -660,6 +662,7 @@
 
   async function openChat(): Promise<void> {
     chatNotice = '';
+    chatNoticeIsInfo = false;
     chatOpen = true;
     if (ended) {
       const proposal = await apiClient.getEndedChat(subjectKind, subjectId).catch(() => null);
@@ -683,6 +686,7 @@
     try {
       chat = await apiClient.chatWithSubject(chatSubject, text);
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -690,11 +694,17 @@
   }
 
   async function answerProposal(accept: boolean): Promise<void> {
+    // The answer names the proposal the operator saw, by its own turn.
+    const turnId = chat?.proposal?.turn_id;
+    if (!turnId) {
+      return;
+    }
     chatBusy = true;
     try {
-      chat = await apiClient.answerSubjectChatProposal(chatSubject, accept);
+      chat = await apiClient.answerSubjectChatProposal(chatSubject, turnId, accept);
       onChanged();
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -718,13 +728,14 @@
       chat = null;
       endedProposal = null;
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
     }
   }
 
-  /** Opens the start on the follow-up plan the ended work's chat proposed. */
+  /** Accepts the follow-up plan the ended work's chat proposed. */
   async function startFollowUp(): Promise<void> {
     // Accept names the proposal the operator saw; a proposal read without its turn cannot be named.
     const turnId = endedProposal?.turn_id;
@@ -733,14 +744,17 @@
     }
     chatBusy = true;
     try {
-      const result = await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
-      const entryId = result.start?.entry?.entry_id;
-      chatOpen = false;
-      if (entryId) {
-        navigateTo('start', { projectId, entryId });
-      }
+      // The answer is the chat with the answered proposal: accepting clears the card here, since the
+      // runtime keeps the answered proposal in the resource (PLAN-161, D2).
+      await apiClient.acceptFollowUp(subjectKind, subjectId, turnId);
+      endedProposal = null;
+      // No B1 surface names the entry it opened: the operator is told that the plan is being started
+      // and goes on from the project's starts.
+      chatNoticeIsInfo = true;
+      chatNotice = $t('control.chat.follow_up.opened', { project: projectId });
       onChanged();
     } catch (err: unknown) {
+      chatNoticeIsInfo = false;
       chatNotice = $t('control.action.failed', { reason: reasonOf(err) });
     } finally {
       chatBusy = false;
@@ -1136,7 +1150,11 @@
     />
   {/if}
   {#if chatNotice}
-    <p class="work-control__failure" data-testid="chat-notice" role="alert">{chatNotice}</p>
+    <p
+      class:work-control__notice={chatNoticeIsInfo}
+      class:work-control__failure={!chatNoticeIsInfo}
+      data-testid="chat-notice"
+      role={chatNoticeIsInfo ? 'status' : 'alert'}>{chatNotice}</p>
   {/if}
 {/if}
 

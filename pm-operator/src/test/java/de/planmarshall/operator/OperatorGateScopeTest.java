@@ -391,7 +391,7 @@ class OperatorGateScopeTest {
                             () -> assertThrows(OperatorRefusedException.class,
                                                 () -> client.chatTurn("plan", "fix-relay", "hi")),
                             () -> assertThrows(OperatorRefusedException.class,
-                                                () -> client.chatProposal("plan", "fix-relay", true)),
+                                                () -> client.chatProposal("plan", "fix-relay", "T-1", true)),
                             () -> assertThrows(OperatorRefusedException.class,
                                                 () -> client.performLanding("pm-mcp-clients", "unit", "land")),
                             () -> assertThrows(OperatorRefusedException.class,

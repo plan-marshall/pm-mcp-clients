@@ -530,6 +530,18 @@ describe('DecisionView component', () => {
 
   it('takes a proposed answer through the read-back', async () => {
     vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+    const turn = vi.spyOn(apiClient, 'decisionChatTurn').mockResolvedValue({
+      ...decisionChat,
+      turns: [
+        ...decisionChat.turns,
+        {
+          role: 'implement',
+          text: 'Option B is the rebase onto main.',
+          at: '2026-10-14T10:00:09Z',
+          untrusted: false,
+        },
+      ],
+    });
     vi.spyOn(apiClient, 'answerDecisionChatProposal').mockResolvedValue({
       ...decisionChat,
       proposal: undefined,
@@ -537,7 +549,19 @@ describe('DecisionView component', () => {
     render(DecisionView);
 
     await fireEvent.click(await screen.findByText('chat about it first'));
-    await fireEvent.click(await screen.findByTestId('chat-accept'));
+    await fireEvent.input(await screen.findByTestId('chat-input'), {
+      target: { value: 'So option B is the rebase?' },
+    });
+    await fireEvent.click(screen.getByTestId('chat-send'));
+
+    await waitFor(() => {
+      expect(turn).toHaveBeenCalledWith('dec-101', 'So option B is the rebase?');
+    });
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent(
+      'Option B is the rebase onto main.',
+    );
+
+    await fireEvent.click(screen.getByTestId('chat-accept'));
 
     await waitFor(() => {
       expect(apiClient.interpretDecision).toHaveBeenCalledWith(

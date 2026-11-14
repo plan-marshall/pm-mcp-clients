@@ -14,10 +14,12 @@ import java.io.PrintWriter;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.control.ChatProposalResource;
-import de.planmarshall.api.control.ChatReadBackResource;
-import de.planmarshall.api.control.ChatScope;
-import de.planmarshall.api.control.ChatTurnResource;
+import de.planmarshall.api.chat.ChatProposal;
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.chat.ChatScopeKind;
+import de.planmarshall.api.chat.ChatTurn;
+import de.planmarshall.api.chat.TurnKind;
+import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
 
@@ -29,12 +31,13 @@ import de.planmarshall.operator.actions.WorkActionsClient;
  * ended work. A message is never interpreted or read back: the role answers it, and only a change
  * the role proposes is read back, old against new, and applied only when the operator accepts it.
  * The chat about ended work never changes the archive; its one proposal is a follow-up plan's
- * description, which {@code Enter} returns so that the caller opens {@code plan add} with it.
+ * description, and answering it accepts it on the runtime, which opens the start and names no way
+ * to the entry — the terminal says so and starts nothing a second time.
  */
 final class WorkChatDialogue {
 
     private static final String STATE_ID = "control.chat";
-    private static final String ROLE_OPERATOR = ChatTurnResource.ROLE_OPERATOR;
+    private static final String ROLE_OPERATOR = ChatTurn.AUTHOR_OPERATOR;
 
     private final StartPrompt prompt;
     private final WorkActionsClient client;
@@ -87,15 +90,16 @@ final class WorkChatDialogue {
      * @param out     the verb's output
      * @param chat    the chat read-back
      */
-    static void render(OperatorContext context, PrintWriter out, ChatReadBackResource chat) {
-        var dialogue = new WorkChatDialogue(context, out, chat.subjectKind(), chat.subjectId(), false, true);
-        boolean endedChat = chat.chatScope() == ChatScope.ARCHIVE;
+    static void render(OperatorContext context, PrintWriter out, ChatResource chat) {
+        var dialogue = new WorkChatDialogue(context, out, chat.subject().kind().wireValue(), chat.subject().id(),
+                            false, true);
+        boolean endedChat = chat.scope() == ChatScopeKind.ARCHIVE;
         dialogue.showHead(chat, endedChat);
         for (var turn : chat.turns()) {
             dialogue.showTurn(turn);
         }
         var proposal = chat.proposal();
-        if (proposal != null) {
+        if (proposal != null && chat.hasProposal()) {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), endedChat
                                 ? "operator.actions.chat.proposed_follow_up"
                                 : "operator.actions.chat.proposed", Map.of()));
@@ -106,37 +110,54 @@ final class WorkChatDialogue {
             if (proposal.after() != null) {
                 out.println("  + " + OutputSafety.stripControlSequences(proposal.after()));
             }
+            var applies = dialogue.appliesText(proposal);
+            if (applies != null) {
+                out.println("  " + OutputSafety.stripControlSequences(applies));
+            }
         }
         out.flush();
     }
 
     private @Nullable String execute() throws IOException {
         var chat = client.chat(kind, subjectId);
-        boolean endedChat = ended || chat.chatScope() == ChatScope.ARCHIVE;
+        boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
         showHead(chat, endedChat);
         for (var turn : chat.turns()) {
             showTurn(turn);
         }
-        int seen = chat.turns().size();
+        var seen = lastTurnId(chat);
         boolean saidNoProposal = false;
         while (true) {
-            if (chat.proposal() != null) {
+            if (chat.hasProposal()) {
+                var proposal = chat.proposal();
                 var answer = askProposal(chat, endedChat);
                 if (answer == null) {
                     return null;
                 }
                 if (answer) {
                     if (endedChat) {
+                        // The accept opens the start on the runtime; no B1 surface names the entry it
+                        // opened, so the operator is told the start is being prepared and the chat is
+                        // left with the proposal answered (PLAN-161, D2).
+                        var accepted = proposal;
+                        var description = accepted == null ? null : followUp(accepted);
+                        client.chatProposal(kind, subjectId, accepted.turnId(), true);
                         prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                        return followUp(chat.proposal());
+                        if (description != null) {
+                            prompt.line("operator.actions.chat.follow_up_started",
+                                                Map.of("description", description));
+                        }
+                        return null;
                     }
-                    chat = client.chatProposal(kind, subjectId, true);
+                    chat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
                     showNewTurns(chat, seen);
-                    seen = chat.turns().size();
+                    seen = lastTurnId(chat);
                     prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
                     continue;
                 }
-                chat = client.chatProposal(kind, subjectId, false);
+                chat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
+                showNewTurns(chat, seen);
+                seen = lastTurnId(chat);
                 continue;
             }
             var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
@@ -149,8 +170,8 @@ final class WorkChatDialogue {
             }
             chat = client.chatTurn(kind, subjectId, message);
             showNewTurns(chat, seen);
-            seen = chat.turns().size();
-            if (chat.proposal() == null && !saidNoProposal) {
+            seen = lastTurnId(chat);
+            if (!chat.hasProposal() && !saidNoProposal) {
                 prompt.line("operator.actions.chat.no_proposal", Map.of("subject", subjectId));
                 saidNoProposal = true;
             }
@@ -160,7 +181,7 @@ final class WorkChatDialogue {
     /**
      * @return {@code true} to accept, {@code false} to reject, or {@code null} to leave the chat
      */
-    private @Nullable Boolean askProposal(ChatReadBackResource chat, boolean endedChat) {
+    private @Nullable Boolean askProposal(ChatResource chat, boolean endedChat) {
         var proposal = chat.proposal();
         if (proposal == null) {
             return null;
@@ -175,8 +196,9 @@ final class WorkChatDialogue {
         if (proposal.after() != null) {
             prompt.raw("  + " + OutputSafety.stripControlSequences(proposal.after()));
         }
-        if (proposal.applies() != null) {
-            prompt.raw("  " + OutputSafety.stripControlSequences(proposal.applies()));
+        var applies = appliesText(proposal);
+        if (applies != null) {
+            prompt.raw("  " + OutputSafety.stripControlSequences(applies));
         }
         var question = endedChat
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.follow_up", Map.of())
@@ -196,15 +218,15 @@ final class WorkChatDialogue {
         return null;
     }
 
-    private void showHead(ChatReadBackResource chat, boolean endedChat) {
-        var scope = switch (chat.chatScope()) {
+    private void showHead(ChatResource chat, boolean endedChat) {
+        var scope = switch (chat.scope()) {
             case EPIC -> "operator.actions.chat.scope.epic";
             case ARCHIVE -> "operator.actions.chat.scope.archive";
             default -> "operator.actions.chat.scope.plan";
         };
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.head",
-                            Map.of("subject", OutputSafety.stripControlSequences(chat.subjectId()),
-                                                "role", chat.role(),
+                            Map.of("subject", OutputSafety.stripControlSequences(chat.subject().id()),
+                                                "role", chat.role().name(),
                                                 "scope", MessageCatalogue.format(prompt.locale(), scope, Map.of())))
                             + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end",
                             Map.of()));
@@ -214,17 +236,47 @@ final class WorkChatDialogue {
         }
     }
 
-    private void showNewTurns(ChatReadBackResource chat, int seen) {
+    private void showNewTurns(ChatResource chat, @Nullable String seenTurnId) {
         var turns = chat.turns();
-        for (int index = seen; index < turns.size(); index++) {
+        var seen = -1;
+        if (seenTurnId != null) {
+            for (int index = 0; index < turns.size(); index++) {
+                if (turns.get(index).turnId().equals(seenTurnId)) {
+                    seen = index;
+                    break;
+                }
+            }
+        }
+        // A page that no longer holds the last turn shown is printed whole: a re-print is recoverable,
+        // a turn silently left out is not.
+        for (int index = seen + 1; index < turns.size(); index++) {
             showTurn(turns.get(index));
         }
     }
 
-    private void showTurn(ChatTurnResource turn) {
-        var role = ROLE_OPERATOR.equals(turn.role())
+    /**
+     * @param chat the chat as read
+     * @return the id of its last turn that is no longer being written, or {@code null} where it has
+     *         none: a streaming turn stays unseen so its finished text is printed once, whole
+     */
+    private static @Nullable String lastTurnId(ChatResource chat) {
+        var turns = chat.turns();
+        for (int index = turns.size() - 1; index >= 0; index--) {
+            if (turns.get(index).status() != TurnStatus.STREAMING) {
+                return turns.get(index).turnId();
+            }
+        }
+        return null;
+    }
+
+    private void showTurn(ChatTurn turn) {
+        if (turn.kind() == TurnKind.PROPOSAL) {
+            // The proposal is the read-back block's; a transcript line for it would say it twice.
+            return;
+        }
+        var role = ROLE_OPERATOR.equals(turn.author())
                             ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you", Map.of())
-                            : OutputSafety.stripControlSequences(turn.role());
+                            : OutputSafety.stripControlSequences(turn.author());
         var text = OutputSafety.stripControlSequences(turn.text()).replace('\n', ' ');
         if (turn.untrusted()) {
             text = "\"" + text + "\"   "
@@ -234,7 +286,21 @@ final class WorkChatDialogue {
         prompt.raw("  " + role + "  " + text);
     }
 
-    private static @Nullable String followUp(ChatProposalResource proposal) {
+    /**
+     * @param proposal the proposal the role read back
+     * @return when it applies, read from the runtime's message key, or {@code null} where it names none
+     */
+    private @Nullable String appliesText(ChatProposal proposal) {
+        var applies = proposal.applies();
+        if (applies == null) {
+            return null;
+        }
+        var key = applies.key();
+        var point = key.substring(key.lastIndexOf('.') + 1);
+        return MessageCatalogue.format(prompt.locale(), "operator.actions.chat.applies." + point, applies.args());
+    }
+
+    private static @Nullable String followUp(ChatProposal proposal) {
         if (proposal.after() != null && !proposal.after().isBlank()) {
             return proposal.after();
         }

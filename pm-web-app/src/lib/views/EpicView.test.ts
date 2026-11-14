@@ -363,6 +363,82 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('review-untrusted')).toHaveTextContent('untrusted');
   });
 
+  it('runs the epic chat open, send, reply and proposal accept on B1 fixtures', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    vi.spyOn(apiClient, 'getEpicReview').mockResolvedValue(mockReview);
+    const chatReadBack = {
+      chat_id: 'C-0005',
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      role: 'decompose',
+      scope: 'epic',
+      state: 'chat.read-back',
+      turns: [
+        {
+          role: 'operator',
+          text: 'Split the reconnect work',
+          at: '2026-10-16T12:00:00Z',
+          untrusted: false,
+        },
+        {
+          role: 'decompose',
+          text: 'I would split it in two rows.',
+          at: '2026-10-16T12:00:05Z',
+          untrusted: false,
+        },
+      ],
+      proposal: {
+        turn_id: 'T-0500',
+        summary: 'two rows',
+        before: 'one row',
+        after: 'two rows: transport and ordering',
+        applies: 'chat.applies.after_task',
+      },
+    };
+    const open = vi.spyOn(apiClient, 'getChat').mockResolvedValue(chatReadBack);
+    const send = vi.spyOn(apiClient, 'chatWithSubject').mockResolvedValue({
+      ...chatReadBack,
+      turns: [
+        ...chatReadBack.turns,
+        {
+          role: 'decompose',
+          text: 'Split in two rows then.',
+          at: '2026-10-16T12:00:09Z',
+          untrusted: false,
+        },
+      ],
+    });
+    const accept = vi
+      .spyOn(apiClient, 'answerSubjectChatProposal')
+      .mockResolvedValue({ ...chatReadBack, state: 'chat.turn', proposal: null });
+
+    render(EpicView);
+    await fireEvent.click(await screen.findByTestId('open-findings-review'));
+    await fireEvent.click(await screen.findByTestId('review-item-F-0004'));
+    await fireEvent.click(screen.getByTestId('review-chat'));
+
+    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    expect(open).toHaveBeenCalledWith('epic:relay-hardening');
+    expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
+      'I would split it in two rows.',
+    );
+    expect(screen.getByTestId('chat-proposal')).toHaveTextContent('two rows: transport and ordering');
+
+    await fireEvent.input(screen.getByTestId('chat-input'), {
+      target: { value: 'Then split it in two rows.' },
+    });
+    await fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => {
+      expect(send).toHaveBeenCalledWith('epic:relay-hardening', 'Then split it in two rows.');
+    });
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('Split in two rows then.');
+
+    await fireEvent.click(screen.getByTestId('chat-accept'));
+    await waitFor(() => {
+      expect(accept).toHaveBeenCalledWith('epic:relay-hardening', 'T-0500', true);
+    });
+  });
+
   it('shows that no task is measured yet where the epic reports none', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
       ...mockResource,
