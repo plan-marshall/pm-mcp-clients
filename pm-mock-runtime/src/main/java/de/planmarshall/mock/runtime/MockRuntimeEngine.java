@@ -386,8 +386,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KIND_READ_REPORTS = "read_reports";
     private static final String KEY_ANSWER = "answer";
     private static final String ACTION_WAIVE = "waive";
+    private static final String ACTION_DECLINE = "decline";
+    private static final String ACTION_LATER = "later";
     /** The acts a waiver request is answered with: the one definition the handler and its tests read. */
-    public static final Set<String> WAIVER_ACTIONS = Set.of(ACTION_WAIVE, "decline", "later");
+    public static final Set<String> WAIVER_ACTIONS = Set.of(ACTION_WAIVE, ACTION_DECLINE, ACTION_LATER);
     /** How a kept item came to be kept: the job was ignored. */
     private static final String KEPT_IGNORE = "ignore";
     private static final String PATH_ENROL = "/api/v1/enrol";
@@ -10708,7 +10710,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void handleWaiverAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
         var action = answerReq.action() != null ? answerReq.action() : answerReq.option();
-        if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
+        if (ACTION_LATER.equalsIgnoreCase(action) || ACTION_LATER.equalsIgnoreCase(answerReq.option())) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
@@ -10753,7 +10755,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (chosen == null && !answerReq.partAnswers().isEmpty()) {
             chosen = answerReq.partAnswers().values().iterator().next().toString();
         }
-        if ("later".equalsIgnoreCase(answerReq.action()) || "later".equalsIgnoreCase(chosen)) {
+        if (ACTION_LATER.equalsIgnoreCase(answerReq.action()) || ACTION_LATER.equalsIgnoreCase(chosen)) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
