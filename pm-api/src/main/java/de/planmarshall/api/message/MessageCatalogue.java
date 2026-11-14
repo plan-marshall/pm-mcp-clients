@@ -69,6 +69,28 @@ public final class MessageCatalogue {
     }
 
     /**
+     * Returns a {@link java.util.ResourceBundle} for the given locale backed by this MessageCatalogue.
+     *
+     * @param locale the requested locale
+     * @return ResourceBundle containing messages for all areas
+     */
+    public static java.util.ResourceBundle resourceBundle(String locale) {
+        String effectiveLocale = normalizeLocale(locale);
+        Map<String, String> messages = getMessages(effectiveLocale, "all");
+        return new java.util.ResourceBundle() {
+            @Override
+            protected Object handleGetObject(String key) {
+                return messages.get(key);
+            }
+
+            @Override
+            public java.util.Enumeration<String> getKeys() {
+                return Collections.enumeration(messages.keySet());
+            }
+        };
+    }
+
+    /**
      * Normalizes the given locale to a supported locale (defaults to "en").
      *
      * @param locale the locale to check
