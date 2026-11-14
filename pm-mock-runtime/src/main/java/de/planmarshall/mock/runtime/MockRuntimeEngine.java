@@ -472,8 +472,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_ARG_COUNT = "count";
     private static final String KNOWS_ARG_PHASE = "phase";
     private static final String KNOWS_ARG_VERSION = "version";
-    private static final String ACT_PAUSE = "pause";
-    private static final String ACT_START = "start";
+    private static final String KEY_PHASE_STATE = "phase_state";
+    private static final String KEY_CURRENT_PHASE = "current_phase";
+    private static final String KEY_INSTANCE_VERSION = "instance_version";
+    private static final String KEY_TOKENS_SO_FAR = "tokens_so_far";
+    private static final String KEY_TASKS_TOTAL = "tasks_total";
+    private static final String STATE_ENDED = "ended";
+    private static final String STATE_MERGED = "merged";
+    private static final String KEY_NODES = "nodes";
+    private static final String KEY_SUB_NODES = "sub_nodes";
+    private static final String KEY_LEAF_TASKS = "leaf_tasks";
     private static final String KEY_CHANNEL = "channel";
     private static final String CHANNEL_WEB = "web";
     private static final String CHANNEL_CLI = "cli";
@@ -979,7 +987,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public boolean revisionWindowOpen(String planId) {
         synchronized (controlLock) {
-            if ("ended".equals(controlPlanStates.get(planId))) {
+            if (STATE_ENDED.equals(controlPlanStates.get(planId))) {
                 return false;
             }
         }
@@ -988,11 +996,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             // The scenario serves no detail of the plan: the mock cannot show the window closed.
             return true;
         }
-        var state = JsonTree.string(plan, "phase_state");
+        var state = JsonTree.string(plan, KEY_PHASE_STATE);
         if (state == null) {
-            state = JsonTree.string(plan, "state");
+            state = JsonTree.string(plan, KEY_STATE);
         }
-        if ("done".equals(state) || "ended".equals(state) || "merged".equals(state)) {
+        if (STATE_DONE.equals(state) || STATE_ENDED.equals(state) || STATE_MERGED.equals(state)) {
             return false;
         }
         var phase = planPhase(planId, plan);
@@ -1051,11 +1059,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public void revisionChatEnded(String planId) {
         synchronized (controlLock) {
-            var queued = planQueuedRevisions.get(planId);
-            if (queued != null) {
-                planQueuedRevisions.put(planId, new QueuedRevision(queued.chatId(), queued.turnId(),
-                        queued.subject(), false, queued.applies()));
-            }
+            planQueuedRevisions.computeIfPresent(planId, (id, queued) -> new QueuedRevision(queued.chatId(),
+                    queued.turnId(), queued.subject(), false, queued.applies()));
         }
     }
 
@@ -1094,7 +1099,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private int baseInstanceVersion(String planId) {
         var plan = planDetail(planId);
-        var version = plan == null ? null : JsonTree.integer(plan, "instance_version");
+        var version = plan == null ? null : JsonTree.integer(plan, KEY_INSTANCE_VERSION);
         return version != null ? version : 1;
     }
 
@@ -1103,12 +1108,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return the number of tasks the plan's detail names, or {@code null} where it names none
      */
     private static @Nullable Integer tasksTotal(Map<String, Object> plan) {
-        var tokens = JsonTree.asObject(plan.get("tokens_so_far"));
-        var total = tokens == null ? null : JsonTree.integer(tokens, "tasks_total");
+        var tokens = JsonTree.asObject(plan.get(KEY_TOKENS_SO_FAR));
+        var total = tokens == null ? null : JsonTree.integer(tokens, KEY_TASKS_TOTAL);
         if (total != null) {
             return total;
         }
-        var counted = countLeafTasks(rowsOf(plan, "nodes"));
+        var counted = countLeafTasks(rowsOf(plan, KEY_NODES));
         return counted == 0 ? null : counted;
     }
 
@@ -1123,8 +1128,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (node == null) {
                 continue;
             }
-            count += rowsOf(node, "leaf_tasks").size();
-            count += countLeafTasks(rowsOf(node, "sub_nodes"));
+            count += rowsOf(node, KEY_LEAF_TASKS).size();
+            count += countLeafTasks(rowsOf(node, KEY_SUB_NODES));
         }
         return count;
     }
@@ -1143,7 +1148,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         }
         var phase = JsonTree.string(plan, KEY_PHASE);
-        return phase != null ? phase : JsonTree.string(plan, "current_phase");
+        return phase != null ? phase : JsonTree.string(plan, KEY_CURRENT_PHASE);
     }
 
     /**
@@ -1158,7 +1163,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private Map<String, Object> withPlanOverlay(String planId, Map<?, ?> representation) {
         var copy = orderedMap(representation);
         synchronized (controlLock) {
-            copy.put("instance_version", baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0));
+            copy.put(KEY_INSTANCE_VERSION, baseInstanceVersion(planId) + planAppliedVersions.getOrDefault(planId, 0));
             var phase = planPhases.get(planId);
             if (phase != null) {
                 copy.put(KEY_PHASE, phase);
@@ -7559,7 +7564,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         act.put(KEY_CHANNEL, isWeb ? CHANNEL_WEB : CHANNEL_CLI);
         var deviceId = isWeb ? webListenerDevice() : null;
         if (deviceId != null) {
-            act.put("device_id", deviceId);
+            act.put(KEY_DEVICE_ID, deviceId);
         }
         if (recordActBodies && carriesDecisionBody(request.path())) {
             act.put("body", request.bodyText());
@@ -10981,7 +10986,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             copy.put(KEY_NEEDS_OPERATOR, true);
         }
         copy.put("instance_version", 1);
-        copy.put("nodes", phaseNodes(template, phase, phaseState));
+        copy.put(KEY_NODES, phaseNodes(template, phase, phaseState));
         copy.put("current_position_path", List.of());
         return copy;
     }
@@ -10994,7 +10999,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
-        if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
+        if (template == null || !(template.get(KEY_NODES) instanceof List<?> nodes)) {
             var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
@@ -11043,8 +11048,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         phase.put("run_count", ran);
         phase.put("current_run", ran);
         phase.put("duration_seconds", 0);
-        phase.put("sub_nodes", List.of());
-        phase.put("leaf_tasks", List.of());
+        phase.put(KEY_SUB_NODES, List.of());
+        phase.put(KEY_LEAF_TASKS, List.of());
         return phase;
     }
 

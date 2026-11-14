@@ -120,7 +120,7 @@ class ChatRevisionQueueTest {
                             () -> assertEquals("chat.applies.after_task", queued.applies().key()),
                             () -> assertEquals("TASK-4", queued.applies().args().get(TASK_ID)),
                             () -> assertNotNull(row.get(QUEUED_REVISION), "the overview's plan row carries it"));
-                    var announced = planRevisionQueued(stream.events(), accepted.id(), proposal.turnId());
+                    var announced = planRevisionQueued(stream.events(), proposal.turnId());
                     assertEquals(proposal.turnId(), Objects.requireNonNull(announced.queuedRevision()).turnId());
                     assertActivityChanged(stream.events());
                 }
@@ -201,7 +201,7 @@ class ChatRevisionQueueTest {
             var routes = ChatRoutes.plan(PLAN);
             try (var runtime = ordered(CHAT_STATE)) {
                 open(runtime, routes);
-                var proposal = propose(runtime, routes);
+                propose(runtime, routes);
 
                 broadcast(runtime, "phase.changed", Map.of(PLAN_ID, PLAN, KEY_PHASE, "refine"));
 
@@ -475,7 +475,7 @@ class ChatRevisionQueueTest {
         throw new AssertionError("no plan row for " + PLAN + " in " + response.bodyText());
     }
 
-    private static PlanRevisionQueuedEvent planRevisionQueued(SseReader events, String chatId, String turnId)
+    private static PlanRevisionQueuedEvent planRevisionQueued(SseReader events, String turnId)
             throws IOException {
         while (true) {
             var seen = events.next();

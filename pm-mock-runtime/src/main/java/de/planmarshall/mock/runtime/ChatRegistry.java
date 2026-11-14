@@ -209,7 +209,23 @@ final class ChatRegistry {
     private static final String KEY_VERSION = "version";
     private static final String KEY_ACTIVITY = "activity";
     private static final String KEY_HOLD_ID = "hold_id";
-    private static final String KEY_SUBJECT_ID = "subject_id";
+    private static final String KEY_SCOPE = "scope";
+    private static final String KEY_DECISION = "decision";
+    private static final String KEY_KIND = "kind";
+    private static final String ARG_CHANNEL = "channel";
+    private static final String ARG_DEVICE = "device";
+    private static final String ARG_REASON = "reason";
+    private static final String ARG_STATUS = "status";
+    private static final String ARG_POINT = "point";
+    private static final String ARG_CAUSE = "cause";
+    private static final String ARG_BLOCKS = "blocks";
+    private static final String ARG_INSTANCE_VERSION = "instance_version";
+    private static final String SCOPE_PLAN = "plan";
+    private static final String SCOPE_EPIC = "epic";
+    private static final String PLAN_PREFIX = "plan ";
+    private static final String OUTCOME_DONE = "done";
+    private static final String OUTCOME_FAILED = "failed";
+    private static final String OUTCOME_OTHER = "other";
     private static final String ACTIVITY_PAUSING = "pausing";
     private static final String ACTIVITY_PAUSED = "paused";
     private static final String ACTIVITY_RUNNING = "running";
@@ -519,7 +535,7 @@ final class ChatRegistry {
             return;
         }
         play.schedule(timing, at + READING_PACE_MS, () -> playStep(chat, play, () -> {
-            var refs = offeredRefs(chat.subject, script.refs());
+            var refs = offeredRefs(script.refs());
             chat.updateReply(play.turnId(), turn -> withCompletion(turn, text, refs));
             chat.endPlay();
             var turn = chat.turns.get(chat.indexOf(play.turnId()));
@@ -533,7 +549,7 @@ final class ChatRegistry {
             }
             chat.state = chat.idleState();
             // The subject's narrative waited for the reply to end; it is written after it, as one notice.
-            events.addAll(flushHeldLines(chat, play.address()));
+            events.addAll(flushHeldLines(chat));
             return events;
         }));
     }
@@ -543,26 +559,24 @@ final class ChatRegistry {
      * after it ({@code state-catalogue.adoc#chat-narrative}: a line that arises meanwhile is held until
      * the reply ends).
      *
-     * @param chat    the chat
-     * @param address where the chat is addressed
+     * @param chat the chat
      * @return the {@code chat.turn.completed} of the notice, or no event when nothing was held
      */
-    private List<ChatEvent> flushHeldLines(Chat chat, Address address) {
+    private List<ChatEvent> flushHeldLines(Chat chat) {
         if (chat.heldLines.isEmpty() || chat.state.isEnded()) {
             return List.of();
         }
         var lines = new ArrayList<>(chat.heldLines);
         chat.heldLines.clear();
-        return notice(chat, address, lines);
+        return notice(chat, lines);
     }
 
     /**
-     * @param subject the chat's subject
-     * @param refs    the references a scripted reply names
-     * @return the references, without an act the subject does not offer
+     * @param refs the references a scripted reply names
+     * @return the references, without an act its subject does not offer
      *         ({@code state-catalogue.adoc#chat-names-acts})
      */
-    private List<TurnRef> offeredRefs(ChatSubject subject, List<TurnRef> refs) {
+    private List<TurnRef> offeredRefs(List<TurnRef> refs) {
         return refs.stream()
                 .filter(ref -> ref.kind() != RefKind.ACT || facts.offersAct(Objects.requireNonNull(ref.subject()),
                         Objects.requireNonNull(ref.act())))
@@ -580,7 +594,7 @@ final class ChatRegistry {
      * @param lines   the lines to write
      * @return the {@code chat.turn.completed} of the notice
      */
-    private List<ChatEvent> notice(Chat chat, Address address, List<NarrativeLine> lines) {
+    private List<ChatEvent> notice(Chat chat, List<NarrativeLine> lines) {
         if (lines.isEmpty()) {
             return List.of();
         }
@@ -593,12 +607,12 @@ final class ChatRegistry {
                     TurnFormat.PLAIN, false, null, "", List.of(), List.of(), last.at(), null, extended);
             chat.turns.set(chat.turns.size() - 1, noticeTurn);
         } else {
-            noticeTurn = new ChatTurn(nextTurnId(), TurnKind.NOTICE, address.role(), TurnStatus.COMPLETE,
+            noticeTurn = new ChatTurn(nextTurnId(), TurnKind.NOTICE, chat.role.name(), TurnStatus.COMPLETE,
                     TurnFormat.PLAIN, false, null, "", List.of(), List.of(), Instant.now().toString(), null,
                     lines);
             chat.turns.add(noticeTurn);
         }
-        return List.of(event(address, ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
+        return List.of(event(streamOf(chat), ChatTurnCompletedEvent.EVENT_NAME, new ChatTurnCompletedEvent(chat.id,
                 noticeTurn.turnId(), TurnKind.NOTICE, TurnStatus.COMPLETE, false, "", List.of(), null,
                 noticeTurn.lines()).toMap()));
     }
@@ -693,7 +707,7 @@ final class ChatRegistry {
                     chat.id, turn.turnId(), turn.kind(), status, turn.untrusted(), turn.text(), turn.refs(), reason,
                     List.of()).toMap()));
             // The reply ended, failed or stopped: the lines held for it are written after it.
-            events.addAll(flushHeldLines(chat, play.address()));
+            events.addAll(flushHeldLines(chat));
             return events;
         });
     }
@@ -904,17 +918,36 @@ final class ChatRegistry {
             }
             var events = new ArrayList<ChatEvent>();
             for (var chat : chats.values()) {
-                if (chat.scope == ChatScopeKind.ARCHIVE || chat.state.isEnded() || !about(chat, subject)) {
-                    continue;
+                if (takesNarrative(chat, subject)) {
+                    events.addAll(addLine(chat, line));
                 }
-                if (chat.play != null || chat.state == ChatStatus.REPLY) {
-                    chat.heldLines.add(line);
-                    continue;
-                }
-                events.addAll(notice(chat, streamAddress(chat), List.of(line)));
             }
             return events;
         }
+    }
+
+    /**
+     * @param chat    the chat
+     * @param subject the event's subject
+     * @return whether the chat takes the subject's narrative: it is of that subject and not ended work
+     */
+    private static boolean takesNarrative(Chat chat, ChatSubject subject) {
+        return chat.scope != ChatScopeKind.ARCHIVE && !chat.state.isEnded() && about(chat, subject);
+    }
+
+    /**
+     * Writes one narrative line into a chat: held until the reply being written ends, else a notice.
+     *
+     * @param chat the chat
+     * @param line the line
+     * @return the notice's event, or none where the line is held
+     */
+    private List<ChatEvent> addLine(Chat chat, NarrativeLine line) {
+        if (chat.play != null || chat.state == ChatStatus.REPLY) {
+            chat.heldLines.add(line);
+            return List.of();
+        }
+        return notice(chat, List.of(line));
     }
 
     /**
@@ -930,14 +963,6 @@ final class ChatRegistry {
                 EVENT_INSTANCE_CHANGED, EVENT_PLAN_RESUMED, EVENT_PLAN_CANCELLED -> planOrEpic(payload);
             default -> null;
         };
-    }
-
-    /**
-     * @param chat    the chat the line would be written into
-     * @return an address the chat's events can be scoped with
-     */
-    private static Address streamAddress(Chat chat) {
-        return new Address(null, chat.subject, chat.scope, chat.role.name(), streamOf(chat), chat.planId);
     }
 
     /**
@@ -957,13 +982,13 @@ final class ChatRegistry {
                     args(KEY_PHASE, JsonTree.string(payload, KEY_PHASE)), List.of(), at);
             case EVENT_TASK_ENDED -> taskEndedLine(payload, at);
             case EVENT_DECISION_OPENED -> new NarrativeLine(
-                    LINE_PREFIX + "decision_opened", args2(KEY_ID, decisionId(payload), "blocks",
+                    LINE_PREFIX + "decision_opened", args2(KEY_ID, decisionId(payload), ARG_BLOCKS,
                     blocksThePlan(payload) ? "yes" : "no"),
                     ref(RefKind.DECISION, decisionId(payload)), at);
             case EVENT_DECISION_ANSWERED -> decisionAnsweredLine(payload, at);
             case EVENT_DECISION_CLOSED -> new NarrativeLine(
-                    LINE_PREFIX + "decision_closed", args2(KEY_ID, decisionId(payload), "reason",
-                    JsonTree.string(payload, "outcome")), ref(RefKind.DECISION, decisionId(payload)), at);
+                    LINE_PREFIX + "decision_closed", args2(KEY_ID, decisionId(payload), ARG_REASON,
+                    JsonTree.string(payload, ARG_OUTCOME)), ref(RefKind.DECISION, decisionId(payload)), at);
             case EVENT_HOLD_OPENED -> holdLine("hold_opened", payload, at);
             case EVENT_HOLD_CLEARED -> holdLine("hold_cleared", payload, at);
             case EVENT_ACTIVITY_CHANGED -> activityLine(payload, at);
@@ -993,23 +1018,24 @@ final class ChatRegistry {
     private static @Nullable ChatSubject planOrEpic(Map<String, Object> payload) {
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
         if (planId == null) {
-            planId = scopedId(payload, "plan");
+            planId = scopedId(payload, SCOPE_PLAN);
         }
         if (planId != null) {
             return new ChatSubject(ChatSubjectKind.PLAN, planId);
         }
         var epicId = JsonTree.string(payload, KEY_EPIC_ID);
         if (epicId == null) {
-            epicId = scopedId(payload, "epic");
+            epicId = scopedId(payload, SCOPE_EPIC);
         }
         if (epicId != null) {
             return new ChatSubject(ChatSubjectKind.EPIC, epicId);
         }
         // decision.opened names the decision whole, its subject "plan <id>" among the members.
-        var decision = JsonTree.asObject(payload.get("decision"));
+        var decision = JsonTree.asObject(payload.get(KEY_DECISION));
         var decisionSubject = decision == null ? null : JsonTree.string(decision, "subject");
-        if (decisionSubject != null && decisionSubject.startsWith("plan ")) {
-            return new ChatSubject(ChatSubjectKind.PLAN, decisionSubject.substring("plan ".length()).trim());
+        if (decisionSubject != null && decisionSubject.startsWith(PLAN_PREFIX)) {
+            return new ChatSubject(ChatSubjectKind.PLAN,
+                    decisionSubject.substring(PLAN_PREFIX.length()).trim());
         }
         return null;
     }
@@ -1020,11 +1046,11 @@ final class ChatRegistry {
      * @return the id the payload's declared scope names for that kind, or {@code null}
      */
     private static @Nullable String scopedId(Map<String, Object> payload, String kind) {
-        var scope = JsonTree.asObject(payload.get("scope"));
-        if (scope == null || !kind.equals(JsonTree.string(scope, "kind"))) {
+        var scope = JsonTree.asObject(payload.get(KEY_SCOPE));
+        if (scope == null || !kind.equals(JsonTree.string(scope, KEY_KIND))) {
             return null;
         }
-        var id = JsonTree.string(scope, "id");
+        var id = JsonTree.string(scope, KEY_ID);
         return id != null ? id : JsonTree.string(scope, "project_id");
     }
 
@@ -1038,7 +1064,7 @@ final class ChatRegistry {
             id = JsonTree.string(payload, "decision_id");
         }
         if (id == null) {
-            var decision = JsonTree.asObject(payload.get("decision"));
+            var decision = JsonTree.asObject(payload.get(KEY_DECISION));
             id = decision == null ? null : JsonTree.string(decision, KEY_ID);
         }
         return id;
@@ -1047,25 +1073,31 @@ final class ChatRegistry {
     private static NarrativeLine taskEndedLine(Map<String, Object> payload, String at) {
         var taskId = Objects.requireNonNullElse(JsonTree.string(payload, KEY_TASK_ID),
                 Objects.requireNonNullElse(JsonTree.string(payload, KEY_ID), ""));
-        var status = Objects.requireNonNullElse(JsonTree.string(payload, "status"),
-                Objects.requireNonNullElse(JsonTree.string(payload, ARG_OUTCOME), "done"));
-        var outcome = "done".equals(status) || "success".equals(status) || "merged".equals(status) ? "done"
-                : "failed".equals(status) ? "failed" : "done";
-        return new NarrativeLine(LINE_PREFIX + "task_ended", args2(KEY_TASK_ID, taskId, ARG_OUTCOME, outcome),
-                ref(RefKind.TASK, taskId), at);
+        var status = Objects.requireNonNullElse(JsonTree.string(payload, ARG_STATUS),
+                Objects.requireNonNullElse(JsonTree.string(payload, ARG_OUTCOME), OUTCOME_DONE));
+        return new NarrativeLine(LINE_PREFIX + "task_ended",
+                args2(KEY_TASK_ID, taskId, ARG_OUTCOME, taskOutcome(status)), ref(RefKind.TASK, taskId), at);
+    }
+
+    /**
+     * @param status the status a task ended with
+     * @return the outcome the narrative line names
+     */
+    private static String taskOutcome(String status) {
+        return OUTCOME_FAILED.equals(status) ? OUTCOME_FAILED : OUTCOME_DONE;
     }
 
     private static NarrativeLine decisionAnsweredLine(Map<String, Object> payload, String at) {
         var id = Objects.requireNonNullElse(decisionId(payload), "");
-        var channel = JsonTree.string(payload, "channel");
-        var device = JsonTree.string(payload, "device");
+        var channel = JsonTree.string(payload, ARG_CHANNEL);
+        var device = JsonTree.string(payload, ARG_DEVICE);
         var args = new LinkedHashMap<String, Object>();
         args.put(KEY_ID, id);
         if (channel != null) {
-            args.put("channel", channel);
+            args.put(ARG_CHANNEL, channel);
         }
         if (device != null) {
-            args.put("device", device);
+            args.put(ARG_DEVICE, device);
         }
         return new NarrativeLine(LINE_PREFIX + "decision_answered", args, ref(RefKind.DECISION, id), at);
     }
@@ -1082,8 +1114,8 @@ final class ChatRegistry {
     private static NarrativeLine holdLine(String name, Map<String, Object> payload, String at) {
         var id = Objects.requireNonNullElse(JsonTree.string(payload, KEY_HOLD_ID),
                 Objects.requireNonNullElse(JsonTree.string(payload, KEY_ID), ""));
-        var reason = Objects.requireNonNullElse(JsonTree.string(payload, "reason"), "");
-        return new NarrativeLine(LINE_PREFIX + name, args("reason", reason),
+        var reason = Objects.requireNonNullElse(JsonTree.string(payload, ARG_REASON), "");
+        return new NarrativeLine(LINE_PREFIX + name, args(ARG_REASON, reason),
                 id.isBlank() ? List.of() : List.of(TurnRef.of(RefKind.HOLD, id)), at);
     }
 
@@ -1100,20 +1132,20 @@ final class ChatRegistry {
             // The plan's activity was reported as it already was: no line, whatever the event says.
             return null;
         }
-        var channel = JsonTree.string(payload, "channel");
-        var device = JsonTree.string(payload, "device");
+        var channel = JsonTree.string(payload, ARG_CHANNEL);
+        var device = JsonTree.string(payload, ARG_DEVICE);
         var args = new LinkedHashMap<String, Object>();
-        args.put("plan", planId);
+        args.put(SCOPE_PLAN, planId);
         if (channel != null) {
-            args.put("channel", channel);
+            args.put(ARG_CHANNEL, channel);
         }
         if (device != null) {
-            args.put("device", device);
+            args.put(ARG_DEVICE, device);
         }
         return switch (activity) {
             case ACTIVITY_PAUSING -> new NarrativeLine(LINE_PREFIX + "plan_pausing",
-                    args2("plan", planId, "point",
-                            Objects.requireNonNullElse(JsonTree.string(payload, "point"), "task")), List.of(), at);
+                    args2(SCOPE_PLAN, planId, ARG_POINT,
+                            Objects.requireNonNullElse(JsonTree.string(payload, ARG_POINT), "task")), List.of(), at);
             case ACTIVITY_PAUSED -> new NarrativeLine(LINE_PREFIX + "plan_paused", args, List.of(), at);
             case ACTIVITY_RUNNING -> new NarrativeLine(LINE_PREFIX + "plan_started", args, List.of(), at);
             default -> null;
@@ -1121,16 +1153,16 @@ final class ChatRegistry {
     }
 
     private static @Nullable NarrativeLine versionLine(Map<String, Object> payload, String at) {
-        var version = JsonTree.integer(payload, "instance_version");
+        var version = JsonTree.integer(payload, ARG_INSTANCE_VERSION);
         if (version == null) {
             version = JsonTree.integer(payload, KEY_VERSION);
         }
         if (version == null) {
             return null;
         }
-        var cause = Objects.requireNonNullElse(JsonTree.string(payload, "cause"), "other");
+        var cause = Objects.requireNonNullElse(JsonTree.string(payload, ARG_CAUSE), OUTCOME_OTHER);
         return new NarrativeLine(LINE_PREFIX + "version_changed",
-                args2(KEY_VERSION, String.valueOf(version), "cause", cause), List.of(), at);
+                args2(KEY_VERSION, String.valueOf(version), ARG_CAUSE, cause), List.of(), at);
     }
 
     /**
@@ -1138,10 +1170,10 @@ final class ChatRegistry {
      * @return whether a decision the line names blocks the plan
      */
     private static boolean blocksThePlan(Map<String, Object> payload) {
-        var blocks = JsonTree.string(payload, "blocks");
+        var blocks = JsonTree.string(payload, ARG_BLOCKS);
         if (blocks == null) {
-            var decision = JsonTree.asObject(payload.get("decision"));
-            blocks = decision == null ? null : JsonTree.string(decision, "blocks");
+            var decision = JsonTree.asObject(payload.get(KEY_DECISION));
+            blocks = decision == null ? null : JsonTree.string(decision, ARG_BLOCKS);
         }
         return blocks != null && !blocks.isBlank() && !"no".equals(blocks);
     }
@@ -1252,20 +1284,24 @@ final class ChatRegistry {
     private List<ChatEvent> narrateVersion(String planId, int version) {
         var events = new ArrayList<ChatEvent>();
         for (var chat : chats.values()) {
-            if (chat.scope == ChatScopeKind.ARCHIVE || chat.state.isEnded()
-                    || !new ChatSubject(ChatSubjectKind.PLAN, planId).equals(chat.subject)) {
-                continue;
-            }
-            var line = new NarrativeLine(LINE_PREFIX + "version_changed",
-                    args2(KEY_VERSION, String.valueOf(version), "cause", "chat"), List.of(),
-                    Instant.now().toString());
-            if (chat.play != null || chat.state == ChatStatus.REPLY) {
-                chat.heldLines.add(line);
-            } else {
-                events.addAll(notice(chat, streamAddress(chat), List.of(line)));
+            if (takesPlanVersion(chat, planId)) {
+                var line = new NarrativeLine(LINE_PREFIX + "version_changed",
+                        args2(KEY_VERSION, String.valueOf(version), ARG_CAUSE, "chat"), List.of(),
+                        Instant.now().toString());
+                events.addAll(addLine(chat, line));
             }
         }
         return events;
+    }
+
+    /**
+     * @param chat   the chat
+     * @param planId the plan's id
+     * @return whether the chat is the plan's own, running chat
+     */
+    private static boolean takesPlanVersion(Chat chat, String planId) {
+        return chat.scope != ChatScopeKind.ARCHIVE && !chat.state.isEnded()
+                && new ChatSubject(ChatSubjectKind.PLAN, planId).equals(chat.subject);
     }
 
     /**
@@ -1502,7 +1538,7 @@ final class ChatRegistry {
         var events = new ArrayList<ChatEvent>();
         events.add(event);
         // The reply ended: the narrative lines that waited for it are written after it.
-        events.addAll(flushHeldLines(chat, address));
+        events.addAll(flushHeldLines(chat));
         return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.copyOf(events), null);
     }
 
@@ -1528,21 +1564,10 @@ final class ChatRegistry {
         if (!proposal.turnId().equals(answer.turnId())) {
             return refused(ApiErrorCode.CONFLICT, "The proposal " + answer.turnId() + " is not the open one");
         }
-        if (accept && proposal.kind() == ProposalKind.REVISION && proposal.applies() == null) {
-            return refused(ApiErrorCode.INVALID_ARGUMENTS, "The revision names no point it applies at");
-        }
-        if (accept && proposal.kind() == ProposalKind.REVISION && chat.planId == null) {
-            // Another subject's proposal is refused by its own checks: no plan means no revision window.
-            chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
-                    proposal.summary(), proposal.applies(), proposal.before(), proposal.after(),
-                    ProposalState.REFUSED, MessageText.of(FINDING_CHECK_FAILED));
-            return new Outcome(200, chat.toResource(chat.turns.size()).toMap(),
-                    List.of(proposalEvent(chat, address.stream(), chat.proposal)), null);
-        }
-        if (accept && proposal.kind() == ProposalKind.REVISION && chat.planId != null) {
-            var refusal = revisionRefusal(chat, proposal);
-            if (refusal != null) {
-                return refusal;
+        if (accept && proposal.kind() == ProposalKind.REVISION) {
+            var revision = revisionAnswer(chat, address, proposal);
+            if (revision != null) {
+                return revision;
             }
         }
         var state = accept ? acceptedState(proposal.kind()) : ProposalState.REJECTED;
@@ -1550,7 +1575,7 @@ final class ChatRegistry {
         var answered = proposalEvent(chat, address.stream(), chat.proposal);
         if (accept && proposal.kind() == ProposalKind.REVISION && chat.planId != null) {
             // A plan's revision is accepted and queued for the plan's next task boundary.
-            return queued(chat, address, answered);
+            return queued(chat, answered);
         }
         if (accept && chat.subject.kind() == ChatSubjectKind.DECISION) {
             // A decision's chat carries the accepted proposal to the decision and ends with it.
@@ -1564,6 +1589,31 @@ final class ChatRegistry {
         }
         return new Outcome(200, chat.toResource(chat.turns.size()).toMap(), List.of(answered),
                 applyHook(chat.subject, chat.proposal));
+    }
+
+    /**
+     * Answers the accept of a plan's revision before it is queued: refused {@code invalid_arguments} when
+     * it names no point it applies at, refused by its own check where the chat is about no plan, and
+     * mapped to its refusal or lapse otherwise ({@code state-catalogue.adoc#chat-proposal-states}).
+     *
+     * @param chat     the chat
+     * @param address  where the chat is addressed
+     * @param proposal the open proposal
+     * @return the answer, or {@code null} when the accept goes on and the revision is queued
+     */
+    private @Nullable Outcome revisionAnswer(Chat chat, Address address, ChatProposal proposal) {
+        if (proposal.applies() == null) {
+            return refused(ApiErrorCode.INVALID_ARGUMENTS, "The revision names no point it applies at");
+        }
+        if (chat.planId == null) {
+            // Another subject's proposal is refused by its own checks: no plan means no revision window.
+            chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
+                    proposal.summary(), proposal.applies(), proposal.before(), proposal.after(),
+                    ProposalState.REFUSED, MessageText.of(FINDING_CHECK_FAILED));
+            return new Outcome(200, chat.toResource(chat.turns.size()).toMap(),
+                    List.of(proposalEvent(chat, address.stream(), chat.proposal)), null);
+        }
+        return revisionRefusal(chat, proposal);
     }
 
     /**
@@ -1600,11 +1650,10 @@ final class ChatRegistry {
      * ({@code plan.revision_queued}), the plan's row and activity moving with it.
      *
      * @param chat     the chat
-     * @param address  where the chat is addressed
      * @param answered the {@code chat.proposal} of the accepted proposal
      * @return the answer
      */
-    private Outcome queued(Chat chat, Address address, ChatEvent answered) {
+    private Outcome queued(Chat chat, ChatEvent answered) {
         var planId = Objects.requireNonNull(chat.planId);
         var proposal = Objects.requireNonNull(chat.proposal);
         var revision = new QueuedRevision(chat.id, proposal.turnId(), chat.subject, true,
@@ -1854,6 +1903,10 @@ final class ChatRegistry {
         return new ChatEvent(name, address.stream(), data);
     }
 
+    private static ChatEvent event(EventScope stream, String name, Map<String, Object> data) {
+        return new ChatEvent(name, stream, data);
+    }
+
     private static Outcome refused(ApiErrorCode code, @Nullable String message) {
         return Outcome.of(code.status(), Map.of(KEY_ERROR, code.wire(), KEY_MESSAGE,
                 message != null ? message : code.wire()));
@@ -1920,24 +1973,35 @@ final class ChatRegistry {
         // be `chat`, and then the id's segment is no route's. The segment whose prefix parses to an
         // address and whose path the address builds exactly is the chat's.
         for (var chatAt = 2; chatAt < segments.size(); chatAt++) {
-            if (!SEGMENT_CHAT.equals(segments.get(chatAt))) {
-                continue;
-            }
-            try {
-                var address = address(segments.subList(0, chatAt));
-                if (address == null) {
-                    continue;
-                }
-                var target = action(address, segments.subList(chatAt + 1, segments.size()));
-                if (target != null && path.equals(target.expectedPath())) {
+            if (SEGMENT_CHAT.equals(segments.get(chatAt))) {
+                var target = matchAt(path, segments, chatAt);
+                if (target != null) {
                     return target;
                 }
-                // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (IllegalArgumentException _) {
-                // a prefix that is no address is not the chat's segment
             }
         }
         return null;
+    }
+
+    /**
+     * @param path     the request's path
+     * @param segments the path's segments
+     * @param chatAt   the segment that reads {@code chat}
+     * @return the route the path builds for the subject before that segment, or {@code null}
+     */
+    private @Nullable Target matchAt(String path, List<String> segments, int chatAt) {
+        try {
+            var address = address(segments.subList(0, chatAt));
+            if (address == null) {
+                return null;
+            }
+            var target = action(address, segments.subList(chatAt + 1, segments.size()));
+            return target != null && path.equals(target.expectedPath()) ? target : null;
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IllegalArgumentException _) {
+            // a prefix that is no address is not the chat's segment
+            return null;
+        }
     }
 
     private @Nullable Address address(List<String> segments) {
