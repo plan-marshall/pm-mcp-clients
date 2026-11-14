@@ -7219,11 +7219,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * @param path a request path
      * @return whether the act is a decision answer, withdrawal or interpretation whose body a
-     *         dialogue test asserts; every other body (credentials, device secrets) stays out of
-     *         the act log
+     *         dialogue test asserts; every other body (credentials, device secrets, decision chat)
+     *         stays out of the act log
      */
     private static boolean carriesDecisionBody(String path) {
-        return path.contains(SEGMENT_DECISIONS) || path.startsWith(API_QUESTIONS_PATH);
+        if (!path.contains(SEGMENT_DECISIONS) && !path.startsWith(API_QUESTIONS_PATH)) {
+            return false;
+        }
+        return path.endsWith("/answer") || path.endsWith("/answers") || path.endsWith("/withdraw")
+                || path.endsWith("/interpret");
     }
 
     private void handleControlActs(MockHttpResponse response) throws IOException {

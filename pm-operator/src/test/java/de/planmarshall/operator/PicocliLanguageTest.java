@@ -19,14 +19,14 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
 
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.api.testsupport.RuntimeFixture;
 
 /**
  * Tests for Picocli in the operator's language and custom exception handling (D3).
@@ -58,12 +58,13 @@ class PicocliLanguageTest {
         merged.putAll(env);
         var clientEnv = ClientEnvironment.capture(merged);
         var context = new OperatorContext(
-                merged,
-                fixture.base().getParent(),
-                true,
-                clientEnv,
-                null,
-                _ -> {}
+                            merged,
+                            fixture.base().getParent(),
+                            true,
+                            clientEnv,
+                            null,
+                            _ -> {
+                            }
         );
         return PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true), args);
     }

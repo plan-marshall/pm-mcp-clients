@@ -35,6 +35,7 @@ import de.planmarshall.api.overview.ProjectSummary;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
+import de.planmarshall.operator.tui.TuiLayout;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -346,7 +347,7 @@ final class StatusCommand implements Callable<Integer> {
     private void renderPlanRow(PrintWriter out, ActivePlanSummary plan, String baseIndent, String locale) {
         String marker;
         if (plan.needsOperatorCount() != null && plan.needsOperatorCount() > 0) {
-            marker = String.format("! %-8s ", needsLabel(locale, plan.needsOperatorKind()));
+            marker = needsMarker(locale, plan.needsOperatorKind());
         } else {
             marker = "           ";
         }
@@ -393,20 +394,26 @@ final class StatusCommand implements Callable<Integer> {
 
     /**
      * The label a row of the tree names its needs kind by: the catalogue's word of the resolved kind
-     * ({@link ConsolePrompt#kindWord}, never the wire word), or {@code attention} when no kind is named.
+     * ({@link ConsolePrompt#kindWord}, never the wire word).
      *
      * @param locale the interface locale
      * @param kind   the runtime's needs kind, or {@code null} when it names none
      * @return the label of the kind
      */
     private static String needsLabel(String locale, @Nullable String kind) {
-        return kind == null ? "attention" : ConsolePrompt.kindWord(locale, kind);
+        return ConsolePrompt.kindWord(locale, kind);
+    }
+
+    private static String needsMarker(String locale, @Nullable String kind) {
+        var label = needsLabel(locale, kind);
+        int pad = Math.max(0, 8 - TuiLayout.displayWidth(label));
+        return "! " + label + " ".repeat(pad) + " ";
     }
 
     private void renderProjectByEpic(PrintWriter out, ProjectDetailResponse detail, String locale) {
         for (var epic : detail.epics()) {
             String epicMarker = epic.needsOperatorCount() != null && epic.needsOperatorCount() > 0
-                                ? String.format("! %-8s ", needsLabel(locale, epic.needsOperatorKind()))
+                                ? needsMarker(locale, epic.needsOperatorKind())
                                 : "           ";
             var epicTitle = OutputSafety.stripControlSequences(epic.title());
             var plansCount = MessageCatalogue.format(locale, "overview.epic.plans", Map.of(

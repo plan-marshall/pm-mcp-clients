@@ -737,7 +737,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         var ansPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
-        if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
+        if (isAccepted(ansRes.status())) {
             if (ACTION_DECLINE.equals(act)) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.declined", Map.of(ID_KEY, envelope.id())));
             } else {
@@ -795,8 +795,8 @@ public final class AnswerCommand implements Callable<Integer> {
                     var wire = refused.code().wire();
                     var reason = refused.serverMessage() != null ? refused.serverMessage() : "";
                     session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
-                            "reason", reason,
-                            "n", 1
+                                        "reason", reason,
+                                        "n", 1
                     )));
                     session.out().flush();
                     continue;
@@ -1382,7 +1382,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var answerPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
-        if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
+        if (isAccepted(response.status())) {
             session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered_parts",
                                 Map.of(ID_KEY, envelope.id())));
             session.out().flush();
@@ -1401,7 +1401,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var answerPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
-        if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
+        if (isAccepted(response.status())) {
             session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered", Map.of(
                                 ID_KEY, envelope.id(),
                                 LABEL_KEY, TerminalSanitizer.sanitizeLine(words))));
@@ -1559,7 +1559,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         var ansPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
-        if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
+        if (isAccepted(ansRes.status())) {
             var noteSuffix = noteText != null && !noteText.isBlank() ? " " + getMessage(locale, "operator.decision.with_note") : "";
             var goesOn = MessageCatalogue.format(locale, "operator.decision.goes_on", Map.of(
                                 SCOPE_KEY, scopeSelector(envelope),
@@ -1662,20 +1662,20 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static boolean isDecisionRefusal(@Nullable ApiErrorCode code) {
         return code == ApiErrorCode.CONFLICT
-                || code == ApiErrorCode.ALREADY_ANSWERED
-                || code == ApiErrorCode.INVALID_ANSWER
-                || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
+                            || code == ApiErrorCode.ALREADY_ANSWERED
+                            || code == ApiErrorCode.INVALID_ANSWER
+                            || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
     }
 
     private int handleDecisionRefusal(PrintWriter out, DecisionEnvelope envelope,
-            OperatorRefusedException refusal, String locale) {
+                        OperatorRefusedException refusal, String locale) {
         printDecisionDetail(out, envelope, locale);
         var wire = refusal.code() != null ? refusal.code().wire() : "conflict";
         var key = "decision.refused." + wire;
         var reason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
         out.println(MessageCatalogue.format(locale, key, Map.of(
-                "reason", reason,
-                "n", 1
+                            "reason", reason,
+                            "n", 1
         )));
         out.flush();
         return 1;

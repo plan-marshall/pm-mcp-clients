@@ -48,7 +48,7 @@ public final class RefusalRenderer {
      * @return the three lines
      */
     public static List<String> renderLines(@Nullable String locale, @Nullable ApiErrorCode code,
-            @Nullable String serverMessage) {
+                        @Nullable String serverMessage) {
         return renderLines(locale, code, serverMessage, Map.of());
     }
 
@@ -62,11 +62,11 @@ public final class RefusalRenderer {
      * @return the three lines
      */
     public static List<String> renderLines(@Nullable String locale, @Nullable ApiErrorCode code,
-            @Nullable String serverMessage, Map<String, ?> arguments) {
+                        @Nullable String serverMessage, Map<String, ?> arguments) {
         return List.of(
-                titleLine(locale, code, serverMessage),
-                causeLine(locale, code),
-                fixLine(locale, code, arguments)
+                            titleLine(locale, code, serverMessage),
+                            causeLine(locale, code),
+                            fixLine(locale, code, arguments)
         );
     }
 
@@ -74,7 +74,7 @@ public final class RefusalRenderer {
      * Builds the title line (line 1), prefixed with {@code ✗ }.
      */
     public static String titleLine(@Nullable String locale, @Nullable ApiErrorCode code,
-            @Nullable String serverMessage) {
+                        @Nullable String serverMessage) {
         if (code != null) {
             return GLYPH_REFUSED + ErrorTexts.title(locale, code);
         }
@@ -112,7 +112,7 @@ public final class RefusalRenderer {
      * Renders the refusal with arguments to a writer.
      */
     public static void render(PrintWriter out, @Nullable String locale, @Nullable ApiErrorCode code,
-            @Nullable String serverMessage, Map<String, ?> arguments) {
+                        @Nullable String serverMessage, Map<String, ?> arguments) {
         for (var line : renderLines(locale, code, serverMessage, arguments)) {
             out.println(line);
         }

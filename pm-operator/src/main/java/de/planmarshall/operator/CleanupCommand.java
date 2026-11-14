@@ -237,8 +237,8 @@ public final class CleanupCommand implements Callable<Integer> {
                     var who = OutputSafety.stripControlSequences(item.who());
                     var how = MessageCatalogue.format(locale, "system.cleanup.kept.why",
                                         Map.of("how", item.how(),
-                                                "time", OutputSafety.stripControlSequences(item.keptAt()),
-                                                "who", who));
+                                                            "time", OutputSafety.stripControlSequences(item.keptAt()),
+                                                            "who", who));
                     out.printf("  %d) %s %-32s %s%n", idx++, glyph, title, how);
                 }
             }
@@ -677,8 +677,8 @@ public final class CleanupCommand implements Callable<Integer> {
 
         String label(String locale, int remindDays) {
             return this == REMIND
-                    ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of("days", remindDays))
-                    : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
+                                ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of("days", remindDays))
+                                : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 
         /**

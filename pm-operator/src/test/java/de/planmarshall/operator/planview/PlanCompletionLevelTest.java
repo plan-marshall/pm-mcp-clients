@@ -189,9 +189,9 @@ class PlanCompletionLevelTest {
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
         var text = level.rows("de").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertAll(
-                () -> assertTrue(text.contains("zusammengeführt"), text),
-                () -> assertTrue(text.contains("fertig"), text),
-                () -> assertFalse(text.contains("done"), text)
+                            () -> assertTrue(text.contains("zusammengeführt"), text),
+                            () -> assertTrue(text.contains("fertig"), text),
+                            () -> assertFalse(text.contains("done"), text)
         );
     }
 }

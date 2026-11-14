@@ -24,7 +24,6 @@ import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.HoldResolutionResult;
-import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
@@ -32,7 +31,6 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessNode;
@@ -49,8 +47,10 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
@@ -1054,8 +1054,8 @@ public final class PlanCommand implements Callable<Integer> {
             if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
                 var target = ownCall.conflictTarget();
                 var item = target != null && !target.isBlank()
-                                     ? ConsoleNotice.stripControlSequences(target)
-                                     : MessageCatalogue.get(locale, "common.unknown");
+                                    ? ConsoleNotice.stripControlSequences(target)
+                                    : MessageCatalogue.get(locale, "common.unknown");
                 return "conflicts with " + item;
             }
             if ("consistent".equalsIgnoreCase(ownCall.judgment())) {

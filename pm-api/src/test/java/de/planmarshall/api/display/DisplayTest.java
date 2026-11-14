@@ -10,7 +10,6 @@
 package de.planmarshall.api.display;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Clock;
 import java.time.Instant;

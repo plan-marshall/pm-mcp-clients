@@ -210,10 +210,10 @@ class WebDevicesCommandTest {
         int code = cmd.execute();
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("12. Mai"), output),
-                () -> assertTrue(output.contains("20. Mai"), output),
-                () -> assertTrue(output.contains("2. Juni"), output)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("12. Mai"), output),
+                            () -> assertTrue(output.contains("20. Mai"), output),
+                            () -> assertTrue(output.contains("2. Juni"), output)
         );
     }
 

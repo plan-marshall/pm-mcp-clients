@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 
@@ -456,7 +457,7 @@ public final class MockConfigRoutes {
         return AspectOwnedKeys.isAspectOwned(key);
     }
 
-    private static final java.util.Set<String> PROJECT_CLEANUP_KEYS = java.util.Set.of(
+    private static final Set<String> PROJECT_CLEANUP_KEYS = Set.of(
             "cleanup.plans_after_days",
             "cleanup.epics_after_days",
             "cleanup.logs_after_days"

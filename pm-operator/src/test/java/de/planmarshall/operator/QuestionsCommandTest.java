@@ -176,10 +176,10 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions".equals(request.target())) {
                 response.json(200, """
-                        [
-                          {"id":"WR-1","kind":"waiver","title":"Approve","gate":"coverage:pm-api","delivered_at":"2026-10-20T12:00:00Z"}
-                        ]
-                        """);
+                                    [
+                                      {"id":"WR-1","kind":"waiver","title":"Approve","gate":"coverage:pm-api","delivered_at":"2026-10-20T12:00:00Z"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -199,10 +199,10 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions".equals(request.target())) {
                 response.json(200, """
-                        [
-                          {"id":"Q-1","blocks":"unknown_scope","reversibility":"unknown_rev","title":"Question"}
-                        ]
-                        """);
+                                    [
+                                      {"id":"Q-1","blocks":"unknown_scope","reversibility":"unknown_rev","title":"Question"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }

@@ -706,7 +706,7 @@ public final class ChoicePrompt {
 
     private String renderConsentPrompt() {
         var question = consentPromptLabel != null ? consentPromptLabel
-                : MessageCatalogue.format(locale, "operator.dialogue.consent.prompt_yn", Map.of());
+                            : MessageCatalogue.format(locale, "operator.dialogue.consent.prompt_yn", Map.of());
         if (hasExplanation()) {
             question = question + "   ?";
         }

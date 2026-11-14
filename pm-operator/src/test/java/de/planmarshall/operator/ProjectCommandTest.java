@@ -477,8 +477,8 @@ class ProjectCommandTest {
         int code = execute("project", "add", "/git/cui-parent", "--pilot");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code, err.toString()),
-                () -> assertTrue(output.contains("--pilot was not used: no state of the run asks for it."), output));
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("--pilot was not used: no state of the run asks for it."), output));
     }
 
     @Test

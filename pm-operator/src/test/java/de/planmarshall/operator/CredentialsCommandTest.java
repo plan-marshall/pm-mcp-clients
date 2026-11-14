@@ -232,8 +232,8 @@ class CredentialsCommandTest {
         var text = out.toString();
 
         assertAll(
-                () -> assertEquals(3, code, text + " | " + err),
-                () -> assertFalse(text.contains("Consent remembered"), text));
+                            () -> assertEquals(3, code, text + " | " + err),
+                            () -> assertFalse(text.contains("Consent remembered"), text));
     }
 
     @Test

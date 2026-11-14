@@ -258,39 +258,39 @@ public final class CredentialsCommand implements Callable<Integer> {
         }
 
         var hasConsent = settings != null
-                && settings.consents().stream().anyMatch(c -> c.kind() == ConsentKind.VERIFY_PROVIDERS);
+                            && settings.consents().stream().anyMatch(c -> c.kind() == ConsentKind.VERIFY_PROVIDERS);
         if (hasConsent) {
             out.println("\u2713 " + MessageCatalogue.format(locale, "common.consent.remembered",
-                    Map.of("action", MessageCatalogue.format(locale,
-                            "common.consent.kind.verify_providers", Map.of()))));
+                                Map.of("action", MessageCatalogue.format(locale,
+                                                    "common.consent.kind.verify_providers", Map.of()))));
             out.flush();
         }
         var facts = new LinkedHashMap<String, String>();
         facts.put("current", store);
         var outcome = ConfigAspectRun.runFor(context, out, err, CREDENTIALS,
-                new ConfigAspectRun.Answers(facts, hasConsent ? List.of("verify_providers") : List.of(),
-                        false, false, false, noInput),
-                terminal);
+                            new ConfigAspectRun.Answers(facts, hasConsent ? List.of("verify_providers") : List.of(),
+                                                false, false, false, noInput),
+                            terminal);
         if (outcome.exitCode() != 0) {
             return outcome.exitCode();
         }
         var reported = outcome.facts();
         if ("providers.failed".equals(outcome.lastStateId())
-                || Boolean.TRUE.equals(reported.get("failed"))
-                || reported.containsKey("cause")) {
+                            || Boolean.TRUE.equals(reported.get("failed"))
+                            || reported.containsKey("cause")) {
             out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
-                    Map.of(REASON, TerminalSanitizer.sanitize(
-                            Objects.toString(reported.get("cause"), "")))));
+                                Map.of(REASON, TerminalSanitizer.sanitize(
+                                                    Objects.toString(reported.get("cause"), "")))));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
         var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";
         var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
-                "onboard.settings.credential.verified", Map.of(KEY, key)));
+                            "onboard.settings.credential.verified", Map.of(KEY, key)));
         if (!plans.isBlank()) {
             line.append(' ').append(MessageCatalogue.format(locale,
-                    "onboard.settings.credential.plans_go_on",
-                    Map.of(COUNT, plans.split(",").length, "plans", plans)));
+                                "onboard.settings.credential.plans_go_on",
+                                Map.of(COUNT, plans.split(",").length, "plans", plans)));
         }
         out.println(line);
         out.flush();

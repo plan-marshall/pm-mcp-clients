@@ -642,10 +642,10 @@ class PlanCommandTest {
         int code = executeWithLocale("de", "plan", "report", "fix-relay");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("Abschlussbericht"), output),
-                () -> assertTrue(output.contains("zusammengeführt"), output),
-                () -> assertFalse(output.contains("completion report"), output)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Abschlussbericht"), output),
+                            () -> assertTrue(output.contains("zusammengeführt"), output),
+                            () -> assertFalse(output.contains("completion report"), output)
         );
     }
 

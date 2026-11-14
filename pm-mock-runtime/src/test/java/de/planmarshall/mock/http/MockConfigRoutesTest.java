@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -303,7 +304,7 @@ class MockConfigRoutesTest {
         var routes = new MockConfigRoutes();
         var machine = Map.<String, Object>of();
 
-        for (var kind : java.util.List.of("reports", "unenrolled", "remind")) {
+        for (var kind : List.of("reports", "unenrolled", "remind")) {
             var answer = query(routes, "PUT", PATH + "/project/cleanup." + kind + "_after_days?project=pm",
                     "{\"value\":30}", machine);
             assertEquals(409, answer.status(), "project write of cleanup." + kind + "_after_days");

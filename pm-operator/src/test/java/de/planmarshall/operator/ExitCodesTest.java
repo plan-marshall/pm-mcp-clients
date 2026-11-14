@@ -12,6 +12,8 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,10 +21,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
-
 import org.jline.terminal.impl.DumbTerminal;
+
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,11 +39,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-import de.planmarshall.api.testsupport.RuntimeFixture;
 import picocli.CommandLine.Command;
 
 /**
@@ -77,20 +78,21 @@ class ExitCodesTest {
 
     private int execute(String... args) {
         var context = new OperatorContext(
-                fixture.environment(),
-                tempDir,
-                true,
-                ClientEnvironment.capture(fixture.environment()),
-                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
-                _ -> {}
+                            fixture.environment(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            _ -> {
+                            }
         );
         return PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true), args);
     }
 
     static List<String> registeredVerbs() {
         return Arrays.stream(PmOperator.class.getAnnotation(Command.class).subcommands())
-                .map(type -> type.getAnnotation(Command.class).name())
-                .toList();
+                            .map(type -> type.getAnnotation(Command.class).name())
+                            .toList();
     }
 
     @Nested
@@ -119,30 +121,30 @@ class ExitCodesTest {
 
         static Stream<Arguments> refusedCommandInvocations() {
             return Stream.of(
-                    Arguments.of("status", new String[]{"status"}),
-                    Arguments.of("system", new String[]{"system"}),
-                    Arguments.of("plans", new String[]{"plans"}),
-                    Arguments.of("plan", new String[]{"plan", RANDOM_ID}),
-                    Arguments.of("epic", new String[]{"epic", RANDOM_ID}),
-                    Arguments.of("questions", new String[]{"questions"}),
-                    Arguments.of("answer", new String[]{"answer", RANDOM_ID, "1"}),
-                    Arguments.of("reports", new String[]{"reports"}),
-                    Arguments.of("projects", new String[]{"projects"}),
-                    Arguments.of("project", new String[]{"project", RANDOM_ID}),
-                    Arguments.of("roles list", new String[]{"roles", "list"}),
-                    Arguments.of("roles show", new String[]{"roles", "show", "planner"}),
-                    Arguments.of("config", new String[]{"config"}),
-                    Arguments.of("config show", new String[]{"config", "show"}),
-                    Arguments.of("client status", new String[]{"client", "status"}),
-                    Arguments.of("cleanup", new String[]{"cleanup"}),
-                    Arguments.of("cleanup --kept", new String[]{"cleanup", "--kept"}),
-                    Arguments.of("find", new String[]{"find", RANDOM_ID}),
-                    Arguments.of("lesson check", new String[]{"lesson", "check", RANDOM_ID}),
-                    Arguments.of("epic findings", new String[]{"epic", "findings", RANDOM_ID}),
-                    Arguments.of("epic watches", new String[]{"epic", "watches", RANDOM_ID}),
-                    Arguments.of("plan findings", new String[]{"plan", "findings", RANDOM_ID}),
-                    Arguments.of("plan watches", new String[]{"plan", "watches", RANDOM_ID}),
-                    Arguments.of("plan settings", new String[]{"plan", "settings", RANDOM_ID})
+                                Arguments.of("status", new String[]{"status"}),
+                                Arguments.of("system", new String[]{"system"}),
+                                Arguments.of("plans", new String[]{"plans"}),
+                                Arguments.of("plan", new String[]{"plan", RANDOM_ID}),
+                                Arguments.of("epic", new String[]{"epic", RANDOM_ID}),
+                                Arguments.of("questions", new String[]{"questions"}),
+                                Arguments.of("answer", new String[]{"answer", RANDOM_ID, "1"}),
+                                Arguments.of("reports", new String[]{"reports"}),
+                                Arguments.of("projects", new String[]{"projects"}),
+                                Arguments.of("project", new String[]{"project", RANDOM_ID}),
+                                Arguments.of("roles list", new String[]{"roles", "list"}),
+                                Arguments.of("roles show", new String[]{"roles", "show", "planner"}),
+                                Arguments.of("config", new String[]{"config"}),
+                                Arguments.of("config show", new String[]{"config", "show"}),
+                                Arguments.of("client status", new String[]{"client", "status"}),
+                                Arguments.of("cleanup", new String[]{"cleanup"}),
+                                Arguments.of("cleanup --kept", new String[]{"cleanup", "--kept"}),
+                                Arguments.of("find", new String[]{"find", RANDOM_ID}),
+                                Arguments.of("lesson check", new String[]{"lesson", "check", RANDOM_ID}),
+                                Arguments.of("epic findings", new String[]{"epic", "findings", RANDOM_ID}),
+                                Arguments.of("epic watches", new String[]{"epic", "watches", RANDOM_ID}),
+                                Arguments.of("plan findings", new String[]{"plan", "findings", RANDOM_ID}),
+                                Arguments.of("plan watches", new String[]{"plan", "watches", RANDOM_ID}),
+                                Arguments.of("plan settings", new String[]{"plan", "settings", RANDOM_ID})
             );
         }
 
@@ -152,7 +154,7 @@ class ExitCodesTest {
         void refusedCommandExitsOne(String label, String[] args) throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
             fixture.start((request, response) -> response.send(500, null,
-                    "{\"error\":\"internal_error\",\"reason\":\"runtime failure\"}"));
+                                "{\"error\":\"internal_error\",\"reason\":\"runtime failure\"}"));
 
             int code = execute(args);
             assertEquals(1, code, "Command " + label + " did not exit 1. stdout: " + out + " stderr: " + err);
@@ -163,7 +165,7 @@ class ExitCodesTest {
         void planNotFoundExitsOne() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
             fixture.start((request, response) -> response.send(404, null,
-                    "{\"error\":\"scope_not_found\",\"reason\":\"plan not found\"}"));
+                                "{\"error\":\"scope_not_found\",\"reason\":\"plan not found\"}"));
 
             int code = execute("plan", "nope");
             assertEquals(1, code, "plan nope did not exit 1. stdout: " + out + " stderr: " + err);
@@ -178,8 +180,8 @@ class ExitCodesTest {
         @DisplayName("-h and --help exit 0")
         void helpExitsZero() {
             assertAll(
-                    () -> assertEquals(0, execute("-h")),
-                    () -> assertEquals(0, execute("--help"))
+                                () -> assertEquals(0, execute("-h")),
+                                () -> assertEquals(0, execute("--help"))
             );
         }
 
@@ -187,8 +189,8 @@ class ExitCodesTest {
         @DisplayName("-V and --version exit 0")
         void versionExitsZero() {
             assertAll(
-                    () -> assertEquals(0, execute("-V")),
-                    () -> assertEquals(0, execute("--version"))
+                                () -> assertEquals(0, execute("-V")),
+                                () -> assertEquals(0, execute("--version"))
             );
         }
 
@@ -227,15 +229,16 @@ class ExitCodesTest {
         @DisplayName("Act command in coding agent environment exits 4")
         void agentEnvironmentExitsFour() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
-            var env = new java.util.HashMap<>(fixture.environment());
+            var env = new HashMap<>(fixture.environment());
             env.put("CLAUDE_CODE", "1");
             var context = new OperatorContext(
-                    env,
-                    tempDir,
-                    true,
-                    ClientEnvironment.capture(env),
-                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
-                    _ -> {}
+                                env,
+                                tempDir,
+                                true,
+                                ClientEnvironment.capture(env),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                                _ -> {
+                                }
             );
             int code = PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true), "runtime", "stop");
             assertEquals(4, code, "stdout: " + out + " stderr: " + err);
@@ -246,12 +249,13 @@ class ExitCodesTest {
         void nonInteractiveTerminalExitsFour() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
             var context = new OperatorContext(
-                    fixture.environment(),
-                    tempDir,
-                    false,
-                    ClientEnvironment.capture(fixture.environment()),
-                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
-                    _ -> {}
+                                fixture.environment(),
+                                tempDir,
+                                false,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                                _ -> {
+                                }
             );
             int code = PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true), "runtime", "stop");
             assertEquals(4, code, "stdout: " + out + " stderr: " + err);

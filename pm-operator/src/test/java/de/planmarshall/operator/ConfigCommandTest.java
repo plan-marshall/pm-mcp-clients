@@ -357,12 +357,12 @@ class ConfigCommandTest {
         var text = out.toString();
 
         assertAll(
-                () -> assertEquals(0, code, text),
-                () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
-                () -> assertTrue(text.contains("Changed meanwhile: it is now 45. Yours was not applied."), text),
-                () -> assertFalse(text.contains("HTTP 409"), text),
-                () -> assertEquals(3, bodies.size(), bodies.toString()),
-                () -> assertTrue(bodies.get(2).contains("\"revision\":6"), bodies.get(2)));
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 45. Yours was not applied."), text),
+                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertEquals(3, bodies.size(), bodies.toString()),
+                            () -> assertTrue(bodies.get(2).contains("\"revision\":6"), bodies.get(2)));
     }
 
     @Test
@@ -832,9 +832,9 @@ class ConfigCommandTest {
         int code = executeWithTyped("k\n", "config", "cleanup", "--project", ".", "--plans", "60", "--yes");
         var text = out.toString();
         assertAll(
-                () -> assertEquals(0, code, text),
-                () -> assertTrue(text.contains("Durations kept: Archived plans after 60 days."), text),
-                () -> assertFalse(text.contains("Durations recorded:"), text));
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Durations kept: Archived plans after 60 days."), text),
+                            () -> assertFalse(text.contains("Durations recorded:"), text));
     }
 
     @Test
@@ -859,11 +859,11 @@ class ConfigCommandTest {
         int code = executeWithTyped("\n", "config", "cleanup", "--plans", "60", "--yes");
         var text = out.toString();
         assertAll(
-                () -> assertEquals(0, code, text),
-                () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
-                () -> assertFalse(text.contains("HTTP 409"), text),
-                () -> assertTrue(text.contains("Durations recorded: Archived plans after 60 days."), text),
-                () -> assertEquals(2, bodies.size(), bodies.toString()));
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
+                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertTrue(text.contains("Durations recorded: Archived plans after 60 days."), text),
+                            () -> assertEquals(2, bodies.size(), bodies.toString()));
     }
 
     @Test
@@ -886,10 +886,10 @@ class ConfigCommandTest {
         int code = executeWithTyped("d\n", "config", "cleanup", "--project", "pm-mcp-core");
         var text = out.toString();
         assertAll(
-                () -> assertEquals(0, code, text),
-                () -> assertTrue(text.contains("d) remove its own values"), text),
-                () -> assertEquals(1, deleted.size(), deleted.toString()),
-                () -> assertTrue(deleted.get(0).contains("/project/cleanup.plans_after_days"), deleted.get(0)));
+                            () -> assertEquals(0, code, text),
+                            () -> assertTrue(text.contains("d) remove its own values"), text),
+                            () -> assertEquals(1, deleted.size(), deleted.toString()),
+                            () -> assertTrue(deleted.get(0).contains("/project/cleanup.plans_after_days"), deleted.get(0)));
     }
 
     @Test
@@ -1189,8 +1189,8 @@ class ConfigCommandTest {
         var devices = rowOfLabel(out.toString(), "Paired devices");
 
         assertAll(
-                () -> assertNotNull(devices, out.toString()),
-                () -> assertTrue(devices.contains("1 device \u00b7 network listener unknown"), devices));
+                            () -> assertNotNull(devices, out.toString()),
+                            () -> assertTrue(devices.contains("1 device \u00b7 network listener unknown"), devices));
     }
 
     @Test
@@ -1569,9 +1569,9 @@ class ConfigCommandTest {
     @DisplayName("cleanup value renders singular for 1 day in en and de")
     void cleanupValueSingular() {
         assertEquals("1 day, reminder 1 day",
-                MessageCatalogue.format("en", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+                            MessageCatalogue.format("en", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
         assertEquals("1 Tag, Erinnerung 1 Tag",
-                MessageCatalogue.format("de", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
+                            MessageCatalogue.format("de", "operator.settings.cleanup.value", Map.of("days", 1, "remind", 1)));
     }
 
     @Test

@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -74,17 +76,17 @@ public final class MessageCatalogue {
      * @param locale the requested locale
      * @return ResourceBundle containing messages for all areas
      */
-    public static java.util.ResourceBundle resourceBundle(String locale) {
+    public static ResourceBundle resourceBundle(String locale) {
         String effectiveLocale = normalizeLocale(locale);
         Map<String, String> messages = getMessages(effectiveLocale, "all");
-        return new java.util.ResourceBundle() {
+        return new ResourceBundle() {
             @Override
             protected Object handleGetObject(String key) {
                 return messages.get(key);
             }
 
             @Override
-            public java.util.Enumeration<String> getKeys() {
+            public Enumeration<String> getKeys() {
                 return Collections.enumeration(messages.keySet());
             }
         };

@@ -333,10 +333,12 @@ final class WorkActionDialogue {
         }
         var running = epic.running();
         var launchable = nextLaunchable(epic);
-        if (running == null || running >= epic.scope()) {
+        boolean scopeFull = running != null && running >= epic.scope();
+        if (scopeFull || (running == null && launchable == null)) {
             var candidate = launchable != null ? launchable : nextScopeBlocked(epic);
             if (candidate != null) {
                 if (!askRaise(epic, running, candidate)) {
+                    prompt.line("operator.dialogue.left", Map.of("state", "epic.raise-scope"));
                     return 0;
                 }
                 client.perform(kind, id, "next", Map.of("raise_scope", true));
