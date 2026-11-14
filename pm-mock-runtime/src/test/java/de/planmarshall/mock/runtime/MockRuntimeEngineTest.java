@@ -194,6 +194,18 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("a preloaded state whose representation is no object fails the start, as the loader would refuse it")
+    void preloadedStateWithoutAnObjectRepresentationFailsFast() {
+        var state = new StateDefinition(List.of(Generators.letterStrings(4, 10).next()), Map.of(), List.of(), null);
+        var name = Generators.letterStrings(4, 10).next().toLowerCase();
+        var scenario = new Scenario(1, "bad-" + name, "No object representation", "start.state", null,
+                Map.of(), Map.of("start.state", state));
+
+        assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, runtimeToken, deviceSecret));
+    }
+
+    @Test
     @DisplayName("the status-only case keeps its recorded status and drops the web object")
     void statusOnlyKeepsItsRecordedStatus() throws Exception {
         var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken),

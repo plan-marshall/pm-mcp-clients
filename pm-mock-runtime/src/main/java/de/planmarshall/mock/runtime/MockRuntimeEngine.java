@@ -1275,9 +1275,24 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return scenario;
     }
 
+    /**
+     * The scenario loader refuses a state whose representation is no JSON object, and the engine reads
+     * every current state as one; a scenario handed to the engine already built gets the same check,
+     * so a runtime never starts in a state a later act would fail on.
+     */
+    private static void requireObjectRepresentations(Scenario scenario) {
+        for (var entry : scenario.states().entrySet()) {
+            if (JsonTree.asObject(entry.getValue().representation()) == null) {
+                throw new IllegalStateException("The state " + entry.getKey() + " of the scenario "
+                        + scenario.name() + " has no object representation");
+            }
+        }
+    }
+
     private synchronized void setScenario(Scenario scenario) {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
+        requireObjectRepresentations(scenario);
         validateRuntimeFixture(scenario);
         StartRegistry.validateEndedWork(scenario, scenario.start());
         validateStateFacts(scenario, scenario.start());
@@ -11016,6 +11031,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         // an epic a start flow created has no detail route and no control entry, but it exists
         if (startedEpics.containsKey(epicId)) {
             return true;
+        }
+        // so does an epic the scenario's collection lists without a detail route of its own
+        for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
+            if (epicId.equals(JsonTree.string(row, KEY_ID))) {
+                return true;
+            }
         }
         synchronized (controlLock) {
             return controlEpics.containsKey(epicId);
