@@ -384,6 +384,26 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(screen.getByText('Object body')).toBeInTheDocument();
   });
 
+  it('clears a peek that ended at the object, so narrowing cannot resurrect it', async () => {
+    const { frame } = await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    // Two presses of `]` walk the window to the object, which drops the peek from the state.
+    const epic = screen.getByRole('heading', { name: 'Epic column' });
+    epic.focus();
+    await fireEvent.keyDown(epic, { key: ']' });
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+
+    // A window of two columns would hold a stale peek at the plan and hide the object behind it.
+    reportBox(frame, 832, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to Object column' })).toBeNull();
+  });
+
   it('leaves the keys alone in a one-column window', async () => {
     await renderWindow(496);
     const window_ = document.querySelector('.triage-page__window');

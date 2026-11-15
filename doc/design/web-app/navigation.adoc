@@ -257,7 +257,7 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 
 * *After every window shift* the focus moves to the heading of the column that is now in view, and the move is announced in the frame's polite live region (`Fix Relay Transport, plan`).
 * *The focus never falls to the page*: when the column that holds it slides out, it moves to the heading of the nearest visible column first, and when the chat takes the space the focus moves into the chat and returns to the column it left when the chat hides.
-* *Escape hides the chat from inside the template*: on both templates it is handled within the template's own group and leaves an Escape that the page's open dialog or menu already handled (`preventDefault`) to that widget, so a key meant for a dialog is never also the chat's.
+* *Escape hides the chat from inside the template*: on both templates it is handled within the template's own group and leaves an Escape that the page's open dialog or menu already handled to that widget — a key marked `preventDefault`, or one stopped at the window's capture phase as the `Dialog` stops its own — so a key meant for a dialog is never also the chat's.
 * *Hidden columns are out of the tab order and the accessibility tree*: they are not rendered, not only moved out of sight.
 
 [#phone]
