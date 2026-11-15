@@ -312,10 +312,50 @@
     announce(next);
   }
 
+  /** The class that replays a shift once; it is dropped again when the animation ends. */
+  const SHIFT_CLASS = 'triage-page__column--shift';
+
+  /** The start the last slide ran for, so a first render and an unchanged start do not slide. */
+  let slidStart = -1;
+
+  /**
+   * @returns whether the person asked for reduced motion
+   */
+  function reducedMotion(): boolean {
+    return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  }
+
+  // A shift slides the columns, never the group that holds them: the chat's phone overlay is
+  // `position: fixed`, and a transformed ancestor would make it the overlay's containing block
+  // instead of the viewport. Nothing is remounted for it — a column's scroll position, a chat draft
+  // and the focused control stay where they are.
+  $effect(() => {
+    const start = layout.start;
+    if (slidStart === start) {
+      return;
+    }
+    const first = slidStart === -1;
+    slidStart = start;
+    if (first || windowEl === null || reducedMotion()) {
+      return;
+    }
+    const columns = windowEl.querySelectorAll<HTMLElement>('.triage-page__column');
+    for (const column of columns) {
+      column.classList.add(SHIFT_CLASS);
+      column.addEventListener('animationend', () => column.classList.remove(SHIFT_CLASS), {
+        once: true,
+      });
+    }
+  });
+
   /**
    * @param event the key press on the window or one of its columns
    */
   function onKeydown(event: KeyboardEvent): void {
+    // An Escape the page's own dialog or menu already handled stays its key.
+    if (event.defaultPrevented) {
+      return;
+    }
     if (event.key === 'Escape' && sideOpen && side !== undefined) {
       event.preventDefault();
       onHideSide();
@@ -346,16 +386,15 @@
   bind:this={frame}
 >
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  {#key layout.start}
-    <div
-      class="triage-page__window"
-      role="group"
-      aria-label={label}
-      data-columns={layout.columns}
-      data-start={layout.start}
-      bind:this={windowEl}
-      onkeydown={onKeydown}
-    >
+  <div
+    class="triage-page__window"
+    role="group"
+    aria-label={label}
+    data-columns={layout.columns}
+    data-start={layout.start}
+    bind:this={windowEl}
+    onkeydown={onKeydown}
+  >
     {#if layout.strip !== 'none'}
       <GapStrip
         hidden={hidden}
@@ -412,8 +451,7 @@
         onHide={onHideSide}
       />
     {/if}
-    </div>
-  {/key}
+  </div>
 </div>
 
 <style>
@@ -438,7 +476,6 @@
     min-inline-size: 0;
     padding-inline: var(--triage-inset, 0);
     gap: 0;
-    animation: triage-page-shift var(--duration-base) var(--ease-standard);
   }
 
   .triage-page__column {
@@ -447,6 +484,16 @@
     max-block-size: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+
+  /*
+   * A shift slides the columns, and only for one animation: the class is added when the window's
+   * start changes and dropped on `animationend`, so a column keeps its scroll position, the chat its
+   * draft and the window the focus. The group that holds the chat is never animated — its phone
+   * overlay is `position: fixed` and needs the viewport as its containing block.
+   */
+  .triage-page__column--shift {
+    animation: triage-page-shift var(--duration-base) var(--ease-standard);
   }
 
   .triage-page__pinned {
@@ -487,7 +534,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .triage-page__window {
+    .triage-page__column--shift {
       animation: none;
       transition: none;
     }

@@ -413,15 +413,113 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', start);
   });
 
-  it('slides a shift for the base duration and not at all under reduced motion', () => {
+  it('slides a shift on the columns and not at all under reduced motion', () => {
     const style = styleOf(SOURCE);
     const source = fs.readFileSync(SOURCE, 'utf-8');
 
-    expect(style).toContain('animation: triage-page-shift var(--duration-base)');
-    // The animation runs on a shift: the window is keyed on the level it starts at.
-    expect(source).toContain('{#key layout.start}');
+    // The slide is replayed on the columns themselves; the window is never keyed on the start, which
+    // remounted every column, the strip and the chat on any shift.
+    expect(ruleOf(style, '.triage-page__column--shift')).toContain(
+      'animation: triage-page-shift var(--duration-base)',
+    );
+    expect(source).not.toContain('{#key layout.start}');
     const reduced = style.slice(style.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toContain('animation: none');
+  });
+
+  it('keeps a list column scroll position when the window shifts', async () => {
+    const { frame } = await renderWindow(1168);
+    const plan = document.querySelector('[data-column-index="3"]') as HTMLElement;
+    plan.scrollTop = 120;
+
+    reportBox(frame, 1376, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+    expect(document.querySelector('[data-column-index="3"]')).toBe(plan);
+    expect(plan.scrollTop).toBe(120);
+  });
+
+  it('keeps a chat draft when the window shifts', async () => {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen: true,
+        sideFieldLabel: 'Chat draft',
+      },
+    });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    const field = screen.getByRole('textbox', { name: 'Chat draft' });
+    await fireEvent.input(field, { target: { value: 'half a thought' } });
+
+    reportBox(frame, 1640, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByRole('textbox', { name: 'Chat draft' })).toBe(field);
+    expect(field).toHaveValue('half a thought');
+  });
+
+  it('puts no transformed ancestor above the phone overlay', async () => {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen: true,
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), 390, 800);
+    await tick();
+
+    const overlay = screen.getByTestId('side-column');
+    expect(overlay).toHaveClass('side-column--taken');
+
+    // jsdom lays nothing out, so the stylesheet is the load-bearing witness: the slide animates the
+    // columns, never the group that holds the overlay, and a computed read adds the intent.
+    const style = styleOf(SOURCE);
+    expect(ruleOf(style, '.triage-page__window')).not.toContain('animation');
+    expect(ruleOf(style, '.triage-page__window')).not.toContain('transform');
+
+    const ancestors: HTMLElement[] = [];
+    for (
+      let ancestor = overlay.parentElement;
+      ancestor !== null;
+      ancestor = ancestor.parentElement
+    ) {
+      ancestors.push(ancestor);
+    }
+    expect(ancestors.length).toBeGreaterThan(0);
+    for (const ancestor of ancestors) {
+      expect(getComputedStyle(ancestor).transform === 'none' || getComputedStyle(ancestor).transform === '').toBe(true);
+    }
+  });
+
+  it('replays no slide where the person asked for reduced motion', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+    })) as unknown as typeof window.matchMedia;
+
+    try {
+      const { frame } = await renderWindow(1168);
+      reportBox(frame, 1376, 800);
+      await tick();
+
+      expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+      expect(document.querySelector('.triage-page__column--shift')).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });
 

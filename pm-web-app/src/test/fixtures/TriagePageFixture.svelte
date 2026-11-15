@@ -18,6 +18,7 @@
     fieldLabel?: string;
     sideBody?: string;
     sideOpen?: boolean;
+    sideFieldLabel?: string;
     withUp?: boolean;
     onHideSide?: () => void;
   }
@@ -32,6 +33,7 @@
     fieldLabel = '',
     sideBody = '',
     sideOpen = false,
+    sideFieldLabel = '',
     withUp = false,
     onHideSide = () => {},
   }: Props = $props();
@@ -59,6 +61,9 @@
 {/snippet}
 
 {#snippet sidePane()}
+  {#if sideFieldLabel}
+    <input aria-label={sideFieldLabel} />
+  {/if}
   <p class="fixture-side">{sideBody}</p>
 {/snippet}
 
