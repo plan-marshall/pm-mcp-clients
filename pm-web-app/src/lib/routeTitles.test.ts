@@ -99,6 +99,19 @@ describe('the names a route title carries', () => {
     });
   });
 
+  it('names the object routes this plan adds', () => {
+    // The project page, a task, one decision and one report: the tab names the object, and a
+    // route that carries a name falls back to its loading text until the name is known.
+    expect(ROUTE_TITLES.project(SELECTED)).toEqual({ key: 'project.explorer.title' });
+    expect(ROUTE_TITLES.task(SELECTED)).toEqual({
+      key: 'plan.view.title',
+      args: { plan: 'drop-legacy-api' },
+    });
+    expect(ROUTE_TITLES.task(NOTHING_SELECTED)).toEqual({ key: 'plan.view.title.loading' });
+    expect(ROUTE_TITLES.decision(SELECTED)).toEqual({ key: 'decisions.list.title' });
+    expect(ROUTE_TITLES.report(SELECTED)).toEqual({ key: 'report.list.title' });
+  });
+
   it('falls back to the unparameterized key while the name is unknown', () => {
     expect(ROUTE_TITLES.plan(NOTHING_SELECTED)).toEqual({ key: 'plan.view.title.loading' });
     expect(ROUTE_TITLES.epic(NOTHING_SELECTED)).toEqual({ key: 'epic.view.title.loading' });
