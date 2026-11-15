@@ -375,6 +375,29 @@ describe('a peek', () => {
     expect(layout.peek).toBe(false);
   });
 
+  it('returns the object its own window when a peek ends at the object', () => {
+    const normal = windowFor({ container: containerOf(1440, RAIL.expanded), depth: DEEPEST_CHAIN });
+    expect(normal.columns).toBe(3);
+    expect(normal.start).toBe(2);
+
+    // A peek at the plan (index 2) leaves no level to the right of a three-column window, so it is
+    // the object's own window: the strip of hidden levels 0-1, and the object's own width.
+    const atObject = windowFor({
+      container: containerOf(1440, RAIL.expanded),
+      depth: DEEPEST_CHAIN,
+      peek: 2,
+    });
+
+    expect(atObject.peek).toBe(false);
+    expect(atObject.returnStrip).toBe(false);
+    expect(atObject.start).toBe(normal.start);
+    expect(atObject.strip).toBe('names');
+    expect(atObject.stripWidth).toBe(STRIP_NAMES);
+    expect(atObject.hiddenLeft).toBe(2);
+    expect(atObject.objectWidth).toBe(normal.objectWidth);
+    expect(atObject.columnWidths).toEqual(normal.columnWidths);
+  });
+
   it('falls back to the object when a widened window cannot hold the peek', () => {
     // The peek was made in a two-column window; the container then grows to four columns, which
     // leave only one level after the peeked index.

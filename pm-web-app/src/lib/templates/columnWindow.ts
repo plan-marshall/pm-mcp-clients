@@ -16,7 +16,9 @@
  *
  * A peek — a mark of the gap strip selected — starts the window at the peeked level and stretches
  * the rightmost visible column into the room the strip frees; the levels then hidden on the right
- * are represented by a strip of marks at the right edge.
+ * are represented by a strip of marks at the right edge. A peek that leaves no level to the right
+ * is the object's own window: it keeps the strip of the levels hidden to its left and its own
+ * width, and stands no return strip.
  */
 
 /** The narrowest a list column may be. */
@@ -236,10 +238,11 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
   const chosen = chooseWindow(available, depth);
   const listWidth = listWidthFor(chosen.columns, available, stripWidthOf(chosen.strip));
 
-  // A peek that would leave fewer levels than the window's columns is no peek: the window falls
-  // back to the object, so a resize while peeked never renders a short window.
-  const peeked =
-    peek !== null && chosen.columns > 1 && peek + chosen.columns <= depth ? peek : null;
+  // A peek that would leave fewer levels than the window's columns is no peek, and neither is one
+  // that ends at the object: with no level hidden to its right the window is the object's own, with
+  // its strip of hidden levels and its width. So a resize while peeked never renders a short window,
+  // and a peek that reaches the object never stretches it into the room the strip freed.
+  const peeked = peek !== null && chosen.columns > 1 && peek + chosen.columns < depth ? peek : null;
 
   if (peeked === null) {
     const start = Math.max(0, depth - chosen.columns);

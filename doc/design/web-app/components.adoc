@@ -366,7 +366,7 @@ A view sits on one of the four templates of `pm-web-app/src/lib/templates/` and 
 The template of every lens: it draws the chain of levels as columns and owns the column window (link:navigation.adoc#window[Navigation, The Column Window]).
 
 * *The window*: it measures its own container, not the viewport, and shows the rightmost columns that fit by the rule and the width table of the navigation design, again on every change of the container's width. Its viewport query at `1099 px` and its fixed `40 / 60` split go.
-* *The strips*: the gap strip of the hidden levels on the left, with names or with marks only, and during a peek the strip at the right edge (link:navigation.adoc#gap-strip[Navigation, The Gap Strip]).
+* *The strips*: the gap strip of the hidden levels on the left, with names or with marks only, and during a peek the strip at the right edge — no right strip for a peek that ends at the object, which is the object's own window (link:navigation.adoc#gap-strip[Navigation, The Gap Strip]).
 * *The side column*: a column docked right of the object column, which takes the space where both do not fit (link:navigation.adoc#side-columns[Navigation, Side Columns]).
 * *The focus*: after a shift of the window it moves the focus to the heading of the column now in view and announces it in the frame's live region; a column out of the window is not rendered.
 * *The template owns the columns, never the items*: the view gives each level and fills its column; it keeps its rows, its filter, its matches, its selection and its `j`/`k`/`Enter`.
