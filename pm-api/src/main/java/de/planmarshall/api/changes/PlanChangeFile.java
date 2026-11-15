@@ -103,6 +103,9 @@ public record PlanChangeFile(
             }
         }
         var linesOmitted = JsonTree.integer(map, FIELD_LINES_OMITTED);
+        if (linesOmitted != null && linesOmitted < 0) {
+            throw new JsonFormatException("A count of omitted lines is never negative");
+        }
         return new PlanChangeFile(
                 path,
                 hunks,

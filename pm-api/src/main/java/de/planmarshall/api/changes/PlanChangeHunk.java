@@ -104,6 +104,9 @@ public record PlanChangeHunk(
         if (value == null) {
             throw new JsonFormatException("Missing " + field + " in a hunk");
         }
+        if (value < 0) {
+            throw new JsonFormatException("A hunk's position and length are never negative: " + field);
+        }
         return value;
     }
 }

@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -406,12 +405,17 @@ class PlanChangesScenarioTest {
         void refusesAnInvalidSize() throws Exception {
             var valid = scenarioJson();
 
-            var negative = valid.replace("\"insertions\": 340", "\"insertions\": -340");
+            // Only the project-detail rows: they carry a plan's size but no codec decodes them, so
+            // the load's own size collection is the decoder this test exercises.
+            var negative = valid.replace("\"off_track_signal\": \"repeating\",\n            \"change\": {\n"
+                    + "              \"files\": 12,\n              \"insertions\": 340,",
+                    "\"off_track_signal\": \"repeating\",\n            \"change\": {\n"
+                            + "              \"files\": 12,\n              \"insertions\": -340,");
             assertNotEquals(valid, negative, "the fixture carries the size the test makes invalid");
 
             var refused = assertThrows(ScenarioValidationException.class,
                     () -> ScenarioLoader.load(negative, StandardScenarios.RUNNING_WORK));
-            assertTrue(refused.getMessage().contains("size of change"), refused.getMessage());
+            assertTrue(refused.getMessage().contains("not a measurement"), refused.getMessage());
         }
 
         @Test

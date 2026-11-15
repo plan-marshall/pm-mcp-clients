@@ -107,6 +107,9 @@ public record PlanChangedFile(
         if (added == null || removed == null) {
             throw new JsonFormatException("A changed file names its lines added and removed");
         }
+        if (added < 0 || removed < 0) {
+            throw new JsonFormatException("A count of changed lines is never negative");
+        }
         return new PlanChangedFile(
                 path,
                 JsonTree.string(map, FIELD_RENAMED_FROM),
