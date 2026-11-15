@@ -29,7 +29,9 @@ function parsePort(name: string, rawValue: string | undefined, defaultPort: numb
  * @returns resolved port numbers and mock target URL
  * @throws Error if an environment variable holds an invalid port value
  */
-export function resolvePorts(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): ResolvedPorts {
+export function resolvePorts(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+): ResolvedPorts {
   const webPort = parsePort('PM_WEB_PORT', env.PM_WEB_PORT, 5173);
   const mockWebPort = parsePort('PM_MOCK_WEB_PORT', env.PM_MOCK_WEB_PORT, 7420);
 

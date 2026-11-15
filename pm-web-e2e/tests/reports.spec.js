@@ -156,7 +156,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     const detailBtn = card.getByRole('button', { name: /Show the details/i });
     await expect(detailBtn).toBeVisible();
     await detailBtn.click();
-    await expect(page).toHaveURL(/plan=fix-relay/);
+    // The detail's address names the report; the plan it opens is keyed in the store.
+    await expect(page).toHaveURL(/\/reports(\/[^/?]+)?$/);
 
     // Completion report modal / view should be visible
     await expect(page.locator('.completion-report')).toBeVisible();
@@ -254,7 +255,8 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
   test('opens a project report at the project list', async ({ page }) => {
     const card = page.locator('.report-card', { hasText: 'pm-mcp-core is onboarded' });
     await card.getByRole('button', { name: /Show the details/i }).click();
-    await expect(page).toHaveURL(/\/projects(\?.*)?$/);
+    // A project report opens the one project page of the project it names.
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-core$/);
   });
 
   test('announces an arriving report politely and coalesces it', async ({ page, request }) => {

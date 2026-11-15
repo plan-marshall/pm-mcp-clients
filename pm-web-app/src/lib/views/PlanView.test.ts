@@ -135,7 +135,8 @@ describe('PlanView component', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set(      makeRuntimeState({
+    runtimeStore.set(
+      makeRuntimeState({
         isInitialized: true,
         isPaired: true,
         isOnboarded: true,
@@ -523,10 +524,10 @@ describe('PlanView component', () => {
     await fireEvent.click(screen.getByTestId('breadcrumb-project'));
 
     const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('projects');
+    expect(state.currentRoute).toBe('project');
     expect(state.selectedProjectId).toBe('pm-mcp-clients');
-    expect(window.location.pathname).toBe('/projects');
-    expect(window.location.search).toBe('?project=pm-mcp-clients');
+    expect(window.location.pathname).toBe('/projects/pm-mcp-clients');
+    expect(window.location.search).toBe('');
   });
 
   it('opens the process designer for the plan’s project', async () => {
@@ -684,7 +685,8 @@ describe('PlanView component', () => {
     const state = get(runtimeStore);
     expect(state.currentRoute).toBe('reports');
     expect(state.selectedReportDetailPlanId).toBe('fix-relay');
-    expect(window.location.search).toBe('?plan=fix-relay');
+    expect(window.location.pathname).toBe('/reports');
+    expect(window.location.search).toBe('');
   });
 
   it('selects running task over earlier completed task on initial load', async () => {
@@ -1271,8 +1273,16 @@ describe('PlanView component', () => {
   });
 
   it.each([
-    ['unmeasured tokens', { not_measured: true, floor: false, tasks_measured: 4 }, 'not measured · 6 of 10 tasks not measured'],
-    ['a floor with unmeasured tasks', { not_measured: false, floor: true, tasks_measured: 7 }, '3 of 10 tasks not measured'],
+    [
+      'unmeasured tokens',
+      { not_measured: true, floor: false, tasks_measured: 4 },
+      'not measured · 6 of 10 tasks not measured',
+    ],
+    [
+      'a floor with unmeasured tasks',
+      { not_measured: false, floor: true, tasks_measured: 7 },
+      '3 of 10 tasks not measured',
+    ],
     ['a floor over every task', { not_measured: false, floor: true, tasks_measured: 10 }, null],
   ])('says how far the tokens are measured for %s', async (_case, tokens, coverage) => {
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
@@ -1290,8 +1300,16 @@ describe('PlanView component', () => {
   });
 
   it.each([
-    ['a changed entry by the file it names', { kind: 'changed', files: ['pm-relay/Relay.java'] }, 'pm-relay/Relay.java'],
-    ['a gap by its own words', { kind: 'gap', content: 'the transcript was cut here' }, 'the transcript was cut here'],
+    [
+      'a changed entry by the file it names',
+      { kind: 'changed', files: ['pm-relay/Relay.java'] },
+      'pm-relay/Relay.java',
+    ],
+    [
+      'a gap by its own words',
+      { kind: 'gap', content: 'the transcript was cut here' },
+      'the transcript was cut here',
+    ],
   ])('shows %s', async (_case, entry, expected) => {
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
       ...mockActivity,

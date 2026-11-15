@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { runtimeStore, navigateTo, openStartPage } from '../stores/runtime';
+  import {
+    runtimeStore,
+    navigateTo,
+    openRunningWork,
+    openStartPage,
+  } from '../stores/runtime';
   import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
   import { RAIL_GROUPS, activeNavRoute, type ShellNavItem } from './nav';
@@ -126,7 +131,8 @@
                   data-testid={item.testId}
                   aria-current={active === item.route ? 'page' : undefined}
                   title={collapsed ? $t(item.labelKey) : undefined}
-                  onclick={() => navigateTo(item.route)}
+                  onclick={() =>
+                    item.id === 'running' ? void openRunningWork() : navigateTo(item.route)}
                 >
                   <Icon name={item.icon} size={20} />
                   <span class="nav-rail__item-label">{$t(item.labelKey)}</span>

@@ -153,7 +153,10 @@ describe('Dialog', () => {
     const items = within(dialog).getAllByRole('listitem');
 
     expect(dialog.className).toContain('dialog--danger');
-    expect(items.map((item) => item.textContent)).toEqual(['Drafts are lost.', 'Lessons are kept.']);
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Drafts are lost.',
+      'Lessons are kept.',
+    ]);
   });
 
   it('draws repeated consequences, which a list must allow', () => {

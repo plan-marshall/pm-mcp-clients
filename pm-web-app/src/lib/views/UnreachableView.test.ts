@@ -183,9 +183,7 @@ describe('UnreachableView', () => {
     it('hides the figure where the page is narrow, and never stacks it', () => {
       const narrow = blockOf(stylesheet, FIGURE_HIDDEN_NARROW);
 
-      expect(ruleOf(narrow, '.unreachable :global(.mascot-figure)')).toMatch(
-        /display:\s*none\s*;/,
-      );
+      expect(ruleOf(narrow, '.unreachable :global(.mascot-figure)')).toMatch(/display:\s*none\s*;/);
       expect(stylesheet).not.toMatch(/flex-direction:\s*column/);
     });
   });

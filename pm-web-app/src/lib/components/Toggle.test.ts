@@ -134,7 +134,7 @@ describe('Toggle component', () => {
 
   it('conforms to design tokens: pressed ground brand-subtle, focus ring, 24px and phone 44px', () => {
     const style = styleOf(path.resolve(__dirname, './Toggle.svelte'));
-    const pressedRules = rulesOf(style, '.toggle[aria-pressed="true"]').join(';');
+    const pressedRules = rulesOf(style, ".toggle[aria-pressed='true']").join(';');
     expect(pressedRules).toContain('var(--color-brand-subtle)');
 
     const toggleRules = rulesOf(style, '.toggle').join(';');

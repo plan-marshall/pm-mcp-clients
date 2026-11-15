@@ -799,7 +799,10 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     'writes the remembered author into a unit that %s on its first edit',
     async (_case, author, expected) => {
       localStorage.setItem('pm_designer_author', 'Ada Lovelace');
-      const authored = finalizeText.replace('type: subworkflow', `type: subworkflow\nauthor: ${author}`);
+      const authored = finalizeText.replace(
+        'type: subworkflow',
+        `type: subworkflow\nauthor: ${author}`,
+      );
       vi.spyOn(apiClient, 'getWorkflows').mockResolvedValue([
         { ...units[0], levels: [{ ...units[0].levels[0], text: authored }] },
       ]);
@@ -907,7 +910,11 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
   });
 
   it.each([
-    ['frontmatter-description', 'Settles the plan and lands it.', 'description: Settles the plan and lands it.'],
+    [
+      'frontmatter-description',
+      'Settles the plan and lands it.',
+      'description: Settles the plan and lands it.',
+    ],
     ['frontmatter-icon', 'phase.execute', 'icon: phase.execute'],
     ['frontmatter-author', 'Grace Hopper', 'author: Grace Hopper'],
     ['frontmatter-modified', '2026-01-02', 'modified: 2026-01-02'],
@@ -936,7 +943,9 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
   it('writes the type typed into the panel of a new unit into the text', async () => {
     await openNewUnit();
 
-    await fireEvent.input(screen.getByTestId('frontmatter-type'), { target: { value: 'workflow' } });
+    await fireEvent.input(screen.getByTestId('frontmatter-type'), {
+      target: { value: 'workflow' },
+    });
 
     expect(editorText().split('\n')).toContain('type: workflow');
   });

@@ -452,7 +452,9 @@
             <li class="consent-row" data-consent={consent.kind}>
               <span>{$t(`common.consent.kind.${consent.kind}`)}</span>
               <span class="consent-row__where">
-                {formatTime(consent.granted_at, 'short', $currentLocale)} · {consentChannel(consent)}
+                {formatTime(consent.granted_at, 'short', $currentLocale)} · {consentChannel(
+                  consent,
+                )}
               </span>
               {#if consent.project}
                 <span class="consent-row__where">
@@ -506,7 +508,12 @@
         </label>
         <label class="choice">
           {$t('web.settings.cleanup.remind')}
-          <input type="number" min="1" bind:value={cleanupRemindDays} data-testid="cleanup-remind-days" />
+          <input
+            type="number"
+            min="1"
+            bind:value={cleanupRemindDays}
+            data-testid="cleanup-remind-days"
+          />
           {$t('web.settings.cleanup.days_after')}
         </label>
         <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">

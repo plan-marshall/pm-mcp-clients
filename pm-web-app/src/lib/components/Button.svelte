@@ -123,7 +123,7 @@
     cursor: not-allowed;
   }
 
-  .btn[aria-disabled="true"] {
+  .btn[aria-disabled='true'] {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-muted);
     border-color: var(--color-border);
@@ -140,7 +140,7 @@
     color: var(--color-on-brand);
   }
 
-  .btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  .btn--primary:hover:not(:disabled):not([aria-disabled='true']) {
     background-color: var(--color-brand-hover);
   }
 
@@ -150,7 +150,7 @@
     border-color: var(--color-border-strong);
   }
 
-  .btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  .btn--secondary:hover:not(:disabled):not([aria-disabled='true']) {
     background-color: var(--color-bg-subtle);
   }
 
@@ -159,7 +159,7 @@
     color: var(--color-on-brand);
   }
 
-  .btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  .btn--danger:hover:not(:disabled):not([aria-disabled='true']) {
     filter: brightness(0.9);
   }
 
@@ -168,7 +168,7 @@
     color: var(--color-text-secondary);
   }
 
-  .btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+  .btn--ghost:hover:not(:disabled):not([aria-disabled='true']) {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-primary);
   }

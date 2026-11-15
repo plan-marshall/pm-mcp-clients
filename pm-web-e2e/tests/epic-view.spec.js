@@ -81,7 +81,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await openEpicFromOverview(page);
 
     await page.getByTestId('breadcrumb-project').click();
-    await expect(page).toHaveURL(/\?project=pm-mcp-clients/);
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients/);
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
 
     await page

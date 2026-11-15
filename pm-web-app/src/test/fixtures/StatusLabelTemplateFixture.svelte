@@ -17,7 +17,10 @@
   ];
 </script>
 
-{#snippet statusItem(item: { tone: 'neutral' | 'running' | 'attention' | 'danger' | 'success'; label: string })}
+{#snippet statusItem(item: {
+  tone: 'neutral' | 'running' | 'attention' | 'danger' | 'success';
+  label: string;
+})}
   <div class="snippet-row">
     <StatusLabel tone={item.tone} label={item.label} fixed />
   </div>

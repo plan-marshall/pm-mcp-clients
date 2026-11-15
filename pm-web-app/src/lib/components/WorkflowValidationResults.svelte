@@ -48,7 +48,9 @@
       </p>
     {:else if result.valid}
       <div class="validation__valid" data-testid="validation-valid">
-        <span class="validation__glyph" aria-hidden="true"><Icon name="state.check" size={16} /></span>
+        <span class="validation__glyph" aria-hidden="true"
+          ><Icon name="state.check" size={16} /></span
+        >
         <span>{$t('designer.validate.valid')}</span>
         {#if result.composed}
           <Button variant="ghost" on:click={onPreview} data-testid="preview-button">

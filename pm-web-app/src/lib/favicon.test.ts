@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  FAVICON_ATTENTION_HREF,
-  FAVICON_CALM_HREF,
-  applyFavicon,
-  faviconHref,
-} from './favicon';
+import { FAVICON_ATTENTION_HREF, FAVICON_CALM_HREF, applyFavicon, faviconHref } from './favicon';
 
 const STATIC_DIR = path.resolve(__dirname, '../../static');
 
@@ -33,9 +28,7 @@ function currentIcon(): string | null {
  */
 function lightTokenValue(token: string): string {
   const css = fs.readFileSync(path.resolve(__dirname, '../styles/tokens.css'), 'utf-8');
-  const declaration = css
-    .split('\n')
-    .find((line) => line.trim().startsWith(`${token}:`));
+  const declaration = css.split('\n').find((line) => line.trim().startsWith(`${token}:`));
   expect(declaration, `${token} is declared in tokens.css`).toBeDefined();
   return (declaration ?? '').split(':')[1]?.replace(';', '').trim() ?? '';
 }
@@ -100,8 +93,12 @@ describe('the two tab assets', () => {
   });
 
   it('adds the attention dot only to the attention variant, inside the view box', () => {
+    // The token catalogue is formatted, so its hex spelling is the formatter's, not the asset's.
+    const attention = lightTokenValue('--color-attention').toUpperCase();
     const dotOf = (href: string) =>
-      assetDoc(href).querySelector(`circle[fill="${lightTokenValue('--color-attention')}"]`);
+      Array.from(assetDoc(href).querySelectorAll('circle')).find(
+        (circle) => (circle.getAttribute('fill') ?? '').toUpperCase() === attention,
+      ) ?? null;
 
     expect(dotOf(FAVICON_CALM_HREF)).toBeNull();
 
@@ -119,8 +116,8 @@ describe('the two tab assets', () => {
   });
 
   it('bakes only the mascot palette, and the attention copy adds only the attention dot and its ring', () => {
-    const palette = ['--color-mascot-fur', '--color-mascot-gold', '--color-mascot-outline'].map((token) =>
-      lightTokenValue(token).toUpperCase(),
+    const palette = ['--color-mascot-fur', '--color-mascot-gold', '--color-mascot-outline'].map(
+      (token) => lightTokenValue(token).toUpperCase(),
     );
     const attention = lightTokenValue('--color-attention').toUpperCase();
 
@@ -134,19 +131,24 @@ describe('the two tab assets', () => {
   it.each([
     ['calm', FAVICON_CALM_HREF],
     ['attention', FAVICON_ATTENTION_HREF],
-  ])('draws every shape of the %s copy, its stroke included, inside 1..23 on both axes', (_, href) => {
-    const shapes = Array.from(assetDoc(href).querySelectorAll('path, circle, rect, ellipse, line, polygon, polyline'));
+  ])(
+    'draws every shape of the %s copy, its stroke included, inside 1..23 on both axes',
+    (_, href) => {
+      const shapes = Array.from(
+        assetDoc(href).querySelectorAll('path, circle, rect, ellipse, line, polygon, polyline'),
+      );
 
-    expect(shapes.length).toBeGreaterThan(0);
-    for (const shape of shapes) {
-      const box = paintedBox(shape);
+      expect(shapes.length).toBeGreaterThan(0);
+      for (const shape of shapes) {
+        const box = paintedBox(shape);
 
-      expect(box.minX, shape.outerHTML).toBeGreaterThanOrEqual(1);
-      expect(box.minY, shape.outerHTML).toBeGreaterThanOrEqual(1);
-      expect(box.maxX, shape.outerHTML).toBeLessThanOrEqual(23);
-      expect(box.maxY, shape.outerHTML).toBeLessThanOrEqual(23);
-    }
-  });
+        expect(box.minX, shape.outerHTML).toBeGreaterThanOrEqual(1);
+        expect(box.minY, shape.outerHTML).toBeGreaterThanOrEqual(1);
+        expect(box.maxX, shape.outerHTML).toBeLessThanOrEqual(23);
+        expect(box.maxY, shape.outerHTML).toBeLessThanOrEqual(23);
+      }
+    },
+  );
 });
 
 /**
@@ -154,10 +156,9 @@ describe('the two tab assets', () => {
  * @returns the colours the drawn elements actually paint with, upper-cased
  */
 function paintedColours(href: string): string[] {
-  const painted = Array.from(assetDoc(href).querySelectorAll('[fill], [stroke]')).flatMap((element) => [
-    element.getAttribute('fill'),
-    element.getAttribute('stroke'),
-  ]);
+  const painted = Array.from(assetDoc(href).querySelectorAll('[fill], [stroke]')).flatMap(
+    (element) => [element.getAttribute('fill'), element.getAttribute('stroke')],
+  );
   return painted
     .filter((value): value is string => Boolean(value) && value !== 'none')
     .map((value) => value.toUpperCase());
@@ -185,7 +186,8 @@ function inherited(element: Element, attribute: string): string | null {
  */
 function paintedBox(shape: Element): { minX: number; minY: number; maxX: number; maxY: number } {
   const stroke = inherited(shape, 'stroke');
-  const half = stroke && stroke !== 'none' ? Number(inherited(shape, 'stroke-width') ?? '1') / 2 : 0;
+  const half =
+    stroke && stroke !== 'none' ? Number(inherited(shape, 'stroke-width') ?? '1') / 2 : 0;
 
   if (shape.tagName === 'circle') {
     const cx = Number(shape.getAttribute('cx'));

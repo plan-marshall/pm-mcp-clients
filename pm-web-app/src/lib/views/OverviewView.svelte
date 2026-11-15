@@ -29,6 +29,8 @@
     openEndedPlanView,
     openCompletionReport,
   } from '../stores/runtime';
+  import { readRememberedPlace, writeRememberedPlace } from '../navigation/rememberedPlace';
+  import { writeAddress } from '../navigation/history';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
@@ -132,7 +134,9 @@
    * @param item the ended-work row
    * @returns every visible value
    */
-  function endedFilterFields(item: EndedWorkPage['items'][number]): Array<string | null | undefined> {
+  function endedFilterFields(
+    item: EndedWorkPage['items'][number],
+  ): Array<string | null | undefined> {
     return [
       item.id,
       item.item_id,
@@ -199,12 +203,15 @@
   // The app renders in the browser only (`ssr = false` in the root layout), so the view reaches
   // `localStorage` without asking whether a window exists.
   onMount(async () => {
-    const savedMode = localStorage.getItem('pm_overview_view_mode');
-    if (savedMode === 'plan' || savedMode === 'epic') {
-      viewMode = savedMode;
+    // The address wins over the remembered place: the lens's grouping and its scope are read from
+    // it, and only where it names neither does the place decide.
+    const address = get(runtimeStore);
+    const place = readRememberedPlace();
+    if (address.lensGroup === 'epic' || place.group === 'epic') {
+      viewMode = 'epic';
     }
     // A figure of the system view asked for the plans or the epics; consume it once.
-    const focus = get(runtimeStore).overviewFocus;
+    const focus = address.overviewFocus;
     if (focus === 'plans') {
       viewMode = 'plan';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
@@ -212,13 +219,14 @@
       viewMode = 'epic';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
     }
-    const savedProj = localStorage.getItem('pm_overview_selected_project');
-    if (savedProj) {
-      selectedProjectId = savedProj;
+    if (address.selectedProjectId) {
+      selectedProjectId = address.selectedProjectId;
+    } else if (place.project) {
+      selectedProjectId = place.project;
     }
-    // A view that opened the plan or the project came back to Running Work returns to the
-    // section it left: Ended Work, on the page it showed.
-    showEnded = localStorage.getItem('pm_overview_show_ended') === '1';
+    // The mode is the address's, never the remembered place's: a running-work address opens
+    // running work even after the operator looked at Ended Work last time.
+    showEnded = address.lensMode === 'ended';
     const savedEndedPage = Number.parseInt(
       localStorage.getItem('pm_overview_ended_page') ?? '',
       10,
@@ -352,7 +360,10 @@
     endedPage = null;
     endedError = null;
     currentEndedPage = 1;
-    localStorage.setItem('pm_overview_selected_project', projectId);
+    writeRememberedPlace({ ...readRememberedPlace(), project: projectId, planId: null, epicId: null });
+    // The scope is the address's: the writer replaces `/overview` with the project it names.
+    runtimeStore.update((s) => ({ ...s, lensProject: projectId, selectedProjectId: projectId, lensMode: null }));
+    writeAddress({ route: 'overview', project: projectId }, 'replace');
     localStorage.setItem('pm_overview_show_ended', '0');
     localStorage.setItem('pm_overview_ended_page', '1');
     void loadProjectDetail(projectId);
@@ -401,13 +412,29 @@
 
   function setViewMode(mode: 'plan' | 'epic') {
     viewMode = mode;
-    localStorage.setItem('pm_overview_view_mode', mode);
+    writeRememberedPlace({ ...readRememberedPlace(), group: mode });
+    // The grouping is the address's too, so a reload opens the same list.
+    const project = get(runtimeStore).lensProject;
+    runtimeStore.update((s) => ({ ...s, lensGroup: mode === 'epic' ? 'epic' : null }));
+    writeAddress(
+      {
+        route: 'overview',
+        project: project ?? undefined,
+        group: mode === 'epic' ? 'epic' : undefined,
+      },
+      'replace',
+    );
   }
 
   async function openEndedWork() {
     showEnded = true;
     currentEndedPage = 1;
     rememberEndedState();
+    // The mode is the address's: the view writes it so a reload and the browser's back return to
+    // Ended Work, and a click on Running work (a push of an address without it) leaves it.
+    const project = selectedProjectId ?? undefined;
+    runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
+    writeAddress({ route: 'overview', project, mode: 'ended' }, 'replace');
     if (selectedProjectId) {
       await loadEndedWork(selectedProjectId, 1);
     }
@@ -420,6 +447,9 @@
     endedPage = null;
     endedError = null;
     rememberEndedState();
+    // Leaving Ended Work drops the mode from the address.
+    runtimeStore.update((s) => ({ ...s, lensMode: null }));
+    writeAddress({ route: 'overview', project: selectedProjectId ?? undefined }, 'replace');
   }
 
   async function loadEndedWork(projectId: string, page: number) {
@@ -624,9 +654,7 @@
             <div class="project-item__meta">
               <span class="project-item__counts">{formatProjectCounts(proj)}</span>
               {#if proj.last_activity_at}
-                <span
-                  class="project-item__time"
-                  title={formatMoment(proj.last_activity_at)}
+                <span class="project-item__time" title={formatMoment(proj.last_activity_at)}
                   >{formatRelative(proj.last_activity_at)}</span
                 >
               {/if}
@@ -695,103 +723,105 @@
             <p class="empty-text" data-testid="ended-filter-empty">{$t('common.filter.empty')}</p>
           {:else}
             <div class="ended-table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>{$t('overview.ended.col.kind')}</th>
-                  <th>{$t('overview.ended.col.title')}</th>
-                  <th>{$t('overview.ended.col.outcome')}</th>
-                  <th>{$t('overview.ended.col.pull_request')}</th>
-                  <th>{$t('overview.ended.col.ended')}</th>
-                  <th>{$t('overview.ended.col.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredEndedItems as item}
-                  <tr class="ended-row" data-testid="ended-item">
-                    <td>
-                      <span class="badge badge--kind badge--{item.kind}">
-                        {item.kind === 'epic'
-                          ? '◇ ' + $t('overview.kind.epic')
-                          : '▸ ' + $t('overview.kind.plan')}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        class="ended-open"
-                        on:click={() => openEndedItem(item)}
-                        data-testid="ended-open-{item.id ?? item.item_id}"
-                      >
-                        {item.title}
-                      </button>
-                    </td>
-                    <td>
-                      {#if item.outcome}
-                        <span class="badge badge--outcome badge--{item.outcome}">
-                          {$t('overview.ended.outcome', { outcome: item.outcome })}
-                        </span>
-                      {:else if item.terminal_reason}
-                        <span class="badge badge--outcome badge--{item.terminal_reason}">
-                          {$t('overview.ended.epic_end', { end: item.terminal_reason })}
-                        </span>
-                      {/if}
-                      {#if item.reason}
-                        <span class="ended-reason"
-                          >{$t('overview.ended.reason', { reason: item.reason })}</span
-                        >
-                      {/if}
-                    </td>
-                    <td>
-                      {#if item.pull_request_number}
-                        <a
-                          href={item.pull_request_url || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                          class="pr-link"
-                        >
-                          #{item.pull_request_number}
-                        </a>
-                      {:else}
-                        —
-                      {/if}
-                    </td>
-                    <td class="text-muted" title={formatMoment(item.ended_at)}>{formatRelative(item.ended_at)}</td>
-                    <td>
-                      {#if item.kind === 'plan'}
-                        <button
-                          class="ended-report"
-                          on:click={() => openEndedReport(item)}
-                          data-testid="ended-report-{item.id ?? item.item_id}"
-                          data-advisory={$t('report.completion.open.title')}
-                        >
-                          {$t('report.completion.open')}
-                        </button>
-                      {/if}
-                    </td>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>{$t('overview.ended.col.kind')}</th>
+                    <th>{$t('overview.ended.col.title')}</th>
+                    <th>{$t('overview.ended.col.outcome')}</th>
+                    <th>{$t('overview.ended.col.pull_request')}</th>
+                    <th>{$t('overview.ended.col.ended')}</th>
+                    <th>{$t('overview.ended.col.actions')}</th>
                   </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {#each filteredEndedItems as item}
+                    <tr class="ended-row" data-testid="ended-item">
+                      <td>
+                        <span class="badge badge--kind badge--{item.kind}">
+                          {item.kind === 'epic'
+                            ? '◇ ' + $t('overview.kind.epic')
+                            : '▸ ' + $t('overview.kind.plan')}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          class="ended-open"
+                          on:click={() => openEndedItem(item)}
+                          data-testid="ended-open-{item.id ?? item.item_id}"
+                        >
+                          {item.title}
+                        </button>
+                      </td>
+                      <td>
+                        {#if item.outcome}
+                          <span class="badge badge--outcome badge--{item.outcome}">
+                            {$t('overview.ended.outcome', { outcome: item.outcome })}
+                          </span>
+                        {:else if item.terminal_reason}
+                          <span class="badge badge--outcome badge--{item.terminal_reason}">
+                            {$t('overview.ended.epic_end', { end: item.terminal_reason })}
+                          </span>
+                        {/if}
+                        {#if item.reason}
+                          <span class="ended-reason"
+                            >{$t('overview.ended.reason', { reason: item.reason })}</span
+                          >
+                        {/if}
+                      </td>
+                      <td>
+                        {#if item.pull_request_number}
+                          <a
+                            href={item.pull_request_url || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            class="pr-link"
+                          >
+                            #{item.pull_request_number}
+                          </a>
+                        {:else}
+                          —
+                        {/if}
+                      </td>
+                      <td class="text-muted" title={formatMoment(item.ended_at)}
+                        >{formatRelative(item.ended_at)}</td
+                      >
+                      <td>
+                        {#if item.kind === 'plan'}
+                          <button
+                            class="ended-report"
+                            on:click={() => openEndedReport(item)}
+                            data-testid="ended-report-{item.id ?? item.item_id}"
+                            data-advisory={$t('report.completion.open.title')}
+                          >
+                            {$t('report.completion.open')}
+                          </button>
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
 
-          <div class="ended-pagination">
-            <Button
-              variant="secondary"
-              disabled={!endedPage.has_newer || currentEndedPage <= 1}
-              on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage - 1)}
-              data-advisory={$t('overview.ended.newer.title')}
-            >
-              {$t('overview.ended.newer')}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!endedPage.has_older}
-              on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage + 1)}
-              data-advisory={$t('overview.ended.older.title')}
-            >
-              {$t('overview.ended.older')}
-            </Button>
-          </div>
+            <div class="ended-pagination">
+              <Button
+                variant="secondary"
+                disabled={!endedPage.has_newer || currentEndedPage <= 1}
+                on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage - 1)}
+                data-advisory={$t('overview.ended.newer.title')}
+              >
+                {$t('overview.ended.newer')}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!endedPage.has_older}
+                on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage + 1)}
+                data-advisory={$t('overview.ended.older.title')}
+              >
+                {$t('overview.ended.older')}
+              </Button>
+            </div>
           {/if}
         {/if}
       </section>
@@ -919,100 +949,105 @@
                 </p>
               {:else}
                 <div class="plan-cards">
-                {#each filteredPlans as plan}
-                  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                  <div
-                    class="work-card work-card--plan plan-card"
-                    data-testid="plan-card"
-                    on:click={() => openPlanView(planIdOf(plan))}
-                  >
-                    <div class="work-card__header">
-                      <div class="work-card__title-group">
-                        <span class="work-card__glyph">▸</span>
-                        <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                        <h3 class="work-card__title">
-                          <button
-                            type="button"
-                            class="work-card__open"
-                            on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
-                          >
-                            {plan.title}
-                          </button>
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        data-testid="overview-actions-{plan.plan_id}"
-                        data-advisory={$t('control.actions.open.title')}
-                        on:click|stopPropagation={() => openControls('plan', plan.plan_id)}
-                      >
-                        {$t('control.actions.open')}
-                      </button>
+                  {#each filteredPlans as plan}
+                    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                    <div
+                      class="work-card work-card--plan plan-card"
+                      data-testid="plan-card"
+                      on:click={() => openPlanView(planIdOf(plan))}
+                    >
+                      <div class="work-card__header">
+                        <div class="work-card__title-group">
+                          <span class="work-card__glyph">▸</span>
+                          <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
+                          <h3 class="work-card__title">
+                            <button
+                              type="button"
+                              class="work-card__open"
+                              on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
+                            >
+                              {plan.title}
+                            </button>
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          class="card-action"
+                          data-testid="overview-actions-{plan.plan_id}"
+                          data-advisory={$t('control.actions.open.title')}
+                          on:click|stopPropagation={() => openControls('plan', plan.plan_id)}
+                        >
+                          {$t('control.actions.open')}
+                        </button>
 
-                      <div class="work-card__badges">
-                        {#if getNeedsOperatorCount(plan) > 0}
-                          <span class="badge badge--attention" data-testid="needs-badge-{plan.plan_id}">
-                            {needsBadge(plan)}
+                        <div class="work-card__badges">
+                          {#if getNeedsOperatorCount(plan) > 0}
+                            <span
+                              class="badge badge--attention"
+                              data-testid="needs-badge-{plan.plan_id}"
+                            >
+                              {needsBadge(plan)}
+                            </span>
+                          {/if}
+                          <span class="badge badge--phase">
+                            <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                            {getPlanPhase(plan)}
+                          </span>
+                          <span class="badge badge--state badge--state-{getPlanState(plan)}">
+                            {displayState('plan', getPlanState(plan), $t)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="work-card__details">
+                        {#if getPlanPhaseEnteredAt(plan)}
+                          <span class="detail-item">
+                            {$t('overview.time.in_phase', {
+                              phase: getPlanPhase(plan),
+                              duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
+                            })}
                           </span>
                         {/if}
-                        <span class="badge badge--phase">
-                          <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                          {getPlanPhase(plan)}
-                        </span>
-                        <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                          {displayState('plan', getPlanState(plan), $t)}
-                        </span>
+                        {#if getPlanTasksTotal(plan) > 0}
+                          <span class="detail-item">
+                            {$t('overview.progress.tasks', {
+                              done: getPlanTasksDone(plan),
+                              total: getPlanTasksTotal(plan),
+                            })}
+                          </span>
+                        {/if}
+                        {#if getPlanEpicTitle(plan)}
+                          <span class="detail-item">
+                            {$t('overview.plan.belongs_to', {
+                              epic: '◇ ' + getPlanEpicTitle(plan),
+                            })}
+                          </span>
+                        {/if}
+                        {#if getPlanOffTrack(plan)}
+                          <span
+                            class="badge badge--warning badge--off-track"
+                            data-testid="off-track-badge"
+                          >
+                            {$t('overview.plan.off_track', {
+                              signal: displayState('signal', getPlanOffTrack(plan), $t),
+                            })}
+                          </span>
+                        {/if}
+                        {#if getPlanPrNumber(plan)}
+                          <a
+                            href={getPlanPrUrl(plan)}
+                            target="_blank"
+                            rel="noreferrer"
+                            class="pr-link"
+                            on:click|stopPropagation
+                          >
+                            #{getPlanPrNumber(plan)}
+                          </a>
+                        {/if}
                       </div>
                     </div>
-
-                    <div class="work-card__details">
-                      {#if getPlanPhaseEnteredAt(plan)}
-                        <span class="detail-item">
-                          {$t('overview.time.in_phase', {
-                            phase: getPlanPhase(plan),
-                            duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
-                          })}
-                        </span>
-                      {/if}
-                      {#if getPlanTasksTotal(plan) > 0}
-                        <span class="detail-item">
-                          {$t('overview.progress.tasks', {
-                            done: getPlanTasksDone(plan),
-                            total: getPlanTasksTotal(plan),
-                          })}
-                        </span>
-                      {/if}
-                      {#if getPlanEpicTitle(plan)}
-                        <span class="detail-item">
-                          {$t('overview.plan.belongs_to', { epic: '◇ ' + getPlanEpicTitle(plan) })}
-                        </span>
-                      {/if}
-                      {#if getPlanOffTrack(plan)}
-                        <span
-                          class="badge badge--warning badge--off-track"
-                          data-testid="off-track-badge"
-                        >
-                          {$t('overview.plan.off_track', {
-                            signal: displayState('signal', getPlanOffTrack(plan), $t),
-                          })}
-                        </span>
-                      {/if}
-                      {#if getPlanPrNumber(plan)}
-                        <a
-                          href={getPlanPrUrl(plan)}
-                          target="_blank"
-                          rel="noreferrer"
-                          class="pr-link"
-                          on:click|stopPropagation
-                        >
-                          #{getPlanPrNumber(plan)}
-                        </a>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
+                  {/each}
+                </div>
               {/if}
             {:else}
               <!-- By Epic List -->
@@ -1022,141 +1057,144 @@
                 </p>
               {:else}
                 <div class="epic-cards">
-                {#each filteredEpics as epic}
-                  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                  <div
-                    class="work-card work-card--epic epic-card"
-                    data-testid="epic-card"
-                    on:click={() => openEpicView(epicIdOf(epic))}
-                  >
-                    <div class="work-card__header">
-                      <div class="work-card__title-group">
-                        <span class="work-card__glyph">◇</span>
-                        <span class="badge badge--kind badge--epic">{$t('overview.kind.epic')}</span
+                  {#each filteredEpics as epic}
+                    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                    <div
+                      class="work-card work-card--epic epic-card"
+                      data-testid="epic-card"
+                      on:click={() => openEpicView(epicIdOf(epic))}
+                    >
+                      <div class="work-card__header">
+                        <div class="work-card__title-group">
+                          <span class="work-card__glyph">◇</span>
+                          <span class="badge badge--kind badge--epic"
+                            >{$t('overview.kind.epic')}</span
+                          >
+                          <h3 class="work-card__title">
+                            <button
+                              type="button"
+                              class="work-card__open"
+                              on:click|stopPropagation={() => openEpicView(epicIdOf(epic))}
+                            >
+                              {epic.title}
+                            </button>
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          class="card-action"
+                          data-testid="overview-actions-epic-{epicIdOf(epic)}"
+                          data-advisory={$t('control.actions.open.title')}
+                          on:click|stopPropagation={() => openControls('epic', epicIdOf(epic))}
                         >
-                        <h3 class="work-card__title">
-                          <button
-                            type="button"
-                            class="work-card__open"
-                            on:click|stopPropagation={() => openEpicView(epicIdOf(epic))}
-                          >
-                            {epic.title}
-                          </button>
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        data-testid="overview-actions-epic-{epicIdOf(epic)}"
-                        data-advisory={$t('control.actions.open.title')}
-                        on:click|stopPropagation={() => openControls('epic', epicIdOf(epic))}
-                      >
-                        {$t('control.actions.open')}
-                      </button>
+                          {$t('control.actions.open')}
+                        </button>
 
-                      <div class="work-card__badges">
-                        {#if getNeedsOperatorCount(epic) > 0}
-                          <span
-                            class="badge badge--attention"
-                            data-testid="needs-badge-epic-{epicIdOf(epic)}"
-                          >
-                            {needsBadge(epic)}
+                        <div class="work-card__badges">
+                          {#if getNeedsOperatorCount(epic) > 0}
+                            <span
+                              class="badge badge--attention"
+                              data-testid="needs-badge-epic-{epicIdOf(epic)}"
+                            >
+                              {needsBadge(epic)}
+                            </span>
+                          {/if}
+                          <span class="badge badge--counts">
+                            {$t('overview.epic.plans', {
+                              running: getEpicRunningCount(epic),
+                              staged: getEpicStagedCount(epic),
+                            })}
                           </span>
-                        {/if}
-                        <span class="badge badge--counts">
-                          {$t('overview.epic.plans', {
-                            running: getEpicRunningCount(epic),
-                            staged: getEpicStagedCount(epic),
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    <!-- Nested Plans -->
-                    {#if epic.plans && epic.plans.length > 0}
-                      <div class="nested-plans">
-                        {#each epic.plans as childPlan, idx}
-                          <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                          <div
-                            class="nested-plan-row"
-                            on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
-                          >
-                            <span class="nested-tree-char"
-                              >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
-                            >
-                            <button
-                              type="button"
-                              class="work-card__open nested-plan-title"
-                              on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
-                            >
-                              {childPlan.title}
-                            </button>
-                            <span class="badge badge--phase">
-                              <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
-                              {getPlanPhase(childPlan)}
-                            </span>
-                            <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
-                              {displayState('plan', getPlanState(childPlan), $t)}
-                            </span>
-                            <button
-                              type="button"
-                              class="card-action"
-                              data-testid="overview-actions-{planIdOf(childPlan)}"
-                              data-advisory={$t('control.actions.open.title')}
-                              on:click|stopPropagation={() =>
-                                openControls('plan', planIdOf(childPlan))}
-                            >
-                              {$t('control.actions.open')}
-                            </button>
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                {/each}
-
-                <!-- Without Epic Section -->
-                {#if filteredPlans.some((p) => !p.epic_id)}
-                  <div class="without-epic-section">
-                    <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
-                    {#each filteredPlans.filter((p) => !p.epic_id) as plan}
-                      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                      <div
-                        class="work-card work-card--plan"
-                        on:click={() => openPlanView(planIdOf(plan))}
-                      >
-                        <div class="work-card__header">
-                          <div class="work-card__title-group">
-                            <span class="work-card__glyph">▸</span>
-                            <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                            <h3 class="work-card__title">
-                              <button
-                                type="button"
-                                class="work-card__open"
-                                on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
-                              >
-                                {plan.title}
-                              </button>
-                            </h3>
-                          </div>
-                          <div class="work-card__badges">
-                            {#if getNeedsOperatorCount(plan) > 0}
-                              <span class="badge badge--attention">{needsBadge(plan)}</span>
-                            {/if}
-                            <span class="badge badge--phase">
-                              <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                              {getPlanPhase(plan)}
-                            </span>
-                            <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                              {displayState('plan', getPlanState(plan), $t)}
-                            </span>
-                          </div>
                         </div>
                       </div>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
+
+                      <!-- Nested Plans -->
+                      {#if epic.plans && epic.plans.length > 0}
+                        <div class="nested-plans">
+                          {#each epic.plans as childPlan, idx}
+                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                            <div
+                              class="nested-plan-row"
+                              on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
+                            >
+                              <span class="nested-tree-char"
+                                >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
+                              >
+                              <button
+                                type="button"
+                                class="work-card__open nested-plan-title"
+                                on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
+                              >
+                                {childPlan.title}
+                              </button>
+                              <span class="badge badge--phase">
+                                <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
+                                {getPlanPhase(childPlan)}
+                              </span>
+                              <span
+                                class="badge badge--state badge--state-{getPlanState(childPlan)}"
+                              >
+                                {displayState('plan', getPlanState(childPlan), $t)}
+                              </span>
+                              <button
+                                type="button"
+                                class="card-action"
+                                data-testid="overview-actions-{planIdOf(childPlan)}"
+                                data-advisory={$t('control.actions.open.title')}
+                                on:click|stopPropagation={() =>
+                                  openControls('plan', planIdOf(childPlan))}
+                              >
+                                {$t('control.actions.open')}
+                              </button>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+
+                  <!-- Without Epic Section -->
+                  {#if filteredPlans.some((p) => !p.epic_id)}
+                    <div class="without-epic-section">
+                      <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
+                      {#each filteredPlans.filter((p) => !p.epic_id) as plan}
+                        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                        <div
+                          class="work-card work-card--plan"
+                          on:click={() => openPlanView(planIdOf(plan))}
+                        >
+                          <div class="work-card__header">
+                            <div class="work-card__title-group">
+                              <span class="work-card__glyph">▸</span>
+                              <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
+                              <h3 class="work-card__title">
+                                <button
+                                  type="button"
+                                  class="work-card__open"
+                                  on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
+                                >
+                                  {plan.title}
+                                </button>
+                              </h3>
+                            </div>
+                            <div class="work-card__badges">
+                              {#if getNeedsOperatorCount(plan) > 0}
+                                <span class="badge badge--attention">{needsBadge(plan)}</span>
+                              {/if}
+                              <span class="badge badge--phase">
+                                <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                                {getPlanPhase(plan)}
+                              </span>
+                              <span class="badge badge--state badge--state-{getPlanState(plan)}">
+                                {displayState('plan', getPlanState(plan), $t)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               {/if}
             {/if}
 

@@ -23,7 +23,9 @@ describe('Toast', () => {
   });
 
   it('keeps its live region in the document while it is closed, and empty', () => {
-    const { rerender } = render(Toast, { props: { open: false, message: 'The plan was deleted.' } });
+    const { rerender } = render(Toast, {
+      props: { open: false, message: 'The plan was deleted.' },
+    });
     const region = screen.getByRole('status');
 
     expect(region.textContent?.trim()).toBe('');

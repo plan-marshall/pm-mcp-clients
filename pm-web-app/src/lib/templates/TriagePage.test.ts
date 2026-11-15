@@ -22,10 +22,28 @@ const SOURCE = path.resolve(__dirname, './TriagePage.svelte');
 /** The five levels of the deepest chain, the object column last. */
 const LEVELS: Level[] = [
   { key: 'lens', kind: 'report', title: 'Lens list', href: '/reports', state: 'two new' },
-  { key: 'project', kind: 'project', title: 'Project column', href: '/projects/relay', state: 'running' },
+  {
+    key: 'project',
+    kind: 'project',
+    title: 'Project column',
+    href: '/projects/relay',
+    state: 'running',
+  },
   { key: 'epic', kind: 'epic', title: 'Epic column', href: '/epics/relay', state: 'running' },
-  { key: 'plan', kind: 'plan', title: 'Plan column', href: '/plans/fix-relay', state: 'three left' },
-  { key: 'task', kind: 'plan', title: 'Object column', href: '/plans/fix-relay/tasks/TASK-1', state: 'done' },
+  {
+    key: 'plan',
+    kind: 'plan',
+    title: 'Plan column',
+    href: '/plans/fix-relay',
+    state: 'three left',
+  },
+  {
+    key: 'task',
+    kind: 'plan',
+    title: 'Object column',
+    href: '/plans/fix-relay/tasks/TASK-1',
+    state: 'done',
+  },
 ];
 
 const BODIES = ['Lens body', 'Project body', 'Epic body', 'Plan body', 'Task body'];
@@ -209,7 +227,9 @@ describe('TriagePage as the column engine', () => {
 
   it('applies its widths with a style directive, never a static style attribute', () => {
     const source = fs.readFileSync(SOURCE, 'utf-8');
-    const markup = source.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
+    const markup = source
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<style[\s\S]*?<\/style>/g, '');
 
     expect(source).toContain('inline-size={`');
     expect(/\sstyle\s*=\s*"[^"{]*"/.test(markup)).toBe(false);
@@ -243,9 +263,10 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     await renderWindow(744);
 
     expect(screen.getByRole('button', { name: 'Names' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'project, Project column' }),
-    ).toHaveAttribute('title', 'Show this level; the selection stays');
+    expect(screen.getByRole('button', { name: 'project, Project column' })).toHaveAttribute(
+      'title',
+      'Show this level; the selection stays',
+    );
   });
 
   it('peeks at a hidden level, then returns to the object', async () => {
@@ -352,7 +373,8 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(get(runtimeStore).quietNavigationNotice).toBe(before);
   });
 
-  it('leaves the keys to a focused field', async () => {    render(TriagePageFixture, {
+  it('leaves the keys to a focused field', async () => {
+    render(TriagePageFixture, {
       props: {
         levels: LEVELS,
         label: 'Levels',

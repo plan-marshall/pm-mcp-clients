@@ -456,7 +456,12 @@
   </div>
 
   {#if project.remote_url}
-    <a href={project.remote_url} target="_blank" rel="noreferrer" class="project-remote mono text-sm">
+    <a
+      href={project.remote_url}
+      target="_blank"
+      rel="noreferrer"
+      class="project-remote mono text-sm"
+    >
       {project.remote_url}
     </a>
   {/if}
@@ -493,7 +498,10 @@
     </span>
 
     {#if project.last_active}
-      <span class="project-last-active text-xs text-muted" title={formatMoment(project.last_active)}>
+      <span
+        class="project-last-active text-xs text-muted"
+        title={formatMoment(project.last_active)}
+      >
         {formatRelative(project.last_active)}
       </span>
     {/if}
@@ -706,7 +714,8 @@
       {#if explorer.favourites.length > 0}
         <section class="explorer-section" data-testid="section-favourites">
           <h2 class="section-title">
-            <Icon name="act.favourite-on" size={16} /> {$t('project.explorer.favourites')}
+            <Icon name="act.favourite-on" size={16} />
+            {$t('project.explorer.favourites')}
           </h2>
           <div class="project-grid">
             {#each explorer.favourites as project, index (project.project_id)}

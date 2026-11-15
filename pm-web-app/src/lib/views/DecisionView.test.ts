@@ -158,8 +158,7 @@ describe('DecisionView component', () => {
     await fireEvent.click(screen.getByDisplayValue('rebase'));
     await fireEvent.click(screen.getByText('Decide'));
 
-    const sentence =
-      'Try again; if it keeps taking this long, check that the runtime is running.';
+    const sentence = 'Try again; if it keeps taking this long, check that the runtime is running.';
     expect(await screen.findByText(sentence)).toBeInTheDocument();
 
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -178,8 +177,7 @@ describe('DecisionView component', () => {
     });
     await fireEvent.click(screen.getByText('Read back'));
 
-    const sentence =
-      'Try again; if it keeps taking this long, check that the runtime is running.';
+    const sentence = 'Try again; if it keeps taking this long, check that the runtime is running.';
     expect(await screen.findByText(sentence)).toBeInTheDocument();
 
     // A successful Decide owns its own act only; the failed read-back keeps its banner.
@@ -256,7 +254,9 @@ describe('DecisionView component', () => {
 
     // Open own words
     const ownWordsToggle = screen.getByText('in my own words');
-    expect(ownWordsToggle.closest('button')?.querySelector('[data-icon="act.edit"]')).not.toBeNull();
+    expect(
+      ownWordsToggle.closest('button')?.querySelector('[data-icon="act.edit"]'),
+    ).not.toBeNull();
     await fireEvent.click(ownWordsToggle);
 
     const textarea = screen.getByPlaceholderText('State your decision in your own words…');
@@ -619,7 +619,12 @@ describe('DecisionView component', () => {
     // The released answer has to be applied before the transcript is read: awaiting the answer
     // flushes what its continuation changed, instead of assuming one tick() covered it.
     await act(async () => {
-      release?.({ ...decisionChat, chat_id: 'C-dec-101', subject_id: 'dec-101', proposal: undefined });
+      release?.({
+        ...decisionChat,
+        chat_id: 'C-dec-101',
+        subject_id: 'dec-101',
+        proposal: undefined,
+      });
     });
 
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
@@ -684,9 +689,7 @@ describe('DecisionView component', () => {
     await fireEvent.click(openers[0]!);
     await fireEvent.click(openers[1]!);
     await waitFor(() => {
-      expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
-        'the second decision’s chat',
-      );
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('the second decision’s chat');
     });
     await fireEvent.click(openers[0]!);
     await waitFor(() => {
@@ -1128,8 +1131,11 @@ describe('DecisionView component', () => {
 
     it('drops an interpretation that answers after a revision replaced the question it read', async () => {
       const emit = captureEvents();
-      let finish: (reading: { interpretation_type: string; mapped_option_key: string; read_back_text: string }) => void =
-        () => {};
+      let finish: (reading: {
+        interpretation_type: string;
+        mapped_option_key: string;
+        read_back_text: string;
+      }) => void = () => {};
       vi.spyOn(apiClient, 'interpretDecision').mockReturnValue(
         new Promise((resolve) => {
           finish = resolve;
@@ -1153,7 +1159,9 @@ describe('DecisionView component', () => {
       await fireEvent.click(await screen.findByText('in my own words'));
 
       expect(screen.queryByText('I understood: Rebase onto main')).toBeNull();
-      expect(screen.getByPlaceholderText('State your decision in your own words…')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('State your decision in your own words…'),
+      ).toBeInTheDocument();
     });
 
     it('adds a changed decision the list does not hold yet', async () => {
@@ -1241,7 +1249,10 @@ describe('DecisionView component', () => {
           { id: 'dec-101', outcome: 'withdrawn' },
           'dec-101 is closed: the revision removed the need for it (The decision was withdrawn.); the chat has ended with it.',
         ],
-        [{ id: 'dec-101', outcome: 'answered' }, 'dec-101 is answered; the chat has ended with it.'],
+        [
+          { id: 'dec-101', outcome: 'answered' },
+          'dec-101 is answered; the chat has ended with it.',
+        ],
       ])('ends the chat with the line of the closing outcome %o', async (payload, line) => {
         const emit = await openTheChat();
 
@@ -1262,18 +1273,18 @@ describe('DecisionView component', () => {
           { id: 'dec-101', answer: 'rebase', channel: 'web' },
           'dec-101 was answered in the web app (—); the chat has ended.',
         ],
-        [
-          { id: 'dec-101', answer: 'rebase' },
-          'dec-101 is answered; the chat has ended with it.',
-        ],
-      ])('names where an answer elsewhere came from only as the event says %o', async (payload, line) => {
-        const emit = await openTheChat();
+        [{ id: 'dec-101', answer: 'rebase' }, 'dec-101 is answered; the chat has ended with it.'],
+      ])(
+        'names where an answer elsewhere came from only as the event says %o',
+        async (payload, line) => {
+          const emit = await openTheChat();
 
-        await emit('decision.answered', payload);
+          await emit('decision.answered', payload);
 
-        expect(screen.queryByTestId('chat-panel')).toBeNull();
-        expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
-      });
+          expect(screen.queryByTestId('chat-panel')).toBeNull();
+          expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
+        },
+      );
 
       it('closes the chat when the decision is revised, so its proposal cannot answer the new question', async () => {
         const emit = await openTheChat();
@@ -1290,7 +1301,12 @@ describe('DecisionView component', () => {
           ...decisionChat,
           turns: [
             ...decisionChat.turns,
-            { role: 'implement', text: 'The pull request is rebased too.', at: '2026-10-14T10:01:00Z', untrusted: false },
+            {
+              role: 'implement',
+              text: 'The pull request is rebased too.',
+              at: '2026-10-14T10:01:00Z',
+              untrusted: false,
+            },
           ],
         });
 
@@ -1299,7 +1315,10 @@ describe('DecisionView component', () => {
         });
         await fireEvent.click(screen.getByTestId('chat-send'));
 
-        expect(apiClient.decisionChatTurn).toHaveBeenCalledWith('dec-101', 'And the open pull request?');
+        expect(apiClient.decisionChatTurn).toHaveBeenCalledWith(
+          'dec-101',
+          'And the open pull request?',
+        );
         await waitFor(() =>
           expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
             'The pull request is rebased too.',

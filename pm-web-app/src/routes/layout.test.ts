@@ -218,9 +218,7 @@ describe('the app shell', () => {
     render(Layout);
 
     const banner = await screen.findByTestId('draining-banner');
-    expect(banner).toHaveTextContent(
-      '2 left: execute task of fix-relay, build of fix-relay',
-    );
+    expect(banner).toHaveTextContent('2 left: execute task of fix-relay, build of fix-relay');
     expect(within(screen.getByTestId('draining-list')).getAllByRole('listitem')).toHaveLength(2);
 
     runtimeStore.update((state) => ({

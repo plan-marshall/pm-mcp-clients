@@ -120,9 +120,7 @@ describe('OnboardingView against the mock runtime states', () => {
     await fireEvent.click(screen.getByTestId('consent-remember'));
     await fireEvent.click(screen.getByRole('button', { name: /^look for harnesses$/i }));
 
-    await waitFor(() =>
-      expect(stepSpy).toHaveBeenCalledWith('remember', { remember: true }),
-    );
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('remember', { remember: true }));
   });
 
   it('says a consent is for this run only when it is never remembered', () => {
@@ -426,12 +424,8 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(completed).toHaveTextContent('Claude Code 2.4.1 (default), OpenCode 1.9.0');
 
     // A runtime that sends the card's own title as the summary does not print it twice.
-    expect(screen.getByTestId('completed-summary')).toHaveTextContent(
-      'Machine setup is complete.',
-    );
-    expect(screen.getByTestId('completed-summary')).not.toHaveTextContent(
-      'This machine is ready',
-    );
+    expect(screen.getByTestId('completed-summary')).toHaveTextContent('Machine setup is complete.');
+    expect(screen.getByTestId('completed-summary')).not.toHaveTextContent('This machine is ready');
 
     // A done step opened from the bar is read-only: it shows its summary, never a link to re-run.
     expect(screen.queryByRole('button', { name: /record this choice/i })).not.toBeInTheDocument();

@@ -51,9 +51,7 @@ test.describe('The plan intent and outline panels', () => {
 
     // The head: the plan, its revision, the goal and the counts by verdict.
     const intent = light.getByTestId('plan-intent-panel');
-    await expect(intent.getByTestId('intent-head')).toHaveText(
-      'Intent · fix-relay · revision 3',
-    );
+    await expect(intent.getByTestId('intent-head')).toHaveText('Intent · fix-relay · revision 3');
     await expect(intent.getByTestId('intent-goal')).toContainText(
       'Make the relay reconnect without losing queued events.',
     );
@@ -77,9 +75,7 @@ test.describe('The plan intent and outline panels', () => {
     await expect(intent.getByTestId('choice-DC-004')).toContainText(
       'evidence: pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java',
     );
-    await expect(intent.getByTestId('choice-adr-DC-005')).toHaveText(
-      'contradicts ADR-0002',
-    );
+    await expect(intent.getByTestId('choice-adr-DC-005')).toHaveText('contradicts ADR-0002');
 
     // The builder check waits, marks its recommendation and preselects nothing.
     const builder = light.getByTestId('builder-check');
@@ -106,9 +102,7 @@ test.describe('The plan intent and outline panels', () => {
     await openFixtureIn(page, 'de');
     const light = page.getByTestId(FIXTURE).first();
 
-    await expect(light.getByTestId('intent-head')).toHaveText(
-      'Absicht · fix-relay · Revision 3',
-    );
+    await expect(light.getByTestId('intent-head')).toHaveText('Absicht · fix-relay · Revision 3');
     await expect(light.getByTestId('intent-counts')).toHaveText(
       '4 Kriterien · 2 erfüllt · 1 nicht erfüllt · 1 nicht verifiziert',
     );
@@ -116,9 +110,7 @@ test.describe('The plan intent and outline panels', () => {
       'Change the on-disk queue format.',
     );
     await expect(light.getByTestId('builder-state')).toHaveText('Fragen warten');
-    await expect(light.getByTestId('outline-dependency-0')).toContainText(
-      'hinzugefügt von 1',
-    );
+    await expect(light.getByTestId('outline-dependency-0')).toContainText('hinzugefügt von 1');
   });
 
   test('draws the panels in both themes', async ({ page }) => {

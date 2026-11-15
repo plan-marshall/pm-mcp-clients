@@ -79,7 +79,11 @@
   function onViewportChange(event?: Event): void {
     if (!open) return;
     const menuHost = actMenu?.getMenuElement();
-    if (event?.type === 'scroll' && event.target instanceof Node && menuHost?.contains(event.target)) {
+    if (
+      event?.type === 'scroll' &&
+      event.target instanceof Node &&
+      menuHost?.contains(event.target)
+    ) {
       return;
     }
     place();

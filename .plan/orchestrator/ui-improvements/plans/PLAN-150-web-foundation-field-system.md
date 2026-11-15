@@ -138,13 +138,24 @@ Read first: `doc/design/web-app/components-fields.adoc` (all), `README.adoc` § 
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/components-fields.adoc` — present at HEAD 1cc0e10e (changed only if a prop differs)
 - OBSERVED: `pm-web-app/src/lib/components/Marker.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/components/IconButton.svelte` — present at `3a64b2b1` (D0: the `on:click` hole)
+- OBSERVED: `pm-web-app/src/lib/components/IconButton.test.ts` — present at `3a64b2b1` (D0)
+- OBSERVED: `pm-web-app/src/lib/components/ActionBar.svelte` — present at `3a64b2b1` (D0: a disabled act reaches `onAct`)
+- OBSERVED: `pm-web-app/src/lib/components/ActionBar.test.ts` — present at `3a64b2b1` (D0)
+- OBSERVED: `pm-web-app/src/lib/components/ActMenu.svelte` — present at `3a64b2b1` (D0: the `ConfirmDialog` leaves the menu DOM)
+- OBSERVED: `pm-web-app/src/lib/components/ActMenu.test.ts` — present at `3a64b2b1` (D0)
+- OBSERVED: `pm-web-app/src/lib/components/Dialog.svelte` — present at `3a64b2b1` (D0: Escape order, danger consequences)
+- OBSERVED: `pm-web-app/src/lib/components/Dialog.test.ts` — present at `3a64b2b1` (D0)
+- OBSERVED: `pm-web-app/src/lib/components/Toggle.svelte` — present at `3a64b2b1` (D0: a disabled reason for `SecretField`)
+- OBSERVED: `pm-web-app/src/lib/components/Toggle.test.ts` — present at `3a64b2b1` (D0)
 - OBSERVED: `pm-web-app/src/lib/components/Chip.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-149` (`Toggle` for `SecretField`, `Dialog`), `PLAN-147` (`Compose`, `FormStatus`), `PLAN-148` (`Marker`); `PLAN-45` landed.
 - Overlaps with:
-  - `PLAN-45` (running): the dev page, `common.*`.
+  - `PLAN-45` (shipped, #399) and `PLAN-149` (shipped, #445): the dev page, `common.*`, `Button`, `ConfirmDialog`, `tokens.css`, `tokens.test.ts` are read at HEAD, not from this spec.
+  - `PLAN-143` (running): `common.en/de.properties` — insertions only; the operator accepted this overlap on 2026-11-15, the second to land rebases. `PLAN-146` (running): the dev page, one file.
   - `PLAN-66`, `PLAN-64`, `PLAN-60` (parked): `CredentialEntry`, the rotate dialog and the onboarding choices that adopt the fields.
   - `PLAN-135` (parked): `Compose` consumer.
   - `PLAN-70`, `PLAN-72` (parked): `tokens.css`.
@@ -168,6 +179,38 @@ Re-read every file above at the then-current HEAD. Run `corpus surfaces` against
 ## PLAN-148 Landing Residue (Amendment 2026-11-14)
 
 - `Marker`'s `label` is a native `title` tooltip (`Marker.svelte:53`), not visible text; `Chip` uses `data-advisory`. Settle one advisory convention in the field system.
+
+## Folded from the PLAN-149 landing 2026-11-15
+
+`PLAN-149` landed as `3a64b2b1` (#445; `landings/PLAN-149.md`). **Operator decision 2026-11-15: the fixes to the components this plan builds on are folded in here as D0, done first.**
+The landing was read by reading, no run: confirm each point with a test that fails before the fix. Every position below is at `3a64b2b1`; the Expected Surface above was grounded at
+`1cc0e10e` and has moved (`Button.svelte`, `ConfirmDialog.svelte`, `tokens.css`, `tokens.test.ts`, the dev page and `common.*` were all edited by that merge): read them at HEAD.
+
+**D0 — the interaction set's residue** (persona `plan-marshall:persona-implementer`; skills `pm-dev-frontend:javascript`, `pm-dev-frontend:css`, `pm-dev-frontend:jest-testing`):
+- **A disabled-with-reason `Button` must not activate.** `Button.svelte` registers `on:click={handleClick}` and a forwarding `on:click` on one element; `stopPropagation()` does not stop the second
+  listener on the same element, so only `onclick` rest-prop consumers are blocked. `ActionBar.svelte:81,94` call `chooseAct` through `on:click`, so a primary or secondary act that carries a disabled
+  reason can still reach `onAct`; `IconButton.svelte:58-59` has the same shape and `DataTable` uses `on:click` on it. Block activation at the source for both components, for `on:click` and
+  `onclick` consumers alike (the old tests use `onclick` and never exercise the forwarded path). Test: a click on a disabled-with-reason ActionBar primary and on a disabled `IconButton`
+  through `on:click` calls nothing; it fails on a revert. Evidence order: `test-first`. Every `Field` of D1-D4 that uses `Button` inherits this fix, so it comes first.
+- **`loading` replaces the icon** (`Button.svelte:74-79` renders spinner and icon together). Test: icon plus loading shows the spinner only.
+- **The danger consequences** of a `ConfirmDialog` are in the danger colour (`components.adoc#confirm-dialog`); today `Dialog.svelte:199-210` colours the title only and `.dialog__consequences` is
+  `--color-text-secondary`. Assert the colour token (or change the design, and say which).
+- **Escape order.** `Dialog.svelte:119-124` listens on the window in the capture phase and stops propagation, so an Escape inside a menu that lives in a dialog closes the dialog and never reaches
+  the menu, where the design closes the menu first. Decide the order, implement it, test it; the `defaultPrevented` rule of the two templates (`TriagePage`, `WizardPage`) is part of the decision.
+- **The `ConfirmDialog` leaves the menu DOM** (`ActMenu.svelte` renders it inside `.row-menu`): a click inside it bubbles through the row, `position: fixed` can be trapped by a transformed ancestor,
+  and its `Dialog.takeFocus` records the menu item as the return target. Render it outside the menu and test the focus after confirm and after cancel. The confirmation's title and consequences are
+  both the entry label today; give them their own texts or say why not.
+- **Stale references:** `components.adoc:163` still says the IconButton tests live in `Button.test.ts`; `components.adoc#layers` lists nothing for `SideColumn` (60) or the GapStrip popover while saying no
+  component writes a number of its own.
+Evidence order for each fix: `test-first` unless the clause names `mutation-after`.
+
+Not in D0 (recorded in `epic.md` Open Defects, owners named there): the duplicated `.act-menu*`/`.row-menu__*` CSS and the legacy class names `RowMenu.test.ts` greps; the allowlist's stale-entry
+check and the reason "the V parts" for `SideColumn`; the `StatusLabel` width token (the invented `8.5rem`; **the operator decides the token**); the global `testTimeout: 20_000` of `vite.config.ts`;
+the dev page's English literals; the five-option German `SegmentedControl` case. `SecretField` (D2) needs a `Toggle` with a disabled reason, which `Toggle` lacks: add `disabledReason` to `Toggle`
+here, with the same activation rule as `Button`.
+
+Surface: the Expected Surface above gains the ten D0 files (37 entries). This plan now has six deliverables (D0 to D5): at the outline check the scope-bloat guard and split D0 into its own pull
+request first if the outline grows past it.
 
 ## Hand-Off Command
 

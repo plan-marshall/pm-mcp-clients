@@ -129,9 +129,7 @@ describe('displayError', () => {
     });
 
     useCatalogue('de');
-    expect(displayError('hyperdrive_broken').title).toBe(
-      'Die Runtime hat die Anfrage abgelehnt',
-    );
+    expect(displayError('hyperdrive_broken').title).toBe('Die Runtime hat die Anfrage abgelehnt');
   });
 
   it('carries title, cause and fix for every client code in both languages', () => {

@@ -14,7 +14,8 @@ const { stubFor } = vi.hoisted(() => ({
     const { default: RouteStub } = await import('../../test/fixtures/RouteStub.svelte');
     const mount = RouteStub as unknown as (anchor: unknown, props: Record<string, unknown>) => void;
     return {
-      default: (anchor: unknown, props: Record<string, unknown>) => mount(anchor, { ...props, view }),
+      default: (anchor: unknown, props: Record<string, unknown>) =>
+        mount(anchor, { ...props, view }),
     };
   },
 }));
@@ -78,11 +79,27 @@ describe('AppRouter', () => {
   });
 
   it.each<[string, Partial<RuntimeState>, string]>([
-    ['a revoked browser, whatever else holds', { currentRoute: 'revoked', isPaired: false }, 'RevokedView'],
-    ['a closed network listener', { currentRoute: 'listener-off', isListenerClosed: true }, 'ListenerOffView'],
-    ['the listener page once the listener is open again', { currentRoute: 'listener-off' }, 'OverviewView'],
+    [
+      'a revoked browser, whatever else holds',
+      { currentRoute: 'revoked', isPaired: false },
+      'RevokedView',
+    ],
+    [
+      'a closed network listener',
+      { currentRoute: 'listener-off', isListenerClosed: true },
+      'ListenerOffView',
+    ],
+    [
+      'the listener page once the listener is open again',
+      { currentRoute: 'listener-off' },
+      'OverviewView',
+    ],
     ['an unpaired browser on any route', { currentRoute: 'plan', isPaired: false }, 'PairingView'],
-    ['a machine not onboarded, on any route', { currentRoute: 'plan', isOnboarded: false }, 'OnboardingView'],
+    [
+      'a machine not onboarded, on any route',
+      { currentRoute: 'plan', isOnboarded: false },
+      'OnboardingView',
+    ],
     [
       'a machine not onboarded that does not answer, on the route it named',
       { currentRoute: 'plan', isOnboarded: false, isOffline: true },

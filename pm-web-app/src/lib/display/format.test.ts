@@ -269,11 +269,7 @@ describe('formatTokens', () => {
   });
 
   it('rounds a floor down at the precision shown', () => {
-    expectBothLocales(
-      (locale) => formatTokens(412_680, true, locale),
-      '≥ 412 k',
-      '≥ 412 Tsd.',
-    );
+    expectBothLocales((locale) => formatTokens(412_680, true, locale), '≥ 412 k', '≥ 412 Tsd.');
     expectBothLocales((locale) => formatTokens(4_280, true, locale), '≥ 4.2 k', '≥ 4,2 Tsd.');
     expectBothLocales((locale) => formatTokens(1_249_000, true, locale), '≥ 1.24 M', '≥ 1,24 Mio.');
   });

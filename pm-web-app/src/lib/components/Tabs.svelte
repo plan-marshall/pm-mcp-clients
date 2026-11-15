@@ -51,7 +51,8 @@
   // takes the view's tab when it arrives, and otherwise selects its first tab instead of handing
   // every tab a `tabindex="-1"` and dying for the keyboard.
   $: if (!tabs.some((tab) => tab.id === selected)) {
-    selected = active !== undefined && tabs.some((tab) => tab.id === active) ? active : (tabs[0]?.id ?? '');
+    selected =
+      active !== undefined && tabs.some((tab) => tab.id === active) ? active : (tabs[0]?.id ?? '');
   }
 
   /** The list's own element, for the keyboard to move within. */
@@ -80,7 +81,13 @@
       : elements.indexOf(document.activeElement as HTMLButtonElement);
     // A press on the list's own box — the gap between tabs, the bottom border — puts the focus on
     // the list, not on a tab, so the walk starts from the tab that is selected.
-    const from = current >= 0 ? current : Math.max(0, tabs.findIndex((tab) => tab.id === selected));
+    const from =
+      current >= 0
+        ? current
+        : Math.max(
+            0,
+            tabs.findIndex((tab) => tab.id === selected),
+          );
     let next: number;
     switch (event.key) {
       case 'ArrowRight':

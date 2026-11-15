@@ -119,7 +119,9 @@ describe('Link', () => {
   it('underlines a link in a sentence and a standing link only on hover', () => {
     expect(ruleOf(STYLE, '.link--text')).toContain('text-decoration: none');
     expect(ruleOf(STYLE, '.link--text:hover')).toContain('text-decoration: underline');
-    expect(STYLE).toMatch(/:global\(:is\(p, li, dd, td, figcaption, blockquote\)\) > \.link--text\s*\{\s*text-decoration: underline/);
+    expect(STYLE).toMatch(
+      /:global\(:is\(p, li, dd, td, figcaption, blockquote\)\) > \.link--text\s*\{\s*text-decoration: underline/,
+    );
   });
 
   it('draws the button look as the secondary Button', () => {
@@ -129,7 +131,9 @@ describe('Link', () => {
     expect(rule).toContain('border: 1px solid var(--color-border-strong)');
     expect(rule).toContain('color: var(--color-text-primary)');
     expect(rule).toContain('border-radius: var(--radius-md)');
-    expect(ruleOf(STYLE, '.link--button:hover')).toContain('background-color: var(--color-bg-subtle)');
+    expect(ruleOf(STYLE, '.link--button:hover')).toContain(
+      'background-color: var(--color-bg-subtle)',
+    );
   });
 
   it('gives every look a target of at least 24 px, and 44 px on a phone', () => {

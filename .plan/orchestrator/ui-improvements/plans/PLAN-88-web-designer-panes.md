@@ -81,6 +81,13 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 
 - Nothing implemented yet (`designer.back` still at `designer.en.properties:85`). The Expected Surface block is repeated after the Write-Boundary: the first block counts.
 
+## Folded from the PLAN-149 landing 2026-11-15
+
+`PLAN-149` landed as `3a64b2b1` (#445; `landings/PLAN-149.md`). Leads for this plan, to read at HEAD (the landing was read by reading, no run): `ProcessDesigner.svelte` is on the z-index
+allowlist of `tokens.test.ts` (it still writes a numeric `z-index`); moving `.intake-mode` to `SegmentedControl` keeps the options in 2..5 (the component throws outside it, `SegmentedControl.svelte:23-25`),
+minds German label width (`white-space: nowrap`, five German labels on a phone are untested) and the roving-tabindex arrows that select on every move; moving the hand-rolled dialogs to `Dialog` meets
+the capture-phase Escape (`Dialog.svelte:119-124`), which `PLAN-150` D0 settles first. This plan still waits for `PLAN-150`.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

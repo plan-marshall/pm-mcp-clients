@@ -262,7 +262,12 @@ const KIND_TINTS = ['--color-kind-project', '--color-kind-epic', '--color-kind-p
  * The colours a kind tint must keep clear of: the state tones, the brand and the mascot's orange and
  * gold. The state tones are `STATE_DOTS` itself, so a state token added there is checked here too.
  */
-const TINT_NEIGHBOURS = [...STATE_DOTS, '--color-brand', '--color-mascot-fur', '--color-mascot-gold'];
+const TINT_NEIGHBOURS = [
+  ...STATE_DOTS,
+  '--color-brand',
+  '--color-mascot-fur',
+  '--color-mascot-gold',
+];
 
 /** Every ground a kind icon stands on, the selected row's brand-subtle among them. */
 const TINT_GROUNDS = [...SURFACES, '--color-brand-subtle'];
@@ -278,7 +283,9 @@ const DOT_PAIRS: Array<[string, string]> = SURFACES.flatMap((surface) =>
  * @returns the rows whose raw value is below the minimum, with the value rounded for the report only
  */
 function belowMinimum<T extends { value: number }>(rows: readonly T[], minimum: number): T[] {
-  return rows.filter((row) => row.value < minimum).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
+  return rows
+    .filter((row) => row.value < minimum)
+    .map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
 }
 
 /**
@@ -355,7 +362,9 @@ function parseThemes(source: string): {
   const root = declarations(blockOf(css, ':root'));
   const light = declarations(blockOf(css, "[data-theme='light']"));
   const dark = declarations(blockOf(css, "[data-theme='dark']"));
-  const mediaDark = declarations(blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root'));
+  const mediaDark = declarations(
+    blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root'),
+  );
   return { root, light, dark, mediaDark };
 }
 
@@ -408,15 +417,12 @@ describe('tokens.css: the design system v2 contract', () => {
   const themes = parseThemes(css);
 
   describe('VD-P-02 colour tokens', () => {
-    it.each(Object.entries(COLOUR_TOKENS))(
-      'declares %s in both themes',
-      (token, values) => {
-        expect(themes.root[token]?.toLowerCase()).toBe(values.light.toLowerCase());
-        expect(themes.light[token]?.toLowerCase()).toBe(values.light.toLowerCase());
-        expect(themes.dark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
-        expect(themes.mediaDark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
-      },
-    );
+    it.each(Object.entries(COLOUR_TOKENS))('declares %s in both themes', (token, values) => {
+      expect(themes.root[token]?.toLowerCase()).toBe(values.light.toLowerCase());
+      expect(themes.light[token]?.toLowerCase()).toBe(values.light.toLowerCase());
+      expect(themes.dark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
+      expect(themes.mediaDark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
+    });
 
     it('keeps the set of theme-varying tokens identical in light, dark and the system-dark block', () => {
       const themed = new Set([...Object.keys(COLOUR_TOKENS), '--focus-ring', ...ELEVATION_TOKENS]);
@@ -427,14 +433,19 @@ describe('tokens.css: the design system v2 contract', () => {
       const rootNames = declaredNames(blockOf(stylesheet, ':root'));
       const rootThemed = [...rootNames].filter(isThemedName);
       expect(
-        rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES) && !(name in MASCOT_TOKENS)),
+        rootThemed.filter(
+          (name) => !themed.has(name) && !(name in ALIASES) && !(name in MASCOT_TOKENS),
+        ),
       ).toEqual([]);
       expect([...themed].filter((name) => !rootNames.has(name))).toEqual([]);
 
       for (const [label, block] of [
         ['light', blockOf(stylesheet, "[data-theme='light']")],
         ['dark', blockOf(stylesheet, "[data-theme='dark']")],
-        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+        [
+          'media-dark',
+          blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root'),
+        ],
       ] as const) {
         const declared = [...declaredNames(block)];
         expect(declared.filter(isThemedName).sort(), `${label} is missing a palette token`).toEqual(
@@ -448,7 +459,10 @@ describe('tokens.css: the design system v2 contract', () => {
       for (const [label, block] of [
         ['light', blockOf(stylesheet, "[data-theme='light']")],
         ['dark', blockOf(stylesheet, "[data-theme='dark']")],
-        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+        [
+          'media-dark',
+          blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root'),
+        ],
       ] as const) {
         const declared = declaredNames(block);
         expect(
@@ -466,16 +480,21 @@ describe('tokens.css: the design system v2 contract', () => {
   });
 
   describe('mascot palette tokens', () => {
-    it.each(Object.entries(MASCOT_TOKENS))('resolves %s to the same value in every palette', (token, value) => {
-      const palettes = {
-        light: resolveAliases({ ...themes.root, ...themes.light }),
-        dark: resolveAliases({ ...themes.root, ...themes.dark }),
-        'media-dark': resolveAliases({ ...themes.root, ...themes.mediaDark }),
-      };
-      for (const [label, palette] of Object.entries(palettes)) {
-        expect(palette[token]?.toLowerCase(), `${token} in the ${label} palette`).toBe(value.toLowerCase());
-      }
-    });
+    it.each(Object.entries(MASCOT_TOKENS))(
+      'resolves %s to the same value in every palette',
+      (token, value) => {
+        const palettes = {
+          light: resolveAliases({ ...themes.root, ...themes.light }),
+          dark: resolveAliases({ ...themes.root, ...themes.dark }),
+          'media-dark': resolveAliases({ ...themes.root, ...themes.mediaDark }),
+        };
+        for (const [label, palette] of Object.entries(palettes)) {
+          expect(palette[token]?.toLowerCase(), `${token} in the ${label} palette`).toBe(
+            value.toLowerCase(),
+          );
+        }
+      },
+    );
   });
 
   describe('VD-P-03 type scale', () => {
@@ -530,9 +549,12 @@ describe('tokens.css: the design system v2 contract', () => {
   });
 
   describe('layer tokens', () => {
-    it.each(Object.entries(LAYER_TOKENS))('declares the layer token %s with value %i', (token, value) => {
-      expect(Number(themes.root[token])).toBe(value);
-    });
+    it.each(Object.entries(LAYER_TOKENS))(
+      'declares the layer token %s with value %i',
+      (token, value) => {
+        expect(Number(themes.root[token])).toBe(value);
+      },
+    );
 
     it('asserts the layer token order: sticky < bar < menu < toast < dialog', () => {
       const sticky = Number(themes.root['--layer-sticky']);
@@ -560,33 +582,45 @@ describe('tokens.css: the design system v2 contract', () => {
   });
 
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
-    it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        TEXT_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        4.5,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every text pair at or above 4.5:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          TEXT_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          4.5,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
-    it.each(['light', 'dark'] as const)('keeps every state dot at or above 3:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        DOT_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        3,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every state dot at or above 3:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          DOT_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          3,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
   });
 
   describe('the three kind tints keep clear of every other colour (components-tags.adoc, kind-tints)', () => {
@@ -604,7 +638,11 @@ describe('tokens.css: the design system v2 contract', () => {
         const palette = palettes[theme];
         const failures = belowMinimum(
           KIND_TINTS.flatMap((tint) =>
-            TINT_NEIGHBOURS.map((other) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+            TINT_NEIGHBOURS.map((other) => ({
+              tint,
+              other,
+              value: deltaE00(palette[tint], palette[other]),
+            })),
           ),
           20,
         );
@@ -634,27 +672,41 @@ describe('tokens.css: the design system v2 contract', () => {
       },
     );
 
-    it.each(['light', 'dark'] as const)('keeps a ΔE00 of at least 30 between the tints in the %s theme', (theme) => {
-      const palette = palettes[theme];
-      const failures = belowMinimum(
-        tintPairs.map(([tint, other]) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
-        30,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps a ΔE00 of at least 30 between the tints in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const failures = belowMinimum(
+          tintPairs.map(([tint, other]) => ({
+            tint,
+            other,
+            value: deltaE00(palette[tint], palette[other]),
+          })),
+          30,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
-    it.each(['light', 'dark'] as const)('keeps every tint at or above 3:1 on every ground in the %s theme', (theme) => {
-      const palette = palettes[theme];
-      const failures = belowMinimum(
-        KIND_TINTS.flatMap((tint) =>
-          TINT_GROUNDS.map((ground) => ({ tint, ground, value: contrastRatio(palette[tint], palette[ground]) })),
-        ),
-        3,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every tint at or above 3:1 on every ground in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            TINT_GROUNDS.map((ground) => ({
+              tint,
+              ground,
+              value: contrastRatio(palette[tint], palette[ground]),
+            })),
+          ),
+          3,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
     it('declares none of the retired epic tokens in :root or any theme block', () => {
       const retired = ['--color-epic', '--color-epic-subtle', '--color-epic-text'];
@@ -674,7 +726,10 @@ describe('tokens.css: the design system v2 contract', () => {
     ];
 
     it('draws each tone from the pair audited below', () => {
-      const source = fs.readFileSync(path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'), 'utf8');
+      const source = fs.readFileSync(
+        path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'),
+        'utf8',
+      );
 
       expect(source).toContain('background-color: var(--color-attention-subtle)');
       expect(source).toContain('color: var(--color-attention-text)');
@@ -682,19 +737,25 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(source).toContain('color: var(--color-danger)');
     });
 
-    it.each(['light', 'dark'] as const)('keeps both pairs at or above 4.5:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        REASON_TONE_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        4.5,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps both pairs at or above 4.5:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          REASON_TONE_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          4.5,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
   });
 });
 
@@ -733,7 +794,9 @@ describe('tokens.css: static scans over the source tree', () => {
 
   it('ensures no hard-coded color literals exist in views or components outside the allowlist', () => {
     const srcDir = path.resolve(__dirname, '..');
-    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']).filter((f) => !f.endsWith('tokens.css'));
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']).filter(
+      (f) => !f.endsWith('tokens.css'),
+    );
 
     const hexRegex = /#([0-9a-fA-F]{3,8})\b/g;
     const rgbRegex = /rgba?\([^)]+\)/g;
@@ -797,7 +860,10 @@ describe('tokens.css: static scans over the source tree', () => {
   it('ensures every allowlisted z-index file has a valid reason', () => {
     for (const [file, reason] of Object.entries(ALLOWLISTED_Z_INDEX_FILES)) {
       expect(typeof reason).toBe('string');
-      expect(reason.trim().length, `Allowlisted file ${file} lost its removal reason`).toBeGreaterThan(0);
+      expect(
+        reason.trim().length,
+        `Allowlisted file ${file} lost its removal reason`,
+      ).toBeGreaterThan(0);
     }
   });
 

@@ -39,9 +39,21 @@
     <circle class="waiting-mark__dot waiting-mark__dot--1" cx="9.2" cy="10.5" r="1" />
     <circle class="waiting-mark__dot waiting-mark__dot--2" cx="9.2" cy="14.25" r="1" />
     <circle class="waiting-mark__dot waiting-mark__dot--3" cx="9.2" cy="18" r="1" />
-    <path class="waiting-mark__tick waiting-mark__tick--1" d="M7.4 10.6l1.3 1.3 2.3-2.8" pathLength="1" />
-    <path class="waiting-mark__tick waiting-mark__tick--2" d="M7.4 14.35l1.3 1.3 2.3-2.8" pathLength="1" />
-    <path class="waiting-mark__tick waiting-mark__tick--3" d="M7.4 18.1l1.3 1.3 2.3-2.8" pathLength="1" />
+    <path
+      class="waiting-mark__tick waiting-mark__tick--1"
+      d="M7.4 10.6l1.3 1.3 2.3-2.8"
+      pathLength="1"
+    />
+    <path
+      class="waiting-mark__tick waiting-mark__tick--2"
+      d="M7.4 14.35l1.3 1.3 2.3-2.8"
+      pathLength="1"
+    />
+    <path
+      class="waiting-mark__tick waiting-mark__tick--3"
+      d="M7.4 18.1l1.3 1.3 2.3-2.8"
+      pathLength="1"
+    />
   </svg>
   <span class="waiting-mark__label">{label}</span>
 </span>

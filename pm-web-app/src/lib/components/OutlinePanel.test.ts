@@ -105,9 +105,9 @@ describe('OutlinePanel', () => {
   it('draws each affected file one per line, with the intent of each', async () => {
     const container = await renderPanel(outline());
 
-    const files = Array.from(
-      container.querySelectorAll('[data-testid^="outline-file-"]'),
-    ).map((file) => file.textContent?.replace(/\s+/g, ' ').trim());
+    const files = Array.from(container.querySelectorAll('[data-testid^="outline-file-"]')).map(
+      (file) => file.textContent?.replace(/\s+/g, ' ').trim(),
+    );
 
     expect(files).toEqual([
       'pm-relay/src/main/java/RelayConnection.java replaced',
@@ -183,16 +183,12 @@ describe('OutlinePanel', () => {
       }),
     );
 
-    expect(screen.getByTestId('outline-satisfies-1')).toHaveTextContent(
-      'satisfies AC-001, AC-004',
-    );
+    expect(screen.getByTestId('outline-satisfies-1')).toHaveTextContent('satisfies AC-001, AC-004');
     expect(screen.getByTestId('outline-satisfies-1').querySelector('a')).toHaveAttribute(
       'href',
       '/plans/fix-relay?tab=intent#criterion-AC-001',
     );
-    expect(screen.getByTestId('outline-satisfies-2')).toHaveTextContent(
-      'satisfies no criterion',
-    );
+    expect(screen.getByTestId('outline-satisfies-2')).toHaveTextContent('satisfies no criterion');
   });
 
   it('shows the verification where the deliverable declares one', async () => {
@@ -336,9 +332,7 @@ describe('OutlinePanel', () => {
     resolveSecond?.(outline({ revision: 5, deliverables: [] }));
     await screen.findByTestId('outline-panel');
     resolveFirst?.(outline({ revision: 4 }));
-    await waitFor(() =>
-      expect(screen.queryByTestId('outline-changed')).toBeNull(),
-    );
+    await waitFor(() => expect(screen.queryByTestId('outline-changed')).toBeNull());
     expect(screen.getByTestId('outline-panel')).not.toHaveTextContent('the record changed');
   });
 });

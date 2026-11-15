@@ -139,15 +139,18 @@ describe('ReasonBadge', () => {
   it.each([
     ['en', '! another reason'],
     ['de', '! anderer Grund'],
-  ] as const)('draws a reason the catalogue does not know in %s in the attention tone', (locale, text) => {
-    useCatalogue(locale);
-    const { container } = render(ReasonBadge, { props: { reason: 'teleported' } });
-    const badge = container.querySelector('.reason-badge') as HTMLElement;
+  ] as const)(
+    'draws a reason the catalogue does not know in %s in the attention tone',
+    (locale, text) => {
+      useCatalogue(locale);
+      const { container } = render(ReasonBadge, { props: { reason: 'teleported' } });
+      const badge = container.querySelector('.reason-badge') as HTMLElement;
 
-    expect(badge).toHaveTextContent(text);
-    expect(badge).toHaveClass('reason-badge--attention');
-    expect(badge.textContent).not.toContain('teleported');
-  });
+      expect(badge).toHaveTextContent(text);
+      expect(badge).toHaveClass('reason-badge--attention');
+      expect(badge.textContent).not.toContain('teleported');
+    },
+  );
 
   it('draws the superseded spelling of the integrity hold as an unknown reason, never in red', () => {
     useCatalogue('en');

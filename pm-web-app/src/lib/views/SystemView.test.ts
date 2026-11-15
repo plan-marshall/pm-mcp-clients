@@ -299,9 +299,7 @@ describe('SystemView component', () => {
     render(SystemView);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Die Runtime hat die Anfrage abgelehnt'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Die Runtime hat die Anfrage abgelehnt')).toBeInTheDocument();
     });
 
     useCatalogue('en');
@@ -411,7 +409,9 @@ describe('SystemView component', () => {
     render(SystemView);
 
     const stopped = await screen.findByRole('region', { name: 'Stopped runtime' });
-    expect(within(stopped).getByRole('heading')).toHaveTextContent(/^The runtime is stopped \(by the console, .*14:12\)\.$/);
+    expect(within(stopped).getByRole('heading')).toHaveTextContent(
+      /^The runtime is stopped \(by the console, .*14:12\)\.$/,
+    );
   });
 
   it('remembers the window, the grouping, and the project per browser', async () => {
@@ -660,24 +660,21 @@ describe('SystemView component', () => {
         '0.10.0 did not start: no space. 0.9.1 was restored and runs again; running work goes on from its last committed state.',
       ],
       ['start', undefined, 'Neither 0.10.0 nor 0.9.1 started: no space.'],
-    ])(
-      'says what a failure at %s (restored %s) left running',
-      async (step, restored, sentence) => {
-        vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
-        render(SystemView);
-        await waitFor(() => expect(eventHandler).not.toBeNull());
+    ])('says what a failure at %s (restored %s) left running', async (step, restored, sentence) => {
+      vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+      render(SystemView);
+      await waitFor(() => expect(eventHandler).not.toBeNull());
 
-        eventHandler?.('runtime.upgrade_failed', {
-          version: '0.10.0',
-          installed: '0.9.1',
-          step,
-          reason: 'no space',
-          ...(restored ? { restored } : {}),
-        });
+      eventHandler?.('runtime.upgrade_failed', {
+        version: '0.10.0',
+        installed: '0.9.1',
+        step,
+        reason: 'no space',
+        ...(restored ? { restored } : {}),
+      });
 
-        expect(await screen.findByTestId('upgrade-failed')).toHaveTextContent(sentence);
-      },
-    );
+      expect(await screen.findByTestId('upgrade-failed')).toHaveTextContent(sentence);
+    });
 
     it('dismisses a failed upgrade and offers the upgrade again', async () => {
       vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
@@ -918,7 +915,9 @@ describe('SystemView component', () => {
 
       await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
 
-      const implementer = screen.getByText('implementer', { selector: 'strong.mono' }).closest('tr');
+      const implementer = screen
+        .getByText('implementer', { selector: 'strong.mono' })
+        .closest('tr');
       expect(implementer).not.toBeNull();
       // 118 + 12 calls; the unmeasured gpt-5 calls do not hide the measured tokens of sonnet.
       expect(within(implementer as HTMLElement).getByText('130')).toBeInTheDocument();
@@ -947,7 +946,11 @@ describe('SystemView component', () => {
     ])('reads the window %s and names it above the models', async (label, wire) => {
       localStorage.setItem(
         'pm_system_filters',
-        JSON.stringify({ window: wire === 'hour' ? 'today' : 'hour', groupBy: 'model', project: '' }),
+        JSON.stringify({
+          window: wire === 'hour' ? 'today' : 'hour',
+          groupBy: 'model',
+          project: '',
+        }),
       );
       const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
       render(SystemView);

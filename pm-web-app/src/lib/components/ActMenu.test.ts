@@ -296,7 +296,12 @@ describe('ActMenu component', () => {
         open: true,
         label: 'Disabled variations',
         items: [
-          { id: 'with-reason', label: 'With reason', disabled: true, disabledReason: 'Missing permission' },
+          {
+            id: 'with-reason',
+            label: 'With reason',
+            disabled: true,
+            disabledReason: 'Missing permission',
+          },
           { id: 'without-reason', label: 'Without reason', disabled: true },
         ],
       },
@@ -319,7 +324,12 @@ describe('ActMenu component', () => {
         open: true,
         label: 'Actions',
         items: [
-          { id: 'd1', label: 'Locked task', disabled: true, disabledReason: 'Requires admin token' },
+          {
+            id: 'd1',
+            label: 'Locked task',
+            disabled: true,
+            disabledReason: 'Requires admin token',
+          },
         ],
       },
     });
@@ -393,9 +403,7 @@ describe('ActMenu component', () => {
         open: true,
         label: 'Actions',
         confirmDestructive: true,
-        items: [
-          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
-        ],
+        items: [{ id: 'delete', label: 'Delete', destructive: true, onclick: onClick }],
         onAct,
       },
     });
@@ -418,9 +426,7 @@ describe('ActMenu component', () => {
         open: true,
         label: 'Actions',
         confirmDestructive: true,
-        items: [
-          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
-        ],
+        items: [{ id: 'delete', label: 'Delete', destructive: true, onclick: onClick }],
         onAct,
       },
     });
@@ -453,9 +459,7 @@ describe('ActMenu component', () => {
         open: true,
         label: 'Actions',
         confirmDestructive: true,
-        items: [
-          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
-        ],
+        items: [{ id: 'delete', label: 'Delete', destructive: true, onclick: onClick }],
         onAct,
       },
     });

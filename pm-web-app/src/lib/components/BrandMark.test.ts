@@ -91,7 +91,9 @@ describe('BrandMark component', () => {
 
     it('sets no fill or stroke colour on the colour shapes in the markup', () => {
       const { getByTestId } = render(BrandMark, { props: { rendering: 'colour', size: 28 } });
-      const shapes = getByTestId('brand-mark').querySelectorAll('.brand-mark__colour, .brand-mark__colour *');
+      const shapes = getByTestId('brand-mark').querySelectorAll(
+        '.brand-mark__colour, .brand-mark__colour *',
+      );
 
       for (const shape of shapes) {
         expect(shape.hasAttribute('fill'), shape.outerHTML).toBe(false);
@@ -100,8 +102,12 @@ describe('BrandMark component', () => {
     });
 
     it('reads the gold, the fur and the outline from the mascot tokens in its stylesheet', () => {
-      expect(ruleOf(stylesheet, '.brand-mark__star')).toMatch(/fill:\s*var\(--color-mascot-gold\)\s*;/);
-      expect(ruleOf(stylesheet, '.brand-mark__disc')).toMatch(/fill:\s*var\(--color-mascot-fur\)\s*;/);
+      expect(ruleOf(stylesheet, '.brand-mark__star')).toMatch(
+        /fill:\s*var\(--color-mascot-gold\)\s*;/,
+      );
+      expect(ruleOf(stylesheet, '.brand-mark__disc')).toMatch(
+        /fill:\s*var\(--color-mascot-fur\)\s*;/,
+      );
       expect(ruleOf(stylesheet, '.brand-mark__colour')).toMatch(
         /stroke:\s*var\(--color-mascot-outline\)\s*;/,
       );
@@ -124,7 +130,9 @@ describe('BrandMark component', () => {
       expect(mark.querySelector('.brand-mark__mono--fallback')).toBeNull();
       expect(mark.querySelector('.brand-mark__mono path')).not.toBeNull();
       expect(filled.length).toBeGreaterThan(0);
-      expect(filled.map((element) => element.getAttribute('fill'))).toEqual(filled.map(() => 'currentColor'));
+      expect(filled.map((element) => element.getAttribute('fill'))).toEqual(
+        filled.map(() => 'currentColor'),
+      );
     });
   });
 
@@ -187,7 +195,9 @@ describe('BrandMark component', () => {
   describe('forced colours', () => {
     it('carries the monochrome rendering as a hidden fallback of the colour rendering', () => {
       const { getByTestId } = render(BrandMark, { props: { rendering: 'colour', size: 28 } });
-      const fallback = getByTestId('brand-mark').querySelector('.brand-mark__mono.brand-mark__mono--fallback');
+      const fallback = getByTestId('brand-mark').querySelector(
+        '.brand-mark__mono.brand-mark__mono--fallback',
+      );
 
       expect(fallback).not.toBeNull();
       expect(fallback?.getAttribute('fill')).toBe('currentColor');
@@ -204,11 +214,14 @@ describe('BrandMark component', () => {
   });
 
   describe('what the mark no longer carries', () => {
-    it.each(['colour', 'monochrome'] as const)('sets no style attribute in the %s rendering', (rendering) => {
-      const { container } = render(BrandMark, { props: { rendering, size: 28 } });
+    it.each(['colour', 'monochrome'] as const)(
+      'sets no style attribute in the %s rendering',
+      (rendering) => {
+        const { container } = render(BrandMark, { props: { rendering, size: 28 } });
 
-      expect(container.querySelectorAll('[style]')).toHaveLength(0);
-    });
+        expect(container.querySelectorAll('[style]')).toHaveLength(0);
+      },
+    );
 
     it('draws no plate and knows no plate prop', () => {
       const { queryByTestId, container } = render(BrandMark, { props: { size: 28 } });

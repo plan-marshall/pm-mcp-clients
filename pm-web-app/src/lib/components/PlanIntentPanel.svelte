@@ -236,7 +236,11 @@
     <h3 class="intent-panel__title">{$t('intent.criteria.title')}</h3>
     <ul class="intent-criteria">
       {#each record.criteria as criterion (criterion.id)}
-        <li class="intent-criterion" id={`criterion-${criterion.id}`} data-testid={`criterion-${criterion.id}`}>
+        <li
+          class="intent-criterion"
+          id={`criterion-${criterion.id}`}
+          data-testid={`criterion-${criterion.id}`}
+        >
           <span class="intent-criterion__id">{criterion.id}</span>
           <span class="intent-criterion__text" data-testid={`criterion-text-${criterion.id}`}>
             {safe(criterion.text)}
@@ -265,18 +269,25 @@
           </span>
 
           {#if criterion.status_reason !== undefined && expanded[criterion.id]}
-            <p class="intent-criterion__reason" data-testid={`criterion-reason-text-${criterion.id}`}>
+            <p
+              class="intent-criterion__reason"
+              data-testid={`criterion-reason-text-${criterion.id}`}
+            >
               {$t('intent.criteria.reason', { reason: safe(criterion.status_reason) })}
             </p>
           {/if}
 
-          <p class="intent-criterion__satisfied" data-testid={`criterion-deliverables-${criterion.id}`}>
+          <p
+            class="intent-criterion__satisfied"
+            data-testid={`criterion-deliverables-${criterion.id}`}
+          >
             {#if criterion.satisfies.length === 0}
               {$t('intent.criteria.no_deliverable')}
             {:else}
               {$t('intent.criteria.satisfied_by', { deliverables: '' })}
               {#each criterion.satisfies as criterionNumber, index (criterionNumber)}
-                {#if index > 0}, {/if}<Link
+                {#if index > 0},
+                {/if}<Link
                   href={deliverableHref(criterionNumber)}
                   label={deliverableLabel(criterionNumber)}
                 />
@@ -342,9 +353,9 @@
               {/if}
 
               {#if choice.evidence !== undefined}
-                <p class="intent-choice__evidence">{(
-                  $t('intent.record.evidence', { evidence: safe(choice.evidence) })
-                )}</p>
+                <p class="intent-choice__evidence">
+                  {$t('intent.record.evidence', { evidence: safe(choice.evidence) })}
+                </p>
               {/if}
             </li>
           {/each}

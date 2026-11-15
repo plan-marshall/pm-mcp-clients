@@ -21,7 +21,9 @@
   export let onChange: (id: string) => void = () => {};
 
   $: if (options.length < 2 || options.length > 5) {
-    throw new Error(`SegmentedControl requires between 2 and 5 options, received ${options.length}`);
+    throw new Error(
+      `SegmentedControl requires between 2 and 5 options, received ${options.length}`,
+    );
   }
 
   $: hasMatch = options.some((opt) => opt.id === value);
@@ -117,15 +119,17 @@
     line-height: var(--line-height-sm);
     cursor: pointer;
     white-space: nowrap;
-    transition: background-color 150ms ease, color 150ms ease;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
   }
 
-  .segmented-control__option:hover:not([aria-checked="true"]) {
+  .segmented-control__option:hover:not([aria-checked='true']) {
     color: var(--color-text-primary);
     background-color: var(--color-bg-raised);
   }
 
-  .segmented-control__option[aria-checked="true"] {
+  .segmented-control__option[aria-checked='true'] {
     background-color: var(--color-brand-subtle);
     color: var(--color-text-primary);
     font-weight: 600;

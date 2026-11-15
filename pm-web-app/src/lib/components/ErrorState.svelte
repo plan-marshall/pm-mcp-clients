@@ -35,13 +35,11 @@
   $: hasCode = (code ?? '').trim().length > 0;
 </script>
 
-<div
-  class="error-state"
-  data-testid="error-state"
-  role={announce ? 'alert' : undefined}
->
+<div class="error-state" data-testid="error-state" role={announce ? 'alert' : undefined}>
   <span class="error-state__mark"><Icon name="state.error" size={24} /></span>
-  <svelte:element this={`h${titleLevel}`} class="error-state__title" tabindex="-1">{error.title}</svelte:element>
+  <svelte:element this={`h${titleLevel}`} class="error-state__title" tabindex="-1"
+    >{error.title}</svelte:element
+  >
   <p class="error-state__message">{error.fix}</p>
   {#if actionLabel}
     <Button variant="secondary" on:click={onAct}>{actionLabel}</Button>
