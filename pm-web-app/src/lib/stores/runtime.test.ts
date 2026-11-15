@@ -551,7 +551,8 @@ describe('the remembered place at the start', () => {
   it('fills a mark-less load at /overview from the place, by a replace', async () => {
     // Arrange: a typed address carries no mark of the app.
     window.history.replaceState(null, '', '/overview');
-    const before = window.history.length;
+    const replace = vi.spyOn(window.history, 'replaceState');
+    const push = vi.spyOn(window.history, 'pushState');
 
     // Act
     await initRuntime();
@@ -559,7 +560,8 @@ describe('the remembered place at the start', () => {
     // Assert: the remembered plan opens, and the entry is replaced rather than pushed.
     expect(get(runtimeStore).currentRoute).toBe('plan');
     expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
-    expect(window.history.length).toBe(before);
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('leaves a marked reload where it is', async () => {
@@ -589,7 +591,7 @@ describe('the remembered place at the start', () => {
   it('pushes the filled lens from a click on Running work', async () => {
     // Arrange
     window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
-    const before = window.history.length;
+    const push = vi.spyOn(window.history, 'pushState');
 
     // Act
     await openRunningWork();
@@ -597,7 +599,11 @@ describe('the remembered place at the start', () => {
     // Assert: the lens opens in running work, scoped to the remembered project, by a push.
     expect(window.location.pathname).toBe('/overview');
     expect(window.location.search).toBe('?project=p-1');
-    expect(window.history.length).toBe(before + 1);
+    expect(push).toHaveBeenCalledWith(
+      expect.objectContaining({ pmApp: true, path: '/overview?project=p-1' }),
+      '',
+      '/overview?project=p-1',
+    );
   });
 });
 

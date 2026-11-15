@@ -472,8 +472,7 @@ function splitAddress(url: string): { path: string; query: URLSearchParams } {
 
 /** A query value that names something, or `undefined` for an absent or empty one. */
 function valueOf(query: URLSearchParams, key: string): string | undefined {
-  const value = query.get(key);
-  return value ? value : undefined;
+  return query.get(key) ?? undefined;
 }
 
 /**
@@ -534,15 +533,40 @@ export function parseAddress(url: string): Address | null {
   }
 
   const address: Address = { ...match };
-  const { query } = split;
+  applyQuery(address, split.query);
+  return address;
+}
 
+/** Reads the query keys that belong to the tab of the object column. */
+function applyTabKeys(address: Address, query: URLSearchParams, tab: ObjectTab | undefined): void {
+  const processShown = tab === undefined || tab === 'process';
+  if (address.route === 'plan' && processShown) {
+    const node = valueOf(query, 'node');
+    if (node) address.node = node;
+  }
+  if (address.route === 'plan' && tab === 'changes') {
+    const file = valueOf(query, 'file');
+    if (file) address.file = file;
+  }
+}
+
+/** Reads the chat and its turn, which travels only with the chat open. */
+function applyChat(address: Address, query: URLSearchParams): void {
+  if (query.get('chat') !== 'open') return;
+  address.chat = true;
+  const turn = valueOf(query, 'turn');
+  if (turn) address.turn = turn;
+}
+
+/** Reads every query key the scheme knows onto the address, dropping the rest. */
+function applyQuery(address: Address, query: URLSearchParams): void {
   const project = valueOf(query, 'project');
   if (project) address.project = project;
   if (query.get('mode') === 'ended') address.mode = 'ended';
   if (query.get('group') === 'epic') address.group = 'epic';
   if (query.get('follow') === 'on') address.follow = true;
 
-  const tab = tabOf(match.route, valueOf(query, 'tab'));
+  const tab = tabOf(address.route, valueOf(query, 'tab'));
   if (tab) address.tab = tab;
 
   const open = openOf(valueOf(query, 'open'));
@@ -550,29 +574,15 @@ export function parseAddress(url: string): Address | null {
 
   // A key belongs to the tab it is written with: `node` to Process, `file` to Changes. The default
   // tab is Process, so a node needs no tab of its own.
-  const processShown = tab === undefined || tab === 'process';
-  if (match.route === 'plan' && processShown) {
-    const node = valueOf(query, 'node');
-    if (node) address.node = node;
-  }
-  if (match.route === 'plan' && tab === 'changes') {
-    const file = valueOf(query, 'file');
-    if (file) address.file = file;
-  }
+  applyTabKeys(address, query, tab);
+  applyChat(address, query);
 
-  if (query.get('chat') === 'open') {
-    address.chat = true;
-    const turn = valueOf(query, 'turn');
-    if (turn) address.turn = turn;
-  }
-
-    // The old `/reports?plan=` address: its plan is read once so the view can open that report's
-    // detail, and it is never written again.
-    if (match.route === 'reports') {    const legacy = valueOf(query, 'plan');
+  // The old `/reports?plan=` address: its plan is read once so the view can open that report's
+  // detail, and it is never written again.
+  if (address.route === 'reports') {
+    const legacy = valueOf(query, 'plan');
     if (legacy) address.legacyReportPlanId = legacy;
   }
-
-  return address;
 }
 
 /** Encodes one query value, keeping the `/` and `:` the scheme's own examples write. */
@@ -606,13 +616,19 @@ export function formatAddress(address: Address): string | null {
           decisionId: address.route === 'decision' ? address.decisionId : undefined,
         });
   if (!path) return null;
+  const parts = queryParts(address);
+  return parts.length > 0 ? `${path}?${parts.join('&')}` : path;
+}
 
+/** The query of an address, in the scheme's one fixed order. */
+function queryParts(address: Address): string[] {
   const parts: string[] = [];
   const add = (key: string, value: string | undefined): void => {
     if (value) parts.push(`${key}=${encodeValue(value)}`);
   };
 
-  add('project', address.route === 'overview' || address.route === 'designer' ? address.project : undefined);
+  const lens = address.route === 'overview' || address.route === 'designer';
+  add('project', lens ? address.project : undefined);
   add('mode', address.mode);
   add('group', address.group);
   if (address.follow) add('follow', 'on');
@@ -633,8 +649,7 @@ export function formatAddress(address: Address): string | null {
   }
 
   add('lens', address.lens);
-
-  return parts.length > 0 ? `${path}?${parts.join('&')}` : path;
+  return parts;
 }
 
 /**

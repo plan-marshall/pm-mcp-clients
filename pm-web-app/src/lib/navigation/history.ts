@@ -53,8 +53,8 @@ export function carriesAppMark(state: unknown = history.state): boolean {
  * @returns `true` when the load carried no mark of the app
  */
 export function openedFromOutside(): boolean {
-  if (startMark === null) startMark = !carriesAppMark();
-  return startMark;
+  startMark ??= !carriesAppMark();
+  return startMark ?? false;
 }
 
 /** The answer of the first `openedFromOutside` of this load. */

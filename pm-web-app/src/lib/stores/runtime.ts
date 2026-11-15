@@ -11,14 +11,12 @@ import {
 } from '../api/client';
 import {
   matchPath,
-  pathForRoute,
   type Address,
   type AppRoute,
   type RouteParams,
   type StartPath,
 } from '../routes';
 import {
-  carriesAppMark,
   currentAddress,
   intentFor,
   openedFromOutside,
@@ -1104,6 +1102,21 @@ export interface NavigationEntry {
 const navigationStack: NavigationEntry[] = [];
 
 /**
+ * The project whose id a route's path carries, if any.
+ *
+ * The designer names the project it shows, the one project page names the selected project, and
+ * every other route that carries a project id is a start.
+ *
+ * @param state the runtime state
+ * @returns the project id, or `null` when the route carries none
+ */
+function projectIdOf(state: RuntimeState): string | null {
+  if (state.currentRoute === 'designer') return state.designerProjectId ?? null;
+  if (state.currentRoute === 'project') return state.selectedProjectId ?? null;
+  return state.startProjectId ?? null;
+}
+
+/**
  * The identifiers the store carries, so a route can be written to the address bar and pushed on
  * the caller's stack without collecting them at every call site.
  *
@@ -1111,15 +1124,8 @@ const navigationStack: NavigationEntry[] = [];
  * @returns the identifiers of the route it holds
  */
 export function routeParamsOf(state: RuntimeState): RouteParams {
-  const designer = state.currentRoute === 'designer';
-  const projectPage = state.currentRoute === 'project';
   return {
-    projectId:
-      (designer
-        ? state.designerProjectId
-        : projectPage
-          ? state.selectedProjectId
-          : state.startProjectId) ?? undefined,
+    projectId: projectIdOf(state) ?? undefined,
     entryId: state.startEntryId ?? undefined,
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
@@ -1168,11 +1174,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
       ? { selectedDecisionId: params.decisionId ?? null }
       : {}),
     // One report's own address names the report; the list clears it.
-    ...(route === 'report'
-      ? { selectedReportId: params.reportId ?? null }
-      : route === 'reports'
-        ? { selectedReportId: null }
-        : {}),
+    ...(route === 'report' ? { selectedReportId: params.reportId ?? null } : {}),
+    ...(route === 'reports' ? { selectedReportId: null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
     ...(route === 'projects' || route === 'project'
       ? { selectedProjectId: params.projectId ?? params.explorerProjectId ?? null }
