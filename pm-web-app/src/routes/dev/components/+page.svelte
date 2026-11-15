@@ -30,6 +30,7 @@
   import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
+  import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -577,6 +578,9 @@
           />
         {/snippet}
       </RowLink>
+
+      <h3 class="dev__section-title">{$t('dev.section.column_engine')}</h3>
+      <ColumnEngineFixture />
     </section>
   {/each}
 </div>

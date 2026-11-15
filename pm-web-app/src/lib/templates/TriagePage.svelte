@@ -54,8 +54,12 @@
    * window starts from the page's own width and is replaced by the measured container width on the
    * first report.
    */
-  /** The width a container is assumed to have before the observer's first report. */
-  const PROVISIONAL_WIDTH = typeof window === 'undefined' ? 1024 : window.innerWidth;
+  /**
+   * The width a container is assumed to have before the observer's first report: the page's own
+   * width where it reports one, and the desktop measure where no layout engine reports anything.
+   */
+  const PROVISIONAL_WIDTH =
+    typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1024;
 
   interface Props {
     /** The chain of levels, the object column last. */
@@ -295,7 +299,7 @@
 <div
   class="triage-page"
   data-testid="triage-page"
-  style:padding-inline={`${pageInset(container)}px`}
+  style:--triage-inset={`${pageInset(container)}px`}
   bind:this={frame}
 >
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -379,16 +383,18 @@
   }
 
   /*
-   * The window lays its columns in one row. Every column is as wide as the window computed it and
-   * shrinks to nothing rather than widening the page: the sum of the columns and the strip is the
-   * template's content width, so the page never scrolls sideways.
+   * The window lays its columns in one row inside the page inset. Every column is as wide as the
+   * window computed it and shrinks to nothing rather than widening the page: the sum of the columns
+   * and the strip is the template's content width, so the page never scrolls sideways.
    */
   .triage-page__window {
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
+    box-sizing: border-box;
     inline-size: 100%;
     min-inline-size: 0;
+    padding-inline: var(--triage-inset, 0);
     gap: 0;
     animation: triage-page-shift var(--duration-base) var(--ease-standard);
   }

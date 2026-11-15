@@ -21,8 +21,12 @@
   /** The act that hides the chat; the view replaces the address. */
   export let onHideSide: () => void = () => {};
 
-  /** The width a container is assumed to have before the observer's first report. */
-  const PROVISIONAL_WIDTH = typeof window === 'undefined' ? 1024 : window.innerWidth;
+  /**
+   * The width a container is assumed to have before the observer's first report: the page's own
+   * width where it reports one, and the desktop measure where no layout engine reports anything.
+   */
+  const PROVISIONAL_WIDTH =
+    typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1024;
   /** The widest the content is, the measure a form wants. */
   const CONTENT_MAX = 720;
 
@@ -66,7 +70,7 @@
 <div
   class="wizard-page"
   data-testid="wizard-page"
-  style:padding-inline={`${pageInset(container)}px`}
+  style:--wizard-inset={`${pageInset(container)}px`}
   bind:this={frame}
   role="group"
   on:keydown={onKeydown}
@@ -126,8 +130,10 @@
     flex-wrap: nowrap;
     align-items: stretch;
     justify-content: center;
+    box-sizing: border-box;
     inline-size: 100%;
     min-inline-size: 0;
+    padding-inline: var(--wizard-inset, 0);
     gap: 0;
   }
 
@@ -177,7 +183,7 @@
   /* The phone takes the app's narrow inset, as every view did before the template owned it. */
   @media (max-width: 480px) {
     .wizard-page {
-      padding: var(--space-3);
+      padding-block: var(--space-3);
     }
   }
 </style>

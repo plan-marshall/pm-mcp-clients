@@ -125,6 +125,6 @@ describe('WizardPage', () => {
     const index = style.indexOf('@media (max-width: 480px)');
 
     expect(index).toBeGreaterThanOrEqual(0);
-    expect(style.slice(index)).toMatch(/padding: var\(--space-3\)/);
+    expect(style.slice(index)).toMatch(/padding-block: var\(--space-3\)/);
   });
 });

@@ -23,6 +23,8 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
   '--workflow-icon-size', // Component-local size bound inline on WorkflowIcon
   '--workflow-icon-url', // Component-local mask-image URL bound inline on WorkflowIcon
   '--compose-lines', // Component-local line count Compose sets from script on its text area
+  '--triage-inset', // Component-local page inset the column engine measures and binds
+  '--wizard-inset', // Component-local page inset the wizard measures and binds
 ]);
 
 /**

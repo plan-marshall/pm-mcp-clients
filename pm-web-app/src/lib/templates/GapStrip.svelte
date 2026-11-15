@@ -98,11 +98,12 @@
       <button
         type="button"
         class="gap-strip__names"
+        aria-label={$t('web.nav.strip.names')}
         aria-haspopup="true"
         aria-expanded={popoverOpen}
         onclick={() => (popoverOpen = !popoverOpen)}
       >
-        {$t('web.nav.strip.names')}
+        <Icon name="act.more" size={16} />
       </button>
       {#if popoverOpen}
         <div class="gap-strip__popover" role="group" aria-label={$t('web.nav.strip.names')}>
@@ -179,14 +180,17 @@
   }
 
   .gap-strip__names {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     align-self: stretch;
-    min-block-size: 34px;
-    padding: var(--space-1) var(--space-2);
+    inline-size: 34px;
+    block-size: 34px;
+    padding: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
-    font-size: var(--text-sm);
     cursor: pointer;
   }
 
