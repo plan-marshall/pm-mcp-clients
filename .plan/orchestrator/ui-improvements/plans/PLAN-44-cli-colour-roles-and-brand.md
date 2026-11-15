@@ -76,11 +76,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:29-30 S-03, :50-51 S-05; proposals.adoc:120-121 P-05 (P-01 at :9, P-02 at :64)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:29-30 CLI-VD-S-03 and :50-51 CLI-VD-S-05 present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/Style.java, Glyphs.java, StyleTest, GlyphsTest, RawEscapeGuardTest absent; TuiScreenDriver, TuiLayout, TuiMenu present; CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/ has TuiScreenDriver; TuiLayout; TuiMenu and no Style.java; Glyphs.java or tests; transcript/ has CancelDialogueIT; SummaryLineIT; PseudoTerminal; PtySession
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-first names a HYPOTHESIS that does not exist
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; the spec names no hypothesis to check
 
 ## Expected Surface
 

@@ -51,13 +51,13 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-13)`, `doc/claude_review/visual-design/plan.adoc#VD-S-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86 UX-S-13; visual-design/plan.adoc:69 VD-S-09; proposals.adoc:217-218 VD-P-09; deliverables 3,4 done by PLAN-108 ddcab793, 1 dropped
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86 UX-S-13; visual-design/plan.adoc:69 VD-S-09; visual-design/proposals.adoc:217 VD-P-09
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): doc/design/web-app/components.adoc now exists (added by PLAN-35, 5650c41e), so the 'add components.adoc' part of the deliverables is already partly done and must be reworked as 'update'; README.adoc, brand-mark.adoc and theme-readability.adoc exist and changed since the anchor.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/design/web-app/components.adoc exists (plus components-tags/fields/brand/chat), README.adoc, brand-mark.adoc, theme-readability.adoc all present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/design/web-app/components.adoc exists (plus components-tags/fields/brand/chat); README.adoc brand-mark.adoc theme-readability.adoc present
 - RESCOPE at outline (design audit 2026-11-02): no done/dropped list with PLAN ids in web-app/README (Z2); the web-app design status FINAL becomes AGREED (R7-3/R7-4), and the same rule covers the new web-app/components.adoc:15 FINAL.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:12 and components.adoc:15 Status AGREED; README has no done/dropped proposal list (only PLAN ids in routes row :485)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:12 components.adoc:15 theme-readability.adoc:12 brand-mark.adoc:12 Status AGREED; README has no done/dropped proposal list (PLAN ids only in routes row :485)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact
 
 ## Expected Surface
 

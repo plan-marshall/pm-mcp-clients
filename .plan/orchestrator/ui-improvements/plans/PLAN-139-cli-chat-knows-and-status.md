@@ -101,19 +101,19 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 ## Claim Labels
 
 - OBSERVED: `PlanViewLevel`, `PlanViewFormatting`, `OverviewFormatting` exist in `planview/` and `overview/` and are edited by PLAN-123 (running) — read at `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewLevel.java`, `.../overview/OverviewFormatting.java`; the PLAN-123 surface in `queue-view.md`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel, PlanViewFormatting (planview/), OverviewFormatting, ProjectWorkLevel (overview/) are tracked; PLAN-123 status not readable
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel PlanViewFormatting (planview/) and OverviewFormatting ProjectWorkLevel (overview/) exist on main; PLAN-123 running state not readable
 - OBSERVED: the terminal has no chat that follows a stream and no `o`, `older` or `changes` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue has no stream following and no o, older or changes handling
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue.execute loops ask then client.chatTurn; no stream following and no o or older or changes handling
 - OBSERVED: events are pushed above the prompt by the console with `LineReader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole printAbove at :700,713,840 (spec :652,788)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole printAbove at :730 :872 (printAboveOrHold) with callers :745 :954-959; spec lines :652 :788 moved
 - HYPOTHESIS: a dialogue can print a `–` line above its prompt through the same `LineReader` it asks with, without `PmConsole` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `reader()` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() (:220) hands out the JLine LineReader the dialogue asks with; printAbove is available on it without PmConsole
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() :220 hands out the JLine LineReader the dialogue asks with (:125 :143 :160); printAbove is available on it without PmConsole
 - HYPOTHESIS: the plan view and the overview row get `queued_revision` from the resources PLAN-132 extends, so no new route is read — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/ActivePlanSummary.java` after PLAN-132 (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActivePlanSummary.java:46,68 and ProcessTree.java:46,67 already carry queued_revision; no new route needed
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActivePlanSummary.java:45-46 :68 and ProcessTree.java:45-46 :67 carry queued_revision; plan.revision_queued event EventName.java:134; no new route needed
 - HYPOTHESIS: pre-filling a line editor buffer for a starter is possible with `LineReader.readLine(prompt, null, buffer)` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: JLine 3 LineReader.readLine(String, Character, String buffer) exists; StartPrompt.read (:201) uses plain readLine() today
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.read :203 uses plain reader.readLine(); JLine 3 LineReader.readLine(prompt mask buffer) overload can pre-fill the buffer
 - Verify-first clause: re-read the files above at the then-current HEAD (PLAN-123, 44 and 50 touch `planview/` and `overview/`); PLAN-138 and PLAN-134 must have landed.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dependency clause: PLAN-138 not landed (old chat behaviour at HEAD); PLAN-134 landing not verifiable by reading
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dependency clause: landing of PLAN-138 and PLAN-134 not settleable by reading; WorkChatDialogue is still the old chat
 
 ## Expected Surface
 
