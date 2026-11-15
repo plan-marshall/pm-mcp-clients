@@ -2772,6 +2772,41 @@ describe('ApiClient intent and outline records', () => {
     });
   });
 
+  it('reads the explicit nulls the engine writes as absent, as the pm-api contract does', async () => {
+    // Arrange: a record whose optional members are present and null
+    answer({
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect.',
+      criteria: [{ id: 'AC-001', text: 'The relay shall reconnect.', satisfies: [], status: null }],
+      non_goals: [{ id: 'NG-1', text: 'Do not change the format.' }],
+      decisions: [
+        {
+          id: 'DC-001',
+          text: 'The transport stays HTTP/2.',
+          decider: 'role',
+          options_weighed: [],
+          question_id: null,
+          evidence: null,
+          adr: null,
+        },
+      ],
+      open_questions: [],
+      deferred: [],
+      builder_check: { resolution: 'pending', questions: [], reason: null },
+    });
+
+    // Act
+    const record = await client.getPlanIntent('fix-relay');
+
+    // Assert
+    expect(record?.criteria[0].status).toBeUndefined();
+    expect(record?.decisions[0].adr).toBeUndefined();
+    expect(record?.decisions[0].evidence).toBeUndefined();
+    expect(record?.decisions[0].question_id).toBeUndefined();
+    expect(record?.builder_check?.reason).toBeUndefined();
+  });
+
   it('answers an absent record with null, so a panel can say refine has not written it yet', async () => {
     // Arrange: the runtime has no record for the plan
     answer({ error: 'intent_not_found', message: 'No intent record' }, 404);

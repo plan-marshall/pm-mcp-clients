@@ -2650,7 +2650,7 @@ function readPlanIntent(raw: unknown): PlanIntentRecord {
       text: recordText(criterion, 'text', 'IntentCriterion'),
       satisfies: recordNumbers(criterion, 'satisfies', 'IntentCriterion'),
       status:
-        criterion['status'] === undefined
+        criterion['status'] === undefined || criterion['status'] === null
           ? undefined
           : recordEnum(criterion, 'status', CRITERION_STATUSES, 'IntentCriterion'),
       status_reason: optionalRecordText(criterion, 'status_reason', 'IntentCriterion'),

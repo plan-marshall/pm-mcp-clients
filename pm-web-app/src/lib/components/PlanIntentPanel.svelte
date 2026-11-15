@@ -188,7 +188,7 @@
 {:else}
   <section class="intent-panel" data-testid="plan-intent-panel" aria-label={$t('intent.tab.title')}>
     <h2 class="intent-panel__head" data-testid="intent-head">
-      {$t('intent.head.title', { plan: record.plan_id, revision: record.revision })}
+      {$t('intent.head.title', { plan: safe(record.plan_id), revision: record.revision })}
     </h2>
 
     {#if changed()}
