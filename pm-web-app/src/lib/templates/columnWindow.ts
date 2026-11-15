@@ -173,6 +173,54 @@ function pixels(value: number): number {
 }
 
 /**
+ * Chooses the window's columns and strip for a width and a chain.
+ *
+ * @param available the width the navigation columns and their strip may take
+ * @param depth the number of levels in the chain
+ * @returns the column count and the strip they leave
+ */
+function chooseWindow(available: number, depth: number): { columns: number; strip: Strip } {
+  for (let candidate = Math.min(MAX_COLUMNS, depth); candidate >= 2; candidate--) {
+    // A hidden level means a strip; with no level hidden its width goes to the columns.
+    const stripWidth = depth > candidate ? STRIP_NAMES : 0;
+    if ((candidate - 1) * LIST_MIN + OBJECT_MIN + stripWidth <= available) {
+      return { columns: candidate, strip: stripWidth > 0 ? 'names' : 'none' };
+    }
+  }
+
+  if (depth > 2 && LIST_MIN + OBJECT_MIN + STRIP_MARKS <= available) {
+    return { columns: 2, strip: 'marks' };
+  }
+
+  return { columns: 1, strip: 'none' };
+}
+
+/**
+ * @param columns the rendered columns
+ * @param available the width the navigation columns and their strip may take
+ * @param stripWidth the width the left strip takes
+ * @returns the width of every list column
+ */
+function listWidthFor(columns: number, available: number, stripWidth: number): number {
+  if (columns === 1) {
+    return 0;
+  }
+  return Math.min(LIST_MAX, Math.floor((available - stripWidth - OBJECT_MIN) / (columns - 1)));
+}
+
+/**
+ * @param columns the rendered columns
+ * @param listWidth the list columns' common width
+ * @param room the width the columns share of
+ * @returns the width of each rendered column, left to right
+ */
+function widthsFor(columns: number, listWidth: number, room: number): number[] {
+  return Array.from({ length: columns }, (_, index) =>
+    index === columns - 1 ? room - listWidth * (columns - 1) : listWidth,
+  );
+}
+
+/**
  * Lays the navigation columns of a chain into a width the side column leaves.
  *
  * @param available the width the navigation columns and their strip may take
@@ -185,56 +233,26 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
     return EMPTY;
   }
 
-  let columns = 0;
-  let strip: Strip = 'none';
-
-  for (let candidate = Math.min(MAX_COLUMNS, depth); candidate >= 2; candidate--) {
-    // A hidden level means a strip; with no level hidden its width goes to the columns.
-    const stripWidth = depth > candidate ? STRIP_NAMES : 0;
-    if ((candidate - 1) * LIST_MIN + OBJECT_MIN + stripWidth <= available) {
-      columns = candidate;
-      strip = stripWidth > 0 ? 'names' : 'none';
-      break;
-    }
-  }
-
-  if (columns === 0 && depth > 2 && LIST_MIN + OBJECT_MIN + STRIP_MARKS <= available) {
-    columns = 2;
-    strip = 'marks';
-  }
-
-  if (columns === 0) {
-    columns = 1;
-    strip = 'none';
-    // A window of one column has no strip, so there is no mark to peek from either.
-    peek = null;
-  }
+  const chosen = chooseWindow(available, depth);
+  const listWidth = listWidthFor(chosen.columns, available, stripWidthOf(chosen.strip));
 
   // A peek that would leave fewer levels than the window's columns is no peek: the window falls
   // back to the object, so a resize while peeked never renders a short window.
-  if (peek !== null && peek + columns > depth) {
-    peek = null;
-  }
+  const peeked =
+    peek !== null && chosen.columns > 1 && peek + chosen.columns <= depth ? peek : null;
 
-  const listWidth =
-    columns === 1
-      ? 0
-      : Math.min(LIST_MAX, Math.floor((available - stripWidthOf(strip) - OBJECT_MIN) / (columns - 1)));
-
-  if (peek === null) {
-    const start = Math.max(0, depth - columns);
-    const room = available - stripWidthOf(strip);
-    const widths = Array.from({ length: columns }, (_, index) =>
-      index === columns - 1 ? room - listWidth * (columns - 1) : listWidth,
-    );
+  if (peeked === null) {
+    const start = Math.max(0, depth - chosen.columns);
+    const room = available - stripWidthOf(chosen.strip);
+    const widths = widthsFor(chosen.columns, listWidth, room);
 
     return {
-      columns,
+      columns: chosen.columns,
       listWidth,
       columnWidths: widths,
       rightWidth: widths.at(-1) ?? 0,
-      strip,
-      stripWidth: stripWidthOf(strip),
+      strip: chosen.strip,
+      stripWidth: stripWidthOf(chosen.strip),
       returnStrip: false,
       start,
       hiddenLeft: start,
@@ -245,24 +263,20 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
 
   // A peek keeps the window's columns and their widths, drops the left strip, and gives the room
   // the strip freed to the rightmost visible column — the peek's own content.
-  const hiddenRight = Math.max(0, depth - (peek + columns));
-  const returnStrip = hiddenRight > 0;
-  const stripWidth = returnStrip ? STRIP_MARKS : 0;
-  const room = available - stripWidth;
-  const widths = Array.from({ length: columns }, (_, index) =>
-    index === columns - 1 ? room - listWidth * (columns - 1) : listWidth,
-  );
+  const hiddenRight = depth - (peeked + chosen.columns);
+  const stripWidth = hiddenRight > 0 ? STRIP_MARKS : 0;
+  const widths = widthsFor(chosen.columns, listWidth, available - stripWidth);
 
   return {
-    columns,
+    columns: chosen.columns,
     listWidth,
     columnWidths: widths,
     rightWidth: widths.at(-1) ?? 0,
     strip: 'none',
     stripWidth,
-    returnStrip,
-    start: peek,
-    hiddenLeft: peek,
+    returnStrip: hiddenRight > 0,
+    start: peeked,
+    hiddenLeft: peeked,
     hiddenRight,
     peek: true,
   };
