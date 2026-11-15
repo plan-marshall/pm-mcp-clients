@@ -153,9 +153,9 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await page.getByRole('button', { name: /^Ended work/i }).click();
     await expect(page.locator('[data-testid="ended-item"]').first()).toBeVisible();
 
-    // The title opens the plan's own view, remembering the section it was opened from.
+    // The title opens the plan's own view, and the lens's mode travels with the address.
     await page.locator('[data-testid="ended-open-fix-relay-v1"]').click();
-    await expect(page).toHaveURL(/\/plans\/fix-relay-v1$/);
+    await expect(page).toHaveURL(/\/plans\/fix-relay-v1\?mode=ended$/);
     await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
 
     // The browser's back returns to Ended Work, on the page the operator left.

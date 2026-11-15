@@ -30,6 +30,7 @@
     openCompletionReport,
   } from '../stores/runtime';
   import { readRememberedPlace, writeRememberedPlace } from '../navigation/rememberedPlace';
+  import { writeAddress } from '../navigation/history';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
@@ -221,12 +222,9 @@
     } else if (place.project) {
       selectedProjectId = place.project;
     }
-    // A view that opened the plan or the project came back to Running Work returns to the
-    // section it left: Ended Work, on the page it showed.
-    if (address.lensMode === 'ended') {
-      showEnded = true;
-    }
-    showEnded = showEnded || localStorage.getItem('pm_overview_show_ended') === '1';
+    // The mode is the address's, never the remembered place's: a running-work address opens
+    // running work even after the operator looked at Ended Work last time.
+    showEnded = address.lensMode === 'ended';
     const savedEndedPage = Number.parseInt(
       localStorage.getItem('pm_overview_ended_page') ?? '',
       10,
@@ -360,7 +358,10 @@
     endedPage = null;
     endedError = null;
     currentEndedPage = 1;
-    writeRememberedPlace({ ...readRememberedPlace(), project: projectId });
+    writeRememberedPlace({ ...readRememberedPlace(), project: projectId, planId: null, epicId: null });
+    // The scope is the address's: the writer replaces `/overview` with the project it names.
+    runtimeStore.update((s) => ({ ...s, lensProject: projectId, selectedProjectId: projectId, lensMode: null }));
+    writeAddress({ route: 'overview', project: projectId }, 'replace');
     localStorage.setItem('pm_overview_show_ended', '0');
     localStorage.setItem('pm_overview_ended_page', '1');
     void loadProjectDetail(projectId);
@@ -410,12 +411,28 @@
   function setViewMode(mode: 'plan' | 'epic') {
     viewMode = mode;
     writeRememberedPlace({ ...readRememberedPlace(), group: mode });
+    // The grouping is the address's too, so a reload opens the same list.
+    const project = get(runtimeStore).lensProject;
+    runtimeStore.update((s) => ({ ...s, lensGroup: mode === 'epic' ? 'epic' : null }));
+    writeAddress(
+      {
+        route: 'overview',
+        project: project ?? undefined,
+        group: mode === 'epic' ? 'epic' : undefined,
+      },
+      'replace',
+    );
   }
 
   async function openEndedWork() {
     showEnded = true;
     currentEndedPage = 1;
     rememberEndedState();
+    // The mode is the address's: the view writes it so a reload and the browser's back return to
+    // Ended Work, and a click on Running work (a push of an address without it) leaves it.
+    const project = selectedProjectId ?? undefined;
+    runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
+    writeAddress({ route: 'overview', project, mode: 'ended' }, 'replace');
     if (selectedProjectId) {
       await loadEndedWork(selectedProjectId, 1);
     }
@@ -428,6 +445,9 @@
     endedPage = null;
     endedError = null;
     rememberEndedState();
+    // Leaving Ended Work drops the mode from the address.
+    runtimeStore.update((s) => ({ ...s, lensMode: null }));
+    writeAddress({ route: 'overview', project: selectedProjectId ?? undefined }, 'replace');
   }
 
   async function loadEndedWork(projectId: string, page: number) {

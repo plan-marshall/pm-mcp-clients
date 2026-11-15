@@ -628,10 +628,16 @@ function queryParts(address: Address): string[] {
   };
 
   const lens = address.route === 'overview' || address.route === 'designer';
+  const lensRoute =
+    address.route === 'overview' ||
+    address.route === 'plan' ||
+    address.route === 'epic' ||
+    address.route === 'task';
   add('project', lens ? address.project : undefined);
-  add('mode', address.mode);
-  add('group', address.group);
-  if (address.follow) add('follow', 'on');
+  // The lens's modes travel with the lens's own addresses, never with a record's.
+  add('mode', lensRoute ? address.mode : undefined);
+  add('group', lensRoute ? address.group : undefined);
+  if (lensRoute && address.follow) add('follow', 'on');
 
   const tab = tabOf(address.route, address.tab);
   const defaultTab = address.route === 'plan' ? 'process' : 'plans';

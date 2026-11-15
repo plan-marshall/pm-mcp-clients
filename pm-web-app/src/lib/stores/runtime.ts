@@ -357,6 +357,20 @@ async function probeExistingPairing(): Promise<PairingProbe> {
   }
 }
 
+/**
+ * The address the bar names, with the root mapped to the start point it is.
+ *
+ * `/` has no route until PLAN-49 registers it, so the address model cannot parse it; the start
+ * rule still needs it as the fillable start the remembered place may fill.
+ *
+ * @returns the address of the bar, or `null` when it names a path the app cannot open
+ */
+function fillableStart(): Address | null {
+  const address = currentAddress();
+  if (address) return address;
+  return window.location.pathname === '/' ? { route: null } : null;
+}
+
 /** Drops the code fragment after the browser is known to be paired. */
 function dropCodeFragment(): void {
   // The fragment is not part of the address the app writes, so the pairing code never reaches the
@@ -713,7 +727,7 @@ export async function initRuntime(): Promise<void> {
     const facts = factsOf(summary, place);
     const start = startAddress({
       fromOutside,
-      requested: currentAddress(),
+      requested: fillableStart(),
       onboarded,
       place,
       facts,
@@ -1157,7 +1171,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
           startEntryId: params.entryId ?? null,
         }
       : {}),
-    ...(route === 'plan'
+    // The plan and the task: a task is a level of its own and carries the plan with it.
+    ...(route === 'plan' || route === 'task'
       ? {
           selectedPlanId: params.planId ?? s.selectedPlanId ?? null,
           selectedTaskId: params.taskId ?? null,
@@ -1495,7 +1510,12 @@ export function openPlanView(planId: string, taskId?: string | null): void {
   runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
   // The plan the operator selected is the object the remembered place keeps.
   writeRememberedPlace({ ...readRememberedPlace(), planId, epicId: null });
-  pushRoute('plan', { planId, taskId: taskId ?? undefined });
+  // A task is a level of its own and takes the path; a plan without a task keeps the plan path.
+  if (taskId) {
+    pushRoute('task', { planId, taskId });
+    return;
+  }
+  pushRoute('plan', { planId });
 }
 
 /**

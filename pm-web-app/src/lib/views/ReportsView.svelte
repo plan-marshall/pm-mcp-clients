@@ -360,7 +360,13 @@
   function closeDetail(): void {
     flushRetainedReads();
     activeDetailPlanId = null;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
+    syncedRouteReportPlan = null;
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: null,
+      selectedReportId: null,
+      currentRoute: 'reports',
+    }));
     writeAddress({ route: 'reports' }, 'replace');
   }
 
@@ -368,7 +374,8 @@
   // browser's back between two reports). Follow the store so the view does not keep a plan the
   // address no longer names.
   $effect(() => {
-    if ($runtimeStore.currentRoute !== 'reports') return;
+    const route = $runtimeStore.currentRoute;
+    if (route !== 'reports' && route !== 'report') return;
     const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
@@ -389,16 +396,18 @@
       clock = Date.now();
     }, 30_000);
     await loadReports();
-    // `/reports/{id}` addresses one report: its detail is keyed by the plan the report names, so
-    // the view looks that plan up in the report record.
+    // A report's own address names the report; a completion report opened from an act names the
+    // plan. Both resolve to the same detail, and the address is replaced with the report's own
+    // once the row is known. A request that cannot be resolved stays pending, so a retry of the
+    // list still opens it.
+    if (!isMounted) return;
     const requestedReportId = $runtimeStore.selectedReportId;
-    if (requestedReportId) {
-      const report = items.find((item) => item.id === requestedReportId);
-      const plan = report?.from?.plan;
-      if (plan) {
-        showDetail(plan);
-      }
-      runtimeStore.update((s) => ({ ...s, selectedReportId: null }));
+    const requestedReport = requestedReportId
+      ? items.find((item) => item.id === requestedReportId)
+      : undefined;
+    const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
+    if (plan) {
+      showDetail(plan);
     }
   });
 
@@ -735,11 +744,16 @@
       if (!row || planIdOf(row) !== planId) dropRetainedRow(id);
     }
     syncedRouteReportPlan = planId;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
-    // The address of the report names the report, not the plan: once the row is known, the address
-    // is replaced with it, so a reload and a bookmark open the same detail. (Recorded as open in
-    // the self-review: the layout writes the list address back while the route stays `reports`.)
+    // The address of the report names the report, not the plan: the route and the report id are
+    // kept in the store so the writer reproduces the same address, and the address is replaced
+    // with it now that the row is known.
     const report = items.find((item) => planIdOf(item) === planId);
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: planId,
+      selectedReportId: report?.id ?? null,
+      currentRoute: 'report',
+    }));
     if (report?.id) {
       writeAddress({ route: 'report', reportId: report.id }, 'replace');
     }

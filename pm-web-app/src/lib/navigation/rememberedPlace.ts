@@ -141,9 +141,12 @@ export function addressOfPlace(place: RememberedPlace, facts: PlaceFacts): Addre
     return { route: 'epic', epicId: place.epicId };
   }
   if (place.project) {
-    // Running work is the default mode, so a project that still runs opens the lens scoped to it.
-    if (facts.projectRuns !== false) return { route: 'overview', project: place.project };
-    return { route: 'projects' };
+    // Running work is the default mode, so a project that still runs opens the lens scoped to it,
+    // in the grouping the operator left.
+    if (facts.projectRuns === false) return { route: 'projects' };
+    const address: Address = { route: 'overview', project: place.project };
+    if (place.group === 'epic') address.group = 'epic';
+    return address;
   }
   return null;
 }
@@ -157,7 +160,9 @@ export function isFillableStart(address: Address | null): boolean {
     !address.project &&
     !address.mode &&
     !address.group &&
-    !address.follow
+    !address.follow &&
+    !address.open &&
+    !address.chat
   );
 }
 
