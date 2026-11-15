@@ -47,6 +47,11 @@ import org.jspecify.annotations.Nullable;
 
 import de.cuioss.tools.logging.CuiLogger;
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.changes.PlanChangeCapturedEvent;
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesNotCaptured;
 import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -511,6 +516,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String INTERNAL_KEY = "$internal";
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
+    private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
+    private static final String FIXTURE_CONTENTS = "contents";
+    private static final String SUFFIX_PLAN_CHANGES = "/changes";
+    private static final String SUFFIX_PLAN_CHANGES_FILE = "/changes/file";
+    private static final String QUERY_PATH = "path";
+    private static final String PATH_RUNTIME_FACTS = PATH_FACTS + "runtime.";
+    private static final String PATH_PLAN_CHANGES = PATH_RUNTIME_FACTS + FIXTURE_PLAN_CHANGES;
+    private static final String PATH_PLAN_CHANGES_CONTENTS = PATH_PLAN_CHANGES + "." + FIXTURE_CONTENTS;
     private static final String FIXTURE_REPORTS = "reports";
     private static final String FIXTURE_COMPLETION_REPORTS = "completion_reports";
     private static final String FIXTURE_PROJECTS = "projects";
@@ -744,6 +757,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final Object reportsLock = new Object();
     private final List<ReportItem> mockReports = new ArrayList<>();
     private final Map<String, PlanCompletionReport> completionReports = new ConcurrentHashMap<>();
+    private final Object planChangesLock = new Object();
+    /** The answer of a plan's changes, guarded by {@link #planChangesLock}. */
+    private final Map<String, PlanChangesAnswer> planChanges = new LinkedHashMap<>();
+    /** One file's hunks per plan and path, guarded by {@link #planChangesLock}. */
+    private final Map<String, Map<String, PlanChangeFile>> planChangeFiles = new LinkedHashMap<>();
     private final Object decisionsLock = new Object();
     private final Map<String, DecisionEnvelope> openDecisions = new LinkedHashMap<>();
     /**
@@ -1349,7 +1367,44 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         initDefaultStart();
         initDefaultChats();
         initDefaultDecomposition();
+        initDefaultPlanChanges();
         initDefaultLessonSource();
+    }
+
+    /**
+     * Seeds a plan's changes from the fixture's {@code plan_changes}: each plan's answer, and the
+     * hunks of each file a capture answers. The fixture is the mock's served data — no diff is
+     * computed here, and a plan the fixture does not name answers {@code not_captured} as any other
+     * plan before its first capture.
+     */
+    private void initDefaultPlanChanges() {
+        synchronized (planChangesLock) {
+            planChanges.clear();
+            planChangeFiles.clear();
+            for (var entry : fixtureObjects(startRuntimeFixture(), FIXTURE_PLAN_CHANGES,
+                    PATH_PLAN_CHANGES)) {
+                seedPlanChanges(entry);
+            }
+        }
+    }
+
+    /**
+     * Decodes one plan's changes fixture into the served answer and its files; call under the lock.
+     * Only a captured answer carries files: a refusal answers no hunks, whatever the fixture holds.
+     *
+     * @param entry the fixture entry
+     */
+    private void seedPlanChanges(Map<String, Object> entry) {
+        var answer = readFixture(() -> PlanChangesAnswer.fromMap(entry), PATH_PLAN_CHANGES);
+        planChanges.put(answer.planId(), answer);
+        var files = new LinkedHashMap<String, PlanChangeFile>();
+        if (answer instanceof PlanChangesCaptured) {
+            for (var content : fixtureObjects(entry, FIXTURE_CONTENTS, PATH_PLAN_CHANGES_CONTENTS)) {
+                var file = readFixture(() -> PlanChangeFile.fromMap(content), PATH_PLAN_CHANGES_CONTENTS);
+                files.put(file.path(), file);
+            }
+        }
+        planChangeFiles.put(answer.planId(), files);
     }
 
     private void initDefaultDevices() {
@@ -2510,11 +2565,121 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 || (declaresDecisions() && handleDecisionRoutes(request, response, isWeb))
                 || (declaresSystem() && handleSystemRoutes(request, response, isWeb))
                 || handleProcessRoutes(request, response)
+                || handlePlanChangesRoutes(request, response)
                 || handleDecompositionRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
                 || handleStartRoutes(request, response, isWeb)
                 || handleLessonSourceRoutes(request, response)
                 || handleControlRoutes(request, response);
+    }
+
+    /**
+     * Serves a plan's changes from the scenario's fixtures: the list of the last capture, or one of
+     * the two refusals, and one file's hunks by its {@code path}
+     * ({@code 01-processes-and-transport.adoc#plan-changes}). No diff is computed here and nothing is
+     * written: the answer is the scenario's data, kept per plan so a broadcast capture can move the
+     * head a client then reads.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} when the path is a plan's changes route
+     * @throws IOException on I/O error
+     */
+    private boolean handlePlanChangesRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!"GET".equals(request.method()) || !path.startsWith(PATH_PLANS_PREFIX)) {
+            return false;
+        }
+        if (path.endsWith(SUFFIX_PLAN_CHANGES_FILE)) {
+            var planId = planIdOf(path, SUFFIX_PLAN_CHANGES_FILE);
+            if (planId == null) {
+                return false;
+            }
+            answerPlanChangeFile(request, response, planId);
+            return true;
+        }
+        if (path.endsWith(SUFFIX_PLAN_CHANGES)) {
+            var planId = planIdOf(path, SUFFIX_PLAN_CHANGES);
+            if (planId == null) {
+                return false;
+            }
+            answerPlanChanges(response, planId);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param path   the request path
+     * @param suffix the route's suffix
+     * @return the plan id between the plans prefix and the suffix, decoded once, or {@code null}
+     *         when the path names no single, validly encoded plan segment
+     */
+    private static @Nullable String planIdOf(String path, String suffix) {
+        var end = path.length() - suffix.length();
+        if (end <= PATH_PLANS_PREFIX.length()) {
+            return null;
+        }
+        var segment = path.substring(PATH_PLANS_PREFIX.length(), end);
+        if (segment.contains("/")) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(segment, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
+    }
+
+    private void answerPlanChanges(MockHttpResponse response, String planId) throws IOException {
+        PlanChangesAnswer answer;
+        synchronized (planChangesLock) {
+            answer = planChanges.get(planId);
+        }
+        if (answer == null) {
+            if (!knowsPlan(planId)) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                        KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+                return;
+            }
+            // A plan of the scenario the fixture names no capture for: before a first capture, as
+            // the runtime model answers it — never a 404 and never an empty list.
+            answer = new PlanChangesNotCaptured(planId);
+        }
+        response.json(200, answer.toMap());
+    }
+
+    private void answerPlanChangeFile(MockHttpRequest request, MockHttpResponse response, String planId)
+            throws IOException {
+        var filePath = planChangePathOf(request);
+        if (filePath == null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "A file's path is required, and it must be validly encoded"));
+            return;
+        }
+        PlanChangeFile file;
+        synchronized (planChangesLock) {
+            var files = planChangeFiles.get(planId);
+            file = files != null ? files.get(filePath) : null;
+        }
+        if (file == null) {
+            response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(),
+                    KEY_MESSAGE, "No such file in the plan's changes: " + planId));
+            return;
+        }
+        response.json(200, file.toMap());
+    }
+
+    /**
+     * @param request the request
+     * @return the file's path from the query, or {@code null} when it is absent or not decodable
+     */
+    private static @Nullable String planChangePathOf(MockHttpRequest request) {
+        try {
+            return queryValue(request, QUERY_PATH);
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
     }
 
     /**
@@ -3750,6 +3915,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         for (var project : fixtureObjects(fixture, FIXTURE_PROJECTS)) {
             readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
         }
+        for (var changes : fixtureObjects(fixture, FIXTURE_PLAN_CHANGES)) {
+            var answer = readFixture(() -> PlanChangesAnswer.fromMap(changes), PATH_PLAN_CHANGES);
+            if (!(answer instanceof PlanChangesCaptured)) {
+                continue;
+            }
+            for (var content : fixtureObjects(changes, FIXTURE_CONTENTS, PATH_PLAN_CHANGES_CONTENTS)) {
+                readFixture(() -> PlanChangeFile.fromMap(content), PATH_PLAN_CHANGES_CONTENTS);
+            }
+        }
         for (var beingAdded : fixtureObjects(fixture, FIXTURE_BEING_ADDED)) {
             readFixture(() -> BeingAddedProject.fromMap(beingAdded), "facts.runtime.being_added");
         }
@@ -3770,7 +3944,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static <T> T readFixture(FixtureSupplier<T> reader, String path) {
         try {
             return reader.get();
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new IllegalStateException("Malformed " + path + ": " + e.getMessage(), e);
         }
     }
@@ -7628,25 +7802,46 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (chatRegistry.handleBroadcast(event, data, response)) {
             return;
         }
-        applyStateEffectOf(event, data);
+        var refusal = applyStateEffectOf(event, data);
+        if (refusal != null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, refusal));
+            return;
+        }
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
     }
 
     /**
      * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
-     * an opened decision joins the open ones, an answer or a close removes it, and the console's
-     * badge therefore follows.
+     * an opened decision joins the open ones, an answer or a close removes it, the console's badge
+     * therefore follows, and a captured change moves the head a client then reads — but only where
+     * the announcement agrees with the files the mock serves, because the list and the size the plan
+     * carries must be one measurement ({@code 01-processes-and-transport.adoc#plan-changes}).
      *
      * @param event the event name
      * @param data  the event payload
+     * @return the reason the announcement cannot be served, or {@code null} when it was applied
      */
-    private void applyStateEffectOf(String event, Object data) {
-        if (!(DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
-                || DECISION_CLOSED.equals(event))) {
-            return;
+    private @Nullable String applyStateEffectOf(String event, Object data) {
+        if (PlanChangeCapturedEvent.EVENT_NAME.equals(event)) {
+            return applyCapturedChange(data);
         }
-        var payload = JsonTree.asObject(data);
+        if (DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
+                || DECISION_CLOSED.equals(event)) {
+            applyDecisionEffect(event, JsonTree.asObject(data));
+        }
+        return null;
+    }
+
+    /**
+     * Applies a broadcast decision event: an opened decision joins the open ones, an answer or a
+     * close removes it, and the console's badge therefore follows.
+     *
+     * @param event   the event name
+     * @param payload the event payload, or {@code null} when it is not an object
+     */
+    private void applyDecisionEffect(String event, @Nullable Map<String, Object> payload) {
         if (payload == null) {
             return;
         }
@@ -7684,6 +7879,45 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 openDecisions.remove(id);
             }
         }
+    }
+
+    /**
+     * Applies a broadcast {@code plan.change_captured} to the plan's served list, so the read that
+     * follows the event shows the head the event announced
+     * ({@code 01-processes-and-transport.adoc#plan-changes}).
+     * <p>
+     * The list's totals are derived from its files, so an announcement of a different size than the
+     * files the fixture serves cannot be shown without inventing files: it is refused rather than
+     * served as a list and a size that contradict each other. A plan whose mock answer is no capture
+     * refuses it for the same reason — the fixture has to name the capture's files first.
+     *
+     * @param data the event's payload
+     * @return the reason the announcement cannot be served, or {@code null} when the head moved
+     */
+    private @Nullable String applyCapturedChange(@Nullable Object data) {
+        var payload = JsonTree.asObject(data);
+        if (payload == null) {
+            return "a captured change is a JSON object";
+        }
+        final PlanChangeCapturedEvent announced;
+        try {
+            announced = PlanChangeCapturedEvent.fromMap(payload);
+        } catch (IOException | IllegalArgumentException e) {
+            return e.getMessage();
+        }
+        synchronized (planChangesLock) {
+            if (!(planChanges.get(announced.planId()) instanceof PlanChangesCaptured captured)) {
+                return "the plan " + announced.planId()
+                        + " has no capture in the fixture for the announcement to move";
+            }
+            if (!captured.totals().equals(announced.size())) {
+                return "the announced size of " + announced.planId()
+                        + " contradicts the files the mock serves";
+            }
+            planChanges.put(announced.planId(), new PlanChangesCaptured(captured.planId(),
+                    announced.head(), captured.baseRef(), captured.files()));
+        }
+        return null;
     }
 
     /**

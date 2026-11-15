@@ -386,7 +386,9 @@ class ProcessTreeTest {
                 content,
                 null,
                 List.of(),
-                List.of()
+                List.of(),
+                null,
+                null
         );
 
         var entry2 = new ActivityEntry(
@@ -398,7 +400,9 @@ class ProcessTreeTest {
                 null,
                 null,
                 List.of(),
-                List.of()
+                List.of(),
+                null,
+                null
         );
 
         var entry3 = new ActivityEntry(
@@ -410,7 +414,9 @@ class ProcessTreeTest {
                 null,
                 toolSize,
                 List.of(),
-                List.of()
+                List.of(),
+                null,
+                null
         );
 
         var entry4 = new ActivityEntry(
@@ -422,7 +428,9 @@ class ProcessTreeTest {
                 null,
                 null,
                 List.of("pm-relay/src/main/java/Transport.java"),
-                List.of()
+                List.of(),
+                null,
+                null
         );
 
         var offTrack = new OffTrackInfo("repeating", "show", 5, 5);
@@ -559,7 +567,7 @@ class ProcessTreeTest {
 
         // ActivityEvent
         var actEntry = new ActivityEntry("14:02:11", "text", null, null, false, activityContent, null, List.of(),
-                List.of());
+                List.of(), null, null);
         var actEvent = new ActivityEvent(planId, taskId, actEntry);
         assertEquals(ActivityEvent.EVENT_NAME, "activity");
         var parsedActEvent = ActivityEvent.fromJson(actEvent.toJson());
@@ -666,7 +674,7 @@ class ProcessTreeTest {
     void shouldRoundTripActivityEntry() throws Exception {
         var toolTarget = Generators.nonBlankStrings().next();
         var entry1 = new ActivityEntry("10:00:00", "tool", "read", toolTarget, false, null, "1 KiB", List.of(),
-                List.of());
+                List.of(), null, null);
         var map1 = entry1.toMap();
         assertEquals("tool", map1.get("kind"));
         assertEquals("read", map1.get("tool_name"));
@@ -678,13 +686,14 @@ class ProcessTreeTest {
         var files = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
         var questions = List.of(Generators.nonBlankStrings().next());
         var entry2 = new ActivityEntry("10:01:00", "file_changed", null, null, false, content, null, files,
-                questions);
+                questions, null, null);
         var json2 = entry2.toJson();
         var restored2 = ActivityEntry.fromJson(json2);
         assertEquals(entry2, restored2);
 
         // Test defaults
-        var entryDefault = new ActivityEntry("10:02:00", "text", null, null, false, null, null, null, null);
+        var entryDefault = new ActivityEntry("10:02:00", "text", null, null, false, null, null, null, null,
+                null, null);
         assertEquals("text", entryDefault.kind());
         assertTrue(entryDefault.files().isEmpty());
         assertTrue(entryDefault.questions().isEmpty());

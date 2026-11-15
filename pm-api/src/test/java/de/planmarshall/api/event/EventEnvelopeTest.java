@@ -49,7 +49,8 @@ class EventEnvelopeTest {
                 "device.revoked", "listener.changed", "settings.changed",
                 // Overview
                 "project.work_started", "project.work_ended", "project.changed", "scope.started", "scope.ended",
-                "phase.changed", "activity.changed", "plan.revision_queued", "needs_operator.changed",
+                "phase.changed", "activity.changed", "plan.revision_queued", "plan.change_captured",
+                "needs_operator.changed",
                 "condition.raised",
                 "condition.cleared", "hold.opened", "hold.changed", "hold.cleared", "epic.row_changed",
                 "task.off_track",

@@ -38,8 +38,7 @@ import de.planmarshall.api.id.DottedIdentifier;
  * {@link #STREAM_CLOSED} are sent on every stream and take the set of all of them, so a stream added
  * later is never left out.
  * <p>
- * The catalogue's {@code plan.change_captured} is not a member yet: it comes with the package for a
- * plan's changes.
+ * The catalogue's {@code plan.change_captured} is the event of the package for a plan's changes.
  * <p>
  * The list is closed and fails closed: an event name read from the wire that is not a member is
  * refused by {@link #fromWire(String)}, never silently accepted. The name written into the SSE
@@ -133,6 +132,9 @@ public enum EventName {
 
     /** A plan's {@code queued_revision} changed: queued, its chat ended, or it left the queue. */
     PLAN_REVISION_QUEUED("plan.revision_queued", RUNTIME, PLAN, EPIC),
+
+    /** A plan's change was captured, with the new head and the size of the change. */
+    PLAN_CHANGE_CAPTURED("plan.change_captured", RUNTIME, PLAN, EPIC),
 
     /** A {@code needs_operator} summary changed. */
     NEEDS_OPERATOR_CHANGED("needs_operator.changed", RUNTIME, PLAN, EPIC, WORKSPACE),
