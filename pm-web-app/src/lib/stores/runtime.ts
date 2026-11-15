@@ -365,7 +365,17 @@ function dropCodeFragment(): void {
   // history. The mark of this load was read before this write, so the write never turns a load the
   // app was opened at into an app-created one.
   const address = currentAddress();
-  if (address) writeAddress(address, 'replace');
+  if (address) {
+    writeAddress(address, 'replace');
+  } else {
+    // The start point has no route of its own yet (PLAN-49 registers `/`): the fragment is dropped
+    // and the entry the app leaves carries its mark.
+    window.history.replaceState(
+      { path: window.location.pathname, pmApp: true },
+      '',
+      window.location.pathname,
+    );
+  }
   runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 }
 

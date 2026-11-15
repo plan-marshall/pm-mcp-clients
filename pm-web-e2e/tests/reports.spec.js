@@ -255,7 +255,8 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
   test('opens a project report at the project list', async ({ page }) => {
     const card = page.locator('.report-card', { hasText: 'pm-mcp-core is onboarded' });
     await card.getByRole('button', { name: /Show the details/i }).click();
-    await expect(page).toHaveURL(/\/projects(\?.*)?$/);
+    // A project report opens the one project page of the project it names.
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-core$/);
   });
 
   test('announces an arriving report politely and coalesces it', async ({ page, request }) => {
