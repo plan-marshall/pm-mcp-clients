@@ -168,7 +168,8 @@ describe('OverSizeChart', () => {
     expect(within(container).queryByTestId('oversize-direction')).toBeNull();
   });
 
-  it('shows the distribution under the multiple in force without a proposal: no mark, no share, no direction', () => {    const container = renderChart(
+  it('shows the distribution under the multiple in force without a proposal: no mark, no share, no direction', () => {
+    const container = renderChart(
       distribution({
         proposed_multiple: undefined,
         buckets: [
