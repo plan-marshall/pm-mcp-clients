@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { HTMLInputAttributes } from 'svelte/elements';
   import Field from './Field.svelte';
 
   /**
@@ -33,11 +34,11 @@
     /** Input name attribute. */
     name?: string;
     /** Autocomplete attribute. */
-    autocomplete?: string;
+    autocomplete?: HTMLInputAttributes['autocomplete'];
     /** Spellcheck attribute. */
     spellcheck?: boolean | 'true' | 'false';
     /** Autocapitalize attribute. */
-    autocapitalize?: string;
+    autocapitalize?: HTMLInputAttributes['autocapitalize'];
     /** Autofocus attribute. */
     autofocus?: boolean;
     /** Readonly attribute. */
