@@ -56,6 +56,7 @@ const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
   [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
   [path.normalize('lib/views/MachineSettingsView.svelte')]: 'PLAN-60',
   [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
+  [path.normalize('lib/templates/SideColumn.svelte')]: 'the V parts',
 };
 
 const LAYER_TOKENS: Record<string, number> = {
