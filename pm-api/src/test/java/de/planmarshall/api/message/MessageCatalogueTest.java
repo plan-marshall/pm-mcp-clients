@@ -81,6 +81,21 @@ class MessageCatalogueTest {
     }
 
     @Test
+    @DisplayName("should serve the area intent as a pack of its own")
+    void shouldServeTheIntentArea() {
+        var en = MessageCatalogue.getMessages("en", "intent");
+        var de = MessageCatalogue.getMessages("de", "intent");
+
+        assertAll(
+                () -> assertTrue(MessageCatalogue.SUPPORTED_AREAS.contains("intent"),
+                        "The area intent must be registered"),
+                () -> assertFalse(en.isEmpty(), "The English intent pack must carry its texts"),
+                () -> assertEquals(en.keySet(), de.keySet(), "Both packs must carry the same keys"),
+                () -> assertTrue(en.keySet().stream().allMatch(key -> key.startsWith("intent.")),
+                        "The area's keys all live in the area: " + en.keySet()));
+    }
+
+    @Test
     void shouldFormatParameterizedMessages() {
         var formattedEn = MessageCatalogue.format("en", "web.pair.done.paired_as", Map.of("label", "Firefox"));
         assertEquals("Paired as Firefox", formattedEn);
