@@ -161,7 +161,7 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
       return false;
     }
 
-    config.onSubmit?.(values);
+    void config.onSubmit?.(values);
     return true;
   }
 
@@ -201,7 +201,6 @@ export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
     handleBeforeUnload(e: BeforeUnloadEvent): void {
       if (!isDirty()) return;
       e.preventDefault();
-      e.returnValue = '';
     },
   };
 }

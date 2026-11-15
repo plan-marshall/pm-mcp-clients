@@ -56,7 +56,7 @@ describe('CheckGroup', () => {
     expect(group).toBeInTheDocument();
 
     const cards = container.querySelectorAll('.check-card');
-    expect(cards.length).toBe(3);
+    expect(cards).toHaveLength(3);
 
     // Click card 2 to toggle it
     await fireEvent.click(cards[1]);

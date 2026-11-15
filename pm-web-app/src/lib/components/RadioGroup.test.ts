@@ -30,7 +30,7 @@ describe('RadioGroup', () => {
     expect(group).toBeInTheDocument();
 
     const cards = container.querySelectorAll('.radio-card');
-    expect(cards.length).toBe(3);
+    expect(cards).toHaveLength(3);
 
     // Clicking the second card element directly
     await fireEvent.click(cards[1]);

@@ -21,7 +21,7 @@ describe('SelectField', () => {
     expect(select).toBeInTheDocument();
     expect(label?.textContent).toContain('Model');
     expect(select.value).toBe('opt1');
-    expect(select.options.length).toBe(3);
+    expect(select.options).toHaveLength(3);
   });
 
   it('links aria-describedby to hint or error', () => {
