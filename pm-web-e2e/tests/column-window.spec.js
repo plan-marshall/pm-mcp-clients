@@ -180,3 +180,139 @@ test.describe('The column window (navigation.adoc#window)', () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 });
+
+/**
+ * The window the design's rule gives the showroom's five-level chain, for a container width.
+ *
+ * @param {number} container the template's container width in px
+ * @returns {{content: number, columns: number, strip: number, list: number, object: number}}
+ */
+function expectedShowroomWindow(container) {
+  const inset = container < 480 ? 12 : 24;
+  const content = container - 2 * inset;
+  const depth = 5;
+  for (let columns = Math.min(4, depth); columns >= 2; columns--) {
+    const strip = depth > columns ? 136 : 0;
+    if ((columns - 1) * 220 + 480 + strip <= content) {
+      const list = Math.min(320, Math.floor((content - strip - 480) / (columns - 1)));
+      return { content, columns, strip, list, object: content - strip - list * (columns - 1) };
+    }
+  }
+  if (220 + 480 + 44 <= content) {
+    return { content, columns: 2, strip: 44, list: 220, object: 480 };
+  }
+  return { content, columns: 1, strip: 0, list: 0, object: content };
+}
+
+/**
+ * Reads the showroom's first column-engine fixture: the container it measured, the window it
+ * rendered there, the widths of the columns (`getBoundingClientRect`) and its two strips.
+ *
+ * @param {import('@playwright/test').Page} page the browser page
+ * @returns {Promise<{container: number, start: number, columns: number[], strip: number,
+ *   returnStrip: boolean}>}
+ */
+async function readShowroomWindow(page) {
+  return page.evaluate(() => {
+    const fixture = document.querySelector('[data-testid="column-engine-fixture"]');
+    const frame = fixture.querySelector('[data-testid="triage-page"]');
+    const windowEl = fixture.querySelector('.triage-page__window');
+    const strip = fixture.querySelector('.gap-strip--start');
+    const returnStrip = fixture.querySelector('.gap-strip--end');
+    return {
+      container: frame.clientWidth,
+      start: Number(windowEl.getAttribute('data-start')),
+      columns: [...fixture.querySelectorAll('[data-column-index]')].map((element) =>
+        Math.round(element.getBoundingClientRect().width),
+      ),
+      strip: strip === null ? 0 : Math.round(strip.getBoundingClientRect().width),
+      returnStripWidth:
+        returnStrip === null ? 0 : Math.round(returnStrip.getBoundingClientRect().width),
+      returnStrip: returnStrip !== null,
+    };
+  });
+}
+
+/**
+ * Pairs the browser and opens the showroom's column-engine fixture.
+ *
+ * @param {import('@playwright/test').Page} page the browser page
+ * @param {import('@playwright/test').APIRequestContext} request the suite's request context
+ * @returns {Promise<import('@playwright/test').Locator>} the first (light) fixture
+ */
+async function openShowroomChain(page, request) {
+  const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
+    data: { scenario: 'reports' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+  await page.goto('/#code=KXQB-MRTN');
+  await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+  await page.goto('/dev/components');
+
+  const engine = page.locator('[data-testid="column-engine-fixture"]').first();
+  await expect(engine).toBeVisible();
+  return engine;
+}
+
+test.describe('The deep chain on the showroom fixture (navigation.adoc#window)', () => {
+  for (const viewport of [1280, 1440]) {
+    test(`shows the ${viewport} px window, peeks by the strip and by [, and returns`, async ({
+      page,
+      request,
+    }) => {
+      await page.setViewportSize({ width: viewport, height: 900 });
+      const engine = await openShowroomChain(page, request);
+      // The fixture opens the chat; the chain's window gets the whole container once it is hidden.
+      await engine.getByRole('button', { name: 'Hide the chat' }).click();
+      await expect(engine.getByTestId('side-column')).toBeHidden();
+
+      // The window is computed from the container the shell leaves, never from the viewport.
+      await expect
+        .poll(async () => (await readShowroomWindow(page)).columns.length)
+        .toBeGreaterThan(1);
+      const normal = await readShowroomWindow(page);
+      const expected = expectedShowroomWindow(normal.container);
+      expect(normal.columns).toHaveLength(expected.columns);
+      expect(normal.columns.slice(0, -1)).toEqual(Array(expected.columns - 1).fill(expected.list));
+      expect(normal.columns.at(-1)).toBe(expected.object);
+      expect(normal.strip).toBe(expected.strip);
+      expect(
+        normal.columns.reduce((sum, width) => sum + width, 0) +
+          normal.strip +
+          normal.returnStripWidth,
+      ).toBe(expected.content);
+
+      // A peek by the strip: the window starts at the lens, a return strip stands at the right.
+      await engine.locator('.gap-strip__mark').first().click();
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(0);
+      const peeked = await readShowroomWindow(page);
+      expect(peeked.columns).toHaveLength(expected.columns);
+      expect(peeked.returnStrip).toBe(true);
+      expect(
+        peeked.columns.reduce((sum, width) => sum + width, 0) +
+          peeked.strip +
+          peeked.returnStripWidth,
+      ).toBe(expected.content);
+
+      // The return, and the object's own window again.
+      await engine.locator('.gap-strip__return').click();
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(normal.start);
+      expect((await readShowroomWindow(page)).returnStrip).toBe(false);
+
+      // A peek by `[`: the focus walks left from the object it was returned to, and the press that
+      // leaves the window shifts it. The wait is on the key's own effect, never on a timer.
+      for (let step = 0; step <= 4 - normal.start; step++) {
+        await page.keyboard.press('BracketLeft');
+      }
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(normal.start - 1);
+      expect((await readShowroomWindow(page)).returnStrip).toBe(true);
+
+      // And back to the object.
+      await engine.locator('.gap-strip__return').click();
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(normal.start);
+    });
+  }
+});
