@@ -292,8 +292,8 @@ class IntentScenarioTest {
                 assertNotNull(distributions, "the answer carries the roles' distributions: " + response.bodyText());
 
                 assertEquals(List.of("implement", "module-tester", "architecture"), distributions.stream()
-                        .map((entry) -> JsonTree.string(JsonTree.asObject(entry), "role"))
-                        .toList(),
+                                .map(entry -> JsonTree.string(JsonTree.asObject(entry), "role"))
+                                .toList(),
                         "a distribution per role, in the order the fixture names them");
 
                 var probes = OverSizeDistributionsResource.fromJson(response.bodyText());

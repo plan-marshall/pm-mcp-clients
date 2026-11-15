@@ -595,7 +595,8 @@ class IntentContractTest {
 
         @Test
         @DisplayName("a flagged task without a proposal and a non-positive proposal are refused")
-        void flagRulesHold() {            var flagged = List.of(bucket());
+        void flagRulesHold() {
+            var flagged = List.of(bucket());
             assertThrows(IllegalArgumentException.class,
                     () -> new OverSizeDistributionResource("p", "r", 3.0, null, flagged));
             assertThrows(JsonFormatException.class, () -> OverSizeDistributionResource.fromJson(

@@ -41,12 +41,17 @@
       ? $t('intent.oversize.title', {
           role: stripControlSequences(distribution.role),
           current: multiple(distribution.current_multiple),
-          proposed: multiple(distribution.proposed_multiple ?? distribution.current_multiple),
+          proposed: multiple(proposalMultiple()),
         })
       : $t('intent.oversize.title_current', {
           role: stripControlSequences(distribution.role),
           current: multiple(distribution.current_multiple),
         });
+  }
+
+  /** @returns the proposed multiple, or the one in force while a proposal is on its way */
+  function proposalMultiple(): number {
+    return distribution.proposed_multiple ?? distribution.current_multiple;
   }
 
   /**
@@ -116,16 +121,20 @@
   }
 
   /**
+   * @param record the role's distribution
    * @returns which way the proposal moves the multiple, or `null` where it moves nothing and the
    *     words of the direction would claim a change that is not there
    */
-  function direction(): 'lower' | 'raise' | null {
-    const proposedMultiple = distribution.proposed_multiple;
-    if (proposedMultiple === undefined || proposedMultiple === distribution.current_multiple) {
+  function directionOf(record: OverSizeDistributionRecord): 'lower' | 'raise' | null {
+    const proposedMultiple = record.proposed_multiple;
+    if (proposedMultiple === undefined || proposedMultiple === record.current_multiple) {
       return null;
     }
-    return proposedMultiple < distribution.current_multiple ? 'lower' : 'raise';
+    return proposedMultiple < record.current_multiple ? 'lower' : 'raise';
   }
+
+  /** The direction the proposal moves the multiple, or `null` where it moves nothing. */
+  const proposalDirection = $derived(directionOf(distribution));
 </script>
 
 <section class="oversize" data-testid="over-size-chart" data-role={distribution.role}>
@@ -166,12 +175,12 @@
           percent: percent(),
         })}
       </p>
-      {#if direction() !== null}
+      {#if proposalDirection !== null}
         <p class="oversize__direction" data-testid="oversize-direction">
           {$t('intent.oversize.direction', {
-            direction: direction(),
+            direction: proposalDirection,
             current: multiple(distribution.current_multiple),
-            proposed: multiple(distribution.proposed_multiple ?? distribution.current_multiple),
+            proposed: multiple(proposalMultiple()),
           })}
         </p>
       {/if}
