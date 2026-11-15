@@ -225,7 +225,7 @@ describe('EpicIntentPanel', () => {
 
     onEvent?.('tokens.changed');
 
-    expect(read.mock.calls.length).toBe(reads);
+    expect(read.mock.calls).toHaveLength(reads);
     expect(screen.queryByTestId('epic-changed')).toBeNull();
   });
 });

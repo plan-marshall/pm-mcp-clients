@@ -214,7 +214,7 @@ class FullyOnboardedScenarioTest {
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/intent",
                         body -> EpicIntentResource.fromJson(body)));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/metrics/oversize",
-                        body -> OverSizeDistributionsResource.fromJson(body)));
+                        OverSizeDistributionsResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/decisions", FullyOnboardedScenarioTest::assertDecisions));
                 endpoints.add(new Endpoint("/api/v1/decisions/Q-007",
                         body -> DecisionEnvelope.fromJson(body)));

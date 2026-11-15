@@ -77,7 +77,7 @@ export function changedRevision<T extends RevisionedRecord>(
  * @param record a record the runtime serves, or `null`
  * @returns the record as one comparable string, the reader's own member order, or `null`
  */
-export function recordFingerprint(record: unknown | null): string | null {
+export function recordFingerprint(record: unknown): string | null {
   return record === null ? null : JSON.stringify(record);
 }
 

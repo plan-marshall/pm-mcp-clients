@@ -666,17 +666,14 @@ class IntentContractTest {
             var implement = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,
                     List.of(new TokenBucket("0–1x", 0.0, 1.0, 8, 0)));
 
-            assertAll(
-                    () -> assertThrows(IllegalArgumentException.class,
-                            () -> new OverSizeDistributionsResource("pm-mcp-clients",
-                                    List.of(implement, implement))),
-                    () -> assertThrows(IllegalArgumentException.class,
-                            () -> new OverSizeDistributionsResource("other-project", List.of(implement))),
-                    () -> assertThrows(IllegalArgumentException.class,
-                            () -> new OverSizeDistributionsResource(" ", List.of(implement))),
-                    () -> assertThrows(JsonFormatException.class,
-                            () -> OverSizeDistributionsResource.fromJson(
-                                    "{\"project_id\":\"p\",\"roles\":[]}")));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionsResource("pm-mcp-clients", List.of(implement, implement)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionsResource("other-project", List.of(implement)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionsResource(" ", List.of(implement)));
+            assertThrows(JsonFormatException.class,
+                    () -> OverSizeDistributionsResource.fromJson("{\"project_id\":\"p\",\"roles\":[]}"));
         }
     }
 
