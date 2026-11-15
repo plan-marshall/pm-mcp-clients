@@ -160,14 +160,6 @@
   }
 
   /**
-   * @param criterion the criterion
-   * @returns the deliverables that satisfy it, by number and title
-   */
-  function satisfiedBy(criterion: { satisfies: number[] }): string {
-    return criterion.satisfies.map((number) => deliverableLabel(number)).join(', ');
-  }
-
-  /**
    * @param decider the decider of a group
    * @returns the choices it made, in the record's order
    */
@@ -271,8 +263,7 @@
                   label={deliverableLabel(criterionNumber)}
                 />
               {/each}
-            {/if}
-          </p>
+            {/if}          </p>
         </li>
       {/each}
     </ul>

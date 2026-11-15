@@ -37,6 +37,8 @@
   let record = $state<OutlineRecord | null>(null);
   let loading = $state(true);
   let errorCode = $state<string | null>(null);
+  /** The revision that arrived on a runtime event, so `the record changed` is said once. */
+  let changedRevision = $state<number | null>(null);
   let unsubscribe: (() => void) | null = null;
 
   onMount(() => {
@@ -61,13 +63,25 @@
       loading = true;
     }
     try {
-      record = await apiClient.getPlanOutline(planId);
+      const next = await apiClient.getPlanOutline(planId);
+      // A record that arrives on an event and carries a new revision is the one the operator is
+      // told about, once; a first read and a read of the same revision say nothing.
+      changedRevision =
+        !initial && next !== null && record !== null && next.revision !== record.revision
+          ? next.revision
+          : null;
+      record = next;
       errorCode = null;
     } catch (failure) {
       errorCode = errorCodeOf(failure);
     } finally {
       loading = false;
     }
+  }
+
+  /** @returns whether the record on screen is one whose revision arrived on an event */
+  function changed(): boolean {
+    return changedRevision !== null && changedRevision === record?.revision;
   }
 
   /** @param value a record text @returns it as plain text, never as markup */
@@ -109,12 +123,14 @@
     justification: string;
     deliverable: number;
   }): string {
+    // With no version the message would keep a double space where the version stands; only that
+    // first gap is collapsed, so a justification's own spacing survives as it stands.
     return $t('intent.outline.dependency', {
       coordinates: safe(dependency.name),
       version: dependency.version === undefined ? '' : safe(dependency.version),
       deliverable: dependency.deliverable,
       justification: safe(dependency.justification),
-    }).replace(/\s{2,}/g, ' ');
+    }).replace('  ', ' ');
   }
 </script>
 
@@ -129,6 +145,12 @@
 {:else}
   <section class="outline-panel" data-testid="outline-panel" aria-label={$t('intent.outline.title')}>
     <h2 class="outline-panel__head">{$t('intent.outline.title')}</h2>
+
+    {#if record !== null && changed()}
+      <p class="outline-panel__changed" data-testid="outline-changed">
+        {$t('intent.record.changed')}
+      </p>
+    {/if}
 
     {#if record !== null}
       <ul class="outline-deliverables">
@@ -231,6 +253,11 @@
     margin: 0;
     font-size: var(--text-base);
     line-height: var(--line-height-base);
+  }
+
+  .outline-panel__changed {
+    margin: 0;
+    color: var(--color-text-secondary);
   }
 
   .outline-panel__title {

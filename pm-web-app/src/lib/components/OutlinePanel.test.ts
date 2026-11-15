@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import OutlinePanel from './OutlinePanel.svelte';
 import { apiClient, type OutlineRecord } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
@@ -290,5 +290,31 @@ describe('OutlinePanel', () => {
 
     expect(screen.getByTestId('outline-panel')).toHaveTextContent('Outline');
     expect(screen.queryAllByTestId(/^outline-deliverable-/)).toEqual([]);
+  });
+
+  it("reads the outline again when the plan's events say the plan changed, and says so once", async () => {
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+    const load = vi
+      .spyOn(apiClient, 'getPlanOutline')
+      .mockResolvedValueOnce(outline())
+      .mockResolvedValueOnce(outline({ revision: 3 }));
+
+    render(OutlinePanel, { props: { planId: 'fix-relay' } });
+    await screen.findByTestId('outline-panel');
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('outline-changed')).toBeNull();
+
+    onEvent?.('hold.opened');
+    expect(load).toHaveBeenCalledTimes(1);
+
+    onEvent?.('phase.changed');
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByTestId('outline-changed')).toHaveTextContent(
+      'the record changed',
+    ));
   });
 });

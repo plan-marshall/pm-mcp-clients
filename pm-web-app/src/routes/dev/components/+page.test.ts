@@ -323,6 +323,12 @@ describe('/dev/components page fixture', () => {
           expect(within(fixture).getByTestId('outline-panel')).toBeInTheDocument();
           expect(within(fixture).getByTestId('intent-head')).toHaveTextContent('fix-relay');
           expect(within(fixture).getByTestId('outline-deliverable-1')).toBeInTheDocument();
+          // A criterion names the deliverable that satisfies it by number and title, one step away.
+          await waitFor(() =>
+            expect(within(fixture).getByTestId('criterion-deliverables-AC-001')).toHaveTextContent(
+              '1 · Reconnect the relay',
+            ),
+          );
           // The criterion and the deliverable point at each other, one step away.
           expect(
             within(fixture).getByTestId('outline-satisfies-1').querySelector('a'),

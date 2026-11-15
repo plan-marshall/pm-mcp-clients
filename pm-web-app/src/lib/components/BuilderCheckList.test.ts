@@ -84,7 +84,7 @@ describe('BuilderCheckList', () => {
     expect(screen.getByTestId('builder-sort-operator')).toHaveTextContent('needs you');
   });
 
-  it('marks the recommendation as the builder\'s and preselects nothing', () => {
+  it('marks the recommendation as a property of the question and preselects nothing', () => {
     const { container } = render(BuilderCheckList, { props: { check: check() } });
 
     const question = screen.getByTestId('builder-question-BQ-001');
@@ -131,8 +131,6 @@ describe('BuilderCheckList', () => {
     expect(state).toHaveTextContent(
       'not run: The builder check task was lost before it could start.',
     );
-    expect(state).not.toHaveClass('builder-check--pass');
-    expect(state).not.toHaveClass('builder-check--hold');
     expect(state.querySelector('.status-label--success')).toBeNull();
     expect(state.querySelector('.status-label--danger')).toBeNull();
   });

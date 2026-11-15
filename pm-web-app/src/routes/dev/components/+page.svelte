@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../../lib/i18n';
-  import { apiClient, type BuilderCheckRecord } from '../../../lib/api/client';
+  import { apiClient, type BuilderCheckRecord, type OutlineDeliverableRecord } from '../../../lib/api/client';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import RowMenu from '../../../lib/components/RowMenu.svelte';
   import Button from '../../../lib/components/Button.svelte';
@@ -206,6 +206,9 @@
   /** The builder check the fixture shows, read from the plan's own record. */
   let builderCheck: BuilderCheckRecord | null = null;
 
+  /** The outline's deliverables, so a criterion names them by number and title. */
+  let deliverables: OutlineDeliverableRecord[] = [];
+
   onMount(async () => {
     try {
       const record = await apiClient.getPlanIntent(INTENT_PLAN_ID);
@@ -213,6 +216,12 @@
     } catch {
       // An unpaired page draws the panels' own error state; the check then stays a title alone.
       builderCheck = null;
+    }
+    try {
+      const outline = await apiClient.getPlanOutline(INTENT_PLAN_ID);
+      deliverables = outline?.deliverables ?? [];
+    } catch {
+      deliverables = [];
     }
   });
 
@@ -618,6 +627,7 @@
         <Card>
           <PlanIntentPanel
             planId={INTENT_PLAN_ID}
+            {deliverables}
             {deliverableHref}
           />
         </Card>

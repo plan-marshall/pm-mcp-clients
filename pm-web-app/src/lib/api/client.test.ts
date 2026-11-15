@@ -2751,6 +2751,27 @@ describe('ApiClient intent and outline records', () => {
     ]);
   });
 
+  it('reads a distribution the runtime serves without a proposal, as the mock does', async () => {
+    // Arrange: the fully-onboarded scenario serves no proposed multiple
+    answer(
+      served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'),
+    );
+
+    // Act
+    const record = await client.getOverSize('pm-mcp-clients');
+
+    // Assert
+    expect(record?.proposed_multiple).toBeUndefined();
+    expect(record?.buckets).toHaveLength(4);
+    expect(record?.buckets[0]).toEqual({
+      label: '0-1x',
+      from_multiple: 0,
+      to_multiple: 1,
+      task_count: 8,
+      flagged_tasks: 0,
+    });
+  });
+
   it('answers an absent record with null, so a panel can say refine has not written it yet', async () => {
     // Arrange: the runtime has no record for the plan
     answer({ error: 'intent_not_found', message: 'No intent record' }, 404);
