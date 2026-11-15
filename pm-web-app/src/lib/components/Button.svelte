@@ -2,8 +2,9 @@
   export const BUTTON_VARIANTS = ['primary', 'secondary', 'danger', 'ghost'] as const;
   export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
 
-  export const BUTTON_SIZES = ['sm', 'md', 'lg'] as const;
-  export type ButtonSize = (typeof BUTTON_SIZES)[number];
+  export const BUTTON_ICON_SIZES = { sm: 16, md: 20, lg: 20 } as const;
+  export type ButtonSize = keyof typeof BUTTON_ICON_SIZES;
+  export const BUTTON_SIZES = ['sm', 'md', 'lg'] as const satisfies readonly ButtonSize[];
 </script>
 
 <script lang="ts">
@@ -36,9 +37,6 @@
   /** The id of the element that carries the reason, for `aria-describedby`. */
   const reasonId = uniqueId('btn-reason');
 
-  /** The delivered icon size of each button size. */
-  const ICON_SIZES = { sm: 16, md: 20, lg: 20 } as const;
-
   $: hasReason = disabled && !!disabledReason;
   $: isAriaDisabled = hasReason;
   $: isNativeDisabled = disabled && !disabledReason;
@@ -46,7 +44,7 @@
   $: describedBy =
     [reason ? reasonId : null, $$restProps['aria-describedby']].filter(Boolean).join(' ') ||
     undefined;
-  $: iconSize = ICON_SIZES[size];
+  $: iconSize = BUTTON_ICON_SIZES[size];
 
   function handleClick(event: MouseEvent): void {
     if (disabled || loading) {

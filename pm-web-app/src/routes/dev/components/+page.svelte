@@ -749,11 +749,13 @@
 
       <h3 class="dev__section-title">{$t('dev.section.layers')}</h3>
       <div class="dev__layers-demo">
-        {#each LAYERS as layer}
-          <div class="dev__layer dev__layer--{layer.name}">
-            <code>{layer.token}</code>
-          </div>
-        {/each}
+        <div class="dev__layers-track">
+          {#each LAYERS as layer}
+            <div class="dev__layer dev__layer--{layer.name}">
+              <code>{layer.token}</code>
+            </div>
+          {/each}
+        </div>
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.column_engine')}</h3>
@@ -931,11 +933,18 @@
   }
 
   .dev__layers-demo {
-    position: relative;
-    block-size: 140px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-inline-size: 100%;
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
+  }
+
+  .dev__layers-track {
+    position: relative;
+    min-inline-size: 360px;
+    block-size: 140px;
     padding: var(--space-4);
   }
 

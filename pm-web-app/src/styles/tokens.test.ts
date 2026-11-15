@@ -801,22 +801,31 @@ describe('tokens.css: static scans over the source tree', () => {
     }
   });
 
+  function sanitizeSource(content: string, isCss: boolean): string {
+    let result = content
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
+    if (!isCss) {
+      result = result.replace(/<script[\s\S]*?<\/script>/gi, (scriptBlock) =>
+        scriptBlock.replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length)),
+      );
+    }
+    return result;
+  }
+
   it('ensures no numeric z-index exists outside the allowlist', () => {
     const srcDir = path.resolve(__dirname, '..');
     const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']);
-    const zIndexRegex = /z-index\s*:\s*(-?\d+)\b/g;
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
     const violations: { file: string; line: number; value: string; snippet: string }[] = [];
 
     for (const file of sourceFiles) {
       const relPath = path.normalize(path.relative(srcDir, file));
       const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
+      const isCss = file.endsWith('.css');
 
       const content = fs.readFileSync(file, 'utf8');
-      // Strip block comments and single-line comments while preserving newlines
-      const sanitized = content
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length));
+      const sanitized = sanitizeSource(content, isCss);
 
       let match;
       while ((match = zIndexRegex.exec(sanitized)) !== null) {
@@ -846,14 +855,23 @@ describe('tokens.css: static scans over the source tree', () => {
         z-index:
           888;
       }
+      .signed {
+        position: absolute;
+        Z-INDEX: +777;
+      }
+      .css-strings {
+        content: "//";
+        position: relative;
+        z-index: 666;
+      }
     `;
-    const sanitized = raw.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
-    const zIndexRegex = /z-index\s*:\s*(-?\d+)\b/g;
+    const sanitized = sanitizeSource(raw, true);
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
     const matches: string[] = [];
     let match;
     while ((match = zIndexRegex.exec(sanitized)) !== null) {
       matches.push(match[1]);
     }
-    expect(matches).toEqual(['999', '888']);
+    expect(matches).toEqual(['999', '888', '+777', '666']);
   });
 });
