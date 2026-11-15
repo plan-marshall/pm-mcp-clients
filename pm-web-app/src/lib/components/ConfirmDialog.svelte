@@ -1,6 +1,7 @@
 <script lang="ts">
   import Dialog from './Dialog.svelte';
   import Button from './Button.svelte';
+  import TextField from './TextField.svelte';
   import { t } from '../i18n';
 
   /**
@@ -63,17 +64,15 @@
   <slot />
 
   {#if typedName !== undefined}
-    <label class="confirm-dialog__field">
-      {$t('web.confirm.typed_name', { name: typedName })}
-      <input
-        type="text"
-        class="confirm-dialog__input"
-        data-testid="confirm-dialog-input"
+    <div class="confirm-dialog__field">
+      <TextField
+        label={$t('web.confirm.typed_name', { name: typedName })}
+        testid="confirm-dialog-input"
         bind:value={typed}
         autocomplete="off"
-        spellcheck="false"
+        spellcheck={false}
       />
-    </label>
+    </div>
   {/if}
 
   <svelte:fragment slot="footer">
@@ -99,15 +98,5 @@
     gap: var(--space-1);
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
-  }
-
-  .confirm-dialog__input {
-    min-block-size: 44px;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
-    font-size: var(--text-sm);
   }
 </style>
