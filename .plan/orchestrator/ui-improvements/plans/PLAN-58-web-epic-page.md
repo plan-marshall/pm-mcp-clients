@@ -63,15 +63,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-06` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-P-10 at ux/proposals.adoc:339, UC-P-06 :126, UC-S-07 use-cases/plan.adoc:62, CC-F-09 cross-cutting/findings.adoc:133 present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; use-cases/proposals.adoc:126 UC-P-06; use-cases/plan.adoc:62 UC-S-07; cross-cutting/findings.adoc:133 CC-F-09
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates in src/lib/templates/, ObjectPage for the epic page); EpicView was changed by PLAN-90/a11y and must be added to the template guard list. PLAN-47 (web-actions-by-state) has not landed: ActionBar.svelte exists (PLAN-25) but lib/actions/byState.ts does not.
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-47 has landed: actions/byState.ts exists (PROJECT_ACTS :150) and WorkControlPanel.svelte:824 uses ActionBar; templates shipped part holds; EpicView not in pageWidth.test.ts list | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-47 landed: actions/byState.ts exists (PROJECT_ACTS :425) and WorkControlPanel.svelte:827 uses ActionBar; EpicView is not in pageWidth.test.ts list and not on ObjectPage
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction; no code fact
 - HYPOTHESIS: the head "Landungen" count (`resource.landings`) can differ from the landing rows the view lists — confirm/refute at `pm-web-app/src/lib/views/EpicView.svelte:117,746` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Rows derive from landings at EpicView.svelte:118-125 while the count prints resource.landings at :757 (spec said 117,746); two sources can differ
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicView.svelte rows derive from landings :115-125 (shipped rows with PR) while the count prints resource.landings :756; two sources can differ
 - HYPOTHESIS: `FindingsReviewModal` does not select the first open item when it opens — confirm/refute at `pm-web-app/src/lib/components/FindingsReviewModal.svelte:48` § `selectedId` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: FindingsReviewModal.svelte:48 selectedId starts null; only :81 and :102 write it; no effect picks the first open item (openItems derived :58)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: FindingsReviewModal.svelte:48 selectedId starts null; written only :81 and :102; openItems :59; no effect selects the first open item
 
 ## Expected Surface
 

@@ -57,15 +57,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-05)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-04` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UC-S-05 at use-cases/plan.adoc:50, UC-P-04 proposals.adoc:98, findings-plans-control.adoc present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:50 UC-S-05; use-cases/proposals.adoc:98-99 UC-P-04 present
 - HYPOTHESIS: the instance diagram data of `PM-IMPL-5` is available through the API the plan view already reads — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/process/` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api process/ has ProcessTree, ProcessNode, NodeState, PruneReason; client.ts:3424 getPlanProcess; PlanView.svelte:171 loadPlanProcess
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api process/ ProcessNode carries state; pruneReason; subNodes; leafTasks; ProcessTree; PlanView.svelte:176 reads apiClient.getPlanProcess (client.ts:4026)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): client.ts line cited in older evidence moved (getPlanProcess now client.ts:3107); PLAN-43 shipped ObjectPage template, relevant to the PlanView rework; PlanView, NodeNarrative, processNode.ts and plan-view.spec.js changed (PLAN-90/a11y/token work).
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: getPlanProcess now client.ts:3424; templates/ObjectPage.svelte shipped; PlanView.svelte 1721 lines
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: drift only: getPlanProcess now client.ts:4026; templates/ObjectPage.svelte shipped; PlanView.svelte now 1741 lines
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; no code fact
 - HYPOTHESIS: a leaf node renders no expander today — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte:885-896` § `toggle-btn` (verify-at-outline)
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte:899-921 renders the toggle button for every node; a leaf gets a blank glyph and aria-expanded undefined (hasChildren :622), so an inert expander button still exists | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte:905-928 renders toggle-btn for every node; a leaf gets a blank glyph (nbsp) and aria-expanded undefined (hasChildren :626); an inert expander button still exists
 
 ## Expected Surface
 

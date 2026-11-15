@@ -132,21 +132,21 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 ## Claim Labels
 
 - OBSERVED: `components-chat.adoc:53` knows only "Refused for an older version"; the already-queued variant is only in `chat.adoc:107` — read at `doc/design/web-app/components-chat.adoc:53`; `doc/design/web-app/chat.adoc:107`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: components-chat.adoc:53 has only the older-version refusal; the already-queued variant is only in chat.adoc:107
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: components-chat.adoc:53 has only Refused for an older version; the already-queued variant (control.chat.already_queued) is only in chat.adoc:107
 - OBSERVED: `chat.adoc` § `#notices` has no line for `control.chat.follow_up.opened` (it appears in `work-actions.adoc` § `#chat-ended`) — read at `doc/design/web-app/chat.adoc:96-109`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: chat.adoc has no control.chat.follow_up.opened (only follow_up.start :145); the line is in work-actions.adoc:468
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: chat.adoc has no control.chat.follow_up.opened (only follow_up.start :145); the line is in shared/work-actions.adoc:468
 - OBSERVED: `PlanView.svelte` listens for `plan.changed` and other names outside the catalogue — read at `pm-web-app/src/lib/views/PlanView.svelte:122-133`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:126-132 listens plan.changed, activity.changed, phase.changed, task.off_track, project.work_ended (plan.changed is not in EventName)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: PlanView.svelte:124-135 no longer listens for plan.changed (absent from non-test web source); it listens activity.changed phase.changed task.off_track project.work_ended :128-131; plan.revision_queued is not listened
 - OBSERVED: no `--color-diff-removed` or `--color-diff-added` token exists — `git grep -n "color-diff" -- pm-web-app/src` is empty at `1cc0e10e`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep color-diff in pm-web-app/src is empty at HEAD
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep color-diff over pm-web-app/src and pm-web-e2e is empty on main; no --color-diff token in tokens.css
 - HYPOTHESIS: the plan view's head renders through `WorkControlPanel` and `ActionBar` (PLAN-47), so the queued-revision line is a part of the head slot of `PlanView.svelte` — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-web-app/src/lib/components/WorkControlPanel.svelte` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-header (PlanView:654-881) holds WorkControlPanel (:784) which renders ActionBar (WorkControlPanel:824,828); no ObjectPage head slot involved
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView plan-header :658 holds WorkControlPanel :790 which renders ActionBar WorkControlPanel:827 :831; no ObjectPage in PlanView
 - HYPOTHESIS: the overview row has a slot for a second line of text beside the state — confirm/refute at `pm-web-app/src/lib/views/OverviewView.svelte` § plan row (verify-at-outline)
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Plan rows (OverviewView:1074-1107 nested, :1120-1157 without-epic) hold title and badges only; no second-line text slot exists today | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: Plan rows (OverviewView nested-plan-row :1117 and the without-epic work-card--plan block below it) hold title and badges only; no second-line text slot; hypothesis refuted
 - HYPOTHESIS: a hold has a store or resource the status card can read without a view of its own — confirm/refute at `pm-web-app/src/lib/api/client.ts` § holds and `pm-web-app/src/lib/stores/runtime.ts` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: getPlanHolds(planId) (client.ts:3888) is a resource a status card can read; runtime.ts holds no hold store
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: getPlanHolds client.ts:4552 reads /plans/{id}/holds; runtime.ts holds no hold store
 - Verify-first clause: re-read `chat.adoc` § `#proposal` and § `#notices` at the current HEAD before scoping; a notice added since is added here.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural re-read of chat.adoc #proposal/#notices; nothing to settle by reading
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural re-read of chat.adoc #proposal and #notices; not settleable by reading
 
 ## Expected Surface
 

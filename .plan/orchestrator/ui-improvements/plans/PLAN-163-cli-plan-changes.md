@@ -60,11 +60,11 @@ Read first:
 ## Claim Labels
 
 - OBSERVED: `planview/` holds `PlanViewLevel`, `PlanCompletionLevel` and `WorkerActivityLevel`, and no changes level — read at `7adb56c2`
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (planview/ has no changes level; PlanCommand has no --changes)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: planview/ holds PlanViewLevel PlanCompletionLevel WorkerActivityLevel PlanViewFormatting and no changes level
 - OBSERVED: `PlanCommand.java` has no `--changes` option — `git grep -n "changes" PlanCommand.java` at `7adb56c2`
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (planview/ has no changes level; PlanCommand has no --changes)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanCommand.java has no --changes option; only --local-changes :520 (start answers) and the settings text :1253
 - HYPOTHESIS: `d` is free in the plan view's key map — confirm/refute at `PlanViewLevel.java` and `16-plan-view.adoc` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: d is unbound in the plan view: TuiKeyRegistry.planNavigation :716-750 binds no d; design 16-plan-view.adoc:114 and :149 already assign d to the changes level
 
 ## Expected Surface
 

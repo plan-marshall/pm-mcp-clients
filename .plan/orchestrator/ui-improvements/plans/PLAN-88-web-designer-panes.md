@@ -43,9 +43,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/ux/findings.adoc#UX-F-15` — read at `doc/claude_review/ux/proposals.adoc` (the designer part; the claim was corroborated at `cc5794c9` for the former `PLAN-54`)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; findings.adoc:146 UX-F-15; process-designer.adoc Layout (#layout ~49-80) puts validation as a band below the text, contradicting results above
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/proposals.adoc:339 UX-P-10; ux/findings.adoc:146 UX-F-15; process-designer.adoc:53-81 Layout puts validation as a band at the bottom
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; a refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause
 
 ## Expected Surface
 
