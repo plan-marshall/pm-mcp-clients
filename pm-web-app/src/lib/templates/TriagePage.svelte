@@ -188,6 +188,14 @@
     previousChain = chain;
   });
 
+  // A window of one column has no strip and cannot peek, so a peek is dropped there: widening the
+  // container later shows the object's window again rather than the level peeked at before.
+  $effect(() => {
+    if (peek !== null && layout.columns <= 1) {
+      peek = null;
+    }
+  });
+
   /** The element tags that hold the focus as a field, where the column keys stay with the field. */
   const FIELD_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 

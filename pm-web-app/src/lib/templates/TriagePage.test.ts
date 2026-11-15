@@ -325,6 +325,44 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(get(runtimeStore).quietNavigationNotice).toBe('Plan column, plan');
   });
 
+  it('keeps the window honest when a key move after a peek reaches the object', async () => {
+    await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    // The peek at the lens shows the lens, the project and the epic; `]` shifts it to the plan,
+    // which still leaves the object to its right.
+    const epic = screen.getByRole('heading', { name: 'Epic column' });
+    epic.focus();
+    await fireEvent.keyDown(epic, { key: ']' });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+
+    // `]` again reaches the object; the window is then the object's own, not a peek.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
+
+    const normal = windowFor({ container: 1216, depth: LEVELS.length });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByRole('button', { name: 'report, Lens list' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'project, Project column' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to Object column' })).toBeNull();
+    expect(widthOf(screen.getByTestId('triage-detail'))).toBe(normal.objectWidth);
+  });
+
+  it('clears a peek when a resize leaves one column, so widening shows the object', async () => {
+    const { frame } = await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '0');
+
+    reportBox(frame, 496, 800);
+    await tick();
+    expect(columns()).toHaveLength(1);
+
+    reportBox(frame, 1216, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+  });
+
   it('leaves the keys alone in a one-column window', async () => {
     await renderWindow(496);
     const window_ = document.querySelector('.triage-page__window');
