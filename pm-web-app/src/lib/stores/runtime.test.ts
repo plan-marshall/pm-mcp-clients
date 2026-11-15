@@ -9,9 +9,10 @@ import {
   handleRuntimeEvent,
   initRuntime,
   isRuntimeRecovering,
-  landingRoute,
+  startRouteFor,
   navigateTo,
   openEpicDecomposition,
+  openRunningWork,
   openStartPage,
   pairBrowser,
   pushRoute,
@@ -31,6 +32,8 @@ import {
   type RouteParams,
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { writeRememberedPlace } from '../navigation/rememberedPlace';
+import { resetOpenedFromOutside } from '../navigation/history';
 
 const PAIRED_STATUS: StatusResponse = {
   status: 'ready',
@@ -470,8 +473,8 @@ describe('the runtime store', () => {
     const staleStartRouteKey = ['pm', 'start', 'route'].join('_');
     localStorage.setItem(staleStartRouteKey, 'projects');
 
-    // Act & Assert 1: landingRoute lands on overview when work is running, despite stale start route
-    expect(landingRoute(null, true, true)).toBe('overview');
+    // Act & Assert 1: the start rule lands on overview when work is running, despite the stale key
+    expect(startRouteFor(null, true, true, {}, { workRunning: true }, false)).toBe('overview');
 
     // Act & Assert 2: fresh paired browser lands on overview by the rule
     vi.spyOn(apiClient, 'pair').mockResolvedValue({
@@ -509,6 +512,163 @@ describe('the runtime store', () => {
 
     await openStartPage();
     expect(get(runtimeStore).currentRoute).toBe('projects');
+  });
+});
+
+/**
+ * The remembered place at the two entry points: a mark-less load is filled by a replace, a click
+ * on Running work by a push, and neither a marked reload nor `/?lens=waits` is filled at all.
+ */
+describe('the remembered place at the start', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.restoreAllMocks();
+    // Each case is another load of the app: the start mark is read once per load.
+    resetOpenedFromOutside();
+    runtimeStore.set(makeRuntimeState({ isInitialized: false, isOnboarded: false }));
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
+      projects: [
+        {
+          project_id: 'p-1',
+          display_name: 'Project 1',
+          active_plans_count: 1,
+          active_epics_count: 0,
+          needs_operator_count: 0,
+          setup_needs_operator: false,
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    writeRememberedPlace({ project: 'p-1', planId: 'fix-relay' });
+  });
+
+  afterEach(() => {
+    stopRuntimeRecovery();
+  });
+
+  it('fills a mark-less load at /overview from the place, by a replace', async () => {
+    // Arrange: a typed address carries no mark of the app.
+    window.history.replaceState(null, '', '/overview');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    const push = vi.spyOn(window.history, 'pushState');
+
+    // Act
+    await initRuntime();
+
+    // Assert: the remembered plan opens, and the entry is replaced rather than pushed.
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('leaves a marked reload where it is', async () => {
+    // Arrange: an entry the app wrote carries its mark.
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).selectedPlanId).toBeNull();
+  });
+
+  it('never fills the lens of what waits', async () => {
+    // Arrange: `/?lens=waits` names its lens, so it is a full address.
+    window.history.replaceState(null, '', '/?lens=waits');
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).selectedPlanId).toBeNull();
+    expect(window.location.pathname).toBe('/');
+  });
+
+  it('pushes the filled lens from a click on Running work', async () => {
+    // Arrange
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+    const push = vi.spyOn(window.history, 'pushState');
+
+    // Act
+    await openRunningWork();
+
+    // Assert: the lens opens in running work, scoped to the remembered project, by a push.
+    expect(window.location.pathname).toBe('/overview');
+    expect(window.location.search).toBe('?project=p-1');
+    expect(push).toHaveBeenCalledWith(
+      expect.objectContaining({ pmApp: true, path: '/overview?project=p-1' }),
+      '',
+      '/overview?project=p-1',
+    );
+  });
+});
+
+/**
+ * The address feeds every view: each one reads the selection its own address names, and an old
+ * address of a moved view is replaced by the scheme's address when it is opened.
+ */
+describe('the address feeds the views', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, isPaired: true, isOnboarded: true }));
+  });
+
+  it('gives one decision its selection from its own path', () => {
+    window.history.replaceState(null, '', '/decisions/Q-007');
+
+    expect(adoptRouteFromLocation()).toBe('decision');
+    expect(get(runtimeStore).selectedDecisionId).toBe('Q-007');
+  });
+
+  it('gives one report its selection, and the view resolves its plan', () => {
+    window.history.replaceState(null, '', '/reports/r-42');
+
+    expect(adoptRouteFromLocation()).toBe('report');
+    expect(get(runtimeStore).selectedReportId).toBe('r-42');
+  });
+
+  it('gives the project page its project', () => {
+    window.history.replaceState(null, '', '/projects/pm-mcp-clients');
+
+    expect(adoptRouteFromLocation()).toBe('project');
+    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+  });
+
+  it('gives a task its plan and its task', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay/tasks/TASK-4');
+
+    expect(adoptRouteFromLocation()).toBe('task');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(get(runtimeStore).selectedTaskId).toBe('TASK-4');
+  });
+
+  it('gives the overview its scope, grouping and mode from the query', () => {
+    window.history.replaceState(null, '', '/overview?project=p-1&group=epic&mode=ended');
+
+    expect(adoptRouteFromLocation()).toBe('overview');
+    expect(get(runtimeStore).selectedProjectId).toBe('p-1');
+    expect(get(runtimeStore).lensGroup).toBe('epic');
+    expect(get(runtimeStore).lensMode).toBe('ended');
+  });
+
+  it('gives the plan its tab, node, file and chat from the query', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay?tab=changes&file=pm-relay/pom.xml');
+
+    expect(adoptRouteFromLocation()).toBe('plan');
+    expect(get(runtimeStore).objectTab).toBe('changes');
+    expect(get(runtimeStore).changeFile).toBe('pm-relay/pom.xml');
+    expect(get(runtimeStore).phaseNode).toBeNull();
+
+    window.history.replaceState(null, '', '/plans/fix-relay?node=execute/land&chat=open');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).phaseNode).toBe('execute/land');
+    expect(get(runtimeStore).chatOpen).toBe(true);
   });
 });
 

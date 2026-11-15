@@ -492,7 +492,8 @@ describe('ReportsView component', () => {
       name: /Open the project pm-mcp-clients/i,
     });
     await fireEvent.click(projectLink[0]);
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    // A project link opens the one project page, not the old explorer query.
+    expect(get(runtimeStore).currentRoute).toBe('project');
     expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
 
     const epicLink = (

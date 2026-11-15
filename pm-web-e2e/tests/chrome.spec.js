@@ -356,8 +356,8 @@ test.describe('The command palette', () => {
     await expect(match).toContainText('Resolve rebase conflict');
     await match.click();
 
-    // The decision opens in the decisions view, scrolled to its card, in any layout.
-    await expect(page).toHaveURL(/\/decisions\?decision=Q-007$/);
+    // The decision opens at its own address, scrolled to its card, in any layout.
+    await expect(page).toHaveURL(/\/decisions\/Q-007$/);
     await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
   });
 
@@ -385,7 +385,7 @@ test.describe('The command palette', () => {
 
     // Enter opens the matched project, not its start route.
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/projects\?project=pm-mcp-core$/);
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-core$/);
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
   });
 

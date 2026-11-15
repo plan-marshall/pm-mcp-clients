@@ -490,9 +490,12 @@ describe('OverviewView component', () => {
     expect(state.selectedReportDetailPlanId).toBe('pln-relay-drops');
   });
 
-  it('restores the ended work page after the operator returns to the overview', async () => {
+  it('restores the ended work page from the address, never from storage', async () => {
+    // The mode is the address's: a stored ended section is no longer a remembered place, so the
+    // address is what opens it (the page still remembers which page it showed).
     localStorage.setItem('pm_overview_show_ended', '1');
     localStorage.setItem('pm_overview_ended_page', '2');
+    runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
 
     render(OverviewView);
 
@@ -500,6 +503,21 @@ describe('OverviewView component', () => {
       expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 2);
       expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
     });
+  });
+
+  it('opens running work when the address names no ended mode, even after ended work was seen', async () => {
+    // A running-work address wins over the section the operator looked at last.
+    localStorage.setItem('pm_overview_show_ended', '1');
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /pm-mcp-clients/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+    expect(apiClient.getEndedWork).not.toHaveBeenCalled();
   });
 
   it('opens the project another view named in one step', async () => {

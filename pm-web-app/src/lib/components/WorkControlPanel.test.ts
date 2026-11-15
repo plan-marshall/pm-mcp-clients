@@ -611,7 +611,8 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('action-report'));
 
     await waitFor(() => expect(window.location.pathname).toBe('/reports'));
-    expect(window.location.search).toContain('plan=fix-relay');
+    // The act knows the plan; the report's own address follows once the view resolves its id.
+    expect(window.location.search).toBe('');
     expect(apply).not.toHaveBeenCalled();
   });
 

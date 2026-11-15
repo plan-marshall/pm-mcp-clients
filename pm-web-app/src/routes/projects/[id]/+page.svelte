@@ -3,8 +3,7 @@
   import AppRouter from '../../../lib/views/AppRouter.svelte';
   import { adoptRouteFromLocation } from '../../../lib/stores/runtime';
 
-  // `/epics/decompose` opens a decomposition without an epic yet; an epic already cut keeps its
-  // own `/epics/{id}/decomposition` path.
+  // `/projects/{id}` addresses the one project page; the path names the project the store shows.
   onMount(() => {
     adoptRouteFromLocation();
   });

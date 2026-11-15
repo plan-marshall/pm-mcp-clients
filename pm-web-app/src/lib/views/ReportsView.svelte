@@ -13,7 +13,8 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
-  import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
+  import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
+  import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
 
@@ -230,8 +231,9 @@
         key: `report:${activeDetailPlanId}`,
         kind: 'report',
         title: activeDetailPlanId,
-        // The address of the report's detail beside the list, unchanged until PLAN-143.
-        href: `/reports?plan=${encodeURIComponent(activeDetailPlanId)}`,
+        // The detail address is written by the writer when it opens; the column descriptor names
+        // the list it stands beside.
+        href: '/reports',
         state: '',
       },
     ];
@@ -358,15 +360,22 @@
   function closeDetail(): void {
     flushRetainedReads();
     activeDetailPlanId = null;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
-    syncUrl('/reports', true);
+    syncedRouteReportPlan = null;
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: null,
+      selectedReportId: null,
+      currentRoute: 'reports',
+    }));
+    writeAddress({ route: 'reports' }, 'replace');
   }
 
   // The reports route stays the same while its detail changes (a header visit to Reports, the
   // browser's back between two reports). Follow the store so the view does not keep a plan the
   // address no longer names.
   $effect(() => {
-    if ($runtimeStore.currentRoute !== 'reports') return;
+    const route = $runtimeStore.currentRoute;
+    if (route !== 'reports' && route !== 'report') return;
     const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
@@ -387,6 +396,19 @@
       clock = Date.now();
     }, 30_000);
     await loadReports();
+    // A report's own address names the report; a completion report opened from an act names the
+    // plan. Both resolve to the same detail, and the address is replaced with the report's own
+    // once the row is known. A request that cannot be resolved stays pending, so a retry of the
+    // list still opens it.
+    if (!isMounted) return;
+    const requestedReportId = $runtimeStore.selectedReportId;
+    const requestedReport = requestedReportId
+      ? items.find((item) => item.id === requestedReportId)
+      : undefined;
+    const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
+    if (plan) {
+      showDetail(plan);
+    }
   });
 
   onDestroy(() => {
@@ -722,7 +744,19 @@
       if (!row || planIdOf(row) !== planId) dropRetainedRow(id);
     }
     syncedRouteReportPlan = planId;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
+    // The address of the report names the report, not the plan: the route and the report id are
+    // kept in the store so the writer reproduces the same address, and the address is replaced
+    // with it now that the row is known.
+    const report = items.find((item) => planIdOf(item) === planId);
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: planId,
+      selectedReportId: report?.id ?? null,
+      currentRoute: 'report',
+    }));
+    if (report?.id) {
+      writeAddress({ route: 'report', reportId: report.id }, 'replace');
+    }
   }
 
   /**
@@ -762,7 +796,7 @@
    */
   function openFromPart(part: 'project' | 'epic' | 'plan', report: ReportItem): void {
     if (part === 'project' && report.from?.project) {
-      navigateTo('projects', { explorerProjectId: report.from.project });
+      openProjectInExplorer(report.from.project);
     } else if (part === 'epic' && report.from?.epic) {
       navigateTo('epic', { epicId: report.from.epic });
     } else if (part === 'plan' && report.from?.plan) {
@@ -856,7 +890,7 @@
     }
     if (kind === 'project') {
       if (item.from?.project) {
-        navigateTo('projects', { explorerProjectId: item.from.project });
+        openProjectInExplorer(item.from.project);
       }
       return;
     }
@@ -1128,7 +1162,8 @@
                   variant="ghost"
                   size="sm"
                   aria-label={$t('report.from.open_project', { project: pGroup.key })}
-                  onclick={() => navigateTo('projects', { explorerProjectId: pGroup.key })}
+                  onclick={() =>
+                    openProjectInExplorer(pGroup.key)}
                 >
                   {pGroup.key}
                 </Button>

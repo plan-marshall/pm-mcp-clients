@@ -11,12 +11,28 @@ import {
 } from '../api/client';
 import {
   matchPath,
-  pathForRoute,
+  type Address,
   type AppRoute,
-  type PathMatch,
   type RouteParams,
   type StartPath,
 } from '../routes';
+import {
+  currentAddress,
+  intentFor,
+  openedFromOutside,
+  parentOf,
+  writeAddress,
+  type WriteIntent,
+} from '../navigation/history';
+import {
+  readRememberedPlace,
+  runningWorkAddress,
+  startAddress,
+  unfilledLensAddress,
+  writeRememberedPlace,
+  type PlaceFacts,
+  type RememberedPlace,
+} from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 import { actFailureReason } from '../api/errors';
 
@@ -112,6 +128,24 @@ export interface RuntimeState {
   selectedDecisionId?: string | null;
   /** The work kind a figure asked the overview to show, consumed when it opens. */
   overviewFocus?: 'plans' | 'epics' | null;
+  /** The report one `/reports/{id}` address names, until the view resolves its plan. */
+  selectedReportId?: string | null;
+  /** The lens's scope: the project Running work is narrowed to, `?project=`. */
+  lensProject?: string | null;
+  /** The lens's mode, scope and follow, as the address carries them. */
+  lensMode?: 'ended' | null;
+  lensGroup?: 'epic' | null;
+  lensFollow?: boolean;
+  /** The tab of the object column the address names. */
+  objectTab?: string | null;
+  /** The object the address opens in place beside its caller. */
+  openObject?: { kind: string; id: string } | null;
+  /** The node of the plan's phase tree and the file of its changes, as the address names them. */
+  phaseNode?: string | null;
+  changeFile?: string | null;
+  /** Whether the chat stands as a side column, and the turn it scrolls to. */
+  chatOpen?: boolean;
+  chatTurn?: string | null;
 }
 
 /** An ended plan as Ended Work names it, for the plan view it opens. */
@@ -167,6 +201,17 @@ const initialState: RuntimeState = {
   cleanupPreviewItemId: null,
   cleanupHighlightItemId: null,
   overviewFocus: null,
+  selectedReportId: null,
+  lensProject: null,
+  lensMode: null,
+  lensGroup: null,
+  lensFollow: false,
+  objectTab: null,
+  openObject: null,
+  phaseNode: null,
+  changeFile: null,
+  chatOpen: false,
+  chatTurn: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -312,9 +357,37 @@ async function probeExistingPairing(): Promise<PairingProbe> {
   }
 }
 
+/**
+ * The address the bar names, with the root mapped to the start point it is.
+ *
+ * `/` has no route until PLAN-49 registers it, so the address model cannot parse it; the start
+ * rule still needs it as the fillable start the remembered place may fill.
+ *
+ * @returns the address of the bar, or `null` when it names a path the app cannot open
+ */
+function fillableStart(): Address | null {
+  const address = currentAddress();
+  if (address) return address;
+  return window.location.pathname === '/' ? { route: null } : null;
+}
+
 /** Drops the code fragment after the browser is known to be paired. */
 function dropCodeFragment(): void {
-  history.replaceState(null, '', window.location.pathname);
+  // The fragment is not part of the address the app writes, so the pairing code never reaches the
+  // history. The mark of this load was read before this write, so the write never turns a load the
+  // app was opened at into an app-created one.
+  const address = currentAddress();
+  if (address) {
+    writeAddress(address, 'replace');
+  } else {
+    // The start point has no route of its own yet (PLAN-49 registers `/`): the fragment is dropped
+    // and the entry the app leaves carries its mark.
+    window.history.replaceState(
+      { path: window.location.pathname, pmApp: true },
+      '',
+      window.location.pathname,
+    );
+  }
   runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 }
 
@@ -369,32 +442,55 @@ function machineNameOf(status: StatusResponse): string {
 }
 
 /**
- * The route the app opens on for a paired browser.
+ * The one start rule of the app, as a route.
  *
- * A paired browser never lands on the pairing page or the entry: it opens on the overview when
- * work is running or waiting and the explorer otherwise. The onboarding comes first while the
- * machine is not onboarded.
+ * The remembered place fills a mark-less load at `/` or at the bare `/overview`; a full address
+ * opens what it names, and without a place the app opens what waits — until PLAN-49 registers `/`,
+ * the overview while work runs or waits and the projects otherwise. The onboarding comes first
+ * while the machine is not onboarded.
  *
- * @param requested the route the address bar named, if it named one
+ * @param requested the address the bar names, if it names one
  * @param onboarded whether the machine is onboarded
  * @param workRunning whether the machine reports running work or work that waits for the operator
+ * @param place the remembered place
+ * @param facts what the runtime knows about the remembered objects
+ * @param fromOutside whether the load carries no mark of the app
  * @returns the route to open
  */
-export function landingRoute(
-  requested: PathMatch | null,
+export function startRouteFor(
+  requested: Address | null,
   onboarded: boolean,
   workRunning: boolean,
+  place: RememberedPlace,
+  facts: PlaceFacts,
+  fromOutside: boolean,
 ): AppRoute {
-  if (!onboarded) {
-    return 'onboarding';
-  }
-  if (requested?.route === 'onboarding') {
-    return 'onboarding';
-  }
-  if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
-    return requested.route;
-  }
-  return workRunning ? 'overview' : 'projects';
+  const start = startAddress({ fromOutside, requested, onboarded, place, facts });
+  // `/` becomes a route of its own with PLAN-49; until then the start rule's fallback stands.
+  return start.route ?? (workRunning ? 'overview' : 'projects');
+}
+
+/**
+ * What the start needs to know about the remembered place: the work it names and the work of its
+ * project.
+ *
+ * @param summary the projects summary, or `null` when it could not be read
+ * @param place the remembered place
+ * @returns the facts the fall-backs read
+ */
+export function factsOf(summary: ProjectOverviewResponse | null, place: RememberedPlace): PlaceFacts {
+  const projects = summary?.projects ?? [];
+  const project = place.project
+    ? projects.find((entry) => entry.project_id === place.project)
+    : undefined;
+  const projectRuns = project ? hasWork({ projects: [project] }) : true;
+  return {
+    workRunning: hasWork(summary),
+    projectRuns,
+    // The summary names no plan, so a remembered plan opens while its project still runs work and
+    // falls back to the project otherwise.
+    planEnded: projectRuns ? false : undefined,
+  };
 }
 
 /**
@@ -418,19 +514,90 @@ function hasWork(summary: ProjectOverviewResponse | null): boolean {
 /**
  * Opens the operator's start page by the same rule as a first visit.
  *
- * Opens the overview while work runs or waits and the projects otherwise. A route already shown
- * is not pushed again, so the brand click adds no duplicate history entry.
+ * The brand click names no address of its own: the start rule decides, so a click never fills the
+ * remembered place (that is the Running work entry's job). A route already shown is not written
+ * again, so the brand click adds no history entry.
  */
 export async function openStartPage(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
-  const onboarded = get(runtimeStore).isOnboarded;
-  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
-  const target = landingRoute(null, onboarded, hasWork(summary));
+  const state = get(runtimeStore);
+  const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const place = readRememberedPlace();
+  const target = startRouteFor(
+    null,
+    state.isOnboarded,
+    hasWork(summary),
+    place,
+    factsOf(summary, place),
+    false,
+  );
   if (target !== get(runtimeStore).currentRoute) {
-    navigateTo(target);
+    show({ route: target }, 'replace');
   }
+}
+
+/**
+ * Shows an address and writes it to the bare, as the app's own navigation.
+ *
+ * @param address the address to show
+ * @param intent whether the change pushes a history entry or replaces the current one
+ */
+function show(address: Address, intent: WriteIntent): void {
+  applyRoute(address.route ?? 'overview', address);
+  runtimeStore.update((s) => ({
+    ...s,
+    ...fieldsOfAddress(address),
+    ...(address.project ? { selectedProjectId: address.project } : {}),
+  }));
+  // The address is written as it was built: the store carries the selection, not every query key
+  // (the lens scope is not a store field of its own).
+  writeAddress(address, intent);
+}
+
+/**
+ * The store fields an address names, so the bar and the store never disagree.
+ *
+ * @param address the address that was read or written
+ * @returns the fields it sets
+ */
+function fieldsOfAddress(address: Address): Partial<RuntimeState> {
+  return {
+    lensProject: address.project ?? null,
+    lensMode: address.mode ?? null,
+    lensGroup: address.group ?? null,
+    lensFollow: address.follow ?? false,
+    objectTab: address.tab ?? null,
+    openObject: address.open ?? null,
+    phaseNode: address.node ?? null,
+    changeFile: address.file ?? null,
+    chatOpen: address.chat ?? false,
+    chatTurn: address.turn ?? null,
+  };
+}
+
+/**
+ * Opens Running work and fills it from the remembered place, by a push.
+ *
+ * The rail's entry and the phone's bottom bar both call it; the pushed entry carries the app's
+ * mark, so a reload of it stays as it is.
+ */
+export async function openRunningWork(): Promise<void> {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  const summary = await apiClient.getProjects().catch(() => null);
+  const place = readRememberedPlace();
+  show(runningWorkAddress(place, factsOf(summary, place)), 'push');
+}
+
+/**
+ * Opens the lens's own list with nothing selected, by a push: what Up and the breadcrumb's lens
+ * segment do, and PLAN-144 calls it.
+ */
+export function openLensList(): void {
+  show(unfilledLensAddress(), 'push');
 }
 
 /**
@@ -473,6 +640,9 @@ function drainInfoOf(
 }
 
 export async function initRuntime(): Promise<void> {
+  // Whether the app was opened from outside is read before anything writes: dropping a pairing
+  // fragment is a write of this load, and it must not make the load look app-created.
+  const fromOutside = openedFromOutside();
   const stopsAtStart = recoveryStops;
   if (!hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -552,14 +722,32 @@ export async function initRuntime(): Promise<void> {
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
 
     // A person who moved while the reads were in flight stays where they went.
-    const route = navigatedSince(mark)
+    const place = readRememberedPlace();
+    const facts = factsOf(summary, place);
+    const start = startAddress({
+      fromOutside,
+      requested: fillableStart(),
+      onboarded,
+      place,
+      facts,
+    });
+    const navigated = navigatedSince(mark);
+    // The start address is written before any page adopts the bar, so the fill of the remembered
+    // place is what the page reads. A replace, never a push: the entry the app was opened at is
+    // the one it shows.
+    if (!navigated && start.route) {
+      writeAddress(start, 'replace');
+    }
+    const route = navigated
       ? {}
       : {
-          currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-          selectedPlanId: requested?.planId ?? null,
-          selectedEpicId: requested?.epicId ?? null,
-          startProjectId: requested?.projectId ?? null,
-          startEntryId: requested?.entryId ?? null,
+          currentRoute: start.route ?? (facts.workRunning ? 'overview' : 'projects'),
+          ...fieldsOfAddress(start),
+          selectedPlanId: start.planId ?? null,
+          selectedEpicId: start.epicId ?? null,
+          selectedTaskId: start.taskId ?? null,
+          startProjectId: start.projectId ?? null,
+          startEntryId: start.entryId ?? null,
         };
 
     runtimeStore.update((s) => ({
@@ -701,6 +889,24 @@ function handleListenerChanged(data: unknown): void {
  */
 export function announceNavigation(text: string): void {
   runtimeStore.update((s) => ({ ...s, quietNavigationNotice: text }));
+}
+
+/**
+ * Falls back to the parent when the object the address shows was deleted.
+ *
+ * The fallback replaces the address rather than pushing, so the browser's Back never returns to
+ * the deleted object, and the frame's live region says what went away (`web.nav.gone`).
+ *
+ * @param name the object's name, as the notice prints it
+ * @returns `true` when the address moved to the parent
+ */
+export function fallBackFromDeletedObject(name: string): boolean {
+  const parent = parentOf(addressOfState(get(runtimeStore)));
+  if (!parent?.route) return false;
+  applyRoute(parent.route, parent);
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+  announceNavigation(translate(get(currentLocale), 'web.nav.gone', { name }));
+  return true;
 }
 
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
@@ -862,6 +1068,7 @@ export async function pairBrowser(code: string): Promise<void> {
   // deep link opened with the code keeps its route and its identifiers.
   const requested = matchPath(window.location.pathname);
   const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const place = readRememberedPlace();
 
   // The recorded interface language is settled before the shell first renders, so the app never
   // paints one language and then switches under the operator.
@@ -875,8 +1082,15 @@ export async function pairBrowser(code: string): Promise<void> {
     deviceLabel: res.label,
     machineName,
     isOnboarded: onboarded,
-    currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-    selectedPlanId: requested?.planId ?? null,
+    currentRoute: startRouteFor(
+      currentAddress(),
+      onboarded,
+      hasWork(summary),
+      place,
+      factsOf(summary, place),
+      false,
+    ),
+    selectedPlanId: currentAddress()?.planId ?? requested?.planId ?? null,
     selectedEpicId: requested?.epicId ?? null,
     startProjectId: requested?.projectId ?? null,
     startEntryId: requested?.entryId ?? null,
@@ -901,6 +1115,21 @@ export interface NavigationEntry {
 const navigationStack: NavigationEntry[] = [];
 
 /**
+ * The project whose id a route's path carries, if any.
+ *
+ * The designer names the project it shows, the one project page names the selected project, and
+ * every other route that carries a project id is a start.
+ *
+ * @param state the runtime state
+ * @returns the project id, or `null` when the route carries none
+ */
+function projectIdOf(state: RuntimeState): string | null {
+  if (state.currentRoute === 'designer') return state.designerProjectId ?? null;
+  if (state.currentRoute === 'project') return state.selectedProjectId ?? null;
+  return state.startProjectId ?? null;
+}
+
+/**
  * The identifiers the store carries, so a route can be written to the address bar and pushed on
  * the caller's stack without collecting them at every call site.
  *
@@ -908,16 +1137,14 @@ const navigationStack: NavigationEntry[] = [];
  * @returns the identifiers of the route it holds
  */
 export function routeParamsOf(state: RuntimeState): RouteParams {
-  const designer = state.currentRoute === 'designer';
   return {
-    projectId: (designer ? state.designerProjectId : state.startProjectId) ?? undefined,
+    projectId: projectIdOf(state) ?? undefined,
     entryId: state.startEntryId ?? undefined,
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
-    reportPlanId: state.selectedReportDetailPlanId ?? undefined,
     decisionId: state.selectedDecisionId ?? undefined,
-    explorerProjectId: state.selectedProjectId ?? undefined,
+    reportId: state.selectedReportId ?? undefined,
     // The onboarding step is part of the address while the onboarding is the shown route. The view
     // consumes the store's copy once, but the address keeps it so a reload opens the same aspect.
     onboardingStep:
@@ -943,7 +1170,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
           startEntryId: params.entryId ?? null,
         }
       : {}),
-    ...(route === 'plan'
+    // The plan and the task: a task is a level of its own and carries the plan with it.
+    ...(route === 'plan' || route === 'task'
       ? {
           selectedPlanId: params.planId ?? s.selectedPlanId ?? null,
           selectedTaskId: params.taskId ?? null,
@@ -956,16 +1184,53 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // visit to the list clears it so the query does not outlive the detail.
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
     // The decisions route focuses the decision a match opened, if one was named.
-    ...(route === 'decisions' ? { selectedDecisionId: params.decisionId ?? null } : {}),
+    ...(route === 'decisions' || route === 'decision'
+      ? { selectedDecisionId: params.decisionId ?? null }
+      : {}),
+    // One report's own address names the report; the list clears it.
+    ...(route === 'report' ? { selectedReportId: params.reportId ?? null } : {}),
+    ...(route === 'reports' ? { selectedReportId: null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
-    ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
+    ...(route === 'projects' || route === 'project'
+      ? { selectedProjectId: params.projectId ?? params.explorerProjectId ?? null }
+      : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
     ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
   }));
 }
 
 /**
- * Moves to a route and pushes the one left behind on the caller's navigation stack.
+ * The address the store holds: the route and its identifiers, and the query fields the address
+ * carries for the object it shows.
+ *
+ * @param state the runtime state
+ * @returns the address to write
+ */
+export function addressOfState(state: RuntimeState): Address {
+  return {
+    route: state.currentRoute,
+    ...routeParamsOf(state),
+    // Running work's scope is the lens's own query key, not a path id.
+    ...(state.currentRoute === 'overview' && state.lensProject
+      ? { project: state.lensProject }
+      : {}),
+    ...(state.lensMode ? { mode: state.lensMode } : {}),
+    ...(state.lensGroup ? { group: state.lensGroup } : {}),
+    ...(state.lensFollow ? { follow: true } : {}),
+    ...(state.objectTab ? { tab: state.objectTab as Address['tab'] } : {}),
+    ...(state.openObject ? { open: state.openObject as Address['open'] } : {}),
+    ...(state.phaseNode ? { node: state.phaseNode } : {}),
+    ...(state.changeFile ? { file: state.changeFile } : {}),
+    ...(state.chatOpen ? { chat: true } : {}),
+    ...(state.chatTurn ? { turn: state.chatTurn } : {}),
+  };
+}
+
+/**
+ * Moves to a route and writes the address it names.
+ *
+ * The writer decides whether the change pushes or replaces: a change of depth or of lens pushes, a
+ * sibling in the same column replaces.
  *
  * @param route the route to show
  * @param params the identifiers it names, e.g. a plan's id
@@ -976,10 +1241,8 @@ export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
     navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
   }
   applyRoute(route, params);
-  const path = pathForRoute(route, params);
-  if (path) {
-    syncUrl(path, false);
-  }
+  const next = addressOfState(get(runtimeStore));
+  writeAddress(next, intentFor(currentAddress(), next));
 }
 
 /**
@@ -1000,11 +1263,8 @@ export function goBack(): boolean {
     return false;
   }
   applyRoute(previous.route, previous.params);
-  const path = pathForRoute(previous.route, previous.params);
-  if (path) {
-    // The current entry is replaced, so the browser's Back does not lead into a loop.
-    syncUrl(path, true);
-  }
+  // The current entry is replaced, so the browser's Back does not lead into a loop.
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
   return true;
 }
 
@@ -1019,25 +1279,6 @@ export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
 }
 
 /**
- * Puts a path in the address bar without reloading the view.
- *
- * The history API is used directly: every route page mounts the same dispatcher, so a history
- * entry alone moves between views, and `popstate` reads it back.
- *
- * @param path the path to show
- * @param replace `true` to replace the current entry instead of pushing one
- */
-export function syncUrl(path: string, replace: boolean): void {
-  // The address is the same only when path and query both match: a plain path must drop a stale
-  // query (a report's plan, a project in the explorer) rather than leave it in the bar.
-  if (`${window.location.pathname}${window.location.search}` === path) {
-    return;
-  }
-  const method = replace ? 'replaceState' : 'pushState';
-  window.history[method]({ path }, '', path);
-}
-
-/**
  * Shows the designer for a project and keeps the address bar on it without a history entry.
  *
  * The local selector and a refused route change both converge on the project the designer
@@ -1048,32 +1289,39 @@ export function syncUrl(path: string, replace: boolean): void {
  */
 export function replaceDesignerProject(projectId: string | null): void {
   runtimeStore.update((s) => ({ ...s, designerProjectId: projectId }));
-  const path = pathForRoute('designer', { projectId: projectId ?? undefined });
-  if (path) {
-    syncUrl(path, true);
-  }
+  writeAddress({ route: 'designer', projectId: projectId ?? undefined }, 'replace');
 }
 
 /**
  * Takes the route the address bar names, if it names one of the app's routes.
+ *
+ * The whole address is read: the selection, the lens's mode and grouping, the tab, the object
+ * opened in place, the node, the file and the chat, so a reload and the browser's back return the
+ * view exactly as it was.
  *
  * @returns the route taken, or `null` when the path names none
  */
 export function adoptRouteFromLocation(): AppRoute | null {
   const match = matchPath(window.location.pathname);
   if (match) {
+    const address = currentAddress();
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
       // The reports route keeps its plan in the query, so a reload or the browser's back
       // between two reports opens the one the address names.
       selectedReportDetailPlanId:
-        match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
-      // The decisions route focuses the decision its query names, the same way.
-      selectedDecisionId:
-        match.route === 'decisions'
-          ? new URLSearchParams(window.location.search).get('decision')
+        match.route === 'reports'
+          ? (new URLSearchParams(window.location.search).get('plan') ??
+            address?.legacyReportPlanId ??
+            null)
           : null,
+      // One report's own address names the report; the view resolves its plan from the report.
+      selectedReportId: match.reportId ?? null,
+      // The decisions route focuses the decision its query or its path names, the same way.
+      selectedDecisionId: match.decisionId ?? (match.route === 'decisions'
+        ? new URLSearchParams(window.location.search).get('decision')
+        : null),
       // The designer keeps the project it was opened for the same way.
       designerProjectId:
         match.route === 'designer'
@@ -1083,8 +1331,27 @@ export function adoptRouteFromLocation(): AppRoute | null {
       onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
+      selectedTaskId: match.taskId ?? null,
+      // The one project page names its project; Running work's scope and the explorer's old
+      // `?project=` name the same selection.
+      selectedProjectId:
+        match.projectId ??
+        address?.project ??
+        (match.route === 'projects'
+          ? new URLSearchParams(window.location.search).get('project')
+          : null),
       startProjectId: match.projectId ?? s.startProjectId ?? null,
       startEntryId: match.entryId ?? s.startEntryId ?? null,
+      lensMode: address?.mode ?? null,
+      lensGroup: address?.group ?? null,
+      lensFollow: address?.follow ?? false,
+      lensProject: address?.project ?? null,
+      objectTab: address?.tab ?? null,
+      openObject: address?.open ?? null,
+      phaseNode: address?.node ?? null,
+      changeFile: address?.file ?? null,
+      chatOpen: address?.chat ?? false,
+      chatTurn: address?.turn ?? null,
     }));
   }
   return match?.route ?? null;
@@ -1240,7 +1507,14 @@ export async function withdrawConsent(kind: string): Promise<MachineSettingsUpda
 
 export function openPlanView(planId: string, taskId?: string | null): void {
   runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
-  pushRoute('plan', { planId, taskId: taskId ?? undefined });
+  // The plan the operator selected is the object the remembered place keeps.
+  writeRememberedPlace({ ...readRememberedPlace(), planId, epicId: null });
+  // A task is a level of its own and takes the path; a plan without a task keeps the plan path.
+  if (taskId) {
+    pushRoute('task', { planId, taskId });
+    return;
+  }
+  pushRoute('plan', { planId });
 }
 
 /**
@@ -1254,6 +1528,7 @@ export function openEndedPlanView(info: EndedPlanInfo): void {
 }
 
 export function openEpicView(epicId: string): void {
+  writeRememberedPlace({ ...readRememberedPlace(), epicId, planId: null });
   pushRoute('epic', { epicId });
 }
 
@@ -1263,7 +1538,11 @@ export function openEpicView(epicId: string): void {
  * @param planId the plan whose completion report to show
  */
 export function openCompletionReport(planId: string): void {
-  pushRoute('reports', { reportPlanId: planId });
+  // The act knows the plan, not the report's id: the report's own address is written once the view
+  // has resolved that id from the report record. The store keeps the plan across the push, which
+  // a plain visit to the list clears.
+  pushRoute('reports');
+  runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
 }
 
 /**
@@ -1272,7 +1551,7 @@ export function openCompletionReport(planId: string): void {
  * @param projectId the project to show
  */
 export function openProjectInExplorer(projectId: string): void {
-  pushRoute('projects', { explorerProjectId: projectId });
+  pushRoute('project', { projectId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {
@@ -1308,7 +1587,10 @@ export function openOnboardingStep(step: number): void {
   runtimeStore.update((s) => ({ ...s, onboardingStep: step }));
   pushRoute('onboarding');
   // The step travels in the address bar too, so a reload opens the same aspect.
-  syncUrl(`/onboarding?step=${step}`, true);
+  writeAddress(
+    { route: 'onboarding', onboardingStep: step },
+    intentFor(currentAddress(), { route: 'onboarding', onboardingStep: step }),
+  );
 }
 
 /**

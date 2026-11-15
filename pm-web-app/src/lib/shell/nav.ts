@@ -135,9 +135,16 @@ export function activeNavRoute(route: AppRoute): AppRoute {
   switch (route) {
     case 'plan':
     case 'epic':
+    case 'task':
     case 'decomposition':
     case 'start':
       return 'overview';
+    case 'project':
+      return 'projects';
+    case 'decision':
+      return 'decisions';
+    case 'report':
+      return 'reports';
     case 'cleanup':
       return 'system';
     case 'machine-settings':

@@ -524,10 +524,10 @@ describe('PlanView component', () => {
     await fireEvent.click(screen.getByTestId('breadcrumb-project'));
 
     const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('projects');
+    expect(state.currentRoute).toBe('project');
     expect(state.selectedProjectId).toBe('pm-mcp-clients');
-    expect(window.location.pathname).toBe('/projects');
-    expect(window.location.search).toBe('?project=pm-mcp-clients');
+    expect(window.location.pathname).toBe('/projects/pm-mcp-clients');
+    expect(window.location.search).toBe('');
   });
 
   it('opens the process designer for the plan’s project', async () => {
@@ -685,7 +685,8 @@ describe('PlanView component', () => {
     const state = get(runtimeStore);
     expect(state.currentRoute).toBe('reports');
     expect(state.selectedReportDetailPlanId).toBe('fix-relay');
-    expect(window.location.search).toBe('?plan=fix-relay');
+    expect(window.location.pathname).toBe('/reports');
+    expect(window.location.search).toBe('');
   });
 
   it('selects running task over earlier completed task on initial load', async () => {

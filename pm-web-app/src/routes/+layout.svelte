@@ -9,14 +9,14 @@
     initRuntime,
     adoptRouteFromLocation,
     advanceLifecycleEpoch,
+    addressOfState,
     lifecycleEpochOf,
     lifecycleFieldsOf,
-    routeParamsOf,
     stopRuntimeRecovery,
-    syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
-  import { pathForRoute, ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import { ROUTE_TITLES, parseAddress, replaceLegacyAddress, type AppRoute } from '../lib/routes';
+  import { writeAddress } from '../lib/navigation/history';
   import {
     applyTheme,
     readThemeChoice,
@@ -207,9 +207,6 @@
   // The theme this browser chose. `app.html` already applied it before the first paint; the
   // control reads the same choice so the pressed option and the document agree.
   let themeChoice = $state<ThemeChoice>(readThemeChoice());
-  // The first write settles the address bar on the route the store chose; every later one is a
-  // history entry, so the browser's Back returns to the previous view.
-  let addressBarSettled = false;
 
   onMount(() => {
     // Native buttons and the views rendered later get their hover advisory from the observer.
@@ -225,6 +222,16 @@
 
     // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
     adoptRouteFromLocation();
+    // An old address of a moved view is replaced once, when it is opened; pre-1.0 there is no
+    // other compatibility.
+    const legacy = replaceLegacyAddress(
+      `${window.location.pathname}${window.location.search}`,
+    );
+    if (legacy) {
+      const address = parseAddress(legacy);
+      if (address) writeAddress(address, 'replace');
+      adoptRouteFromLocation();
+    }
     const onPop = () => adoptRouteFromLocation();
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));
@@ -255,20 +262,19 @@
   // redeemed first, and only then does the app move on.
   $effect(() => {
     if ($runtimeStore.isInitialized && !devRoute) {
-      syncPath($runtimeStore.currentRoute);
+      syncPath();
     }
   });
 
-  function syncPath(route: AppRoute): void {
+  function syncPath(): void {
     if (typeof window === 'undefined') return;
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path = pathForRoute(route, routeParamsOf($runtimeStore));
-    if (!path) return;
-    // The URL the popstate handler just adopted is already in the address bar; syncUrl leaves it.
-    syncUrl(path, !addressBarSettled);
-    addressBarSettled = true;
+    const address = addressOfState($runtimeStore);
+    // The URL the popstate handler just adopted is already in the address bar; the writer leaves
+    // it, and a write always replaces the entry the view stands on.
+    writeAddress(address, 'replace');
   }
 
   /**
