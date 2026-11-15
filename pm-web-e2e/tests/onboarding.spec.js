@@ -101,7 +101,8 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     const background = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--color-bg-app').trim(),
     );
-    expect(background).toBe('#0E1116');
+    // The catalogue's hex spelling is the formatter's; the token's value is what matters here.
+    expect(background.toUpperCase()).toBe('#0E1116');
   });
 });
 

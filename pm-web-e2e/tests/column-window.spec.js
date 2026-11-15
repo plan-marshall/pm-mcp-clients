@@ -302,7 +302,21 @@ test.describe('The deep chain on the showroom fixture (navigation.adoc#window)',
       await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(normal.start);
       expect((await readShowroomWindow(page)).returnStrip).toBe(false);
 
-      // A peek by `[`: the focus walks left from the object it was returned to, and the press that
+      // Peek at the lens again, then walk right to the object with `]`: a peek that reaches the
+      // object is the object's own window — the strip of the levels hidden to its left and the
+      // object's own width, never a stretched object without a strip.
+      await engine.locator('.gap-strip__mark').first().click();
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(0);
+      for (let step = 0; step < 4; step++) {
+        await page.keyboard.press('BracketRight');
+      }
+      await expect.poll(async () => (await readShowroomWindow(page)).start).toBe(normal.start);
+      const walked = await readShowroomWindow(page);
+      expect(walked.strip).toBe(expected.strip);
+      expect(walked.columns.at(-1)).toBe(expected.object);
+      expect(walked.returnStrip).toBe(false);
+
+      // A peek by `[`: the focus walks left from the object it now stands on, and the press that
       // leaves the window shifts it. The wait is on the key's own effect, never on a timer.
       for (let step = 0; step <= 4 - normal.start; step++) {
         await page.keyboard.press('BracketLeft');
