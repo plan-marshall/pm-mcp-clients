@@ -30,6 +30,9 @@
   import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
+  import ActMenu from '../../../lib/components/ActMenu.svelte';
+  import SegmentedControl from '../../../lib/components/SegmentedControl.svelte';
+  import Toggle from '../../../lib/components/Toggle.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -88,6 +91,36 @@
 
   /** The tab the fixture shows as selected, one per theme, so each list answers its own keyboard. */
   let activeTabs: Record<string, string> = {};
+
+  const LAYERS = [
+    { name: 'sticky', token: '--layer-sticky' },
+    { name: 'bar', token: '--layer-bar' },
+    { name: 'menu', token: '--layer-menu' },
+    { name: 'toast', token: '--layer-toast' },
+    { name: 'dialog', token: '--layer-dialog' },
+  ];
+
+  let segmentedValue: Record<string, string> = { light: 'all', dark: 'all' };
+  let toggleChecked: Record<string, boolean> = { light: false, dark: true };
+  let actMenuOpenState: Record<string, boolean> = { light: true, dark: true };
+
+  $: segmentedOptions = [
+    { id: 'all', label: $t('dev.segmented.all') },
+    { id: 'active', label: $t('dev.segmented.active') },
+    { id: 'completed', label: $t('dev.segmented.completed') },
+  ];
+
+  $: actMenuActs = [
+    { id: 'copy', label: $t('web.common.copy'), icon: 'act.copy', onAct: () => {} },
+    { id: 'save', label: $t('web.common.save'), icon: 'act.save', onAct: () => {} },
+    {
+      id: 'archive',
+      label: $t('control.epic.archive'),
+      disabled: true,
+      disabledReason: $t('dev.disabled_reason'),
+      onAct: () => {},
+    },
+  ];
 
   /** The tabs of the fixture: one count that waits for the operator, one that does not. */
   $: tabs = [
@@ -201,16 +234,13 @@
       <h2 class="dev__theme-title">{$t(`dev.theme.${theme}`)}</h2>
 
       <h3 class="dev__section-title">{$t('dev.section.buttons')}</h3>
-      <div class="dev__row">
-        {#each VARIANTS as variant (variant)}
-          <Button {variant}>{$t(`dev.variant.${variant}`)}</Button>
-        {/each}
-      </div>
-      <div class="dev__row">
-        {#each SIZES as size (size)}
-          <Button variant="primary" {size}>{$t(`dev.size.${size}`)}</Button>
-        {/each}
-      </div>
+      {#each VARIANTS as variant (variant)}
+        <div class="dev__row">
+          {#each SIZES as size (size)}
+            <Button {variant} {size}>{$t(`dev.variant.${variant}`)} {$t(`dev.size.${size}`)}</Button>
+          {/each}
+        </div>
+      {/each}
       <div class="dev__row">
         <Button variant="secondary" icon="act.copy">{$t('web.common.copy')}</Button>
         <Button variant="primary" loading>{$t('web.common.save')}</Button>
@@ -574,6 +604,69 @@
           />
         {/snippet}
       </RowLink>
+
+      <h3 class="dev__section-title">{$t('dev.section.segmented_control')}</h3>
+      <div class="dev__row">
+        <SegmentedControl
+          name="filter-{theme}"
+          options={segmentedOptions}
+          bind:value={segmentedValue[theme]}
+          ariaLabel={$t('dev.section.segmented_control')}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.toggle')}</h3>
+      <div class="dev__row">
+        <Toggle
+          label="{$t('dev.toggle.label')} (off)"
+          checked={false}
+        />
+        <Toggle
+          label="{$t('dev.toggle.label')} (on)"
+          checked={true}
+        />
+        <Toggle
+          label="{$t('dev.toggle.label')} (interactive)"
+          bind:checked={toggleChecked[theme]}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.act_menu')}</h3>
+      <div class="dev__row dev__row--act-menu">
+        <ActMenu
+          items={actMenuActs}
+          label="{$t('dev.section.act_menu')} (down)"
+          open={true}
+        />
+        <ActMenu
+          items={actMenuActs}
+          label="{$t('dev.section.act_menu')} (upward)"
+          above={true}
+          open={true}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.status')} (fixed)</h3>
+      <div class="dev__rows">
+        <div class="dev__row">
+          <StatusLabel tone="success" label={$t('state.task.done')} fixed />
+        </div>
+        <div class="dev__row">
+          <StatusLabel tone="running" label={$t('state.plan.running')} fixed />
+        </div>
+        <div class="dev__row">
+          <StatusLabel tone="attention" label={$t('state.plan.waiting_for_you')} fixed />
+        </div>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.layers')}</h3>
+      <div class="dev__layers-demo">
+        {#each LAYERS as layer}
+          <div class="dev__layer dev__layer--{layer.name}">
+            <code>{layer.token}</code>
+          </div>
+        {/each}
+      </div>
     </section>
   {/each}
 </div>
@@ -709,5 +802,71 @@
 
   .dev__ground--brand-subtle {
     background-color: var(--color-brand-subtle);
+  }
+
+  .dev__row--act-menu {
+    position: relative;
+    min-block-size: 200px;
+    padding-block: var(--space-4);
+    align-items: flex-start;
+  }
+
+  .dev__layers-demo {
+    position: relative;
+    block-size: 140px;
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+
+  .dev__layer {
+    position: absolute;
+    inline-size: 160px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dev__layer--sticky {
+    inset-block-start: 16px;
+    inset-inline-start: 16px;
+    z-index: var(--layer-sticky);
+    background-color: var(--color-bg-subtle);
+  }
+
+  .dev__layer--bar {
+    inset-block-start: 32px;
+    inset-inline-start: 56px;
+    z-index: var(--layer-bar);
+    background-color: var(--color-bg-surface);
+  }
+
+  .dev__layer--menu {
+    inset-block-start: 48px;
+    inset-inline-start: 96px;
+    z-index: var(--layer-menu);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .dev__layer--toast {
+    inset-block-start: 64px;
+    inset-inline-start: 136px;
+    z-index: var(--layer-toast);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .dev__layer--dialog {
+    inset-block-start: 80px;
+    inset-inline-start: 176px;
+    z-index: var(--layer-dialog);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+    border-color: var(--color-brand);
   }
 </style>
