@@ -665,13 +665,16 @@ class IntentContractTest {
         void failsClosed() {
             var implement = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,
                     List.of(new TokenBucket("0–1x", 0.0, 1.0, 8, 0)));
+            // The list stands outside the lambda: the assertion verifies the constructor alone.
+            var roles = List.of(implement);
+            var duplicated = List.of(implement, implement);
 
             assertThrows(IllegalArgumentException.class,
-                    () -> new OverSizeDistributionsResource("pm-mcp-clients", List.of(implement, implement)));
+                    () -> new OverSizeDistributionsResource("pm-mcp-clients", duplicated));
             assertThrows(IllegalArgumentException.class,
-                    () -> new OverSizeDistributionsResource("other-project", List.of(implement)));
+                    () -> new OverSizeDistributionsResource("other-project", roles));
             assertThrows(IllegalArgumentException.class,
-                    () -> new OverSizeDistributionsResource(" ", List.of(implement)));
+                    () -> new OverSizeDistributionsResource(" ", roles));
             assertThrows(JsonFormatException.class,
                     () -> OverSizeDistributionsResource.fromJson("{\"project_id\":\"p\",\"roles\":[]}"));
         }
