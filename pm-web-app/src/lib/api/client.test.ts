@@ -2699,7 +2699,7 @@ describe('ApiClient intent and outline records', () => {
     });
   });
 
-  it('reads the over_size distribution with its multiple and its buckets', async () => {
+  it('reads the over_size distributions of every role, with their multiples and buckets', async () => {
     // Arrange
     answer(served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
 
@@ -2709,14 +2709,47 @@ describe('ApiClient intent and outline records', () => {
     // Assert
     expect(record).toEqual({
       project_id: 'pm-mcp-clients',
-      role: 'implement',
-      current_multiple: 3,
-      proposed_multiple: 2,
-      buckets: [
-        { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
-        { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
-        { label: '2-3x', from_multiple: 2, to_multiple: 3, task_count: 3, flagged_tasks: 3 },
-        { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 4, flagged_tasks: 4 },
+      distributions: [
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'implement',
+          current_multiple: 3,
+          proposed_multiple: 2,
+          buckets: [
+            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
+            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
+            { label: '2-3x', from_multiple: 2, to_multiple: 3, task_count: 3, flagged_tasks: 3 },
+            {
+              label: '3x and more',
+              from_multiple: 3,
+              to_multiple: 6,
+              task_count: 4,
+              flagged_tasks: 4,
+            },
+          ],
+        },
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'module-tester',
+          current_multiple: 3,
+          buckets: [
+            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 6, flagged_tasks: 0 },
+            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 2, flagged_tasks: 0 },
+            {
+              label: '3x and more',
+              from_multiple: 3,
+              to_multiple: 6,
+              task_count: 1,
+              flagged_tasks: 0,
+            },
+          ],
+        },
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'architecture',
+          current_multiple: 3,
+          buckets: [],
+        },
       ],
     });
   });
@@ -2751,7 +2784,7 @@ describe('ApiClient intent and outline records', () => {
     ]);
   });
 
-  it('reads a distribution the runtime serves without a proposal, as the mock does', async () => {
+  it('reads distributions the runtime serves without a proposal, as the mock does', async () => {
     // Arrange: the fully-onboarded scenario serves no proposed multiple
     answer(
       served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'),
@@ -2761,9 +2794,10 @@ describe('ApiClient intent and outline records', () => {
     const record = await client.getOverSize('pm-mcp-clients');
 
     // Assert
-    expect(record?.proposed_multiple).toBeUndefined();
-    expect(record?.buckets).toHaveLength(4);
-    expect(record?.buckets[0]).toEqual({
+    const implement = record?.distributions[0];
+    expect(implement?.proposed_multiple).toBeUndefined();
+    expect(implement?.buckets).toHaveLength(4);
+    expect(implement?.buckets[0]).toEqual({
       label: '0-1x',
       from_multiple: 0,
       to_multiple: 1,
