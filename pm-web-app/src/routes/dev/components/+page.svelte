@@ -44,6 +44,15 @@
   import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
   import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
+  import TextField from '../../../lib/components/TextField.svelte';
+  import TextArea from '../../../lib/components/TextArea.svelte';
+  import NumberField from '../../../lib/components/NumberField.svelte';
+  import SecretField from '../../../lib/components/SecretField.svelte';
+  import CodeField from '../../../lib/components/CodeField.svelte';
+  import SelectField from '../../../lib/components/SelectField.svelte';
+  import RadioGroup from '../../../lib/components/RadioGroup.svelte';
+  import CheckField from '../../../lib/components/CheckField.svelte';
+  import CheckGroup from '../../../lib/components/CheckGroup.svelte';
   import { LAYER_TOKENS } from '../../../styles/layers';
 
   /**
@@ -577,7 +586,7 @@
       {#snippet composeFooter()}
         {$t('dev.compose.counter', { count: 0, limit: COMPOSE_LIMIT })}
       {/snippet}
-      <div class="dev__stack">
+      <div class="dev__stack" data-testid="compose-fixture">
         <Compose
           label={$t('dev.compose.label')}
           placeholder={$t('dev.compose.placeholder')}
@@ -602,7 +611,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.form_status')}</h3>
-      <div class="dev__stack">
+      <div class="dev__stack" data-testid="form-status-fixture">
         {#each FORM_STATUSES as status (status.tone)}
           <FormStatus tone={status.tone} message={$t(status.key)} />
         {/each}
@@ -650,7 +659,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.marker')}</h3>
-      <div class="dev__row">
+      <div class="dev__row" data-testid="marker-fixture">
         {#each MARKERS as kind (kind)}
           <Marker {kind} />
         {/each}
@@ -682,7 +691,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.toggle')}</h3>
-      <div class="dev__row">
+      <div class="dev__row" data-testid="toggle-fixture">
         <Toggle
           label="{$t('dev.toggle.label')} (off)"
           icon="act.favourite"
@@ -781,6 +790,146 @@
         </Card>
         <Card>
           <BuilderCheckList check={builderCheck} />
+        </Card>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.fields')}</h3>
+      <div class="dev__grid" data-testid="fields-fixture">
+        <Card title={$t('dev.field.rest')}>
+          <div class="dev__stack">
+            <TextField label={$t('dev.field.sample_label')} hint={$t('dev.field.sample_hint')} />
+            <TextArea label={$t('dev.field.sample_label')} hint={$t('dev.field.sample_hint')} optional />
+            <NumberField label={$t('dev.field.sample_label')} unit="days" allowNever value={30} />
+            <SecretField label={$t('common.field.token')} />
+            <CodeField label={$t('web.pair.page.code')} />
+            <SelectField
+              label={$t('dev.field.sample_label')}
+              options={[
+                { value: '1', label: 'Option 1' },
+                { value: '2', label: 'Option 2' },
+                { value: '3', label: 'Option 3' },
+              ]}
+              value="1"
+            />
+            <CheckField label={$t('dev.field.sample_label')} />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.filled')}>
+          <div class="dev__stack">
+            <TextField label={$t('dev.field.sample_label')} value="sample/path/checkout" mono />
+            <TextArea label={$t('dev.field.sample_label')} value="Multiple lines of text entered here." />
+            <NumberField label={$t('dev.field.sample_label')} unit="days" allowNever value={null} />
+            <SecretField label={$t('common.field.token')} value="super-secret-token" />
+            <CodeField label={$t('web.pair.page.code')} value="KXQB-MRTN" complete />
+            <RadioGroup
+              legend={$t('dev.field.sample_label')}
+              name={`radio-cards-${theme}`}
+              variant="card"
+              options={[
+                { value: 'opt1', label: 'Standard', description: 'Default selection' },
+                { value: 'opt2', label: 'Enhanced', marker: 'recommended', description: 'Recommended choice' },
+              ]}
+              value="opt2"
+            />
+            <CheckGroup
+              legend={$t('dev.field.sample_label')}
+              variant="card"
+              options={[
+                { value: 'c1', label: 'Item 1' },
+                { value: 'c2', label: 'Item 2', marker: 'recommended' },
+              ]}
+              values={['c1', 'c2']}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.invalid')}>
+          <div class="dev__stack">
+            <TextField
+              label={$t('dev.field.sample_label')}
+              value="bad-value"
+              error={$t('dev.field.sample_error')}
+            />
+            <TextArea
+              label={$t('dev.field.sample_label')}
+              value="bad input"
+              error={$t('dev.field.sample_error')}
+            />
+            <NumberField
+              label={$t('dev.field.sample_label')}
+              unit="MB"
+              value={9999}
+              error={$t('dev.field.sample_error')}
+            />
+            <CodeField
+              label={$t('web.pair.page.code')}
+              value="INVALID"
+              error={$t('dev.field.sample_error')}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.disabled')}>
+          <div class="dev__stack">
+            <TextField
+              label={$t('dev.field.sample_label')}
+              value="locked-value"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <TextArea
+              label={$t('dev.field.sample_label')}
+              value="locked text"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <SecretField
+              label={$t('common.field.token')}
+              value="locked"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <SelectField
+              label={$t('dev.field.sample_label')}
+              options={[{ value: '1', label: 'Locked' }]}
+              value="1"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <RadioGroup
+              legend={$t('dev.field.sample_label')}
+              name={`radio-disabled-${theme}`}
+              options={[
+                { value: 'd1', label: 'Choice 1', disabled: true, disabledReason: $t('dev.disabled_reason') },
+              ]}
+              disabled
+            />
+            <CheckField
+              label={$t('dev.field.sample_label')}
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.demo_form')}>
+          <form
+            class="dev__stack"
+            onsubmit={(e) => {
+              e.preventDefault();
+            }}
+          >
+            <TextField label={$t('dev.field.sample_label')} placeholder={$t('dev.field.sample_placeholder')} />
+            <TextArea label={$t('dev.field.sample_label')} placeholder={$t('dev.field.reason_placeholder')} />
+            <FormStatus message={$t('common.field.reason_required')} tone="danger" />
+            <div class="dev__row dev__row--end">
+              <Button type="button" variant="ghost">{$t('web.common.cancel')}</Button>
+              <Button type="submit" variant="primary" disabled disabledReason={$t('common.field.reason_required')}>
+                {$t('common.action.save')}
+              </Button>
+            </div>
+          </form>
         </Card>
       </div>
     </section>
