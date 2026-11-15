@@ -197,9 +197,10 @@ class PlanChangesContractTest {
 
         @Test
         @DisplayName("an unknown state is refused, never read as an empty list")
-        void unknownStateRefused() {
-            assertThrows(IOException.class,
-                    () -> PlanChangesAnswer.fromMap(JsonTree.asObject(JsonTree.parse("{\"state\":\"gone\"}"))));
+        void unknownStateRefused() throws Exception {
+            var map = JsonTree.asObject(JsonTree.parse("{\"state\":\"gone\"}"));
+
+            assertThrows(IOException.class, () -> PlanChangesAnswer.fromMap(map));
         }
     }
 

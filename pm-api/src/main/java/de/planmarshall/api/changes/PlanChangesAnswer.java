@@ -73,9 +73,6 @@ public sealed interface PlanChangesAnswer
      *                     three closed values (fail-closed)
      */
     static PlanChangesAnswer fromMap(Map<String, Object> map) throws IOException {
-        if (map == null) {
-            throw new JsonFormatException("A plan's changes are a JSON object");
-        }
         var state = JsonTree.string(map, FIELD_STATE);
         if (!CAPTURED.equals(state) && !NOT_CAPTURED.equals(state) && !UNAVAILABLE.equals(state)) {
             throw new JsonFormatException("Unknown state of a plan's changes: " + state);

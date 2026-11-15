@@ -26,7 +26,7 @@ public record PlanChangesUnavailable(String planId, String reason) implements Pl
 
     public PlanChangesUnavailable {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(reason, FIELD_REASON);
     }
 
     @Override

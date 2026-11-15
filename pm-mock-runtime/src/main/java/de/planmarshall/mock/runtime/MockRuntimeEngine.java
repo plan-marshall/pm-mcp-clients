@@ -521,7 +521,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String SUFFIX_PLAN_CHANGES = "/changes";
     private static final String SUFFIX_PLAN_CHANGES_FILE = "/changes/file";
     private static final String QUERY_PATH = "path";
-    private static final String KEY_HEAD = "head";
+    private static final String PATH_RUNTIME_FACTS = PATH_FACTS + "runtime.";
+    private static final String PATH_PLAN_CHANGES = PATH_RUNTIME_FACTS + FIXTURE_PLAN_CHANGES;
+    private static final String PATH_PLAN_CHANGES_CONTENTS = PATH_PLAN_CHANGES + "." + FIXTURE_CONTENTS;
     private static final String FIXTURE_REPORTS = "reports";
     private static final String FIXTURE_COMPLETION_REPORTS = "completion_reports";
     private static final String FIXTURE_PROJECTS = "projects";
@@ -1380,7 +1382,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             planChanges.clear();
             planChangeFiles.clear();
             for (var entry : fixtureObjects(startRuntimeFixture(), FIXTURE_PLAN_CHANGES,
-                    "facts.runtime." + FIXTURE_PLAN_CHANGES)) {
+                    PATH_PLAN_CHANGES)) {
                 seedPlanChanges(entry);
             }
         }
@@ -1393,15 +1395,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @param entry the fixture entry
      */
     private void seedPlanChanges(Map<String, Object> entry) {
-        var answer = readFixture(() -> PlanChangesAnswer.fromMap(entry),
-                "facts.runtime." + FIXTURE_PLAN_CHANGES);
+        var answer = readFixture(() -> PlanChangesAnswer.fromMap(entry), PATH_PLAN_CHANGES);
         planChanges.put(answer.planId(), answer);
         var files = new LinkedHashMap<String, PlanChangeFile>();
         if (answer instanceof PlanChangesCaptured) {
-            for (var content : fixtureObjects(entry, FIXTURE_CONTENTS,
-                    "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS)) {
-                var file = readFixture(() -> PlanChangeFile.fromMap(content),
-                        "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS);
+            for (var content : fixtureObjects(entry, FIXTURE_CONTENTS, PATH_PLAN_CHANGES_CONTENTS)) {
+                var file = readFixture(() -> PlanChangeFile.fromMap(content), PATH_PLAN_CHANGES_CONTENTS);
                 files.put(file.path(), file);
             }
         }
@@ -3894,15 +3893,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
         }
         for (var changes : fixtureObjects(fixture, FIXTURE_PLAN_CHANGES)) {
-            var answer = readFixture(() -> PlanChangesAnswer.fromMap(changes),
-                    "facts.runtime." + FIXTURE_PLAN_CHANGES);
+            var answer = readFixture(() -> PlanChangesAnswer.fromMap(changes), PATH_PLAN_CHANGES);
             if (!(answer instanceof PlanChangesCaptured)) {
                 continue;
             }
-            for (var content : fixtureObjects(changes, FIXTURE_CONTENTS,
-                    "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS)) {
-                readFixture(() -> PlanChangeFile.fromMap(content),
-                        "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS);
+            for (var content : fixtureObjects(changes, FIXTURE_CONTENTS, PATH_PLAN_CHANGES_CONTENTS)) {
+                readFixture(() -> PlanChangeFile.fromMap(content), PATH_PLAN_CHANGES_CONTENTS);
             }
         }
         for (var beingAdded : fixtureObjects(fixture, FIXTURE_BEING_ADDED)) {
@@ -7808,13 +7804,23 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (PlanChangeCapturedEvent.EVENT_NAME.equals(event)) {
             return applyCapturedChange(data);
         }
-        if (!(DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
-                || DECISION_CLOSED.equals(event))) {
-            return null;
+        if (DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
+                || DECISION_CLOSED.equals(event)) {
+            applyDecisionEffect(event, JsonTree.asObject(data));
         }
-        var payload = JsonTree.asObject(data);
+        return null;
+    }
+
+    /**
+     * Applies a broadcast decision event: an opened decision joins the open ones, an answer or a
+     * close removes it, and the console's badge therefore follows.
+     *
+     * @param event   the event name
+     * @param payload the event payload, or {@code null} when it is not an object
+     */
+    private void applyDecisionEffect(String event, @Nullable Map<String, Object> payload) {
         if (payload == null) {
-            return null;
+            return;
         }
         var inner = JsonTree.object(payload, "decision");
         if (inner == null) {
@@ -7829,7 +7835,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         }
         if (id == null) {
-            return null;
+            return;
         }
         if (DECISION_OPENED.equals(event)) {
             try {
@@ -7850,7 +7856,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 openDecisions.remove(id);
             }
         }
-        return null;
     }
 
     /**

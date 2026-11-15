@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,7 @@ import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.process.ActivityEntry;
@@ -108,9 +110,28 @@ class PlanChangesScenarioTest {
 
     private static String scenarioJson() throws IOException {
         try (var in = PlanChangesScenarioTest.class.getClassLoader().getResourceAsStream(SCENARIO_RESOURCE)) {
-            assertTrue(in != null, "the running-work scenario is on the classpath");
+            assertNotNull(in, "the running-work scenario is on the classpath");
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
+    }
+
+    /**
+     * @param representation the project detail's representation
+     * @param planId         the plan to find
+     * @return the plan's row
+     */
+    private static Map<String, Object> planOf(Map<String, Object> representation, String planId) {
+        var rows = JsonTree.asArray(representation.get("plans"));
+        if (rows == null) {
+            throw new AssertionError("the project detail lists no plans");
+        }
+        for (var row : rows) {
+            var plan = JsonTree.asObject(row);
+            if (plan != null && planId.equals(JsonTree.string(plan, "plan_id"))) {
+                return plan;
+            }
+        }
+        throw new AssertionError("no row for " + planId + " in the project detail");
     }
 
     @Nested
@@ -405,13 +426,15 @@ class PlanChangesScenarioTest {
         @DisplayName("refuses a scenario whose plan's size of change is no measurement")
         void refusesAnInvalidSize() throws Exception {
             var valid = scenarioJson();
-
             // Only the project-detail rows: they carry a plan's size but no codec decodes them, so
             // the load's own size collection is the decoder this test exercises.
-            var negative = valid.replace("\"off_track_signal\": \"repeating\",\n            \"change\": {\n"
-                    + "              \"files\": 12,\n              \"insertions\": 340,",
-                    "\"off_track_signal\": \"repeating\",\n            \"change\": {\n"
-                            + "              \"files\": 12,\n              \"insertions\": -340,");
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var project = JsonTree.object(JsonTree.object(root, "routes"),
+                    "GET /api/v1/projects/pm-mcp-clients");
+            var change = JsonTree.object(planOf(JsonTree.object(project, "representation"), FIX_RELAY),
+                    "change");
+            change.put("insertions", new JsonNumber("-340"));
+            var negative = JsonTree.write(root);
             assertNotEquals(valid, negative, "the fixture carries the size the test makes invalid");
 
             var refused = assertThrows(ScenarioValidationException.class,

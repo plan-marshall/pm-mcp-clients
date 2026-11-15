@@ -52,8 +52,8 @@ public record PlanChangedFile(
     private static final String FIELD_UNPLANNED = "unplanned";
 
     public PlanChangedFile {
-        Objects.requireNonNull(path, "path");
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(path, FIELD_PATH);
+        Objects.requireNonNull(status, FIELD_STATUS);
         if (added < 0 || removed < 0) {
             throw new IllegalArgumentException("A count of changed lines is never negative");
         }
