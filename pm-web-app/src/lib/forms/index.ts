@@ -39,14 +39,14 @@ export function handleInlineEditKeyDown(e: KeyboardEvent, onCancel: () => void):
   }
 }
 
-export interface FieldConfig<T = any> {
+export interface FieldConfig<T = unknown> {
   initial: T;
   required?: boolean;
   requiredReason?: string;
   validate?: (value: T) => string | null | undefined;
 }
 
-export interface FormConfig<T extends Record<string, any>> {
+export interface FormConfig<T extends Record<string, unknown>> {
   fields: {
     [K in keyof T]: FieldConfig<T[K]>;
   };
@@ -61,29 +61,29 @@ export interface FormStatusResult {
 /**
  * Manages form state, blur checking, required-empty reason, and first invalid focus.
  */
-export function createForm<T extends Record<string, any>>(config: FormConfig<T>) {
+export function createForm<T extends Record<string, unknown>>(config: FormConfig<T>) {
   const fields = config.fields;
   const values = {} as T;
   const errors: Record<string, string | null> = {};
 
   for (const [key, fieldConfig] of Object.entries(fields)) {
-    values[key as keyof T] = (fieldConfig as FieldConfig).initial;
+    values[key as keyof T] = (fieldConfig as FieldConfig<T[keyof T]>).initial;
   }
 
-  function validateFieldValue(key: string, val: any): string | null {
+  function validateFieldValue(key: string, val: unknown): string | null {
     const f = fields[key as keyof T];
     if (!f) return null;
     if (f.required && (val === null || val === undefined || (typeof val === 'string' && val.trim() === ''))) {
       return f.requiredReason ?? 'Required.';
     }
     if (f.validate) {
-      return f.validate(val) ?? null;
+      return (f.validate as (value: unknown) => string | null | undefined)(val) ?? null;
     }
     return null;
   }
 
-  function onFieldInput(field: keyof T & string, val: any): void {
-    values[field] = val;
+  function onFieldInput(field: keyof T & string, val: unknown): void {
+    values[field] = val as T[keyof T & string];
     if (errors[field]) {
       const err = validateFieldValue(field, val);
       if (!err) {

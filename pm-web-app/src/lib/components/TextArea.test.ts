@@ -1,7 +1,6 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render } from '@testing-library/svelte';
 import TextArea from './TextArea.svelte';
 import { styleOf } from '../../test/templateStyle';
 

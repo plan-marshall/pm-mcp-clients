@@ -1,9 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import CheckGroup from './CheckGroup.svelte';
-import { styleOf } from '../../test/templateStyle';
 
 describe('CheckGroup', () => {
   const options = [
