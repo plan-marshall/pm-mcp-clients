@@ -44,6 +44,7 @@
   import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
   import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
+  import DemoFormFixture from '../../../lib/dev/DemoFormFixture.svelte';
   import TextField from '../../../lib/components/TextField.svelte';
   import TextArea from '../../../lib/components/TextArea.svelte';
   import NumberField from '../../../lib/components/NumberField.svelte';
@@ -914,22 +915,7 @@
         </Card>
 
         <Card title={$t('dev.field.demo_form')}>
-          <form
-            class="dev__stack"
-            onsubmit={(e) => {
-              e.preventDefault();
-            }}
-          >
-            <TextField label={$t('dev.field.sample_label')} placeholder={$t('dev.field.sample_placeholder')} />
-            <TextArea label={$t('dev.field.sample_label')} placeholder={$t('dev.field.reason_placeholder')} />
-            <FormStatus message={$t('common.field.reason_required')} tone="danger" />
-            <div class="dev__row dev__row--end">
-              <Button type="button" variant="ghost">{$t('web.common.cancel')}</Button>
-              <Button type="submit" variant="primary" disabled disabledReason={$t('common.field.reason_required')}>
-                {$t('common.action.save')}
-              </Button>
-            </div>
-          </form>
+          <DemoFormFixture />
         </Card>
       </div>
     </section>
