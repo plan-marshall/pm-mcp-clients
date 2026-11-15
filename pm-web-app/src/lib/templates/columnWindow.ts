@@ -16,7 +16,9 @@
  *
  * A peek — a mark of the gap strip selected — starts the window at the peeked level and stretches
  * the rightmost visible column into the room the strip frees; the levels then hidden on the right
- * are represented by a strip of marks at the right edge.
+ * are represented by a strip of marks at the right edge. A peek that leaves no level to the right
+ * is the object's own window: it keeps the strip of the levels hidden to its left and its own
+ * width, and stands no return strip.
  */
 
 /** The narrowest a list column may be. */

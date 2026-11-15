@@ -199,7 +199,8 @@ function expectedShowroomWindow(container) {
     }
   }
   if (220 + 480 + 44 <= content) {
-    return { content, columns: 2, strip: 44, list: 220, object: 480 };
+    const list = Math.min(320, content - 44 - 480);
+    return { content, columns: 2, strip: 44, list, object: content - 44 - list };
   }
   return { content, columns: 1, strip: 0, list: 0, object: content };
 }
@@ -210,7 +211,7 @@ function expectedShowroomWindow(container) {
  *
  * @param {import('@playwright/test').Page} page the browser page
  * @returns {Promise<{container: number, start: number, columns: number[], strip: number,
- *   returnStrip: boolean}>}
+ *   returnStripWidth: number, returnStrip: boolean}>}
  */
 async function readShowroomWindow(page) {
   return page.evaluate(() => {

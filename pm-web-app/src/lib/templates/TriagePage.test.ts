@@ -5,7 +5,6 @@ import { get } from 'svelte/store';
 import fs from 'node:fs';
 import path from 'node:path';
 import TriagePageFixture from '../../test/fixtures/TriagePageFixture.svelte';
-import ConfirmDialog from '../components/ConfirmDialog.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 import { contentWidth, windowFor } from './columnWindow';
@@ -490,17 +489,21 @@ describe('the gap strip, the peek, the focus and the keys', () => {
   });
 
   it('puts no transformed ancestor above the phone overlay', async () => {
-    render(TriagePageFixture, {
-      props: {
-        levels: LEVELS,
-        label: 'Levels',
-        bodies: BODIES,
-        objectBody: 'Object body',
-        sideBody: 'The chat',
-        sideOpen: true,
-      },
-    });
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
     reportBox(screen.getByTestId('triage-page'), 390, 800);
+    await tick();
+    expect(screen.queryByTestId('side-column')).toBeNull();
+
+    // The chat is opened at the phone width: it takes the screen as a fixed overlay.
+    await rendered.rerender({ ...props, sideOpen: true });
     await tick();
 
     const overlay = screen.getByTestId('side-column');
@@ -509,8 +512,10 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     // jsdom lays nothing out, so the stylesheet is the load-bearing witness: the slide animates the
     // columns, never the group that holds the overlay, and a computed read adds the intent.
     const style = styleOf(SOURCE);
-    expect(ruleOf(style, '.triage-page__window')).not.toContain('animation');
-    expect(ruleOf(style, '.triage-page__window')).not.toContain('transform');
+    const windowRule = ruleOf(style, '.triage-page__window');
+    expect(windowRule).not.toBe('');
+    expect(windowRule).not.toContain('animation');
+    expect(windowRule).not.toContain('transform');
 
     const ancestors: HTMLElement[] = [];
     for (
@@ -522,10 +527,8 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     }
     expect(ancestors.length).toBeGreaterThan(0);
     for (const ancestor of ancestors) {
-      expect(
-        getComputedStyle(ancestor).transform === 'none' ||
-          getComputedStyle(ancestor).transform === '',
-      ).toBe(true);
+      const transform = getComputedStyle(ancestor).transform;
+      expect(transform === 'none' || transform === '').toBe(true);
     }
   });
 
@@ -543,6 +546,11 @@ describe('the gap strip, the peek, the focus and the keys', () => {
 
       expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
       expect(document.querySelector('.triage-page__column--shift')).toBeNull();
+      const reduced = styleOf(SOURCE).slice(
+        styleOf(SOURCE).indexOf('@media (prefers-reduced-motion: reduce)'),
+      );
+      expect(reduced).toContain('animation: none');
+      expect(reduced).toContain('transition: none');
     } finally {
       window.matchMedia = original;
     }
@@ -680,19 +688,10 @@ describe('the side column of the chat', () => {
     reportBox(screen.getByTestId('triage-page'), 1048, 800);
     await tick();
 
-    const dialogProps = {
-      open: true,
-      title: 'Delete the plan',
-      consequences: ['Its history goes too'],
-      actionLabel: 'Delete',
-      cancelLabel: 'Keep it',
-    };
-    const dialog = render(ConfirmDialog, { props: dialogProps });
-    await fireEvent.keyDown(screen.getByTestId('confirm-dialog'), { key: 'Escape' });
-    expect(onHideSide).not.toHaveBeenCalled();
-    await dialog.rerender({ ...dialogProps, open: false });
-
-    // A widget of the page that marks the key handled, and lets it bubble.
+    // An open ConfirmDialog also keeps the key, but by stopping it at the window's capture phase
+    // (`Dialog.svelte`), so it never reaches this template's group at all: no assertion here can
+    // tell that stop from this guard. The witness is a widget that marks the key handled and lets
+    // it bubble, which is what separates a handled Escape from a free one.
     const menu = document.createElement('button');
     menu.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {

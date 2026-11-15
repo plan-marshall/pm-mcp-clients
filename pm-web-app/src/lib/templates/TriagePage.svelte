@@ -186,10 +186,11 @@
     previousChain = chain;
   });
 
-  // A window of one column has no strip and cannot peek, so a peek is dropped there: widening the
-  // container later shows the object's window again rather than the level peeked at before.
+  // A window of one column has no strip and cannot peek, so a peek is dropped there; and a peek the
+  // window does not render — one that ends at the object, or one a wider window no longer holds — is
+  // dropped too. Widening or narrowing again then shows the object's window rather than a stale peek.
   $effect(() => {
-    if (peek !== null && layout.columns <= 1) {
+    if (peek !== null && (layout.columns <= 1 || !layout.peek)) {
       peek = null;
     }
   });
@@ -310,7 +311,6 @@
     announce(next);
   }
 
-  /** The class that replays a shift once; it is dropped again when the animation ends. */
   /** Whether a shift is being slid right now. */
   let shifting = $state(false);
 
@@ -335,15 +335,24 @@
     }
     const first = slidStart === -1;
     slidStart = start;
-    if (first || reducedMotion()) {
+    if (first || reducedMotion() || layout.columns === 0) {
+      // A window without a column has nothing to slide, and its latch must not stay set: the
+      // columns it renders once it returns would otherwise mount mid-slide.
+      shifting = false;
       return;
     }
     shifting = true;
   });
 
-  /** Ends the slide of a shift, so the next one replays the animation from its start. */
-  function onAnimationEnd(): void {
-    shifting = false;
+  /**
+   * Ends the slide of a shift, so the next one replays the animation from its start.
+   *
+   * @param event the animation's end, which a descendant's own animation also raises
+   */
+  function onAnimationEnd(event: AnimationEvent): void {
+    if (event.target === event.currentTarget) {
+      shifting = false;
+    }
   }
 
   /** Whether the chat held the space at the last update, so a takeover is seen once. */

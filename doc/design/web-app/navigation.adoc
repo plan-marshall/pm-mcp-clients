@@ -161,7 +161,7 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 
 * *When levels are hidden on the left*, a narrow strip at the left edge shows them, from the lens down, as stacked `KindMark`s with their names visible — never as a tooltip only. The strip is a group of buttons (`role="group"`, named _Hidden levels_), each with the level's kind and name as its accessible name.
 * *Marks only*: where the window shows the strip of marks (`1024 px`, rail expanded), the last button of the strip, _Names_, opens a popover that lists the hidden levels with their names, each one step.
-* *Selecting a mark brings that level back into view* (a _peek_): the window moves to start at that level, the rightmost visible column stretches to fill the window, and a strip of marks at the right edge stands for the levels now hidden on the right; selecting it returns the window to the object. A peek changes no selection, no address and no history, and the next selection, Up or breadcrumb ends it.
+* *Selecting a mark brings that level back into view* (a _peek_): the window moves to start at that level, the rightmost visible column stretches to fill the window, and a strip of marks at the right edge stands for the levels now hidden on the right; selecting it returns the window to the object. A peek that leaves no level to the right of the window is not a peek but the object's own window: it keeps the strip of the levels hidden to its left and the object's own width, and it stands no return strip. A peek changes no selection, no address and no history, and the next selection, Up or breadcrumb ends it. A window of one column cannot peek, so a peek ends when the container narrows to one column.
 * *With one column there is no strip*: Up and the breadcrumb lead to the levels before it.
 * *When a side column takes the only column* (<<side-columns>>), the object returns through the chat head's _Hide the chat_, not through a strip.
 * *Motion*: shifting the window slides its columns briefly (`--duration-base`) and does not move at all where the person asked for reduced motion.
@@ -256,7 +256,8 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 |===
 
 * *After every window shift* the focus moves to the heading of the column that is now in view, and the move is announced in the frame's polite live region (`Fix Relay Transport, plan`).
-* *The focus never falls to the page*: when the column that holds it slides out, it moves to the heading of the nearest visible column first.
+* *The focus never falls to the page*: when the column that holds it slides out, it moves to the heading of the nearest visible column first, and when the chat takes the space the focus moves into the chat and returns to the column it left when the chat hides.
+* *Escape hides the chat from inside the template*: on both templates it is handled within the template's own group and leaves an Escape that the page's open dialog or menu already handled (`preventDefault`) to that widget, so a key meant for a dialog is never also the chat's.
 * *Hidden columns are out of the tab order and the accessibility tree*: they are not rendered, not only moved out of sight.
 
 [#phone]
@@ -373,7 +374,7 @@ The kinds' words are `common.kind.*` (link:components-tags.adoc#kind-mark[Tags a
 The design of this document was settled by the operator's review of 2026-11-06. The width table was the one open point; the operator settled it on 2026-11-08 from a throw-away prototype of the column window on the mock runtime (`running-work`, machine `mock-machine`), which checked the window, the focus, the live region and the gap strip at `1024`, `1280` and `1440 px` and on the phone:
 
 * *Names first*: the strip shows its names wherever the window keeps two or more columns with them, and shows its marks only where the names would leave a single column (`1024 px`, rail expanded). At `1280 px` with the rail expanded the window therefore shows two columns with names rather than three with marks.
-* *A peek stretches*: while a mark of the strip shows a hidden level, the rightmost visible column fills the window, and a strip at the right edge returns to the object.
+* *A peek stretches*: while a mark of the strip shows a hidden level, the rightmost visible column fills the window, and a strip at the right edge returns to the object. A peek that ends at the object is the object's own window, since there is no level to its right to stand for (PLAN-166).
 * *`[` and `]` beside `Ctrl+←`/`→`*, because macOS takes the latter by default.
 * *The chat takes `400 px` where `480 px` would cost a column.*
 * *The breadcrumb stays in the lens* (the operator's decision of 2026-11-08, where message 003 named the plan's breadcrumb among the links to the project page): its segments navigate as Up does, and only a project link outside the chain opens the project page.

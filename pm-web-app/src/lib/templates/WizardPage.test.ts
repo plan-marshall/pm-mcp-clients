@@ -4,7 +4,6 @@ import { tick } from 'svelte';
 import path from 'node:path';
 import WizardPageFixture from '../../test/fixtures/WizardPageFixture.svelte';
 import WizardPageStepsOnlyFixture from '../../test/fixtures/WizardPageStepsOnlyFixture.svelte';
-import ConfirmDialog from '../components/ConfirmDialog.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
@@ -171,20 +170,10 @@ describe('WizardPage', () => {
     const onHideSide = vi.fn();
     await renderWizard(1048, true, onHideSide);
 
-    // An open ConfirmDialog handles the Escape itself.
-    const dialogProps = {
-      open: true,
-      title: 'Delete the plan',
-      consequences: ['Its history goes too'],
-      actionLabel: 'Delete',
-      cancelLabel: 'Keep it',
-    };
-    const dialog = render(ConfirmDialog, { props: dialogProps });
-    await fireEvent.keyDown(screen.getByTestId('confirm-dialog'), { key: 'Escape' });
-    expect(onHideSide).not.toHaveBeenCalled();
-    await dialog.rerender({ ...dialogProps, open: false });
-
-    // A widget of the page that marks the key handled, and lets it bubble.
+    // An open ConfirmDialog also keeps the key, but by stopping it at the window's capture phase
+    // (`Dialog.svelte`), so it never reaches this page at all: no assertion here can tell that stop
+    // from the page's own guard. The witness is a widget that marks the key handled and lets it
+    // bubble, which is what separates a handled Escape from a free one.
     const menu = document.createElement('button');
     menu.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
