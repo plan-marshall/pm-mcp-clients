@@ -2360,7 +2360,7 @@ export interface OverSizeBucketRecord {
  * The `over_size` distribution of a role, as the runtime serves it
  * (`OverSizeDistributionResource` of `pm-api`): the multiple in force, the proposed one where the
  * runtime serves a proposal, and the measured buckets. A role without measured tasks carries no
- * bucket, so its distribution says `no task measured` rather than drawing a zero bar.
+ * bucket, which the chart shows as `intent.oversize.empty` rather than as a zero bar.
  */
 export interface OverSizeDistributionRecord {
   project_id: string;
@@ -4107,7 +4107,8 @@ export class ApiClient {
    * `intent-and-outline.adoc`, The `over_size` Distribution).
    *
    * @param projectId the project
-   * @returns the roles' distributions, or `null` where the runtime measures none yet
+   * @returns the roles' distributions, or `null` where the runtime has no such record; a project it
+   *     measures no role of answers an empty `distributions` list
    */
   public async getOverSize(projectId: string): Promise<OverSizeDistributionsRecord | null> {
     return this.readRecord(

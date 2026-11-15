@@ -10,10 +10,10 @@
    * direction in text — so the chart reads without colour and at phone width.
    *
    * The record is the runtime's (`OverSizeDistributionResource` of `pm-api`, per project and role): a
-   * bucket is never recomputed from raw tokens, and the empty bucket the runtime may still send is
-   * left out rather than drawn as a zero bar. The chart is read-only — no act proposes or changes a
-   * multiple, because no client designs one yet — and a role without measured tasks shows its empty
-   * text instead of bars.
+   * bucket is never recomputed from raw tokens, and a bucket without a task is left out rather than
+   * drawn as a zero bar (design `#buckets`); a role without measured tasks carries no bucket at all
+   * and shows its empty text. The chart is read-only — no act proposes or changes a multiple,
+   * because no client designs one yet.
    */
   interface Props {
     /** The role's distribution, as the runtime serves it. */
@@ -30,28 +30,21 @@
     return String(value);
   }
 
-  /** @returns whether the runtime serves a proposal to compare against */
-  function proposed(): boolean {
-    return distribution.proposed_multiple !== undefined;
-  }
+  /** The multiple the operator considers, or `null` where the runtime serves no proposal. */
+  const proposed = $derived(distribution.proposed_multiple ?? null);
 
   /** @returns the chart's title: the proposal beside the multiple in force, or the one in force */
   function title(): string {
-    return proposed()
-      ? $t('intent.oversize.title', {
+    return proposed === null
+      ? $t('intent.oversize.title_current', {
           role: stripControlSequences(distribution.role),
           current: multiple(distribution.current_multiple),
-          proposed: multiple(proposalMultiple()),
         })
-      : $t('intent.oversize.title_current', {
+      : $t('intent.oversize.title', {
           role: stripControlSequences(distribution.role),
           current: multiple(distribution.current_multiple),
+          proposed: multiple(proposed),
         });
-  }
-
-  /** @returns the proposed multiple, or the one in force while a proposal is on its way */
-  function proposalMultiple(): number {
-    return distribution.proposed_multiple ?? distribution.current_multiple;
   }
 
   /**
@@ -93,9 +86,9 @@
 
   /** @returns the tasks the proposal would have flagged, `0` without one */
   function flaggedTasks(): number {
-    return proposed()
-      ? distribution.buckets.reduce((sum, bucket) => sum + bucket.flagged_tasks, 0)
-      : 0;
+    return proposed === null
+      ? 0
+      : distribution.buckets.reduce((sum, bucket) => sum + bucket.flagged_tasks, 0);
   }
 
   /**
@@ -167,7 +160,7 @@
       {/each}
     </ul>
 
-    {#if proposed()}
+    {#if proposed !== null}
       <p class="oversize__share" data-testid="oversize-share">
         {$t('intent.oversize.share', {
           tasks: totalTasks(),
@@ -180,7 +173,7 @@
           {$t('intent.oversize.direction', {
             direction: proposalDirection,
             current: multiple(distribution.current_multiple),
-            proposed: multiple(proposalMultiple()),
+            proposed: multiple(proposed),
           })}
         </p>
       {/if}

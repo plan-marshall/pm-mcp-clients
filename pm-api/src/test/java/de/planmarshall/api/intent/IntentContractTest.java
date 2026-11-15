@@ -650,6 +650,17 @@ class IntentContractTest {
         }
 
         @Test
+        @DisplayName("a project whose answer carries no role is read as an empty set, not refused")
+        void noRoleCarried() throws Exception {
+            var parsed = OverSizeDistributionsResource.fromJson(
+                    "{\"project_id\":\"pm-mcp-clients\",\"distributions\":[]}");
+
+            assertTrue(parsed.distributions().isEmpty());
+            assertTrue(parsed.roles().isEmpty());
+            assertEquals(parsed, OverSizeDistributionsResource.fromJson(parsed.toJson()));
+        }
+
+        @Test
         @DisplayName("refuses a duplicated role, a foreign project, a blank project, and an unknown field")
         void failsClosed() {
             var implement = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,

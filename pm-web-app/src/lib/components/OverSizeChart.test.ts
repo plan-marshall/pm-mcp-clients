@@ -151,8 +151,24 @@ describe('OverSizeChart', () => {
     );
   });
 
-  it('shows the distribution under the multiple in force without a proposal: no mark, no share, no direction', () => {
+  it('claims no direction when the proposal is the multiple already in force', () => {
     const container = renderChart(
+      distribution({
+        proposed_multiple: 3,
+        buckets: [
+          { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
+          { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 4, flagged_tasks: 0 },
+        ],
+      }),
+    );
+
+    expect(within(container).getByTestId('oversize-title')).toHaveTextContent(
+      'implement · over_size 3x → 3x',
+    );
+    expect(within(container).queryByTestId('oversize-direction')).toBeNull();
+  });
+
+  it('shows the distribution under the multiple in force without a proposal: no mark, no share, no direction', () => {    const container = renderChart(
       distribution({
         proposed_multiple: undefined,
         buckets: [
