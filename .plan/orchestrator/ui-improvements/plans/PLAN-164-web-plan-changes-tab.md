@@ -81,12 +81,16 @@ Read first:
 - OBSERVED: `pm-web-e2e/tests/plan-changes.spec.js` — absent; created by this plan
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at `7adb56c2`
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at `7adb56c2`
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `6b97acd2` (D0: the first capture)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java` — present at `6b97acd2` (D0: a scheduled `plan.change_captured`)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/PlanChangesScenarioTest.java` — present at `6b97acd2` (D0)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-162`.
+- Depends on: `PLAN-162` (shipped, #444) and, since the operator's decision of 2026-11-15, **`PLAN-163` landed** (its D0 adds the six `plan.changes.*` keys to the
+  `plan_view` pack, corrects the fixtures and the contract's coherence rules, and unifies the file route's refusals; this plan adds none of them).
 - Overlaps with:
-  - `PLAN-145` (unparked, plan panels): `PlanView.svelte`. Do not run the two at once.
+  - `PLAN-145` (shipped, #443): the plan panels' client methods are in `client.ts`; `PlanView.svelte` is free again.
   - `PLAN-142`/`PLAN-143` (navigation engine): `client.ts` and the addresses. If the engine has landed, use its address helpers for `?tab=changes`.
 - Unblocks: `PLAN-55`, which carries the tab into its tab set.
 
@@ -103,6 +107,33 @@ Lane: `runbook`.
 ```text
 /plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-164-web-plan-changes-tab.md
 ```
+
+## Folded from the PLAN-162 landing 2026-11-15
+
+`PLAN-162` landed as `6b97acd2` (#444; `landings/PLAN-162.md`). Operator decision 2026-11-15: its residue is folded into `PLAN-163` (D0: keys, fixtures, contract,
+file route) and this plan (D0 below). Read each point at the then-current HEAD before the outline.
+
+**D0 — the mock shows a first capture** (persona `plan-marshall:persona-implementer`; skills `pm-dev-java:java-core`, `pm-dev-java:junit-core`):
+- `applyCapturedChange` (`MockRuntimeEngine.java:7897-7922`) refuses a capture for a plan whose answer is not `PlanChangesCaptured` and any size that differs from the
+  fixture's files, so only the head moves: "the tab appears on the first capture" (`not_captured` to captured) and "captured to unavailable" cannot be
+  exercised, and neither can a changed file list or size. Extend the mock so a `plan.change_captured` announcement carries (or names) the new capture, moves
+  `not_captured` to captured, may move a captured plan to `unavailable`, and changes files and size coherently with the contract rules `PLAN-163` D0 adds; a
+  scheduled `plan.change_captured` in a scenario is validated by the loader (today only `chat.*` payloads are, `ScenarioLoader.java:597`) and the README
+  states the new limit. Each by a scenario test that fails on a revert, with the matched positive control. Evidence order: `test-first`.
+- The design's Live bullet (an open list is read again on `plan.change_captured`, `plan-view.adoc` § Live) is then testable beyond a head change.
+
+Leads for D1 and D2, from the landing's reading:
+- **The `tab=` hypothesis looks refuted:** `PlanView.svelte` has no tab concept at HEAD (a grep for `tab=` finds only the token table). Settle it at the outline; if
+  there is no tab, the tab's address belongs to `PLAN-55`/`PLAN-143`'s helpers, and say which.
+- The TS `ActivityEntry` and the live `toActivityEntry` (`PlanView.svelte:~332-352`) copy fixed fields and drop `launch_model` and `served_model`: D2 extends both paths;
+  the word `state.activity.model_differs` already exists in the common pack.
+- The head's figures come from `ProcessTree.change` or the event, never summed on the client (`plan-view.adoc:170`).
+- Strip more than ESC from a path or a line (U+0085, U+2028 and bidirectional controls reach the wire as UTF-8). Render a file's hunks only from fixtures `PLAN-163`
+  D0 made coherent; do not build on the pre-D0 hunk headers.
+- `planId` and the file path are encoded as URL segments by `PlanChangesRoutes` (`URLEncoder` plus `%20`); the client encodes the same way, and a test holds an id and a
+  path with `/`, `.`, a space and a non-ASCII character.
+
+Surface: the Expected Surface above gains the three D0 files (12 entries).
 
 ## Write-Boundary
 

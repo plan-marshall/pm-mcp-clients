@@ -2,10 +2,10 @@
   "id": "PLAN-149",
   "slug": "web-foundation-interaction-set",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "149-web-foundation-interaction-set",
+  "pr": "445",
+  "landing": "landings/PLAN-149.md",
   "seq": 149
 }

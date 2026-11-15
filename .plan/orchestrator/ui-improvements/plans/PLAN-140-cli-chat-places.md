@@ -276,3 +276,12 @@ Line refs are at `7adb56c2`: CR = `pm-mock-runtime/.../ChatRegistry.java`, ME = 
 
 This is about 9 items, which breaks the ~6 scope guard. If the plan grows past it, split D-R134 into its own PR
 first. It must land before PLAN-136, PLAN-137 and PLAN-139 need the fixtures.
+
+## PLAN-162 Landing Note (Amendment 2026-11-15)
+
+PLAN-162 (#444, `6b97acd2`) edited `MockRuntimeEngine.java` (+252), `ScenarioLoader.java` (+159) and `running-work.json` (+396), so every `ME` line above moved,
+by +44 where the landing was read: `applyChatProposal` 918 to 962, `revisionWindowOpen` 994 to 1038, `planFor` 1024 to 1068. `ChatRegistry.java` is unchanged, so the `CR`
+refs hold. Item 4, m5: the broadcast handler now calls `chatRegistry.handleBroadcast` first and then `applyStateEffectOf`, which can answer 400 `invalid_arguments`;
+re-verify the order before editing. The loader runs `validatePlanChanges` on every scenario: a fixture of item 1 (an ended plan, a plan with chat) that names a `change`
+for a captured plan stays consistent with that plan's `plan_changes` entry. `PLAN-163` D0 (staged) corrects the `fix-relay` fixture in `running-work.json`; item 1 edits
+the same file: do not run them at once. (`landings/PLAN-162.md`.)

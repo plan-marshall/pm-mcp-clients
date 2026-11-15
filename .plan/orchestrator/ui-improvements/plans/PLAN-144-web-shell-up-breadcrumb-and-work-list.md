@@ -212,6 +212,9 @@ deliverables below state its rulings.
 - OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/EpicDecompositionView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/CleanupView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.svelte` — present at `0b9402ec` (PLAN-142 landed; folded by the analyze of 2026-11-15)
+- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.test.ts` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
+- OBSERVED: `pm-web-app/src/lib/templates/SideColumn.svelte` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
 
 ## Dependencies and Sequencing
 
@@ -250,6 +253,13 @@ The session implementing this spec touches only its own repository source and te
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: KindMark and Link are PLAN-147; RowLink is PLAN-148.
+
+## Folded from the PLAN-142 landing 2026-11-15 (analyze)
+
+PLAN-142 merged as `0b9402ec` (#442) and handed three things to the shell that this spec did not yet carry. Each was re-read on the merged tree; fold them into the shell work, they widen the surface by `TriagePage.svelte`, `TriagePage.test.ts` and `SideColumn.svelte` (declared above):
+- **A definite shell height, so each column scrolls on its own.** `TriagePage.svelte:439-440` declares `max-block-size: 100%; overflow-y: auto` per column, which resolves to no cap while `AppShell.svelte` gives only `min-block-size: 100vh`. Give the shell a definite block size and prove a viewport-tall column scrolls inside itself, not the page. A measured precondition of `row-menu.spec.js` broke when the cap was tried in PLAN-142, so run it.
+- **The phone chat overlay as a modal boundary.** `SideColumn.svelte:70` makes the phone overlay `position: fixed` inside `.triage-page__window`, which animates `transform`; the background stays tabbable and unmarked (no `inert`, no `aria-modal`). The overlay belongs at the shell level above the bottom bar, with the background inert and the focus kept inside.
+- **A correction to deliverable 2's wording:** the `up` slot PLAN-142 left is the `up` snippet prop of `TriagePage.svelte` (`:78`, `:369`), in the head of the first visible column, as `navigation.adoc#up` says. `ObjectPage.svelte` has no `up` slot. Fill the `TriagePage` prop.
 
 ## Unparked 2026-11-14 (cleanup, operator)
 
