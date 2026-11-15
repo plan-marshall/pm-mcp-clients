@@ -116,9 +116,7 @@ const ICON_URLS = Object.freeze({
 export type UiIconId = keyof typeof ICON_URLS;
 
 /** Every delivered UI icon name, derived from the registry so the two cannot drift apart. */
-export const UI_ICON_IDS: readonly UiIconId[] = Object.freeze(
-  Object.keys(ICON_URLS) as UiIconId[],
-);
+export const UI_ICON_IDS: readonly UiIconId[] = Object.freeze(Object.keys(ICON_URLS) as UiIconId[]);
 
 /** @param name a candidate icon name @returns whether the set delivers it */
 export function isUiIconId(name: string): name is UiIconId {

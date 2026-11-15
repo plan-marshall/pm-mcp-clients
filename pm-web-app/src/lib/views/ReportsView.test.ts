@@ -468,9 +468,7 @@ describe('ReportsView component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Nothing new')).toBeInTheDocument();
-      expect(
-        screen.getByText('Reports you have read are not shown any more.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Reports you have read are not shown any more.')).toBeInTheDocument();
     });
   });
 
@@ -568,7 +566,8 @@ describe('ReportsView component', () => {
     render(ReportsView);
 
     const detail = await screen.findByRole('button', { name: /Show the details/i });
-    expect(detail).toBeDisabled();
+    expect(detail).not.toBeDisabled();
+    expect(detail).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(/relay-docs was deleted by the cleanup/)).toBeInTheDocument();
   });
 
@@ -862,18 +861,16 @@ describe('ReportsView component', () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
-    const firstCard = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
-    await fireEvent.click(
-      within(firstCard).getByRole('button', { name: /Show the details/i }),
-    );
+    const firstCard = screen
+      .getByText('Ended: merged (#214)')
+      .closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(firstCard).getByRole('button', { name: /Show the details/i }));
     await waitFor(() => {
       expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
     });
 
     const secondCard = screen.getByText('Ended: no change').closest('.report-card') as HTMLElement;
-    await fireEvent.click(
-      within(secondCard).getByRole('button', { name: /Show the details/i }),
-    );
+    await fireEvent.click(within(secondCard).getByRole('button', { name: /Show the details/i }));
     await waitFor(() => {
       expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('docs-typo');
     });
@@ -1639,7 +1636,9 @@ describe('ReportsView component', () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
-    const firstCard = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    const firstCard = screen
+      .getByText('Ended: merged (#214)')
+      .closest('.report-card') as HTMLElement;
     const secondCard = screen.getByText('Ended: no change').closest('.report-card') as HTMLElement;
     const secondCardTrigger = within(secondCard).getByRole('button', { name: /Report actions/i });
 
@@ -1762,13 +1761,19 @@ describe('ReportsView component', () => {
 
     expect(screen.getByText('This machine')).toBeInTheDocument();
 
-    const machineSection = screen.getByText('This machine').closest('.project-section') as HTMLElement;
+    const machineSection = screen
+      .getByText('This machine')
+      .closest('.project-section') as HTMLElement;
     expect(within(machineSection).getByText('System cleanup due on machine')).toBeInTheDocument();
     expect(within(machineSection).getByText('Drain started')).toBeInTheDocument();
-    expect(within(machineSection).queryByText('Real project named __machine__ is onboarded')).toBeNull();
+    expect(
+      within(machineSection).queryByText('Real project named __machine__ is onboarded'),
+    ).toBeNull();
 
     const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
-    expect(within(realProjectSection).getByText('Real project named __machine__ is onboarded')).toBeInTheDocument();
+    expect(
+      within(realProjectSection).getByText('Real project named __machine__ is onboarded'),
+    ).toBeInTheDocument();
   });
 
   it('keeps the open report mounted and the filter text across a reload (D1)', async () => {

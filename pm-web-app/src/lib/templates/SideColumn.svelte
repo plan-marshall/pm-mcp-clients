@@ -32,7 +32,7 @@
   style:--side-width={`${width}px`}
 >
   <header class="side-column__head">
-    <Button variant="ghost" size="small" onclick={() => onHide()}>{$t('control.chat.hide')}</Button>
+    <Button variant="ghost" size="sm" onclick={() => onHide()}>{$t('control.chat.hide')}</Button>
   </header>
   <div class="side-column__body">
     {@render side()}

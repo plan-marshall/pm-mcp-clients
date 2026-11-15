@@ -77,12 +77,7 @@
   {/if}
 
   <svelte:fragment slot="footer">
-    <Button
-      variant="secondary"
-      data-testid="confirm-dialog-cancel"
-      disabled={busy}
-      on:click={close}
-    >
+    <Button variant="ghost" data-testid="confirm-dialog-cancel" disabled={busy} on:click={close}>
       {cancelLabel}
     </Button>
     <Button

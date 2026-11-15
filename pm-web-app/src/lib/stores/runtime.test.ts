@@ -505,7 +505,9 @@ describe('the runtime store', () => {
     // Act & Assert 3: brand click lands on projects when no work runs, despite stale start route
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     localStorage.setItem(staleStartRouteKey, 'overview');
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'overview', isPaired: true, isOnboarded: true }));
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'overview', isPaired: true, isOnboarded: true }),
+    );
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
 
     await openStartPage();

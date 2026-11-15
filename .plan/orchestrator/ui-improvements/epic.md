@@ -672,8 +672,48 @@ plan spec names the plan, proposal and finding documents it comes from.
     - then 144, 151, 152 and 88;
     - then 135, 49 and the views 153–157;
     - then 60, 51, 52, 53, 136, 58, 59, 64/66 and 85, and the plan-changes clients 163 and 164.
+- **PLAN-142 landed (2026-11-15, #442, `0b9402ec`), analyzed.** All five deliverables trace to code and a test; the column window
+  recomputes exactly against both width tables. Three-layer read by one leaf, re-read on the merged tree: layer 3 carries two major
+  defects (Open Defects below), layer 2 five minor leads (Watches). "Each column scrolls on its own" and the phone overlay's modal
+  boundary were left open by the lane and were NOT in PLAN-144's spec; both folded into PLAN-144 in the same act (spec section
+  "Folded from the PLAN-142 landing 2026-11-15"; Expected Surface 53 to 56 entries, `TriagePage.svelte`, `TriagePage.test.ts`,
+  `SideColumn.svelte`). The emit order above is unchanged for 143 and 144 (series PLAN-142 → 143 → 144 now has its first member shipped).
+- **PLAN-145 landed (2026-11-15, #443, `da8c8644`), analyzed.** D2 and D5 trace to code and tests as specified; D1, D3 and D4 shipped modified
+  (stale key counts, a source-less D3 clause, an unsatisfiable evidence order). Three-layer read by one leaf, with the vacuous outline test
+  (`OutlinePanel.test.ts:321-343`), the unfiltered refresh (`intentEvents.ts:13-21`), the fused line and the unused import re-read on the merged tree.
+  No fix plan staged: the defects are test hygiene and refresh scope, listed under Open Defects with owners. **PLAN-146 stays HELD** (not
+  emitted): its D0 (operator decision 2026-11-14) edits `MockRuntimeEngine.java` and `running-work.json`, both declared by the running `PLAN-162`,
+  and its own spec forbids running alongside it; D0's surface was missing from the Expected Surface and is added (10 to 15 entries), and the
+  landing's eleven leads are folded into the spec. PLAN-146 goes when PLAN-162 lands.
+- **PLAN-162 landed (2026-11-15, #444, `6b97acd2`), analyzed.** D1 to D3 met as written; the module rules hold. Three-layer read by one leaf, with the missing keys,
+  the false CodeRabbit reason, the `fromMap` claim, the capture refusal and a fixture hunk re-read on the merged tree. The residue is **folded, not staged
+  (operator, 2026-11-15)**: `PLAN-163` gets a D0 (the six `plan.changes.*` keys in the `plan_view` pack, coherent fixtures and loader checks, coherence rules on
+  decode, the file route's refusals, `PlanCommand.printActivity`) and `PLAN-164` gets a D0 (the mock shows a first capture) and now **depends on PLAN-163
+  landed**; both are held behind that order, so the series is PLAN-162 shipped → 163 → 164. The PLAN-146 hold is released; **PLAN-146 emitted** on the operator's
+  decision to treat PLAN-30 as parked (it shares `MockRuntimeEngine.java` and `fully-onboarded.json` with it), its cited positions and PLAN-140's `ME` lines
+  (+44) updated in their specs. PLAN-163 D0 and PLAN-146 D0 and PLAN-140 item 1 all edit `running-work.json` and the mock engine: never at the same time.
+- **PLAN-149 landed (2026-11-15, #445, `3a64b2b1`), analyzed; PLAN-143 reported mid-flight.** All six deliverables (D1 to D6) are met only in part; the major findings (a disabled-with-reason
+  `Button` still fires `on:click` consumers, a capture-phase Escape in `Dialog`, an invented `8.5rem` literal, a merge override on file) are in Open Defects. **The residue is folded into
+  PLAN-150 as its D0 (operator, 2026-11-15)**: the `Button`/`IconButton` activation hole, `loading`, the danger consequences, the Escape order, the `ConfirmDialog` out of the menu, `Toggle`'s disabled reason,
+  surface 27 to 37, six deliverables (the outline splits D0 out if it passes the guard); the rest of the residue stays in Open Defects with owners. PLAN-88 and PLAN-151 got leads in their specs. The
+  lane's `operator-authorized` merge override is recorded as unverified (no record here of who authorized it). **PLAN-143's message is a mid-flight report, not a landing:** PR #446 open, 0 of 5
+  deliverables done, self-review `budget-exhausted` with one blocker and ten majors open, CodeRabbit never reached, the gate never run (Watches); PLAN-143 stays `running`, no ship semantics. **PLAN-150 emitted.**
 
 ## Open Defects
+
+- **PLAN-142 layer-3 defects (2026-11-15), owner: operator's decision (fix plan not staged; the orchestrator never fixes inline).**
+  `landings/PLAN-142.md` L3-1 (major): a key-driven move to the object after a peek (`TriagePage.svelte:296-299` with
+  `columnWindow.ts:241-277`) returns `peek: true` with no strip for the hidden left levels and an object 136 px wider; no test reaches it.
+  L3-2 (major): `{#key layout.start}` (`TriagePage.svelte:341`) remounts all columns, the strip and the chat on any start change, losing scroll,
+  a chat draft and the focus. L3-3 to L3-7 (minor): a stale peek jumps back after a resize; no focus handling when the side column takes
+  the space; Escape scope differs between `WizardPage` and `TriagePage`; the showroom fixture is unusable on a phone; the phone overlay sits
+  in a transformed ancestor, and its background stays tabbable (no `inert`, no `aria-modal`; folded into PLAN-144). L3-1, L3-2 and the focus items are what PLAN-143, 144 and the chat plans
+  135 to 137 build on; the operator decides whether one fix plan goes before them.
+- **PLAN-142 landing incomplete and one false claim (2026-11-15), owner plan-marshall (runbook lane).** `inbox landing-check` on
+  `rb-142-web-column-engine-001.md`: `complete: false`, `missing_keys` `total_tokens` and `plugin_version` (both `unknown`; the opencode
+  harness measured no tokens and no plugin version). The landing still reconciled. The lane reported `review_body_findings_handled=18`; its own
+  progress file holds 17 `finding:` lines (`inline-14` has none; all threads are resolved on the provider), so the count is recorded as a
+  false claim about the disposition record. Sonar's `0` is not re-verifiable after the merge (`undecidable`, `head_revision_unavailable`).
 
 - `analyze-fix-build-time-002` item 9 (2026-11-14), owner plan-marshall (runbook lane): when a branch is split into several pull requests
   (#432 -> #434, #435, #436: too large for CodeRabbit at 226 files and for Sourcery at 20,000 lines), CodeRabbit's free quota can run out while a
@@ -891,6 +931,44 @@ plan spec names the plan, proposal and finding documents it comes from.
   (GET only) → unseeded subjects unreachable → `PLAN-135`/`PLAN-138`; the follow-up entry and decision address → contract Open Item; the
   divergence was recorded only in the merged PR body (lesson). Two #429 threads end on CodeRabbit's "not addressed" (StartView race, tests)
   → `PLAN-135`.
+
+- **PLAN-145 defects (2026-11-15), owner: operator's decision (no fix plan staged; the orchestrator never fixes inline).** `landings/PLAN-145.md`.
+  (1) Test quality: `OutlinePanel.test.ts:321-343` "keeps the newer outline when two reads answer out of order" cannot fail (the read that resolves last
+  is the first, so nothing is announced with or without the guard); `PlanIntentPanel.test.ts:283` `/vote/i` absence and `BuilderCheckList.test.ts:116,134-135`
+  `.status-label*` absence cannot fail; "keeps an expanded reason open across a refresh" (the PR body) and the unsubscribe on destroy have no test;
+  a non-404 rethrow of `readRecord` has no test. (2) Refresh (layer 3, major lead): the plan panels reload on `phase.changed` and `plan.revision_queued`
+  only, ignoring the event payload, so every plan's phase change refetches every mounted panel and a verdict, a builder answer or an in-phase revision
+  shows only after the next phase change; a failed refresh replaces the held record with the error. (3) `intentWireCatalogues.test.ts:53` has `});`
+  fused onto an `expect` line and `BuilderCheckList.svelte:4` imports `apiClient` unused (both re-read). (4) The spec corpus: PLAN-145's key counts
+  (68/75, claim stamped `corroborated`) and its OBSERVED claim naming `interfaces, key_links, missing_key_link` are false; the PLAN-146 spec carries
+  the same counts in its design reference. (5) Open: whether the engine specification allows questions on a `not_run` builder check
+  (`BuilderCheckResource` now refuses them; the spec said to stop and ask if the specification is silent; no evidence it was consulted).
+- **PLAN-145 landing record is incomplete and two claims are not re-verified (2026-11-15).** `total_tokens` and `plugin_version` are `unknown`; the
+  review gate answers `review_body_findings_handled: 0` / `merge_allowed: false` / `body_findings_undisposed` for #443 although the lane's progress file
+  holds ten dispositions and every thread is resolved (which store the gate reads is not settled); Sonar `read_open_issues` is `undecidable`
+  (`head_revision_unavailable`), so `sonar_open_new_issues=0` stands as the lane's word.
+
+- **PLAN-162 defects (2026-11-15), owner: PLAN-163 D0 and PLAN-164 D0 (operator's decision: folded, no plan of its own).** `landings/PLAN-162.md`. Major: the six
+  `plan.changes.*` keys are in no pack (L1-1); the mock cannot show a first capture (`applyCapturedChange`, `MockRuntimeEngine.java:7897-7922`; L3-1); `running-work.json`'s
+  `fix-relay` hunks, counts and order contradict one another (L3-2); the contract has no coherence rules and reads a missing boolean as `false` (L3-3). Minor:
+  `PlanCommand.printActivity` loses both models of a `model_differs` entry; the file route's refusals differ from the list route's; no pin for
+  `PlanChangeCapturedEvent.toMap`; the scheduled-event path is unvalidated. Two lane claims were wrong: the CodeRabbit inline-5 reason (an AsciiDoc reader is no new
+  dependency: `ChatTextsCatalogueTest` already reads the design documents) and the `fromMap` residue (the `IOException` path is the real one).
+- **The review gate disagrees with the lane on #443 and #444 alike (2026-11-15).** `runbook_lane review-gate` answers `review_body_findings_handled: 0`, `merge_allowed: false`,
+  `body_findings_undisposed` for both, with every thread resolved and ten `finding:` lines in each progress file (the #442 reading recorded only the total, 18, so it is no sample). Which store the gate reads is
+  unsettled; if it reads a findings store the runbook lane never writes, the gate cannot pass for this lane and the merge went through on the lane's own
+  judgement. Sonar is `undecidable` on both. Owner: the operator, as a question for the lane's maintainers. **Update 2026-11-15:** #445 reads the same (`handled: 0` of 24, `merge_allowed: false`), from a
+  different harness (`antigravity`, `gemini-2.5-pro`), so the cause is the gate or the lane's findings store, not a harness; three samples (#443, #444, #445).
+
+- **PLAN-149 defects (2026-11-15), owners: PLAN-150 D0 where named, else the operator's decision.** `landings/PLAN-149.md`. Major: (1) a disabled-with-reason `Button`/`IconButton` still fires `on:click` consumers
+  (`Button.svelte` double listener; `ActionBar.svelte:81,94`; static read, unrun) → PLAN-150 D0; (2) `Dialog.svelte:119-124` window capture-phase Escape closes a dialog over an open menu → PLAN-150 D0; (3) the lane
+  wrote a literal `8.5rem` into `StatusLabel.svelte:49` and `components-tags.adoc:102` where the spec said to stop and ask (the design names no token) → **operator: name the width token**; (4) `progress.md:61`
+  records `operator-authorized: merge PR 445 at head 30f5c9f8 despite review-gate thread_concern_remains on …qHpK`, while the message reports `unresolved_review_threads=0`, "Residue: None" and a merge of the later
+  head `cff84d53` → **operator: was that override yours?** (unverified here). Minor (owners): the destructive entry in the ActionBar does not confirm (`ActionBar.svelte:118`, design says it does) and `loading` keeps the icon
+  → PLAN-150 D0; the `ConfirmDialog` sits inside the menu DOM → PLAN-150 D0; duplicated `.act-menu*`/`.row-menu__*` CSS kept for `RowMenu.test.ts` and a hover rule that ignores `aria-disabled` → unowned; the allowlist never checks a stale
+  entry and `SideColumn` entered it for "the V parts" → unowned (PLAN-166 owns `SideColumn`); `SegmentedControl` throws outside 2..5 and spreads `$$restProps` over `role`; `Toggle` has no disabled reason (→ PLAN-150 D0), no reduced-motion;
+  `vite.config.ts` gained a global `testTimeout: 20_000` where the finding asked for a named project or helper → operator; the dev page's English literals → PLAN-151; the spec's own structure (D6 after the Hand-Off block, stale counts,
+  `components.adoc:163`) → corpus. Test quality: `ActMenu.test.ts` "focuses first item" asserts nothing about focus; the allowlist reason test cannot fail; `Toggle.test.ts` has 6 tests where the lane says 31.
 
 ## Watches
 
@@ -1315,3 +1393,43 @@ plan spec names the plan, proposal and finding documents it comes from.
   at each landing: the line references in the messages into `WorkControlPanel` are re-read (PLAN-106 rewrites its act lists),
   and `terminal-client/19-actions.adoc` (PLAN-97) and `web-app/onboarding.adoc` (PLAN-104) are not edited by D1/D3/D4 before those
   plans land.
+- `PLAN-142` landing leads (2026-11-15, `landings/PLAN-142.md`, each re-read where marked there, owners named): (1) `GapStrip.svelte:94-149` hand-rolls
+  four `<button>` elements where `IconButton` exists; whether the closed vocabulary requires `IconButton` for these controls is unread, owner
+  PLAN-151 (vocabulary lint). (2) `TriagePage.svelte:316` suspends Ctrl+Arrow in a field, where `navigation.adoc#keys` (`:232-243`, unread) may suspend
+  only `[` `]`; owner PLAN-143 (re-reads the design when it adds the address keys). (3) `column-window.spec.js` models a two-level chain only, so the strip,
+  a peek and three or four columns have no browser evidence; owner PLAN-144 (a deeper chain exists once the shell lands). (4) `Level.href` and `Level.state`
+  are accepted and documented in `TriagePage.svelte` and never read; owner PLAN-143 (addresses consume `href`). (5) `TriagePage.test.ts:355` and
+  `column-window.spec.js:163` carry statements fused onto the `async () => {` line: run `format:check` of `pm-web-app` and `pm-web-e2e` in the next
+  web plan to land (PLAN-149 or 145 touch neither file, so the next plan on these files). (6) `ReportsView.svelte:209,242` still reads
+  `window.innerWidth < 1100`; harmless until a chat reaches ReportsView (PLAN-135). (7) `designer.spec.js` flaked in three of eight local suite runs
+  (reported by the lane, unattributed); recheck on the first landing that runs `-Pe2e`. (8) The lane ran on `opencode` / `deepseek-v4.1-flash/high`
+  with a three-round self-review that ended `budget-exhausted`; the harness measured no tokens. Recheck the model choice when the next landing
+  from the same harness arrives.
+- `PLAN-145` landing leads (2026-11-15, `landings/PLAN-145.md`, owners named): (1) Same harness and model as PLAN-142 (`opencode`,
+  `deepseek-v4.1-flash/high`), again a `budget-exhausted` self-review, again no tokens measured, again a fused line (PLAN-142 had a defect no test reached, PLAN-145 has a test that cannot fail): the pattern
+  Watch (8) above asked to recheck now has a second sample; operator to decide on the model choice. (2) `format:check` is not part of what the lane runs for
+  the web modules (Maven runs lint only): a second landing carries a fused line in a new file; owner PLAN-151 or the lane's gate definition. (3) `PlanIntentPanel`
+  reads `planId` and `deliverables` once in `onMount`; the placement in PLAN-55/62 must wrap it in `{#key planId}`, and the default link targets
+  (`/plans/{id}?tab=intent#criterion-…`; `deliverableHref` empty) need the route and wiring there. (4) The head counts say "4 criteria · 2 met" without
+  "not reviewed" once one criterion has a status; the reason toggle has `aria-expanded` and no `aria-controls`; "the record changed" has no live region;
+  owner PLAN-55/62 (placement) or a panel fix. (5) Ids (`criterion.id`, `nonGoal.id`) render unstripped as text: safe as markup, not as control sequences;
+  the reader validates no id format; owner PLAN-146 (the epic reader) for a shared id check. (6) `intent.builder.recommended` is pinned and unused until the
+  contract carries the recommended answer; the design's `recommended: <answer>` and the epic's "completion review" have no source (contract Open Item,
+  owner the contract plan). (7) `IntentCatalogueTest` has no `@EnableGeneratorController` while feeding hand-written literals into `format(...)`: arguable under the
+  rule that a contract's expected value stays literal; recheck at the next catalogue test.
+- `PLAN-162` landing leads (2026-11-15, `landings/PLAN-162.md`, owners named): (1) Third landing from `opencode` / `deepseek-v4.1-flash/high` with no tokens measured and a
+  record the gate disagrees with; this one ran four self-review rounds and a CodeRabbit quota wait of 90 minutes the operator chose; the model-choice recheck of the
+  PLAN-142 Watch (8) now has three samples. (2) The lane's rule breaks, self-reported: one heredoc with inline `python3`, read-only shell `grep`/`sed`/`awk`/`od` and one
+  piped sub-agent command; guard `none`. (3) `JsonTree.integralNumber` accepts string numerals and `1.0`/`1E1` (pre-existing), and `ChangeSize.fromMap` uses the truncating
+  `integer`; owner PLAN-163 D0 if the coherence rules touch it, else a `pm-api` hygiene plan. (4) The catalogue line `06-event-catalogue.adoc:68` names "the count of unplanned
+  changes" with no member; the lane invented `unplanned_total` (`ChangeSize` says `unplanned`): the correction is in `pm-mcp-core`, owner the operator's contract Open Item.
+  (5) Unicode line separators and bidirectional controls reach the wire unescaped; owner PLAN-163 and PLAN-164 (strip more than ESC). (6) The orchestrator appended one
+  section to the PLAN-140 spec with a shell heredoc instead of the file tools (a rule slip of this session, in the epic tree, no other file touched).
+- `PLAN-143` mid-flight report (2026-11-15, inbox `rb-143-web-addresses-and-remembered-place-001.md`, PR #446 **open**, branch `feature/143-web-addresses-and-remembered-place`, last commit `5b1d6c28`; the branch worktree
+  held uncommitted edits to `routes.ts`, `history.ts`, `runtime.ts` and `runtime.test.ts` when read, so the lane is still working): `deliverables_done=0` of 5; five of the Done-whens are "not met as written" by the lane's own
+  account; self-review round 1 `budget-exhausted` with one blocker and ten majors, eight structural ones left open; CodeRabbit never reached (CI pending at the 540 s bound); the gate never run; Sonar `unknown`. Re-read
+  (`parseAddress`, `routes.ts:522-538`): `parseAddress('/')` is `null` unless `?lens=waits`, so the lane's "the start fill at `/` cannot fire" holds; `/projects/onboard` is the project-onboarding route and also a
+  possible project id (the design cannot tell them apart; owner PLAN-59 for the onboarding address, lead for the outline of 143's fix). Process notes (self-reported): two e2e runs went to the default ports 5173/7420 before the
+  assigned 21430/21431 were used (risk to any other server on those ports); the main checkout was edited by mistake for two test files at the start of D1 and restored; the executor was at 0.1.2118 while the lane was at 0.1.2133;
+  e2e runs went through `in_process_fallback` because a daemon child does not inherit the shell environment, so the build server's default routing cannot serve the ports contract (owner: operator, for the build-server and
+  `runbook-lane` maintainers). Action for the next analysis: this plan's real landing, after the lane finishes; the findings above are leads, not a verdict.

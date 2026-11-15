@@ -62,131 +62,506 @@ const DESTRUCTIVE = { role: 'overflow', destructive: true } as const;
  */
 export const PLAN_ACTS: Record<string, ActSpec[]> = {
   running: [
-    { id: 'pause', labelKey: 'control.plan.pause', advisoryKey: 'control.plan.pause.title', ...SECONDARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat.title', ...SECONDARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'pause',
+      labelKey: 'control.plan.pause',
+      advisoryKey: 'control.plan.pause.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   pausing: [
-    { id: 'start', labelKey: 'control.plan.start', advisoryKey: 'control.plan.start.title', ...SECONDARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat.title', ...SECONDARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'start',
+      labelKey: 'control.plan.start',
+      advisoryKey: 'control.plan.start.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   paused: [
-    { id: 'start', labelKey: 'control.plan.start', advisoryKey: 'control.plan.start.title', ...PRIMARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat.title', ...SECONDARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...SECONDARY },
-    { id: 'abandon', labelKey: 'control.plan.abandon', advisoryKey: 'control.plan.abandon.title', ...DESTRUCTIVE },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'start',
+      labelKey: 'control.plan.start',
+      advisoryKey: 'control.plan.start.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'abandon',
+      labelKey: 'control.plan.abandon',
+      advisoryKey: 'control.plan.abandon.title',
+      ...DESTRUCTIVE,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   waiting_for_you: [
-    { id: 'decision', labelKey: 'control.plan.decision', advisoryKey: 'control.plan.decision.title', ...PRIMARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat.title', ...SECONDARY },
-    { id: 'pause', labelKey: 'control.plan.pause', advisoryKey: 'control.plan.pause.title', ...SECONDARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'decision',
+      labelKey: 'control.plan.decision',
+      advisoryKey: 'control.plan.decision.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'pause',
+      labelKey: 'control.plan.pause',
+      advisoryKey: 'control.plan.pause.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   held: [
-    { id: 'resolve_hold', labelKey: 'control.plan.resolve_hold', advisoryKey: 'control.plan.resolve_hold.title', ...PRIMARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat.title', ...SECONDARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'resolve_hold',
+      labelKey: 'control.plan.resolve_hold',
+      advisoryKey: 'control.plan.resolve_hold.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   staged: [
-    { id: 'start', labelKey: 'control.plan.start', advisoryKey: 'control.plan.start.title', ...PRIMARY },
-    { id: 'settings', labelKey: 'control.plan.settings', advisoryKey: 'control.plan.settings.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.plan.cancel', advisoryKey: 'control.plan.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'start',
+      labelKey: 'control.plan.start',
+      advisoryKey: 'control.plan.start.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'settings',
+      labelKey: 'control.plan.settings',
+      advisoryKey: 'control.plan.settings.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.plan.cancel',
+      advisoryKey: 'control.plan.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   ended: [
-    { id: 'report', labelKey: 'control.plan.report', advisoryKey: 'control.plan.report.title', ...PRIMARY },
-    { id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat_ended.title', ...SECONDARY },
-    { id: 'follow_up', labelKey: 'control.plan.follow_up', advisoryKey: 'control.plan.follow_up.title', ...OVERFLOW },
+    {
+      id: 'report',
+      labelKey: 'control.plan.report',
+      advisoryKey: 'control.plan.report.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.plan.chat',
+      advisoryKey: 'control.plan.chat_ended.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'follow_up',
+      labelKey: 'control.plan.follow_up',
+      advisoryKey: 'control.plan.follow_up.title',
+      ...OVERFLOW,
+    },
   ],
 };
 
 /** An epic's acts by state (UC-P-02, UX-P-04). */
 export const EPIC_ACTS: Record<string, ActSpec[]> = {
   running: [
-    { id: 'next', labelKey: 'control.epic.next', advisoryKey: 'control.epic.next.title', ...PRIMARY },
-    { id: 'findings', labelKey: 'control.epic.findings_review', advisoryKey: 'control.epic.findings_review.title', ...SECONDARY },
-    { id: 'chat', labelKey: 'control.epic.chat', advisoryKey: 'control.epic.chat.title', ...SECONDARY },
-    { id: 'auto', labelKey: 'control.epic.auto', advisoryKey: 'control.epic.auto.title', ...OVERFLOW },
-    { id: 'common_files', labelKey: 'control.epic.overlap', advisoryKey: 'control.epic.overlap.title', ...OVERFLOW },
-    { id: 'decompose', labelKey: 'control.epic.decompose_again', advisoryKey: 'control.epic.decompose_again.title', ...OVERFLOW },
-    { id: 'watches', labelKey: 'control.epic.watches_review', advisoryKey: 'control.epic.watches_review.title', ...OVERFLOW },
-    { id: 'archive', labelKey: 'control.epic.archive', advisoryKey: 'control.epic.archive.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.epic.cancel', advisoryKey: 'control.epic.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'next',
+      labelKey: 'control.epic.next',
+      advisoryKey: 'control.epic.next.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'findings',
+      labelKey: 'control.epic.findings_review',
+      advisoryKey: 'control.epic.findings_review.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.epic.chat',
+      advisoryKey: 'control.epic.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'auto',
+      labelKey: 'control.epic.auto',
+      advisoryKey: 'control.epic.auto.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'common_files',
+      labelKey: 'control.epic.overlap',
+      advisoryKey: 'control.epic.overlap.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'decompose',
+      labelKey: 'control.epic.decompose_again',
+      advisoryKey: 'control.epic.decompose_again.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'watches',
+      labelKey: 'control.epic.watches_review',
+      advisoryKey: 'control.epic.watches_review.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'archive',
+      labelKey: 'control.epic.archive',
+      advisoryKey: 'control.epic.archive.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.epic.cancel',
+      advisoryKey: 'control.epic.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   waiting_for_you: [
-    { id: 'next', labelKey: 'control.epic.next', advisoryKey: 'control.epic.next.title', ...PRIMARY },
-    { id: 'findings', labelKey: 'control.epic.findings_review', advisoryKey: 'control.epic.findings_review.title', ...SECONDARY },
-    { id: 'chat', labelKey: 'control.epic.chat', advisoryKey: 'control.epic.chat.title', ...SECONDARY },
-    { id: 'auto', labelKey: 'control.epic.auto', advisoryKey: 'control.epic.auto.title', ...OVERFLOW },
-    { id: 'common_files', labelKey: 'control.epic.overlap', advisoryKey: 'control.epic.overlap.title', ...OVERFLOW },
-    { id: 'decompose', labelKey: 'control.epic.decompose_again', advisoryKey: 'control.epic.decompose_again.title', ...OVERFLOW },
-    { id: 'watches', labelKey: 'control.epic.watches_review', advisoryKey: 'control.epic.watches_review.title', ...OVERFLOW },
-    { id: 'archive', labelKey: 'control.epic.archive', advisoryKey: 'control.epic.archive.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.epic.cancel', advisoryKey: 'control.epic.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'next',
+      labelKey: 'control.epic.next',
+      advisoryKey: 'control.epic.next.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'findings',
+      labelKey: 'control.epic.findings_review',
+      advisoryKey: 'control.epic.findings_review.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.epic.chat',
+      advisoryKey: 'control.epic.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'auto',
+      labelKey: 'control.epic.auto',
+      advisoryKey: 'control.epic.auto.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'common_files',
+      labelKey: 'control.epic.overlap',
+      advisoryKey: 'control.epic.overlap.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'decompose',
+      labelKey: 'control.epic.decompose_again',
+      advisoryKey: 'control.epic.decompose_again.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'watches',
+      labelKey: 'control.epic.watches_review',
+      advisoryKey: 'control.epic.watches_review.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'archive',
+      labelKey: 'control.epic.archive',
+      advisoryKey: 'control.epic.archive.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.epic.cancel',
+      advisoryKey: 'control.epic.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   held: [
-    { id: 'findings', labelKey: 'control.epic.findings_review', advisoryKey: 'control.epic.findings_review.title', ...SECONDARY },
-    { id: 'chat', labelKey: 'control.epic.chat', advisoryKey: 'control.epic.chat.title', ...SECONDARY },
-    { id: 'auto', labelKey: 'control.epic.auto', advisoryKey: 'control.epic.auto.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.epic.cancel', advisoryKey: 'control.epic.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'findings',
+      labelKey: 'control.epic.findings_review',
+      advisoryKey: 'control.epic.findings_review.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'chat',
+      labelKey: 'control.epic.chat',
+      advisoryKey: 'control.epic.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'auto',
+      labelKey: 'control.epic.auto',
+      advisoryKey: 'control.epic.auto.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.epic.cancel',
+      advisoryKey: 'control.epic.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   landing: [
-    { id: 'chat', labelKey: 'control.epic.chat', advisoryKey: 'control.epic.chat.title', ...SECONDARY },
-    { id: 'archive', labelKey: 'control.epic.archive', advisoryKey: 'control.epic.archive.title', ...OVERFLOW },
-    { id: 'cancel', labelKey: 'control.epic.cancel', advisoryKey: 'control.epic.cancel.title', ...DESTRUCTIVE },
+    {
+      id: 'chat',
+      labelKey: 'control.epic.chat',
+      advisoryKey: 'control.epic.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'archive',
+      labelKey: 'control.epic.archive',
+      advisoryKey: 'control.epic.archive.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'cancel',
+      labelKey: 'control.epic.cancel',
+      advisoryKey: 'control.epic.cancel.title',
+      ...DESTRUCTIVE,
+    },
   ],
   ended: [
-    { id: 'chat', labelKey: 'control.epic.chat', advisoryKey: 'control.epic.chat.title', ...SECONDARY },
-    { id: 'archive', labelKey: 'control.epic.archive', advisoryKey: 'control.epic.archive.title', ...OVERFLOW },
+    {
+      id: 'chat',
+      labelKey: 'control.epic.chat',
+      advisoryKey: 'control.epic.chat.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'archive',
+      labelKey: 'control.epic.archive',
+      advisoryKey: 'control.epic.archive.title',
+      ...OVERFLOW,
+    },
   ],
 };
 
 /** A project's acts by state (UX-P-04; the grid that draws them is PLAN-59). */
 export const PROJECT_ACTS: Record<string, ActSpec[]> = {
   ready: [
-    { id: 'open_running_work', labelKey: 'project.act.open_running_work', advisoryKey: 'project.act.open_running_work.title', ...PRIMARY },
-    { id: 'start_plan', labelKey: 'project.act.start_plan', advisoryKey: 'project.act.start_plan.title', ...SECONDARY },
-    { id: 'start_epic', labelKey: 'project.act.start_epic', advisoryKey: 'project.act.start_epic.title', ...SECONDARY },
-    { id: 'setup', labelKey: 'project.act.setup', advisoryKey: 'project.act.setup.title', ...OVERFLOW },
-    { id: 'release', labelKey: 'project.act.release', advisoryKey: 'project.act.release.title', ...DESTRUCTIVE },
-    { id: 'unenrol', labelKey: 'project.act.unenrol', advisoryKey: 'project.act.unenrol.title', ...DESTRUCTIVE },
+    {
+      id: 'open_running_work',
+      labelKey: 'project.act.open_running_work',
+      advisoryKey: 'project.act.open_running_work.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'start_plan',
+      labelKey: 'project.act.start_plan',
+      advisoryKey: 'project.act.start_plan.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'start_epic',
+      labelKey: 'project.act.start_epic',
+      advisoryKey: 'project.act.start_epic.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'setup',
+      labelKey: 'project.act.setup',
+      advisoryKey: 'project.act.setup.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'release',
+      labelKey: 'project.act.release',
+      advisoryKey: 'project.act.release.title',
+      ...DESTRUCTIVE,
+    },
+    {
+      id: 'unenrol',
+      labelKey: 'project.act.unenrol',
+      advisoryKey: 'project.act.unenrol.title',
+      ...DESTRUCTIVE,
+    },
   ],
 };
 
 /** A paired device's acts (UC-ENT-2, UX-P-04): rename beside, revoke behind the overflow. */
 export const DEVICE_ACTS: Record<string, ActSpec[]> = {
   this_device: [
-    { id: 'rename', labelKey: 'devices.act.rename', advisoryKey: 'devices.act.rename.title', ...SECONDARY },
-    { id: 'revoke', labelKey: 'devices.act.revoke', advisoryKey: 'devices.act.revoke.title', ...DESTRUCTIVE },
-    { id: 'revoke_others', labelKey: 'devices.act.revoke_others', advisoryKey: 'devices.act.revoke_others.title', ...DESTRUCTIVE },
+    {
+      id: 'rename',
+      labelKey: 'devices.act.rename',
+      advisoryKey: 'devices.act.rename.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'revoke',
+      labelKey: 'devices.act.revoke',
+      advisoryKey: 'devices.act.revoke.title',
+      ...DESTRUCTIVE,
+    },
+    {
+      id: 'revoke_others',
+      labelKey: 'devices.act.revoke_others',
+      advisoryKey: 'devices.act.revoke_others.title',
+      ...DESTRUCTIVE,
+    },
   ],
   other_device: [
-    { id: 'rename', labelKey: 'devices.act.rename', advisoryKey: 'devices.act.rename.title', ...SECONDARY },
-    { id: 'revoke', labelKey: 'devices.act.revoke', advisoryKey: 'devices.act.revoke.title', ...DESTRUCTIVE },
+    {
+      id: 'rename',
+      labelKey: 'devices.act.rename',
+      advisoryKey: 'devices.act.rename.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'revoke',
+      labelKey: 'devices.act.revoke',
+      advisoryKey: 'devices.act.revoke.title',
+      ...DESTRUCTIVE,
+    },
   ],
 };
 
 /** The runtime's acts by lifecycle state (UC-P-02). */
 export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
   running: [
-    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.runtime.check_now.title', ...PRIMARY },
-    { id: 'stop', labelKey: 'system.action.stop', advisoryKey: 'system.action.stop.title', ...SECONDARY },
-    { id: 'restart', labelKey: 'system.action.restart', advisoryKey: 'system.action.restart.title', ...SECONDARY },
+    {
+      id: 'check',
+      labelKey: 'system.runtime.check_now',
+      advisoryKey: 'system.runtime.check_now.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'stop',
+      labelKey: 'system.action.stop',
+      advisoryKey: 'system.action.stop.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'restart',
+      labelKey: 'system.action.restart',
+      advisoryKey: 'system.action.restart.title',
+      ...SECONDARY,
+    },
   ],
   update_available: [
-    { id: 'upgrade', labelKey: 'system.action.upgrade', advisoryKey: 'system.action.upgrade.title', ...PRIMARY },
-    { id: 'stop', labelKey: 'system.action.stop', advisoryKey: 'system.action.stop.title', ...SECONDARY },
-    { id: 'restart', labelKey: 'system.action.restart', advisoryKey: 'system.action.restart.title', ...SECONDARY },
-    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.runtime.check_now.title', ...OVERFLOW },
+    {
+      id: 'upgrade',
+      labelKey: 'system.action.upgrade',
+      advisoryKey: 'system.action.upgrade.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'stop',
+      labelKey: 'system.action.stop',
+      advisoryKey: 'system.action.stop.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'restart',
+      labelKey: 'system.action.restart',
+      advisoryKey: 'system.action.restart.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'check',
+      labelKey: 'system.runtime.check_now',
+      advisoryKey: 'system.runtime.check_now.title',
+      ...OVERFLOW,
+    },
   ],
   draining: [
-    { id: 'withdraw_stop', labelKey: 'system.stopping.withdraw', advisoryKey: 'system.stopping.withdraw.title', ...PRIMARY },
-    { id: 'stop_now', labelKey: 'system.stopping.stop_now', advisoryKey: 'system.stopping.stop_now.title', ...SECONDARY },
+    {
+      id: 'withdraw_stop',
+      labelKey: 'system.stopping.withdraw',
+      advisoryKey: 'system.stopping.withdraw.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'stop_now',
+      labelKey: 'system.stopping.stop_now',
+      advisoryKey: 'system.stopping.stop_now.title',
+      ...SECONDARY,
+    },
   ],
 };
 
@@ -299,8 +674,6 @@ export function actsFor(
   const tableIds = new Set(table.map((spec) => spec.id));
   const extra = offered
     .filter((entry) => !tableIds.has(entry.action))
-    .map((entry) =>
-      withAvailability(unknownAct(kind, entry.action), entry),
-    );
+    .map((entry) => withAvailability(unknownAct(kind, entry.action), entry));
   return [...known, ...extra];
 }

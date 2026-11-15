@@ -112,9 +112,7 @@ export const RAIL_GROUPS: readonly ShellNavGroup[] = [
 ];
 
 /** Every destination, flattened in rail order. */
-export const ALL_NAV_ITEMS: readonly ShellNavItem[] = RAIL_GROUPS.flatMap(
-  (group) => group.items,
-);
+export const ALL_NAV_ITEMS: readonly ShellNavItem[] = RAIL_GROUPS.flatMap((group) => group.items);
 
 /** The destinations the phone's bottom bar keeps; the rest live in its "More" sheet. */
 const BOTTOM_IDS: ReadonlySet<string> = new Set(['running', 'decisions', 'reports']);

@@ -18,7 +18,13 @@ describe('GitSourceIntakeModal component', () => {
     state: 'open',
     writable: true,
     changed_files: [
-      { path: 'doc/concepts/forgejo.adoc', additions: 12, deletions: 3, untrusted: true, operator_authored: false },
+      {
+        path: 'doc/concepts/forgejo.adoc',
+        additions: 12,
+        deletions: 3,
+        untrusted: true,
+        operator_authored: false,
+      },
     ],
     screening: 'clean',
     rate_limit: { limit: 0, remaining: 0, limited: false },

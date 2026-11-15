@@ -160,7 +160,8 @@ test.describe('The column window (navigation.adoc#window)', () => {
     expect(popoverBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(40);
   });
 
-  test('shows one column on a 390 px phone', async ({ page, request }) => {    await page.setViewportSize({ width: 390, height: 844 });
+  test('shows one column on a 390 px phone', async ({ page, request }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await openReportsWithDetail(page, request, true);
 
     await expect(page.getByTestId('nav-rail')).toBeHidden();

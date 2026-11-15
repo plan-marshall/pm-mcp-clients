@@ -424,7 +424,9 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
       'I would split it in two rows.',
     );
-    expect(screen.getByTestId('chat-proposal')).toHaveTextContent('two rows: transport and ordering');
+    expect(screen.getByTestId('chat-proposal')).toHaveTextContent(
+      'two rows: transport and ordering',
+    );
 
     await fireEvent.input(screen.getByTestId('chat-input'), {
       target: { value: 'Then split it in two rows.' },
@@ -433,7 +435,9 @@ describe('EpicView component', () => {
     await waitFor(() => {
       expect(send).toHaveBeenCalledWith('epic:relay-hardening', 'Then split it in two rows.');
     });
-    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('Split in two rows then.');
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent(
+      'Split in two rows then.',
+    );
 
     await fireEvent.click(screen.getByTestId('chat-accept'));
     await waitFor(() => {

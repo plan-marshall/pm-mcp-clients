@@ -91,10 +91,7 @@
    * @param row the plan row
    * @returns every visible value, for the shared filter
    */
-  function workstreamHaystack(
-    workstream: { id: string; name: string },
-    row: EpicWorkRow,
-  ): string {
+  function workstreamHaystack(workstream: { id: string; name: string }, row: EpicWorkRow): string {
     return buildHaystack([
       workstream.id,
       workstream.name,
@@ -701,7 +698,9 @@
                         data-advisory={$t('epic.views.open_plan.title')}
                         onclick={() => openPlan(row.plan_id)}
                       >
-                        <span class="plan-glyph"><Icon name={statusIcon(row.status)} size={16} /></span>
+                        <span class="plan-glyph"
+                          ><Icon name={statusIcon(row.status)} size={16} /></span
+                        >
                         <span class="plan-title font-semibold">{row.title}</span>
                       </button>
                       <span class="badge badge--state badge--state-{rowStatusKey(row.status)}">

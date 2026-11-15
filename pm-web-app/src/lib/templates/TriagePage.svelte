@@ -111,9 +111,7 @@
   );
 
   /** The levels the window hides to its left, with their index in the chain. */
-  const hidden = $derived(
-    levels.slice(0, layout.start).map((level, index) => ({ level, index })),
-  );
+  const hidden = $derived(levels.slice(0, layout.start).map((level, index) => ({ level, index })));
 
   /** The object's title, for the return strip and the announcement. */
   const objectTitle = $derived(levels[levels.length - 1]?.title ?? '');
@@ -348,62 +346,63 @@
       bind:this={windowEl}
       onkeydown={onKeydown}
     >
-    {#if layout.strip !== 'none'}
-      <GapStrip
-        hidden={hidden}
-        names={layout.strip === 'names'}
-        label={$t('web.nav.strip.label')}
-        width={layout.stripWidth}
-        onPeek={(index) => void peekAt(index)}
-      />
-    {/if}
+      {#if layout.strip !== 'none'}
+        <GapStrip
+          {hidden}
+          names={layout.strip === 'names'}
+          label={$t('web.nav.strip.label')}
+          width={layout.stripWidth}
+          onPeek={(index) => void peekAt(index)}
+        />
+      {/if}
 
-    {#each visible as entry (entry.level.key)}
-      <section
-        class="triage-page__column"
-        data-column-index={entry.index}
-        data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
-        aria-label={entry.level.title}
-        style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
-      >
-        {#if up && entry.index === layout.start}
-          <div class="triage-page__up">{@render up()}</div>
-        {/if}
+      {#each visible as entry (entry.level.key)}
+        <section
+          class="triage-page__column"
+          data-column-index={entry.index}
+          data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
+          aria-label={entry.level.title}
+          style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
+        >
+          {#if up && entry.index === layout.start}
+            <div class="triage-page__up">{@render up()}</div>
+          {/if}
 
-        {#if carriesPinned(entry.index) && pinned !== null}
-          <p class="triage-page__pinned" data-testid="triage-pinned">
-            <KindMark kind={pinned.level.kind} />
-            <span class="triage-page__pinned-title">{pinned.level.title}</span>
-            <span class="triage-page__pinned-reason">{$t(`web.nav.pinned.${pinned.reason}`)}</span>
-          </p>
-        {/if}
+          {#if carriesPinned(entry.index) && pinned !== null}
+            <p class="triage-page__pinned" data-testid="triage-pinned">
+              <KindMark kind={pinned.level.kind} />
+              <span class="triage-page__pinned-title">{pinned.level.title}</span>
+              <span class="triage-page__pinned-reason">{$t(`web.nav.pinned.${pinned.reason}`)}</span
+              >
+            </p>
+          {/if}
 
-        {#if isObjectColumn(entry.index) && object}
-          {@render object(entry.level)}
-        {:else}
-          {@render column(entry.level)}
-        {/if}
-      </section>
-    {/each}
+          {#if isObjectColumn(entry.index) && object}
+            {@render object(entry.level)}
+          {:else}
+            {@render column(entry.level)}
+          {/if}
+        </section>
+      {/each}
 
-    {#if layout.returnStrip}
-      <GapStrip
-        placement="end"
-        label={$t('web.nav.strip.label')}
-        objectTitle={objectTitle}
-        width={layout.stripWidth}
-        onReturn={() => void returnToObject()}
-      />
-    {/if}
+      {#if layout.returnStrip}
+        <GapStrip
+          placement="end"
+          label={$t('web.nav.strip.label')}
+          {objectTitle}
+          width={layout.stripWidth}
+          onReturn={() => void returnToObject()}
+        />
+      {/if}
 
-    {#if sideOpen && side}
-      <SideColumn
-        {side}
-        width={layout.sideWidth}
-        takesSpace={layout.sideTakesSpace}
-        onHide={onHideSide}
-      />
-    {/if}
+      {#if sideOpen && side}
+        <SideColumn
+          {side}
+          width={layout.sideWidth}
+          takesSpace={layout.sideTakesSpace}
+          onHide={onHideSide}
+        />
+      {/if}
     </div>
   {/key}
 </div>

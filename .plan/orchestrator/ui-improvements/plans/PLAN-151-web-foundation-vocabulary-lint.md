@@ -138,6 +138,12 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 7 contradicted: a tags now occur in components/ExternalLink:74 Link:68 RowLink:51 (PLAN-147/148); zero a tags in any .svelte outside lib/components so lint findings for it are 0
 - StartView has 17 raw buttons (not 16); `<a>` exists only in `ExternalLink`/`Link`/`RowLink`. The pending list names `MascotFigure` (exists) and `Chat` (it is `ChatPanel`).
 
+## Folded from the PLAN-149 landing 2026-11-15
+
+`PLAN-149` landed as `3a64b2b1` (#445; `landings/PLAN-149.md`). The lint will flag the dev page's English literals (" (off)", " (on)", " (interactive)", " (down)", " (upward)", " (fixed)") and a
+`dev.toggle.label` ("Compact view") used with a favourite star: decide a policy for `dev.*` keys and fixture text before the baseline is counted. `PLAN-149` left the spec's "the text guard baseline does not
+grow" unchecked (no scan or baseline existed), so the count starts from a dirty dev page. `PLAN-152` sees 8 new `dev.*` keys in `common.*`.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

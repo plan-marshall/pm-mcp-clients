@@ -116,7 +116,13 @@ describe('Icon component', () => {
   });
 
   /** The kind and act icons of the foundation's kind marks and the composer. */
-  const FOUNDATION_ICONS = ['kind.project', 'kind.side-job', 'kind.machine', 'act.send', 'act.stop'];
+  const FOUNDATION_ICONS = [
+    'kind.project',
+    'kind.side-job',
+    'kind.machine',
+    'act.send',
+    'act.stop',
+  ];
 
   it.each(FOUNDATION_ICONS)('registers %s and renders it at 16, 20 and 24 px', (id) => {
     expect(isUiIconId(id), `${id} is a UiIconId`).toBe(true);

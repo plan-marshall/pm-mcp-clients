@@ -80,9 +80,7 @@ function expectOptionsAndGroupsOnly(box: HTMLElement): void {
     expect(['option', 'group']).toContain(role);
     if (role === 'group') {
       expect(child.querySelectorAll('[role="option"]').length).toBeGreaterThan(0);
-      for (const heading of Array.from(
-        child.querySelectorAll('h1, h2, h3, h4, h5, h6'),
-      )) {
+      for (const heading of Array.from(child.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
         expect(heading).toHaveAttribute('role', 'presentation');
       }
     }
@@ -188,9 +186,7 @@ describe('the command palette listbox', () => {
   });
 
   it('keeps Retry outside the listbox after a failed read and sends the query again', async () => {
-    const findWork = vi
-      .spyOn(apiClient, 'findWork')
-      .mockRejectedValue(new Error('unavailable'));
+    const findWork = vi.spyOn(apiClient, 'findWork').mockRejectedValue(new Error('unavailable'));
     openPalette({ text: 'relay', matches: [], status: 'failed' });
 
     render(CommandPalette);

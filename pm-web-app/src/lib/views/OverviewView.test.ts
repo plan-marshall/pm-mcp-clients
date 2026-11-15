@@ -273,8 +273,16 @@ describe('OverviewView component', () => {
   });
 
   it.each([
-    ['a counted reason', { needs_operator_kind: 'decision', needs_operator_count: 2 }, '! 2 · decision'],
-    ['a reason by its word', { needs_operator_kind: 'waits_for_you', needs_operator_count: 1 }, '! waits for you'],
+    [
+      'a counted reason',
+      { needs_operator_kind: 'decision', needs_operator_count: 2 },
+      '! 2 · decision',
+    ],
+    [
+      'a reason by its word',
+      { needs_operator_kind: 'waits_for_you', needs_operator_count: 1 },
+      '! waits for you',
+    ],
     ['no reason', { needs_operator_kind: null, needs_operator_count: 1 }, '! another reason'],
   ])('names %s of a plan and of an epic from the catalogue', async (_case, needs, expected) => {
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({

@@ -70,7 +70,7 @@
     position: fixed;
     inset-block-end: var(--space-6);
     inset-inline-end: var(--space-6);
-    z-index: 90;
+    z-index: var(--layer-toast);
     display: inline-flex;
     align-items: center;
     gap: var(--space-3);

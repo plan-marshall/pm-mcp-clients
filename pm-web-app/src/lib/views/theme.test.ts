@@ -218,9 +218,10 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
         expect(style.color).toBe('var(--color-primary)');
 
         // Contrast verification: calculate relative luminance and contrast ratio against card surface
-        const themeTokens = theme === 'dark'
-          ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
-          : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
+        const themeTokens =
+          theme === 'dark'
+            ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
+            : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
 
         const lum = (c: { r: number; g: number; b: number }) => {
           const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
