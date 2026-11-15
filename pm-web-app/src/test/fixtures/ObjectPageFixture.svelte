@@ -18,9 +18,10 @@
   export let tabs: string;
   export let body: string;
   export let compact = false;
+  export let inColumn = false;
 </script>
 
-<ObjectPage {compact}>
+<ObjectPage {compact} {inColumn}>
   <span slot="kind">{kind}</span>
   <span slot="title">{title}</span>
   <span slot="id">{idChip}</span>

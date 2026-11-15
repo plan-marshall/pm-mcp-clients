@@ -74,16 +74,15 @@ describe('TriagePage as the column engine', () => {
 
   it('computes the window again when the container changes its width', async () => {
     const { frame } = await renderWindow(744);
-    const window_ = document.querySelector('.triage-page__window');
 
     expect(columns()).toHaveLength(2);
-    expect(window_).toHaveAttribute('data-columns', '2');
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-columns', '2');
 
     reportBox(frame, 1216, 800);
     await tick();
 
     expect(columns()).toHaveLength(3);
-    expect(window_).toHaveAttribute('data-columns', '3');
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-columns', '3');
   });
 
   it('takes the reported container over the measured fallback', async () => {
@@ -226,14 +225,16 @@ describe('the gap strip, the peek, the focus and the keys', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
 
-    const window_ = document.querySelector('.triage-page__window');
-    expect(window_).toHaveAttribute('data-start', '0');
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '0');
     expect(screen.queryByText('Object body')).toBeNull();
 
     await fireEvent.click(screen.getByRole('button', { name: 'Back to Object column' }));
 
-    expect(window_).toHaveAttribute('data-start', '2');
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
     expect(screen.getByText('Object body')).toBeInTheDocument();
+    // The return lands on the object, and the announcement names the same column.
+    expect(document.activeElement).toHaveAttribute('data-testid', 'triage-detail');
+    expect(get(runtimeStore).quietNavigationNotice).toBe('Object column, plan');
   });
 
   it('moves the focus to the heading of the column now in view and announces it', async () => {
@@ -260,23 +261,40 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     await tick();
 
     expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    // The focus never falls to the page: it lands on the object the new chain opens.
+    expect(document.activeElement).toHaveAttribute('data-testid', 'triage-detail');
+    expect(get(runtimeStore).quietNavigationNotice).toBe('Another task, plan');
   });
 
   it('moves the focus to the neighbour column with the keys, shifting the window where it is hidden', async () => {
     await renderWindow(1168);
-    const window_ = document.querySelector('.triage-page__window');
     const heading = screen.getByRole('heading', { name: 'Epic column' });
     heading.focus();
 
     await fireEvent.keyDown(heading, { key: 'ArrowLeft', ctrlKey: true });
 
-    expect(window_).toHaveAttribute('data-start', '1');
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
     expect(document.activeElement).toHaveTextContent('Project column');
 
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
 
     expect(document.activeElement).toHaveTextContent('Epic column');
     expect(get(runtimeStore).quietNavigationNotice).toBe('Epic column, epic');
+  });
+
+  it('keeps the focus on the column it asks for at the right edge of a peek', async () => {
+    await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    // The peek starts at the lens and shows three columns: lens, project, epic.
+    const epic = screen.getByRole('heading', { name: 'Epic column' });
+    epic.focus();
+
+    await fireEvent.keyDown(epic, { key: ']' });
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+    expect(document.activeElement).toHaveTextContent('Plan column');
+    expect(get(runtimeStore).quietNavigationNotice).toBe('Plan column, plan');
   });
 
   it('leaves the keys to a focused field', async () => {
@@ -305,8 +323,11 @@ describe('the gap strip, the peek, the focus and the keys', () => {
 
   it('slides a shift for the base duration and not at all under reduced motion', () => {
     const style = styleOf(SOURCE);
+    const source = fs.readFileSync(SOURCE, 'utf-8');
 
     expect(style).toContain('animation: triage-page-shift var(--duration-base)');
+    // The animation runs on a shift: the window is keyed on the level it starts at.
+    expect(source).toContain('{#key layout.start}');
     const reduced = style.slice(style.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toContain('animation: none');
   });

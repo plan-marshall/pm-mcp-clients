@@ -173,11 +173,15 @@
   });
 
   // A peek ends at the next selection: the view hands a new chain, and the window returns to the
-  // object (`navigation.adoc#gap-strip`).
+  // object — with the focus, which never falls to the page (`navigation.adoc#keys`).
   $effect(() => {
     const chain = levels.map((level) => level.key).join('\u0000');
-    if (previousChain !== '' && chain !== previousChain) {
+    if (previousChain !== '' && chain !== previousChain && peek !== null) {
       peek = null;
+      void tick().then(() => {
+        focusColumn(levels.length - 1);
+        announce(levels.length - 1);
+      });
     }
     previousChain = chain;
   });
@@ -235,26 +239,27 @@
   }
 
   /**
-   * Peeks at a level: the window starts there, the focus moves to its heading and the shift is
-   * announced. No selection, no address and no history change.
+   * Peeks at a level: the window starts there, the focus moves to the column now in view and the
+   * shift is announced. No selection, no address and no history change.
    *
-   * @param index the level's index in the chain
+   * @param index the level the window starts at
+   * @param focusIndex the level whose column takes the focus; the peeked level by default
    */
-  async function peekAt(index: number): Promise<void> {
+  async function peekAt(index: number, focusIndex = index): Promise<void> {
     peek = index;
     await tick();
-    focusColumn(index);
-    announce(index);
+    focusColumn(focusIndex);
+    announce(focusIndex);
   }
 
   /**
    * Returns from a peek to the object: the window ends at the object again, the focus moves to the
-   * heading now in view and the shift is announced.
+   * object's heading and the shift is announced.
    */
   async function returnToObject(): Promise<void> {
     peek = null;
     await tick();
-    focusColumn(layout.start);
+    focusColumn(levels.length - 1);
     announce(levels.length - 1);
   }
 
@@ -287,7 +292,8 @@
     }
     if (next >= layout.start + layout.columns) {
       if (layout.peek) {
-        await peekAt(next - layout.columns + 1);
+        // The window shifts one column right; the focus stays on the column it asked for.
+        await peekAt(next - layout.columns + 1, next);
       }
       return;
     }
@@ -324,15 +330,16 @@
   bind:this={frame}
 >
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    class="triage-page__window"
-    role="group"
-    aria-label={label}
-    data-columns={layout.columns}
-    data-start={layout.start}
-    bind:this={windowEl}
-    onkeydown={onKeydown}
-  >
+  {#key layout.start}
+    <div
+      class="triage-page__window"
+      role="group"
+      aria-label={label}
+      data-columns={layout.columns}
+      data-start={layout.start}
+      bind:this={windowEl}
+      onkeydown={onKeydown}
+    >
     {#if layout.strip !== 'none'}
       <GapStrip
         hidden={hidden}
@@ -389,8 +396,10 @@
         onHide={onHideSide}
       />
     {/if}
-  </div>
+    </div>
+  {/key}
 </div>
+
 <style>
   .triage-page {
     inline-size: 100%;

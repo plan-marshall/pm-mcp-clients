@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/svelte';
 import fs from 'node:fs';
 import path from 'node:path';
 import ObjectPageFixture from '../../test/fixtures/ObjectPageFixture.svelte';
-import { styleOf, ruleOf } from '../../test/templateStyle';
+import { styleOf, ruleOf, rulesOf } from '../../test/templateStyle';
 
 /**
  * `ObjectPage` (UX-P-03, template B): the head with kind, title, id, state and the acts, an
@@ -73,7 +73,19 @@ describe('ObjectPage', () => {
 
     expect(ruleOf(style, '.object-page')).toContain('max-width: 1440px');
     expect(ruleOf(style, '.object-page')).toContain('margin-inline: auto');
-    expect(ruleOf(style, '.object-page--compact')).toContain('max-width: none');
+    expect(rulesOf(style, '.object-page--compact').join('\n')).toContain('max-width: none');
+    expect(rulesOf(style, '.object-page--in-column').join('\n')).toContain('max-width: none');
+    expect(rulesOf(style, '.object-page--in-column').join('\n')).toContain('padding: 0');
+  });
+
+  it('draws its full head inside a column without the page cap', () => {
+    render(ObjectPageFixture, { props: { ...PROPS, inColumn: true } });
+
+    expect(screen.getByTestId('object-page')).toHaveClass('object-page--in-column');
+    // The full head stays: the id chip, the attention strip, the tabs and the body.
+    expect(screen.getByTestId('object-page-id')).toHaveTextContent('PLAN-43');
+    expect(screen.getByTestId('object-page-attention')).toBeInTheDocument();
+    expect(screen.getByTestId('object-page-tabs')).toBeInTheDocument();
   });
 
   it('carries no path slot and no side column of its own', () => {

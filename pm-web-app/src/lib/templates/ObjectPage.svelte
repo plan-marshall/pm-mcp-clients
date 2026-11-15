@@ -16,9 +16,16 @@
    */
   /** Whether the head is the head of a list column, with nothing below it. */
   export let compact = false;
+  /** Whether the page stands inside the engine's object column: no cap and no page inset. */
+  export let inColumn = false;
 </script>
 
-<div class="object-page" class:object-page--compact={compact} data-testid="object-page">
+<div
+  class="object-page"
+  class:object-page--compact={compact}
+  class:object-page--in-column={inColumn}
+  data-testid="object-page"
+>
   {#if compact}
     <header class="object-page__head object-page__head--compact">
       <div class="object-page__identity">
@@ -93,6 +100,13 @@
     margin-inline: 0;
     padding: 0;
     gap: var(--space-3);
+  }
+
+  /* The full head in the object column: the same, with the page's own spacing inside the column. */
+  .object-page--in-column {
+    max-width: none;
+    margin-inline: 0;
+    padding: 0;
   }
 
   .object-page__head {
