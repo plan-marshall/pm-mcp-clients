@@ -4,9 +4,10 @@
 
 ## START HERE
 
-**Resume anchor**: RESTART HERE (2026-11-15, after handle-open, a full cleanup, the ledger land #451 and the PLAN-143 analysis): run /plan-marshall:plan-orchestrator resume slug=ui-improvements. FIRST ACTION: the operator confirms the launch of the emitted block (PLAN-24 on the runbook lane: /plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-24-cli-proof-of-presence-decision.md; its run needs the operator's decision on the proof of presence, so the operator may prefer another candidate: 52, 53, 58 or 85 are also admitted and have no unmet dependency), then record `queue --transition PLAN-24 --status launched`; the started/running transition stays the operator's. PLAN-143 landed (#446, 71f84bb0), analyzed 2026-11-15 (landings/PLAN-143.md): 0 of 5 deliverables fully met, three major layer-3 defects, reported at once, NO fix plan staged; the operator decides whether to stage a PLAN-143 fix plan (D2, D4, the three majors; it follows 166, 146 and 144 on runtime.ts, routes.ts and the views) or fold it into PLAN-144 as a D0. SHIPPED and analyzed: PLAN-142 (#442), 145 (#443), 162 (#444), 149 (#445), 143 (#446). RUNNING (operator-confirmed, lanes in separate sessions): 166, 146, 150 (with the PLAN-149 residue as D0); PLAN-30 row 'running' but PARKED (operator decision 2026-11-15: stays parked until PLAN-146 lands, then resumes on a fresh main; PR #438 is BEHIND main and red: build / sonar-build, build / conclusion and SonarCloud failed at 2c681d9d, causes not read; landing is not available while the gates fail). On each inbox message run /plan-marshall:plan-orchestrator analyze slug=ui-improvements (three layers by a leaf on a real landing, re-read on the merged tree). HELD: 165 (overlaps 30), 163 (D0 folded; not alongside 146 on the mock files), 164 (after 163). Next emits when a slot frees: 163 (after 146), 151 and 88 (after 150), 144 (after 166, series with 166; 143 has landed), 152 (file overlaps, check at emit; it also takes the html lang writer, add the clause at emit). Handle-open decided 2026-11-15 (see epic.md Decisions): the review gate has no store (with --disposition passed #444 is all_handled, #445 is blocked by thread_concern_remains, #443 failed on bare ids); the gate cannot read CodeRabbit's 'Minor comments: N' (runbook-lane defect, plan-marshall repo; such a PR needs the operator's explicit merge word); the executor matches the lane at 0.1.2135. Follow-ups named, NOTHING staged: a residue plan after PLAN-150 (the --size-status-slot token for StatusLabel, a named testTimeout instead of the global 20_000, ActMenu :focus to :focus-visible with the duplicated menu CSS); a residue plan after PLAN-146 for the PLAN-145 panels (out-of-order test quality, unfiltered plan-panel reload, unused apiClient import); the Javadoc of EpicProcessPlan:26 with the next plan that edits the pm-api process contract (read MockRuntimeEngine STATE_DONE first); two trivial changes (the German glossary: add Terminal, Listener, Setup, Store, Gate and reword Log and Audit-Kennung; the pause dialogue design without per-plan figures); the Sonar do_transition request probably sends a JSON body (plan-marshall repo, unverified). Open operator questions: was the progress.md merge override on #445 yours (recorded as lane-authored and unverified; the gate really blocked that head); nothing else. 12 operator items were decided one per turn; about 85 entries (keep-open and stale-history) were analysed and left open. Cleanup 2026-11-15 (see epic.md Decisions): 268 stale claims of the staged and parked specs were re-grounded at 71f84bb0 and persisted; 11 contradicted claims are NOT re-scoped and block emission of PLAN-135 (3,5,7), 136 (2), 137 (0,4), 138 (1), 154 (2,4), 42 (2) and 59 (7), and PLAN-138 claim 8 is unverifiable; the specs on the next-emit list (152, 144, 164, 151, 163, 88) are clear of blockers. Candidates the operator should judge, not applied: PLAN-70 largely obsolete, PLAN-135/137/154/85/153/53/79/138 premises changed. Restart verdict not_ready only because rows are still running (30 parked, 146, 150, 166). Shell: zsh does not word-split unquoted variables; run the executor from /Users/oliver/git/pm-mcp-clients. Open Defects and Watches of PLAN-142/143/145/149/162 are in epic.md.
+**Resume anchor**: RESTART HERE (2026-11-15, after handle-open, a full cleanup, the ledger land #451 and the PLAN-143 analysis): run /plan-marshall:plan-orchestrator resume slug=ui-improvements. FIRST ACTION: nothing emittable (N=4 is full: 24, 146, 150, 166 running; PLAN-30 parked); on each inbox message run /plan-marshall:plan-orchestrator analyze slug=ui-improvements. PLAN-24 (proof-of-presence decision record, runbook lane) is RUNNING, operator-confirmed 2026-11-15; its run needs the operator's decisions. Candidates admitted with satisfied dependencies when a slot frees: 52, 53, 58, 85. PLAN-143 landed (#446, 71f84bb0), analyzed 2026-11-15 (landings/PLAN-143.md): 0 of 5 deliverables fully met, three major layer-3 defects, reported at once, NO fix plan staged; the operator decides whether to stage a PLAN-143 fix plan (D2, D4, the three majors; it follows 166, 146 and 144 on runtime.ts, routes.ts and the views) or fold it into PLAN-144 as a D0. SHIPPED and analyzed: PLAN-142 (#442), 145 (#443), 162 (#444), 149 (#445), 143 (#446). RUNNING (operator-confirmed, lanes in separate sessions): 24, 166, 146, 150 (with the PLAN-149 residue as D0); PLAN-30 row 'running' but PARKED (operator decision 2026-11-15: stays parked until PLAN-146 lands, then resumes on a fresh main; PR #438 is BEHIND main and red: build / sonar-build, build / conclusion and SonarCloud failed at 2c681d9d, causes not read; landing is not available while the gates fail). On each inbox message run /plan-marshall:plan-orchestrator analyze slug=ui-improvements (three layers by a leaf on a real landing, re-read on the merged tree). HELD: 165 (overlaps 30), 163 (D0 folded; not alongside 146 on the mock files), 164 (after 163). Next emits when a slot frees: 163 (after 146), 151 and 88 (after 150), 144 (after 166, series with 166; 143 has landed), 152 (file overlaps, check at emit; it also takes the html lang writer, add the clause at emit). Handle-open decided 2026-11-15 (see epic.md Decisions): the review gate has no store (with --disposition passed #444 is all_handled, #445 is blocked by thread_concern_remains, #443 failed on bare ids); the gate cannot read CodeRabbit's 'Minor comments: N' (runbook-lane defect, plan-marshall repo; such a PR needs the operator's explicit merge word); the executor matches the lane at 0.1.2135. Follow-ups named, NOTHING staged: a residue plan after PLAN-150 (the --size-status-slot token for StatusLabel, a named testTimeout instead of the global 20_000, ActMenu :focus to :focus-visible with the duplicated menu CSS); a residue plan after PLAN-146 for the PLAN-145 panels (out-of-order test quality, unfiltered plan-panel reload, unused apiClient import); the Javadoc of EpicProcessPlan:26 with the next plan that edits the pm-api process contract (read MockRuntimeEngine STATE_DONE first); two trivial changes (the German glossary: add Terminal, Listener, Setup, Store, Gate and reword Log and Audit-Kennung; the pause dialogue design without per-plan figures); the Sonar do_transition request probably sends a JSON body (plan-marshall repo, unverified). Open operator questions: was the progress.md merge override on #445 yours (recorded as lane-authored and unverified; the gate really blocked that head); nothing else. 12 operator items were decided one per turn; about 85 entries (keep-open and stale-history) were analysed and left open. Cleanup 2026-11-15 (see epic.md Decisions): 268 stale claims of the staged and parked specs were re-grounded at 71f84bb0 and persisted; 11 contradicted claims are NOT re-scoped and block emission of PLAN-135 (3,5,7), 136 (2), 137 (0,4), 138 (1), 154 (2,4), 42 (2) and 59 (7), and PLAN-138 claim 8 is unverifiable; the specs on the next-emit list (152, 144, 164, 151, 163, 88) are clear of blockers. Candidates the operator should judge, not applied: PLAN-70 largely obsolete, PLAN-135/137/154/85/153/53/79/138 premises changed. Restart verdict not_ready only because rows are still running (30 parked, 146, 150, 166). Shell: zsh does not word-split unquoted variables; run the executor from /Users/oliver/git/pm-mcp-clients. Open Defects and Watches of PLAN-142/143/145/149/162 are in epic.md.
 **Phase**: orchestrating
 **Running**:
+- PLAN-24 (WS-05)
 - PLAN-30 (WS-05)
 - PLAN-146 (WS-03)
 - PLAN-150 (WS-02)
@@ -24,41 +25,40 @@
 - PLAN-75 (WS-03)
 - PLAN-137 (WS-07)
 **Queue** (staged, in order):
-1. PLAN-24 (WS-05)
-2. PLAN-42 (WS-05)
-3. PLAN-44 (WS-05)
-4. PLAN-48 (WS-05)
-5. PLAN-49 (WS-03)
-6. PLAN-50 (WS-05)
-7. PLAN-51 (WS-03)
-8. PLAN-52 (WS-03)
-9. PLAN-53 (WS-03)
-10. PLAN-58 (WS-03)
-11. PLAN-59 (WS-03)
-12. PLAN-60 (WS-03)
-13. PLAN-62 (WS-03)
-14. PLAN-63 (WS-05)
-15. PLAN-64 (WS-03)
-16. PLAN-66 (WS-03)
-17. PLAN-79 (WS-04)
-18. PLAN-85 (WS-03)
-19. PLAN-88 (WS-03)
-20. PLAN-135 (WS-07)
-21. PLAN-136 (WS-07)
-22. PLAN-138 (WS-07)
-23. PLAN-139 (WS-07)
-24. PLAN-140 (WS-07)
-25. PLAN-144 (WS-02)
-26. PLAN-151 (WS-02)
-27. PLAN-152 (WS-02)
-28. PLAN-153 (WS-03)
-29. PLAN-154 (WS-03)
-30. PLAN-155 (WS-03)
-31. PLAN-156 (WS-03)
-32. PLAN-157 (WS-03)
-33. PLAN-163 (WS-05)
-34. PLAN-164 (WS-03)
-35. PLAN-165 (WS-05)
+1. PLAN-42 (WS-05)
+2. PLAN-44 (WS-05)
+3. PLAN-48 (WS-05)
+4. PLAN-49 (WS-03)
+5. PLAN-50 (WS-05)
+6. PLAN-51 (WS-03)
+7. PLAN-52 (WS-03)
+8. PLAN-53 (WS-03)
+9. PLAN-58 (WS-03)
+10. PLAN-59 (WS-03)
+11. PLAN-60 (WS-03)
+12. PLAN-62 (WS-03)
+13. PLAN-63 (WS-05)
+14. PLAN-64 (WS-03)
+15. PLAN-66 (WS-03)
+16. PLAN-79 (WS-04)
+17. PLAN-85 (WS-03)
+18. PLAN-88 (WS-03)
+19. PLAN-135 (WS-07)
+20. PLAN-136 (WS-07)
+21. PLAN-138 (WS-07)
+22. PLAN-139 (WS-07)
+23. PLAN-140 (WS-07)
+24. PLAN-144 (WS-02)
+25. PLAN-151 (WS-02)
+26. PLAN-152 (WS-02)
+27. PLAN-153 (WS-03)
+28. PLAN-154 (WS-03)
+29. PLAN-155 (WS-03)
+30. PLAN-156 (WS-03)
+31. PLAN-157 (WS-03)
+32. PLAN-163 (WS-05)
+33. PLAN-164 (WS-03)
+34. PLAN-165 (WS-05)
 - PLAN-01 (WS-02) — plan=01-web-text-guard-report — PR 237 — landing=landings/PLAN-01.md — status: shipped
 - PLAN-02 (WS-04) — plan=02-cli-pty-dialogue-harness — PR 232 — landing=landings/PLAN-02.md — status: shipped
 - PLAN-03 (WS-01) — plan=03-mock-scenario-states — PR 253 — landing=landings/PLAN-03.md — status: shipped
@@ -180,7 +180,7 @@
 
 | # | Plan | Workstream | Status | Surface (expected) | Lane |
 |---|------|------------|--------|--------------------|------|
-| 1 | PLAN-24 | WS-05 | staged | doc/plans/README.adoc; doc/plans/proof-of-presence.adoc | runbook |
+| 1 | PLAN-24 | WS-05 | running | doc/plans/README.adoc; doc/plans/proof-of-presence.adoc | runbook |
 | 2 | PLAN-29 | WS-02 | parked | doc/claude_review/cross-cutting/analysis.adoc; doc/claude_review/verification-results/verify-web-texts.adoc | runbook |
 | 3 | PLAN-30 | WS-05 | running | doc/design/terminal-client/01-commands.adoc; doc/design/terminal-client/03-dialogues.adoc; doc/design/terminal-client/09-texts-common.adoc; doc/design/terminal-client/13-texts-operator.adoc; doc/design/terminal-client/14-transcripts-decisions.adoc; doc/design/terminal-client/26-cleanup.adoc; pm-api/src/main/java/de/planmarshall/api/display/Display.java; pm-api/src/main/java/de/planmarshall/api/resource/ErrorTexts.java; pm-api/src/main/resources/messages/decisions.de.properties; pm-api/src/main/resources/messages/decisions.en.properties; pm-api/src/main/resources/messages/operator.de.properties; pm-api/src/main/resources/messages/operator.en.properties; pm-api/src/main/resources/messages/projects.de.properties; pm-api/src/main/resources/messages/projects.en.properties; pm-api/src/test/java/de/planmarshall/api/control/ControlResourcesTest.java; pm-api/src/test/java/de/planmarshall/api/display/DisplayTest.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockConfigRoutes.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json; pm-mock-runtime/src/main/resources/scenarios/onboarding.json; pm-mock-runtime/src/test/java/de/planmarshall/mock/ConfigRoutesTest.java; pm-operator/src/main/java/de/planmarshall/operator/AcceptEditCommand.java; pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java; pm-operator/src/main/java/de/planmarshall/operator/CleanupCommand.java; pm-operator/src/main/java/de/planmarshall/operator/ConfigAspectRun.java; pm-operator/src/main/java/de/planmarshall/operator/ConfigCleanupCommand.java; pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java; pm-operator/src/main/java/de/planmarshall/operator/ConsolePrompt.java; pm-operator/src/main/java/de/planmarshall/operator/CredentialsCommand.java; pm-operator/src/main/java/de/planmarshall/operator/DecomposeCommand.java; pm-operator/src/main/java/de/planmarshall/operator/DrainCommand.java; pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java; pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java; pm-operator/src/main/java/de/planmarshall/operator/OperatorRefusedException.java; pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java; pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java; pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java; pm-operator/src/main/java/de/planmarshall/operator/ProjectCommand.java; pm-operator/src/main/java/de/planmarshall/operator/QuestionsCommand.java; pm-operator/src/main/java/de/planmarshall/operator/RefusalRenderer.java; pm-operator/src/main/java/de/planmarshall/operator/RolesCommand.java; pm-operator/src/main/java/de/planmarshall/operator/RuntimeActDialogue.java; pm-operator/src/main/java/de/planmarshall/operator/RuntimeCommand.java; pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java; pm-operator/src/main/java/de/planmarshall/operator/TerminalSanitizer.java; pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java; pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java; pm-operator/src/main/java/de/planmarshall/operator/dialogue/AspectRunSource.java; pm-operator/src/main/java/de/planmarshall/operator/overview/ProjectWorkLevel.java; pm-operator/src/main/java/de/planmarshall/operator/planview/PlanCompletionLevel.java; pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewFormatting.java; pm-operator/src/test/java/de/planmarshall/operator/AnswerRefusalTest.java; pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/ConfigCleanupCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java; pm-operator/src/test/java/de/planmarshall/operator/CredentialsCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/ExitCodesTest.java; pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java; pm-operator/src/test/java/de/planmarshall/operator/ProjectCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/QuestionsCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java; pm-operator/src/test/java/de/planmarshall/operator/RefusalRendererTest.java; pm-operator/src/test/java/de/planmarshall/operator/TerminalSanitizerTest.java; pm-operator/src/test/java/de/planmarshall/operator/WebDevicesCommandTest.java; pm-operator/src/test/java/de/planmarshall/operator/planview/PlanCompletionLevelTest.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/ProjectSetupDialogueIT.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java; pm-operator/src/test/resources/screen-captures/PLAN-128.txt; pm-operator/src/test/resources/screen-captures/PLAN-30.txt | runbook |
 | 4 | PLAN-41 | WS-02 | parked | doc/claude_review/verification-results/verify-web-design-system.adoc; doc/claude_review/visual-design/analysis.adoc | runbook |
