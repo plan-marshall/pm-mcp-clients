@@ -8,8 +8,8 @@
    * in a screen.
    */
   interface Props {
-    hidden: Array<{ level: Level; index: number }>;
-    names: boolean;
+    hidden?: Array<{ level: Level; index: number }>;
+    names?: boolean;
     label: string;
     placement?: 'start' | 'end';
     objectTitle?: string;
@@ -18,8 +18,8 @@
   }
 
   let {
-    hidden,
-    names,
+    hidden = [],
+    names = true,
     label,
     placement = 'start',
     objectTitle = '',
