@@ -945,7 +945,9 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.its_reason')}:</span>
-            <span class="detail-value" data-model-text>{dec.waiver_reason || dec.description || ''}</span>
+            <span class="detail-value" data-model-text
+              >{dec.waiver_reason || dec.description || ''}</span
+            >
           </div>
         </div>
 
@@ -1095,11 +1097,7 @@
                   <p class="recommendation-request-text">
                     {$t('decision.recommendation.on_request')}
                   </p>
-                  <Button
-                    size="small"
-                    variant="secondary"
-                    onclick={() => (revealed[dec.id] = true)}
-                  >
+                  <Button size="sm" variant="secondary" onclick={() => (revealed[dec.id] = true)}>
                     {$t('decision.recommendation.show')}
                   </Button>
                 </div>
@@ -1180,7 +1178,8 @@
                       }
                     }}
                   >
-                    <Icon name="act.edit" size={16} /> {$t('decision.answer.own_words')}
+                    <Icon name="act.edit" size={16} />
+                    {$t('decision.answer.own_words')}
                   </button>
 
                   {#if ownWordsMode[keyOf(dec, part, pIdx)]}
@@ -1194,7 +1193,7 @@
                         ></textarea>
                         <div class="own-words-actions">
                           <Button
-                            size="small"
+                            size="sm"
                             variant="secondary"
                             disabled={!ownWordsTexts[keyOf(dec, part, pIdx)]?.trim() ||
                               isInterpreting[keyOf(dec, part, pIdx)]}
@@ -1217,7 +1216,7 @@
                           </p>
                           <div class="readback-actions">
                             <Button
-                              size="small"
+                              size="sm"
                               variant="primary"
                               data-advisory={$t('decision.readback.confirm.title')}
                               disabled={isChatting(dec)}
@@ -1226,7 +1225,7 @@
                               {$t('decision.readback.confirm')}
                             </Button>
                             <Button
-                              size="small"
+                              size="sm"
                               variant="secondary"
                               onclick={() => {
                                 interpretations[keyOf(dec, part, pIdx)] = null;
@@ -1235,7 +1234,7 @@
                               {$t('decision.readback.edit')}
                             </Button>
                             <Button
-                              size="small"
+                              size="sm"
                               variant="secondary"
                               onclick={() => {
                                 ownWordsMode[keyOf(dec, part, pIdx)] = false;
@@ -1397,7 +1396,7 @@
     {#if errorMessage}
       <div class="error-banner" role="alert">
         <p>{errorMessage}</p>
-        <Button variant="secondary" size="small" onclick={loadDecisions}
+        <Button variant="secondary" size="sm" onclick={loadDecisions}
           >{$t('common.action.retry')}</Button
         >
       </div>
@@ -1405,7 +1404,11 @@
 
     {#if loadError !== null && decisions.length > 0}
       <div class="error-banner" data-testid="decisions-error">
-        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadDecisions}
+        />
       </div>
     {/if}
 

@@ -136,9 +136,7 @@ describe('PlanIntentPanel', () => {
   it('draws the head with the plan, the revision, the goal and the counts by verdict', async () => {
     await renderPanel(intent());
 
-    expect(screen.getByTestId('intent-head')).toHaveTextContent(
-      'Intent · fix-relay · revision 3',
-    );
+    expect(screen.getByTestId('intent-head')).toHaveTextContent('Intent · fix-relay · revision 3');
     expect(screen.getByTestId('intent-goal')).toHaveTextContent(
       'Make the relay reconnect without losing queued events.',
     );
@@ -208,9 +206,7 @@ describe('PlanIntentPanel', () => {
   it('says no deliverable yet for a criterion without one, and names the ones that satisfy it', async () => {
     await renderPanel(intent());
 
-    expect(screen.getByTestId('criterion-deliverables-AC-001')).toHaveTextContent(
-      'satisfied by 1',
-    );
+    expect(screen.getByTestId('criterion-deliverables-AC-001')).toHaveTextContent('satisfied by 1');
     expect(screen.getByTestId('criterion-deliverables-AC-004')).toHaveTextContent(
       'no deliverable yet',
     );
@@ -237,9 +233,7 @@ describe('PlanIntentPanel', () => {
       .map((group) => group.getAttribute('data-decider'));
 
     expect(groups).toEqual(['operator', 'quorum', 'role', 'fact']);
-    expect(within(container).getByTestId('choice-group-operator')).toHaveTextContent(
-      'you decided',
-    );
+    expect(within(container).getByTestId('choice-group-operator')).toHaveTextContent('you decided');
     expect(within(container).getByTestId('choice-group-role')).toHaveTextContent(
       "the model's call",
     );
@@ -375,9 +369,7 @@ describe('PlanIntentPanel', () => {
 
     onEvent?.('phase.changed');
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 4'),
-    );
+    await waitFor(() => expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 4'));
     expect(screen.getByTestId('intent-changed')).toHaveTextContent('the record changed');
   });
 
@@ -398,12 +390,8 @@ describe('PlanIntentPanel', () => {
 
     // The newer read answers first, the older one last: the older record is dropped.
     resolveSecond?.(intent({ revision: 5 }));
-    await waitFor(() =>
-      expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'),
-    );
+    await waitFor(() => expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'));
     resolveFirst?.(intent({ revision: 4 }));
-    await waitFor(() =>
-      expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'),
-    );
+    await waitFor(() => expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'));
   });
 });

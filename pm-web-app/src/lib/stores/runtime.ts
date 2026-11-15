@@ -437,10 +437,9 @@ export async function openStartPage(): Promise<void> {
  * @param status the status the runtime reports
  * @returns the lifecycle fields the store keeps, so every read of them agrees
  */
-export function lifecycleFieldsOf(status: StatusResponse): Pick<
-  RuntimeState,
-  'isDraining' | 'drainInfo' | 'isStopped'
-> {
+export function lifecycleFieldsOf(
+  status: StatusResponse,
+): Pick<RuntimeState, 'isDraining' | 'drainInfo' | 'isStopped'> {
   // The daemon's own status resource writes the lifecycle under `state`; the mock and the tests
   // use `lifecycle_state`. Both are read, the daemon's first.
   const lifecycle = status.state ?? status.lifecycle_state;

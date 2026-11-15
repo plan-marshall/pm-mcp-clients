@@ -15,10 +15,14 @@ import { ruleOf, styleOf } from '../../test/templateStyle';
 const STYLE = styleOf(path.resolve(__dirname, 'Compose.svelte'));
 
 /** A stand-in for the frame's acts before the send act. */
-const TOOLS = createRawSnippet(() => ({ render: () => '<span data-testid="compose-tools">mic</span>' }));
+const TOOLS = createRawSnippet(() => ({
+  render: () => '<span data-testid="compose-tools">mic</span>',
+}));
 
 /** A stand-in for the frame's line under the field. */
-const FOOTER = createRawSnippet(() => ({ render: () => '<span data-testid="compose-footer">0 / 4000</span>' }));
+const FOOTER = createRawSnippet(() => ({
+  render: () => '<span data-testid="compose-footer">0 / 4000</span>',
+}));
 
 /**
  * @param props the props beyond the send label and the send callback
@@ -26,7 +30,9 @@ const FOOTER = createRawSnippet(() => ({ render: () => '<span data-testid="compo
  */
 function renderCompose(props: Record<string, unknown> = {}) {
   const onsend = vi.fn();
-  const result = render(Compose, { props: { ariaLabel: 'Message', sendLabel: 'Send', onsend, ...props } });
+  const result = render(Compose, {
+    props: { ariaLabel: 'Message', sendLabel: 'Send', onsend, ...props },
+  });
   const field = screen.getByRole('textbox', { name: 'Message' }) as HTMLTextAreaElement;
   return { ...result, field, onsend };
 }
@@ -82,7 +88,11 @@ describe('Compose', () => {
 
       await fireEvent.compositionStart(field);
       await fireEvent.compositionEnd(field);
-      const notPrevented = await fireEvent.keyDown(field, { key: 'Enter', keyCode: 229, isComposing: false });
+      const notPrevented = await fireEvent.keyDown(field, {
+        key: 'Enter',
+        keyCode: 229,
+        isComposing: false,
+      });
 
       expect(onsend).not.toHaveBeenCalled();
       expect(notPrevented).toBe(true);
@@ -102,7 +112,11 @@ describe('Compose', () => {
     it('still adds a line for a held Shift+Enter', async () => {
       const { field, onsend } = renderCompose({ value: 'Lines' });
 
-      const notPrevented = await fireEvent.keyDown(field, { key: 'Enter', shiftKey: true, repeat: true });
+      const notPrevented = await fireEvent.keyDown(field, {
+        key: 'Enter',
+        shiftKey: true,
+        repeat: true,
+      });
 
       expect(onsend).not.toHaveBeenCalled();
       expect(notPrevented).toBe(true);
@@ -118,7 +132,11 @@ describe('Compose', () => {
     });
 
     it('sends nothing while the act is held back', async () => {
-      const { field, onsend } = renderCompose({ value: 'Held', disabled: true, disabledReason: 'Type a message.' });
+      const { field, onsend } = renderCompose({
+        value: 'Held',
+        disabled: true,
+        disabledReason: 'Type a message.',
+      });
 
       await fireEvent.keyDown(field, { key: 'Enter' });
       await fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -142,7 +160,8 @@ describe('Compose', () => {
       const { field } = renderCompose({ disabled: true, disabledReason: 'Type a message.' });
       const act = screen.getByRole('button', { name: 'Send' });
 
-      expect(act).toBeDisabled();
+      expect(act).not.toBeDisabled();
+      expect(act).toHaveAttribute('aria-disabled', 'true');
       expect(act).toHaveAccessibleDescription('Type a message.');
       expect(field).toBeEnabled();
     });
@@ -154,7 +173,10 @@ describe('Compose', () => {
     });
 
     it('describes the field only while sending is held back', async () => {
-      const { field, rerender } = renderCompose({ disabled: true, disabledReason: 'Type a message.' });
+      const { field, rerender } = renderCompose({
+        disabled: true,
+        disabledReason: 'Type a message.',
+      });
       expect(field).toHaveAttribute('aria-describedby');
 
       await rerender({ disabled: false });
@@ -194,7 +216,10 @@ describe('Compose', () => {
       const onstop = vi.fn(() => {
         throw failure;
       });
-      const { field } = renderCompose({ value: 'Question', stop: { label: 'Stop the answer', onstop } });
+      const { field } = renderCompose({
+        value: 'Question',
+        stop: { label: 'Stop the answer', onstop },
+      });
       const act = screen.getByRole('button', { name: 'Stop the answer' });
       // jsdom reports an error of an event handler on the window; a listener keeps it from failing the run.
       const reported: unknown[] = [];
@@ -224,13 +249,20 @@ describe('Compose', () => {
     });
 
     it('stays active even where sending is held back', () => {
-      renderCompose({ disabled: true, disabledReason: 'Type a message.', stop: { label: 'Stop', onstop: vi.fn() } });
+      renderCompose({
+        disabled: true,
+        disabledReason: 'Type a message.',
+        stop: { label: 'Stop', onstop: vi.fn() },
+      });
 
       expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
     });
 
     it('sends nothing on Enter while an answer runs', async () => {
-      const { field, onsend } = renderCompose({ value: 'Next question', stop: { label: 'Stop', onstop: vi.fn() } });
+      const { field, onsend } = renderCompose({
+        value: 'Next question',
+        stop: { label: 'Stop', onstop: vi.fn() },
+      });
 
       await fireEvent.keyDown(field, { key: 'Enter' });
 
@@ -286,21 +318,31 @@ describe('Compose', () => {
     it('names the field with its visible label where one is given', () => {
       render(Compose, { props: { label: 'Instruction', sendLabel: 'Send', onsend: vi.fn() } });
 
-      expect(screen.getByRole('textbox', { name: 'Instruction' })).not.toHaveAttribute('aria-label');
+      expect(screen.getByRole('textbox', { name: 'Instruction' })).not.toHaveAttribute(
+        'aria-label',
+      );
     });
 
     it.each([
       ['a label alone', { label: 'Instruction' }, 'Instruction', false],
       ['an aria label alone', { ariaLabel: 'Message' }, 'Message', true],
-      ['both, where the label wins', { label: 'Instruction', ariaLabel: 'Message' }, 'Instruction', false],
+      [
+        'both, where the label wins',
+        { label: 'Instruction', ariaLabel: 'Message' },
+        'Instruction',
+        false,
+      ],
       ['an empty label and an aria label', { label: '', ariaLabel: 'Message' }, 'Message', true],
-    ] as const)('gives the field an accessible name from %s', (_case, name, accessibleName, viaAriaLabel) => {
-      render(Compose, { props: { ...name, sendLabel: 'Send', onsend: vi.fn() } });
-      const field = screen.getByRole('textbox', { name: accessibleName });
+    ] as const)(
+      'gives the field an accessible name from %s',
+      (_case, name, accessibleName, viaAriaLabel) => {
+        render(Compose, { props: { ...name, sendLabel: 'Send', onsend: vi.fn() } });
+        const field = screen.getByRole('textbox', { name: accessibleName });
 
-      expect(field).toHaveAccessibleName(accessibleName);
-      expect(field.hasAttribute('aria-label')).toBe(viaAriaLabel);
-    });
+        expect(field).toHaveAccessibleName(accessibleName);
+        expect(field.hasAttribute('aria-label')).toBe(viaAriaLabel);
+      },
+    );
 
     it('renders the tools before the send act and the footer under the field', () => {
       const { field } = renderCompose({ tools: TOOLS, footer: FOOTER });

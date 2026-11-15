@@ -240,8 +240,7 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
   // that ends at the object: with no level hidden to its right the window is the object's own, with
   // its strip of hidden levels and its width. So a resize while peeked never renders a short window,
   // and a peek that reaches the object never stretches it into the room the strip freed.
-  const peeked =
-    peek !== null && chosen.columns > 1 && peek + chosen.columns < depth ? peek : null;
+  const peeked = peek !== null && chosen.columns > 1 && peek + chosen.columns < depth ? peek : null;
 
   if (peeked === null) {
     const start = Math.max(0, depth - chosen.columns);
@@ -308,7 +307,11 @@ export function windowFor(input: ColumnWindowInput): ColumnWindow {
   const width = contentWidth(container);
   const depth = Math.max(0, Math.floor(input.depth));
   const peek =
-    input.peek !== null && input.peek !== undefined && Number.isInteger(input.peek) && input.peek >= 0 && input.peek < depth
+    input.peek !== null &&
+    input.peek !== undefined &&
+    Number.isInteger(input.peek) &&
+    input.peek >= 0 &&
+    input.peek < depth
       ? input.peek
       : null;
 

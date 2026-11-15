@@ -518,9 +518,7 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
     const de = loadMessages('de');
 
     expect(en['system.work.tasks']).toBe('{running} running \u00b7 {queued} queued');
-    expect(de['system.work.tasks']).toBe(
-      '{running} laufen \u00b7 {queued} in der Warteschlange',
-    );
+    expect(de['system.work.tasks']).toBe('{running} laufen \u00b7 {queued} in der Warteschlange');
     expect(en['system.jobs.slots']).toBe(
       '{used} of {total, plural, one {# slot} other {# slots}}{queued, plural, =0 {} other { \u00b7 # queued}}',
     );

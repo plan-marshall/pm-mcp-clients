@@ -111,13 +111,76 @@ const OPEN: readonly SideRow[] = [
     object: 0,
     strip: 'none',
   },
-  { viewport: 1024, rail: RAIL.collapsed, side: SIDE_NARROW, takesSpace: false, columns: 1, list: 0, object: 512, strip: 'none' },
-  { viewport: 1280, rail: RAIL.expanded, side: SIDE_WIDE, takesSpace: false, columns: 1, list: 0, object: 520, strip: 'none' },
-  { viewport: 1280, rail: RAIL.collapsed, side: SIDE_NARROW, takesSpace: false, columns: 2, list: 244, object: 480, strip: 'marks' },
-  { viewport: 1440, rail: RAIL.expanded, side: SIDE_NARROW, takesSpace: false, columns: 2, list: 236, object: 480, strip: 'marks' },
-  { viewport: 1440, rail: RAIL.collapsed, side: SIDE_WIDE, takesSpace: false, columns: 2, list: 232, object: 480, strip: 'names' },
-  { viewport: 1920, rail: RAIL.expanded, side: SIDE_WIDE, takesSpace: false, columns: 3, list: 272, object: 480, strip: 'names' },
-  { viewport: 1920, rail: RAIL.collapsed, side: SIDE_WIDE, takesSpace: false, columns: 4, list: 237, object: 481, strip: 'names' },
+  {
+    viewport: 1024,
+    rail: RAIL.collapsed,
+    side: SIDE_NARROW,
+    takesSpace: false,
+    columns: 1,
+    list: 0,
+    object: 512,
+    strip: 'none',
+  },
+  {
+    viewport: 1280,
+    rail: RAIL.expanded,
+    side: SIDE_WIDE,
+    takesSpace: false,
+    columns: 1,
+    list: 0,
+    object: 520,
+    strip: 'none',
+  },
+  {
+    viewport: 1280,
+    rail: RAIL.collapsed,
+    side: SIDE_NARROW,
+    takesSpace: false,
+    columns: 2,
+    list: 244,
+    object: 480,
+    strip: 'marks',
+  },
+  {
+    viewport: 1440,
+    rail: RAIL.expanded,
+    side: SIDE_NARROW,
+    takesSpace: false,
+    columns: 2,
+    list: 236,
+    object: 480,
+    strip: 'marks',
+  },
+  {
+    viewport: 1440,
+    rail: RAIL.collapsed,
+    side: SIDE_WIDE,
+    takesSpace: false,
+    columns: 2,
+    list: 232,
+    object: 480,
+    strip: 'names',
+  },
+  {
+    viewport: 1920,
+    rail: RAIL.expanded,
+    side: SIDE_WIDE,
+    takesSpace: false,
+    columns: 3,
+    list: 272,
+    object: 480,
+    strip: 'names',
+  },
+  {
+    viewport: 1920,
+    rail: RAIL.collapsed,
+    side: SIDE_WIDE,
+    takesSpace: false,
+    columns: 4,
+    list: 237,
+    object: 481,
+    strip: 'names',
+  },
 ];
 
 describe('the page inset', () => {
@@ -192,8 +255,12 @@ describe('the window of the deepest chain, chat open', () => {
 
 describe('the boundaries of the rule, one pixel either side', () => {
   it('keeps two columns with names at a content width of 836 and drops to marks at 835', () => {
-    expect(windowFor({ container: containerForContent(836), depth: DEEPEST_CHAIN }).strip).toBe('names');
-    expect(windowFor({ container: containerForContent(836), depth: DEEPEST_CHAIN }).columns).toBe(2);
+    expect(windowFor({ container: containerForContent(836), depth: DEEPEST_CHAIN }).strip).toBe(
+      'names',
+    );
+    expect(windowFor({ container: containerForContent(836), depth: DEEPEST_CHAIN }).columns).toBe(
+      2,
+    );
 
     const below = windowFor({ container: containerForContent(835), depth: DEEPEST_CHAIN });
     expect(below.strip).toBe('marks');

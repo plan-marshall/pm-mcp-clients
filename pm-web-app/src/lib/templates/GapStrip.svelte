@@ -244,7 +244,7 @@
     position: absolute;
     inset-block-start: 100%;
     inset-inline-start: 0;
-    z-index: 20;
+    z-index: var(--layer-bar);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);

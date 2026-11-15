@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { ClientError, actFailureReason, actFailureText, errorCodeOf, isClientError } from './errors';
+import {
+  ClientError,
+  actFailureReason,
+  actFailureText,
+  errorCodeOf,
+  isClientError,
+} from './errors';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 
@@ -56,9 +62,7 @@ describe('actFailureText', () => {
     currentLocale.set('en');
     messagesStore.set(loadMessages('en'));
 
-    expect(actFailureText(new Error('Failed to fetch'), 'Failed to do it')).toBe(
-      'Failed to do it',
-    );
+    expect(actFailureText(new Error('Failed to fetch'), 'Failed to do it')).toBe('Failed to do it');
     expect(actFailureText(undefined, 'Failed to do it')).toBe('Failed to do it');
   });
 });

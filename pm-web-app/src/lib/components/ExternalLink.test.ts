@@ -23,10 +23,18 @@ function useCatalogue(locale: 'de' | 'en'): void {
 describe('ExternalLink', () => {
   it('opens in a new tab without handing the opener over', () => {
     useCatalogue('en');
-    render(ExternalLink, { props: { href: 'https://github.com/plan-marshall/pm-mcp-clients/pull/214', label: 'Pull request' } });
+    render(ExternalLink, {
+      props: {
+        href: 'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+        label: 'Pull request',
+      },
+    });
     const link = screen.getByRole('link');
 
-    expect(link).toHaveAttribute('href', 'https://github.com/plan-marshall/pm-mcp-clients/pull/214');
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+    );
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
@@ -64,16 +72,19 @@ describe('ExternalLink', () => {
     expect(screen.getByRole('link')).toHaveClass('link--chip');
   });
 
-  it.each(['javascript:alert(1)', 'data:text/html,<b>x</b>', 'file:///etc/passwd', 'not a url', ''])(
-    'draws the label as text and no anchor for %j',
-    (href) => {
-      useCatalogue('en');
-      const { container } = render(ExternalLink, { props: { href, label: 'Pull request' } });
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<b>x</b>',
+    'file:///etc/passwd',
+    'not a url',
+    '',
+  ])('draws the label as text and no anchor for %j', (href) => {
+    useCatalogue('en');
+    const { container } = render(ExternalLink, { props: { href, label: 'Pull request' } });
 
-      expect(container.querySelector('a')).toBeNull();
-      expect(container).toHaveTextContent('Pull request');
-    },
-  );
+    expect(container.querySelector('a')).toBeNull();
+    expect(container).toHaveTextContent('Pull request');
+  });
 
   it.each([
     'https:example.org/pull/3',
@@ -124,7 +135,9 @@ describe('ExternalLink', () => {
 
   it('renders the address that was checked, without the white space around it', () => {
     useCatalogue('en');
-    render(ExternalLink, { props: { href: '  https://example.org/docs\n', label: 'Documentation' } });
+    render(ExternalLink, {
+      props: { href: '  https://example.org/docs\n', label: 'Documentation' },
+    });
 
     expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.org/docs');
   });
@@ -143,7 +156,10 @@ describe('ExternalLink', () => {
   });
 
   it('exempts only the inline text link of a sentence from the target size', () => {
-    const [desktop, phone] = rulesOf(STYLE, ':global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text');
+    const [desktop, phone] = rulesOf(
+      STYLE,
+      ':global(:is(p, li, dd, td, figcaption, blockquote)) > .link--text',
+    );
 
     for (const rule of [desktop, phone]) {
       expect(rule).toContain('min-width: 0');
@@ -154,7 +170,9 @@ describe('ExternalLink', () => {
 
   it('keeps the text drawn without an address free of the target size', () => {
     useCatalogue('en');
-    const { container } = render(ExternalLink, { props: { href: '', label: 'Pull request', chip: true } });
+    const { container } = render(ExternalLink, {
+      props: { href: '', label: 'Pull request', chip: true },
+    });
     const text = container.querySelector('.external-link__text') as HTMLElement;
 
     expect(text).not.toHaveClass('link');

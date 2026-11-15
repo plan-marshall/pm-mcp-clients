@@ -111,9 +111,7 @@
   );
 
   /** The levels the window hides to its left, with their index in the chain. */
-  const hidden = $derived(
-    levels.slice(0, layout.start).map((level, index) => ({ level, index })),
-  );
+  const hidden = $derived(levels.slice(0, layout.start).map((level, index) => ({ level, index })));
 
   /** The object's title, for the return strip and the announcement. */
   const objectTitle = $derived(levels[levels.length - 1]?.title ?? '');
@@ -465,7 +463,7 @@
   >
     {#if layout.strip !== 'none'}
       <GapStrip
-        hidden={hidden}
+        {hidden}
         names={layout.strip === 'names'}
         label={$t('web.nav.strip.label')}
         width={layout.stripWidth}
@@ -507,7 +505,7 @@
       <GapStrip
         placement="end"
         label={$t('web.nav.strip.label')}
-        objectTitle={objectTitle}
+        {objectTitle}
         width={layout.stripWidth}
         onReturn={() => void returnToObject()}
       />

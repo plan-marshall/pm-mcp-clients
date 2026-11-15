@@ -33,9 +33,7 @@ describe('CountBadge', () => {
   it('draws the attention fill for an item that needs you', () => {
     const { container } = render(CountBadge, { props: { count: 2, attention: true } });
 
-    expect(container.querySelector('.count-badge')?.className).toContain(
-      'count-badge--attention',
-    );
+    expect(container.querySelector('.count-badge')?.className).toContain('count-badge--attention');
   });
 
   it('reads the name it is given, with the number hidden from a screen reader', () => {
@@ -55,12 +53,15 @@ describe('CountBadge', () => {
   it.each([
     ['en', '! 12'],
     ['de', '! 12'],
-  ] as const)("starts an attention count with the catalogue's exclamation mark in %s", (locale, text) => {
-    useCatalogue(locale);
-    const { container } = render(CountBadge, { props: { count: 12, attention: true } });
+  ] as const)(
+    "starts an attention count with the catalogue's exclamation mark in %s",
+    (locale, text) => {
+      useCatalogue(locale);
+      const { container } = render(CountBadge, { props: { count: 12, attention: true } });
 
-    expect(container.querySelector('.count-badge')).toHaveTextContent(text);
-  });
+      expect(container.querySelector('.count-badge')).toHaveTextContent(text);
+    },
+  );
 
   it('keeps the label the accessible name of an attention count, the number hidden', () => {
     useCatalogue('en');

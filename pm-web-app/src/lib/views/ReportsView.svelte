@@ -897,9 +897,7 @@
    */
   function rowMenuLabel(report: ReportItem): string {
     const subject = (report.subject ?? '').trim();
-    return subject
-      ? `${$t('report.list.row_menu')}: ${subject}`
-      : $t('report.list.row_menu');
+    return subject ? `${$t('report.list.row_menu')}: ${subject}` : $t('report.list.row_menu');
   }
 
   /**
@@ -947,11 +945,12 @@
   function formatReportTime(item: ReportItem): string {
     const now = new Date(clock);
     const created = formatInstant(item.created_at, 'relative', $currentLocale, now);
-    const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
+    const isSentLater = Boolean(
+      item.sent_at && item.created_at && item.sent_at !== item.created_at,
+    );
 
     if (isSentLater) {
-      const sent =
-        formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
+      const sent = formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
       return `${created} · ${$t('report.list.sent_at', { time: sent })}`;
     }
     return created;
@@ -1015,9 +1014,13 @@
     <header class="reports-header">
       <div class="reports-header__title-row">
         {#if !isNarrow || activeDetailPlanId === null}
-          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h1>
+          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>
+            {$t('report.list.title')}
+          </h1>
         {:else}
-          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h2>
+          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>
+            {$t('report.list.title')}
+          </h2>
         {/if}
         {#if unreadCount > 0}
           <span class="unread-count" data-testid="unread-count">
@@ -1028,7 +1031,7 @@
           {#if items.length > 0}
             <Button
               variant="secondary"
-              size="small"
+              size="sm"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
               aria-disabled={isMarkingAll ? 'true' : undefined}
@@ -1058,7 +1061,7 @@
     {#if actionError}
       <div class="error-line" role="alert">
         <p>{actionError}</p>
-        <Button variant="ghost" size="small" onclick={retryFailedAction}>
+        <Button variant="ghost" size="sm" onclick={retryFailedAction}>
           {$t('common.action.retry')}
         </Button>
       </div>
@@ -1068,7 +1071,12 @@
       {refreshing ? $t('report.list.loading') : ''}
     </p>
     {#if loadError !== null && items.length > 0}
-      <div class="reports-error" data-testid="reports-error" bind:this={loadErrorRegion} tabindex="-1">
+      <div
+        class="reports-error"
+        data-testid="reports-error"
+        bind:this={loadErrorRegion}
+        tabindex="-1"
+      >
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
@@ -1110,16 +1118,17 @@
         {#each groupedReports as pGroup (pGroup.key)}
           <section class="project-section">
             <h2 class="project-header">
-              <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
+              <span class="project-glyph" aria-hidden="true"
+                ><Icon name="state.dot" size={16} /></span
+              >
               {#if pGroup.isMachine}
                 <span class="project-title">{$t('report.list.machine')}</span>
               {:else}
                 <Button
                   variant="ghost"
-                  size="small"
+                  size="sm"
                   aria-label={$t('report.from.open_project', { project: pGroup.key })}
-                  onclick={() =>
-                    navigateTo('projects', { explorerProjectId: pGroup.key })}
+                  onclick={() => navigateTo('projects', { explorerProjectId: pGroup.key })}
                 >
                   {pGroup.key}
                 </Button>
@@ -1134,7 +1143,7 @@
                     <span class="epic-glyph" aria-hidden="true">◇</span>
                     <Button
                       variant="ghost"
-                      size="small"
+                      size="sm"
                       aria-label={$t('report.from.open_epic', { epic: epicName })}
                       onclick={() => openFromPart('epic', epicItems[0])}
                     >
@@ -1236,7 +1245,7 @@
         {#if item.from?.project}
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_project', { project: item.from.project })}
             onclick={() => openFromPart('project', item)}
           >
@@ -1249,7 +1258,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
             onclick={() => openFromPart('epic', item)}
           >
@@ -1260,7 +1269,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
             onclick={() => openFromPart('plan', item)}
           >
@@ -1271,9 +1280,7 @@
       <span class="report-card__subject" class:report-card__subject--unread={unread}>
         {item.subject}
       </span>
-      <span class="item-time text-muted" title={reportMoment(item)}
-        >{formatReportTime(item)}</span
-      >
+      <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
     </div>
 
     {#if item.body || item.summary}
@@ -1288,7 +1295,7 @@
       {#if overflowingBodies.has(item.id)}
         <Button
           variant="ghost"
-          size="small"
+          size="sm"
           aria-expanded={bodyOpen}
           aria-label={bodyToggleLabel(item, bodyOpen)}
           onclick={() => (shownBodies[item.id] = !bodyOpen)}
@@ -1302,7 +1309,7 @@
       {#if hasDetail(item)}
         <Button
           variant="secondary"
-          size="small"
+          size="sm"
           data-testid="report-details"
           disabled={item.subject_deleted}
           disabledReason={item.subject_deleted
@@ -1331,7 +1338,6 @@
           size="sm"
           data-testid="report-row-menu"
           label={rowMenuLabel(item)}
-          visibleLabel={$t('report.list.row_menu')}
           advisory={$t('report.list.row_menu.title')}
           items={[
             {
@@ -1658,7 +1664,6 @@
     position: relative;
     display: inline-flex;
   }
-
 
   .pagination-bar {
     display: flex;

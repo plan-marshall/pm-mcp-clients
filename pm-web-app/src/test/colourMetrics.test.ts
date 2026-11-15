@@ -16,12 +16,20 @@ import {
 describe('colourMetrics', () => {
   describe('CIEDE2000', () => {
     /** Pairs of the published test data of Sharma, Wu and Dalal (2005), with their ΔE00. */
-    const SHARMA_PAIRS: Array<{ first: [number, number, number]; second: [number, number, number]; expected: number }> = [
+    const SHARMA_PAIRS: Array<{
+      first: [number, number, number];
+      second: [number, number, number];
+      expected: number;
+    }> = [
       { first: [50, 2.6772, -79.7751], second: [50, 0, -82.7485], expected: 2.0425 },
       { first: [50, 0, 0], second: [50, -1, 2], expected: 2.3669 },
       { first: [50, 2.49, -0.001], second: [50, -2.49, 0.0011], expected: 7.2195 },
       { first: [50, 2.5, 0], second: [73, 25, -18], expected: 27.1492 },
-      { first: [60.2574, -34.0099, 36.2677], second: [60.4626, -34.1751, 39.4387], expected: 1.2644 },
+      {
+        first: [60.2574, -34.0099, 36.2677],
+        second: [60.4626, -34.1751, 39.4387],
+        expected: 1.2644,
+      },
       { first: [2.0776, 0.0795, -1.135], second: [0.9033, -0.0636, -0.5514], expected: 0.9082 },
     ];
 

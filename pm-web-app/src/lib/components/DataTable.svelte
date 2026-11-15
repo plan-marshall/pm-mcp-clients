@@ -90,7 +90,8 @@
           </th>
         {/each}
         {#if menuLabel}
-          <th scope="col" class="data-table__menu-head"><span class="sr-only">{menuLabel}</span></th>
+          <th scope="col" class="data-table__menu-head"><span class="sr-only">{menuLabel}</span></th
+          >
         {/if}
       </tr>
     </thead>
@@ -118,7 +119,6 @@
                   icon="act.more"
                   size="sm"
                   label={menuNameOf(row)}
-                  visibleLabel={menuLabel}
                   on:click={() => onMenu(row.id)}
                 />
               </td>
@@ -155,7 +155,7 @@
   .data-table thead th {
     position: sticky;
     inset-block-start: 0;
-    z-index: 1;
+    z-index: var(--layer-sticky);
     padding: var(--space-2) var(--space-3);
     border-block-end: 1px solid var(--color-border-strong);
     background-color: var(--color-bg-subtle);

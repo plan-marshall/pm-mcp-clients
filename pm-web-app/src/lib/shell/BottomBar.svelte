@@ -358,7 +358,7 @@
     .bottom-bar {
       position: sticky;
       inset-block-end: 0;
-      z-index: 20;
+      z-index: var(--layer-bar);
       display: flex;
       align-items: stretch;
       justify-content: space-around;

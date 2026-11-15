@@ -139,7 +139,11 @@ function withoutDisplayStateCalls(expression: string): string {
   while (start !== -1) {
     let depth = 0;
     let end = -1;
-    for (let cursor = start + 'displayState'.length; cursor < rest.length && end === -1; cursor += 1) {
+    for (
+      let cursor = start + 'displayState'.length;
+      cursor < rest.length && end === -1;
+      cursor += 1
+    ) {
       if (rest[cursor] === '(') depth += 1;
       else if (rest[cursor] === ')') {
         depth -= 1;

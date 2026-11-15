@@ -48,9 +48,7 @@ async function renderWizard(container: number, sideOpen = true, onHideSide = () 
  * @returns the width the side column takes from its bound custom property
  */
 function sideWidthOf(testId: string): number {
-  return Number.parseFloat(
-    screen.getByTestId(testId).style.getPropertyValue('--side-width'),
-  );
+  return Number.parseFloat(screen.getByTestId(testId).style.getPropertyValue('--side-width'));
 }
 
 /**
@@ -203,15 +201,11 @@ describe('WizardPage', () => {
 
   it('binds the page inset it measures on the page', async () => {
     const rendered = await renderWizard(1048);
-    expect(
-      screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset'),
-    ).toBe('24px');
+    expect(screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset')).toBe('24px');
 
     reportBox(screen.getByTestId('wizard-page'), 390, 800);
     await tick();
-    expect(
-      screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset'),
-    ).toBe('12px');
+    expect(screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset')).toBe('12px');
     void rendered;
   });
 

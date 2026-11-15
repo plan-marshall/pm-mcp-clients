@@ -77,9 +77,7 @@ describe('BuilderCheckList', () => {
       .map((group) => group.getAttribute('data-sort'));
 
     expect(groups).toEqual(['answered', 'minor', 'operator']);
-    expect(screen.getByTestId('builder-sort-answered')).toHaveTextContent(
-      'answered by the record',
-    );
+    expect(screen.getByTestId('builder-sort-answered')).toHaveTextContent('answered by the record');
     expect(screen.getByTestId('builder-sort-minor')).toHaveTextContent("the builder's call");
     expect(screen.getByTestId('builder-sort-operator')).toHaveTextContent('needs you');
   });
@@ -98,9 +96,7 @@ describe('BuilderCheckList', () => {
     render(BuilderCheckList, { props: { check: check() } });
 
     expect(screen.getByTestId('builder-resolution-BQ-001')).toHaveTextContent('open');
-    expect(screen.getByTestId('builder-resolution-BQ-003')).toHaveTextContent(
-      'answered: AC-002',
-    );
+    expect(screen.getByTestId('builder-resolution-BQ-003')).toHaveTextContent('answered: AC-002');
     expect(screen.getByTestId('builder-resolution-BQ-004')).toHaveTextContent(
       'deferred: the plan continues without it',
     );
@@ -116,7 +112,7 @@ describe('BuilderCheckList', () => {
     expect(screen.getByTestId('builder-state').querySelector('.status-label')).toBeNull();
   });
 
-  it('shows a not_run check as evidence with the plan\'s reason, never as a pass or a hold', () => {
+  it("shows a not_run check as evidence with the plan's reason, never as a pass or a hold", () => {
     render(BuilderCheckList, {
       props: {
         check: {

@@ -10,8 +10,8 @@
   color-scheme: light;
 
   /* Typeface: Inter, self-hosted; the system stack carries the page until the file is available. */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --font-feature-settings: 'tnum' 1, 'cv11' 1;
 
@@ -64,44 +64,51 @@
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 1280px;
 
+  /* Layer tokens (PLAN-149, components.adoc § #layers) */
+  --layer-sticky: 1;
+  --layer-bar: 20;
+  --layer-menu: 30;
+  --layer-toast: 90;
+  --layer-dialog: 100;
+
   /* VD-P-02 colour palette, light (the default) */
-  --color-bg-app: #F7F7F5;
-  --color-bg-rail: #EFEFEB;
-  --color-bg-surface: #FFFFFF;
-  --color-bg-raised: #FFFFFF;
-  --color-bg-subtle: #F0F0EC;
-  --color-border: #E3E3DE;
-  --color-border-strong: #CFCFC8;
-  --color-text-primary: #16181D;
-  --color-text-secondary: #3E4450;
-  --color-text-muted: #5F6672;
-  --color-brand: #5B4BDB;
-  --color-brand-hover: #4A3BC4;
-  --color-brand-subtle: #EEEBFF;
-  --color-attention: #B86E00;
-  --color-attention-subtle: #FFF4E0;
-  --color-attention-text: #8A5200;
-  --color-running: #1F5FBF;
-  --color-danger: #C0362F;
-  --color-danger-subtle: #FDECEA;
-  --color-success: #1E7A4E;
-  --color-success-subtle: #E9F6EE;
-  --color-neutral: #7A808B;
+  --color-bg-app: #f7f7f5;
+  --color-bg-rail: #efefeb;
+  --color-bg-surface: #ffffff;
+  --color-bg-raised: #ffffff;
+  --color-bg-subtle: #f0f0ec;
+  --color-border: #e3e3de;
+  --color-border-strong: #cfcfc8;
+  --color-text-primary: #16181d;
+  --color-text-secondary: #3e4450;
+  --color-text-muted: #5f6672;
+  --color-brand: #5b4bdb;
+  --color-brand-hover: #4a3bc4;
+  --color-brand-subtle: #eeebff;
+  --color-attention: #b86e00;
+  --color-attention-subtle: #fff4e0;
+  --color-attention-text: #8a5200;
+  --color-running: #1f5fbf;
+  --color-danger: #c0362f;
+  --color-danger-subtle: #fdecea;
+  --color-success: #1e7a4e;
+  --color-success-subtle: #e9f6ee;
+  --color-neutral: #7a808b;
   --color-kind-project: #606700;
-  --color-kind-epic: #BB2D8C;
+  --color-kind-epic: #bb2d8c;
   --color-kind-plan: #007785;
-  --color-on-brand: #FFFFFF;
+  --color-on-brand: #ffffff;
   --color-overlay: rgb(15 23 42 / 0.5);
 
   /*
    * The brand palette of the mascot (theme-readability.adoc, Mascot Palette Tokens): declared once
    * here and overridden by no theme block, so both themes resolve the same values.
    */
-  --color-mascot-fur: #E17512;
-  --color-mascot-gold: #F2B630;
-  --color-mascot-hat: #A0602E;
-  --color-mascot-cream: #F6DDB0;
-  --color-mascot-outline: #2A1A10;
+  --color-mascot-fur: #e17512;
+  --color-mascot-gold: #f2b630;
+  --color-mascot-hat: #a0602e;
+  --color-mascot-cream: #f6ddb0;
+  --color-mascot-outline: #2a1a10;
 
   /* VD-P-04 elevation */
   --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.06);
@@ -143,32 +150,32 @@
   :root {
     color-scheme: dark;
 
-    --color-bg-app: #0E1116;
-    --color-bg-rail: #12161D;
-    --color-bg-surface: #161B22;
-    --color-bg-raised: #1C2230;
-    --color-bg-subtle: #1E2433;
-    --color-border: #2A3140;
-    --color-border-strong: #3A4356;
-    --color-text-primary: #E6EAF2;
-    --color-text-secondary: #AEB6C4;
-    --color-text-muted: #8B95A7;
-    --color-brand: #8B7EF9;
-    --color-brand-hover: #A093FB;
-    --color-brand-subtle: #1E2240;
-    --color-attention: #F2A93B;
-    --color-attention-subtle: #2A2112;
-    --color-attention-text: #F6C46B;
-    --color-running: #4C9AFF;
-    --color-danger: #F25F5C;
-    --color-danger-subtle: #2C1517;
-    --color-success: #3FB37F;
-    --color-success-subtle: #15271D;
-    --color-neutral: #8B95A7;
-    --color-kind-project: #ADCD4A;
-    --color-kind-epic: #EF8BC5;
-    --color-kind-plan: #3BCDDC;
-    --color-on-brand: #0E1116;
+    --color-bg-app: #0e1116;
+    --color-bg-rail: #12161d;
+    --color-bg-surface: #161b22;
+    --color-bg-raised: #1c2230;
+    --color-bg-subtle: #1e2433;
+    --color-border: #2a3140;
+    --color-border-strong: #3a4356;
+    --color-text-primary: #e6eaf2;
+    --color-text-secondary: #aeb6c4;
+    --color-text-muted: #8b95a7;
+    --color-brand: #8b7ef9;
+    --color-brand-hover: #a093fb;
+    --color-brand-subtle: #1e2240;
+    --color-attention: #f2a93b;
+    --color-attention-subtle: #2a2112;
+    --color-attention-text: #f6c46b;
+    --color-running: #4c9aff;
+    --color-danger: #f25f5c;
+    --color-danger-subtle: #2c1517;
+    --color-success: #3fb37f;
+    --color-success-subtle: #15271d;
+    --color-neutral: #8b95a7;
+    --color-kind-project: #adcd4a;
+    --color-kind-epic: #ef8bc5;
+    --color-kind-plan: #3bcddc;
+    --color-on-brand: #0e1116;
     --color-overlay: rgb(0 0 0 / 0.7);
 
     --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.45);
@@ -182,32 +189,32 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --color-bg-app: #F7F7F5;
-  --color-bg-rail: #EFEFEB;
-  --color-bg-surface: #FFFFFF;
-  --color-bg-raised: #FFFFFF;
-  --color-bg-subtle: #F0F0EC;
-  --color-border: #E3E3DE;
-  --color-border-strong: #CFCFC8;
-  --color-text-primary: #16181D;
-  --color-text-secondary: #3E4450;
-  --color-text-muted: #5F6672;
-  --color-brand: #5B4BDB;
-  --color-brand-hover: #4A3BC4;
-  --color-brand-subtle: #EEEBFF;
-  --color-attention: #B86E00;
-  --color-attention-subtle: #FFF4E0;
-  --color-attention-text: #8A5200;
-  --color-running: #1F5FBF;
-  --color-danger: #C0362F;
-  --color-danger-subtle: #FDECEA;
-  --color-success: #1E7A4E;
-  --color-success-subtle: #E9F6EE;
-  --color-neutral: #7A808B;
+  --color-bg-app: #f7f7f5;
+  --color-bg-rail: #efefeb;
+  --color-bg-surface: #ffffff;
+  --color-bg-raised: #ffffff;
+  --color-bg-subtle: #f0f0ec;
+  --color-border: #e3e3de;
+  --color-border-strong: #cfcfc8;
+  --color-text-primary: #16181d;
+  --color-text-secondary: #3e4450;
+  --color-text-muted: #5f6672;
+  --color-brand: #5b4bdb;
+  --color-brand-hover: #4a3bc4;
+  --color-brand-subtle: #eeebff;
+  --color-attention: #b86e00;
+  --color-attention-subtle: #fff4e0;
+  --color-attention-text: #8a5200;
+  --color-running: #1f5fbf;
+  --color-danger: #c0362f;
+  --color-danger-subtle: #fdecea;
+  --color-success: #1e7a4e;
+  --color-success-subtle: #e9f6ee;
+  --color-neutral: #7a808b;
   --color-kind-project: #606700;
-  --color-kind-epic: #BB2D8C;
+  --color-kind-epic: #bb2d8c;
   --color-kind-plan: #007785;
-  --color-on-brand: #FFFFFF;
+  --color-on-brand: #ffffff;
   --color-overlay: rgb(15 23 42 / 0.5);
 
   --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.06);
@@ -220,32 +227,32 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --color-bg-app: #0E1116;
-  --color-bg-rail: #12161D;
-  --color-bg-surface: #161B22;
-  --color-bg-raised: #1C2230;
-  --color-bg-subtle: #1E2433;
-  --color-border: #2A3140;
-  --color-border-strong: #3A4356;
-  --color-text-primary: #E6EAF2;
-  --color-text-secondary: #AEB6C4;
-  --color-text-muted: #8B95A7;
-  --color-brand: #8B7EF9;
-  --color-brand-hover: #A093FB;
-  --color-brand-subtle: #1E2240;
-  --color-attention: #F2A93B;
-  --color-attention-subtle: #2A2112;
-  --color-attention-text: #F6C46B;
-  --color-running: #4C9AFF;
-  --color-danger: #F25F5C;
-  --color-danger-subtle: #2C1517;
-  --color-success: #3FB37F;
-  --color-success-subtle: #15271D;
-  --color-neutral: #8B95A7;
-  --color-kind-project: #ADCD4A;
-  --color-kind-epic: #EF8BC5;
-  --color-kind-plan: #3BCDDC;
-  --color-on-brand: #0E1116;
+  --color-bg-app: #0e1116;
+  --color-bg-rail: #12161d;
+  --color-bg-surface: #161b22;
+  --color-bg-raised: #1c2230;
+  --color-bg-subtle: #1e2433;
+  --color-border: #2a3140;
+  --color-border-strong: #3a4356;
+  --color-text-primary: #e6eaf2;
+  --color-text-secondary: #aeb6c4;
+  --color-text-muted: #8b95a7;
+  --color-brand: #8b7ef9;
+  --color-brand-hover: #a093fb;
+  --color-brand-subtle: #1e2240;
+  --color-attention: #f2a93b;
+  --color-attention-subtle: #2a2112;
+  --color-attention-text: #f6c46b;
+  --color-running: #4c9aff;
+  --color-danger: #f25f5c;
+  --color-danger-subtle: #2c1517;
+  --color-success: #3fb37f;
+  --color-success-subtle: #15271d;
+  --color-neutral: #8b95a7;
+  --color-kind-project: #adcd4a;
+  --color-kind-epic: #ef8bc5;
+  --color-kind-plan: #3bcddc;
+  --color-on-brand: #0e1116;
   --color-overlay: rgb(0 0 0 / 0.7);
 
   --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.45);

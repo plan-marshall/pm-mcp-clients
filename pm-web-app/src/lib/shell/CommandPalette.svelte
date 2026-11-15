@@ -145,9 +145,7 @@
   const optionIds = $derived(new Map(rows.map((row, index) => [row.key, optionId(index)])));
 
   /** The id of the row the field's active descendant names, or `undefined` for no row. */
-  const selectedOptionId = $derived(
-    selectedKey === null ? undefined : optionIds.get(selectedKey),
-  );
+  const selectedOptionId = $derived(selectedKey === null ? undefined : optionIds.get(selectedKey));
 
   /** @param index a group's position @returns the id of the heading that names it */
   function groupTitleId(index: number): string {
@@ -384,12 +382,7 @@
       <div class="command-palette__header">
         <h2 class="command-palette__title" id={titleId}>{$t('overview.find.title')}</h2>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          data-testid="command-palette-close"
-          onclick={close}
-        >
+        <Button variant="ghost" size="sm" data-testid="command-palette-close" onclick={close}>
           {$t('web.common.close')}
         </Button>
       </div>
@@ -512,7 +505,7 @@
   .command-palette-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: var(--layer-dialog);
     display: flex;
     justify-content: center;
     align-items: flex-start;

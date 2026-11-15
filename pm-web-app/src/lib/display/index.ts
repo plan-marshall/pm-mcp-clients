@@ -167,10 +167,7 @@ export function hasUnitName(id: string | null | undefined): boolean {
  *   switch
  * @returns the unit's plain name, or the unknown word when the catalogue does not name it
  */
-export function displayUnit(
-  id: string | null | undefined,
-  translate?: Translate,
-): string {
+export function displayUnit(id: string | null | undefined, translate?: Translate): string {
   const lookup = translator(translate);
   const normalized = (id ?? '').trim();
   if (!normalized) {

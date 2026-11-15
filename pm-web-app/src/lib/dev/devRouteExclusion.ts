@@ -24,7 +24,8 @@ export const EMPTY_DEV_PAGE_ID = '/@dev-route-exclusion/EmptyDevPage.svelte';
 const CLIENT_MANIFEST = /generated[\\/](?:[^\\/]+[\\/])?client(?:-optimized)?[\\/]app\.js$/;
 
 /** A generated route node module, under the same directory layout as the manifest. */
-const GENERATED_NODE = /generated[\\/](?:[^\\/]+[\\/])?client(?:-optimized)?[\\/]nodes[\\/]\d+\.js$/;
+const GENERATED_NODE =
+  /generated[\\/](?:[^\\/]+[\\/])?client(?:-optimized)?[\\/]nodes[\\/]\d+\.js$/;
 
 /** An import specifier that names a file of the development pages. */
 const DEV_PAGE_IMPORT = /(['"])([^'"]*src[\\/]routes[\\/]dev[\\/][^'"]*\.svelte)\1/g;

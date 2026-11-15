@@ -854,8 +854,8 @@
         await showConflict();
       } else {
         placeStage = 'failed';
-        placeOutcomeUnknown = isClientError(err) &&
-          (err.code === 'timeout' || err.code === 'network_offline');
+        placeOutcomeUnknown =
+          isClientError(err) && (err.code === 'timeout' || err.code === 'network_offline');
         landingError = actFailureReason(err, $t('system.action.failed'));
       }
     } finally {

@@ -326,9 +326,10 @@
           <span class="draining-text" data-testid="draining-text">
             {$t('system.stopping.line', {
               count: drainCount,
-              what: drainItems.length > 0
-                ? drainNames
-                : ($runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work')),
+              what:
+                drainItems.length > 0
+                  ? drainNames
+                  : ($runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work')),
             })}
           </span>
           {#if drainMore > 0}

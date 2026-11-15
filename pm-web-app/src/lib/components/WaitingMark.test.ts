@@ -69,7 +69,10 @@ function ruleOf(css: string, selector: string): string {
 describe('WaitingMark', () => {
   const source = fs.readFileSync(COMPONENT_PATH, 'utf-8');
   // Comments are dropped, so a rule is found by its selector alone.
-  const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const stylesheet = (/<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
 
   it('carries its label as the text of a polite status line', () => {
     render(WaitingMark, { props: { label: LABEL } });
@@ -91,7 +94,9 @@ describe('WaitingMark', () => {
     expect(mark).toHaveAttribute('stroke-width', '1.5');
     expect(mark).toHaveAttribute('stroke-linecap', 'round');
     expect(mark).toHaveAttribute('stroke-linejoin', 'round');
-    expect(ruleOf(stylesheet, '.waiting-mark')).toMatch(/color:\s*var\(--color-text-secondary\)\s*;/);
+    expect(ruleOf(stylesheet, '.waiting-mark')).toMatch(
+      /color:\s*var\(--color-text-secondary\)\s*;/,
+    );
   });
 
   it('draws each open dot and each tick of the three lines as an element of its own', () => {
@@ -114,7 +119,9 @@ describe('WaitingMark', () => {
     // jsdom computes no media, so the rule is read from the component's stylesheet.
     const reduced = blockOf(stylesheet, '@media (prefers-reduced-motion: reduce)');
 
-    expect(ruleOf(reduced, '.waiting-mark__tick, .waiting-mark__dot')).toMatch(/animation:\s*none\s*;/);
+    expect(ruleOf(reduced, '.waiting-mark__tick, .waiting-mark__dot')).toMatch(
+      /animation:\s*none\s*;/,
+    );
     expect(ruleOf(reduced, '.waiting-mark__tick')).toMatch(/stroke-dashoffset:\s*1\s*;/);
     expect(ruleOf(reduced, '.waiting-mark__tick')).toMatch(/opacity:\s*0\s*;/);
     expect(ruleOf(reduced, '.waiting-mark__dot')).toMatch(/opacity:\s*1\s*;/);
