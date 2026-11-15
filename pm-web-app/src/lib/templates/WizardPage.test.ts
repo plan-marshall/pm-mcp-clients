@@ -119,6 +119,24 @@ describe('WizardPage', () => {
     expect(content).toHaveAttribute('hidden');
   });
 
+  it('moves the focus into the chat on takeover and back to the content on return', async () => {
+    const rendered = await renderWizard(1048);
+    const content = screen.getByRole('button', { name: 'Continue' });
+    content.focus();
+    expect(document.activeElement).toBe(content);
+
+    // The container narrows until the chat takes the space: the focus goes into the chat.
+    reportBox(screen.getByTestId('wizard-page'), 800, 800);
+    await tick();
+    expect(document.activeElement).toHaveTextContent('Hide the chat');
+
+    // It widens again: the focus returns to the control the content held.
+    reportBox(screen.getByTestId('wizard-page'), 1048, 800);
+    await tick();
+    expect(document.activeElement).toBe(content);
+    void rendered;
+  });
+
   it('hides the chat from anywhere on the page', async () => {
     const onHideSide = vi.fn();
     await renderWizard(800, true, onHideSide);

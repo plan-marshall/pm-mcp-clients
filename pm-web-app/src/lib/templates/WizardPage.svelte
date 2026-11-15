@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Snippet } from 'svelte';
+  import { onMount, afterUpdate, type Snippet } from 'svelte';
   import SideColumn from './SideColumn.svelte';
   import { MEASURE_FALLBACK, pageInset, windowFor } from './columnWindow';
 
@@ -68,6 +68,29 @@
       onHideSide();
     }
   }
+
+  /** Whether the chat held the space at the last update, so a takeover is seen once. */
+  let sideTaken = false;
+  /** What held the focus before the chat took the space, to restore it when the content returns. */
+  let rememberedFocus: HTMLElement | null = null;
+
+  // The focus never falls to the page when the chat takes the space: it moves into the chat, and it
+  // returns to the control it left when the content comes back (`navigation.adoc#side-columns`).
+  afterUpdate(() => {
+    const taken = layout.sideTakesSpace;
+    if (taken === sideTaken) {
+      return;
+    }
+    sideTaken = taken;
+    if (taken) {
+      const active = document.activeElement as HTMLElement | null;
+      rememberedFocus = active !== null && frame?.contains(active) ? active : null;
+      frame?.querySelector<HTMLElement>('[data-testid="side-column"] button')?.focus();
+    } else if (rememberedFocus !== null && rememberedFocus.isConnected) {
+      rememberedFocus.focus();
+      rememberedFocus = null;
+    }
+  });
 </script>
 
 <div

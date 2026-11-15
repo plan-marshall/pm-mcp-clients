@@ -329,12 +329,16 @@ describe('the gap strip, the peek, the focus and the keys', () => {
 
   it('leaves the keys alone when a modifier is held', async () => {
     await renderWindow(1168);
+    const window_ = document.querySelector('.triage-page__window') as HTMLElement;
     const before = get(runtimeStore).quietNavigationNotice;
 
-    // Cmd+[ is the browser's Back; AltGr+8 types `[` on a German keyboard.
-    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: '[', metaKey: true });
-    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: '[', altKey: true, ctrlKey: true });
+    // Cmd+[ is the browser's Back; AltGr+8 types `[` on a German keyboard. The handler sits on the
+    // window, so the events are dispatched there, and neither is cancelled.
+    const first = await fireEvent.keyDown(window_, { key: '[', metaKey: true });
+    const second = await fireEvent.keyDown(window_, { key: '[', altKey: true, ctrlKey: true });
 
+    expect(first).toBe(true);
+    expect(second).toBe(true);
     expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
     expect(get(runtimeStore).quietNavigationNotice).toBe(before);
   });
