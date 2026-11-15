@@ -1596,7 +1596,7 @@ describe('ReportsView component', () => {
       expect(screen.getByText('Nothing new')).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId('triage-filters')).toBeNull();
+    expect(screen.queryByTestId('reports-filter')).toBeNull();
   });
 
   it('has only one h1 heading on screen when detail is open beside the list', async () => {

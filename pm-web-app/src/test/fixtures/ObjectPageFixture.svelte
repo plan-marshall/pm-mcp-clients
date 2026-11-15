@@ -3,11 +3,11 @@
 
   /**
    * A test fixture for the slotted `ObjectPage`: the parts of the head, the attention strip, the
-   * tabs and the body. It is the position an object view draws itself in — not a component of the
-   * page. The texts arrive as props, so the catalogue guard sees no literal copy in a screen.
+   * tabs and the body — or, with `compact`, the head of a list column only. It is the position an
+   * object view draws itself in — not a component of the page. The texts arrive as props, so the
+   * catalogue guard sees no literal copy in a screen.
    */
   export let kind: string;
-  export let path: string;
   export let title: string;
   export let idChip: string;
   export let state: string;
@@ -17,11 +17,12 @@
   export let attention: string;
   export let tabs: string;
   export let body: string;
+  export let compact = false;
+  export let inColumn = false;
 </script>
 
-<ObjectPage>
+<ObjectPage {compact} {inColumn}>
   <span slot="kind">{kind}</span>
-  <span slot="path">{path}</span>
   <span slot="title">{title}</span>
   <span slot="id">{idChip}</span>
   <span slot="state">{state}</span>

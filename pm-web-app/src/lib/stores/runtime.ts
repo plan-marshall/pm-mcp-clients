@@ -79,6 +79,8 @@ export interface RuntimeState {
   selectedReportDetailPlanId?: string | null;
   openDecisionsCount: number;
   quietDecisionNotice?: string | null;
+  /** What the column engine announces after a window shift, in the frame's polite live region. */
+  quietNavigationNotice?: string | null;
   projectEventNotice?: string | null;
   selectedPlanId?: string | null;
   selectedEpicId?: string | null;
@@ -147,6 +149,7 @@ const initialState: RuntimeState = {
   selectedReportDetailPlanId: null,
   openDecisionsCount: 0,
   quietDecisionNotice: null,
+  quietNavigationNotice: null,
   projectEventNotice: null,
   selectedPlanId: null,
   selectedEpicId: null,
@@ -689,6 +692,16 @@ function handleListenerChanged(data: unknown): void {
   } else {
     runtimeStore.update((s) => ({ ...s, isListenerClosed: false, listenerClosedAt: null }));
   }
+}
+
+/**
+ * Announces the column now in view after a shift of the column window, in the frame's polite live
+ * region (`navigation.adoc#keys`). The engine calls it; the frame owns the region.
+ *
+ * @param text what the shift moved to — the column's name and its kind
+ */
+export function announceNavigation(text: string): void {
+  runtimeStore.update((s) => ({ ...s, quietNavigationNotice: text }));
 }
 
 /** A new or read report: the unread count, and the quiet notice of an arrival. */

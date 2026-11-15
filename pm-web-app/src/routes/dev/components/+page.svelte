@@ -33,6 +33,7 @@
   import ActMenu from '../../../lib/components/ActMenu.svelte';
   import SegmentedControl from '../../../lib/components/SegmentedControl.svelte';
   import Toggle from '../../../lib/components/Toggle.svelte';
+  import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -669,6 +670,9 @@
           </div>
         {/each}
       </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.column_engine')}</h3>
+      <ColumnEngineFixture />
     </section>
   {/each}
 </div>
