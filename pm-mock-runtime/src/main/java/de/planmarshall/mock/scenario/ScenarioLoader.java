@@ -217,7 +217,7 @@ public class ScenarioLoader {
         var pairingCode = JsonTree.string(root, "pairing_code");
 
         // 6. routes
-        var routes = parseRoutes(root.get("routes"), identifier);
+        var routes = parseRoutes(root.get(FIELD_ROUTES), identifier);
 
         // 7. states
         var statesObj = root.get("states");
