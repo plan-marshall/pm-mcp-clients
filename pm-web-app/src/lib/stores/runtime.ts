@@ -129,6 +129,8 @@ export interface RuntimeState {
   selectedDecisionId?: string | null;
   /** The work kind a figure asked the overview to show, consumed when it opens. */
   overviewFocus?: 'plans' | 'epics' | null;
+  /** The report one `/reports/{id}` address names, until the view resolves its plan. */
+  selectedReportId?: string | null;
   /** The lens's mode, scope and follow, as the address carries them. */
   lensMode?: 'ended' | null;
   lensGroup?: 'epic' | null;
@@ -198,6 +200,7 @@ const initialState: RuntimeState = {
   cleanupPreviewItemId: null,
   cleanupHighlightItemId: null,
   overviewFocus: null,
+  selectedReportId: null,
   lensMode: null,
   lensGroup: null,
   lensFollow: false,
@@ -1076,8 +1079,14 @@ const navigationStack: NavigationEntry[] = [];
  */
 export function routeParamsOf(state: RuntimeState): RouteParams {
   const designer = state.currentRoute === 'designer';
+  const projectPage = state.currentRoute === 'project';
   return {
-    projectId: (designer ? state.designerProjectId : state.startProjectId) ?? undefined,
+    projectId:
+      (designer
+        ? state.designerProjectId
+        : projectPage
+          ? state.selectedProjectId
+          : state.startProjectId) ?? undefined,
     entryId: state.startEntryId ?? undefined,
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
@@ -1125,7 +1134,9 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // The decisions route focuses the decision a match opened, if one was named.
     ...(route === 'decisions' ? { selectedDecisionId: params.decisionId ?? null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
-    ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
+    ...(route === 'projects' || route === 'project'
+      ? { selectedProjectId: params.projectId ?? params.explorerProjectId ?? null }
+      : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
     ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
   }));
@@ -1239,12 +1250,17 @@ export function adoptRouteFromLocation(): AppRoute | null {
       // The reports route keeps its plan in the query, so a reload or the browser's back
       // between two reports opens the one the address names.
       selectedReportDetailPlanId:
-        match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
-      // The decisions route focuses the decision its query names, the same way.
-      selectedDecisionId:
-        match.route === 'decisions'
-          ? new URLSearchParams(window.location.search).get('decision')
+        match.route === 'reports'
+          ? (new URLSearchParams(window.location.search).get('plan') ??
+            address?.legacyReportPlanId ??
+            null)
           : null,
+      // One report's own address names the report; the view resolves its plan from the report.
+      selectedReportId: match.reportId ?? null,
+      // The decisions route focuses the decision its query or its path names, the same way.
+      selectedDecisionId: match.decisionId ?? (match.route === 'decisions'
+        ? new URLSearchParams(window.location.search).get('decision')
+        : null),
       // The designer keeps the project it was opened for the same way.
       designerProjectId:
         match.route === 'designer'
@@ -1255,6 +1271,14 @@ export function adoptRouteFromLocation(): AppRoute | null {
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       selectedTaskId: match.taskId ?? null,
+      // The one project page names its project; Running work's scope and the explorer's old
+      // `?project=` name the same selection.
+      selectedProjectId:
+        match.projectId ??
+        address?.project ??
+        (match.route === 'projects'
+          ? new URLSearchParams(window.location.search).get('project')
+          : null),
       startProjectId: match.projectId ?? s.startProjectId ?? null,
       startEntryId: match.entryId ?? s.startEntryId ?? null,
       lensMode: address?.mode ?? null,
@@ -1447,7 +1471,11 @@ export function openEpicView(epicId: string): void {
  * @param planId the plan whose completion report to show
  */
 export function openCompletionReport(planId: string): void {
-  pushRoute('reports', { reportPlanId: planId });
+  // The act knows the plan, not the report's id: the report's own address is written once the view
+  // has resolved that id from the report record. The store keeps the plan across the push, which
+  // a plain visit to the list clears.
+  pushRoute('reports');
+  runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
 }
 
 /**
@@ -1456,7 +1484,7 @@ export function openCompletionReport(planId: string): void {
  * @param projectId the project to show
  */
 export function openProjectInExplorer(projectId: string): void {
-  pushRoute('projects', { explorerProjectId: projectId });
+  pushRoute('project', { projectId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {

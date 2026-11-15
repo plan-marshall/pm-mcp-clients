@@ -172,9 +172,11 @@ describe('EpicView component', () => {
     await fireEvent.click(screen.getByTestId('breadcrumb-project'));
 
     const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('projects');
+    expect(state.currentRoute).toBe('project');
     expect(state.selectedProjectId).toBe('pm-mcp-clients');
-    expect(window.location.search).toBe('?project=pm-mcp-clients');
+    // The project opens at its one page address, not the old `?project=` query.
+    expect(window.location.pathname).toBe('/projects/pm-mcp-clients');
+    expect(window.location.search).toBe('');
   });
 
   const mockResource: EpicResource = {

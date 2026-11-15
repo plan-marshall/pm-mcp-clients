@@ -200,14 +200,15 @@
   // The app renders in the browser only (`ssr = false` in the root layout), so the view reaches
   // `localStorage` without asking whether a window exists.
   onMount(async () => {
-    // The place the operator left is read through its own store: project, grouping and the
-    // selected object, never the mode.
+    // The address wins over the remembered place: the lens's grouping and its scope are read from
+    // it, and only where it names neither does the place decide.
+    const address = get(runtimeStore);
     const place = readRememberedPlace();
-    if (place.group === 'epic') {
+    if (address.lensGroup === 'epic' || place.group === 'epic') {
       viewMode = 'epic';
     }
     // A figure of the system view asked for the plans or the epics; consume it once.
-    const focus = get(runtimeStore).overviewFocus;
+    const focus = address.overviewFocus;
     if (focus === 'plans') {
       viewMode = 'plan';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
@@ -215,12 +216,17 @@
       viewMode = 'epic';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
     }
-    if (place.project) {
+    if (address.selectedProjectId) {
+      selectedProjectId = address.selectedProjectId;
+    } else if (place.project) {
       selectedProjectId = place.project;
     }
     // A view that opened the plan or the project came back to Running Work returns to the
     // section it left: Ended Work, on the page it showed.
-    showEnded = localStorage.getItem('pm_overview_show_ended') === '1';
+    if (address.lensMode === 'ended') {
+      showEnded = true;
+    }
+    showEnded = showEnded || localStorage.getItem('pm_overview_show_ended') === '1';
     const savedEndedPage = Number.parseInt(
       localStorage.getItem('pm_overview_ended_page') ?? '',
       10,

@@ -15,7 +15,7 @@
     stopRuntimeRecovery,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
-  import { ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import { ROUTE_TITLES, parseAddress, replaceLegacyAddress, type AppRoute } from '../lib/routes';
   import { writeAddress } from '../lib/navigation/history';
   import {
     applyTheme,
@@ -225,6 +225,16 @@
 
     // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
     adoptRouteFromLocation();
+    // An old address of a moved view is replaced once, when it is opened; pre-1.0 there is no
+    // other compatibility.
+    const legacy = replaceLegacyAddress(
+      `${window.location.pathname}${window.location.search}`,
+    );
+    if (legacy) {
+      const address = parseAddress(legacy);
+      if (address) writeAddress(address, 'replace');
+      adoptRouteFromLocation();
+    }
     const onPop = () => adoptRouteFromLocation();
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));

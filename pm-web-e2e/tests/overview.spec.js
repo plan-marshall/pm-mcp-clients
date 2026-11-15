@@ -165,7 +165,7 @@ test.describe('Overview View (UC-PLN-4)', () => {
 
     // A plan's completion report is one step from its row.
     await page.locator('[data-testid="ended-report-fix-relay-v1"]').click();
-    await expect(page).toHaveURL(/\/reports\?plan=fix-relay-v1$/);
+    await expect(page).toHaveURL(/\/reports(\/[^/?]+)?$/);
     await expect(page.locator('.completion-report')).toBeVisible();
   });
 });

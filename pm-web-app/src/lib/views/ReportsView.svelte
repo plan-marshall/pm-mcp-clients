@@ -231,8 +231,9 @@
         key: `report:${activeDetailPlanId}`,
         kind: 'report',
         title: activeDetailPlanId,
-        // The address of the report's detail beside the list, unchanged until PLAN-143.
-        href: `/reports?plan=${encodeURIComponent(activeDetailPlanId)}`,
+        // The detail address is written by the writer when it opens; the column descriptor names
+        // the list it stands beside.
+        href: '/reports',
         state: '',
       },
     ];
@@ -388,6 +389,17 @@
       clock = Date.now();
     }, 30_000);
     await loadReports();
+    // `/reports/{id}` addresses one report: its detail is keyed by the plan the report names, so
+    // the view looks that plan up in the report record.
+    const requestedReportId = $runtimeStore.selectedReportId;
+    if (requestedReportId) {
+      const report = items.find((item) => item.id === requestedReportId);
+      const plan = report?.from?.plan;
+      if (plan) {
+        showDetail(plan);
+      }
+      runtimeStore.update((s) => ({ ...s, selectedReportId: null }));
+    }
   });
 
   onDestroy(() => {
@@ -724,6 +736,12 @@
     }
     syncedRouteReportPlan = planId;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
+    // The address of the report names the report, not the plan: once the row is known, the address
+    // is replaced with it, so a reload and a bookmark open the same detail.
+    const report = items.find((item) => planIdOf(item) === planId);
+    if (report?.id) {
+      writeAddress({ route: 'report', reportId: report.id }, 'replace');
+    }
   }
 
   /**

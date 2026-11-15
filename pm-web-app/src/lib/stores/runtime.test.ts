@@ -598,6 +598,69 @@ describe('the remembered place at the start', () => {
 });
 
 /**
+ * The address feeds every view: each one reads the selection its own address names, and an old
+ * address of a moved view is replaced by the scheme's address when it is opened.
+ */
+describe('the address feeds the views', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, isPaired: true, isOnboarded: true }));
+  });
+
+  it('gives one decision its selection from its own path', () => {
+    window.history.replaceState(null, '', '/decisions/Q-007');
+
+    expect(adoptRouteFromLocation()).toBe('decision');
+    expect(get(runtimeStore).selectedDecisionId).toBe('Q-007');
+  });
+
+  it('gives one report its selection, and the view resolves its plan', () => {
+    window.history.replaceState(null, '', '/reports/r-42');
+
+    expect(adoptRouteFromLocation()).toBe('report');
+    expect(get(runtimeStore).selectedReportId).toBe('r-42');
+  });
+
+  it('gives the project page its project', () => {
+    window.history.replaceState(null, '', '/projects/pm-mcp-clients');
+
+    expect(adoptRouteFromLocation()).toBe('project');
+    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+  });
+
+  it('gives a task its plan and its task', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay/tasks/TASK-4');
+
+    expect(adoptRouteFromLocation()).toBe('task');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(get(runtimeStore).selectedTaskId).toBe('TASK-4');
+  });
+
+  it('gives the overview its scope, grouping and mode from the query', () => {
+    window.history.replaceState(null, '', '/overview?project=p-1&group=epic&mode=ended');
+
+    expect(adoptRouteFromLocation()).toBe('overview');
+    expect(get(runtimeStore).selectedProjectId).toBe('p-1');
+    expect(get(runtimeStore).lensGroup).toBe('epic');
+    expect(get(runtimeStore).lensMode).toBe('ended');
+  });
+
+  it('gives the plan its tab, node, file and chat from the query', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay?tab=changes&file=pm-relay/pom.xml');
+
+    expect(adoptRouteFromLocation()).toBe('plan');
+    expect(get(runtimeStore).objectTab).toBe('changes');
+    expect(get(runtimeStore).changeFile).toBe('pm-relay/pom.xml');
+    expect(get(runtimeStore).phaseNode).toBeNull();
+
+    window.history.replaceState(null, '', '/plans/fix-relay?node=execute/land&chat=open');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).phaseNode).toBe('execute/land');
+    expect(get(runtimeStore).chatOpen).toBe(true);
+  });
+});
+
+/**
  * The recovery after a failed start: the store owns the retry of the initialization, not the page
  * of the lost connection, so a request that clears the offline state before the first retry does
  * not leave a runtime whose state was never loaded. A retry that lands late never takes the person
