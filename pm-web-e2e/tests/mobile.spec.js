@@ -111,17 +111,19 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await expect(page.locator('.report-card')).toHaveCount(1);
       await expectNoHorizontalOverflow(page);
 
-      // Below the triage breakpoint the detail replaces the list, never both panes.
+      // Below the triage breakpoint the window shows one column: with nothing selected that column
+      // is the list, and the object column is not rendered at all.
       await filter.fill('');
       await expect(page.locator('.report-card').first()).toBeVisible();
-      // With no report selected the narrow layout hides the empty detail pane.
-      await expect(page.locator('[data-testid="triage-detail"]')).toBeHidden();
+      await expect(page.locator('[data-testid="triage-list"]')).toHaveCount(1);
+      await expect(page.locator('[data-testid="triage-detail"]')).toHaveCount(0);
       await page
         .locator('.report-card', { hasText: 'Ended: merged (#214)' })
         .getByRole('button', { name: /Show the details/i })
         .click();
       await expect(page.locator('.completion-report')).toBeVisible();
-      await expect(page.locator('.reports-tree')).toBeHidden();
+      // The object column takes the only column; the list is out of the window, not moved aside.
+      await expect(page.locator('[data-testid="triage-list"]')).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
     });
   }

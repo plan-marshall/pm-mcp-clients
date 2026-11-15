@@ -33,7 +33,7 @@ import de.planmarshall.api.json.JsonTree;
  * not take remain in the outline review as open questions.
  *
  * @param resolution whether the check is pending, answered, or did not run
- * @param questions  the questions the builder asked
+ * @param questions  the questions the builder asked, none where the check did not run
  * @param reason     why the check did not run, present and not blank exactly when the resolution is
  *                   {@link Resolution#NOT_RUN}; a text the clients show as it stands
  */
@@ -117,6 +117,11 @@ public record BuilderCheckResource(Resolution resolution, List<BuilderQuestion> 
         }
         if (resolution != Resolution.NOT_RUN && reason != null) {
             throw new IllegalArgumentException("only a not_run check names its " + FIELD_REASON);
+        }
+        if (resolution == Resolution.NOT_RUN && !questions.isEmpty()) {
+            // A check that did not run asked nothing: its questions sit in the plan's history
+            // (`facts.builder_open_questions`), never on the record whose run was lost.
+            throw new IllegalArgumentException("a not_run check carries no " + FIELD_QUESTIONS);
         }
     }
 
