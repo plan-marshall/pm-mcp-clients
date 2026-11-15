@@ -303,6 +303,43 @@ describe('PlanIntentPanel', () => {
     expect(container.innerHTML).not.toContain('\u001b');
   });
 
+  it('renders the title of a satisfying deliverable as text after the control sequences are gone', async () => {
+    vi.spyOn(apiClient, 'getPlanIntent').mockResolvedValue(
+      intent({
+        criteria: [
+          {
+            id: 'AC-001',
+            text: 'When a relay connection drops, the relay shall reconnect within five seconds.',
+            satisfies: [1],
+            status: 'met',
+          },
+        ],
+      }),
+    );
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    render(PlanIntentPanel, {
+      props: {
+        planId: 'fix-relay',
+        deliverables: [
+          {
+            number: 1,
+            title: 'Reconnect\u001b[31m the relay <b>now</b>\u001b[0m',
+            intent_gloss: 'gloss',
+            affected_files: [],
+            depends_on: [],
+            satisfies: ['AC-001'],
+          },
+        ],
+      },
+    });
+
+    const satisfied = await screen.findByTestId('criterion-deliverables-AC-001');
+    expect(satisfied.textContent?.replace(/\s+/g, ' ')).toBe(
+      'satisfied by 1 · Reconnect the relay <b>now</b>',
+    );
+    expect(satisfied.querySelector('b')).toBeNull();
+  });
+
   it('renders a record without criteria without failing', async () => {
     await renderPanel(intent({ criteria: [] }));
 

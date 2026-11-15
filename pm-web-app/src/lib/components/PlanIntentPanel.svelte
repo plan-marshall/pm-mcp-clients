@@ -4,7 +4,7 @@
   import { apiClient, type PlanIntentRecord, type OutlineDeliverableRecord } from '../api/client';
   import { errorCodeOf } from '../api/errors';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { refreshesIntentView } from './intentEvents';
+  import { refreshesIntentView, changedRevision } from './intentEvents';
   import Button from './Button.svelte';
   import ErrorState from './ErrorState.svelte';
   import Link from './Link.svelte';
@@ -48,7 +48,7 @@
   let loading = $state(true);
   let errorCode = $state<string | null>(null);
   /** The revision that arrived on a runtime event, so `the record changed` is said once. */
-  let changedRevision = $state<number | null>(null);
+  let announcedRevision = $state<number | null>(null);
   /** The criteria and questions whose detail the operator opened, by id, kept across a refresh. */
   let expanded = $state<Record<string, boolean>>({});
   let unsubscribe: (() => void) | null = null;
@@ -86,12 +86,7 @@
     }
     try {
       const next = await apiClient.getPlanIntent(planId);
-      // A record that arrives on an event and carries a new revision is the one the operator is
-      // told about, once; a first read and a read of the same revision say nothing.
-      changedRevision =
-        !initial && next !== null && record !== null && next.revision !== record.revision
-          ? next.revision
-          : null;
+      announcedRevision = changedRevision(record, next, initial);
       record = next;
       errorCode = null;
     } catch (failure) {
@@ -154,7 +149,7 @@
     return deliverable
       ? $t('intent.outline.deliverable', {
           number: deliverable.number,
-          title: deliverable.title,
+          title: safe(deliverable.title),
         })
       : String(criterionNumber);
   }
@@ -174,7 +169,7 @@
 
   /** @returns whether the panel has a record whose revision arrived on an event */
   function changed(): boolean {
-    return changedRevision !== null && changedRevision === record?.revision;
+    return announcedRevision !== null && announcedRevision === record?.revision;
   }
 </script>
 
@@ -263,7 +258,8 @@
                   label={deliverableLabel(criterionNumber)}
                 />
               {/each}
-            {/if}          </p>
+            {/if}
+          </p>
         </li>
       {/each}
     </ul>

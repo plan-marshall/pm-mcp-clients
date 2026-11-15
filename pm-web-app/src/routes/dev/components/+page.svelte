@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../../lib/i18n';
-  import { apiClient, type BuilderCheckRecord, type OutlineDeliverableRecord } from '../../../lib/api/client';
+  import {
+    apiClient,
+    type BuilderCheckRecord,
+    type OutlineDeliverableRecord,
+  } from '../../../lib/api/client';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import RowMenu from '../../../lib/components/RowMenu.svelte';
   import Button from '../../../lib/components/Button.svelte';

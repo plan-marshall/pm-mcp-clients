@@ -4,7 +4,7 @@
   import { apiClient, type OutlineRecord } from '../api/client';
   import { errorCodeOf } from '../api/errors';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { refreshesIntentView } from './intentEvents';
+  import { refreshesIntentView, changedRevision } from './intentEvents';
   import ErrorState from './ErrorState.svelte';
   import Link from './Link.svelte';
   import Spinner from './Spinner.svelte';
@@ -38,7 +38,7 @@
   let loading = $state(true);
   let errorCode = $state<string | null>(null);
   /** The revision that arrived on a runtime event, so `the record changed` is said once. */
-  let changedRevision = $state<number | null>(null);
+  let announcedRevision = $state<number | null>(null);
   let unsubscribe: (() => void) | null = null;
 
   onMount(() => {
@@ -64,12 +64,7 @@
     }
     try {
       const next = await apiClient.getPlanOutline(planId);
-      // A record that arrives on an event and carries a new revision is the one the operator is
-      // told about, once; a first read and a read of the same revision say nothing.
-      changedRevision =
-        !initial && next !== null && record !== null && next.revision !== record.revision
-          ? next.revision
-          : null;
+      announcedRevision = changedRevision(record, next, initial);
       record = next;
       errorCode = null;
     } catch (failure) {
@@ -81,7 +76,7 @@
 
   /** @returns whether the record on screen is one whose revision arrived on an event */
   function changed(): boolean {
-    return changedRevision !== null && changedRevision === record?.revision;
+    return announcedRevision !== null && announcedRevision === record?.revision;
   }
 
   /** @param value a record text @returns it as plain text, never as markup */
