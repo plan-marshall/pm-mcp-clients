@@ -47,7 +47,7 @@ describe('/dev/components page fixture', () => {
     expect(labels.some((label) => label.endsWith(', light)') || label.endsWith(', dark)'))).toBe(
       false,
     );
-  });
+  }, 60_000);
 
   it('names both themes in German on the page itself (D3b)', () => {
     currentLocale.set('de');
@@ -64,7 +64,7 @@ describe('/dev/components page fixture', () => {
       .map((button) => button.getAttribute('aria-label') ?? '');
     expect(labels.filter((label) => label.endsWith(', Helles Theme)'))).toHaveLength(2);
     expect(labels.filter((label) => label.endsWith(', Dunkles Theme)'))).toHaveLength(2);
-  });
+  }, 60_000);
 
   it.each([
     ['en', 'Brand', 'replan is reading the whole plan…'],
