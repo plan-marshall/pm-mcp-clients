@@ -83,9 +83,11 @@ public class ScenarioLoader {
     private static final String FIELD_REPRESENTATION = "representation";
     /** The member of a route and of a link that holds its HTTP status. */
     private static final String FIELD_STATUS = "status";
+    /** The member of the scenario, and of a state's runtime fixture, that holds routes. */
+    private static final String FIELD_ROUTES = "routes";
 
     private static final Set<String> ROOT_FIELDS = Set.of(
-            "format_version", "name", "description", "start", "pairing_code", "routes", "states");
+            "format_version", "name", "description", "start", "pairing_code", FIELD_ROUTES, "states");
     private static final Set<String> STATE_FIELDS = Set.of(
             FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
     private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
@@ -99,8 +101,6 @@ public class ScenarioLoader {
     /** The engine-only fixtures a state's runtime fixture may carry. */
     private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
     private static final String FIXTURE_CONTENTS = "contents";
-    /** The state-specific route overrides a state's runtime fixture may carry. */
-    private static final String FIXTURE_ROUTES = "routes";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -379,7 +379,7 @@ public class ScenarioLoader {
                 ? null
                 : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
         var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
-        var overrides = runtime == null ? null : JsonTree.asObject(runtime.get(FIXTURE_ROUTES));
+        var overrides = runtime == null ? null : JsonTree.asObject(runtime.get(FIELD_ROUTES));
         if (overrides != null) {
             overrides.values().forEach(value -> collectPlanSizes(value, sizes));
         }
