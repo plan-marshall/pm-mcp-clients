@@ -91,7 +91,10 @@ describe('the gap strip', () => {
 
     expect(popover).toContain('position: absolute');
     expect(popover).toContain('inline-size: 14rem');
-    expect(ruleOf(styleOf(SOURCE), '.gap-strip--start')).toContain('position: relative');
+    const start = ruleOf(styleOf(SOURCE), '.gap-strip--start');
+    expect(start).toContain('position: relative');
+    // The strip is only as tall as its marks, so `100%` is the Names control's bottom.
+    expect(start).toContain('align-self: flex-start');
     // The strip itself may not clip what its popover shows.
     expect(ruleOf(styleOf(SOURCE), '.gap-strip')).not.toContain('overflow-x: hidden');
   });

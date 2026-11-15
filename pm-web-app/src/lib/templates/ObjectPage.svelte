@@ -191,9 +191,10 @@
     min-inline-size: 0;
   }
 
-  /* The phone takes the app's narrow inset, as every view did before the template owned it. */
+  /* The phone takes the app's narrow inset, as every view did before the template owned it. A
+     column of the engine brings its own inset and keeps `padding: 0`. */
   @media (max-width: 480px) {
-    .object-page {
+    .object-page:not(.object-page--compact):not(.object-page--in-column) {
       padding: var(--space-3);
     }
   }

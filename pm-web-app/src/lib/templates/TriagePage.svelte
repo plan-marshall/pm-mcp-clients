@@ -44,7 +44,9 @@
    * It measures its own container with a `ResizeObserver` — never the viewport, so the rail's choice
    * counts — and computes the window again on every change of the container's width. Only the
    * columns of the window are rendered: a hidden column is absent from the DOM and the accessibility
-   * tree, not moved out of sight. Each column scrolls on its own and the page never scrolls
+   * tree, not moved out of sight. Each column declares its own scroll (`overflow-y: auto`); the
+   * height it caps against is the app shell's, which has none yet — PLAN-144 gives the app body a
+   * definite height, and until then the page scrolls vertically as one. The page never scrolls
    * sideways. Widths are applied through `style:` directives (the CSSOM), which the daemon's policy
    * permits, never through a static `style` attribute (`csp.test.ts`).
    *
@@ -142,10 +144,10 @@
     if (pinned === null || !visible.some((entry) => entry.index === index)) {
       return false;
     }
-    // The pinned row belongs to the list column its selection is missing from; with one column it
-    // stands at the top of that column.
-    const target = layout.columns === 1 ? visible[0] : visible[visible.length - 2];
-    return index === target?.index;
+    // The pinned row belongs to the list column its selection is missing from — the level before
+    // the object in the chain, not the penultimate rendered one, which a peek moves.
+    const target = layout.columns === 1 ? visible[0]?.index : levels.length - 2;
+    return index === target;
   }
 
   $effect(() => {
@@ -278,7 +280,8 @@
    * @param direction `-1` for the column on the left, `1` for the one on the right
    */
   async function moveFocus(direction: -1 | 1): Promise<void> {
-    if (layout.columns === 0) {
+    // A window of one column has no strip and cannot shift, so the keys stay with the page.
+    if (layout.columns <= 1) {
       return;
     }
     const current = focusedColumn() ?? layout.start;
@@ -313,8 +316,13 @@
     if (isField(event.target)) {
       return;
     }
-    const back = event.key === '[' || (event.key === 'ArrowLeft' && event.ctrlKey);
-    const forward = event.key === ']' || (event.key === 'ArrowRight' && event.ctrlKey);
+    // The brackets belong to the app only as the bare key: Cmd+[ and Cmd+] are the browser's Back
+    // and Forward, and a German keyboard types `[` as AltGr+8. The arrows take Ctrl alone, never
+    // with Alt or Meta.
+    const bare = !event.ctrlKey && !event.altKey && !event.metaKey;
+    const ctrlOnly = event.ctrlKey && !event.altKey && !event.metaKey;
+    const back = (event.key === '[' && bare) || (event.key === 'ArrowLeft' && ctrlOnly);
+    const forward = (event.key === ']' && bare) || (event.key === 'ArrowRight' && ctrlOnly);
     if (!back && !forward) {
       return;
     }

@@ -152,6 +152,25 @@ describe('TriagePage as the column engine', () => {
     expect(pinned).toHaveTextContent('ended');
   });
 
+  it('hides the pinned row while the peek puts its list column out of the window', async () => {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        pinned: { level: LEVELS[4], reason: 'ended' },
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), 1216, 800);
+    await tick();
+    expect(screen.getByTestId('triage-pinned')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    expect(screen.queryByTestId('triage-pinned')).toBeNull();
+  });
+
   it('keeps the widest chain inside the content width', async () => {
     await renderWindow(1168);
 
@@ -170,11 +189,11 @@ describe('TriagePage as the column engine', () => {
     expect(ruleOf(style, '.triage-page__column')).toContain('min-inline-size: 0');
   });
 
-  it('scrolls each column on its own', () => {
+  it('declares each column its own scroll (the shell height follows in PLAN-144)', () => {
     const column = ruleOf(styleOf(SOURCE), '.triage-page__column');
 
-    // The column scrolls rather than widening the page; the height it caps against is the shell's
-    // (PLAN-144 gives the app body a definite height), so the rule carries `100%` until then.
+    // The declaration is pinned; the height it caps against is the app shell's, which keeps only a
+    // minimum today (PLAN-144), so the cap resolves to none and the page scrolls as one.
     expect(column).toContain('overflow-y: auto');
     expect(column).toContain('max-block-size: 100%');
   });
@@ -297,8 +316,30 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(get(runtimeStore).quietNavigationNotice).toBe('Plan column, plan');
   });
 
-  it('leaves the keys to a focused field', async () => {
-    render(TriagePageFixture, {
+  it('leaves the keys alone in a one-column window', async () => {
+    await renderWindow(496);
+    const window_ = document.querySelector('.triage-page__window');
+    const before = get(runtimeStore).quietNavigationNotice;
+
+    await fireEvent.keyDown(window_ as HTMLElement, { key: '[' });
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '4');
+    expect(get(runtimeStore).quietNavigationNotice).toBe(before);
+  });
+
+  it('leaves the keys alone when a modifier is held', async () => {
+    await renderWindow(1168);
+    const before = get(runtimeStore).quietNavigationNotice;
+
+    // Cmd+[ is the browser's Back; AltGr+8 types `[` on a German keyboard.
+    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: '[', metaKey: true });
+    await fireEvent.keyDown(screen.getByTestId('triage-page'), { key: '[', altKey: true, ctrlKey: true });
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(get(runtimeStore).quietNavigationNotice).toBe(before);
+  });
+
+  it('leaves the keys to a focused field', async () => {    render(TriagePageFixture, {
       props: {
         levels: LEVELS,
         label: 'Levels',

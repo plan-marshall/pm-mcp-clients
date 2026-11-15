@@ -176,6 +176,9 @@
      clips the names it opens. */
   .gap-strip--start {
     position: relative;
+    /* The strip is only as tall as its marks, so the popover opens under the Names control rather
+       than under the tallest column. */
+    align-self: flex-start;
   }
 
   .gap-strip__mark,

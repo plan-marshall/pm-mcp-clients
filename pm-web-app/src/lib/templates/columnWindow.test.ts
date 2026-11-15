@@ -307,6 +307,26 @@ describe('a peek', () => {
 
     expect(layout.peek).toBe(false);
   });
+
+  it('falls back to the object when a widened window cannot hold the peek', () => {
+    // The peek was made in a two-column window; the container then grows to four columns, which
+    // leave only one level after the peeked index.
+    const narrow = windowFor({ container: containerForContent(744), depth: DEEPEST_CHAIN });
+    expect(narrow.peek).toBe(false);
+
+    const widened = windowFor({
+      container: containerForContent(1640),
+      depth: DEEPEST_CHAIN,
+      peek: 2,
+    });
+
+    expect(widened.peek).toBe(false);
+    expect(widened.start).toBe(1);
+    expect(widened.objectWidth).toBeGreaterThanOrEqual(OBJECT_MIN);
+    expect(
+      widened.listWidth * (widened.columns - 1) + widened.objectWidth + widened.stripWidth,
+    ).toBe(widened.width);
+  });
 });
 
 describe('the widths add up to the content width', () => {

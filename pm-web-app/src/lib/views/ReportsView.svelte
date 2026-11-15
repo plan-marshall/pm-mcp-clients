@@ -958,6 +958,17 @@
   }
 
   /**
+   * Measures the report bodies whenever the list container is mounted, so a list that comes back
+   * after the detail closed on a narrow container offers its clamp controls again.
+   *
+   * @param node the list container
+   */
+  function measureWhenMounted(node: HTMLElement): void {
+    void node;
+    measureOverflow();
+  }
+
+  /**
    * @param item a report
    * @returns the moment itself, for the row's hover advisory
    */
@@ -999,7 +1010,7 @@
 {/snippet}
 
 {#snippet listPane()}
-  <div class="reports-container">
+  <div class="reports-container" use:measureWhenMounted>
     <!-- Header -->
     <header class="reports-header">
       <div class="reports-header__title-row">

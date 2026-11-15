@@ -114,7 +114,19 @@ describe('WizardPage', () => {
     await renderWizard(800);
 
     expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
-    expect(screen.queryByTestId('wizard-content')).toBeNull();
+    // The content stays mounted — a form keeps its state — and is hidden from layout.
+    const content = screen.getByTestId('wizard-content');
+    expect(content).toHaveAttribute('hidden');
+  });
+
+  it('hides the chat from anywhere on the page', async () => {
+    const onHideSide = vi.fn();
+    await renderWizard(800, true, onHideSide);
+
+    // The content is hidden, so the focus may sit on the page; Escape still reaches the page.
+    await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(onHideSide).toHaveBeenCalledOnce();
   });
 
   it('leaves the width to the stylesheet, so the phone rule can take the screen', async () => {

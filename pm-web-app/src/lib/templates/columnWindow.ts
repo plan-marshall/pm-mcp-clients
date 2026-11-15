@@ -210,6 +210,12 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
     peek = null;
   }
 
+  // A peek that would leave fewer levels than the window's columns is no peek: the window falls
+  // back to the object, so a resize while peeked never renders a short window.
+  if (peek !== null && peek + columns > depth) {
+    peek = null;
+  }
+
   const listWidth =
     columns === 1
       ? 0
@@ -226,7 +232,7 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
       columns,
       listWidth,
       columnWidths: widths,
-      rightWidth: widths[widths.length - 1],
+      rightWidth: widths.at(-1) ?? 0,
       strip,
       stripWidth: stripWidthOf(strip),
       returnStrip: false,
@@ -251,7 +257,7 @@ function navWindow(available: number, depth: number, peek: number | null): NavWi
     columns,
     listWidth,
     columnWidths: widths,
-    rightWidth: widths[widths.length - 1],
+    rightWidth: widths.at(-1) ?? 0,
     strip: 'none',
     stripWidth,
     returnStrip,

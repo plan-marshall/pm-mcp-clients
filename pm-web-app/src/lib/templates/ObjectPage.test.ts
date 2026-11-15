@@ -109,6 +109,10 @@ describe('ObjectPage', () => {
     const index = style.indexOf('@media (max-width: 480px)');
 
     expect(index).toBeGreaterThanOrEqual(0);
-    expect(style.slice(index)).toMatch(/padding: var\(--space-3\)/);
+    const phone = style.slice(index);
+    expect(phone).toMatch(/padding: var\(--space-3\)/);
+    // A column of the engine brings its own inset: the phone rule leaves it at `padding: 0`.
+    expect(phone).toContain(':not(.object-page--compact)');
+    expect(phone).toContain(':not(.object-page--in-column)');
   });
 });

@@ -70,22 +70,19 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="wizard-page"
   data-testid="wizard-page"
   style:--wizard-inset={`${pageInset(container)}px`}
   bind:this={frame}
-  role="group"
-  on:keydown={onKeydown}
 >
   <div class="wizard-page__layout">
-    {#if !layout.sideTakesSpace}
-      <div
-        class="wizard-page__content"
-        data-testid="wizard-content"
-        style:inline-size={`${contentWidth}px`}
-      >
+    <div
+      class="wizard-page__content"
+      data-testid="wizard-content"
+      hidden={layout.sideTakesSpace}
+      style:inline-size={`${contentWidth}px`}
+    >
         {#if $$slots.steps}
           <div class="wizard-page__steps" data-testid="wizard-page-steps">
             <slot name="steps" />
@@ -107,8 +104,7 @@
             </div>
           </footer>
         {/if}
-      </div>
-    {/if}
+    </div>
 
     {#if sideOpen && side}
       <SideColumn
@@ -120,6 +116,8 @@
     {/if}
   </div>
 </div>
+
+<svelte:window on:keydown={onKeydown} />
 
 <style>
   .wizard-page {
@@ -151,6 +149,11 @@
     margin-inline: auto;
     min-inline-size: 0;
     overflow-y: auto;
+  }
+
+  /* The content stays mounted while the chat takes the space: a form keeps its state. */
+  .wizard-page__content[hidden] {
+    display: none;
   }
 
   .wizard-page__steps {

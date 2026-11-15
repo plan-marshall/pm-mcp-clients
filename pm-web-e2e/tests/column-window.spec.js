@@ -80,7 +80,8 @@ async function setRail(page, state) {
 }
 
 /**
- * Reads what the engine rendered, with the container it measured.
+ * Reads what the engine rendered, with the container it measured. The columns' widths are the
+ * rendered ones (`getBoundingClientRect`), not the widths they asked for.
  *
  * @param {import('@playwright/test').Page} page the browser page
  * @returns {Promise<{container: number, columns: number[]}>}
@@ -89,7 +90,7 @@ async function readWindow(page) {
   return page.evaluate(() => {
     const frame = document.querySelector('[data-testid="triage-page"]');
     const columns = [...document.querySelectorAll('[data-column-index]')].map((element) =>
-      Number.parseFloat(element.style.inlineSize),
+      Math.round(element.getBoundingClientRect().width),
     );
     return { container: frame === null ? 0 : frame.clientWidth, columns };
   });
