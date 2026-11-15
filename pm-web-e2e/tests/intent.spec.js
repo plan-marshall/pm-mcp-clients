@@ -179,9 +179,7 @@ test.describe('The plan intent and outline panels', () => {
     await expect(implement.getByTestId('oversize-bucket-3')).toContainText('3x and more');
     await expect(implement.getByTestId('oversize-flagged-2')).toHaveText('3 flagged');
     await expect(implement.getByTestId('oversize-flagged-3')).toHaveText('4 flagged');
-    await expect(implement.getByTestId('oversize-share')).toHaveText(
-      '20 tasks · 7 flagged · 35 %',
-    );
+    await expect(implement.getByTestId('oversize-share')).toHaveText('20 tasks · 7 flagged · 35 %');
     await expect(implement.getByTestId('oversize-direction')).toHaveText(
       '3x → 2x lowers the multiple and can flag more',
     );
@@ -240,19 +238,16 @@ test.describe('The plan intent and outline panels', () => {
     await expect(epic.getByTestId('epic-check-verdict-3')).toHaveText('ausstehend');
     await expect(epic.getByTestId('epic-non-goals')).toHaveText('Nicht-Ziele');
 
-    const implement = fixture
-      .getByTestId(CHART_FIXTURE)
-      .getByTestId('over-size-chart')
-      .first();
+    const implement = fixture.getByTestId(CHART_FIXTURE).getByTestId('over-size-chart').first();
     await expect(implement.getByTestId('oversize-share')).toHaveText(
       '20 Tasks · 7 markiert · 35 %',
     );
     await expect(implement.getByTestId('oversize-direction')).toHaveText(
       '3x → 2x senkt den Faktor und kann mehr markieren',
     );
-    await expect(
-      fixture.getByTestId(CHART_FIXTURE).getByTestId('oversize-empty'),
-    ).toHaveText('Noch keine gemessenen Tasks dieser Role.');
+    await expect(fixture.getByTestId(CHART_FIXTURE).getByTestId('oversize-empty')).toHaveText(
+      'Noch keine gemessenen Tasks dieser Role.',
+    );
   });
 
   test('draws the epic panel and the charts in both themes', async ({ page }) => {
@@ -272,10 +267,7 @@ test.describe('The plan intent and outline panels', () => {
     await openFixtureIn(page, 'en');
 
     const { violations, failing } = await auditViewA11y(page, {
-      include: [
-        `[data-testid="${EPIC_FIXTURE}"]`,
-        `[data-testid="${CHART_FIXTURE}"]`,
-      ],
+      include: [`[data-testid="${EPIC_FIXTURE}"]`, `[data-testid="${CHART_FIXTURE}"]`],
     });
     const label = 'epic intent and over_size (en, phone)';
     for (const violation of violations) {

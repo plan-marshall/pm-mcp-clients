@@ -75,11 +75,7 @@
       if (sequence !== readSequence) {
         return;
       }
-      announced = changedFingerprint(
-        recordFingerprint(record),
-        recordFingerprint(next),
-        initial,
-      );
+      announced = changedFingerprint(recordFingerprint(record), recordFingerprint(next), initial);
       record = next;
       errorCode = null;
     } catch (failure) {
@@ -162,7 +158,9 @@
     </ul>
 
     {#if record.non_goals.length > 0}
-      <h3 class="epic-intent__title" data-testid="epic-non-goals">{$t('intent.non_goals.title')}</h3>
+      <h3 class="epic-intent__title" data-testid="epic-non-goals">
+        {$t('intent.non_goals.title')}
+      </h3>
       <ul class="epic-list">
         {#each record.non_goals as nonGoal, index (index)}
           <li class="epic-list__item" data-testid={`epic-non-goal-${index}`}>

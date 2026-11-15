@@ -80,7 +80,13 @@ describe('OverSizeChart', () => {
         buckets: [
           { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
           { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 0, flagged_tasks: 0 },
-          { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 0, flagged_tasks: 0 },
+          {
+            label: '3x and more',
+            from_multiple: 3,
+            to_multiple: 6,
+            task_count: 0,
+            flagged_tasks: 0,
+          },
         ],
       }),
     );
@@ -127,7 +133,13 @@ describe('OverSizeChart', () => {
       distribution({
         buckets: [
           { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 2, flagged_tasks: 0 },
-          { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 1, flagged_tasks: 1 },
+          {
+            label: '3x and more',
+            from_multiple: 3,
+            to_multiple: 6,
+            task_count: 1,
+            flagged_tasks: 1,
+          },
         ],
       }),
     );
@@ -157,7 +169,13 @@ describe('OverSizeChart', () => {
         proposed_multiple: 3,
         buckets: [
           { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
-          { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 4, flagged_tasks: 0 },
+          {
+            label: '3x and more',
+            from_multiple: 3,
+            to_multiple: 6,
+            task_count: 4,
+            flagged_tasks: 0,
+          },
         ],
       }),
     );
@@ -175,7 +193,13 @@ describe('OverSizeChart', () => {
         buckets: [
           { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
           { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
-          { label: '3x and more', from_multiple: 3, to_multiple: 6, task_count: 4, flagged_tasks: 0 },
+          {
+            label: '3x and more',
+            from_multiple: 3,
+            to_multiple: 6,
+            task_count: 4,
+            flagged_tasks: 0,
+          },
         ],
       }),
     );

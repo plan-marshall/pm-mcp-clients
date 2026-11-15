@@ -123,9 +123,7 @@ describe('EpicIntentPanel', () => {
     const evidence = within(container).getAllByTestId(/^epic-check-evidence-0-/);
     expect(evidence).toHaveLength(2);
     expect(evidence[0]).toHaveTextContent('evidence: pm://plans/fix-relay/report');
-    expect(evidence[1]).toHaveTextContent(
-      'evidence: doc/design/shared/intent-and-outline.adoc',
-    );
+    expect(evidence[1]).toHaveTextContent('evidence: doc/design/shared/intent-and-outline.adoc');
     expect(within(container).getByTestId('epic-check-0').querySelector('a')).toBeNull();
     expect(within(container).queryAllByTestId(/^epic-check-evidence-2-/)).toEqual([]);
   });

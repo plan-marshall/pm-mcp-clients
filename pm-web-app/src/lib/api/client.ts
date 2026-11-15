@@ -2836,9 +2836,7 @@ function readOverSize(raw: unknown): OverSizeDistributionsRecord {
  * @param record one role's distribution of the served set
  * @returns it, every member of the contract read; a role without measured tasks carries no bucket
  */
-function readOverSizeDistribution(
-  record: Record<string, unknown>,
-): OverSizeDistributionRecord {
+function readOverSizeDistribution(record: Record<string, unknown>): OverSizeDistributionRecord {
   const type = 'OverSizeDistributionResource';
   return {
     project_id: recordText(record, 'project_id', type),
