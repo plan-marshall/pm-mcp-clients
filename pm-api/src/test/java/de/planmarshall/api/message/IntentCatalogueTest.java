@@ -313,7 +313,7 @@ class IntentCatalogueTest {
         for (var line : table.strip().split("\n")) {
             var parts = line.strip().split("\\|", -1);
             assertEquals(3, parts.length, "A row carries its key and both languages: " + line);
-            rows.put(parts[0], new String[] {parts[1], parts[2]});
+            rows.put(parts[0], new String[]{parts[1], parts[2]});
         }
         return rows;
     }
