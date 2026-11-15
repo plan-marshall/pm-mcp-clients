@@ -125,6 +125,15 @@ describe('TriagePage as the column engine', () => {
     },
   );
 
+  it('binds the page inset it measures on the window', async () => {
+    const { frame } = await renderWindow(1048);
+    expect(frame.style.getPropertyValue('--triage-inset')).toBe('24px');
+
+    reportBox(frame, 390, 800);
+    await tick();
+    expect(frame.style.getPropertyValue('--triage-inset')).toBe('12px');
+  });
+
   it('shows one column for a container below the marks threshold', async () => {
     await renderWindow(743);
 

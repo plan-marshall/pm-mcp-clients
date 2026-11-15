@@ -147,6 +147,20 @@ describe('WizardPage', () => {
     expect(onHideSide).toHaveBeenCalledOnce();
   });
 
+  it('binds the page inset it measures on the page', async () => {
+    const rendered = await renderWizard(1048);
+    expect(
+      screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset'),
+    ).toBe('24px');
+
+    reportBox(screen.getByTestId('wizard-page'), 390, 800);
+    await tick();
+    expect(
+      screen.getByTestId('wizard-page').style.getPropertyValue('--wizard-inset'),
+    ).toBe('12px');
+    void rendered;
+  });
+
   it('leaves the width to the stylesheet, so the phone rule can take the screen', async () => {
     await renderWizard(1048);
 
