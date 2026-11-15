@@ -39,6 +39,11 @@
   let errorCode = $state<string | null>(null);
   /** The revision that arrived on a runtime event, so `the record changed` is said once. */
   let announcedRevision = $state<number | null>(null);
+  /**
+   * The read that owns the panel's state: a read that answers after a newer one has started is
+   * dropped, so an older record never replaces a newer one.
+   */
+  let readSequence = 0;
   let unsubscribe: (() => void) | null = null;
 
   onMount(() => {
@@ -59,18 +64,27 @@
    * @param initial whether this is the panel's first read, which draws the wait
    */
   async function load(initial = true): Promise<void> {
+    const sequence = ++readSequence;
     if (initial) {
       loading = true;
     }
     try {
       const next = await apiClient.getPlanOutline(planId);
+      if (sequence !== readSequence) {
+        return;
+      }
       announcedRevision = changedRevision(record, next, initial);
       record = next;
       errorCode = null;
     } catch (failure) {
+      if (sequence !== readSequence) {
+        return;
+      }
       errorCode = errorCodeOf(failure);
     } finally {
-      loading = false;
+      if (sequence === readSequence) {
+        loading = false;
+      }
     }
   }
 

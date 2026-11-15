@@ -835,7 +835,7 @@ class IntentContractTest {
 
         @Test
         @DisplayName("the choices travel as decisions on the wire, and a choices member is refused")
-        void choicesIsNoAlias() throws Exception {
+        void choicesIsNoAlias() {
             var intent = intentWith(List.of(new PlanIntentResource.Decision("DC-045", sentence(),
                     IntentDecider.ROLE, List.of(), null, null, null)));
 

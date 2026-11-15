@@ -380,4 +380,30 @@ describe('PlanIntentPanel', () => {
     );
     expect(screen.getByTestId('intent-changed')).toHaveTextContent('the record changed');
   });
+
+  it('keeps the newer record when two reads answer out of order', async () => {
+    let resolveFirst: ((value: PlanIntentRecord | null) => void) | undefined;
+    let resolveSecond: ((value: PlanIntentRecord | null) => void) | undefined;
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getPlanIntent')
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+
+    render(PlanIntentPanel, { props: { planId: 'fix-relay', deliverables: [] } });
+    onEvent?.('phase.changed');
+
+    // The newer read answers first, the older one last: the older record is dropped.
+    resolveSecond?.(intent({ revision: 5 }));
+    await waitFor(() =>
+      expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'),
+    );
+    resolveFirst?.(intent({ revision: 4 }));
+    await waitFor(() =>
+      expect(screen.getByTestId('intent-head')).toHaveTextContent('revision 5'),
+    );
+  });
 });

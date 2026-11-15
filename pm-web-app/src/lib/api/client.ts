@@ -2618,20 +2618,31 @@ function recordEnum<T extends string>(
   throw malformedRecord(type, field);
 }
 
-const CRITERION_STATUSES: readonly CriterionStatusValue[] = ['met', 'not_met', 'not_verified'];
-const INTENT_DECIDERS: readonly IntentDeciderValue[] = ['operator', 'quorum', 'role', 'fact'];
-const ADR_RELATIONS: readonly ('follows' | 'contradicts')[] = ['follows', 'contradicts'];
-const BUILDER_RESOLUTIONS: readonly BuilderCheckResolution[] = ['pending', 'answered', 'not_run'];
-const BUILDER_SORTS: readonly BuilderQuestionSort[] = ['answered', 'minor', 'operator'];
-const BUILDER_STATES: readonly BuilderQuestionState[] = ['open', 'answered', 'deferred'];
-const FILE_INTENTS: readonly FileIntentValue[] = [
+/**
+ * The wire vocabularies of the intent records, in the order their `pm-api` enums declare them.
+ *
+ * A record's closed values are the contract's, so these lists are the contract's too: the readers
+ * accept nothing outside them, and `intentWireCatalogues.test.ts` holds each list to the enum it
+ * mirrors, so an added enum constant fails the build rather than being refused at the wire.
+ */
+export const CRITERION_STATUSES: readonly CriterionStatusValue[] = ['met', 'not_met', 'not_verified'];
+export const INTENT_DECIDERS: readonly IntentDeciderValue[] = ['operator', 'quorum', 'role', 'fact'];
+export const ADR_RELATIONS: readonly ('follows' | 'contradicts')[] = ['follows', 'contradicts'];
+export const BUILDER_RESOLUTIONS: readonly BuilderCheckResolution[] = [
+  'pending',
+  'answered',
+  'not_run',
+];
+export const BUILDER_SORTS: readonly BuilderQuestionSort[] = ['operator', 'minor', 'answered'];
+export const BUILDER_STATES: readonly BuilderQuestionState[] = ['open', 'answered', 'deferred'];
+export const FILE_INTENTS: readonly FileIntentValue[] = [
   'read',
   'write-new',
   'write-replace',
   'write-conditional',
   'delete',
 ];
-const DONE_WHEN_VERDICTS: readonly DoneWhenVerdict[] = ['pending', 'met', 'not_met'];
+export const DONE_WHEN_VERDICTS: readonly DoneWhenVerdict[] = ['pending', 'met', 'not_met'];
 
 /**
  * @param raw the record the runtime sent
@@ -2704,18 +2715,28 @@ function readPlanIntent(raw: unknown): PlanIntentRecord {
 function readBuilderCheck(raw: unknown, parent: string): BuilderCheckRecord {
   const type = `${parent}.builder_check`;
   const check = recordObject(raw, type);
-  return {
-    resolution: recordEnum(check, 'resolution', BUILDER_RESOLUTIONS, type),
-    questions: recordObjects(check, 'questions', 'BuilderQuestion').map((question) => ({
-      id: recordText(question, 'id', 'BuilderQuestion'),
-      text: recordText(question, 'text', 'BuilderQuestion'),
-      sort: recordEnum(question, 'sort', BUILDER_SORTS, 'BuilderQuestion'),
-      recommended: recordBoolean(question, 'recommended', 'BuilderQuestion'),
-      state: recordEnum(question, 'state', BUILDER_STATES, 'BuilderQuestion'),
-      answer: optionalRecordText(question, 'answer', 'BuilderQuestion'),
-    })),
-    reason: optionalRecordText(check, 'reason', type),
-  };
+  const resolution = recordEnum(check, 'resolution', BUILDER_RESOLUTIONS, type);
+  const questions = recordObjects(check, 'questions', 'BuilderQuestion').map((question) => ({
+    id: recordText(question, 'id', 'BuilderQuestion'),
+    text: recordText(question, 'text', 'BuilderQuestion'),
+    sort: recordEnum(question, 'sort', BUILDER_SORTS, 'BuilderQuestion'),
+    recommended: recordBoolean(question, 'recommended', 'BuilderQuestion'),
+    state: recordEnum(question, 'state', BUILDER_STATES, 'BuilderQuestion'),
+    answer: optionalRecordText(question, 'answer', 'BuilderQuestion'),
+  }));
+  const reason = optionalRecordText(check, 'reason', type);
+  // The record's own rules, as `BuilderCheckResource` enforces them: a check that did not run says
+  // why and asked nothing, and no other resolution carries a reason.
+  if (resolution === 'not_run' && (reason === undefined || reason.trim() === '')) {
+    throw malformedRecord(type, 'reason');
+  }
+  if (resolution !== 'not_run' && reason !== undefined) {
+    throw malformedRecord(type, 'reason');
+  }
+  if (resolution === 'not_run' && questions.length > 0) {
+    throw malformedRecord(type, 'questions');
+  }
+  return { resolution, questions, reason };
 }
 
 /**
@@ -4081,11 +4102,11 @@ export class ApiClient {
     let raw: unknown;
     try {
       raw = await this.request<unknown>('GET', path);
-    } catch (failure) {
-      if (absentRecord(failure)) {
+    } catch (error_) {
+      if (absentRecord(error_)) {
         return null;
       }
-      throw failure;
+      throw error_;
     }
     return reader(raw);
   }

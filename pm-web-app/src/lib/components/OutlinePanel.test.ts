@@ -313,8 +313,32 @@ describe('OutlinePanel', () => {
 
     onEvent?.('phase.changed');
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.getByTestId('outline-changed')).toHaveTextContent(
-      'the record changed',
-    ));
+    await waitFor(() =>
+      expect(screen.getByTestId('outline-changed')).toHaveTextContent('the record changed'),
+    );
+  });
+
+  it('keeps the newer outline when two reads answer out of order', async () => {
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
+    let resolveFirst: ((value: OutlineRecord | null) => void) | undefined;
+    let resolveSecond: ((value: OutlineRecord | null) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getPlanOutline')
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+
+    render(OutlinePanel, { props: { planId: 'fix-relay' } });
+    onEvent?.('phase.changed');
+
+    resolveSecond?.(outline({ revision: 5, deliverables: [] }));
+    await screen.findByTestId('outline-panel');
+    resolveFirst?.(outline({ revision: 4 }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('outline-changed')).toBeNull(),
+    );
+    expect(screen.getByTestId('outline-panel')).not.toHaveTextContent('the record changed');
   });
 });

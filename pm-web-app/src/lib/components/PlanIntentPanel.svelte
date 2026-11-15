@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
-  import { apiClient, type PlanIntentRecord, type OutlineDeliverableRecord } from '../api/client';
+  import {
+    apiClient,
+    CRITERION_STATUSES,
+    INTENT_DECIDERS,
+    type PlanIntentRecord,
+    type OutlineDeliverableRecord,
+  } from '../api/client';
   import { errorCodeOf } from '../api/errors';
   import { stripControlSequences } from '../utils/outputSafety';
   import { refreshesIntentView, changedRevision } from './intentEvents';
@@ -49,6 +55,11 @@
   let errorCode = $state<string | null>(null);
   /** The revision that arrived on a runtime event, so `the record changed` is said once. */
   let announcedRevision = $state<number | null>(null);
+  /**
+   * The read that owns the panel's state: a read that answers after a newer one has started is
+   * dropped, so an older record never replaces a newer one.
+   */
+  let readSequence = 0;
   /** The criteria and questions whose detail the operator opened, by id, kept across a refresh. */
   let expanded = $state<Record<string, boolean>>({});
   let unsubscribe: (() => void) | null = null;
@@ -60,8 +71,11 @@
     not_verified: 'neutral',
   };
 
-  /** The deciders in the order the design shows them: the operator and a quorum first. */
-  const DECIDER_ORDER = ['operator', 'quorum', 'role', 'fact'] as const;
+  /**
+   * The deciders in the order the design shows them: the operator and a quorum first. The set is the
+   * contract's own, so an added decider is shown rather than silently left out.
+   */
+  const DECIDER_ORDER = INTENT_DECIDERS;
 
   onMount(() => {
     void load();
@@ -81,18 +95,27 @@
    * @param initial whether this is the panel's first read, which draws the wait
    */
   async function load(initial = true): Promise<void> {
+    const sequence = ++readSequence;
     if (initial) {
       loading = true;
     }
     try {
       const next = await apiClient.getPlanIntent(planId);
+      if (sequence !== readSequence) {
+        return;
+      }
       announcedRevision = changedRevision(record, next, initial);
       record = next;
       errorCode = null;
     } catch (failure) {
+      if (sequence !== readSequence) {
+        return;
+      }
       errorCode = errorCodeOf(failure);
     } finally {
-      loading = false;
+      if (sequence === readSequence) {
+        loading = false;
+      }
     }
   }
 
@@ -131,7 +154,7 @@
   function countsLine(): string {
     const criteria = record?.criteria ?? [];
     const parts = [$t('intent.head.criteria', { criteria: criteria.length })];
-    for (const status of ['met', 'not_met', 'not_verified'] as const) {
+    for (const status of CRITERION_STATUSES) {
       const count = criteria.filter((criterion) => criterion.status === status).length;
       if (count > 0) {
         parts.push($t('intent.head.count', { count, state: $t(`state.criterion.${status}`) }));

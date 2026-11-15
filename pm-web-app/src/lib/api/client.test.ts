@@ -2807,6 +2807,43 @@ describe('ApiClient intent and outline records', () => {
     expect(record?.builder_check?.reason).toBeUndefined();
   });
 
+  it('refuses a builder check that breaks its own rules, naming the field', async () => {
+    // Arrange: the three refusals BuilderCheckResource makes, one record each
+    const base = {
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect.',
+      criteria: [{ id: 'AC-001', text: 'The relay shall reconnect.', satisfies: [] }],
+      non_goals: [{ id: 'NG-1', text: 'Do not change the format.' }],
+      decisions: [],
+      open_questions: [],
+      deferred: [],
+    };
+    const question = {
+      id: 'BQ-001',
+      text: 'Which timeout applies?',
+      sort: 'operator',
+      recommended: false,
+      state: 'open',
+    };
+
+    // Act & Assert: a not_run without its reason, a not_run with questions, a pending with a reason
+    answer({ ...base, builder_check: { resolution: 'not_run', questions: [] } });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/reason/);
+
+    answer({
+      ...base,
+      builder_check: { resolution: 'not_run', questions: [question], reason: 'lost' },
+    });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/questions/);
+
+    answer({
+      ...base,
+      builder_check: { resolution: 'pending', questions: [], reason: 'not a reason to carry' },
+    });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/reason/);
+  });
+
   it('answers an absent record with null, so a panel can say refine has not written it yet', async () => {
     // Arrange: the runtime has no record for the plan
     answer({ error: 'intent_not_found', message: 'No intent record' }, 404);

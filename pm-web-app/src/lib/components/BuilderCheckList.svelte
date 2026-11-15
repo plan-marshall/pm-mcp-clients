@@ -1,6 +1,11 @@
 <script lang="ts">
   import { t } from '../i18n';
-  import type { BuilderCheckRecord, BuilderQuestionRecord } from '../api/client';
+  import {
+    apiClient,
+    BUILDER_SORTS,
+    type BuilderCheckRecord,
+    type BuilderQuestionRecord,
+  } from '../api/client';
   import { stripControlSequences } from '../utils/outputSafety';
   import Marker from './Marker.svelte';
 
@@ -23,8 +28,8 @@
 
   let { check }: Props = $props();
 
-  /** The sorts in the order the design lists them. */
-  const SORTS = ['answered', 'minor', 'operator'] as const;
+  /** The sorts in the order the design lists them; the set is the contract's own. */
+  const SORT_ORDER = ['answered', 'minor', 'operator'] as const;
 
   /**
    * @param sort the sort of a question
@@ -34,9 +39,16 @@
     return (check?.questions ?? []).filter((question) => question.sort === sort);
   }
 
-  /** @returns the sorts that carry at least one question, in the design's order */
+  /**
+   * @returns the sorts that carry at least one question: the design's order first, then any sort of
+   *   the contract the design does not name, so an added sort is shown rather than dropped
+   */
   function sorts(): string[] {
-    return SORTS.filter((sort) => questionsOf(sort).length > 0);
+    const ordered = [
+      ...SORT_ORDER,
+      ...BUILDER_SORTS.filter((sort) => !SORT_ORDER.includes(sort)),
+    ];
+    return ordered.filter((sort) => questionsOf(sort).length > 0);
   }
 
   /** @param value a record text @returns it as plain text, never as markup */

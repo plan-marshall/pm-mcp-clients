@@ -11,11 +11,15 @@ package de.planmarshall.api.message;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,117 +31,48 @@ import org.junit.jupiter.api.Test;
  * the area {@code intent} carries every key of the document in English and German, with the same
  * arguments, and the seven verdict words of the document's verdict table live in {@code common}.
  * <p>
- * The document is the specification, so the table below is its own key list. A key the document
- * carries and a pack lacks fails here, and so does a pack key the document does not name.
+ * The document is the specification, so the test reads it rather than repeating it: a key the document
+ * gains fails here until the packs carry it, and a key a pack carries that the document does not name
+ * fails too.
  */
 @DisplayName("IntentCatalogueTest")
 class IntentCatalogueTest {
 
-    /** The document's key list: one row per key, as {@code key|English|German}. */
-    private static final String TEXTS = """
-            intent.tab.title|Intent|Absicht
-            intent.plan.none|Refine has not written the intent yet.|Refine hat die Absicht noch nicht geschrieben.
-            intent.epic.none|This epic has no intent record.|Dieses Epic hat keinen Absichtsdatensatz.
-            intent.head.title|Intent \u00b7 {plan} \u00b7 revision {revision}|Absicht \u00b7 {plan} \u00b7 Revision {revision}
-            intent.head.goal|Goal|Ziel
-            intent.head.criteria|{criteria, plural, one {# criterion} other {# criteria}}|{criteria, plural, one {# Kriterium} other {# Kriterien}}
-            intent.head.count|{count} {state}|{count} {state}
-            intent.criteria.title|Criteria|Kriterien
-            intent.criteria.satisfied_by|satisfied by {deliverables}|erf\u00fcllt durch {deliverables}
-            intent.criteria.no_deliverable|no deliverable yet|noch kein Deliverable
-            intent.criteria.reason|Reason: {reason}|Grund: {reason}
-            intent.non_goals.title|Non-goals|Nicht-Ziele
-            intent.choices.title|Choices|Festlegungen
-            intent.decider.operator|you decided|du hast entschieden
-            intent.decider.quorum|a quorum decided|ein Quorum hat entschieden
-            intent.decider.role|the model's call|die Wahl des Modells
-            intent.decider.fact|settled by a fact|durch einen Fakt gekl\u00e4rt
-            intent.choice.options|options weighed: {options}|abgewogene Optionen: {options}
-            intent.choice.question|answers {question}|beantwortet {question}
-            intent.choice.adr|{relation, select, follows {follows {adr}} other {contradicts {adr}}}|{relation, select, follows {folgt {adr}} other {widerspricht {adr}}}
-            intent.record.evidence|evidence: {evidence}|Beleg: {evidence}
-            intent.record.changed|the record changed|der Datensatz hat sich ge\u00e4ndert
-            intent.open_questions.title|Open questions|Offene Fragen
-            intent.deferred.title|Deferred|Zur\u00fcckgestellt
-            intent.deferred.reason|because: {reason}|weil: {reason}
-            intent.builder.title|Builder check|Builder-Pr\u00fcfung
-            intent.builder.sort.answered|answered by the record|vom Datensatz beantwortet
-            intent.builder.sort.minor|the builder's call|die Wahl des Builders
-            intent.builder.sort.operator|needs you|braucht dich
-            intent.builder.recommended|recommended: {answer}|empfohlen: {answer}
-            intent.builder.resolution.open|open|offen
-            intent.builder.resolution.answered|answered: {answer}|beantwortet: {answer}
-            intent.builder.resolution.deferred|deferred: the plan continues without it|zur\u00fcckgestellt: der Plan l\u00e4uft ohne sie weiter
-            intent.builder.state.pending|questions wait|Fragen warten
-            intent.builder.state.answered|resolved|gekl\u00e4rt
-            intent.builder.state.not_run|not run: {reason}|nicht ausgef\u00fchrt: {reason}
-            intent.outline.title|Outline|Outline
-            intent.outline.deliverable|{number} \u00b7 {title}|{number} \u00b7 {title}
-            intent.outline.files|Affected files|Betroffene Dateien
-            intent.outline.file.read|read|gelesen
-            intent.outline.file.write_new|new|neu
-            intent.outline.file.write_replace|replaced|ersetzt
-            intent.outline.file.write_conditional|changed on a condition|unter einer Bedingung ge\u00e4ndert
-            intent.outline.file.delete|deleted|gel\u00f6scht
-            intent.outline.depends_on|depends on {deliverables}|h\u00e4ngt ab von {deliverables}
-            intent.outline.missing_deliverable|missing deliverable {number}|fehlendes Deliverable {number}
-            intent.outline.satisfies|satisfies {criteria}|erf\u00fcllt {criteria}
-            intent.outline.satisfies_none|satisfies no criterion|erf\u00fcllt kein Kriterium
-            intent.outline.verification|Verification|Nachweis
-            intent.outline.dependencies|Added dependencies|Hinzugef\u00fcgte Abh\u00e4ngigkeiten
-            intent.outline.dependency|{coordinates} {version} \u00b7 added by {deliverable}: {justification}|{coordinates} {version} \u00b7 hinzugef\u00fcgt von {deliverable}: {justification}
-            intent.epic.destination|Destination|Endziel
-            intent.epic.done_when|Done when|Fertig, wenn
-            intent.epic.not_specified|Not yet specified|Noch nicht festgelegt
-            intent.epic.plans|Each plan's done-when|Fertig-wenn jedes Plans
-            intent.epic.review|Completion review|Abschlusspr\u00fcfung
-            intent.oversize.title|{role} \u00b7 over_size {current}x \u2192 {proposed}x|{role} \u00b7 over_size {current}x \u2192 {proposed}x
-            intent.oversize.title_current|{role} \u00b7 over_size {current}x|{role} \u00b7 over_size {current}x
-            intent.oversize.empty|No measured tasks of this role yet.|Noch keine gemessenen Tasks dieser Role.
-            intent.oversize.bucket|{from}\u2013{to}x|{from}\u2013{to}x
-            intent.oversize.bucket_open|{from}x and more|{from}x und mehr
-            intent.oversize.tasks|{count, plural, one {# task} other {# tasks}}|{count, plural, one {# Task} other {# Tasks}}
-            intent.oversize.flagged|{count} flagged|{count} markiert
-            intent.oversize.share|{tasks, plural, one {# task} other {# tasks}} \u00b7 {flagged} flagged \u00b7 {percent} %|{tasks, plural, one {# Task} other {# Tasks}} \u00b7 {flagged} markiert \u00b7 {percent} %
-            intent.oversize.direction|{direction, select, lower {{current}x \u2192 {proposed}x lowers the multiple and can flag more} other {{current}x \u2192 {proposed}x raises the multiple and can flag fewer}}|{direction, select, lower {{current}x \u2192 {proposed}x senkt den Faktor und kann mehr markieren} other {{current}x \u2192 {proposed}x hebt den Faktor und kann weniger markieren}}
-            """;
+    /** The texts and verdict documents, from the module's own directory. */
+    private static final Path DOCUMENT = Path.of("", "..", "doc", "design", "shared",
+            "intent-and-outline-texts.adoc").toAbsolutePath().normalize();
 
-    /** The verdict words of the document's verdict table: {@code key|English|German}. */
-    private static final String VERDICTS = """
-            state.criterion.met|met|erf\u00fcllt
-            state.criterion.not_met|not met|nicht erf\u00fcllt
-            state.criterion.not_verified|not verified|nicht verifiziert
-            state.criterion.not_reviewed|not reviewed yet|noch nicht bewertet
-            state.check.pending|pending|ausstehend
-            state.check.met|met|erf\u00fcllt
-            state.check.not_met|not met|nicht erf\u00fcllt
-            """;
+    /** One key row of a table, as {@code |`intent.tab.title`}. */
+    private static final Pattern KEY_ROW = Pattern.compile("^\\|`([a-z0-9_.]+)`$");
 
     /** One argument name of an ICU message, as {@code {name}} or the head of {@code {name, type, …}}. */
     private static final Pattern ARGUMENT = Pattern.compile("\\{\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*[,}]");
 
     @Test
-    @DisplayName("should carry exactly the documents' keys in English and German")
-    void shouldCarryExactlyTheDocumentKeys() {
-        var expected = new TreeSet<>(parse(TEXTS).keySet());
+    @DisplayName("should carry exactly the document's keys in English and German")
+    void shouldCarryExactlyTheDocumentKeys() throws IOException {
+        var documented = documentTexts();
+        var intentKeys = keyFamily(documented, "intent.");
 
-        assertEquals(65, expected.size(), "The texts document names 65 intent keys");
-        assertEquals(expected, new TreeSet<>(MessageCatalogue.getMessages("en", "intent").keySet()),
+        assertTrue(Files.isReadable(DOCUMENT), "The texts document must be readable: " + DOCUMENT);
+        assertFalse(intentKeys.isEmpty(), "The document names the area's keys");
+        assertEquals(intentKeys, new TreeSet<>(MessageCatalogue.getMessages("en", "intent").keySet()),
                 "The English pack must carry exactly the document's keys");
-        assertEquals(expected, new TreeSet<>(MessageCatalogue.getMessages("de", "intent").keySet()),
+        assertEquals(intentKeys, new TreeSet<>(MessageCatalogue.getMessages("de", "intent").keySet()),
                 "The German pack must carry exactly the document's keys");
-        assertFalse(MessageCatalogue.getMessages("en", "intent").isEmpty(),
-                "The area intent must be served, not silently unsupported");
     }
 
     @Test
     @DisplayName("should translate every key as the document writes it, in both languages")
-    void shouldTranslateEveryKeyAsTheDocumentWritesIt() {
+    void shouldTranslateEveryKeyAsTheDocumentWritesIt() throws IOException {
         var en = MessageCatalogue.getMessages("en", "intent");
         var de = MessageCatalogue.getMessages("de", "intent");
         var mismatches = new TreeSet<String>();
 
-        parse(TEXTS).forEach((key, texts) -> {
+        documentTexts().forEach((key, texts) -> {
+            if (!key.startsWith("intent.")) {
+                return;
+            }
             if (!texts[0].equals(en.get(key))) {
                 mismatches.add("en " + key + ": expected <" + texts[0] + "> but was <" + en.get(key) + ">");
             }
@@ -151,10 +86,10 @@ class IntentCatalogueTest {
 
     @Test
     @DisplayName("should agree on the arguments of every key, one language with the other")
-    void shouldAgreeOnEveryArgument() {
+    void shouldAgreeOnEveryArgument() throws IOException {
         var mismatches = new TreeSet<String>();
 
-        parse(TEXTS).forEach((key, texts) -> {
+        documentTexts().forEach((key, texts) -> {
             var english = argumentsOf(texts[0]);
             var german = argumentsOf(texts[1]);
             if (!english.equals(german)) {
@@ -189,12 +124,12 @@ class IntentCatalogueTest {
     @Test
     @DisplayName("should format a choice, its options, its question, its ADR relation, and its evidence")
     void shouldFormatChoices() {
-        var lower = "fixed interval, exponential backoff";
+        var options = "fixed interval, exponential backoff";
 
-        assertEquals("options weighed: " + lower,
-                format("en", "intent.choice.options", Map.of("options", lower)));
-        assertEquals("abgewogene Optionen: " + lower,
-                format("de", "intent.choice.options", Map.of("options", lower)));
+        assertEquals("options weighed: " + options,
+                format("en", "intent.choice.options", Map.of("options", options)));
+        assertEquals("abgewogene Optionen: " + options,
+                format("de", "intent.choice.options", Map.of("options", options)));
         assertEquals("answers Q-007", format("en", "intent.choice.question", Map.of("question", "Q-007")));
         assertEquals("follows ADR-0001",
                 format("en", "intent.choice.adr", Map.of("relation", "follows", "adr", "ADR-0001")));
@@ -282,47 +217,81 @@ class IntentCatalogueTest {
     }
 
     @Test
-    @DisplayName("should carry the seven verdict words of the document in common, in both languages")
-    void shouldCarryTheSevenVerdictWords() {
+    @DisplayName("should carry the document's verdict words in common, in both languages")
+    void shouldCarryTheSevenVerdictWords() throws IOException {
         var en = MessageCatalogue.getMessages("en", "common");
         var de = MessageCatalogue.getMessages("de", "common");
-        var mismatches = new TreeSet<String>();
-
-        parse(VERDICTS).forEach((key, texts) -> {
-            assertEquals(texts[0], en.get(key), "English verdict word of " + key);
-            assertEquals(texts[1], de.get(key), "German verdict word of " + key);
-            if (!texts[0].equals(en.get(key)) || !texts[1].equals(de.get(key))) {
-                mismatches.add(key);
+        var words = new LinkedHashMap<String, String[]>();
+        documentTexts().forEach((key, texts) -> {
+            if (key.startsWith("state.criterion.") || key.startsWith("state.check.")) {
+                words.put(key, texts);
             }
         });
 
+        assertEquals(7, words.size(), "The document names seven verdict words");
+        var mismatches = new TreeSet<String>();
+        words.forEach((key, texts) -> {
+            assertNotNull(en.get(key), "English verdict word of " + key);
+            assertNotNull(de.get(key), "German verdict word of " + key);
+            if (!texts[0].equals(en.get(key)) || !texts[1].equals(de.get(key))) {
+                mismatches.add(key + ": en <" + en.get(key) + ">, de <" + de.get(key) + ">");
+            }
+        });
         assertTrue(mismatches.isEmpty(), "The verdict words must be as the document writes them: " + mismatches);
-        assertEquals(7, parse(VERDICTS).size(), "The document names seven verdict words");
-        assertEquals(Set.of("state.criterion.met", "state.criterion.not_met", "state.criterion.not_verified",
-                        "state.criterion.not_reviewed", "state.check.pending", "state.check.met",
-                        "state.check.not_met"), parse(VERDICTS).keySet(),
-                "The verdict family is state.criterion.* and state.check.*");
     }
 
     /**
-     * @param table a table of {@code key|English|German} rows
-     * @return the rows by key, the English at index 0 and the German at index 1
+     * @return every table row of the document, by key, the English at index 0 and the German at 1
+     * @throws IOException if the document cannot be read
      */
-    private static Map<String, String[]> parse(String table) {
+    private static Map<String, String[]> documentTexts() throws IOException {
+        var lines = Files.readAllLines(DOCUMENT, StandardCharsets.UTF_8);
         var rows = new LinkedHashMap<String, String[]>();
-        for (var line : table.strip().split("\n")) {
-            var parts = line.strip().split("\\|", -1);
-            assertEquals(3, parts.length, "A row carries its key and both languages: " + line);
-            rows.put(parts[0], new String[]{parts[1], parts[2]});
+        for (var index = 0; index < lines.size(); index++) {
+            Matcher keyRow = KEY_ROW.matcher(lines.get(index).strip());
+            if (keyRow.matches()) {
+                rows.put(keyRow.group(1), new String[] {valueAfter(lines, index + 1),
+                        valueAfter(lines, index + 2)});
+            }
         }
         return rows;
+    }
+
+    /**
+     * @param lines  the document's lines
+     * @param from   the line after the key row
+     * @return the next table cell's text, in either language
+     */
+    private static String valueAfter(java.util.List<String> lines, int from) {
+        for (var index = from; index < lines.size(); index++) {
+            var line = lines.get(index).strip();
+            if (line.startsWith("|") && !"|===".equals(line)) {
+                return line.substring(1).strip();
+            }
+        }
+        return "";
+    }
+
+    /**
+     * @param rows   the document's rows
+     * @param prefix the key prefix of one family
+     * @return that family's keys, sorted
+     */
+    private static TreeSet<String> keyFamily(Map<String, String[]> rows, String prefix) {
+        var keys = new TreeSet<String>();
+        rows.keySet().forEach(key -> {
+            if (key.startsWith(prefix)) {
+                keys.add(key);
+            }
+        });
+        return keys;
     }
 
     /**
      * @param template an ICU message
      * @return the argument names it reads, in the order they appear
      */
-    private static Set<String> argumentsOf(String template) {
+    private static TreeSet<String> argumentsOf(String template) {
         var names = new TreeSet<String>();
         Matcher matcher = ARGUMENT.matcher(template);
         while (matcher.find()) {

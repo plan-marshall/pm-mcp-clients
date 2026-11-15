@@ -39,6 +39,7 @@
   import PlanIntentPanel from '../../../lib/components/PlanIntentPanel.svelte';
   import OutlinePanel from '../../../lib/components/OutlinePanel.svelte';
   import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
+  import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
 
   /**
@@ -214,7 +215,8 @@
   /** The outline's deliverables, so a criterion names them by number and title. */
   let deliverables: OutlineDeliverableRecord[] = [];
 
-  onMount(async () => {
+  /** @returns the plan's record and outline as the fixture's own parts read them */
+  async function readFixtureData(): Promise<void> {
     try {
       const record = await apiClient.getPlanIntent(INTENT_PLAN_ID);
       builderCheck = record?.builder_check ?? null;
@@ -228,6 +230,18 @@
     } catch {
       deliverables = [];
     }
+  }
+
+  onMount(() => {
+    void readFixtureData();
+    // The panels read their own records on the same events; the fixture's own parts follow, so the
+    // builder check and the criterion titles never lag behind the record on screen.
+    const unsubscribe = apiClient.subscribeEvents((event) => {
+      if (refreshesIntentView(event)) {
+        void readFixtureData();
+      }
+    });
+    return unsubscribe;
   });
 
   /** @param number the deliverable's number @returns the address of its row in this fixture */
