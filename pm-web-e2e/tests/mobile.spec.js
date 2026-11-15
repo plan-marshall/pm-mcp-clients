@@ -115,6 +115,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       // is the list, and the object column is not rendered at all.
       await filter.fill('');
       await expect(page.locator('.report-card').first()).toBeVisible();
+      await expect(page.locator('[data-testid="triage-list"]')).toHaveCount(1);
       await expect(page.locator('[data-testid="triage-detail"]')).toHaveCount(0);
       await page
         .locator('.report-card', { hasText: 'Ended: merged (#214)' })

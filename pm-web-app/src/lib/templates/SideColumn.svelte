@@ -48,7 +48,7 @@
     inline-size: var(--side-width, 0);
     gap: var(--space-3);
     min-inline-size: 0;
-    max-block-size: 100dvh;
+    max-block-size: 100%;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -77,4 +77,5 @@
       padding: var(--space-3);
       background-color: var(--color-bg-app);
     }
-  }</style>
+  }
+</style>

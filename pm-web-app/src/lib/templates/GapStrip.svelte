@@ -46,8 +46,7 @@
 
   /** Whether the popover of the hidden levels' names is open. */
   let popoverOpen = $state(false);
-  /** The Names control and the popover it owns, for `aria-controls` and the focus. */
-  const namesId = uniqueId('gap-strip-names');
+  /** The popover the Names control owns, for `aria-controls` and the focus. */
   const popoverId = uniqueId('gap-strip-popover');
   let namesButton = $state<HTMLButtonElement | null>(null);
   let popover = $state<HTMLElement | null>(null);
@@ -86,7 +85,12 @@
 </script>
 
 {#if placement === 'end'}
-  <div class="gap-strip gap-strip--end" style:inline-size={`${width}px`}>
+  <div
+    class="gap-strip gap-strip--end"
+    role="group"
+    aria-label={label}
+    style:inline-size={`${width}px`}
+  >
     <button
       type="button"
       class="gap-strip__return"
@@ -124,7 +128,6 @@
     {#if !names}
       <button
         bind:this={namesButton}
-        id={namesId}
         type="button"
         class="gap-strip__names"
         aria-label={$t('web.nav.strip.names')}

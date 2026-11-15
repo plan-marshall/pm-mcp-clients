@@ -86,15 +86,16 @@ describe('TriagePage as the column engine', () => {
     expect(window_).toHaveAttribute('data-columns', '3');
   });
 
-  it('follows the container, not the viewport', async () => {
+  it('takes the reported container over the measured fallback', async () => {
     const viewport = window.innerWidth;
     window.innerWidth = 1920;
 
     try {
-      const { frame } = await renderWindow(744);
+      const { frame } = await renderWindow(496);
 
-      // 1920 px of viewport would fill four columns; the 744 px container fills two.
-      expect(columns()).toHaveLength(2);
+      // The fallback (1024 px of container) would fill two columns; the reported 544 px container
+      // fills one.
+      expect(columns()).toHaveLength(1);
 
       reportBox(frame, 792, 800);
       await tick();
@@ -173,8 +174,10 @@ describe('TriagePage as the column engine', () => {
   it('scrolls each column on its own', () => {
     const column = ruleOf(styleOf(SOURCE), '.triage-page__column');
 
+    // The column scrolls rather than widening the page; the height it caps against is the shell's
+    // (PLAN-144 gives the app body a definite height), so the rule carries `100%` until then.
     expect(column).toContain('overflow-y: auto');
-    expect(column).toContain('max-block-size: 100dvh');
+    expect(column).toContain('max-block-size: 100%');
   });
 
   it('applies its widths with a style directive, never a static style attribute', () => {

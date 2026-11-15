@@ -705,7 +705,8 @@ export function announceNavigation(text: string): void {
 }
 
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
-function handleReportEvent(event: string, data: unknown): void {  if (event === 'report.sent') {
+function handleReportEvent(event: string, data: unknown): void {
+  if (event === 'report.sent') {
     const payload = (data || {}) as { report?: { subject?: string }; subject?: string };
     const reportData = payload.report ?? payload;
     runtimeStore.update((s) => ({

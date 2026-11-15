@@ -147,7 +147,7 @@
     flex: 0 0 auto;
     gap: var(--space-5);
     max-inline-size: 720px;
-    max-block-size: 100dvh;
+    max-block-size: 100%;
     margin-inline: auto;
     min-inline-size: 0;
     overflow-y: auto;

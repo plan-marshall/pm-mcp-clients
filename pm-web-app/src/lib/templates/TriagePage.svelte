@@ -213,7 +213,7 @@
     target.focus();
   }
 
-  /** What the last shift announced, so an identical shift is announced again. */
+  /** What the last shift emitted, so an identical shift is announced again. */
   let lastAnnouncement = '';
 
   /**
@@ -229,9 +229,9 @@
       kind: $t(KIND_WORD_KEYS[level.kind]),
     });
     // A polite region re-announces only a changed string; a zero-width space keeps two identical
-    // announcements apart (`navigation.adoc#keys`).
-    announceNavigation(text === lastAnnouncement ? `${text}\u200B` : text);
-    lastAnnouncement = text;
+    // announcements apart, and the alternating form keeps the third one apart as well.
+    lastAnnouncement = lastAnnouncement === text ? `${text}\u200B` : text;
+    announceNavigation(lastAnnouncement);
   }
 
   /**
@@ -419,7 +419,7 @@
   .triage-page__column {
     flex: 0 0 auto;
     min-inline-size: 0;
-    max-block-size: 100dvh;
+    max-block-size: 100%;
     overflow-y: auto;
     overflow-x: hidden;
   }
