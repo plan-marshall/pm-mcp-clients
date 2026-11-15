@@ -37,9 +37,13 @@
   async function focusAndSelect(index: number): Promise<void> {
     const nextOption = options[index];
     if (!nextOption) return;
-    selectOption(nextOption.id);
+    const targetId = nextOption.id;
+    selectOption(targetId);
     await tick();
-    buttonElements[index]?.focus();
+    const settledIndex = options.findIndex((opt) => opt.id === targetId);
+    if (settledIndex >= 0) {
+      buttonElements[settledIndex]?.focus();
+    }
   }
 
   function onKeydown(event: KeyboardEvent, index: number): void {

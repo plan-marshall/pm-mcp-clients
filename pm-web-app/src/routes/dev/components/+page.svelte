@@ -110,6 +110,8 @@
   let togglePressed: Record<string, boolean> = { light: false, dark: true };
   let actMenuDownOpen: Record<string, boolean> = { light: true, dark: true };
   let actMenuUpOpen: Record<string, boolean> = { light: true, dark: true };
+  let actMenuDownTrigger: Record<string, HTMLButtonElement | null> = { light: null, dark: null };
+  let actMenuUpTrigger: Record<string, HTMLButtonElement | null> = { light: null, dark: null };
 
   $: segmentedOptions = [
     { id: 'all', label: $t('dev.segmented.all') },
@@ -701,6 +703,7 @@
           <Button
             variant="secondary"
             size="sm"
+            bind:buttonElement={actMenuDownTrigger[theme]}
             onclick={() => { actMenuDownOpen[theme] = !actMenuDownOpen[theme]; }}
           >
             {$t('dev.section.act_menu')} (down)
@@ -708,6 +711,7 @@
           <ActMenu
             items={actMenuActs}
             label="{$t('dev.section.act_menu')} (down)"
+            triggerElement={actMenuDownTrigger[theme]}
             bind:open={actMenuDownOpen[theme]}
           />
         </div>
@@ -715,6 +719,7 @@
           <Button
             variant="secondary"
             size="sm"
+            bind:buttonElement={actMenuUpTrigger[theme]}
             onclick={() => { actMenuUpOpen[theme] = !actMenuUpOpen[theme]; }}
           >
             {$t('dev.section.act_menu')} (upward)
@@ -723,6 +728,7 @@
             items={actMenuActs}
             label="{$t('dev.section.act_menu')} (upward)"
             above={true}
+            triggerElement={actMenuUpTrigger[theme]}
             bind:open={actMenuUpOpen[theme]}
           />
         </div>

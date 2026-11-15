@@ -1,4 +1,4 @@
-<script module lang="ts">
+<script context="module" lang="ts">
   export interface ActMenuItem {
     id: string;
     label: string;
@@ -96,10 +96,11 @@
 
   async function confirmDestructiveAction(): Promise<void> {
     if (busy) return;
-    const item = confirmingItem;
+    const pending = confirmingItem;
     confirmingItem = null;
     close(true);
-    if (item) {
+    const item = pending ? items.find((candidate) => candidate.id === pending.id) : undefined;
+    if (item && !item.disabled) {
       let promise: void | Promise<void> = undefined;
       if (item.onclick) {
         promise = item.onclick(new MouseEvent('click'));

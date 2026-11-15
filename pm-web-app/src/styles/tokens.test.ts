@@ -553,6 +553,9 @@ describe('tokens.css: the design system v2 contract', () => {
       const declaredInCss = Object.keys(themes.root).filter((k) => k.startsWith('--layer-'));
       const sharedTokens = SHARED_LAYER_TOKENS.map((l) => l.token);
       expect(declaredInCss.sort()).toEqual(sharedTokens.sort());
+      for (const entry of SHARED_LAYER_TOKENS) {
+        expect(Number(themes.root[entry.token])).toBe(entry.value);
+      }
     });
   });
 
@@ -809,38 +812,40 @@ describe('tokens.css: static scans over the source tree', () => {
       const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
 
       const content = fs.readFileSync(file, 'utf8');
-      // Strip block comments while preserving newlines to keep line numbers intact
+      // Strip block comments and single-line comments while preserving newlines
       const sanitized = content
         .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
-      const lines = sanitized.split('\n');
-      lines.forEach((line, idx) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('//')) {
-          return;
-        }
+        .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
+        .replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length));
 
-        let match;
-        while ((match = zIndexRegex.exec(line)) !== null) {
-          if (!isAllowlisted) {
-            violations.push({
-              file: relPath,
-              line: idx + 1,
-              value: match[1],
-              snippet: trimmed,
-            });
-          }
+      let match;
+      while ((match = zIndexRegex.exec(sanitized)) !== null) {
+        if (!isAllowlisted) {
+          const lineNumber = sanitized.slice(0, match.index).split('\n').length;
+          const snippetStart = Math.max(0, match.index - 20);
+          const snippetEnd = Math.min(sanitized.length, match.index + match[0].length + 20);
+          violations.push({
+            file: relPath,
+            line: lineNumber,
+            value: match[1],
+            snippet: sanitized.slice(snippetStart, snippetEnd).trim().replace(/\s+/g, ' '),
+          });
         }
-      });
+      }
     }
 
     expect(violations).toEqual([]);
   });
 
-  it('detects numeric z-index declarations on universal selectors and comment-adjacent code', () => {
+  it('detects numeric z-index declarations on universal selectors and across line breaks', () => {
     const raw = `
       /* comment */
       * { position: relative; z-index: 999; }
+      .multiline {
+        position: fixed;
+        z-index:
+          888;
+      }
     `;
     const sanitized = raw.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
     const zIndexRegex = /z-index\s*:\s*(-?\d+)\b/g;
@@ -849,6 +854,6 @@ describe('tokens.css: static scans over the source tree', () => {
     while ((match = zIndexRegex.exec(sanitized)) !== null) {
       matches.push(match[1]);
     }
-    expect(matches).toEqual(['999']);
+    expect(matches).toEqual(['999', '888']);
   });
 });

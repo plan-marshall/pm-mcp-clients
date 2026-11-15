@@ -31,6 +31,7 @@
   /** Why the control cannot act; the reason becomes its advisory and its description. */
   export let disabledReason: string | null | undefined = undefined;
   export let loading = false;
+  export let buttonElement: HTMLButtonElement | null = null;
 
   /** The id of the element that carries the reason, for `aria-describedby`. */
   const reasonId = uniqueId('btn-reason');
@@ -57,6 +58,7 @@
 </script>
 
 <button
+  bind:this={buttonElement}
   {type}
   class="btn btn--{variant} btn--{size}"
   class:btn--loading={loading}

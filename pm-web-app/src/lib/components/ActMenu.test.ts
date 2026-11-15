@@ -266,9 +266,9 @@ describe('ActMenu component', () => {
   });
 
   it('focuses first disabled entry on opening when all entries are disabled', async () => {
-    const { component } = render(ActMenu, {
+    const { rerender } = render(ActMenu, {
       props: {
-        open: true,
+        open: false,
         label: 'All disabled',
         items: [
           { id: 'd1', label: 'First disabled', disabled: true, disabledReason: 'Reason 1' },
@@ -277,7 +277,15 @@ describe('ActMenu component', () => {
       },
     });
 
-    component.focusFirst();
+    await rerender({
+      open: true,
+      label: 'All disabled',
+      items: [
+        { id: 'd1', label: 'First disabled', disabled: true, disabledReason: 'Reason 1' },
+        { id: 'd2', label: 'Second disabled', disabled: true, disabledReason: 'Reason 2' },
+      ],
+    });
+
     const items = screen.getAllByRole('menuitem');
     expect(document.activeElement).toBe(items[0]);
   });
@@ -374,6 +382,99 @@ describe('ActMenu component', () => {
       await fireEvent.click(item);
     }
 
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
+  it('destructive action: unchanged item executes once on confirmation', async () => {
+    const onAct = vi.fn();
+    const onClick = vi.fn();
+    render(ActMenu, {
+      props: {
+        open: true,
+        label: 'Actions',
+        confirmDestructive: true,
+        items: [
+          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
+        ],
+        onAct,
+      },
+    });
+
+    const deleteItem = screen.getByRole('menuitem', { name: 'Delete' });
+    await fireEvent.click(deleteItem);
+
+    const confirmButton = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirmButton);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onAct).toHaveBeenCalledTimes(1);
+  });
+
+  it('destructive action: item disabled while confirmation is open does not run', async () => {
+    const onAct = vi.fn();
+    const onClick = vi.fn();
+    const { rerender } = render(ActMenu, {
+      props: {
+        open: true,
+        label: 'Actions',
+        confirmDestructive: true,
+        items: [
+          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
+        ],
+        onAct,
+      },
+    });
+
+    const deleteItem = screen.getByRole('menuitem', { name: 'Delete' });
+    await fireEvent.click(deleteItem);
+
+    await rerender({
+      open: true,
+      label: 'Actions',
+      confirmDestructive: true,
+      items: [
+        { id: 'delete', label: 'Delete', destructive: true, disabled: true, onclick: onClick },
+      ],
+      onAct,
+    });
+
+    const confirmButton = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirmButton);
+
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
+  it('destructive action: item removed while confirmation is open does not run', async () => {
+    const onAct = vi.fn();
+    const onClick = vi.fn();
+    const { rerender } = render(ActMenu, {
+      props: {
+        open: true,
+        label: 'Actions',
+        confirmDestructive: true,
+        items: [
+          { id: 'delete', label: 'Delete', destructive: true, onclick: onClick },
+        ],
+        onAct,
+      },
+    });
+
+    const deleteItem = screen.getByRole('menuitem', { name: 'Delete' });
+    await fireEvent.click(deleteItem);
+
+    await rerender({
+      open: true,
+      label: 'Actions',
+      confirmDestructive: true,
+      items: [],
+      onAct,
+    });
+
+    const confirmButton = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirmButton);
+
+    expect(onClick).not.toHaveBeenCalled();
     expect(onAct).not.toHaveBeenCalled();
   });
 

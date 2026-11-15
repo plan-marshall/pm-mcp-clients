@@ -180,6 +180,43 @@ describe('SegmentedControl component', () => {
     expect(document.activeElement).toBe(radios[0]);
   });
 
+  it('resolves focus element by selected option id when onChange reorders options', async () => {
+    let currentOptions = [
+      { id: 'a', label: 'Option A' },
+      { id: 'b', label: 'Option B' },
+      { id: 'c', label: 'Option C' },
+    ];
+    let currentValue = 'a';
+    const { rerender } = render(SegmentedControl, {
+      props: {
+        label: 'Dynamic',
+        value: currentValue,
+        options: currentOptions,
+        onChange: (newVal) => {
+          currentValue = newVal;
+          currentOptions = [
+            { id: 'c', label: 'Option C' },
+            { id: 'a', label: 'Option A' },
+            { id: 'b', label: 'Option B' },
+          ];
+          void rerender({
+            label: 'Dynamic',
+            value: currentValue,
+            options: currentOptions,
+          });
+        },
+      },
+    });
+
+    const radios = screen.getAllByRole('radio');
+    radios[0].focus();
+    await fireEvent.keyDown(radios[0], { key: 'ArrowRight' });
+
+    const updatedRadios = screen.getAllByRole('radio');
+    const optionB = updatedRadios.find((r) => r.textContent?.includes('Option B'));
+    expect(document.activeElement).toBe(optionB);
+  });
+
   it('reactively checks option bounds on prop update', async () => {
     const { rerender } = render(SegmentedControl, {
       props: {
