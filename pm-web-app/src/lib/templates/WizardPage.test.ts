@@ -4,6 +4,7 @@ import { tick } from 'svelte';
 import path from 'node:path';
 import WizardPageFixture from '../../test/fixtures/WizardPageFixture.svelte';
 import WizardPageStepsOnlyFixture from '../../test/fixtures/WizardPageStepsOnlyFixture.svelte';
+import ConfirmDialog from '../components/ConfirmDialog.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
@@ -158,14 +159,46 @@ describe('WizardPage', () => {
     shell.remove();
   });
 
-  it('hides the chat from anywhere on the page', async () => {
+  it('hides the chat from anywhere inside the wizard', async () => {
     const onHideSide = vi.fn();
     await renderWizard(800, true, onHideSide);
 
-    // The content is hidden, so the focus may sit on the page; Escape still reaches the page.
-    await fireEvent.keyDown(document.body, { key: 'Escape' });
+    // The content is hidden, so the focus may sit in the chat; Escape still reaches the page group.
+    await fireEvent.keyDown(screen.getByTestId('side-column'), { key: 'Escape' });
 
     expect(onHideSide).toHaveBeenCalledOnce();
+  });
+
+  it('leaves an Escape the page already handled to the page', async () => {
+    const onHideSide = vi.fn();
+    await renderWizard(1048, true, onHideSide);
+
+    // An open ConfirmDialog handles the Escape itself.
+    const dialogProps = {
+      open: true,
+      title: 'Delete the plan',
+      consequences: ['Its history goes too'],
+      actionLabel: 'Delete',
+      cancelLabel: 'Keep it',
+    };
+    const dialog = render(ConfirmDialog, { props: dialogProps });
+    await fireEvent.keyDown(screen.getByTestId('confirm-dialog'), { key: 'Escape' });
+    expect(onHideSide).not.toHaveBeenCalled();
+    await dialog.rerender({ ...dialogProps, open: false });
+
+    // A widget of the page that marks the key handled, and lets it bubble.
+    const menu = document.createElement('button');
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+      }
+    });
+    screen.getByTestId('wizard-page').append(menu);
+    menu.focus();
+    await fireEvent.keyDown(menu, { key: 'Escape' });
+
+    expect(onHideSide).not.toHaveBeenCalled();
+    menu.remove();
   });
 
   it('binds the page inset it measures on the page', async () => {

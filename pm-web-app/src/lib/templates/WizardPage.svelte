@@ -63,6 +63,10 @@
    * @param event the key press on the page
    */
   function onKeydown(event: KeyboardEvent): void {
+    // An Escape the page's own dialog or menu already handled stays its key.
+    if (event.defaultPrevented) {
+      return;
+    }
     if (event.key === 'Escape' && sideOpen && side !== undefined) {
       event.preventDefault();
       onHideSide();
@@ -99,10 +103,12 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="wizard-page"
   data-testid="wizard-page"
   style:--wizard-inset={`${pageInset(container)}px`}
+  onkeydown={onKeydown}
   bind:this={frame}
 >
   <div class="wizard-page__layout">
@@ -145,8 +151,6 @@
     {/if}
   </div>
 </div>
-
-<svelte:window on:keydown={onKeydown} />
 
 <style>
   .wizard-page {

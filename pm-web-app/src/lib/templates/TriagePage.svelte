@@ -313,7 +313,8 @@
   }
 
   /** The class that replays a shift once; it is dropped again when the animation ends. */
-  const SHIFT_CLASS = 'triage-page__column--shift';
+  /** Whether a shift is being slid right now. */
+  let shifting = $state(false);
 
   /** The start the last slide ran for, so a first render and an unchanged start do not slide. */
   let slidStart = -1;
@@ -336,15 +337,82 @@
     }
     const first = slidStart === -1;
     slidStart = start;
-    if (first || windowEl === null || reducedMotion()) {
+    if (first || reducedMotion()) {
       return;
     }
-    const columns = windowEl.querySelectorAll<HTMLElement>('.triage-page__column');
-    for (const column of columns) {
-      column.classList.add(SHIFT_CLASS);
-      column.addEventListener('animationend', () => column.classList.remove(SHIFT_CLASS), {
-        once: true,
-      });
+    shifting = true;
+  });
+
+  /** Ends the slide of a shift, so the next one replays the animation from its start. */
+  function onAnimationEnd(): void {
+    shifting = false;
+  }
+
+  /** Whether the chat held the space at the last update, so a takeover is seen once. */
+  let sideTaken = false;
+  /** The control the chat took the focus from, while it is still in the document. */
+  let rememberedFocus: HTMLElement | null = null;
+  /** The column that held the focus when the chat took the space, which it unmounts. */
+  let rememberedIndex: number | null = null;
+  /** The last control of the window that held the focus, and the column it stood in. */
+  let lastControl: HTMLElement | null = null;
+  let lastColumn: number | null = null;
+
+  // The focus a takeover gives back is the one from before it, and the columns are gone from the
+  // document by the time the chat holds the space: so the focus is tracked as it moves.
+  $effect(() => {
+    const element = frame;
+    if (element === null) {
+      return;
+    }
+    const track = (): void => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active === null || !element.contains(active)) {
+        return;
+      }
+      lastControl = active;
+      lastColumn = focusedColumn();
+    };
+    element.addEventListener('focusin', track);
+    return () => element.removeEventListener('focusin', track);
+  });
+
+  // The focus never falls to the page when the chat takes the space: it moves into the chat, and it
+  // returns to the control it left when the columns come back — as `WizardPage` does
+  // (`navigation.adoc#side-columns`, `#keys`).
+  $effect(() => {
+    const taken = layout.sideTakesSpace;
+    if (taken === sideTaken) {
+      return;
+    }
+    sideTaken = taken;
+    if (taken) {
+      rememberedFocus = lastControl;
+      rememberedIndex = lastColumn;
+      windowEl?.querySelector<HTMLElement>('[data-testid="side-column"] button')?.focus();
+      return;
+    }
+    const remembered = rememberedFocus;
+    const index = rememberedIndex;
+    rememberedFocus = null;
+    rememberedIndex = null;
+    if (remembered === null && index === null) {
+      return;
+    }
+    // The focus returns only while it is still the template's: a person who moved to the shell keeps
+    // it there.
+    const active = document.activeElement as HTMLElement | null;
+    const stillOurs =
+      active === null || active === document.body || frame?.contains(active) === true;
+    if (!stillOurs) {
+      return;
+    }
+    if (remembered !== null && remembered.isConnected) {
+      remembered.focus();
+    } else if (index !== null) {
+      // The columns unmount under the chat and come back as new elements, so the column that held
+      // the focus stands in for the control it carried.
+      focusColumn(index);
     }
   });
 
@@ -408,9 +476,11 @@
     {#each visible as entry (entry.level.key)}
       <section
         class="triage-page__column"
+        class:triage-page__column--shift={shifting}
         data-column-index={entry.index}
         data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
         aria-label={entry.level.title}
+        onanimationend={onAnimationEnd}
         style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
       >
         {#if up && entry.index === layout.start}

@@ -5,6 +5,7 @@ import { get } from 'svelte/store';
 import fs from 'node:fs';
 import path from 'node:path';
 import TriagePageFixture from '../../test/fixtures/TriagePageFixture.svelte';
+import ConfirmDialog from '../components/ConfirmDialog.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 import { contentWidth, windowFor } from './columnWindow';
@@ -600,6 +601,85 @@ describe('the side column of the chat', () => {
 
     await fireEvent.keyDown(screen.getByTestId('side-column'), { key: 'Escape' });
     expect(onHideSide).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves the focus into the chat and back to the column it came from', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    const opener = screen.getByRole('heading', { name: 'Plan column' });
+    opener.focus();
+
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+    expect(document.activeElement).toHaveTextContent('Hide the chat');
+
+    await rendered.rerender({ ...props, sideOpen: false });
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    // The columns unmount under the chat, so the control comes back as the heading of the column
+    // that held the focus — never the page body.
+    expect(document.activeElement?.closest('[data-column-index]')).toHaveAttribute(
+      'data-column-index',
+      '3',
+    );
+    expect(document.activeElement).toHaveTextContent('Plan column');
+  });
+
+  it('leaves an Escape the page already handled to the page', async () => {
+    const onHideSide = vi.fn();
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen: true,
+        onHideSide,
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), 1048, 800);
+    await tick();
+
+    const dialogProps = {
+      open: true,
+      title: 'Delete the plan',
+      consequences: ['Its history goes too'],
+      actionLabel: 'Delete',
+      cancelLabel: 'Keep it',
+    };
+    const dialog = render(ConfirmDialog, { props: dialogProps });
+    await fireEvent.keyDown(screen.getByTestId('confirm-dialog'), { key: 'Escape' });
+    expect(onHideSide).not.toHaveBeenCalled();
+    await dialog.rerender({ ...dialogProps, open: false });
+
+    // A widget of the page that marks the key handled, and lets it bubble.
+    const menu = document.createElement('button');
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+      }
+    });
+    document.querySelector('.triage-page__window')?.append(menu);
+    menu.focus();
+    await fireEvent.keyDown(menu, { key: 'Escape' });
+
+    expect(onHideSide).not.toHaveBeenCalled();
+    menu.remove();
   });
 
   it('takes the whole screen on a phone, the bottom bar included', async () => {
