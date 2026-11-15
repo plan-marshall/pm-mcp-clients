@@ -96,8 +96,12 @@ class PlanChangesScenarioTest {
     }
 
     private static HttpResponse broadcast(MockRuntime runtime, PlanChangeCapturedEvent event) throws IOException {
-        var body = JsonTree.write(Map.of("event", PlanChangeCapturedEvent.EVENT_NAME,
-                "data", event.toMap()));
+        return broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME, event.toMap());
+    }
+
+    private static HttpResponse broadcastPayload(MockRuntime runtime, String event,
+            Map<String, Object> data) throws IOException {
+        var body = JsonTree.write(Map.of("event", event, "data", data));
         return new UnixSocketHttpClient(runtime.socketPath())
                 .send(HttpRequest.json("POST", "/mock/broadcast", body));
     }
@@ -306,7 +310,7 @@ class PlanChangesScenarioTest {
                 var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
                 assertEquals(newHead, captured.head(), "the plan answers the capture the event announced");
                 assertEquals(new ChangeSize(12, 340, 27, 2), captured.totals(),
-                        "the list and the announced size stay one measurement");
+                        "the files the fixture serves still add up to the announced size");
             }
         }
 
@@ -323,6 +327,26 @@ class PlanChangesScenarioTest {
                 assertEquals(CAPTURED_HEAD,
                         assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY)).head(),
                         "the refused announcement moved nothing");
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a capture announced with a negative size")
+        void refusesANegativeSize() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var payload = Map.<String, Object>of(
+                        "plan_id", FIX_RELAY,
+                        "head", "a1b2c3d4e5f6",
+                        "files_total", 12,
+                        "insertions_total", -340,
+                        "deletions_total", 27,
+                        "unplanned_total", 2);
+
+                var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME, payload);
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertEquals("invalid_arguments",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(broadcast.body())), "error"));
             }
         }
 
@@ -375,6 +399,19 @@ class PlanChangesScenarioTest {
             assertAll(
                     () -> assertTrue(refused.getMessage().contains(FIX_RELAY), refused.getMessage()),
                     () -> assertTrue(refused.getMessage().contains("insertions"), refused.getMessage()));
+        }
+
+        @Test
+        @DisplayName("refuses a scenario whose plan's size of change is no measurement")
+        void refusesAnInvalidSize() throws Exception {
+            var valid = scenarioJson();
+
+            var negative = valid.replace("\"insertions\": 340", "\"insertions\": -340");
+            assertNotEquals(valid, negative, "the fixture carries the size the test makes invalid");
+
+            var refused = assertThrows(ScenarioValidationException.class,
+                    () -> ScenarioLoader.load(negative, StandardScenarios.RUNNING_WORK));
+            assertTrue(refused.getMessage().contains("size of change"), refused.getMessage());
         }
 
         @Test

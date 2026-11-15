@@ -69,8 +69,8 @@ public sealed interface PlanChangesAnswer
      *
      * @param map the map representation
      * @return the parsed answer
-     * @throws IOException              if a member the state requires is missing
-     * @throws IllegalArgumentException if the state is none of the three closed values
+     * @throws IOException if a member the state requires is missing, or the state is none of the
+     *                     three closed values (fail-closed)
      */
     static PlanChangesAnswer fromMap(Map<String, Object> map) throws IOException {
         if (map == null) {

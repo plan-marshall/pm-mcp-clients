@@ -254,7 +254,12 @@ public class ScenarioLoader {
     private static void validatePlanChanges(Map<String, RouteDefinition> routes,
             Map<String, StateDefinition> states, String scenario) {
         var sizes = new LinkedHashMap<String, List<ChangeSize>>();
-        routes.values().forEach(route -> collectPlanSizes(route.representation(), sizes));
+        try {
+            routes.values().forEach(route -> collectPlanSizes(route.representation(), sizes));
+        } catch (IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, null, "change",
+                    "a plan's size of change is not a measurement: " + e.getMessage());
+        }
         for (var state : states.values()) {
             var representation = JsonTree.asObject(state.representation());
             var facts = representation == null

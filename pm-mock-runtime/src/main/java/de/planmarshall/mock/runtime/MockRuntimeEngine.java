@@ -7874,7 +7874,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         final PlanChangeCapturedEvent announced;
         try {
             announced = PlanChangeCapturedEvent.fromMap(payload);
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             return e.getMessage();
         }
         synchronized (planChangesLock) {
