@@ -218,6 +218,24 @@ class PlanChangesScenarioTest {
                         () -> assertEquals(1, file.hunks().size()));
             }
         }
+
+        @Test
+        @DisplayName("refuses a file read without a path, and one the capture does not hold")
+        void refusesAMissingOrUnknownFile() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var withoutPath = get(runtime, PlanChangesRoutes.plan(FIX_RELAY).list() + "/file");
+                var unknown = get(runtime, PlanChangesRoutes.plan(FIX_RELAY)
+                        .file("pm-api/src/main/java/de/planmarshall/api/changes/NotThere.java"));
+
+                assertAll(
+                        () -> assertEquals(400, withoutPath.status()),
+                        () -> assertEquals("invalid_arguments",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(withoutPath.body())), "error")),
+                        () -> assertEquals(404, unknown.status()),
+                        () -> assertEquals("target_not_found",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(unknown.body())), "error")));
+            }
+        }
     }
 
     @Nested
@@ -231,6 +249,16 @@ class PlanChangesScenarioTest {
                 var answer = readChanges(runtime, "drop-legacy-api");
 
                 assertEquals("drop-legacy-api", assertInstanceOf(PlanChangesNotCaptured.class, answer).planId());
+            }
+        }
+
+        @Test
+        @DisplayName("answers not_captured for a plan of the scenario the fixture names no capture for")
+        void notCapturedWithoutAFixture() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var answer = readChanges(runtime, "relay-metrics");
+
+                assertEquals("relay-metrics", assertInstanceOf(PlanChangesNotCaptured.class, answer).planId());
             }
         }
 
@@ -272,12 +300,41 @@ class PlanChangesScenarioTest {
                         assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY)).head());
 
                 var broadcast = broadcast(runtime,
-                        new PlanChangeCapturedEvent(FIX_RELAY, newHead, 13, 352, 30, 2));
+                        new PlanChangeCapturedEvent(FIX_RELAY, newHead, 12, 340, 27, 2));
 
                 assertEquals(200, broadcast.status(), broadcast.bodyText());
-                assertEquals(newHead,
+                var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+                assertEquals(newHead, captured.head(), "the plan answers the capture the event announced");
+                assertEquals(new ChangeSize(12, 340, 27, 2), captured.totals(),
+                        "the list and the announced size stay one measurement");
+            }
+        }
+
+        @Test
+        @DisplayName("refuses an announcement whose size contradicts the files the mock serves")
+        void refusesAContradictingCapture() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var broadcast = broadcast(runtime,
+                        new PlanChangeCapturedEvent(FIX_RELAY, "a1b2c3d4e5f6", 13, 352, 30, 2));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertEquals("invalid_arguments",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(broadcast.body())), "error"));
+                assertEquals(CAPTURED_HEAD,
                         assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY)).head(),
-                        "the plan answers the capture the event announced");
+                        "the refused announcement moved nothing");
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a capture announced for a plan the fixture holds no capture for")
+        void refusesACaptureWithoutAFixture() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var broadcast = broadcast(runtime,
+                        new PlanChangeCapturedEvent("relay-metrics", "a1b2c3d4e5f6", 0, 0, 0, 0));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertInstanceOf(PlanChangesNotCaptured.class, readChanges(runtime, "relay-metrics"));
             }
         }
     }
@@ -318,6 +375,20 @@ class PlanChangesScenarioTest {
             assertAll(
                     () -> assertTrue(refused.getMessage().contains(FIX_RELAY), refused.getMessage()),
                     () -> assertTrue(refused.getMessage().contains("insertions"), refused.getMessage()));
+        }
+
+        @Test
+        @DisplayName("refuses a changes fixture in a state the contract does not know")
+        void refusesAnUnknownState() throws Exception {
+            var valid = scenarioJson();
+
+            var unknown = valid.replace("\"plan_id\": \"docs-typo\",\n                \"state\": \"unavailable\"",
+                    "\"plan_id\": \"docs-typo\",\n                \"state\": \"gone\"");
+            assertNotEquals(valid, unknown, "the fixture carries the refusal the test renames");
+
+            var refused = assertThrows(ScenarioValidationException.class,
+                    () -> ScenarioLoader.load(unknown, StandardScenarios.RUNNING_WORK));
+            assertTrue(refused.getMessage().contains("Unknown state of a plan's changes"), refused.getMessage());
         }
     }
 }

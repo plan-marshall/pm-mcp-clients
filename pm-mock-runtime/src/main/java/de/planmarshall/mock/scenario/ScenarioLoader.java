@@ -244,8 +244,8 @@ public class ScenarioLoader {
      * the size the plan carries can only ever be one measurement
      * ({@code 01-processes-and-transport.adoc#plan-changes}): the files, their lines added and removed
      * and their count beyond the footprint are added up and compared with every {@code change} the
-     * scenario spells for that plan. The fixture is decoded with the {@code pm-api} codecs either way,
-     * so a malformed changes fixture fails the load.
+     * scenario's static routes spell for that plan. The fixture is decoded with the {@code pm-api}
+     * codecs either way, so a malformed changes fixture fails the load.
      *
      * @param routes  the scenario's static routes, which carry the plans' sizes of change
      * @param states  the scenario's states, whose runtime fixtures may carry {@code plan_changes}
@@ -299,7 +299,7 @@ public class ScenarioLoader {
         final PlanChangesAnswer answer;
         try {
             answer = PlanChangesAnswer.fromMap(entry);
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the plan's changes do not decode with the pm-api codec: " + e.getMessage());
         }
@@ -312,7 +312,7 @@ public class ScenarioLoader {
                     PlanChangeFile.fromMap(content);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
         }

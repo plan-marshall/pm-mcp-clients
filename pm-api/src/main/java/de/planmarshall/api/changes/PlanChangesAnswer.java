@@ -53,7 +53,7 @@ public sealed interface PlanChangesAnswer
     String state();
 
     /**
-     * @return the map representation, with the state first
+     * @return the map representation, with the plan id and the state first
      */
     Map<String, Object> toMap();
 
@@ -78,7 +78,7 @@ public sealed interface PlanChangesAnswer
         }
         var state = JsonTree.string(map, FIELD_STATE);
         if (!CAPTURED.equals(state) && !NOT_CAPTURED.equals(state) && !UNAVAILABLE.equals(state)) {
-            throw new IllegalArgumentException("Unknown state of a plan's changes: " + state);
+            throw new JsonFormatException("Unknown state of a plan's changes: " + state);
         }
         var planId = JsonTree.string(map, FIELD_PLAN_ID);
         if (planId == null) {

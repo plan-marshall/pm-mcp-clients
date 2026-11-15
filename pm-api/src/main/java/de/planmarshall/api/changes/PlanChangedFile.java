@@ -98,6 +98,10 @@ public record PlanChangedFile(
         if (statusWire == null) {
             throw new JsonFormatException("Missing " + FIELD_STATUS + " in a changed file");
         }
+        var status = ChangedFileStatus.fromWireOrNull(statusWire);
+        if (status == null) {
+            throw new JsonFormatException("Unknown " + FIELD_STATUS + " of a changed file: " + statusWire);
+        }
         var added = JsonTree.integer(map, FIELD_ADDED);
         var removed = JsonTree.integer(map, FIELD_REMOVED);
         if (added == null || removed == null) {
@@ -106,7 +110,7 @@ public record PlanChangedFile(
         return new PlanChangedFile(
                 path,
                 JsonTree.string(map, FIELD_RENAMED_FROM),
-                ChangedFileStatus.fromWire(statusWire),
+                status,
                 added,
                 removed,
                 Boolean.TRUE.equals(map.get(FIELD_BINARY)),

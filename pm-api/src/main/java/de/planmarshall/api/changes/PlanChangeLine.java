@@ -66,6 +66,10 @@ public record PlanChangeLine(PlanChangeLineKind kind, String text) {
         if (text == null) {
             throw new JsonFormatException("Missing " + FIELD_TEXT + " in a changed line");
         }
-        return new PlanChangeLine(PlanChangeLineKind.fromWire(kindWire), text);
+        var kind = PlanChangeLineKind.fromWireOrNull(kindWire);
+        if (kind == null) {
+            throw new JsonFormatException("Unknown " + FIELD_KIND + " of a changed line: " + kindWire);
+        }
+        return new PlanChangeLine(kind, text);
     }
 }

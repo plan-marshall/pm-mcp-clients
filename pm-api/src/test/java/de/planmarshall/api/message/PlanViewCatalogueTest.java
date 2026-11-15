@@ -107,6 +107,7 @@ class PlanViewCatalogueTest {
                 "plan.activity.kind.link",
                 "plan.activity.kind.question",
                 "plan.activity.kind.answer_ack",
+                "plan.activity.model_differs",
                 "plan.activity.server_only",
                 "plan.activity.gap",
                 "plan.activity.off_track",

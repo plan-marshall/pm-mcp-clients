@@ -159,7 +159,7 @@ public final class WorkerActivityLevel {
                                 + KEY_SEPARATOR + safe(entry.toolTarget());
             case ANSWER_ACK -> MessageCatalogue.format(locale, "plan.activity.kind.answer_ack", Map.of())
                                 + KEY_SEPARATOR + safe(entry.content());
-            case MODEL_DIFFERS -> MessageCatalogue.format(locale, "plan.activity.kind.model_differs",
+            case MODEL_DIFFERS -> MessageCatalogue.format(locale, "plan.activity.model_differs",
                                 Map.of("launch", safe(entry.launchModel()), "served", safe(entry.servedModel())));
         };
         return INDENT + timestamp + KEY_SEPARATOR + body;

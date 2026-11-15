@@ -51,6 +51,7 @@ import de.planmarshall.api.changes.PlanChangeCapturedEvent;
 import de.planmarshall.api.changes.PlanChangeFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesNotCaptured;
 import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -1370,8 +1371,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     /**
      * Seeds a plan's changes from the fixture's {@code plan_changes}: each plan's answer, and the
-     * hunks of each file the capture answers. The fixture is the mock's served data — no diff is
-     * computed here, and a plan the fixture does not name answers no changes at all.
+     * hunks of each file a capture answers. The fixture is the mock's served data — no diff is
+     * computed here, and a plan the fixture does not name answers {@code not_captured} as any other
+     * plan before its first capture.
      */
     private void initDefaultPlanChanges() {
         synchronized (planChangesLock) {
@@ -1386,6 +1388,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     /**
      * Decodes one plan's changes fixture into the served answer and its files; call under the lock.
+     * Only a captured answer carries files: a refusal answers no hunks, whatever the fixture holds.
      *
      * @param entry the fixture entry
      */
@@ -1394,11 +1397,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 "facts.runtime." + FIXTURE_PLAN_CHANGES);
         planChanges.put(answer.planId(), answer);
         var files = new LinkedHashMap<String, PlanChangeFile>();
-        for (var content : fixtureObjects(entry, FIXTURE_CONTENTS,
-                "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS)) {
-            var file = readFixture(() -> PlanChangeFile.fromMap(content),
-                    "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS);
-            files.put(file.path(), file);
+        if (answer instanceof PlanChangesCaptured) {
+            for (var content : fixtureObjects(entry, FIXTURE_CONTENTS,
+                    "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS)) {
+                var file = readFixture(() -> PlanChangeFile.fromMap(content),
+                        "facts.runtime." + FIXTURE_PLAN_CHANGES + "." + FIXTURE_CONTENTS);
+                files.put(file.path(), file);
+            }
         }
         planChangeFiles.put(answer.planId(), files);
     }
@@ -2622,9 +2627,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             answer = planChanges.get(planId);
         }
         if (answer == null) {
-            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                    KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
-            return;
+            if (!knowsPlan(planId)) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                        KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+                return;
+            }
+            // A plan of the scenario the fixture names no capture for: before a first capture, as
+            // the runtime model answers it — never a 404 and never an empty list.
+            answer = new PlanChangesNotCaptured(planId);
         }
         response.json(200, answer.toMap());
     }
@@ -3915,7 +3925,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static <T> T readFixture(FixtureSupplier<T> reader, String path) {
         try {
             return reader.get();
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new IllegalStateException("Malformed " + path + ": " + e.getMessage(), e);
         }
     }
@@ -7773,31 +7783,38 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (chatRegistry.handleBroadcast(event, data, response)) {
             return;
         }
-        applyStateEffectOf(event, data);
+        var refusal = applyStateEffectOf(event, data);
+        if (refusal != null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, refusal));
+            return;
+        }
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
     }
 
     /**
      * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
-     * an opened decision joins the open ones, an answer or a close removes it, and the console's
-     * badge therefore follows.
+     * an opened decision joins the open ones, an answer or a close removes it, the console's badge
+     * therefore follows, and a captured change moves the head a client then reads — but only where
+     * the announcement agrees with the files the mock serves, because the list and the size the plan
+     * carries must be one measurement ({@code 01-processes-and-transport.adoc#plan-changes}).
      *
      * @param event the event name
      * @param data  the event payload
+     * @return the reason the announcement cannot be served, or {@code null} when it was applied
      */
-    private void applyStateEffectOf(String event, Object data) {
+    private @Nullable String applyStateEffectOf(String event, Object data) {
         if (PlanChangeCapturedEvent.EVENT_NAME.equals(event)) {
-            applyCapturedChange(data);
-            return;
+            return applyCapturedChange(data);
         }
         if (!(DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
                 || DECISION_CLOSED.equals(event))) {
-            return;
+            return null;
         }
         var payload = JsonTree.asObject(data);
         if (payload == null) {
-            return;
+            return null;
         }
         var inner = JsonTree.object(payload, "decision");
         if (inner == null) {
@@ -7812,7 +7829,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         }
         if (id == null) {
-            return;
+            return null;
         }
         if (DECISION_OPENED.equals(event)) {
             try {
@@ -7833,31 +7850,46 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 openDecisions.remove(id);
             }
         }
+        return null;
     }
 
     /**
      * Applies a broadcast {@code plan.change_captured} to the plan's served list, so the read that
      * follows the event shows the head the event announced
      * ({@code 01-processes-and-transport.adoc#plan-changes}).
+     * <p>
+     * The list's totals are derived from its files, so an announcement of a different size than the
+     * files the fixture serves cannot be shown without inventing files: it is refused rather than
+     * served as a list and a size that contradict each other. A plan whose mock answer is no capture
+     * refuses it for the same reason — the fixture has to name the capture's files first.
      *
      * @param data the event's payload
+     * @return the reason the announcement cannot be served, or {@code null} when the head moved
      */
-    private void applyCapturedChange(@Nullable Object data) {
+    private @Nullable String applyCapturedChange(@Nullable Object data) {
         var payload = JsonTree.asObject(data);
         if (payload == null) {
-            return;
+            return "a captured change is a JSON object";
         }
-        var planId = JsonTree.string(payload, KEY_PLAN_ID);
-        var head = JsonTree.string(payload, KEY_HEAD);
-        if (planId == null || head == null) {
-            return;
+        final PlanChangeCapturedEvent announced;
+        try {
+            announced = PlanChangeCapturedEvent.fromMap(payload);
+        } catch (IOException e) {
+            return e.getMessage();
         }
         synchronized (planChangesLock) {
-            if (planChanges.get(planId) instanceof PlanChangesCaptured captured) {
-                planChanges.put(planId, new PlanChangesCaptured(captured.planId(), head,
-                        captured.baseRef(), captured.files()));
+            if (!(planChanges.get(announced.planId()) instanceof PlanChangesCaptured captured)) {
+                return "the plan " + announced.planId()
+                        + " has no capture in the fixture for the announcement to move";
             }
+            if (!captured.totals().equals(announced.size())) {
+                return "the announced size of " + announced.planId()
+                        + " contradicts the files the mock serves";
+            }
+            planChanges.put(announced.planId(), new PlanChangesCaptured(captured.planId(),
+                    announced.head(), captured.baseRef(), captured.files()));
         }
+        return null;
     }
 
     /**
