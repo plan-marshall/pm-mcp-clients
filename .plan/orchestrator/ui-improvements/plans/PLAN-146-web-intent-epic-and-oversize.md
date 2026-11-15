@@ -121,6 +121,11 @@ Q4 (a) and (d) of `landings/PLAN-141-findings.md` § Answers settles the check's
 - OBSERVED: `pm-api/src/main/resources/messages/intent.en.properties` — absent at HEAD 1cc0e10e; created by `PLAN-145`, extended here
 - OBSERVED: `pm-api/src/main/resources/messages/intent.de.properties` — absent at HEAD 1cc0e10e; created by `PLAN-145`, extended here
 - OBSERVED: `doc/design/shared/intent-and-outline.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/OverSizeDistributionResource.java` — present at HEAD da8c8644 (D0: the roles list or the role parameter)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/intent/IntentContractTest.java` — present at HEAD da8c8644 (D0: its contract test)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at HEAD da8c8644 (D0: serve every role)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at HEAD da8c8644 (D0: one record per role)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at HEAD da8c8644 (D0: one record per role)
 
 ## Dependencies and Sequencing
 
@@ -174,3 +179,41 @@ Emit after `PLAN-145` lands (`PLAN-159` and D6 met).
 - then draw one chart per role as designed.
 
 D0's surface adds the over-size record in `pm-api`, `MockRuntimeEngine.java` and its scenario test. Do not run it alongside `PLAN-140` D-R134 or `PLAN-162`, which touch the engine.
+
+## Updated from the PLAN-162 landing 2026-11-15
+
+`PLAN-162` landed as `6b97acd2` (#444): **the hold named in the next section is released** (the engine and `running-work.json` are free of a running plan; the operator
+decided 2026-11-15 to emit with `PLAN-30` treated as parked, so the two files `MockRuntimeEngine.java` and `fully-onboarded.json` it shares with `PLAN-30` are a
+rebase for whichever lands second). The positions this spec cites moved; read them at HEAD, not from here: `handleIntentRoutes` is at `MockRuntimeEngine.java:6232`
+and the over-size route at `:6258` (the claims above say 5587-5591), `FIXTURE_OVERSIZE` at `:619`; in `running-work.json` the epic intent route is at `1400` and the
+over-size route at `1460` (shifted by the `model_differs` entry near `1054`). `applyStateEffectOf` now returns a refusal string (400 `invalid_arguments`) D0 can reuse,
+and `ScenarioLoader` now runs `validatePlanChanges`: a new fixture that names a `change` for a captured plan stays consistent with its `plan_changes` entry.
+`PLAN-163` D0 (staged, later) edits the same two mock files: do not run them at once.
+
+## Folded from the PLAN-145 landing 2026-11-15
+
+`PLAN-145` landed as `da8c8644` (#443; `landings/PLAN-145.md`). The orchestrator's analysis of it (leaf plus re-reads on the merged tree) leaves
+these for this plan. **Hold:** PLAN-146 is not emitted while `PLAN-162` runs — D0 edits `MockRuntimeEngine.java` and `running-work.json`, both in
+`PLAN-162`'s declared surface (the 2026-11-14 operator decision above says the same). The Expected Surface now names D0's files (5 added, 15 in all).
+
+- The panels' client side exists: `getEpicIntent`, `getOverSize` and their readers (`client.ts`), tested against the mock only; there is no panel and no
+  browser evidence. The area keys `intent.epic.*` and `intent.oversize.*` are in both packs and used nowhere; the catalogue test pins the design
+  document's keys (65 `intent.*`, 7 verdict words), **not 68/75** — read the counts from the document, never from this spec.
+- **Source-less clauses, check each against the contract before the outline** (the D3 of PLAN-145 failed on one): the design's `intent.epic.review`
+  ("completion review") has no field in `EpicIntentRecord`; the design's `intent.oversize.empty` ("a role without measured tasks") has no contract form,
+  because `OverSizeDistributionResource` refuses empty `buckets` and the TS reader (`recordRequiredObjects`) does the same — decide the representation
+  (a 404 read as `null`, or relax the contract in D0 with a reader test) and say so.
+- **One role per route:** `getOverSize(projectId)` serves one role; D0 settles the roles list or the `role` parameter and the client method follows.
+- **The open-ended bucket** (`intent.oversize.bucket_open`) has no flag on the record (the runtime serves `{label: '3x and more', from: 3, to: 6}`): fix a
+  rule that does not recompute (the last bucket, or its label) and test it. **The share** needs a rounding rule for the percentage; the direction
+  (`lower` or `raise`) is derived from `current` and `proposed`, since `flagsMore` is not on the wire.
+- **Refresh:** `EpicIntentRecord` has no `revision`, so `changedRevision` cannot serve the epic panel, and `INTENT_PLAN_EVENTS`
+  (`phase.changed`, `plan.revision_queued`) is plan-scoped. The epic panel needs its own change detector and event set, each name a member of
+  `EventName`, held by a test as `intentEvents.test.ts` does. Do not copy the plan panels' unfiltered reload (every plan's `phase.changed` refetches
+  every mounted panel; see the Open Defects in `epic.md`).
+- A done-when check's evidence is text only (a path or `pm://`), never a link, as a fact's evidence is in the plan panel. `state.check.*` words exist in
+  `common.*.properties` but no `StatusLabel` mapping for `pending` (neutral), `met` or `not_met` is written yet.
+- Do not copy two things from PLAN-145's code: the `{x: ''}` argument plus a literal `, ` in a message (an i18n workaround) and the dev fixture's duplicate
+  ids per theme (`criterion-AC-001` twice in the DOM). Both plans edit `routes/dev/components/+page.svelte` and `client.ts`: rebase on `main` first.
+- Evidence order: a fixture and an e2e spec the same plan writes cannot be `test-first` (PLAN-145 D4 was `mutation-after` for that reason); say which
+  clause is `test-first` (the component tests) and which is `mutation-after` (the e2e extension).

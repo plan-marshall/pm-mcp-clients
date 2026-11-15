@@ -107,11 +107,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-04)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-03` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:41 UC-S-04; proposals.adoc:47-48 UC-P-03 present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: use-cases/plan.adoc:41 UC-S-04; use-cases/proposals.adoc:47-48 UC-P-03 present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): pm-web-app/src/lib/views/onboarding/ still absent (created by this plan); all listed present files still exist, including LanguageChoice.svelte; onboarding properties, ModelsChoice.svelte, OnboardingView.svelte and +layout.svelte changed since the anchor.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: views/onboarding/ still absent; OnboardingView, Aspect/Harness/Language/Models Choice, CredentialEntry, onboarding.spec.js, 3 onboarding adoc, 2 properties all tracked
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: views/onboarding/ still absent; OnboardingView Aspect/Harness/Language/Models Choice CredentialEntry onboarding.spec.js three onboarding adoc files and both properties files exist
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact
 
 ## Expected Surface
 

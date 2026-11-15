@@ -131,31 +131,31 @@ deliverables below state its rulings.
 ## Claim Labels
 
 - OBSERVED: `activeNavRoute` maps plan, epic, decomposition and start onto the overview, the cleanup onto the system, the machine settings onto the settings, the project onboarding onto the projects; `BOTTOM_IDS` is `running`, `decisions`, `reports`; `pathOf` builds a group › title trail from static keys — read at `pm-web-app/src/lib/shell/nav.ts:120,136-205`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: nav.ts BOTTOM_IDS :120, activeNavRoute :136-152 maps plan/epic/decomposition/start to overview, cleanup to system, machine-settings to settings, project-onboarding to projects; pathOf :185
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: nav.ts BOTTOM_IDS :118 (running; decisions; reports); activeNavRoute :134-163 maps plan/epic/task/decomposition/start to overview and cleanup to system and machine-settings to settings and project-onboarding to projects; pathOf :190
 - OBSERVED: `RAIL_GROUPS` has no What waits entry and no `needs` route exists — read at `pm-web-app/src/lib/shell/nav.ts:42-112`, `pm-web-app/src/lib/routes.ts:20-39`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RAIL_GROUPS (nav.ts:42) has no What waits entry; AppRoute has no needs route
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: RAIL_GROUPS nav.ts:42-112 holds Running; Projects; Decisions; Reports; System; Designer; Settings and no What waits; AppRoute routes.ts:28-51 has no needs/inbox route
 - OBSERVED: `BottomBar` holds Running, Decisions, Reports and More, and its sheet carries the language and theme controls — read at `pm-web-app/src/lib/shell/BottomBar.svelte:1-60`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: BottomBar shows BOTTOM_ITEMS (running, decisions, reports) plus More; the sheet carries the language toggle and theme choice (:166-196)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: BottomBar.svelte BOTTOM_ITEMS :106 (running; decisions; reports) plus More :134; sheet :142-198 carries language toggle :172 and theme fieldset :179-196
 - OBSERVED: `TopBar` builds its crumbs from `pathOf` and draws `Breadcrumb` with no `KindMark` and no `href` — read at `pm-web-app/src/lib/shell/TopBar.svelte:29,42-48`; `Breadcrumb.svelte` (`Crumb` has `label`, `href`, `id`)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: TopBar builds crumbs from pathOf (:44-45) and draws Breadcrumb at :88 with no KindMark and no href
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: TopBar.svelte:44-48 derives crumbs from pathOf mapping only label and id; Breadcrumb drawn :86; no KindMark and no href
 - OBSERVED: `goBack` is called by `EpicView.svelte:171`, `PlanView.svelte:457`, `SettingsView.svelte:345`; the Back controls are at `EpicView.svelte:554`, `PlanView.svelte:712`, `OverviewView.svelte:645`, `SettingsView.svelte:351`, `MachineSettingsView.svelte:385,648`, `CompletionReportView.svelte:146`, `ProjectOnboardingView.svelte:421`, `EpicAdoptView.svelte:34`, `EpicDecompositionView.svelte:269`, `CleanupView.svelte:333` (in-place `preview.back` at :382)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: goBack callers EpicView:174, PlanView:457, SettingsView:356; Back controls still in all ten views (e.g. PlanView:724, CleanupView:351, preview.back :400); lines drifted
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: goBack callers EpicView.svelte:171 PlanView:461 SettingsView:356; Back controls in all ten views (Epic:560 Plan:726 Overview:691 Settings:362 MachineSettings:385;655 CompletionReport:155 ProjectOnboarding:426 EpicAdopt:34 Decomposition:283 Cleanup:351;400); lines drifted
 - OBSERVED: `ProcessTree` carries `project` and `epic` references — read at `pm-api/src/main/java/de/planmarshall/api/process/ProcessTree.java:44-60`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProcessTree record carries ProcessProjectRef project and nullable ProcessEpicRef epic (:51-52)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProcessTree.java:48-52 record carries ProcessProjectRef project and @Nullable ProcessEpicRef epic
 - OBSERVED: `KindMark`, `Link`, `RowLink` do not exist under `pm-web-app/src/lib/components/` — read by `git ls-files pm-web-app/src/lib/components`
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark.svelte, Link.svelte and RowLink.svelte all exist in components/ at HEAD (PLAN-147 #420, PLAN-148 #427) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark.svelte; Link.svelte; RowLink.svelte (with tests) all exist in pm-web-app/src/lib/components at main (PLAN-147 #420; PLAN-148 #427); TopBar still does not use them
 - OBSERVED: the language and theme controls stand in the rail foot and the More sheet by README option A — read at `doc/design/web-app/README.adoc:147,153,431`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:149,156,424: language and theme in the rail foot and the More sheet (lines drifted from 147,153,431)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: web-app/README.adoc:150 rail foot has language switch and theme choice; :156 More sheet has them; :424 themes section (lines drifted from 147;153;431)
 - HYPOTHESIS: a project's plans and epics, in the order served, are readable from the data `getProjectDetail` already returns, so the work list needs no new endpoint — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getProjectDetail` (:2730) and `ProjectDetailResponse` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectDetailResponse (client.ts:281) carries plans and epics arrays; getProjectDetail :2934
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectDetailResponse client.ts:281-288 has plans: ActivePlanSummary[] and epics: ActiveEpicSummary[]; getProjectDetail client.ts:3566 (served order not checkable by reading)
 - HYPOTHESIS: an epic's project is known from `getEpicResource` — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getEpicResource` (:3171) and `EpicResource` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicResource (client.ts:591) has project_id (:593); getEpicResource :3444
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicResource client.ts:591 has project_id :593; getEpicResource client.ts:4046
 - HYPOTHESIS: no view other than the ten named renders an in-page Back — confirm/refute by `git grep -n "common.actions.back\|web.common.back\|web.settings.back" -- pm-web-app/src/lib/views` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Back keys in views appear only in the ten named views; ConfinedFilePicker (a component) uses web.common.back
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep of back keys in views: only the ten named views (CompletionReport; EpicAdopt; EpicDecomposition; Epic; MachineSettings; Overview; Plan; ProjectOnboarding; Settings; Cleanup own keys); ConfinedFilePicker.svelte:137 is a component
 - OBSERVED: D6 settled Up and the lens segment (the lens's own list with nothing selected, pushed with the app's mark, a reload keeps it unfilled) and What waits's address `/?lens=waits` — read at `doc/design/web-app/navigation.adoc:171-172,216-219`, `doc/design/web-app/README.adoc:445-449`, `doc/design/web-app/needs-and-find.adoc:26` (`4a84f727`, D6 merged `8568b56e`)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: navigation.adoc:172,216-219 and README.adoc:445,449 settle Up, the lens segment and /?lens=waits
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: navigation.adoc:169-170 #up section; :216 /?lens=waits and :217-219 Up and lens segment pushed unfilled; README.adoc:444-445 What waits /?lens=waits; needs-and-find.adoc:26
 - Verify-first clause: re-read `navigation.adoc#up` and `#url`, PLAN-142's `up` slot and PLAN-143's unfilled-lens and Running-work functions at the then-current HEAD. If PLAN-49 has landed, add What waits to the bar and the rail in deliverable 1; if PLAN-130 has not, stop and loop back.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause: PLAN-142 up slot and PLAN-143 functions absent at HEAD (dependencies), PLAN-49 not landed, PLAN-130 landed (BrandMark, WaitingMark exist)
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; state at main: no up slot in TriagePage; PLAN-49 not landed (no needs route); PLAN-143 address scheme and remembered place landed (#446); BrandMark and WaitingMark exist
 
 ## Expected Surface
 
@@ -212,6 +212,9 @@ deliverables below state its rulings.
 - OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/EpicDecompositionView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/CleanupView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.svelte` — present at `0b9402ec` (PLAN-142 landed; folded by the analyze of 2026-11-15)
+- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.test.ts` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
+- OBSERVED: `pm-web-app/src/lib/templates/SideColumn.svelte` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
 
 ## Dependencies and Sequencing
 
@@ -250,6 +253,13 @@ The session implementing this spec touches only its own repository source and te
 ## Staging Note 2026-11-10
 
 The packages this spec names by placeholder were staged on 2026-11-10: KindMark and Link are PLAN-147; RowLink is PLAN-148.
+
+## Folded from the PLAN-142 landing 2026-11-15 (analyze)
+
+PLAN-142 merged as `0b9402ec` (#442) and handed three things to the shell that this spec did not yet carry. Each was re-read on the merged tree; fold them into the shell work, they widen the surface by `TriagePage.svelte`, `TriagePage.test.ts` and `SideColumn.svelte` (declared above):
+- **A definite shell height, so each column scrolls on its own.** `TriagePage.svelte:439-440` declares `max-block-size: 100%; overflow-y: auto` per column, which resolves to no cap while `AppShell.svelte` gives only `min-block-size: 100vh`. Give the shell a definite block size and prove a viewport-tall column scrolls inside itself, not the page. A measured precondition of `row-menu.spec.js` broke when the cap was tried in PLAN-142, so run it.
+- **The phone chat overlay as a modal boundary.** `SideColumn.svelte:70` makes the phone overlay `position: fixed` inside `.triage-page__window`, which animates `transform`; the background stays tabbable and unmarked (no `inert`, no `aria-modal`). The overlay belongs at the shell level above the bottom bar, with the background inert and the focus kept inside.
+- **A correction to deliverable 2's wording:** the `up` slot PLAN-142 left is the `up` snippet prop of `TriagePage.svelte` (`:78`, `:369`), in the head of the first visible column, as `navigation.adoc#up` says. `ObjectPage.svelte` has no `up` slot. Fill the `TriagePage` prop.
 
 ## Unparked 2026-11-14 (cleanup, operator)
 

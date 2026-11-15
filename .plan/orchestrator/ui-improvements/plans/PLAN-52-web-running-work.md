@@ -59,15 +59,15 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-09)`, `doc/claude_review/ux/proposals.adoc#UX-P-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-09 at ux/plan.adoc:63, UX-P-09 at proposals.adoc:325, UC-P-06 :126, CC-P-08 cross-cutting/plan.adoc:48 present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:63 UX-S-09; proposals.adoc:325-326 UX-P-09 Running Work present
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed the order rule in `doc/design/shared/plan-overview.adoc`: running work is shown in the order the runtime serves (needs the operator first, then the newest started; projects by the start of their oldest active work); activity moves no row and a client does not sort again; the time beside a row only says how recently it was active. The rows of this page keep that order (`PLAN-82` serves it in the contract and the mock; the former `PLAN-81` is superseded); a sort by activity in this plan's rows is a defect. `PLAN-83` adds a work list beside a plan and an epic that reuses these rows and markers.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-overview.adoc:55 and :103 state the runtime order, activity moves no row, client does not sort again
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-overview.adoc:55 and :103 state order as the runtime serves it; activity moves no row; client does not sort again; OverviewView.svelte has no client sort call
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 and PLAN-35 shipped, so the page-template and data-component dependencies are met; OverviewView, ChatPanel, mobile.spec.js and overview.spec.js were touched by PLAN-90 (e2e baseline, time residue) and the a11y baseline: re-read.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: templates/ (Triage/Object/Wizard/Dashboard) and components/DataTable.svelte exist; OverviewView.svelte now 1702 lines so any old line refs have drifted
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: templates/ DashboardPage; TriagePage; ObjectPage; WizardPage and components/DataTable.svelte exist; OverviewView.svelte now 1738 lines so old line refs drifted
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; no code fact
 - HYPOTHESIS: the ended-work list can be paged by the runtime through an existing endpoint the client already calls — confirm/refute at `pm-web-app/src/lib/api/client.ts` § ended work and `pm-api/src/main/java/de/planmarshall/api/overview` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts:2941 getEndedWork(projectId,page) GET /projects/{id}/ended?page=; pm-api EndedWorkPage; OverviewView.svelte:773-781 Newer/Older buttons
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts:3573 getEndedWork(projectId; page) pages ended work; pm-api EndedWorkPage; OverviewView.svelte:460 calls it; Newer/Older buttons :807-822
 
 ## Expected Surface
 

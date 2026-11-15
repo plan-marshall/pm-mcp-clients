@@ -208,7 +208,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
 
     await page.locator('[data-testid="breadcrumb-project"]').click();
 
-    await expect(page).toHaveURL(/\/projects\?project=pm-mcp-clients$/);
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients$/);
     await expect(page.locator('[data-testid="project-explorer-view"]')).toBeVisible();
   });
 
