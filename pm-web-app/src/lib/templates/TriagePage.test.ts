@@ -726,6 +726,72 @@ describe('the side column of the chat', () => {
     menu.remove();
   });
 
+  it('keeps the focus in a chat that only becomes docked', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideFieldLabel: 'Chat draft',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    screen.getByRole('heading', { name: 'Plan column' }).focus();
+
+    // The chat takes the space, then the container widens until it docks beside the columns: it is
+    // still open, so its own control keeps the focus.
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+    const editor = screen.getByRole('textbox', { name: 'Chat draft' });
+    editor.focus();
+
+    reportBox(frame, 1216, 800);
+    await tick();
+
+    expect(screen.getByTestId('side-column')).not.toHaveClass('side-column--taken');
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it('returns the focus to a column the window shows, not to one it dropped', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    // The peek starts the window at the lens, and the chat is opened from there.
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+    expect(document.activeElement).toHaveTextContent('Lens list');
+
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+
+    await rendered.rerender({ ...props, sideOpen: false });
+    await tick();
+
+    // The window is the object's own now, so the lens is gone; the focus goes to a column that is
+    // there rather than falling to the page.
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.closest('[data-column-index]')).toHaveAttribute(
+      'data-column-index',
+      '3',
+    );
+  });
+
   it('takes the whole screen on a phone, the bottom bar included', async () => {
     await renderSide(390);
 

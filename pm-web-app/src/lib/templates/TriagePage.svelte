@@ -384,6 +384,19 @@
     return () => element.removeEventListener('focusin', track);
   });
 
+  /**
+   * @param index the index of the column that held the focus
+   * @returns the index of the column the window shows in its place: the asked one while it is
+   *   rendered, otherwise the nearest edge of the window
+   */
+  function nearestVisible(index: number): number {
+    if (layout.columns === 0) {
+      return index;
+    }
+    const last = layout.start + layout.columns - 1;
+    return Math.min(Math.max(index, layout.start), last);
+  }
+
   // The focus never falls to the page when the chat takes the space: it moves into the chat, and it
   // returns to the control it left when the columns come back — as `WizardPage` does
   // (`navigation.adoc#side-columns`, `#keys`).
@@ -403,6 +416,10 @@
     const index = rememberedIndex;
     rememberedFocus = null;
     rememberedIndex = null;
+    if (sideOpen && side !== undefined) {
+      // The chat only became docked: it is still open, so its own control keeps the focus.
+      return;
+    }
     if (remembered === null && index === null) {
       return;
     }
@@ -418,8 +435,9 @@
       remembered.focus();
     } else if (index !== null) {
       // The columns unmount under the chat and come back as new elements, so the column that held
-      // the focus stands in for the control it carried.
-      focusColumn(index);
+      // the focus stands in for the control it carried — and where the returning window no longer
+      // shows that column, its nearest neighbour in the window stands in.
+      focusColumn(nearestVisible(index));
     }
   });
 
