@@ -319,7 +319,7 @@ describe('PlanIntentPanel', () => {
   });
 
   it("reads the record again when the plan's events say the plan changed, and says so once", async () => {
-    let onEvent: ((event: string) => void) | undefined;
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
       onEvent = callback;
       return () => {};
