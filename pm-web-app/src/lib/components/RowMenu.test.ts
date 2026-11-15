@@ -13,18 +13,16 @@ describe('RowMenu component', () => {
     { id: 'act-3', label: 'Action 3', onclick: vi.fn() },
   ];
 
-  it('renders trigger with accessible name and visible label', () => {
+  it('renders trigger with accessible name', () => {
     render(RowMenu, {
       props: {
         label: 'Report actions: Fix relay',
-        visibleLabel: 'Actions',
         items: sampleItems,
       },
     });
 
     const trigger = screen.getByRole('button', { name: 'Report actions: Fix relay' });
     expect(trigger).toBeInTheDocument();
-    expect(trigger).toHaveTextContent('Actions');
     expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('menu')).toBeNull();
@@ -176,13 +174,13 @@ describe('RowMenu component', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('skips disabled items during arrow key navigation (D3a)', async () => {
+  it('includes disabled items during arrow key navigation (PLAN-149)', async () => {
     render(RowMenu, {
       props: {
         label: 'Row actions',
         items: [
           { id: 'act-1', label: 'Action 1' },
-          { id: 'act-2', label: 'Action 2', disabled: true },
+          { id: 'act-2', label: 'Action 2', disabled: true, disabledReason: 'Not ready' },
           { id: 'act-3', label: 'Action 3' },
         ],
       },
@@ -197,10 +195,13 @@ describe('RowMenu component', () => {
     });
 
     await fireEvent.keyDown(items[0], { key: 'ArrowDown' });
+    expect(items[1]).toHaveFocus();
+
+    await fireEvent.keyDown(items[1], { key: 'ArrowDown' });
     expect(items[2]).toHaveFocus();
 
     await fireEvent.keyDown(items[2], { key: 'ArrowUp' });
-    expect(items[0]).toHaveFocus();
+    expect(items[1]).toHaveFocus();
   });
 
   it('restores focus to trigger when an item is chosen (D2c)', async () => {
@@ -245,12 +246,11 @@ describe('RowMenu component', () => {
     expect(menu).toHaveAttribute('aria-label', 'Report actions: Fix relay');
   });
 
-  it('drops an advisory that only repeats the visible word (L3-5)', () => {
+  it('drops an advisory that only repeats the label (L3-5)', () => {
     const repeated = render(RowMenu, {
       props: {
         label: 'Row actions',
-        visibleLabel: 'Actions',
-        advisory: 'Actions',
+        advisory: 'Row actions',
         items: sampleItems,
       },
     });
@@ -260,7 +260,6 @@ describe('RowMenu component', () => {
     const added = render(RowMenu, {
       props: {
         label: 'Row actions',
-        visibleLabel: 'Actions',
         advisory: 'Show the acts that do not fit the row',
         items: sampleItems,
       },
@@ -270,7 +269,7 @@ describe('RowMenu component', () => {
   });
 
   it('has a visible focus style distinct from its hover with >= 3:1 contrast cue (D2a)', () => {
-    const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
+    const style = styleOf(path.resolve(__dirname, './ActMenu.svelte'));
     const focusVisibleRules = rulesOf(style, '.row-menu__item:focus-visible:not(:disabled)');
     expect(focusVisibleRules.length).toBeGreaterThan(0);
     const combinedVisible = focusVisibleRules.join(';');
@@ -339,7 +338,7 @@ describe('RowMenu component', () => {
   });
 
   it('measures 44px min-block-size on phone viewports (D2b)', () => {
-    const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
+    const style = styleOf(path.resolve(__dirname, './ActMenu.svelte'));
     const mediaMatch = style.match(/@media\s*\(max-width:\s*767px\)\s*\{([\s\S]*?\})\s*\}/);
     expect(mediaMatch).not.toBeNull();
     const mediaBlock = mediaMatch![1];
@@ -490,7 +489,7 @@ describe('RowMenu component', () => {
         // The row starts at 340 and the menu keeps a 4 px gap to it: 336 px of room above.
         expect(screen.getByRole('menu').style.maxBlockSize).toBe('336px');
         const listRules = rulesOf(
-          styleOf(path.resolve(__dirname, './RowMenu.svelte')),
+          styleOf(path.resolve(__dirname, './ActMenu.svelte')),
           '.row-menu__list',
         ).join(';');
         expect(listRules).toContain('overflow-y: auto');
@@ -590,12 +589,15 @@ describe('RowMenu component', () => {
     });
 
     it('lays the open menu above the sticky chrome of the phone frame', () => {
-      const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
+      const style = styleOf(path.resolve(__dirname, './ActMenu.svelte'));
       const listRules = rulesOf(style, '.row-menu__list').join(';');
       const bottomBarStyle = styleOf(path.resolve(__dirname, '../shell/BottomBar.svelte'));
-      const barLayer = Number(/z-index:\s*(\d+)/.exec(bottomBarStyle)?.[1]);
-      const menuLayer = Number(/z-index:\s*(\d+)/.exec(listRules)?.[1]);
+      const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf8');
+      const barLayer = Number(/--layer-bar:\s*(\d+)/.exec(tokensCss)?.[1]);
+      const menuLayer = Number(/--layer-menu:\s*(\d+)/.exec(tokensCss)?.[1]);
 
+      expect(listRules).toContain('z-index: var(--layer-menu)');
+      expect(bottomBarStyle).toContain('z-index: var(--layer-bar)');
       expect(barLayer).toBeGreaterThan(0);
       expect(menuLayer).toBeGreaterThan(barLayer);
       const aboveRules = rulesOf(style, '.row-menu__list--above').join(';');
@@ -624,5 +626,52 @@ describe('RowMenu component', () => {
       expect(screen.queryByRole('menu')).toBeNull();
       expect(trigger).toHaveFocus();
     });
+  });
+
+  it('edge: draws no trigger when items is empty', () => {
+    const { container } = render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [],
+      },
+    });
+    expect(container.querySelector('button')).toBeNull();
+  });
+
+  it('edge: destructive entry opens its ConfirmDialog', async () => {
+    const onclick = vi.fn();
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick }],
+      },
+    });
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    await fireEvent.click(trigger);
+    const item = screen.getByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(item);
+    expect(onclick).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('Delete item');
+  });
+
+  it('supports disabledReason per entry and keeps it described and reachable', async () => {
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [
+          { id: 'act-1', label: 'Action 1' },
+          { id: 'act-2', label: 'Action 2', disabled: true, disabledReason: 'Not allowed' },
+        ],
+      },
+    });
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    await fireEvent.click(trigger);
+    const items = screen.getAllByRole('menuitem');
+    expect(items[1]).toHaveAttribute('aria-disabled', 'true');
+    const describedBy = items[1].getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)).toHaveTextContent('Not allowed');
   });
 });

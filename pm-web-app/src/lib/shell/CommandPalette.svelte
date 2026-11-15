@@ -512,7 +512,7 @@
   .command-palette-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: var(--layer-dialog);
     display: flex;
     justify-content: center;
     align-items: flex-start;

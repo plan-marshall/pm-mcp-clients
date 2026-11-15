@@ -567,7 +567,8 @@ describe('ReportsView component', () => {
     render(ReportsView);
 
     const detail = await screen.findByRole('button', { name: /Show the details/i });
-    expect(detail).toBeDisabled();
+    expect(detail).not.toBeDisabled();
+    expect(detail).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(/relay-docs was deleted by the cleanup/)).toBeInTheDocument();
   });
 

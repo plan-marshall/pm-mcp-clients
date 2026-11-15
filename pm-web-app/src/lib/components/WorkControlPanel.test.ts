@@ -397,7 +397,8 @@ describe('WorkControlPanel component', () => {
     const next = await screen.findByTestId('action-next');
 
     // Nothing weighs a scope it has not read: the act is refused with its reason, and sends nothing.
-    expect(next).toBeDisabled();
+    expect(next).not.toBeDisabled();
+    expect(next).toHaveAttribute('aria-disabled', 'true');
     expect(next).toHaveAttribute('title', 'The epic is still being read; the next plan cannot start yet.');
     await fireEvent.click(next);
     expect(apply).not.toHaveBeenCalled();
@@ -1067,7 +1068,8 @@ describe('WorkControlPanel component', () => {
     const pause = await screen.findByTestId('action-pause');
     const describedBy = pause.getAttribute('aria-describedby');
 
-    expect(pause).toBeDisabled();
+    expect(pause).not.toBeDisabled();
+    expect(pause).toHaveAttribute('aria-disabled', 'true');
     expect(pause.getAttribute('title')).toBe('the ledger is landing');
     expect(describedBy).toBeTruthy();
     expect(document.getElementById(describedBy as string)?.textContent).toContain(

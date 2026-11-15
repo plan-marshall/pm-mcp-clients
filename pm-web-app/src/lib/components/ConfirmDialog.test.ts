@@ -47,7 +47,7 @@ describe('ConfirmDialog', () => {
     expect(title.closest('.dialog--danger')).not.toBeNull();
   });
 
-  it('reports the confirm and the close', async () => {
+  it('reports the confirm and the close, drawing ghost cancel and danger confirm in footer', async () => {
     const onConfirm = vi.fn();
     const onClose = vi.fn();
     render(ConfirmDialog, {
@@ -62,11 +62,30 @@ describe('ConfirmDialog', () => {
       },
     });
 
-    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    const confirmBtn = screen.getByTestId('confirm-dialog-confirm');
+    const cancelBtn = screen.getByTestId('confirm-dialog-cancel');
+    expect(confirmBtn.className).toContain('btn--danger');
+    expect(cancelBtn.className).toContain('btn--ghost');
+
+    await fireEvent.click(confirmBtn);
     expect(onConfirm).toHaveBeenCalledOnce();
 
-    await fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
+    await fireEvent.click(cancelBtn);
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the confirm button disabled when confirmDisabled is true', () => {
+    render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete plan?',
+        actionLabel: 'Delete',
+        cancelLabel: 'Keep',
+        confirmDisabled: true,
+      },
+    });
+
+    expect(screen.getByTestId('confirm-dialog-confirm')).toBeDisabled();
   });
 
   it('keeps the act refused until the exact name is typed', async () => {

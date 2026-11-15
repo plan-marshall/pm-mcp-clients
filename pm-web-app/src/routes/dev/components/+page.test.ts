@@ -9,9 +9,7 @@ import { apiClient, type OutlineRecord, type PlanIntentRecord } from '../../../l
 import { currentLocale, messagesStore } from '../../../lib/i18n';
 import { loadMessages } from '../../../test/catalogue-fixture';
 
-// Each test renders the whole component showroom; run beside the rest of the suite it can pass
-// the five seconds of vitest's default, though it takes about one second alone.
-vi.setConfig({ testTimeout: 20_000 });
+// Heavy render tests now inherit the testTimeout policy set in vite.config.ts (#432).
 
 describe('/dev/components page fixture', () => {
   beforeEach(() => {
@@ -389,12 +387,46 @@ describe('/dev/components page fixture', () => {
 
     it('draws the three conformed tags once each', () => {
       const [light] = renderThemes('en');
-      // The five tones of the status section, the row fixture's state, the selected row's and the example row's.
-      const STATUS_LABELS = 5 + 1 + 1 + 1;
+      // The five tones of the status section, the row fixture's state, the selected row's, the example row's, plus three fixed status labels.
+      const STATUS_LABELS = 5 + 1 + 1 + 1 + 3;
 
       expect(light.querySelectorAll('.status-label')).toHaveLength(STATUS_LABELS);
       expect(light.querySelectorAll('[data-testid="count-badge"]').length).toBeGreaterThanOrEqual(3);
       expect(light.querySelectorAll('button.chip').length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  describe('the interaction set fixtures (D5)', () => {
+    it.each(['en', 'de'] as const)(
+      'draws SegmentedControl, Toggle, ActMenu, Button matrix, and stacked layers in %s',
+      (locale) => {
+        currentLocale.set(locale);
+        messagesStore.set(loadMessages(locale));
+        render(DevComponentsPage);
+
+        for (const theme of ['light', 'dark']) {
+          const block = document.querySelector(`[data-theme="${theme}"]`);
+          expect(block, `${theme} block`).not.toBeNull();
+
+          // SegmentedControl: 3 options
+          expect(block?.querySelectorAll('.segmented-control__option')).toHaveLength(3);
+
+          // Toggle: 3 toggles (off, on, interactive)
+          expect(block?.querySelectorAll('.toggle')).toHaveLength(3);
+
+          // ActMenu: 2 menus (downward and upward)
+          expect(block?.querySelectorAll('.act-menu')).toHaveLength(2);
+
+          // Buttons: 4 variants × 3 sizes = 12 buttons + 3 special buttons (icon, loading, disabledReason) in buttons section
+          expect(block?.querySelectorAll('.btn').length).toBeGreaterThanOrEqual(15);
+
+          // Stacked layers demo: 5 layers
+          expect(block?.querySelectorAll('.dev__layer')).toHaveLength(5);
+
+          // StatusLabel with fixed slot: 3 in fixed list
+          expect(block?.querySelectorAll('.status-label--fixed')).toHaveLength(3);
+        }
+      },
+    );
   });
 });

@@ -124,15 +124,12 @@ describe('DataTable', () => {
     expect(screen.getAllByRole('columnheader')).toHaveLength(COLUMNS.length);
   });
 
-  it('shows the short menu label beside the glyph, and the row name only as the accessible name', () => {
+  it('shows no visible label beside the glyph, and the row name only as the accessible name', () => {
     render(DataTable, {
       props: { columns: COLUMNS, rows: ROWS, label: LABEL, menuLabel: 'Row menu' },
     });
 
-    const visible = Array.from(
-      document.querySelectorAll('.data-table__menu .icon-btn__label'),
-    ).map((label) => label.textContent);
-    expect(visible).toEqual(['Row menu', 'Row menu']);
+    expect(document.querySelectorAll('.data-table__menu .icon-btn__label')).toHaveLength(0);
     expect(
       screen
         .getAllByRole('button', { name: /^Row menu/ })

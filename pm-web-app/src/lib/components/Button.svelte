@@ -1,3 +1,12 @@
+<script context="module" lang="ts">
+  export const BUTTON_VARIANTS = ['primary', 'secondary', 'danger', 'ghost'] as const;
+  export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
+
+  export const BUTTON_ICON_SIZES = { sm: 16, md: 20, lg: 20 } as const;
+  export type ButtonSize = keyof typeof BUTTON_ICON_SIZES;
+  export const BUTTON_SIZES = ['sm', 'md', 'lg'] as const satisfies readonly ButtonSize[];
+</script>
+
 <script lang="ts">
   import { advisory } from '../utils/advisoryTitle';
   import Icon from './Icon.svelte';
@@ -7,48 +16,59 @@
    * A control of the design system (VD-P-05): its four variants, its three sizes, an optional icon,
    * and a disabled state that says why.
    *
-   * `variant`, `type`, `loading` and the click forwarding are the surface the views already use;
-   * the sizes, the icon and the disabled reason are additive, so no call site changes its markup.
-   * The `small` spelling the views already pass draws the `sm` size — before this change it was an
-   * inert attribute, so those ten buttons shrink to the small size they asked for.
-   * `danger` belongs inside a danger dialog, where the consequence is named beside the act.
+   * An act that cannot run because of a reason (`disabledReason`) stays in the tab order
+   * (`aria-disabled="true"` instead of native `disabled`; title and `aria-describedby` carry the
+   * reason; click does nothing). An act with no reason keeps native `disabled`.
+   * A loading button keeps its label text alongside its spinner and ignores clicks.
+   * Inside `<form>`, disabled and loading buttons prevent submission.
    */
-  export let variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'secondary';
+  export let variant: ButtonVariant = 'secondary';
   export let type: 'button' | 'submit' | 'reset' = 'button';
-  /**
-   * The size; `small` is the spelling the views already pass and draws the `sm` size.
-   */
-  export let size: 'sm' | 'md' | 'lg' | 'small' = 'md';
+  /** The size: sm, md, or lg. */
+  export let size: ButtonSize = 'md';
   /** The icon left of the label, from the delivered UI icon set. */
   export let icon: string | null | undefined = undefined;
   export let disabled = false;
   /** Why the control cannot act; the reason becomes its advisory and its description. */
   export let disabledReason: string | null | undefined = undefined;
   export let loading = false;
+  export let buttonElement: HTMLButtonElement | null = null;
 
   /** The id of the element that carries the reason, for `aria-describedby`. */
   const reasonId = uniqueId('btn-reason');
 
-  /** The delivered icon size of each button size. */
-  const ICON_SIZES = { sm: 16, small: 16, md: 20, lg: 20 } as const;
-
-  $: reason = disabled && disabledReason ? disabledReason : '';
-  $: shape = size === 'small' ? 'sm' : size;
+  $: hasReason = disabled && !!disabledReason;
+  $: isAriaDisabled = hasReason;
+  $: isNativeDisabled = disabled && !disabledReason;
+  $: reason = hasReason ? (disabledReason as string) : '';
   $: describedBy =
     [reason ? reasonId : null, $$restProps['aria-describedby']].filter(Boolean).join(' ') ||
     undefined;
-  $: iconSize = ICON_SIZES[size];
+  $: iconSize = BUTTON_ICON_SIZES[size];
+
+  function handleClick(event: MouseEvent): void {
+    if (disabled || loading) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+  }
 </script>
 
 <button
+  bind:this={buttonElement}
   {type}
-  class="btn btn--{variant} btn--{shape}"
+  class="btn btn--{variant} btn--{size}"
   class:btn--loading={loading}
-  disabled={disabled || loading}
+  class:btn--disabled={disabled}
+  disabled={isNativeDisabled || loading ? true : undefined}
+  aria-disabled={isAriaDisabled ? 'true' : undefined}
+  aria-busy={loading ? 'true' : undefined}
   {...$$restProps}
   title={reason || $$restProps['title']}
   aria-describedby={describedBy}
   use:advisory
+  on:click={handleClick}
   on:click
 >
   {#if loading}
@@ -97,12 +117,22 @@
   }
 
   .btn:disabled {
-    /* The disabled appearance is drawn from the tokens, not a literal contrast value, so a
-       disabled control keeps a readable, theme-owned contrast in both themes. */
     background-color: var(--color-bg-subtle);
     color: var(--color-text-muted);
     border-color: var(--color-border);
     cursor: not-allowed;
+  }
+
+  .btn[aria-disabled="true"] {
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    cursor: not-allowed;
+  }
+
+  .btn:focus {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 
   .btn--primary {
@@ -110,7 +140,7 @@
     color: var(--color-on-brand);
   }
 
-  .btn--primary:hover:not(:disabled) {
+  .btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
     background-color: var(--color-brand-hover);
   }
 
@@ -120,7 +150,7 @@
     border-color: var(--color-border-strong);
   }
 
-  .btn--secondary:hover:not(:disabled) {
+  .btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
     background-color: var(--color-bg-subtle);
   }
 
@@ -129,7 +159,7 @@
     color: var(--color-on-brand);
   }
 
-  .btn--danger:hover:not(:disabled) {
+  .btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
     filter: brightness(0.9);
   }
 
@@ -138,7 +168,7 @@
     color: var(--color-text-secondary);
   }
 
-  .btn--ghost:hover:not(:disabled) {
+  .btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-primary);
   }

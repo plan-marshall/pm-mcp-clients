@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { LAYER_TOKENS as SHARED_LAYER_TOKENS } from './layers';
 import fs from 'fs';
 import path from 'path';
 import { contrastRatio, deltaE00, hueDistance, toOklch } from '../test/colourMetrics';
@@ -34,6 +35,38 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
 const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
   path.normalize('lib/components/PairingQr.svelte'), // High-contrast black/white scannable QR modules
 ]);
+
+/**
+ * Allowlisted modals and views that still draw their own z-index layer,
+ * each mapped to the part or plan that removes it.
+ */
+const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
+  [path.normalize('lib/components/FindingsReviewModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/HoldResolutionModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/ConfinedFilePicker.svelte')]: 'the V parts',
+  [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/StartWorkModal.svelte')]: 'the V parts',
+  [path.normalize('lib/views/EpicDecompositionView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/SystemView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/CleanupView.svelte')]: 'the V parts',
+  [path.normalize('lib/components/PlanSettingsModal.svelte')]: 'PLAN-55',
+  [path.normalize('lib/components/GitSourceIntakeModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/views/ProjectOnboardingView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/MachineSettingsView.svelte')]: 'PLAN-60',
+  [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
+  [path.normalize('lib/templates/SideColumn.svelte')]: 'the V parts',
+};
+
+const LAYER_TOKENS: Record<string, number> = {
+  '--layer-sticky': 1,
+  '--layer-bar': 20,
+  '--layer-menu': 30,
+  '--layer-toast': 90,
+  '--layer-dialog': 100,
+};
 
 /** The colour palette of VD-P-02, with the two tuned brand values and the two tokens the proposal does not name documented in `theme-readability.adoc`. */
 const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
@@ -496,6 +529,36 @@ describe('tokens.css: the design system v2 contract', () => {
     });
   });
 
+  describe('layer tokens', () => {
+    it.each(Object.entries(LAYER_TOKENS))('declares the layer token %s with value %i', (token, value) => {
+      expect(Number(themes.root[token])).toBe(value);
+    });
+
+    it('asserts the layer token order: sticky < bar < menu < toast < dialog', () => {
+      const sticky = Number(themes.root['--layer-sticky']);
+      const bar = Number(themes.root['--layer-bar']);
+      const menu = Number(themes.root['--layer-menu']);
+      const toast = Number(themes.root['--layer-toast']);
+      const dialog = Number(themes.root['--layer-dialog']);
+
+      expect(menu).toBeGreaterThan(bar); // menu above bar
+      expect(toast).toBeLessThan(dialog); // toast below dialog
+      expect(sticky).toBeLessThan(bar);
+      expect(bar).toBeLessThan(menu);
+      expect(menu).toBeLessThan(toast);
+      expect(toast).toBeLessThan(dialog);
+    });
+
+    it('ensures shared LAYER_TOKENS exactly mirrors the layer declarations in tokens.css', () => {
+      const declaredInCss = Object.keys(themes.root).filter((k) => k.startsWith('--layer-'));
+      const sharedTokens = SHARED_LAYER_TOKENS.map((l) => l.token);
+      expect(declaredInCss.sort()).toEqual(sharedTokens.sort());
+      for (const entry of SHARED_LAYER_TOKENS) {
+        expect(Number(themes.root[entry.token])).toBe(entry.value);
+      }
+    });
+  });
+
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
     it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
       const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
@@ -729,5 +792,86 @@ describe('tokens.css: static scans over the source tree', () => {
     }
 
     expect(violations).toEqual([]);
+  });
+
+  it('ensures every allowlisted z-index file has a valid reason', () => {
+    for (const [file, reason] of Object.entries(ALLOWLISTED_Z_INDEX_FILES)) {
+      expect(typeof reason).toBe('string');
+      expect(reason.trim().length, `Allowlisted file ${file} lost its removal reason`).toBeGreaterThan(0);
+    }
+  });
+
+  function sanitizeSource(content: string, isCss: boolean): string {
+    let result = content
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
+    if (!isCss) {
+      result = result.replace(/<script[\s\S]*?<\/script>/gi, (scriptBlock) =>
+        scriptBlock.replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length)),
+      );
+    }
+    return result;
+  }
+
+  it('ensures no numeric z-index exists outside the allowlist', () => {
+    const srcDir = path.resolve(__dirname, '..');
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']);
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
+    const violations: { file: string; line: number; value: string; snippet: string }[] = [];
+
+    for (const file of sourceFiles) {
+      const relPath = path.normalize(path.relative(srcDir, file));
+      const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
+      const isCss = file.endsWith('.css');
+
+      const content = fs.readFileSync(file, 'utf8');
+      const sanitized = sanitizeSource(content, isCss);
+
+      let match;
+      while ((match = zIndexRegex.exec(sanitized)) !== null) {
+        if (!isAllowlisted) {
+          const lineNumber = sanitized.slice(0, match.index).split('\n').length;
+          const snippetStart = Math.max(0, match.index - 20);
+          const snippetEnd = Math.min(sanitized.length, match.index + match[0].length + 20);
+          violations.push({
+            file: relPath,
+            line: lineNumber,
+            value: match[1],
+            snippet: sanitized.slice(snippetStart, snippetEnd).trim().replace(/\s+/g, ' '),
+          });
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('detects numeric z-index declarations on universal selectors and across line breaks', () => {
+    const raw = `
+      /* comment */
+      * { position: relative; z-index: 999; }
+      .multiline {
+        position: fixed;
+        z-index:
+          888;
+      }
+      .signed {
+        position: absolute;
+        Z-INDEX: +777;
+      }
+      .css-strings {
+        content: "//";
+        position: relative;
+        z-index: 666;
+      }
+    `;
+    const sanitized = sanitizeSource(raw, true);
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
+    const matches: string[] = [];
+    let match;
+    while ((match = zIndexRegex.exec(sanitized)) !== null) {
+      matches.push(match[1]);
+    }
+    expect(matches).toEqual(['999', '888', '+777', '666']);
   });
 });

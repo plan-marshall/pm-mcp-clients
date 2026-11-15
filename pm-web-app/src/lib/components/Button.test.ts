@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import Button from './Button.svelte';
+import Button, { BUTTON_VARIANTS, BUTTON_SIZES } from './Button.svelte';
 import IconButton from './IconButton.svelte';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
@@ -49,10 +49,89 @@ describe('Button', () => {
     expect(buttonIn(container).className).toContain('btn--md');
   });
 
-  it('draws the `small` size the views already pass as the sm size', () => {
-    const { container } = render(Button, { props: { size: 'small' } });
+  const combinations = BUTTON_VARIANTS.flatMap((variant) =>
+    BUTTON_SIZES.map((size) => [variant, size] as const)
+  );
 
-    expect(buttonIn(container).className).toContain('btn--sm');
+  it.each(combinations)('draws variant %s in size %s', (variant, size) => {
+    const { container } = render(Button, { props: { variant, size } });
+    const btn = buttonIn(container);
+    expect(btn.className).toContain(`btn--${variant}`);
+    expect(btn.className).toContain(`btn--${size}`);
+  });
+
+  it('an act with disabledReason stays in tab order with aria-disabled, carries reason, and ignores clicks', async () => {
+    const clicked = vi.fn();
+    render(Button, {
+      props: { disabled: true, disabledReason: 'The plan has ended', onclick: clicked },
+    });
+    const button = screen.getByRole('button');
+    const describedBy = button.getAttribute('aria-describedby');
+
+    // Stays in tab order: no native disabled attribute, has aria-disabled="true"
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button.getAttribute('title')).toBe('The plan has ended');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)?.textContent).toBe('The plan has ended');
+
+    await fireEvent.click(button);
+    expect(clicked).not.toHaveBeenCalled();
+  });
+
+  it('an act with no disabledReason keeps native disabled', () => {
+    render(Button, { props: { disabled: true } });
+    const button = screen.getByRole('button');
+
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute('aria-disabled');
+    expect(button.hasAttribute('aria-describedby')).toBe(false);
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
+  it('a loading button keeps label text alongside spinner and ignores clicks', async () => {
+    const clicked = vi.fn();
+    const { container } = render(Button, {
+      props: { loading: true, onclick: clicked },
+    });
+    const button = buttonIn(container);
+
+    expect(button.className).toContain('btn--loading');
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button.querySelector('.btn__spinner')).not.toBeNull();
+    expect(button.querySelector('.btn__content')).not.toBeNull();
+
+    await fireEvent.click(button);
+    expect(clicked).not.toHaveBeenCalled();
+  });
+
+  it('submit button inside form does not submit when disabled with reason or loading', async () => {
+    const form = document.createElement('form');
+    const onSubmit = vi.fn((e) => e.preventDefault());
+    form.addEventListener('submit', onSubmit);
+    document.body.appendChild(form);
+
+    // 1. Disabled with reason
+    const { container: c1, unmount: u1 } = render(Button, {
+      target: form,
+      props: { type: 'submit', disabled: true, disabledReason: 'Not ready' },
+    });
+    const b1 = buttonIn(c1);
+    await fireEvent.click(b1);
+    expect(onSubmit).not.toHaveBeenCalled();
+    u1();
+
+    // 2. Loading
+    const { container: c2, unmount: u2 } = render(Button, {
+      target: form,
+      props: { type: 'submit', loading: true },
+    });
+    const b2 = buttonIn(c2);
+    await fireEvent.click(b2);
+    expect(onSubmit).not.toHaveBeenCalled();
+    u2();
+
+    document.body.removeChild(form);
   });
 
   it.each([
@@ -84,7 +163,8 @@ describe('Button', () => {
     const button = screen.getByRole('button');
     const describedBy = button.getAttribute('aria-describedby');
 
-    expect(button).toBeDisabled();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     expect(button.getAttribute('title')).toBe('The plan has ended');
     expect(describedBy).toBeTruthy();
     expect(document.getElementById(describedBy as string)?.textContent).toBe('The plan has ended');
@@ -268,7 +348,8 @@ describe('IconButton', () => {
     const button = screen.getByRole('button');
     const describedBy = button.getAttribute('aria-describedby');
 
-    expect(button).toBeDisabled();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     expect(button.getAttribute('title')).toBe('Nothing to copy');
     expect(document.getElementById(describedBy as string)?.textContent).toBe('Nothing to copy');
   });

@@ -4,22 +4,16 @@
   import { uniqueId } from '../utils/uniqueId';
 
   /**
-   * The square, ghost control of the design system (VD-P-05): one icon and, from the tablet width
-   * up, the word that names it (CC-P-07). Below that width the icon stands alone and the control
-   * is square.
+   * The square, ghost control of the design system (VD-P-05): one icon and no visible label at
+   * every width (components.adoc#icon-button).
    *
    * It stands for row menus (`act.more`), "jump to now", and copy. Because the glyph alone does not
    * name the act, the control is always named by `label` and carries the advisory its view passes
    * from the catalogue's `X.title` key (Interactions Affordances).
    */
   export let icon: string;
-  /** The accessible name; the word on screen where the view draws no `visibleLabel` of its own. */
+  /** The accessible name. */
   export let label: string;
-  /**
-   * The word drawn beside the glyph where a table's fixed column cannot hold the whole accessible
-   * name; `label` when the view names none.
-   */
-  export let visibleLabel: string | undefined = undefined;
   /** The hover advisory, from the view's `X.title` catalogue key. */
   export let advisory: string | undefined = undefined;
   export let size: 'sm' | 'md' | 'lg' = 'md';
@@ -34,28 +28,37 @@
   /** The delivered icon size of each control size. */
   const ICON_SIZES = { sm: 16, md: 20, lg: 20 } as const;
 
-  $: reason = disabled && disabledReason ? disabledReason : '';
-  $: shownLabel = visibleLabel ?? label;
+  $: hasReason = disabled && !!disabledReason;
+  $: reason = hasReason ? (disabledReason as string) : '';
   $: tooltip = reason || advisory || $$restProps['title'];
   $: describedBy =
     [reason ? reasonId : null, $$restProps['aria-describedby']].filter(Boolean).join(' ') ||
     undefined;
   $: iconSize = ICON_SIZES[size];
+
+  function handleClick(event: MouseEvent): void {
+    if (disabled) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
 </script>
 
 <button
   {type}
   class="icon-btn icon-btn--{size}"
+  class:icon-btn--disabled={disabled}
   aria-label={label}
-  disabled={disabled}
+  disabled={disabled && !disabledReason ? true : undefined}
+  aria-disabled={hasReason ? 'true' : undefined}
   {...$$restProps}
   title={tooltip}
   aria-describedby={describedBy}
   use:applyAdvisory
+  on:click={handleClick}
   on:click
 >
   <Icon name={icon} size={iconSize} />
-  <span class="icon-btn__label">{shownLabel}</span>
 </button>
 
 {#if reason}
@@ -67,7 +70,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-1);
     padding: 0;
     border: 1px solid transparent;
     border-radius: var(--radius-md);
@@ -75,13 +77,6 @@
     color: var(--color-text-secondary);
     transition: background-color var(--duration-fast) var(--ease-standard);
     cursor: pointer;
-  }
-
-  /* The glyph is the whole control only where there is no room for the word beside it. */
-  .icon-btn__label {
-    display: none;
-    font-size: var(--text-sm);
-    white-space: nowrap;
   }
 
   .icon-btn--sm {
@@ -99,14 +94,20 @@
     block-size: 40px;
   }
 
-  .icon-btn:hover:not(:disabled) {
+  .icon-btn:hover:not(:disabled):not([aria-disabled="true"]) {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-primary);
   }
 
-  .icon-btn:disabled {
+  .icon-btn:disabled,
+  .icon-btn[aria-disabled="true"] {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .icon-btn:focus {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 
   /* A phone gets the 44 px target, whatever size the view asked for. */
@@ -114,19 +115,6 @@
     .icon-btn {
       inline-size: 44px;
       block-size: 44px;
-    }
-  }
-
-  /* From the tablet width up the label stands beside the glyph, so the control is not icon-only. */
-  @media (min-width: 768px) {
-    .icon-btn {
-      inline-size: auto;
-      min-inline-size: 34px;
-      padding-inline: var(--space-2);
-    }
-
-    .icon-btn__label {
-      display: inline;
     }
   }
 

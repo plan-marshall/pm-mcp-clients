@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { render, screen } from '@testing-library/svelte';
 import StatusLabel from './StatusLabel.svelte';
+import StatusLabelTemplateFixture from '../../test/fixtures/StatusLabelTemplateFixture.svelte';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 
 /**
@@ -46,26 +47,33 @@ describe('StatusLabel', () => {
     expect(container.querySelector('.status-label')?.className).toContain('status-label--neutral');
   });
 
-  it('draws a fixed state slot for a list', () => {
-    const { container } = render(StatusLabel, {
-      props: { tone: 'running', label: 'running', slot: true },
-    });
+  it('compiles and renders inside snippets and component children via StatusLabelTemplateFixture', () => {
+    const { container } = render(StatusLabelTemplateFixture);
 
-    expect(container.querySelector('.status-label')).toHaveClass('status-label--slot');
-    expect(ruleOf(STYLE, '.status-label--slot')).toContain('display: inline-grid');
-    expect(ruleOf(STYLE, '.status-label--slot')).toContain(
-      'grid-template-columns: auto minmax(0, 1fr)',
-    );
+    const labels = container.querySelectorAll('.status-label');
+    expect(labels).toHaveLength(6);
+    for (const label of labels) {
+      expect(label).toHaveClass('status-label--fixed');
+    }
   });
 
-  it('wraps a long word without moving the dot', () => {
-    const slot = ruleOf(STYLE, '.status-label--slot');
-    const word = ruleOf(STYLE, '.status-label--slot .status-label__word');
+  it('draws a fixed state slot of 8.5rem for a list, keeping dot and word in separate columns', () => {
+    const { container } = render(StatusLabel, {
+      props: { tone: 'running', label: 'running', fixed: true },
+    });
 
-    expect(slot).toContain('align-items: start');
-    expect(word).toContain('overflow-wrap: anywhere');
-    // The dot keeps its column, so a wrapped word in the second column moves no dot.
-    expect(word).toContain('min-inline-size: 0');
+    const el = container.querySelector('.status-label');
+    expect(el).toHaveClass('status-label--fixed');
+
+    const fixedRule = ruleOf(STYLE, '.status-label--fixed');
+    expect(fixedRule).toContain('display: inline-grid');
+    expect(fixedRule).toContain('inline-size: 8.5rem');
+    expect(fixedRule).toContain('grid-template-columns: auto minmax(0, 1fr)');
+    expect(fixedRule).toContain('align-items: start');
+
+    const wordRule = ruleOf(STYLE, '.status-label--fixed .status-label__word');
+    expect(wordRule).toContain('overflow-wrap: anywhere');
+    expect(wordRule).toContain('min-inline-size: 0');
   });
 
   it('shows the word it is given, never a wire value of its own', () => {
