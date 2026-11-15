@@ -200,9 +200,17 @@ describe('the start rule', () => {
     ).toEqual({ route: 'overview' });
   });
 
-  it('opens the filled place from a click on Running work, and the plain lens without one', () => {
-    expect(runningWorkAddress(PLACE, RUNNING)).toEqual({ route: 'plan', planId: 'fix-relay' });
+  it('opens the filled lens from a click on Running work, and the plain lens without a place', () => {
+    // The click opens the lens in running work, scoped to the remembered project: the place never
+    // holds the mode, so ended work is not reopened.
+    expect(runningWorkAddress(PLACE, RUNNING)).toEqual({
+      route: 'overview',
+      project: 'pm-mcp-clients',
+    });
     expect(runningWorkAddress({}, RUNNING)).toEqual({ route: 'overview' });
+    expect(runningWorkAddress(PLACE, { ...RUNNING, projectRuns: false })).toEqual({
+      route: 'projects',
+    });
     expect(unfilledLensAddress()).toEqual({ route: 'overview' });
     expect(isFillableStart(unfilledLensAddress())).toBe(true);
   });

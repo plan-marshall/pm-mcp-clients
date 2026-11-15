@@ -21,6 +21,7 @@ import {
   carriesAppMark,
   currentAddress,
   intentFor,
+  openedFromOutside,
   parentOf,
   writeAddress,
   type WriteIntent,
@@ -131,6 +132,8 @@ export interface RuntimeState {
   overviewFocus?: 'plans' | 'epics' | null;
   /** The report one `/reports/{id}` address names, until the view resolves its plan. */
   selectedReportId?: string | null;
+  /** The lens's scope: the project Running work is narrowed to, `?project=`. */
+  lensProject?: string | null;
   /** The lens's mode, scope and follow, as the address carries them. */
   lensMode?: 'ended' | null;
   lensGroup?: 'epic' | null;
@@ -201,6 +204,7 @@ const initialState: RuntimeState = {
   cleanupHighlightItemId: null,
   overviewFocus: null,
   selectedReportId: null,
+  lensProject: null,
   lensMode: null,
   lensGroup: null,
   lensFollow: false,
@@ -455,7 +459,7 @@ export function factsOf(summary: ProjectOverviewResponse | null, place: Remember
   const project = place.project
     ? projects.find((entry) => entry.project_id === place.project)
     : undefined;
-  const projectRuns = project ? hasWork({ projects: [project] }) : false;
+  const projectRuns = project ? hasWork({ projects: [project] }) : true;
   return {
     workRunning: hasWork(summary),
     projectRuns,
@@ -518,7 +522,13 @@ export async function openStartPage(): Promise<void> {
  */
 function show(address: Address, intent: WriteIntent): void {
   applyRoute(address.route ?? 'overview', address);
-  runtimeStore.update((s) => ({ ...s, ...fieldsOfAddress(address) }));
+  runtimeStore.update((s) => ({
+    ...s,
+    ...fieldsOfAddress(address),
+    ...(address.project ? { selectedProjectId: address.project } : {}),
+  }));
+  // The address is written as it was built: the store carries the selection, not every query key
+  // (the lens scope is not a store field of its own).
   writeAddress(address, intent);
 }
 
@@ -530,6 +540,7 @@ function show(address: Address, intent: WriteIntent): void {
  */
 function fieldsOfAddress(address: Address): Partial<RuntimeState> {
   return {
+    lensProject: address.project ?? null,
     lensMode: address.mode ?? null,
     lensGroup: address.group ?? null,
     lensFollow: address.follow ?? false,
@@ -688,13 +699,20 @@ export async function initRuntime(): Promise<void> {
     const place = readRememberedPlace();
     const facts = factsOf(summary, place);
     const start = startAddress({
-      fromOutside: !carriesAppMark(),
+      fromOutside: openedFromOutside(),
       requested: currentAddress(),
       onboarded,
       place,
       facts,
     });
-    const route = navigatedSince(mark)
+    const navigated = navigatedSince(mark);
+    // The start address is written before any page adopts the bar, so the fill of the remembered
+    // place is what the page reads. A replace, never a push: the entry the app was opened at is
+    // the one it shows.
+    if (!navigated && start.route) {
+      writeAddress(start, 'replace');
+    }
+    const route = navigated
       ? {}
       : {
           currentRoute: start.route ?? (facts.workRunning ? 'overview' : 'projects'),
@@ -1091,7 +1109,6 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
-    reportPlanId: state.selectedReportDetailPlanId ?? undefined,
     decisionId: state.selectedDecisionId ?? undefined,
     explorerProjectId: state.selectedProjectId ?? undefined,
     // The onboarding step is part of the address while the onboarding is the shown route. The view
@@ -1132,7 +1149,15 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // visit to the list clears it so the query does not outlive the detail.
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
     // The decisions route focuses the decision a match opened, if one was named.
-    ...(route === 'decisions' ? { selectedDecisionId: params.decisionId ?? null } : {}),
+    ...(route === 'decisions' || route === 'decision'
+      ? { selectedDecisionId: params.decisionId ?? null }
+      : {}),
+    // One report's own address names the report; the list clears it.
+    ...(route === 'report'
+      ? { selectedReportId: params.reportId ?? null }
+      : route === 'reports'
+        ? { selectedReportId: null }
+        : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
     ...(route === 'projects' || route === 'project'
       ? { selectedProjectId: params.projectId ?? params.explorerProjectId ?? null }
@@ -1153,6 +1178,10 @@ export function addressOfState(state: RuntimeState): Address {
   return {
     route: state.currentRoute,
     ...routeParamsOf(state),
+    // Running work's scope is the lens's own query key, not a path id.
+    ...(state.currentRoute === 'overview' && state.lensProject
+      ? { project: state.lensProject }
+      : {}),
     ...(state.lensMode ? { mode: state.lensMode } : {}),
     ...(state.lensGroup ? { group: state.lensGroup } : {}),
     ...(state.lensFollow ? { follow: true } : {}),
@@ -1284,6 +1313,7 @@ export function adoptRouteFromLocation(): AppRoute | null {
       lensMode: address?.mode ?? null,
       lensGroup: address?.group ?? null,
       lensFollow: address?.follow ?? false,
+      lensProject: address?.project ?? null,
       objectTab: address?.tab ?? null,
       openObject: address?.open ?? null,
       phaseNode: address?.node ?? null,

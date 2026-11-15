@@ -33,6 +33,7 @@ import {
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { writeRememberedPlace } from '../navigation/rememberedPlace';
+import { resetOpenedFromOutside } from '../navigation/history';
 
 const PAIRED_STATUS: StatusResponse = {
   status: 'ready',
@@ -521,6 +522,8 @@ describe('the remembered place at the start', () => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.restoreAllMocks();
+    // Each case is another load of the app: the start mark is read once per load.
+    resetOpenedFromOutside();
     runtimeStore.set(makeRuntimeState({ isInitialized: false, isOnboarded: false }));
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
@@ -583,7 +586,7 @@ describe('the remembered place at the start', () => {
     expect(window.location.pathname).toBe('/');
   });
 
-  it('pushes the filled place from a click on Running work', async () => {
+  it('pushes the filled lens from a click on Running work', async () => {
     // Arrange
     window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
     const before = window.history.length;
@@ -591,8 +594,9 @@ describe('the remembered place at the start', () => {
     // Act
     await openRunningWork();
 
-    // Assert: the filled address is pushed, so Back returns to what was shown before.
-    expect(window.location.pathname).toBe('/plans/fix-relay');
+    // Assert: the lens opens in running work, scoped to the remembered project, by a push.
+    expect(window.location.pathname).toBe('/overview');
+    expect(window.location.search).toBe('?project=p-1');
     expect(window.history.length).toBe(before + 1);
   });
 });

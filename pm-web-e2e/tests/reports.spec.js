@@ -156,7 +156,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     const detailBtn = card.getByRole('button', { name: /Show the details/i });
     await expect(detailBtn).toBeVisible();
     await detailBtn.click();
-    await expect(page).toHaveURL(/plan=fix-relay/);
+    // The detail's address names the report; the plan it opens is keyed in the store.
+    await expect(page).toHaveURL(/\/reports(\/[^/?]+)?$/);
 
     // Completion report modal / view should be visible
     await expect(page.locator('.completion-report')).toBeVisible();

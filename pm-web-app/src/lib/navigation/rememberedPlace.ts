@@ -207,17 +207,22 @@ export function startAddress(input: StartInput): Address {
 }
 
 /**
- * The address a click on Running work opens: the remembered place, filled.
+ * The address a click on Running work opens: the lens, filled from the remembered place.
  *
- * The rail and the phone's bottom bar both call it, and it pushes the filled address, so Back
- * returns to what the operator looked at before.
+ * The rail and the phone's bottom bar both call it. It opens the lens in its running mode, scoped
+ * to the remembered project, by a push — never the mode the operator left, so a click after ended
+ * work opens running work.
  *
  * @param place the remembered place
  * @param facts what the runtime knows about it
  * @returns the address to push
  */
 export function runningWorkAddress(place: RememberedPlace, facts: PlaceFacts): Address {
-  return addressOfPlace(place, facts) ?? { route: 'overview' };
+  const project = place.project;
+  if (!project) return unfilledLensAddress();
+  // A project without running work falls back to the list of projects, exactly as the fill does.
+  if (facts.projectRuns === false) return { route: 'projects' };
+  return { route: 'overview', project };
 }
 
 /**

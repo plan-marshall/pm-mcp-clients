@@ -45,6 +45,29 @@ export function carriesAppMark(state: unknown = history.state): boolean {
 }
 
 /**
+ * Whether this load was opened from outside the app: read once, at start, and remembered.
+ *
+ * The answer is taken before the app writes anything, so a write of this same load (the pairing
+ * fragment dropped, the first address written) never changes it.
+ *
+ * @returns `true` when the load carried no mark of the app
+ */
+export function openedFromOutside(): boolean {
+  if (startMark === null) startMark = !carriesAppMark();
+  return startMark;
+}
+
+/** The answer of the first `openedFromOutside` of this load. */
+let startMark: boolean | null = null;
+
+/**
+ * Forgets the answer of `openedFromOutside`, for a test that simulates another load of the app.
+ */
+export function resetOpenedFromOutside(): void {
+  startMark = null;
+}
+
+/**
  * The address of a location, or `null` when its path names none of the app's routes.
  *
  * @param pathname the path of the location
