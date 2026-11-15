@@ -11,10 +11,10 @@
    *
    * The check adds evidence and never holds a plan: a `not_run` check says so with the plan's own
    * reason, as evidence and never as a pass or a hold. A question the builder marked carries the
-   * design system's `recommended` marker — the marker word stands inside the builder's own section,
-   * and the record carries no recommended answer, because its `answer` is the operator's and exists
-   * only once the question is answered. Nothing is preselected: the record carries no answer until
-   * the operator gives one.
+   * design system's `recommended` marker in its own sort group of this panel — the marker word names
+   * a property of the question, and the record carries no recommended answer, because its `answer`
+   * is the operator's and exists only once the question is answered. Nothing is preselected: the
+   * record carries no answer until the operator gives one.
    */
   interface Props {
     /** The check the plan's intent carries, or `null` before it ran. */
