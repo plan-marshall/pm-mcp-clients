@@ -276,6 +276,7 @@
     color: var(--color-text-secondary);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    overflow-wrap: anywhere;
   }
 
   .epic-plan__title {

@@ -221,7 +221,7 @@
   }
 
   .oversize-bucket__label {
-    flex: 0 0 4rem;
+    flex: 0 0 5.5rem;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
