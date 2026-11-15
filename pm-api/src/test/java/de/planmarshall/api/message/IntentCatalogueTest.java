@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -50,7 +51,7 @@ class IntentCatalogueTest {
 
     @Test
     @DisplayName("should carry exactly the document's keys in English and German")
-    void shouldCarryExactlyTheDocumentKeys() throws IOException {
+    void shouldCarryExactlyTheDocumentKeys() throws Exception {
         var documented = documentTexts();
         var intentKeys = keyFamily(documented, "intent.");
 
@@ -64,7 +65,7 @@ class IntentCatalogueTest {
 
     @Test
     @DisplayName("should translate every key as the document writes it, in both languages")
-    void shouldTranslateEveryKeyAsTheDocumentWritesIt() throws IOException {
+    void shouldTranslateEveryKeyAsTheDocumentWritesIt() throws Exception {
         var en = MessageCatalogue.getMessages("en", "intent");
         var de = MessageCatalogue.getMessages("de", "intent");
         var mismatches = new TreeSet<String>();
@@ -86,7 +87,7 @@ class IntentCatalogueTest {
 
     @Test
     @DisplayName("should agree on the arguments of every key, one language with the other")
-    void shouldAgreeOnEveryArgument() throws IOException {
+    void shouldAgreeOnEveryArgument() throws Exception {
         var mismatches = new TreeSet<String>();
 
         documentTexts().forEach((key, texts) -> {
@@ -218,7 +219,7 @@ class IntentCatalogueTest {
 
     @Test
     @DisplayName("should carry the document's verdict words in common, in both languages")
-    void shouldCarryTheSevenVerdictWords() throws IOException {
+    void shouldCarryTheSevenVerdictWords() throws Exception {
         var en = MessageCatalogue.getMessages("en", "common");
         var de = MessageCatalogue.getMessages("de", "common");
         var words = new LinkedHashMap<String, String[]>();
@@ -250,7 +251,7 @@ class IntentCatalogueTest {
         for (var index = 0; index < lines.size(); index++) {
             Matcher keyRow = KEY_ROW.matcher(lines.get(index).strip());
             if (keyRow.matches()) {
-                rows.put(keyRow.group(1), new String[] {valueAfter(lines, index + 1),
+                rows.put(keyRow.group(1), new String[]{valueAfter(lines, index + 1),
                         valueAfter(lines, index + 2)});
             }
         }
@@ -262,7 +263,7 @@ class IntentCatalogueTest {
      * @param from   the line after the key row
      * @return the next table cell's text, in either language
      */
-    private static String valueAfter(java.util.List<String> lines, int from) {
+    private static String valueAfter(List<String> lines, int from) {
         for (var index = from; index < lines.size(); index++) {
             var line = lines.get(index).strip();
             if (line.startsWith("|") && !"|===".equals(line)) {
