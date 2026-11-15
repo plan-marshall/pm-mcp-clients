@@ -132,7 +132,9 @@ class WorkerActivityLevelTest {
                                 {"timestamp": "12:00:00", "kind": "file_changed", "files": ["pom.xml", "README.md"]},
                                 {"timestamp": "12:00:01", "kind": "link", "tool_target": "submit:TASK-9"},
                                 {"timestamp": "12:00:02", "kind": "answer_ack", "content": "received"},
-                                {"timestamp": "12:00:03", "kind": "tool_call", "tool_name": "pytest",
+                                {"timestamp": "12:00:03", "kind": "model_differs", "launch_model": "deepseek",
+                                 "served_model": "gemini"},
+                                {"timestamp": "12:00:04", "kind": "tool_call", "tool_name": "pytest",
                                  "tool_target": "tests/"}
                               ],
                               "server_only": true, "gap_count": 3
@@ -146,6 +148,7 @@ class WorkerActivityLevelTest {
                             () -> assertTrue(text.contains("pom.xml, README.md"), text),
                             () -> assertTrue(text.contains("submit:TASK-9"), text),
                             () -> assertTrue(text.contains("answer received"), text),
+                            () -> assertTrue(text.contains("answered by gemini instead of deepseek"), text),
                             () -> assertTrue(text.contains("pytest tests/"), text)
         );
     }

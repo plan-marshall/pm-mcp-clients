@@ -26,6 +26,9 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
@@ -46,6 +49,7 @@ import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.process.EpicProcess;
 import de.planmarshall.api.process.ProcessTree;
@@ -79,9 +83,11 @@ public class ScenarioLoader {
     private static final String FIELD_REPRESENTATION = "representation";
     /** The member of a route and of a link that holds its HTTP status. */
     private static final String FIELD_STATUS = "status";
+    /** The member of the scenario, and of a state's runtime fixture, that holds routes. */
+    private static final String FIELD_ROUTES = "routes";
 
     private static final Set<String> ROOT_FIELDS = Set.of(
-            "format_version", "name", "description", "start", "pairing_code", "routes", "states");
+            "format_version", "name", "description", "start", "pairing_code", FIELD_ROUTES, "states");
     private static final Set<String> STATE_FIELDS = Set.of(
             FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
     private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
@@ -92,6 +98,9 @@ public class ScenarioLoader {
 
     /** The engine-only fixture object a state's facts may carry. */
     private static final String RUNTIME_FIXTURE = "runtime";
+    /** The engine-only fixtures a state's runtime fixture may carry. */
+    private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
+    private static final String FIXTURE_CONTENTS = "contents";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -208,7 +217,7 @@ public class ScenarioLoader {
         var pairingCode = JsonTree.string(root, "pairing_code");
 
         // 6. routes
-        var routes = parseRoutes(root.get("routes"), identifier);
+        var routes = parseRoutes(root.get(FIELD_ROUTES), identifier);
 
         // 7. states
         var statesObj = root.get("states");
@@ -227,7 +236,153 @@ public class ScenarioLoader {
 
         validateTransitions(states, identifier);
 
+        validatePlanChanges(routes, states, identifier);
+
         return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
+    }
+
+    /**
+     * Holds every captured plan's changes to the plan's size of change, so the list a client reads and
+     * the size the plan carries can only ever be one measurement
+     * ({@code 01-processes-and-transport.adoc#plan-changes}): the files, their lines added and removed
+     * and their count beyond the footprint are added up and compared with every {@code change} the
+     * scenario's static routes spell for that plan. The fixture is decoded with the {@code pm-api}
+     * codecs either way, so a malformed changes fixture fails the load.
+     *
+     * @param routes  the scenario's static routes, which carry the plans' sizes of change
+     * @param states  the scenario's states, whose runtime fixtures may carry {@code plan_changes}
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void validatePlanChanges(Map<String, RouteDefinition> routes,
+            Map<String, StateDefinition> states, String scenario) {
+        var sizes = new LinkedHashMap<String, List<ChangeSize>>();
+        try {
+            routes.values().forEach(route -> collectPlanSizes(route.representation(), sizes));
+            for (var state : states.values()) {
+                collectStateRouteSizes(state, sizes);
+            }
+        } catch (IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, null, "change",
+                    "a plan's size of change is not a measurement: " + e.getMessage());
+        }
+        for (var state : states.values()) {
+            var representation = JsonTree.asObject(state.representation());
+            var facts = representation == null
+                    ? null
+                    : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+            var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+            if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+                continue;
+            }
+            for (var entry : fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario)) {
+                validateOnePlansChanges(entry, sizes, scenario);
+            }
+        }
+    }
+
+    /**
+     * @param declared the {@code plan_changes} fixture member
+     * @param scenario the scenario identifier for error reporting
+     * @return the fixture's entries
+     * @throws ScenarioValidationException if the member is not an array of objects
+     */
+    private static List<Map<String, Object>> fixtureEntries(@Nullable Object declared, String scenario) {
+        var rows = JsonTree.asArray(declared);
+        if (rows == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "plan_changes must be an array");
+        }
+        var entries = new ArrayList<Map<String, Object>>(rows.size());
+        for (var row : rows) {
+            var entry = JsonTree.asObject(row);
+            if (entry == null) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "plan_changes must be an array of objects");
+            }
+            entries.add(entry);
+        }
+        return entries;
+    }
+
+    private static void validateOnePlansChanges(Map<String, Object> entry,
+            Map<String, List<ChangeSize>> sizes, String scenario) {
+        final PlanChangesAnswer answer;
+        try {
+            answer = PlanChangesAnswer.fromMap(entry);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the plan's changes do not decode with the pm-api codec: " + e.getMessage());
+        }
+        if (!(answer instanceof PlanChangesCaptured captured)) {
+            return;
+        }
+        try {
+            if (entry.containsKey(FIXTURE_CONTENTS)) {
+                for (var content : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
+                    PlanChangeFile.fromMap(content);
+                }
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
+        }
+        var declared = sizes.get(captured.planId());
+        if (declared == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the plan " + captured.planId() + " carries no size of change for its list to agree with");
+        }
+        var totals = captured.totals();
+        for (var size : declared) {
+            if (!size.equals(totals)) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the changes of " + captured.planId() + " do not add up to the plan's size of change:"
+                                + " files " + totals.files() + "/" + size.files()
+                                + ", insertions " + totals.insertions() + "/" + size.insertions()
+                                + ", deletions " + totals.deletions() + "/" + size.deletions()
+                                + ", unplanned " + totals.unplanned() + "/" + size.unplanned());
+            }
+        }
+    }
+
+    /**
+     * Collects every plan's size of change an object tree spells, keyed by plan id: an object that
+     * names a {@code plan_id} and carries a {@code change} the size codec reads.
+     *
+     * @param value the tree value
+     * @param sizes the collected sizes
+     */
+    private static void collectPlanSizes(@Nullable Object value, Map<String, List<ChangeSize>> sizes) {
+        if (value instanceof Map<?, ?> raw) {
+            var map = JsonTree.asObject(raw);
+            var planId = JsonTree.string(map, "plan_id");
+            var size = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+            if (planId != null && size != null) {
+                sizes.computeIfAbsent(planId, key -> new ArrayList<>()).add(size);
+            }
+            map.values().forEach(member -> collectPlanSizes(member, sizes));
+        } else if (value instanceof List<?> list) {
+            list.forEach(member -> collectPlanSizes(member, sizes));
+        }
+    }
+
+    /**
+     * Collects the sizes of change a state's own route overrides spell
+     * ({@code facts.runtime.routes}, which the engine serves in preference to the static routes),
+     * so a state cannot serve a size its capture's totals disagree with.
+     *
+     * @param state the state
+     * @param sizes the collected sizes
+     */
+    private static void collectStateRouteSizes(StateDefinition state, Map<String, List<ChangeSize>> sizes) {
+        var representation = JsonTree.asObject(state.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+        var overrides = runtime == null ? null : JsonTree.asObject(runtime.get(FIELD_ROUTES));
+        if (overrides != null) {
+            overrides.values().forEach(value -> collectPlanSizes(value, sizes));
+        }
     }
 
     private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {
