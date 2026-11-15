@@ -137,6 +137,27 @@ describe('WizardPage', () => {
     void rendered;
   });
 
+  it('keeps a focus the person moved outside the wizard when the content returns', async () => {
+    await renderWizard(1048);
+    const content = screen.getByRole('button', { name: 'Continue' });
+    content.focus();
+
+    reportBox(screen.getByTestId('wizard-page'), 800, 800);
+    await tick();
+
+    // The person moves to a control of the shell while the chat holds the space.
+    const shell = document.createElement('button');
+    shell.textContent = 'Shell';
+    document.body.append(shell);
+    shell.focus();
+
+    reportBox(screen.getByTestId('wizard-page'), 1048, 800);
+    await tick();
+
+    expect(document.activeElement).toBe(shell);
+    shell.remove();
+  });
+
   it('hides the chat from anywhere on the page', async () => {
     const onHideSide = vi.fn();
     await renderWizard(800, true, onHideSide);

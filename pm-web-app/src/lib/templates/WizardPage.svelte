@@ -87,7 +87,13 @@
       rememberedFocus = active !== null && frame?.contains(active) ? active : null;
       frame?.querySelector<HTMLElement>('[data-testid="side-column"] button')?.focus();
     } else if (rememberedFocus !== null && rememberedFocus.isConnected) {
-      rememberedFocus.focus();
+      // The focus returns only while it is still the wizard's: a person who moved to the shell
+      // keeps it there.
+      const active = document.activeElement as HTMLElement | null;
+      const stillOurs = active === null || active === document.body || frame?.contains(active) === true;
+      if (stillOurs) {
+        rememberedFocus.focus();
+      }
       rememberedFocus = null;
     }
   });
