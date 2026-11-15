@@ -39,6 +39,7 @@
   import PlanIntentPanel from '../../../lib/components/PlanIntentPanel.svelte';
   import OutlinePanel from '../../../lib/components/OutlinePanel.svelte';
   import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
+  import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -625,6 +626,9 @@
           />
         {/snippet}
       </RowLink>
+
+      <h3 class="dev__section-title">{$t('dev.section.column_engine')}</h3>
+      <ColumnEngineFixture />
 
       <h3 class="dev__section-title">{$t('intent.tab.title')}</h3>
       <div class="dev__grid" data-testid="intent-fixture">

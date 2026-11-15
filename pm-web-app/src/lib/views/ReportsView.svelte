@@ -10,7 +10,7 @@
   import EmptyState from '../components/EmptyState.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import TriagePage from '../templates/TriagePage.svelte';
+  import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
@@ -207,6 +207,35 @@
   }
 
   let isNarrow = $state(typeof window !== 'undefined' ? window.innerWidth < 1100 : false);
+
+  /**
+   * The chain the column engine draws: the lens list, and — once a report is open — the report
+   * beside it as the object column. With nothing selected the list is the rightmost column and
+   * takes the object column's width (`navigation.adoc#column-types`).
+   */
+  const reportLevels = $derived.by<Level[]>(() => {
+    const list: Level = {
+      key: 'reports',
+      kind: 'report',
+      title: $t('report.list.title'),
+      href: '/reports',
+      state: '',
+    };
+    if (activeDetailPlanId === null) {
+      return [list];
+    }
+    return [
+      list,
+      {
+        key: `report:${activeDetailPlanId}`,
+        kind: 'report',
+        title: activeDetailPlanId,
+        // The address of the report's detail beside the list, unchanged until PLAN-143.
+        href: `/reports?plan=${encodeURIComponent(activeDetailPlanId)}`,
+        state: '',
+      },
+    ];
+  });
 
   function handleWindowResize(): void {
     if (typeof window !== 'undefined') {
@@ -929,6 +958,17 @@
   }
 
   /**
+   * Measures the report bodies whenever the list container is mounted, so a list that comes back
+   * after the detail closed on a narrow container offers its clamp controls again.
+   *
+   * @param node the list container
+   */
+  function measureWhenMounted(node: HTMLElement): void {
+    void node;
+    measureOverflow();
+  }
+
+  /**
    * @param item a report
    * @returns the moment itself, for the row's hover advisory
    */
@@ -953,29 +993,24 @@
 <svelte:window onresize={handleWindowResize} />
 
 <div class="reports-view">
-  <TriagePage selected={activeDetailPlanId !== null} hasFilters={items.length > 0}>
-    <div slot="filters">
-      {#if items.length > 0}
-        <FilterInput
-          value={query}
-          label={$t('report.filter.label')}
-          placeholder={$t('report.filter.placeholder')}
-          resultCount={isFiltered ? matchingItems.length : undefined}
-          onchange={(value) => (query = value)}
-        />
-      {/if}
-    </div>
-    <div slot="list">
-      {@render listPane()}
-    </div>
-    <div slot="detail">
-      {@render detailPane()}
-    </div>
-  </TriagePage>
+  <TriagePage
+    levels={reportLevels}
+    label={$t('report.list.title')}
+    column={listColumn}
+    object={activeDetailPlanId === null ? undefined : objectColumn}
+  />
 </div>
 
+{#snippet listColumn()}
+  {@render listPane()}
+{/snippet}
+
+{#snippet objectColumn()}
+  {@render detailPane()}
+{/snippet}
+
 {#snippet listPane()}
-  <div class="reports-container">
+  <div class="reports-container" use:measureWhenMounted>
     <!-- Header -->
     <header class="reports-header">
       <div class="reports-header__title-row">
@@ -1007,6 +1042,17 @@
           {/if}
         </div>
       </div>
+      {#if items.length > 0}
+        <div class="reports-filter" data-testid="reports-filter">
+          <FilterInput
+            value={query}
+            label={$t('report.filter.label')}
+            placeholder={$t('report.filter.placeholder')}
+            resultCount={isFiltered ? matchingItems.length : undefined}
+            onchange={(value) => (query = value)}
+          />
+        </div>
+      {/if}
     </header>
 
     {#if actionError}
@@ -1162,8 +1208,6 @@
         onClose={closeDetail}
       />
     {/key}
-  {:else}
-    <p class="split-placeholder">{$t('report.split.select')}</p>
   {/if}
 {/snippet}
 
@@ -1318,19 +1362,15 @@
     min-inline-size: 0;
   }
 
-  .split-placeholder {
-    padding: var(--space-10) var(--space-4);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-
   .reports-header__actions {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
+  }
+
+  .reports-filter {
+    margin-block-start: var(--space-3);
   }
 
   /* The mark-all act keeps its place in the tab order (aria-disabled, never native disabled); the

@@ -218,6 +218,17 @@ describe('/dev/components page fixture', () => {
     });
   });
 
+  it.each(['light', 'dark'])('draws the column engine with its side column in the %s block', (theme) => {
+    render(DevComponentsPage);
+    const block = document.querySelector(`[data-theme="${theme}"]`);
+    const engine = block?.querySelector('[data-testid="column-engine-fixture"]');
+
+    expect(engine).not.toBeNull();
+    expect(engine?.querySelector('[data-testid="triage-page"]')).not.toBeNull();
+    // The chain is five levels deep; the chat docks beside the window as its side column.
+    expect(engine?.querySelector('[data-testid="side-column"]')).not.toBeNull();
+  });
+
   it.each(['light', 'dark'])('draws the mascot figure, full and bust, in the %s block', (theme) => {
     render(DevComponentsPage);
     const block = document.querySelector(`[data-theme="${theme}"]`);
