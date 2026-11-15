@@ -29,7 +29,6 @@
   class="side-column"
   class:side-column--taken={takesSpace}
   data-testid="side-column"
-  aria-label={$t('control.chat.side_label')}
   style:--side-width={`${width}px`}
 >
   <header class="side-column__head">
