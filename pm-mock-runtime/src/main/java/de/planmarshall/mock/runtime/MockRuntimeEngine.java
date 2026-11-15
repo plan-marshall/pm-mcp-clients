@@ -119,6 +119,7 @@ import de.planmarshall.api.event.StreamClosedEvent;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.OutlineResource;
 import de.planmarshall.api.intent.OverSizeDistributionResource;
+import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.interaction.OperatorText;
@@ -6258,9 +6259,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (hasIdBetween(path, PREFIX_PROJECTS, SEGMENT_METRICS_OVERSIZE)) {
             var sub = path.substring(PREFIX_PROJECTS.length());
             var projectId = sub.substring(0, sub.length() - SEGMENT_METRICS_OVERSIZE.length());
-            return !projectId.contains("/")
-                    && serveIntentFixture(response, FIXTURE_OVERSIZE, OverSizeDistributionResource::fromMap,
-                    OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
+            return !projectId.contains("/") && serveDistributionFixture(response, FIXTURE_OVERSIZE, projectId);
         }
         return false;
     }
@@ -6288,6 +6287,41 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         reader.read(representation);
         var copy = new LinkedHashMap<String, Object>(representation);
         copy.put(idField, id);
+        response.json(200, copy);
+        return true;
+    }
+
+    /**
+     * Serves the {@code over_size} distributions of every role the project sets: the fixture's answer
+     * with the project id replaced at the top and in every distribution, so a client sees one answer
+     * about the project it asked for rather than a half-replaced one.
+     *
+     * @param response    the response
+     * @param fixturePath the scenario's route of the fixture
+     * @param projectId   the project the request named
+     * @return {@code true} if the fixture is active
+     * @throws IOException on write failure
+     */
+    private boolean serveDistributionFixture(MockHttpResponse response, String fixturePath, String projectId)
+            throws IOException {
+        var representation = Optional.ofNullable(activeRoute("GET", fixturePath))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
+        if (representation == null) {
+            return false;
+        }
+        OverSizeDistributionsResource.fromMap(representation);
+        var copy = new LinkedHashMap<String, Object>(representation);
+        copy.put(OverSizeDistributionsResource.FIELD_PROJECT_ID, projectId);
+        copy.put(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS,
+                JsonTree.asArray(representation.get(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS)).stream()
+                        .map(element -> {
+                            var distribution = new LinkedHashMap<String, Object>(JsonTree.asObject(element));
+                            distribution.put(OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
+                            return distribution;
+                        })
+                        .toList());
         response.json(200, copy);
         return true;
     }

@@ -37,7 +37,7 @@ import de.planmarshall.api.intent.DoneWhenCheck;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
-import de.planmarshall.api.intent.OverSizeDistributionResource;
+import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
@@ -143,8 +143,10 @@ class IntentScenarioTest {
                 assertEquals("The builder check task was lost before it could start.", check.reason());
                 assertTrue(check.questions().isEmpty());
 
-                var distribution = OverSizeDistributionResource.fromJson(
-                        get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText());
+                var distribution = OverSizeDistributionsResource.fromJson(
+                        get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText())
+                        .of("implement");
+                assertNotNull(distribution);
                 assertNull(distribution.proposedMultiple());
                 assertEquals(0, distribution.flaggedTasks());
                 assertEquals(0.0, distribution.flaggedShare(), 0.0001);
@@ -252,7 +254,9 @@ class IntentScenarioTest {
                 var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
                 assertEquals(200, response.status(), response.bodyText());
 
-                var distribution = OverSizeDistributionResource.fromJson(response.bodyText());
+                var distribution = OverSizeDistributionsResource.fromJson(response.bodyText())
+                        .of("implement");
+                assertNotNull(distribution);
                 assertEquals("pm-mcp-clients", distribution.projectId());
                 assertEquals("implement", distribution.role());
                 assertEquals(3.0, distribution.currentMultiple());
@@ -267,8 +271,39 @@ class IntentScenarioTest {
                 var anotherProject = Generators.letterStrings(4, 10).next().toLowerCase();
                 var another = get(runtime, "/api/v1/projects/" + anotherProject + "/metrics/oversize");
                 assertEquals(200, another.status());
-                assertEquals(anotherProject,
-                        OverSizeDistributionResource.fromJson(another.bodyText()).projectId());
+                var answer = OverSizeDistributionsResource.fromJson(another.bodyText());
+                assertEquals(anotherProject, answer.projectId());
+                assertTrue(answer.distributions().stream()
+                                .allMatch(entry -> anotherProject.equals(entry.projectId())),
+                        "every distribution names the project the request asked for: " + another.bodyText());
+            }
+        }
+
+        @Test
+        @DisplayName("serves one distribution per role the project sets, in the fixture's order")
+        void servesEveryRole() throws Exception {
+            try (var runtime = MockRuntime.start(STATE)) {
+                var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
+                assertEquals(200, response.status(), response.bodyText());
+
+                var answer = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                assertNotNull(answer);
+                var distributions = JsonTree.asArray(answer.get("distributions"));
+                assertNotNull(distributions, "the answer carries the roles' distributions: " + response.bodyText());
+
+                assertEquals(List.of("implement", "module-tester", "architecture"), distributions.stream()
+                        .map((entry) -> JsonTree.string(JsonTree.asObject(entry), "role"))
+                        .toList(),
+                        "a distribution per role, in the order the fixture names them");
+
+                var probes = OverSizeDistributionsResource.fromJson(response.bodyText());
+                assertEquals("pm-mcp-clients", probes.projectId());
+                assertEquals(2.0, probes.of("implement").proposedMultiple().doubleValue());
+                assertTrue(probes.of("implement").flagsMore());
+                assertNull(probes.of("module-tester").proposedMultiple());
+                assertTrue(probes.of("architecture").buckets().isEmpty(),
+                        "a role without measured tasks carries no bucket rather than an invented zero bar");
+                assertEquals(0, probes.of("architecture").totalTasks());
             }
         }
     }
@@ -293,7 +328,7 @@ class IntentScenarioTest {
                         JsonTree.asObject(outline.representation()))),
                 () -> assertNotNull(EpicIntentResource.fromMap(
                         JsonTree.asObject(epicIntent.representation()))),
-                () -> assertNotNull(OverSizeDistributionResource.fromMap(
+                () -> assertNotNull(OverSizeDistributionsResource.fromMap(
                         JsonTree.asObject(oversize.representation()))));
     }
 

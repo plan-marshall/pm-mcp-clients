@@ -576,9 +576,26 @@ class IntentContractTest {
         }
 
         @Test
+        @DisplayName("a role without measured tasks carries no bucket, and the read serves that absence")
+        void roleWithoutMeasuredTasks() throws Exception {
+            var distribution = new OverSizeDistributionResource("pm-mcp-clients", "architecture", 3.0, null,
+                    List.of());
+
+            verify(distribution, OverSizeDistributionResource::toJson,
+                    OverSizeDistributionResource::toMap, OverSizeDistributionResource::fromJson,
+                    OverSizeDistributionResource::fromMap, OverSizeDistributionResource::readFrom,
+                    OverSizeDistributionResource::writeTo);
+
+            var parsed = OverSizeDistributionResource.fromJson(distribution.toJson());
+            assertTrue(parsed.buckets().isEmpty());
+            assertEquals(0, parsed.totalTasks());
+            assertEquals(0.0, parsed.flaggedShare(), 0.0001);
+            assertTrue(parsed.flaggedBuckets().isEmpty());
+        }
+
+        @Test
         @DisplayName("a flagged task without a proposal and a non-positive proposal are refused")
-        void flagRulesHold() {
-            var flagged = List.of(bucket());
+        void flagRulesHold() {            var flagged = List.of(bucket());
             assertThrows(IllegalArgumentException.class,
                     () -> new OverSizeDistributionResource("p", "r", 3.0, null, flagged));
             assertThrows(JsonFormatException.class, () -> OverSizeDistributionResource.fromJson(
@@ -589,6 +606,65 @@ class IntentContractTest {
                     () -> new OverSizeDistributionResource("p", "r", 3.0, 0.0, flagged));
             assertThrows(IllegalArgumentException.class,
                     () -> new OverSizeDistributionResource("p", "r", 3.0, -1.0, flagged));
+        }
+    }
+
+    @Nested
+    @DisplayName("The distribution of every role")
+    class DistributionsPerRole {
+
+        @Test
+        @DisplayName("round-trips the roles' distributions through every codec, the order kept")
+        void roundTrips() throws Exception {
+            var distributions = distributions();
+
+            verify(distributions, OverSizeDistributionsResource::toJson,
+                    OverSizeDistributionsResource::toMap, OverSizeDistributionsResource::fromJson,
+                    OverSizeDistributionsResource::fromMap, OverSizeDistributionsResource::readFrom,
+                    OverSizeDistributionsResource::writeTo);
+
+            assertEquals(List.of("implement", "module-tester", "architecture"),
+                    OverSizeDistributionsResource.fromJson(distributions.toJson()).roles());
+        }
+
+        @Test
+        @DisplayName("finds a role's distribution, and none for a role the project does not set")
+        void findsOneRole() throws Exception {
+            var parsed = OverSizeDistributionsResource.fromJson(distributions().toJson());
+
+            assertEquals(2.0, parsed.of("implement").proposedMultiple().doubleValue());
+            assertNull(parsed.of(Generators.letterStrings(4, 10).next().toLowerCase()));
+        }
+
+        @Test
+        @DisplayName("serves a role without measured tasks as a distribution without buckets")
+        void roleWithoutMeasuredTasks() throws Exception {
+            var parsed = OverSizeDistributionsResource.fromJson(distributions().toJson()).of("architecture");
+
+            assertNotNull(parsed);
+            assertTrue(parsed.buckets().isEmpty());
+            assertEquals(0, parsed.totalTasks());
+            assertEquals(0, parsed.flaggedTasks());
+            assertEquals(0.0, parsed.flaggedShare(), 0.0001);
+        }
+
+        @Test
+        @DisplayName("refuses a duplicated role, a foreign project, a blank project, and an unknown field")
+        void failsClosed() {
+            var implement = new OverSizeDistributionResource("pm-mcp-clients", "implement", 3.0, null,
+                    List.of(new TokenBucket("0–1x", 0.0, 1.0, 8, 0)));
+
+            assertAll(
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new OverSizeDistributionsResource("pm-mcp-clients",
+                                    List.of(implement, implement))),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new OverSizeDistributionsResource("other-project", List.of(implement))),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new OverSizeDistributionsResource(" ", List.of(implement))),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> OverSizeDistributionsResource.fromJson(
+                                    "{\"project_id\":\"p\",\"roles\":[]}")));
         }
     }
 
@@ -1063,6 +1139,19 @@ class IntentContractTest {
                         new TokenBucket("1–2x", 1.0, 2.0, 5, 0),
                         new TokenBucket("2–3x", 2.0, 3.0, 3, 3),
                         new TokenBucket("3x+", 3.0, 5.0, 4, 4)));
+    }
+
+    /**
+     * @return one distribution per role, the second without a proposal and the third without a
+     *         measured task
+     */
+    private static OverSizeDistributionsResource distributions() {
+        return new OverSizeDistributionsResource("pm-mcp-clients",
+                List.of(distribution(),
+                        new OverSizeDistributionResource("pm-mcp-clients", "module-tester", 3.0, null,
+                                List.of(new TokenBucket("0–1x", 0.0, 1.0, 6, 0))),
+                        new OverSizeDistributionResource("pm-mcp-clients", "architecture", 3.0, null,
+                                List.of())));
     }
 
     @FunctionalInterface
