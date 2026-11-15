@@ -181,10 +181,9 @@ describe('the window of the deepest chain, chat open', () => {
     },
   );
 
-  it('gives the chat the screen below 768 px, the bottom bar included', () => {
+  it('gives the chat the screen where the object and the chat do not fit', () => {
     const layout = windowFor({ container: 390, depth: DEEPEST_CHAIN, sideOpen: true });
 
-    expect(layout.phone).toBe(true);
     expect(layout.sideTakesSpace).toBe(true);
     expect(layout.sideWidth).toBe(contentWidth(390));
     expect(layout.columns).toBe(0);

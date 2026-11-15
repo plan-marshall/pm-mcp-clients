@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
+import { get } from 'svelte/store';
 import fs from 'node:fs';
 import path from 'node:path';
 import TriagePageFixture from '../../test/fixtures/TriagePageFixture.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 import { contentWidth, windowFor } from './columnWindow';
+import { runtimeStore } from '../stores/runtime';
 import type { Level } from './TriagePage.svelte';
 
 /**
@@ -85,16 +87,21 @@ describe('TriagePage as the column engine', () => {
   });
 
   it('follows the container, not the viewport', async () => {
+    const viewport = window.innerWidth;
     window.innerWidth = 1920;
 
-    const { frame } = await renderWindow(744);
+    try {
+      const { frame } = await renderWindow(744);
 
-    // 1920 px of viewport would fill four columns; the 744 px container fills two.
-    expect(columns()).toHaveLength(2);
+      // 1920 px of viewport would fill four columns; the 744 px container fills two.
+      expect(columns()).toHaveLength(2);
 
-    reportBox(frame, 792, 800);
-    await tick();
-    expect(columns()).toHaveLength(2);
+      reportBox(frame, 792, 800);
+      await tick();
+      expect(columns()).toHaveLength(2);
+    } finally {
+      window.innerWidth = viewport;
+    }
   });
 
   it('leaves a column out of the window out of the DOM', async () => {
@@ -164,7 +171,10 @@ describe('TriagePage as the column engine', () => {
   });
 
   it('scrolls each column on its own', () => {
-    expect(ruleOf(styleOf(SOURCE), '.triage-page__column')).toContain('overflow-y: auto');
+    const column = ruleOf(styleOf(SOURCE), '.triage-page__column');
+
+    expect(column).toContain('overflow-y: auto');
+    expect(column).toContain('max-block-size: 100dvh');
   });
 
   it('applies its widths with a style directive, never a static style attribute', () => {
@@ -229,7 +239,24 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
 
     expect(document.activeElement).toHaveTextContent('Lens list');
-    expect(screen.getByTestId('triage-announce')).toHaveTextContent('Lens list, report');
+    // The frame's polite live region carries the announcement (`navigation.adoc#keys`).
+    expect(get(runtimeStore).quietNavigationNotice).toBe('Lens list, report');
+  });
+
+  it('ends a peek at the next selection', async () => {
+    const rendered = await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '0');
+
+    await rendered.rerender({
+      levels: [...LEVELS.slice(0, 4), { ...LEVELS[4], key: 'task-2', title: 'Another task' }],
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+    });
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
   });
 
   it('moves the focus to the neighbour column with the keys, shifting the window where it is hidden', async () => {
@@ -246,7 +273,7 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
 
     expect(document.activeElement).toHaveTextContent('Epic column');
-    expect(screen.getByTestId('triage-announce')).toHaveTextContent('Epic column, epic');
+    expect(get(runtimeStore).quietNavigationNotice).toBe('Epic column, epic');
   });
 
   it('leaves the keys to a focused field', async () => {
@@ -283,6 +310,15 @@ describe('the gap strip, the peek, the focus and the keys', () => {
 });
 
 describe('the side column of the chat', () => {
+  /**
+   * @returns the width the side column takes from its bound custom property
+   */
+  function sideWidth(): number {
+    return Number.parseFloat(
+      screen.getByTestId('side-column').style.getPropertyValue('--side-width'),
+    );
+  }
+
   /**
    * Renders the engine with the chat beside it.
    *
@@ -323,14 +359,14 @@ describe('the side column of the chat', () => {
   it('docks the chat at 480 px where the window keeps its column', async () => {
     await renderSide(1048);
 
-    expect(Number.parseFloat(screen.getByTestId('side-column').style.inlineSize)).toBe(480);
+    expect(sideWidth()).toBe(480);
     expect(screen.getByTestId('triage-detail').style.inlineSize).toBe('520px');
   });
 
   it('narrows the chat to 400 px where 480 would cost the window a column', async () => {
     await renderSide(960);
 
-    expect(Number.parseFloat(screen.getByTestId('side-column').style.inlineSize)).toBe(400);
+    expect(sideWidth()).toBe(400);
     expect(Number.parseFloat(screen.getByTestId('triage-detail').style.inlineSize)).toBe(512);
   });
 

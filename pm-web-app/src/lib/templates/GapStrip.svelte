@@ -2,6 +2,7 @@
   import KindMark, { KIND_WORD_KEYS, type Kind } from '../components/KindMark.svelte';
   import Icon from '../components/Icon.svelte';
   import { t } from '../i18n';
+  import { uniqueId } from '../utils/uniqueId';
 
   /**
    * The gap strip of `navigation.adoc#gap-strip`: at the left edge, the levels the window hides,
@@ -45,6 +46,23 @@
 
   /** Whether the popover of the hidden levels' names is open. */
   let popoverOpen = $state(false);
+  /** The Names control and the popover it owns, for `aria-controls` and the focus. */
+  const namesId = uniqueId('gap-strip-names');
+  const popoverId = uniqueId('gap-strip-popover');
+  let namesButton = $state<HTMLButtonElement | null>(null);
+  let popover = $state<HTMLElement | null>(null);
+
+  /**
+   * Opens or closes the popover of names, and moves the focus with it.
+   */
+  async function togglePopover(): Promise<void> {
+    popoverOpen = !popoverOpen;
+    if (popoverOpen) {
+      requestAnimationFrame(() => popover?.querySelector<HTMLElement>('button')?.focus());
+    } else {
+      namesButton?.focus();
+    }
+  }
 
   /**
    * @param index the index of a hidden level
@@ -53,15 +71,22 @@
     popoverOpen = false;
     onPeek(index);
   }
+
+  /**
+   * @param event the key press in the strip
+   */
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && popoverOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      popoverOpen = false;
+      namesButton?.focus();
+    }
+  }
 </script>
 
 {#if placement === 'end'}
-  <div
-    class="gap-strip gap-strip--end"
-    role="group"
-    aria-label={label}
-    style:inline-size={`${width}px`}
-  >
+  <div class="gap-strip gap-strip--end" style:inline-size={`${width}px`}>
     <button
       type="button"
       class="gap-strip__return"
@@ -72,11 +97,13 @@
     </button>
   </div>
 {:else}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="gap-strip gap-strip--start"
     role="group"
     aria-label={label}
     style:inline-size={`${width}px`}
+    onkeydown={onKeydown}
   >
     {#each hidden as entry (entry.index)}
       <button
@@ -96,17 +123,25 @@
 
     {#if !names}
       <button
+        bind:this={namesButton}
+        id={namesId}
         type="button"
         class="gap-strip__names"
         aria-label={$t('web.nav.strip.names')}
-        aria-haspopup="true"
         aria-expanded={popoverOpen}
-        onclick={() => (popoverOpen = !popoverOpen)}
+        aria-controls={popoverId}
+        onclick={() => void togglePopover()}
       >
         <Icon name="act.more" size={16} />
       </button>
       {#if popoverOpen}
-        <div class="gap-strip__popover" role="group" aria-label={$t('web.nav.strip.names')}>
+        <div
+          bind:this={popover}
+          id={popoverId}
+          class="gap-strip__popover"
+          role="group"
+          aria-label={$t('web.nav.strip.names')}
+        >
           {#each hidden as entry (entry.index)}
             <button
               type="button"
@@ -132,7 +167,12 @@
     gap: var(--space-1);
     min-inline-size: 0;
     padding-block: var(--space-1);
-    overflow-x: hidden;
+  }
+
+  /* The popover of names stands over the columns, anchored at the strip, so the 44 px strip never
+     clips the names it opens. */
+  .gap-strip--start {
+    position: relative;
   }
 
   .gap-strip__mark,
@@ -195,9 +235,15 @@
   }
 
   .gap-strip__popover {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: 0;
+    z-index: 20;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    inline-size: 14rem;
+    max-inline-size: 80vw;
     padding: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);

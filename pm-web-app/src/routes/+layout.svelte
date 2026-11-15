@@ -389,6 +389,7 @@
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}
+    {$runtimeStore.quietNavigationNotice || ''}
   </div>
 {/if}
 

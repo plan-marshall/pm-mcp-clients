@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import path from 'node:path';
 import WizardPageFixture from '../../test/fixtures/WizardPageFixture.svelte';
+import WizardPageStepsOnlyFixture from '../../test/fixtures/WizardPageStepsOnlyFixture.svelte';
 import { reportBox } from '../test/resizeObserver';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
@@ -43,7 +44,17 @@ async function renderWizard(container: number, sideOpen = true, onHideSide = () 
 
 /**
  * @param testId the element's test id
- * @returns its inline width in px
+ * @returns the width the side column takes from its bound custom property
+ */
+function sideWidthOf(testId: string): number {
+  return Number.parseFloat(
+    screen.getByTestId(testId).style.getPropertyValue('--side-width'),
+  );
+}
+
+/**
+ * @param testId the element's test id
+ * @returns the inline width it carries
  */
 function widthOf(testId: string): number {
   return Number.parseFloat(screen.getByTestId(testId).style.inlineSize);
@@ -70,6 +81,14 @@ describe('WizardPage', () => {
     expect(screen.queryByTestId('side-column')).toBeNull();
   });
 
+  it('draws no footer row when the view fills no footer slot', () => {
+    render(WizardPageStepsOnlyFixture, {
+      props: { steps: 'Step 1 of 5 · Language', body: 'One card of the wizard' },
+    });
+
+    expect(screen.queryByTestId('wizard-page-footer')).not.toBeInTheDocument();
+  });
+
   it('draws no side column while the chat is closed', async () => {
     await renderWizard(1048, false);
 
@@ -80,14 +99,14 @@ describe('WizardPage', () => {
   it('docks the chat at 480 px where the container keeps both side by side', async () => {
     await renderWizard(1048);
 
-    expect(widthOf('side-column')).toBe(480);
+    expect(sideWidthOf('side-column')).toBe(480);
     expect(widthOf('wizard-content')).toBeGreaterThanOrEqual(480);
   });
 
   it('narrows the chat to 400 px where 480 would drop the content below 480', async () => {
     await renderWizard(952);
 
-    expect(widthOf('side-column')).toBe(400);
+    expect(sideWidthOf('side-column')).toBe(400);
     expect(widthOf('wizard-content')).toBeGreaterThanOrEqual(480);
   });
 
@@ -96,6 +115,15 @@ describe('WizardPage', () => {
 
     expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
     expect(screen.queryByTestId('wizard-content')).toBeNull();
+  });
+
+  it('leaves the width to the stylesheet, so the phone rule can take the screen', async () => {
+    await renderWizard(1048);
+
+    const side = screen.getByTestId('side-column');
+
+    expect(side.style.inlineSize).toBe('');
+    expect(side.style.getPropertyValue('--side-width')).toBe('480px');
   });
 
   it('hides the chat on its own act and on Escape', async () => {

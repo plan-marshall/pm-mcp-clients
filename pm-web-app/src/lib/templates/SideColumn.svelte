@@ -29,7 +29,8 @@
   class="side-column"
   class:side-column--taken={takesSpace}
   data-testid="side-column"
-  style:inline-size={`${width}px`}
+  aria-label={$t('control.chat.side_label')}
+  style:--side-width={`${width}px`}
 >
   <header class="side-column__head">
     <Button variant="ghost" size="small" onclick={() => onHide()}>{$t('control.chat.hide')}</Button>
@@ -44,9 +45,10 @@
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
+    inline-size: var(--side-width, 0);
     gap: var(--space-3);
     min-inline-size: 0;
-    max-block-size: 100%;
+    max-block-size: 100dvh;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -75,5 +77,4 @@
       padding: var(--space-3);
       background-color: var(--color-bg-app);
     }
-  }
-</style>
+  }</style>

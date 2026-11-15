@@ -34,7 +34,8 @@
   import GapStrip from './GapStrip.svelte';
   import SideColumn from './SideColumn.svelte';
   import { t } from '../i18n';
-  import { pageInset, windowFor, type ColumnWindow } from './columnWindow';
+  import { announceNavigation } from '../stores/runtime';
+  import { MEASURE_FALLBACK, pageInset, windowFor, type ColumnWindow } from './columnWindow';
 
   /**
    * The column engine (`components.adoc#triage-page`): it draws the chain of levels as columns and
@@ -51,15 +52,9 @@
    * body and the object column, and keeps its rows, its filter, its matches and its selection.
    *
    * Before the observer's first delivery — and where no layout engine reports a box at all — the
-   * window starts from the page's own width and is replaced by the measured container width on the
-   * first report.
+   * window starts from the desktop measure; the observer replaces it with the container's measured
+   * width on its first report. The viewport is never the source: the container is.
    */
-  /**
-   * The width a container is assumed to have before the observer's first report: the page's own
-   * width where it reports one, and the desktop measure where no layout engine reports anything.
-   */
-  const PROVISIONAL_WIDTH =
-    typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1024;
 
   interface Props {
     /** The chain of levels, the object column last. */
@@ -102,11 +97,11 @@
   let measured = $state(0);
   /** The level a peek starts the window at; `null` while the window shows the object. */
   let peek = $state<number | null>(null);
-  /** What the polite live region announces after a shift. */
-  let announcement = $state('');
+  /** The chain the last shift was measured on, so a new selection ends a peek. */
+  let previousChain = $state('');
 
   /** The container's width the window is computed from. */
-  const container = $derived(measured > 0 ? measured : PROVISIONAL_WIDTH);
+  const container = $derived(measured > 0 ? measured : MEASURE_FALLBACK);
 
   /** The window the chain gets in that container. */
   const layout: ColumnWindow = $derived(
@@ -155,7 +150,16 @@
 
   $effect(() => {
     const element = frame;
-    if (element === null || typeof ResizeObserver === 'undefined') {
+    if (element === null) {
+      return;
+    }
+    // A browser lays the element out before the observer's first delivery; read that box now, so
+    // the window never starts from a guess where the container can be measured.
+    const initial = element.getBoundingClientRect().width;
+    if (initial > 0) {
+      measured = initial;
+    }
+    if (typeof ResizeObserver === 'undefined') {
       return;
     }
     const observer = new ResizeObserver((entries) => {
@@ -166,6 +170,16 @@
     });
     observer.observe(element);
     return () => observer.disconnect();
+  });
+
+  // A peek ends at the next selection: the view hands a new chain, and the window returns to the
+  // object (`navigation.adoc#gap-strip`).
+  $effect(() => {
+    const chain = levels.map((level) => level.key).join('\u0000');
+    if (previousChain !== '' && chain !== previousChain) {
+      peek = null;
+    }
+    previousChain = chain;
   });
 
   /** The element tags that hold the focus as a field, where the column keys stay with the field. */
@@ -199,6 +213,9 @@
     target.focus();
   }
 
+  /** What the last shift announced, so an identical shift is announced again. */
+  let lastAnnouncement = '';
+
   /**
    * @param index the level's index in the chain
    */
@@ -207,10 +224,14 @@
     if (level === undefined) {
       return;
     }
-    announcement = $t('web.nav.announce', {
+    const text = $t('web.nav.announce', {
       name: level.title,
       kind: $t(KIND_WORD_KEYS[level.kind]),
     });
+    // A polite region re-announces only a changed string; a zero-width space keeps two identical
+    // announcements apart (`navigation.adoc#keys`).
+    announceNavigation(text === lastAnnouncement ? `${text}\u200B` : text);
+    lastAnnouncement = text;
   }
 
   /**
@@ -325,7 +346,6 @@
     {#each visible as entry (entry.level.key)}
       <section
         class="triage-page__column"
-        class:triage-page__column--object={isObjectColumn(entry.index)}
         data-column-index={entry.index}
         data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
         aria-label={entry.level.title}
@@ -370,10 +390,7 @@
       />
     {/if}
   </div>
-
-  <div class="sr-only" aria-live="polite" data-testid="triage-announce">{announcement}</div>
 </div>
-
 <style>
   .triage-page {
     inline-size: 100%;
@@ -402,7 +419,7 @@
   .triage-page__column {
     flex: 0 0 auto;
     min-inline-size: 0;
-    max-block-size: 100%;
+    max-block-size: 100dvh;
     overflow-y: auto;
     overflow-x: hidden;
   }

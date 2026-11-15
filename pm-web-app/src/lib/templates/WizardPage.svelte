@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
   import SideColumn from './SideColumn.svelte';
-  import { pageInset, windowFor } from './columnWindow';
+  import { MEASURE_FALLBACK, pageInset, windowFor } from './columnWindow';
 
   /**
    * The wizard page (UX-P-03, template C): the compact step bar, the one card and the footer with
@@ -21,28 +21,32 @@
   /** The act that hides the chat; the view replaces the address. */
   export let onHideSide: () => void = () => {};
 
-  /**
-   * The width a container is assumed to have before the observer's first report: the page's own
-   * width where it reports one, and the desktop measure where no layout engine reports anything.
-   */
-  const PROVISIONAL_WIDTH =
-    typeof window !== 'undefined' && window.innerWidth > 0 ? window.innerWidth : 1024;
   /** The widest the content is, the measure a form wants. */
   const CONTENT_MAX = 720;
 
   /** The measuring frame: the template's own container. */
   let frame: HTMLElement | null = null;
-  /** The container's measured width; `0` until the observer's first report. */
+  /** The container's measured width; `0` until it can be measured. */
   let measured = 0;
 
-  $: container = measured > 0 ? measured : PROVISIONAL_WIDTH;
+  // The viewport is never the source of the width: the container is. Where no layout engine reports
+  // a box at all, the desktop measure stands in (MEASURE_FALLBACK).
+  $: container = measured > 0 ? measured : MEASURE_FALLBACK;
   $: layout = windowFor({ container, depth: 1, sideOpen: sideOpen && side !== undefined });
   $: contentWidth = layout.sideTakesSpace
     ? 0
     : Math.min(CONTENT_MAX, sideOpen && side !== undefined ? layout.objectWidth : layout.width);
 
   onMount(() => {
-    if (frame === null || typeof ResizeObserver === 'undefined') {
+    if (frame === null) {
+      return;
+    }
+    // A browser lays the element out before the observer's first delivery; read that box now.
+    const initial = frame.getBoundingClientRect().width;
+    if (initial > 0) {
+      measured = initial;
+    }
+    if (typeof ResizeObserver === 'undefined') {
       return;
     }
     const observer = new ResizeObserver((entries) => {
@@ -143,6 +147,7 @@
     flex: 0 0 auto;
     gap: var(--space-5);
     max-inline-size: 720px;
+    max-block-size: 100dvh;
     margin-inline: auto;
     min-inline-size: 0;
     overflow-y: auto;

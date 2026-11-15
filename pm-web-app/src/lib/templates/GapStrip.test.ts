@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import path from 'node:path';
 import GapStripFixture from '../../test/fixtures/GapStripFixture.svelte';
+import { ruleOf, styleOf } from '../../test/templateStyle';
 import type { Level } from './TriagePage.svelte';
 
 /**
@@ -9,6 +11,8 @@ import type { Level } from './TriagePage.svelte';
  * marks only behind a _Names_ popover. A mark peeks at its level; the strip at the right edge
  * returns to the object.
  */
+
+const SOURCE = path.resolve(__dirname, './GapStrip.svelte');
 
 /** Two hidden levels, as a window of three columns leaves them. */
 const HIDDEN: Array<{ level: Level; index: number }> = [
@@ -43,7 +47,6 @@ describe('the gap strip', () => {
     expect(screen.queryByRole('button', { name: 'Names' })).toBeNull();
     expect(screen.getByText('Lens list')).toBeInTheDocument();
   });
-
   it('shows marks only, with the advisory, where the names would leave one column', () => {
     render(GapStripFixture, {
       props: { hidden: HIDDEN, names: false, label: 'Hidden levels' },
@@ -75,6 +78,37 @@ describe('the gap strip', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Project column' }));
 
     expect(peeks).toEqual([1]);
+  });
+
+  it('stands the popover over the columns, so the narrow strip never clips the names', async () => {
+    render(GapStripFixture, {
+      props: { hidden: HIDDEN, names: false, label: 'Hidden levels' },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Names' }));
+
+    const popover = ruleOf(styleOf(SOURCE), '.gap-strip__popover');
+
+    expect(popover).toContain('position: absolute');
+    expect(popover).toContain('inline-size: 14rem');
+    expect(ruleOf(styleOf(SOURCE), '.gap-strip--start')).toContain('position: relative');
+    // The strip itself may not clip what its popover shows.
+    expect(ruleOf(styleOf(SOURCE), '.gap-strip')).not.toContain('overflow-x: hidden');
+  });
+
+  it('closes the popover on Escape and returns the focus to its control', async () => {
+    render(GapStripFixture, {
+      props: { hidden: HIDDEN, names: false, label: 'Hidden levels' },
+    });
+
+    const namesButton = screen.getByRole('button', { name: 'Names' });
+    await fireEvent.click(namesButton);
+    expect(screen.getByRole('group', { name: 'Names' })).toBeInTheDocument();
+
+    await fireEvent.keyDown(screen.getByRole('group', { name: 'Names' }), { key: 'Escape' });
+
+    expect(screen.queryByRole('group', { name: 'Names' })).toBeNull();
+    expect(document.activeElement).toBe(namesButton);
   });
 
   it('peeks at the level of the mark that was selected', async () => {

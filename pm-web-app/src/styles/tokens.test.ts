@@ -25,6 +25,7 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
   '--compose-lines', // Component-local line count Compose sets from script on its text area
   '--triage-inset', // Component-local page inset the column engine measures and binds
   '--wizard-inset', // Component-local page inset the wizard measures and binds
+  '--side-width', // Component-local width the side column template computes and binds
 ]);
 
 /**

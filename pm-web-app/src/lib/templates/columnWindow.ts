@@ -52,8 +52,11 @@ const PHONE_INSET = 12;
 /** The container width below which the page takes the narrow inset. */
 const INSET_BELOW = 480;
 
-/** The container width below which the layout is the phone's, one column and no strip. */
-const PHONE_BELOW = 768;
+/**
+ * The width a container is assumed to have where no layout engine reports one (a test environment
+ * without layout): the desktop measure the design's tables start from.
+ */
+export const MEASURE_FALLBACK = 1024;
 
 /**
  * @param container the container's width in px
@@ -84,8 +87,6 @@ export interface ColumnWindow {
   container: number;
   /** The content width `W`: the container less the page inset. */
   width: number;
-  /** Whether the container is below the phone's width. */
-  phone: boolean;
   /** The number of navigation columns rendered; `0` while the side column takes the space. */
   columns: number;
   /** The width of every list column; `0` with fewer than two columns. */
@@ -319,7 +320,6 @@ export function windowFor(input: ColumnWindowInput): ColumnWindow {
   return {
     container,
     width,
-    phone: container < PHONE_BELOW,
     columns: nav.columns,
     listWidth: nav.listWidth,
     objectWidth: nav.rightWidth,
