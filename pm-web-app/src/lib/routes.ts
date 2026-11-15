@@ -432,9 +432,9 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
   if (route === 'report') {
     return params.reportId ? `/reports/${encodeURIComponent(params.reportId)}` : null;
   }
-  // The two writers below are the old addresses this plan replaces. The views that still write
-  // them move to the new paths in this plan's fourth deliverable; until then the address bar is
-  // never left on a path the app cannot open, and `replaceLegacyAddress` replaces them on open.
+  // The two writers below are the old addresses this plan replaces. No caller passes them any
+  // more; they stay only so an address already in the bar keeps its path, and
+  // `replaceLegacyAddress` replaces them on open.
   if (route === 'reports' && params.reportPlanId) {
     return `/reports?plan=${encodeURIComponent(params.reportPlanId)}`;
   }
@@ -566,10 +566,9 @@ export function parseAddress(url: string): Address | null {
     if (turn) address.turn = turn;
   }
 
-  // The old `/reports?plan=` address: its plan is read once so the view can open that report's
-  // detail, and it is never written again.
-  if (match.route === 'reports') {
-    const legacy = valueOf(query, 'plan');
+    // The old `/reports?plan=` address: its plan is read once so the view can open that report's
+    // detail, and it is never written again.
+    if (match.route === 'reports') {    const legacy = valueOf(query, 'plan');
     if (legacy) address.legacyReportPlanId = legacy;
   }
 
@@ -602,8 +601,6 @@ export function formatAddress(address: Address): string | null {
           epicId: address.epicId,
           taskId: address.taskId,
           reportId: address.reportId,
-          reportPlanId: address.reportPlanId,
-          explorerProjectId: address.explorerProjectId,
           onboardingStep: address.onboardingStep,
           // A list route's decision travels in the path of its own route, never in the old query.
           decisionId: address.route === 'decision' ? address.decisionId : undefined,

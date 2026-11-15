@@ -13,7 +13,7 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
-  import { runtimeStore, refreshReportsCount, navigateTo } from '../stores/runtime';
+  import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
   import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -737,7 +737,8 @@
     syncedRouteReportPlan = planId;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
     // The address of the report names the report, not the plan: once the row is known, the address
-    // is replaced with it, so a reload and a bookmark open the same detail.
+    // is replaced with it, so a reload and a bookmark open the same detail. (Recorded as open in
+    // the self-review: the layout writes the list address back while the route stays `reports`.)
     const report = items.find((item) => planIdOf(item) === planId);
     if (report?.id) {
       writeAddress({ route: 'report', reportId: report.id }, 'replace');
@@ -781,7 +782,7 @@
    */
   function openFromPart(part: 'project' | 'epic' | 'plan', report: ReportItem): void {
     if (part === 'project' && report.from?.project) {
-      navigateTo('projects', { explorerProjectId: report.from.project });
+      openProjectInExplorer(report.from.project);
     } else if (part === 'epic' && report.from?.epic) {
       navigateTo('epic', { epicId: report.from.epic });
     } else if (part === 'plan' && report.from?.plan) {
@@ -875,7 +876,7 @@
     }
     if (kind === 'project') {
       if (item.from?.project) {
-        navigateTo('projects', { explorerProjectId: item.from.project });
+        openProjectInExplorer(item.from.project);
       }
       return;
     }
@@ -1138,7 +1139,7 @@
                   size="small"
                   aria-label={$t('report.from.open_project', { project: pGroup.key })}
                   onclick={() =>
-                    navigateTo('projects', { explorerProjectId: pGroup.key })}
+                    openProjectInExplorer(pGroup.key)}
                 >
                   {pGroup.key}
                 </Button>

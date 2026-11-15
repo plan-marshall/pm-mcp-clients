@@ -362,8 +362,10 @@ async function probeExistingPairing(): Promise<PairingProbe> {
 /** Drops the code fragment after the browser is known to be paired. */
 function dropCodeFragment(): void {
   // The fragment is not part of the address the app writes, so the pairing code never reaches the
-  // history; the entry the app leaves carries its mark, like every other entry it creates.
-  writeAddress(currentAddress() ?? { route: 'pair' }, 'replace');
+  // history. The mark of this load was read before this write, so the write never turns a load the
+  // app was opened at into an app-created one.
+  const address = currentAddress();
+  if (address) writeAddress(address, 'replace');
   runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 }
 
@@ -617,6 +619,9 @@ function drainInfoOf(
 }
 
 export async function initRuntime(): Promise<void> {
+  // Whether the app was opened from outside is read before anything writes: dropping a pairing
+  // fragment is a write of this load, and it must not make the load look app-created.
+  const fromOutside = openedFromOutside();
   const stopsAtStart = recoveryStops;
   if (!hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -699,7 +704,7 @@ export async function initRuntime(): Promise<void> {
     const place = readRememberedPlace();
     const facts = factsOf(summary, place);
     const start = startAddress({
-      fromOutside: openedFromOutside(),
+      fromOutside,
       requested: currentAddress(),
       onboarded,
       place,
@@ -1110,7 +1115,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
     decisionId: state.selectedDecisionId ?? undefined,
-    explorerProjectId: state.selectedProjectId ?? undefined,
+    reportId: state.selectedReportId ?? undefined,
     // The onboarding step is part of the address while the onboarding is the shown route. The view
     // consumes the store's copy once, but the address keeps it so a reload opens the same aspect.
     onboardingStep:

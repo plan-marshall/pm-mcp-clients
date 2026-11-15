@@ -207,9 +207,6 @@
   // The theme this browser chose. `app.html` already applied it before the first paint; the
   // control reads the same choice so the pressed option and the document agree.
   let themeChoice = $state<ThemeChoice>(readThemeChoice());
-  // The first write settles the address bar on the route the store chose; every later one is a
-  // history entry, so the browser's Back returns to the previous view.
-  let addressBarSettled = false;
 
   onMount(() => {
     // Native buttons and the views rendered later get their hover advisory from the observer.
@@ -265,11 +262,11 @@
   // redeemed first, and only then does the app move on.
   $effect(() => {
     if ($runtimeStore.isInitialized && !devRoute) {
-      syncPath($runtimeStore.currentRoute);
+      syncPath();
     }
   });
 
-  function syncPath(route: AppRoute): void {
+  function syncPath(): void {
     if (typeof window === 'undefined') return;
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
@@ -278,7 +275,6 @@
     // The URL the popstate handler just adopted is already in the address bar; the writer leaves
     // it, and a write always replaces the entry the view stands on.
     writeAddress(address, 'replace');
-    addressBarSettled = true;
   }
 
   /**
