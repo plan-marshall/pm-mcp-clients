@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import DevComponentsPage from './+page.svelte';
 import { KIND_ICONS, type Kind } from '../../../lib/components/KindMark.svelte';

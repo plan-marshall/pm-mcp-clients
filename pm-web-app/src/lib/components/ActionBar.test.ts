@@ -159,6 +159,7 @@ describe('ActionBar', () => {
           { id: 'pause', label: 'Pause' },
           { id: 'chat', label: 'Chat' },
           { id: 'settings', label: 'Settings' },
+          { id: 'extra', label: 'Extra' },
           { id: 'later', label: 'Later', disabled: true, disabledReason: 'Not yet' },
         ],
       },

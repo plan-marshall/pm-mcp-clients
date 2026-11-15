@@ -20,9 +20,11 @@
   export let label: string;
   export let onChange: (id: string) => void = () => {};
 
-  if (options.length < 2 || options.length > 5) {
+  $: if (options.length < 2 || options.length > 5) {
     throw new Error(`SegmentedControl requires between 2 and 5 options, received ${options.length}`);
   }
+
+  $: hasMatch = options.some((opt) => opt.id === value);
 
   let buttonElements: HTMLButtonElement[] = [];
 
@@ -69,11 +71,12 @@
 <div class="segmented-control" role="radiogroup" aria-label={label} {...$$restProps}>
   {#each options as option, i (option.id)}
     {@const isSelected = option.id === value}
+    {@const isFocusable = isSelected || (!hasMatch && i === 0)}
     <button
       type="button"
       role="radio"
       aria-checked={isSelected}
-      tabindex={isSelected ? 0 : -1}
+      tabindex={isFocusable ? 0 : -1}
       class="segmented-control__option"
       bind:this={buttonElements[i]}
       on:click={() => selectOption(option.id)}

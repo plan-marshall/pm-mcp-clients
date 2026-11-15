@@ -51,7 +51,7 @@
   export function focusFirst(): void {
     const entries = menuEntries();
     if (entries.length === 0) return;
-    const target = entries.find((e) => e.getAttribute('aria-disabled') !== 'true');
+    const target = entries.find((e) => e.getAttribute('aria-disabled') !== 'true') ?? entries[0];
     target?.focus();
   }
 
@@ -95,6 +95,7 @@
   }
 
   async function confirmDestructiveAction(): Promise<void> {
+    if (busy) return;
     const item = confirmingItem;
     confirmingItem = null;
     close(true);
@@ -231,6 +232,7 @@
 {#if confirmingItem}
   <ConfirmDialog
     open={true}
+    {busy}
     title={confirmingItem.label}
     consequences={confirmingItem.disabledReason ? [confirmingItem.disabledReason] : [confirmingItem.label]}
     actionLabel={confirmingItem.label}

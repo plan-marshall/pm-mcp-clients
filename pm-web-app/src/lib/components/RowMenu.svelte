@@ -60,8 +60,10 @@
     const room = Math.max(0, above ? roomAbove : roomBelow);
     if (height > room) {
       maxBlockSize = `${room}px`;
+      menuHost.style.maxBlockSize = maxBlockSize;
     } else {
       maxBlockSize = undefined;
+      menuHost.style.maxBlockSize = '';
     }
   }
 
@@ -150,7 +152,9 @@
       {above}
       {maxBlockSize}
       {triggerElement}
-      onClose={(returnFocus) => closeMenu(returnFocus)}
+      onClose={() => {
+        open = false;
+      }}
     >
       <slot />
     </ActMenu>

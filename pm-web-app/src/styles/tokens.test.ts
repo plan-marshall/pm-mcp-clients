@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { LAYER_TOKENS as SHARED_LAYER_TOKENS } from './layers';
 import fs from 'fs';
 import path from 'path';
 import { contrastRatio, deltaE00, hueDistance, toOklch } from '../test/colourMetrics';
@@ -547,6 +548,12 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(menu).toBeLessThan(toast);
       expect(toast).toBeLessThan(dialog);
     });
+
+    it('ensures shared LAYER_TOKENS exactly mirrors the layer declarations in tokens.css', () => {
+      const declaredInCss = Object.keys(themes.root).filter((k) => k.startsWith('--layer-'));
+      const sharedTokens = SHARED_LAYER_TOKENS.map((l) => l.token);
+      expect(declaredInCss.sort()).toEqual(sharedTokens.sort());
+    });
   });
 
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
@@ -801,15 +808,15 @@ describe('tokens.css: static scans over the source tree', () => {
       const relPath = path.normalize(path.relative(srcDir, file));
       const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
 
-      const lines = fs.readFileSync(file, 'utf8').split('\n');
+      const content = fs.readFileSync(file, 'utf8');
+      // Strip block comments while preserving newlines to keep line numbers intact
+      const sanitized = content
+        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+        .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
+      const lines = sanitized.split('\n');
       lines.forEach((line, idx) => {
         const trimmed = line.trim();
-        if (
-          trimmed.startsWith('/*') ||
-          trimmed.startsWith('//') ||
-          trimmed.startsWith('*') ||
-          trimmed.startsWith('<!--')
-        ) {
+        if (trimmed.startsWith('//')) {
           return;
         }
 
@@ -828,5 +835,20 @@ describe('tokens.css: static scans over the source tree', () => {
     }
 
     expect(violations).toEqual([]);
+  });
+
+  it('detects numeric z-index declarations on universal selectors and comment-adjacent code', () => {
+    const raw = `
+      /* comment */
+      * { position: relative; z-index: 999; }
+    `;
+    const sanitized = raw.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+    const zIndexRegex = /z-index\s*:\s*(-?\d+)\b/g;
+    const matches: string[] = [];
+    let match;
+    while ((match = zIndexRegex.exec(sanitized)) !== null) {
+      matches.push(match[1]);
+    }
+    expect(matches).toEqual(['999']);
   });
 });

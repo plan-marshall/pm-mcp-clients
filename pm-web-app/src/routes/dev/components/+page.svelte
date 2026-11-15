@@ -34,6 +34,7 @@
   import SegmentedControl from '../../../lib/components/SegmentedControl.svelte';
   import Toggle from '../../../lib/components/Toggle.svelte';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
+  import { LAYER_TOKENS } from '../../../styles/layers';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -93,17 +94,12 @@
   /** The tab the fixture shows as selected, one per theme, so each list answers its own keyboard. */
   let activeTabs: Record<string, string> = {};
 
-  const LAYERS = [
-    { name: 'sticky', token: '--layer-sticky' },
-    { name: 'bar', token: '--layer-bar' },
-    { name: 'menu', token: '--layer-menu' },
-    { name: 'toast', token: '--layer-toast' },
-    { name: 'dialog', token: '--layer-dialog' },
-  ];
+  const LAYERS = LAYER_TOKENS;
 
   let segmentedValue: Record<string, string> = { light: 'all', dark: 'all' };
   let togglePressed: Record<string, boolean> = { light: false, dark: true };
-  let actMenuOpenState: Record<string, boolean> = { light: true, dark: true };
+  let actMenuDownOpen: Record<string, boolean> = { light: true, dark: true };
+  let actMenuUpOpen: Record<string, boolean> = { light: true, dark: true };
 
   $: segmentedOptions = [
     { id: 'all', label: $t('dev.segmented.all') },
@@ -619,34 +615,55 @@
       <div class="dev__row">
         <Toggle
           label="{$t('dev.toggle.label')} (off)"
-          icon="star"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
           pressed={false}
         />
         <Toggle
           label="{$t('dev.toggle.label')} (on)"
-          icon="star"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
           pressed={true}
         />
         <Toggle
           label="{$t('dev.toggle.label')} (interactive)"
-          icon="star"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
           bind:pressed={togglePressed[theme]}
         />
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.act_menu')}</h3>
-      <div class="dev__row dev__row--act-menu">
-        <ActMenu
-          items={actMenuActs}
-          label="{$t('dev.section.act_menu')} (down)"
-          open={true}
-        />
-        <ActMenu
-          items={actMenuActs}
-          label="{$t('dev.section.act_menu')} (upward)"
-          above={true}
-          open={true}
-        />
+      <div class="dev__row dev__act-menu-fixtures">
+        <div class="dev__act-menu-fixture">
+          <Button
+            variant="secondary"
+            size="sm"
+            onclick={() => { actMenuDownOpen[theme] = !actMenuDownOpen[theme]; }}
+          >
+            {$t('dev.section.act_menu')} (down)
+          </Button>
+          <ActMenu
+            items={actMenuActs}
+            label="{$t('dev.section.act_menu')} (down)"
+            bind:open={actMenuDownOpen[theme]}
+          />
+        </div>
+        <div class="dev__act-menu-fixture dev__act-menu-fixture--above">
+          <Button
+            variant="secondary"
+            size="sm"
+            onclick={() => { actMenuUpOpen[theme] = !actMenuUpOpen[theme]; }}
+          >
+            {$t('dev.section.act_menu')} (upward)
+          </Button>
+          <ActMenu
+            items={actMenuActs}
+            label="{$t('dev.section.act_menu')} (upward)"
+            above={true}
+            bind:open={actMenuUpOpen[theme]}
+          />
+        </div>
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.status')} (fixed)</h3>
@@ -810,11 +827,22 @@
     background-color: var(--color-brand-subtle);
   }
 
-  .dev__row--act-menu {
-    position: relative;
-    min-block-size: 200px;
-    padding-block: var(--space-4);
+  .dev__act-menu-fixtures {
+    display: flex;
+    gap: var(--space-8);
     align-items: flex-start;
+    padding-block-start: var(--space-4);
+    padding-block-end: 180px;
+  }
+
+  .dev__act-menu-fixture {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  .dev__act-menu-fixture--above {
+    margin-block-start: 160px;
   }
 
   .dev__layers-demo {

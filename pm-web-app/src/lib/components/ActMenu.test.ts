@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
@@ -176,6 +175,39 @@ describe('ActMenu component', () => {
     expect(onAct).toHaveBeenCalledWith(expect.objectContaining({ id: 'delete' }));
   });
 
+  it('does not confirm destructive action if busy becomes true while confirmation is open', async () => {
+    const onclick = vi.fn();
+    const onAct = vi.fn();
+
+    const { rerender } = render(ActMenu, {
+      props: {
+        open: true,
+        label: 'Actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick }],
+        onAct,
+      },
+    });
+
+    const item = screen.getByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(item);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Now busy becomes true while dialog is open
+    rerender({
+      open: true,
+      busy: true,
+      label: 'Actions',
+      items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick }],
+      onAct,
+    });
+
+    const confirmBtn = screen.getByRole('button', { name: 'Delete item' });
+    await fireEvent.click(confirmBtn);
+    expect(onclick).not.toHaveBeenCalled();
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
   it('edge: no items draws no menu entries', () => {
     render(ActMenu, {
       props: {
@@ -231,6 +263,23 @@ describe('ActMenu component', () => {
     expect(document.activeElement).toBe(items[0]);
     await fireEvent.keyDown(items[0], { key: 'ArrowDown' });
     expect(document.activeElement).toBe(items[1]);
+  });
+
+  it('focuses first disabled entry on opening when all entries are disabled', async () => {
+    const { component } = render(ActMenu, {
+      props: {
+        open: true,
+        label: 'All disabled',
+        items: [
+          { id: 'd1', label: 'First disabled', disabled: true, disabledReason: 'Reason 1' },
+          { id: 'd2', label: 'Second disabled', disabled: true, disabledReason: 'Reason 2' },
+        ],
+      },
+    });
+
+    component.focusFirst();
+    const items = screen.getAllByRole('menuitem');
+    expect(document.activeElement).toBe(items[0]);
   });
 
   it('edge: a disabled entry with and without a reason', () => {

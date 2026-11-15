@@ -118,7 +118,7 @@ describe('SegmentedControl component', () => {
       },
     });
 
-    const group = screen.getByRole('radiogroup');
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument();
     const radios = screen.getAllByRole('radio');
 
     radios[0].focus();
@@ -178,6 +178,57 @@ describe('SegmentedControl component', () => {
     await fireEvent.keyDown(radios[3], { key: 'Home' });
     expect(onChange).toHaveBeenCalledWith('1');
     expect(document.activeElement).toBe(radios[0]);
+  });
+
+  it('reactively checks option bounds on prop update', async () => {
+    const { rerender } = render(SegmentedControl, {
+      props: {
+        label: 'View Mode',
+        value: 'plans',
+        options: defaultOptions,
+      },
+    });
+
+    await expect(
+      rerender({
+        label: 'View Mode',
+        value: 'plans',
+        options: [
+          { id: '1', label: '1' },
+          { id: '2', label: '2' },
+          { id: '3', label: '3' },
+          { id: '4', label: '4' },
+          { id: '5', label: '5' },
+          { id: '6', label: '6' },
+        ],
+      }),
+    ).rejects.toThrow('SegmentedControl requires between 2 and 5 options');
+  });
+
+  it('preserves a tab stop on the first option when selected option disappears', async () => {
+    const { rerender } = render(SegmentedControl, {
+      props: {
+        label: 'View Mode',
+        value: 'a',
+        options: [
+          { id: 'a', label: 'Option A' },
+          { id: 'b', label: 'Option B' },
+        ],
+      },
+    });
+
+    rerender({
+      label: 'View Mode',
+      value: 'a',
+      options: [
+        { id: 'b', label: 'Option B' },
+        { id: 'c', label: 'Option C' },
+      ],
+    });
+
+    const radios = screen.getAllByRole('radio');
+    expect(radios[0]).toHaveAttribute('tabindex', '0');
+    expect(radios[1]).toHaveAttribute('tabindex', '-1');
   });
 
   it('conforms to design tokens: brand-subtle background, text-primary, 24px and phone 44px', () => {

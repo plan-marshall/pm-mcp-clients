@@ -30,7 +30,7 @@ describe('Toggle component', () => {
       props: {
         label: 'Favourite',
         pressed: false,
-        icon: 'star',
+        icon: 'act.favourite',
         onToggle,
       },
     });
@@ -39,6 +39,9 @@ describe('Toggle component', () => {
     expect(button).toBeInTheDocument();
     expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(button).toHaveAttribute('title', 'Favourite');
+
+    const icon = button.querySelector('.ui-icon');
+    expect(icon).toHaveAttribute('data-icon', 'act.favourite');
 
     await fireEvent.click(button);
     expect(onToggle).toHaveBeenCalledWith(true);
@@ -50,7 +53,7 @@ describe('Toggle component', () => {
       props: {
         label: 'Follow mode',
         pressed: true,
-        icon: 'follow',
+        icon: 'act.favourite-on',
         onToggle,
       },
     });
@@ -67,23 +70,47 @@ describe('Toggle component', () => {
       props: {
         label: 'Favourite',
         pressed: false,
-        icon: 'star',
-        pressedIcon: 'star.filled',
+        icon: 'act.favourite',
+        pressedIcon: 'act.favourite-on',
       },
     });
 
     let iconEl = screen.getByTestId('toggle-icon');
-    expect(iconEl).toHaveAttribute('data-icon', 'star');
+    expect(iconEl).toHaveAttribute('data-icon', 'act.favourite');
+    let uiIcon = iconEl.querySelector('.ui-icon');
+    expect(uiIcon).toHaveAttribute('data-icon', 'act.favourite');
 
     rerender({
       label: 'Favourite',
       pressed: true,
-      icon: 'star',
-      pressedIcon: 'star.filled',
+      icon: 'act.favourite',
+      pressedIcon: 'act.favourite-on',
     });
 
     iconEl = screen.getByTestId('toggle-icon');
-    expect(iconEl).toHaveAttribute('data-icon', 'star.filled');
+    expect(iconEl).toHaveAttribute('data-icon', 'act.favourite-on');
+    uiIcon = iconEl.querySelector('.ui-icon');
+    expect(uiIcon).toHaveAttribute('data-icon', 'act.favourite-on');
+  });
+
+  it('renders a persistent non-colour indicator when pressed without pressedIcon', () => {
+    const { container, rerender } = render(Toggle, {
+      props: {
+        label: 'Favourite',
+        pressed: false,
+        icon: 'act.favourite',
+      },
+    });
+
+    expect(container.querySelector('.toggle__indicator')).toBeNull();
+
+    rerender({
+      label: 'Favourite',
+      pressed: true,
+      icon: 'act.favourite',
+    });
+
+    expect(container.querySelector('.toggle__indicator')).toBeInTheDocument();
   });
 
   it('disabled toggle does not fire onToggle', async () => {
@@ -92,7 +119,7 @@ describe('Toggle component', () => {
       props: {
         label: 'Favourite',
         pressed: false,
-        icon: 'star',
+        icon: 'act.favourite',
         disabled: true,
         onToggle,
       },

@@ -1,3 +1,11 @@
+<script context="module" lang="ts">
+  export const BUTTON_VARIANTS = ['primary', 'secondary', 'danger', 'ghost'] as const;
+  export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
+
+  export const BUTTON_SIZES = ['sm', 'md', 'lg'] as const;
+  export type ButtonSize = (typeof BUTTON_SIZES)[number];
+</script>
+
 <script lang="ts">
   import { advisory } from '../utils/advisoryTitle';
   import Icon from './Icon.svelte';
@@ -13,10 +21,10 @@
    * A loading button keeps its label text alongside its spinner and ignores clicks.
    * Inside `<form>`, disabled and loading buttons prevent submission.
    */
-  export let variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'secondary';
+  export let variant: ButtonVariant = 'secondary';
   export let type: 'button' | 'submit' | 'reset' = 'button';
   /** The size: sm, md, or lg. */
-  export let size: 'sm' | 'md' | 'lg' = 'md';
+  export let size: ButtonSize = 'md';
   /** The icon left of the label, from the delivered UI icon set. */
   export let icon: string | null | undefined = undefined;
   export let disabled = false;

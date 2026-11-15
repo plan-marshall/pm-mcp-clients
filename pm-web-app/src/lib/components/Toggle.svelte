@@ -28,6 +28,7 @@
 <button
   type="button"
   class="toggle"
+  class:toggle--no-pressed-icon={!pressedIcon}
   aria-pressed={pressed}
   aria-label={label}
   title={label}
@@ -37,6 +38,9 @@
 >
   <span class="toggle__icon" data-testid="toggle-icon" data-icon={effectiveIcon}>
     <Icon name={effectiveIcon} size={16} />
+    {#if pressed && !pressedIcon}
+      <span class="toggle__indicator" aria-hidden="true"></span>
+    {/if}
   </span>
 </button>
 
@@ -77,9 +81,19 @@
   }
 
   .toggle__icon {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .toggle__indicator {
+    position: absolute;
+    inset-block-end: -2px;
+    inset-inline: 0;
+    block-size: 2px;
+    border-radius: 1px;
+    background-color: var(--color-brand);
   }
 
   @media (max-width: 767px) {
