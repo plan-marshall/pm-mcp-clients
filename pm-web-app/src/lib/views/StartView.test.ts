@@ -87,7 +87,7 @@ describe('StartView', () => {
     expect(get(runtimeStore)).toMatchObject({ startProjectId: 'pm-mcp-core', startEntryId: null });
   });
 
-  it("adopts the project of an entry opened by its id", async () => {
+  it('adopts the project of an entry opened by its id', async () => {
     arrangeOpen();
     runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startProjectId: null }));
 
@@ -117,23 +117,20 @@ describe('StartView', () => {
       'check.result',
       'entry.moved',
       'state.entered',
-    ])(
-      're-reads the entry on %s and shows what changed',
-      async (event) => {
-        arrangeOpen();
-        const { emit } = arrangeEvents();
-        const read = vi
-          .spyOn(apiClient, 'getEntry')
-          .mockResolvedValue(sources({ sources: [source({ title: 'Read by the event' })] }));
-        render(StartView, { projectId: PROJECT, kind: 'plan' });
-        await screen.findByTestId('source-list');
+    ])('re-reads the entry on %s and shows what changed', async (event) => {
+      arrangeOpen();
+      const { emit } = arrangeEvents();
+      const read = vi
+        .spyOn(apiClient, 'getEntry')
+        .mockResolvedValue(sources({ sources: [source({ title: 'Read by the event' })] }));
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
 
-        emit(event);
+      emit(event);
 
-        expect(await screen.findByText('Read by the event')).toBeInTheDocument();
-        expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
-      },
-    );
+      expect(await screen.findByText('Read by the event')).toBeInTheDocument();
+      expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
+    });
 
     it.each([
       'chat.turn.delta',
@@ -144,7 +141,7 @@ describe('StartView', () => {
       'source.changed',
       'chat.turn',
     ])(
-      'does not re-read the entry on %s: a chat event is the chat\'s own read, and the rest is a piece of a turn or a name no contract has',
+      "does not re-read the entry on %s: a chat event is the chat's own read, and the rest is a piece of a turn or a name no contract has",
       async (event) => {
         arrangeOpen();
         const { emit } = arrangeEvents();
@@ -254,7 +251,9 @@ describe('StartView', () => {
         .spyOn(apiClient, 'getDecomposition')
         .mockRejectedValueOnce(new ClientError('timeout'))
         .mockResolvedValue(CUT);
-      const commit = vi.spyOn(apiClient, 'commitDecomposition').mockResolvedValue(undefined as never);
+      const commit = vi
+        .spyOn(apiClient, 'commitDecomposition')
+        .mockResolvedValue(undefined as never);
 
       await fireEvent.click(screen.getByTestId('started-decompose'));
       expect(await screen.findByTestId('decomposition-error')).toHaveTextContent(
@@ -345,7 +344,9 @@ describe('StartView', () => {
 
       const refused = await screen.findByTestId('start-refused');
       expect(refused).toHaveTextContent('This machine is not fully onboarded: providers.');
-      await fireEvent.click(screen.getByRole('button', { name: "Continue the machine's onboarding" }));
+      await fireEvent.click(
+        screen.getByRole('button', { name: "Continue the machine's onboarding" }),
+      );
 
       expect(get(runtimeStore).currentRoute).toBe('onboarding');
     });
@@ -366,7 +367,9 @@ describe('StartView', () => {
       render(StartView, { projectId: PROJECT, kind: 'plan' });
 
       await screen.findByTestId('start-refused');
-      await fireEvent.click(screen.getByRole('button', { name: "Continue the project's onboarding" }));
+      await fireEvent.click(
+        screen.getByRole('button', { name: "Continue the project's onboarding" }),
+      );
 
       expect(get(runtimeStore)).toMatchObject({
         currentRoute: 'project-onboarding',

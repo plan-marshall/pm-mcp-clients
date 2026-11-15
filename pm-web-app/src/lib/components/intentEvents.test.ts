@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  INTENT_PLAN_EVENTS,
-  changedRevision,
-  refreshesIntentView,
-} from './intentEvents';
+import { INTENT_PLAN_EVENTS, changedRevision, refreshesIntentView } from './intentEvents';
 
 /**
  * `EventName` is the closed catalogue of every event the runtime streams. The intent and outline
@@ -21,7 +17,9 @@ const EVENT_NAME_SOURCE = path.resolve(
 /** @returns the wire names of the closed `EventName` catalogue */
 function catalogue(): string[] {
   const source = fs.readFileSync(EVENT_NAME_SOURCE, 'utf-8');
-  return Array.from(source.matchAll(/^\s*[A-Z][A-Z0-9_]*\("([^"]+)"[,)]/gm)).map((match) => match[1]);
+  return Array.from(source.matchAll(/^\s*[A-Z][A-Z0-9_]*\("([^"]+)"[,)]/gm)).map(
+    (match) => match[1],
+  );
 }
 
 describe('the intent panels refresh on real events', () => {

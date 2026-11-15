@@ -207,10 +207,16 @@
         class:act-menu__item--with-reason={hasReason}
         aria-disabled={isDisabled ? 'true' : undefined}
         aria-describedby={hasReason ? rId : undefined}
-        title={item.disabled ? (item.disabledReason ?? item.advisory ?? item.title) : (item.advisory ?? item.title)}
+        title={item.disabled
+          ? (item.disabledReason ?? item.advisory ?? item.title)
+          : (item.advisory ?? item.title)}
         data-testid={`action-${item.id}`}
-        on:focus={() => { focusedId = item.id; }}
-        on:blur={() => { if (focusedId === item.id) focusedId = null; }}
+        on:focus={() => {
+          focusedId = item.id;
+        }}
+        on:blur={() => {
+          if (focusedId === item.id) focusedId = null;
+        }}
         on:click={(event) => choose(item, event)}
       >
         <span class="act-menu__label">{item.label}</span>
@@ -235,7 +241,9 @@
     open={true}
     {busy}
     title={confirmingItem.label}
-    consequences={confirmingItem.disabledReason ? [confirmingItem.disabledReason] : [confirmingItem.label]}
+    consequences={confirmingItem.disabledReason
+      ? [confirmingItem.disabledReason]
+      : [confirmingItem.label]}
     actionLabel={confirmingItem.label}
     cancelLabel={$t('web.common.cancel')}
     onConfirm={confirmDestructiveAction}

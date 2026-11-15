@@ -71,7 +71,11 @@
   {/if}
   <!-- The monochrome rendering: the star and its balls as one silhouette, a ring cut out around a
        solid centre. In the colour rendering it is drawn only where forced colours are active. -->
-  <g class="brand-mark__mono" class:brand-mark__mono--fallback={rendering === 'colour'} fill="currentColor">
+  <g
+    class="brand-mark__mono"
+    class:brand-mark__mono--fallback={rendering === 'colour'}
+    fill="currentColor"
+  >
     <path
       fill-rule="evenodd"
       d="M12 4.5 14.59 9.34 19.99 10.3 16.18 14.26 16.94 19.7 12 17.3 7.06 19.7 7.82 14.26 4.01 10.3 9.41 9.34ZM9.4 12.9a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0-5.2 0Z"

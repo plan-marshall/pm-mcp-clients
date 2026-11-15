@@ -40,7 +40,9 @@ describe('BlockPalette component', () => {
     expect(screen.getByTestId('block-group-keyword')).toHaveTextContent('keywords and clauses');
     expect(screen.getByTestId('block-group-sub_workflow')).toHaveTextContent('sub-workflows');
     expect(screen.getByTestId('block-select-state')).toBeInTheDocument();
-    expect(screen.getByTestId('blocks-scope')).toHaveTextContent('Building blocks of pm-mcp-clients');
+    expect(screen.getByTestId('blocks-scope')).toHaveTextContent(
+      'Building blocks of pm-mcp-clients',
+    );
   });
 
   it('filters the blocks by the search query and reports no match', async () => {

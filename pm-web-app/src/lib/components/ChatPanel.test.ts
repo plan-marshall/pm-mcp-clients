@@ -65,7 +65,12 @@ describe('ChatPanel component', () => {
 
   it('offers no chat input while the chat cannot run, and says why', () => {
     render(ChatPanel, {
-      props: { open: true, subject: 'fix-relay', available: false, disabledReason: 'start.chat.waits' },
+      props: {
+        open: true,
+        subject: 'fix-relay',
+        available: false,
+        disabledReason: 'start.chat.waits',
+      },
     });
 
     expect(screen.getByTestId('chat-disabled')).toBeInTheDocument();

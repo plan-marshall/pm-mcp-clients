@@ -744,7 +744,9 @@
             {displayState('plan', plan.phase_state, $t)}
           </span>
           {#if plan.duration_seconds > 0}
-            <span class="duration-tag">{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span>
+            <span class="duration-tag"
+              >{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span
+            >
           {/if}
         </div>
       </div>
@@ -913,7 +915,9 @@
                 aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
                 data-testid="toggle-node-{node.node_id}"
               >
-                <span class="node-glyph"><Icon name={getNodeStateIcon(node.state)} size={16} /></span>
+                <span class="node-glyph"
+                  ><Icon name={getNodeStateIcon(node.state)} size={16} /></span
+                >
                 <span class="toggle-icon">
                   {#if hasChildren(node)}
                     {expandedNodes[node.node_id] ? '▾' : '▸'}
@@ -943,7 +947,9 @@
                 <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
                 {#if node.duration_seconds > 0}
-                  <span class="node-duration">{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span>
+                  <span class="node-duration"
+                    >{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span
+                  >
                 {/if}
                 <span class="sr-only">{$t('plan.node.select')}</span>
               </button>
@@ -1043,9 +1049,13 @@
                   >
                 </div>
                 <div class="task-metrics mono">
-                  <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span>
+                  <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span
+                  >
                   {#if taskActivity.tokens_so_far > 0}
-                    <span>· {formatTokens(taskActivity.tokens_so_far, false, $currentLocale)} {$t('plan.view.tokens')}</span>
+                    <span
+                      >· {formatTokens(taskActivity.tokens_so_far, false, $currentLocale)}
+                      {$t('plan.view.tokens')}</span
+                    >
                   {/if}
                 </div>
               </div>

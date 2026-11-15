@@ -90,7 +90,8 @@
       // The focus returns only while it is still the wizard's: a person who moved to the shell
       // keeps it there.
       const active = document.activeElement as HTMLElement | null;
-      const stillOurs = active === null || active === document.body || frame?.contains(active) === true;
+      const stillOurs =
+        active === null || active === document.body || frame?.contains(active) === true;
       if (stillOurs) {
         rememberedFocus.focus();
       }
@@ -112,27 +113,27 @@
       hidden={layout.sideTakesSpace}
       style:inline-size={`${contentWidth}px`}
     >
-        {#if $$slots.steps}
-          <div class="wizard-page__steps" data-testid="wizard-page-steps">
-            <slot name="steps" />
-          </div>
-        {/if}
-
-        <div class="wizard-page__card" data-testid="wizard-page-card">
-          <slot />
+      {#if $$slots.steps}
+        <div class="wizard-page__steps" data-testid="wizard-page-steps">
+          <slot name="steps" />
         </div>
+      {/if}
 
-        {#if $$slots.back || $$slots.secondary || $$slots.primary}
-          <footer class="wizard-page__footer" data-testid="wizard-page-footer">
-            <div class="wizard-page__back">
-              <slot name="back" />
-            </div>
-            <div class="wizard-page__acts">
-              <slot name="secondary" />
-              <slot name="primary" />
-            </div>
-          </footer>
-        {/if}
+      <div class="wizard-page__card" data-testid="wizard-page-card">
+        <slot />
+      </div>
+
+      {#if $$slots.back || $$slots.secondary || $$slots.primary}
+        <footer class="wizard-page__footer" data-testid="wizard-page-footer">
+          <div class="wizard-page__back">
+            <slot name="back" />
+          </div>
+          <div class="wizard-page__acts">
+            <slot name="secondary" />
+            <slot name="primary" />
+          </div>
+        </footer>
+      {/if}
     </div>
 
     {#if sideOpen && side}

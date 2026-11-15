@@ -89,8 +89,13 @@
     {#each sources as source (source.source_id)}
       <li class="source-line" data-testid={`source-${source.source_id}`}>
         <span class="source-line__mark" aria-hidden="true">
-          {#if source.state === 'failed'}<Icon name="state.error" size={16} />{:else if source.state ===
-          'flagged'}<Icon name="state.alert" size={16} />{:else if source.state === 'unscreened'}<Icon
+          {#if source.state === 'failed'}<Icon
+              name="state.error"
+              size={16}
+            />{:else if source.state === 'flagged'}<Icon
+              name="state.alert"
+              size={16}
+            />{:else if source.state === 'unscreened'}<Icon
               name="state.clock"
               size={16}
             />{:else if settled(source)}<Icon name="state.check" size={16} />{:else}<Icon

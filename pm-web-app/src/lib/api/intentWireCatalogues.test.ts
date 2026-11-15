@@ -50,13 +50,14 @@ describe('the intent readers accept exactly the contract vocabularies', () => {
     expect(questionValues.slice(BUILDER_SORTS.length)).toEqual([...BUILDER_STATES]);
     // `answered` is the one value that names both a sort and a state, by the contract's design.
     expect(BUILDER_SORTS).toContain('answered');
-    expect(BUILDER_STATES).toContain('answered');  });
+    expect(BUILDER_STATES).toContain('answered');
+  });
 
   it('reads the ADR relations of the plan intent record', () => {
     const source = fs.readFileSync(path.join(INTENT_DIR, 'PlanIntentResource.java'), 'utf-8');
-    const relations = Array.from(
-      source.matchAll(/^\s+[A-Z]+\("(follows|contradicts)"\)/gm),
-    ).map((match) => match[1]);
+    const relations = Array.from(source.matchAll(/^\s+[A-Z]+\("(follows|contradicts)"\)/gm)).map(
+      (match) => match[1],
+    );
 
     expect(relations).toEqual([...ADR_RELATIONS]);
   });

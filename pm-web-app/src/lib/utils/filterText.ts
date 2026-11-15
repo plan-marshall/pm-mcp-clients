@@ -26,12 +26,7 @@ const TOKEN_CONTENT = /\p{L}|\p{N}/u;
  */
 export function normalizeText(value: string | null | undefined): string {
   if (value === null || value === undefined) return '';
-  return value
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 /**

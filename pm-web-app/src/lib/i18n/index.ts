@@ -730,8 +730,7 @@ function warnMissingKey(key: string): void {
  * @returns the template to format
  */
 function resolveTemplate(locale: Locale, key: string): string {
-  const active =
-    locale === get(currentLocale) ? ownMessage(get(messagesStore), key) : undefined;
+  const active = locale === get(currentLocale) ? ownMessage(get(messagesStore), key) : undefined;
   if (active !== undefined) return active;
 
   const own = ownMessage(sessionMessages[locale], key);

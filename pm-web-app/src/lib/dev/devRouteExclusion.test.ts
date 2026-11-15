@@ -101,9 +101,7 @@ export const dictionary = {
 
   it('reads the manifest SvelteKit generates for a build', () => {
     expect(
-      isClientManifest(
-        '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/app.js',
-      ),
+      isClientManifest('/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/app.js'),
     ).toBe(true);
     expect(isClientManifest('/repo/pm-web-app/.svelte-kit/generated/client/app.js')).toBe(true);
     expect(isClientManifest('/repo/pm-web-app/src/lib/routes.ts')).toBe(false);
@@ -115,9 +113,7 @@ export const dictionary = {
 
   it('is registered in the production build', () => {
     const config = fs.readFileSync(path.resolve(__dirname, '../../../vite.config.ts'), 'utf-8');
-    const registered = config
-      .split('\n')
-      .some((line) => line.trim() === 'devRouteExclusion(),');
+    const registered = config.split('\n').some((line) => line.trim() === 'devRouteExclusion(),');
 
     expect(registered).toBe(true);
   });
@@ -126,8 +122,7 @@ export const dictionary = {
     const plugin = devRouteExclusion() as {
       transform: (code: string, id: string) => { code: string } | null;
     };
-    const nodePath =
-      '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js';
+    const nodePath = '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js';
     const node =
       'export { default as component } from "../../../../../src/routes/dev/components/+page.svelte";';
 
@@ -153,9 +148,7 @@ export const dictionary = {
 
   it('recognizes the generated node modules', () => {
     expect(
-      isGeneratedNode(
-        '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js',
-      ),
+      isGeneratedNode('/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js'),
     ).toBe(true);
     expect(
       isGeneratedNode('/repo/pm-web-app/.svelte-kit/generated/client-optimized/nodes/5.js'),

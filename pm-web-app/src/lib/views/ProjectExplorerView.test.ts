@@ -698,7 +698,9 @@ describe('ProjectExplorerView component', () => {
 
       await fireEvent.click(screen.getByTestId('close-setup-btn'));
       await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-core'));
-      expect(await screen.findByText('This project records no value of its own.')).toBeInTheDocument();
+      expect(
+        await screen.findByText('This project records no value of its own.'),
+      ).toBeInTheDocument();
     });
   });
 

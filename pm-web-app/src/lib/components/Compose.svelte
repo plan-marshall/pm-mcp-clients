@@ -118,7 +118,8 @@
       return 1;
     }
     const padding =
-      (Number.parseFloat(style.paddingBlockStart) || 0) + (Number.parseFloat(style.paddingBlockEnd) || 0);
+      (Number.parseFloat(style.paddingBlockStart) || 0) +
+      (Number.parseFloat(style.paddingBlockEnd) || 0);
     // The field is measured at one line, so its scroll height is the height of its text alone.
     element.style.setProperty('--compose-lines', '1');
     return Math.max(1, Math.round((element.scrollHeight - padding) / lineHeight));
@@ -148,7 +149,13 @@
   function onkeydown(event: KeyboardEvent): void {
     // Safari delivers the confirming `Enter` after `compositionend` with `isComposing` already false;
     // it still marks that keydown with the legacy key code 229.
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === IME_KEY_CODE || composing) {
+    if (
+      event.key !== 'Enter' ||
+      event.shiftKey ||
+      event.isComposing ||
+      event.keyCode === IME_KEY_CODE ||
+      composing
+    ) {
       return;
     }
     event.preventDefault();

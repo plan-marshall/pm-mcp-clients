@@ -62,11 +62,7 @@ export function clockParts(timestamp: string | null | undefined): ClockParts | n
  * @param params the ICU parameters of the text
  * @returns the text the catalogue of that locale yields for the key
  */
-function word(
-  locale: Locale,
-  key: string,
-  params?: Record<string, string | number>,
-): string {
+function word(locale: Locale, key: string, params?: Record<string, string | number>): string {
   return translate(locale, key, params);
 }
 
@@ -229,10 +225,7 @@ function shortText(date: Date, locale: Locale, distance: number): string {
  * @param now the instant "now" means, so a test can pin it
  * @returns midnight of that day, in local time, or `null` when the value carries neither
  */
-export function dayOf(
-  timestamp: string | null | undefined,
-  now: Date = new Date(),
-): Date | null {
+export function dayOf(timestamp: string | null | undefined, now: Date = new Date()): Date | null {
   const moment = parseInstant(timestamp) ?? (clockParts(timestamp) ? now : null);
   return moment === null ? null : startOfDay(moment);
 }

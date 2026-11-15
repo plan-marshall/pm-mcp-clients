@@ -111,9 +111,7 @@
    * @returns it by number and title, or `missing deliverable <n>` where the record lacks it
    */
   function dependencyLabel(deliverableNumber: number): string {
-    const dependency = record?.deliverables.find(
-      (entry) => entry.number === deliverableNumber,
-    );
+    const dependency = record?.deliverables.find((entry) => entry.number === deliverableNumber);
     return dependency
       ? $t('intent.outline.deliverable', {
           number: dependency.number,
@@ -152,7 +150,11 @@
     <Spinner label={$t('intent.outline.title')} />
   </div>
 {:else}
-  <section class="outline-panel" data-testid="outline-panel" aria-label={$t('intent.outline.title')}>
+  <section
+    class="outline-panel"
+    data-testid="outline-panel"
+    aria-label={$t('intent.outline.title')}
+  >
     <h2 class="outline-panel__head">{$t('intent.outline.title')}</h2>
 
     {#if record !== null && changed()}
@@ -176,7 +178,10 @@
               })}
             </h3>
 
-            <p class="outline-deliverable__gloss" data-testid={`outline-gloss-${deliverable.number}`}>
+            <p
+              class="outline-deliverable__gloss"
+              data-testid={`outline-gloss-${deliverable.number}`}
+            >
               {safe(deliverable.intent_gloss)}
             </p>
 
@@ -196,7 +201,10 @@
             {/if}
 
             {#if deliverable.depends_on.length > 0}
-              <p class="outline-deliverable__depends" data-testid={`outline-depends-${deliverable.number}`}>
+              <p
+                class="outline-deliverable__depends"
+                data-testid={`outline-depends-${deliverable.number}`}
+              >
                 {$t('intent.outline.depends_on', {
                   deliverables: deliverable.depends_on
                     .map((number) => dependencyLabel(number))
@@ -205,16 +213,17 @@
               </p>
             {/if}
 
-            <p class="outline-deliverable__satisfies" data-testid={`outline-satisfies-${deliverable.number}`}>
+            <p
+              class="outline-deliverable__satisfies"
+              data-testid={`outline-satisfies-${deliverable.number}`}
+            >
               {#if deliverable.satisfies.length === 0}
                 {$t('intent.outline.satisfies_none')}
               {:else}
                 {$t('intent.outline.satisfies', { criteria: '' })}
                 {#each deliverable.satisfies as criterionId, index (criterionId)}
-                  {#if index > 0}, {/if}<Link
-                    href={criterionHref(criterionId)}
-                    label={safe(criterionId)}
-                  />
+                  {#if index > 0},
+                  {/if}<Link href={criterionHref(criterionId)} label={safe(criterionId)} />
                 {/each}
               {/if}
             </p>

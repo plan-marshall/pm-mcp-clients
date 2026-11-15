@@ -42,12 +42,10 @@
   });
 
   const crumbs = $derived(
-    pathOf($runtimeStore.currentRoute, $runtimeStore).map(
-      (crumb): Crumb => ({
-        label: $t(crumb.key, crumb.args),
-        id: crumb.id,
-      }),
-    ),
+    pathOf($runtimeStore.currentRoute, $runtimeStore).map((crumb): Crumb => ({
+      label: $t(crumb.key, crumb.args),
+      id: crumb.id,
+    })),
   );
 
   // The connection status follows the session: read on mount, on a listener/device event, and on a

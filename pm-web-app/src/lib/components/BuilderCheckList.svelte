@@ -44,10 +44,7 @@
    *   the contract the design does not name, so an added sort is shown rather than dropped
    */
   function sorts(): string[] {
-    const ordered = [
-      ...SORT_ORDER,
-      ...BUILDER_SORTS.filter((sort) => !SORT_ORDER.includes(sort)),
-    ];
+    const ordered = [...SORT_ORDER, ...BUILDER_SORTS.filter((sort) => !SORT_ORDER.includes(sort))];
     return ordered.filter((sort) => questionsOf(sort).length > 0);
   }
 

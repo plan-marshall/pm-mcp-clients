@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  findPortViolations,
-  malformedPortRun,
-  strictPortIsBound,
-} from '../scripts/guard-ports.js';
+import { findPortViolations, malformedPortRun, strictPortIsBound } from '../scripts/guard-ports.js';
 
 /**
  * The port guard: the same checks `npm run test:ports-guard` runs before the suite (AGENTS.md
@@ -21,7 +17,9 @@ test.describe('Port Isolation & Parameterization Guard', () => {
   test('a malformed PM_WEB_PORT stops the run instead of falling back to the default', () => {
     const result = malformedPortRun();
 
-    expect(result.status, 'a port that is not a number must not be read as the default').not.toBe(0);
+    expect(result.status, 'a port that is not a number must not be read as the default').not.toBe(
+      0,
+    );
     expect(result.stderr).toContain('Invalid PM_WEB_PORT');
   });
 

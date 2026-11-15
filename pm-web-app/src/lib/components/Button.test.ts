@@ -50,7 +50,7 @@ describe('Button', () => {
   });
 
   const combinations = BUTTON_VARIANTS.flatMap((variant) =>
-    BUTTON_SIZES.map((size) => [variant, size] as const)
+    BUTTON_SIZES.map((size) => [variant, size] as const),
   );
 
   it.each(combinations)('draws variant %s in size %s', (variant, size) => {

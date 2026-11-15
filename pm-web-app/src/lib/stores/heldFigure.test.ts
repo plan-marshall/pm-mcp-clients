@@ -68,7 +68,10 @@ describe('heldFigure', () => {
   });
 
   it('holds the object URL of the fetched file after a successful fetch', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async () => originResponse(true)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockImplementation(async () => originResponse(true)),
+    );
 
     await module.holdFigure();
 

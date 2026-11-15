@@ -945,7 +945,9 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.its_reason')}:</span>
-            <span class="detail-value" data-model-text>{dec.waiver_reason || dec.description || ''}</span>
+            <span class="detail-value" data-model-text
+              >{dec.waiver_reason || dec.description || ''}</span
+            >
           </div>
         </div>
 
@@ -1095,11 +1097,7 @@
                   <p class="recommendation-request-text">
                     {$t('decision.recommendation.on_request')}
                   </p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onclick={() => (revealed[dec.id] = true)}
-                  >
+                  <Button size="sm" variant="secondary" onclick={() => (revealed[dec.id] = true)}>
                     {$t('decision.recommendation.show')}
                   </Button>
                 </div>
@@ -1180,7 +1178,8 @@
                       }
                     }}
                   >
-                    <Icon name="act.edit" size={16} /> {$t('decision.answer.own_words')}
+                    <Icon name="act.edit" size={16} />
+                    {$t('decision.answer.own_words')}
                   </button>
 
                   {#if ownWordsMode[keyOf(dec, part, pIdx)]}
@@ -1405,7 +1404,11 @@
 
     {#if loadError !== null && decisions.length > 0}
       <div class="error-banner" data-testid="decisions-error">
-        <ErrorState code={loadError} actionLabel={$t('common.action.retry')} onAct={loadDecisions} />
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={loadDecisions}
+        />
       </div>
     {/if}
 

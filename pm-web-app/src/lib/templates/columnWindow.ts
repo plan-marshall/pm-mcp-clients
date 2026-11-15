@@ -306,7 +306,11 @@ export function windowFor(input: ColumnWindowInput): ColumnWindow {
   const width = contentWidth(container);
   const depth = Math.max(0, Math.floor(input.depth));
   const peek =
-    input.peek !== null && input.peek !== undefined && Number.isInteger(input.peek) && input.peek >= 0 && input.peek < depth
+    input.peek !== null &&
+    input.peek !== undefined &&
+    Number.isInteger(input.peek) &&
+    input.peek >= 0 &&
+    input.peek < depth
       ? input.peek
       : null;
 

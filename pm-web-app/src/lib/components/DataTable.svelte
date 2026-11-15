@@ -90,7 +90,8 @@
           </th>
         {/each}
         {#if menuLabel}
-          <th scope="col" class="data-table__menu-head"><span class="sr-only">{menuLabel}</span></th>
+          <th scope="col" class="data-table__menu-head"><span class="sr-only">{menuLabel}</span></th
+          >
         {/if}
       </tr>
     </thead>

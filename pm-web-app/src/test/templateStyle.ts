@@ -159,9 +159,7 @@ function attributeOf(tag: string, name: string): string {
  */
 function pageRootTag(markup: string, selector: string): string {
   const token = selector.startsWith('.') ? selector.slice(1) : selector;
-  return (
-    tagsOf(markup).find((tag) => attributeOf(tag, 'class').split(/\s+/).includes(token)) ?? ''
-  );
+  return tagsOf(markup).find((tag) => attributeOf(tag, 'class').split(/\s+/).includes(token)) ?? '';
 }
 
 /**

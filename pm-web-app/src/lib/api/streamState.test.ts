@@ -121,9 +121,9 @@ describe('the event stream state', () => {
 
     await vi.advanceTimersByTimeAsync(25_000);
 
-    expect((globalThis.fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBeGreaterThan(
-      10,
-    );
+    expect(
+      (globalThis.fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length,
+    ).toBeGreaterThan(10);
 
     unsubscribe();
   });

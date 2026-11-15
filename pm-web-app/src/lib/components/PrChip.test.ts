@@ -29,14 +29,17 @@ describe('PrChip', () => {
     expect(link.querySelector('.external-link__label')?.textContent).toBe('PR #214');
   });
 
-  it.each(['en', 'de'] as const)('draws the same text without a link when the address is unknown in %s', (locale) => {
-    useCatalogue(locale);
-    const { container } = render(PrChip, { props: { number: 214 } });
+  it.each(['en', 'de'] as const)(
+    'draws the same text without a link when the address is unknown in %s',
+    (locale) => {
+      useCatalogue(locale);
+      const { container } = render(PrChip, { props: { number: 214 } });
 
-    expect(screen.queryByRole('link')).toBeNull();
-    expect(container.querySelector('a')).toBeNull();
-    expect(container.querySelector('.link--chip')?.textContent).toBe('PR #214');
-  });
+      expect(screen.queryByRole('link')).toBeNull();
+      expect(container.querySelector('a')).toBeNull();
+      expect(container.querySelector('.link--chip')?.textContent).toBe('PR #214');
+    },
+  );
 
   it('never draws href="#"', () => {
     useCatalogue('en');
