@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../i18n';
-  import { apiClient, type LocalChangesPreview, type LocalChangesCaptureResult } from '../api/client';
+  import {
+    apiClient,
+    type LocalChangesPreview,
+    type LocalChangesCaptureResult,
+  } from '../api/client';
   import { actFailureText } from '../api/errors';
 
   export let projectId = '';

@@ -357,7 +357,9 @@ describe('CompletionReportView component', () => {
       elsewhere.focus();
       resolveFetch(mockReport);
 
-      expect(await screen.findByRole('heading', { level: 1, name: 'fix-relay' })).toBeInTheDocument();
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'fix-relay' }),
+      ).toBeInTheDocument();
       expect(document.activeElement).toBe(elsewhere);
     } finally {
       elsewhere.remove();

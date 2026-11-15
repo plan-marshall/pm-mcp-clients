@@ -10,10 +10,10 @@ describe('scenarioMockFetch', () => {
   });
 
   it('covers every scenario file the mock runtime ships', () => {
-    const files = import.meta.glob('../../../../pm-mock-runtime/src/main/resources/scenarios/*.json');
-    const names = Object.keys(files).map((path) =>
-      path.split('/').pop()!.replace('.json', ''),
+    const files = import.meta.glob(
+      '../../../../pm-mock-runtime/src/main/resources/scenarios/*.json',
     );
+    const names = Object.keys(files).map((path) => path.split('/').pop()!.replace('.json', ''));
 
     expect(names.sort()).toEqual(Object.keys(SCENARIOS).sort());
   });

@@ -133,7 +133,8 @@ export class ScenarioMockFetch {
 
   /** A `fetch`-compatible function bound to this helper. */
   readonly fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     const path = new URL(url, 'http://localhost').pathname;
     const method = (init?.method ?? 'GET').toUpperCase();
 

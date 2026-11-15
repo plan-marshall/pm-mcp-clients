@@ -20,7 +20,13 @@
       href: '/epics/relay-hardening',
       state: 'running',
     },
-    { key: 'plan', kind: 'plan', title: 'fix-relay', href: '/plans/fix-relay', state: 'three left' },
+    {
+      key: 'plan',
+      kind: 'plan',
+      title: 'fix-relay',
+      href: '/plans/fix-relay',
+      state: 'three left',
+    },
     {
       key: 'task',
       kind: 'plan',

@@ -475,7 +475,8 @@
     {:else if isComplete}
       <div class="state-card" data-testid="project-onboarding-complete">
         <div class="state-card__header">
-          <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
+          <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span
+          >
           <h2 class="state-card__title">
             {$t('project.ready.title', { project: run?.checkout_path ?? '' })}
           </h2>

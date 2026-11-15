@@ -270,7 +270,9 @@ describe('SegmentedControl component', () => {
 
   it('conforms to design tokens: brand-subtle background, text-primary, 24px and phone 44px', () => {
     const style = styleOf(path.resolve(__dirname, './SegmentedControl.svelte'));
-    const selectedRules = rulesOf(style, '.segmented-control__option[aria-checked="true"]').join(';');
+    const selectedRules = rulesOf(style, ".segmented-control__option[aria-checked='true']").join(
+      ';',
+    );
     expect(selectedRules).toContain('var(--color-brand-subtle)');
     expect(selectedRules).toContain('var(--color-text-primary)');
     expect(selectedRules).not.toContain('var(--color-brand);'); // never solid brand fill

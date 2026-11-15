@@ -974,8 +974,7 @@ describe('ApiClient', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () =>
-            chatResource({ subject: { kind, id: subjectId }, scope: kind }),
+          json: async () => chatResource({ subject: { kind, id: subjectId }, scope: kind }),
         });
       }) as unknown as typeof fetch;
 
@@ -2753,9 +2752,7 @@ describe('ApiClient intent and outline records', () => {
 
   it('reads a distribution the runtime serves without a proposal, as the mock does', async () => {
     // Arrange: the fully-onboarded scenario serves no proposed multiple
-    answer(
-      served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'),
-    );
+    answer(served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
 
     // Act
     const record = await client.getOverSize('pm-mcp-clients');

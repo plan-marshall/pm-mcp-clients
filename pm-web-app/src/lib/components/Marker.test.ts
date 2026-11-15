@@ -47,14 +47,17 @@ describe('Marker', () => {
   it.each([
     ['en', 'Primary desktop'],
     ['de', 'Primary desktop'],
-  ] as const)('names the option it marks as its advisory in %s, keeping its own word as its name', (locale, label) => {
-    useCatalogue(locale);
-    const { container } = render(Marker, { props: { kind: 'this_one', label } });
-    const marker = container.querySelector('.marker') as HTMLElement;
+  ] as const)(
+    'names the option it marks as its advisory in %s, keeping its own word as its name',
+    (locale, label) => {
+      useCatalogue(locale);
+      const { container } = render(Marker, { props: { kind: 'this_one', label } });
+      const marker = container.querySelector('.marker') as HTMLElement;
 
-    expect(marker).toHaveAttribute('title', label);
-    expect(marker).toHaveTextContent(WORDS[locale].this_one);
-  });
+      expect(marker).toHaveAttribute('title', label);
+      expect(marker).toHaveTextContent(WORDS[locale].this_one);
+    },
+  );
 
   it('draws no fill, no border and no brand colour', () => {
     const rule = ruleOf(STYLE, '.marker');

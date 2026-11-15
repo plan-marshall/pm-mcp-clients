@@ -57,14 +57,16 @@
     background-color: var(--color-bg-surface);
     color: var(--color-text-primary);
     cursor: pointer;
-    transition: background-color 150ms ease, border-color 150ms ease;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
   }
 
   .toggle:hover:not(:disabled) {
     background-color: var(--color-bg-subtle);
   }
 
-  .toggle[aria-pressed="true"] {
+  .toggle[aria-pressed='true'] {
     background-color: var(--color-brand-subtle);
     border-color: var(--color-border);
     color: var(--color-text-primary);

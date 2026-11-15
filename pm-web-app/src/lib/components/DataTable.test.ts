@@ -72,12 +72,12 @@ describe('DataTable', () => {
     render(DataTable, { props: { columns: COLUMNS, rows: ROWS, label: LABEL } });
     const rows = screen.getAllByRole('row').slice(1);
 
-    expect(rows.map((row) => within(row).getAllByRole('cell')[2].getAttribute('data-align'))).toEqual(
-      ['end', 'end'],
-    );
-    expect(rows.map((row) => within(row).getAllByRole('cell')[0].getAttribute('data-align'))).toEqual(
-      ['start', 'start'],
-    );
+    expect(
+      rows.map((row) => within(row).getAllByRole('cell')[2].getAttribute('data-align')),
+    ).toEqual(['end', 'end']);
+    expect(
+      rows.map((row) => within(row).getAllByRole('cell')[0].getAttribute('data-align')),
+    ).toEqual(['start', 'start']);
     expect(screen.getAllByRole('columnheader')[2]).toHaveAttribute('data-align', 'end');
     expect(screen.getAllByRole('columnheader')[0]).toHaveAttribute('data-align', 'start');
   });

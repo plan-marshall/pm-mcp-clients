@@ -118,7 +118,9 @@
           confirmDestructive={false}
           triggerElement={overflowButton}
           onAct={(item) => onAct(item.id)}
-          onClose={() => { open = false; }}
+          onClose={() => {
+            open = false;
+          }}
         />
       </div>
     {/if}

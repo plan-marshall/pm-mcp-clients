@@ -152,7 +152,9 @@ describe('RowLink', () => {
   });
 
   it('draws the selected row on the brand-subtle ground', () => {
-    expect(ruleOf(STYLE, '.row-link--current')).toContain('background-color: var(--color-brand-subtle)');
+    expect(ruleOf(STYLE, '.row-link--current')).toContain(
+      'background-color: var(--color-brand-subtle)',
+    );
   });
 
   it('draws a row of 40 px, 32 px compact and 44 px on a phone', () => {

@@ -78,41 +78,50 @@ describe('NavRail component', () => {
     it.each([
       ['brand-home', false],
       ['brand-inert', true],
-    ] as const)('draws the 28 px colour mark without a plate in the %s branch', (testId, unpaired) => {
-      useCatalogue('en');
-      if (unpaired) unpair();
-      renderRail(false);
+    ] as const)(
+      'draws the 28 px colour mark without a plate in the %s branch',
+      (testId, unpaired) => {
+        useCatalogue('en');
+        if (unpaired) unpair();
+        renderRail(false);
 
-      const brand = screen.getByTestId(testId);
-      const marks = brand.querySelectorAll('[data-testid="brand-mark"]');
+        const brand = screen.getByTestId(testId);
+        const marks = brand.querySelectorAll('[data-testid="brand-mark"]');
 
-      expect(marks).toHaveLength(1);
-      expect(marks[0]).toHaveAttribute('data-size', '28');
-      expect(marks[0]).toHaveAttribute('data-rendering', 'colour');
-      expect(marks[0]).toHaveAttribute('aria-hidden', 'true');
-      expect(screen.queryByTestId('brand-mark-plate')).not.toBeInTheDocument();
-      expect(brand.querySelector('.brand-mark-plate')).toBeNull();
-    });
+        expect(marks).toHaveLength(1);
+        expect(marks[0]).toHaveAttribute('data-size', '28');
+        expect(marks[0]).toHaveAttribute('data-rendering', 'colour');
+        expect(marks[0]).toHaveAttribute('aria-hidden', 'true');
+        expect(screen.queryByTestId('brand-mark-plate')).not.toBeInTheDocument();
+        expect(brand.querySelector('.brand-mark-plate')).toBeNull();
+      },
+    );
 
-    it.each(['en', 'de'] as const)('names the brand on the collapsed home control in %s', (locale) => {
-      useCatalogue(locale);
-      renderRail(true);
+    it.each(['en', 'de'] as const)(
+      'names the brand on the collapsed home control in %s',
+      (locale) => {
+        useCatalogue(locale);
+        renderRail(true);
 
-      expect(screen.getByTestId('brand-home')).toHaveAccessibleName(/plan-marshall/);
-    });
+        expect(screen.getByTestId('brand-home')).toHaveAccessibleName(/plan-marshall/);
+      },
+    );
 
-    it.each(['en', 'de'] as const)('names the brand by the mark of the collapsed inert head in %s', (locale) => {
-      useCatalogue(locale);
-      unpair();
-      renderRail(true);
+    it.each(['en', 'de'] as const)(
+      'names the brand by the mark of the collapsed inert head in %s',
+      (locale) => {
+        useCatalogue(locale);
+        unpair();
+        renderRail(true);
 
-      const inert = screen.getByTestId('brand-inert');
-      const mark = inert.querySelector('[data-testid="brand-mark"]');
+        const inert = screen.getByTestId('brand-inert');
+        const mark = inert.querySelector('[data-testid="brand-mark"]');
 
-      expect(mark).toHaveAttribute('role', 'img');
-      expect(mark).toHaveAccessibleName(/plan-marshall/);
-      expect(mark).not.toHaveAttribute('aria-hidden');
-    });
+        expect(mark).toHaveAttribute('role', 'img');
+        expect(mark).toHaveAccessibleName(/plan-marshall/);
+        expect(mark).not.toHaveAttribute('aria-hidden');
+      },
+    );
   });
 
   describe('the rail-foot bear', () => {
@@ -188,7 +197,9 @@ describe('NavRail component', () => {
     it('draws the source bust from the stylesheet at 0.18 in the light theme', () => {
       const bear = ruleOf(blockOf(stylesheet, BEAR_CONTAINER), '.nav-rail--bear .nav-rail__bear');
 
-      expect(bear).toMatch(/image-set\(\s*url\('\.\.\/assets\/mascot\/mascot-bust-1x\.webp'\)\s*1x,/);
+      expect(bear).toMatch(
+        /image-set\(\s*url\('\.\.\/assets\/mascot\/mascot-bust-1x\.webp'\)\s*1x,/,
+      );
       expect(bear).toMatch(/url\('\.\.\/assets\/mascot\/mascot-bust-2x\.webp'\)\s*2x/);
       expect(bear).toMatch(/opacity:\s*0\.18\s*;/);
       expect(bear).toMatch(/pointer-events:\s*none\s*;/);
@@ -205,7 +216,9 @@ describe('NavRail component', () => {
     });
 
     it('shows only where the free height below the destinations reaches 260 px', () => {
-      expect(ruleOf(stylesheet, '.nav-rail__spacer')).toMatch(/container:\s*rail-free\s*\/\s*size\s*;/);
+      expect(ruleOf(stylesheet, '.nav-rail__spacer')).toMatch(
+        /container:\s*rail-free\s*\/\s*size\s*;/,
+      );
       // Outside the size query no rule draws the bear, so too little free height leaves it empty.
       const outside = stylesheet.replace(blockOf(stylesheet, BEAR_CONTAINER), '');
       expect(outside).not.toContain('.nav-rail__bear');

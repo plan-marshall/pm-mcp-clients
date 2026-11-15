@@ -298,7 +298,8 @@
       {#each VARIANTS as variant (variant)}
         <div class="dev__row">
           {#each SIZES as size (size)}
-            <Button {variant} {size}>{$t(`dev.variant.${variant}`)} {$t(`dev.size.${size}`)}</Button>
+            <Button {variant} {size}>{$t(`dev.variant.${variant}`)} {$t(`dev.size.${size}`)}</Button
+            >
           {/each}
         </div>
       {/each}
@@ -366,7 +367,9 @@
         />
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {$t(`dev.theme.${theme}`)})"
+          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {$t(
+            `dev.theme.${theme}`,
+          )})"
         />
       </div>
 
@@ -407,10 +410,7 @@
 
       <h3 class="dev__section-title">{$t('dev.section.dialog')}</h3>
       <div class="dev__row">
-        <Button
-          variant="danger"
-          on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}
-        >
+        <Button variant="danger" on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}>
           {$t('dev.dialog.open')}
         </Button>
       </div>
@@ -423,7 +423,10 @@
       >
         <p class="dev__note">{$t('dev.dialog.body')}</p>
         <svelte:fragment slot="footer">
-          <Button variant="ghost" on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}>
+          <Button
+            variant="ghost"
+            on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}
+          >
             {$t('web.common.cancel')}
           </Button>
           <Button
@@ -437,7 +440,10 @@
 
       <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
       <div class="dev__row">
-        <Button variant="secondary" on:click={() => (openToasts = { ...openToasts, [theme]: true })}>
+        <Button
+          variant="secondary"
+          on:click={() => (openToasts = { ...openToasts, [theme]: true })}
+        >
           {$t('dev.toast.show')}
         </Button>
       </div>
@@ -704,7 +710,9 @@
             variant="secondary"
             size="sm"
             bind:buttonElement={actMenuDownTrigger[theme]}
-            onclick={() => { actMenuDownOpen[theme] = !actMenuDownOpen[theme]; }}
+            onclick={() => {
+              actMenuDownOpen[theme] = !actMenuDownOpen[theme];
+            }}
           >
             {$t('dev.section.act_menu')} (down)
           </Button>
@@ -720,7 +728,9 @@
             variant="secondary"
             size="sm"
             bind:buttonElement={actMenuUpTrigger[theme]}
-            onclick={() => { actMenuUpOpen[theme] = !actMenuUpOpen[theme]; }}
+            onclick={() => {
+              actMenuUpOpen[theme] = !actMenuUpOpen[theme];
+            }}
           >
             {$t('dev.section.act_menu')} (upward)
           </Button>
@@ -764,11 +774,7 @@
       <h3 class="dev__section-title">{$t('intent.tab.title')}</h3>
       <div class="dev__grid" data-testid="intent-fixture">
         <Card>
-          <PlanIntentPanel
-            planId={INTENT_PLAN_ID}
-            {deliverables}
-            {deliverableHref}
-          />
+          <PlanIntentPanel planId={INTENT_PLAN_ID} {deliverables} {deliverableHref} />
         </Card>
         <Card>
           <OutlinePanel planId={INTENT_PLAN_ID} {criterionHref} />

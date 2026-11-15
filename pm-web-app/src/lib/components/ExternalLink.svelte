@@ -71,7 +71,14 @@
 </script>
 
 {#if safe}
-  <a href={address} target="_blank" rel="noopener noreferrer" class="link external-link" class:link--text={!chip} class:link--chip={chip}>
+  <a
+    href={address}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="link external-link"
+    class:link--text={!chip}
+    class:link--chip={chip}
+  >
     <span class="external-link__label">{label}</span>
     <Icon name="act.external" size={16} />
     <span class="sr-only">({$t('common.link.new_tab')})</span>

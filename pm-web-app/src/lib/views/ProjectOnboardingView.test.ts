@@ -346,9 +346,7 @@ describe('ProjectOnboardingView component', () => {
 
     render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
 
-    await waitFor(() =>
-      expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument());
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(read.mock.calls.length).toBeGreaterThanOrEqual(2));
   });

@@ -94,13 +94,13 @@
     block-size: 40px;
   }
 
-  .icon-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+  .icon-btn:hover:not(:disabled):not([aria-disabled='true']) {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-primary);
   }
 
   .icon-btn:disabled,
-  .icon-btn[aria-disabled="true"] {
+  .icon-btn[aria-disabled='true'] {
     opacity: 0.5;
     cursor: not-allowed;
   }

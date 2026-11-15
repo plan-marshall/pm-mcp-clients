@@ -31,7 +31,15 @@ describe('the shell navigation model', () => {
     ]);
 
     const ids = ALL_NAV_ITEMS.map((item) => item.id);
-    expect(ids).toEqual(['running', 'projects', 'decisions', 'reports', 'system', 'designer', 'settings']);
+    expect(ids).toEqual([
+      'running',
+      'projects',
+      'decisions',
+      'reports',
+      'system',
+      'designer',
+      'settings',
+    ]);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ALL_NAV_ITEMS.every((item) => item.icon.startsWith('nav.'))).toBe(true);
   });

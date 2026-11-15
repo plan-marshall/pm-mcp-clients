@@ -2280,11 +2280,7 @@ export interface PlanIntentRecord {
 
 /** What a deliverable does to an affected file. */
 export type FileIntentValue =
-  | 'read'
-  | 'write-new'
-  | 'write-replace'
-  | 'write-conditional'
-  | 'delete';
+  'read' | 'write-new' | 'write-replace' | 'write-conditional' | 'delete';
 
 /** One file a deliverable affects, with the intent it affects it with. */
 export interface OutlineAffectedFileRecord {
@@ -2625,8 +2621,17 @@ function recordEnum<T extends string>(
  * accept nothing outside them, and `intentWireCatalogues.test.ts` holds each list to the enum it
  * mirrors, so an added enum constant fails the build rather than being refused at the wire.
  */
-export const CRITERION_STATUSES: readonly CriterionStatusValue[] = ['met', 'not_met', 'not_verified'];
-export const INTENT_DECIDERS: readonly IntentDeciderValue[] = ['operator', 'quorum', 'role', 'fact'];
+export const CRITERION_STATUSES: readonly CriterionStatusValue[] = [
+  'met',
+  'not_met',
+  'not_verified',
+];
+export const INTENT_DECIDERS: readonly IntentDeciderValue[] = [
+  'operator',
+  'quorum',
+  'role',
+  'fact',
+];
 export const ADR_RELATIONS: readonly ('follows' | 'contradicts')[] = ['follows', 'contradicts'];
 export const BUILDER_RESOLUTIONS: readonly BuilderCheckResolution[] = [
   'pending',
@@ -2750,28 +2755,30 @@ function readOutline(raw: unknown): OutlineRecord {
     plan_id: recordText(record, 'plan_id', type),
     revision: recordNumber(record, 'revision', type),
     summary: recordText(record, 'summary', type),
-    deliverables: recordRequiredObjects(record, 'deliverables', 'DeliverableRecord').map((deliverable) => ({
-      number: recordNumber(deliverable, 'number', 'DeliverableRecord'),
-      title: recordText(deliverable, 'title', 'DeliverableRecord'),
-      intent_gloss: recordText(deliverable, 'intent_gloss', 'DeliverableRecord'),
-      affected_files: recordObjects(deliverable, 'affected_files', 'AffectedFile').map((file) => ({
-        path: recordText(file, 'path', 'AffectedFile'),
-        intent: recordEnum(file, 'intent', FILE_INTENTS, 'AffectedFile'),
-      })),
-      depends_on: recordNumbers(deliverable, 'depends_on', 'DeliverableRecord'),
-      satisfies: recordStrings(deliverable, 'satisfies', 'DeliverableRecord'),
-      verification: optionalRecordText(deliverable, 'verification', 'DeliverableRecord'),
-    })),
-    added_dependencies: recordObjects(
-      record,
-      'added_dependencies',
-      'DependencyJustification',
-    ).map((dependency) => ({
-      name: recordText(dependency, 'name', 'DependencyJustification'),
-      version: optionalRecordText(dependency, 'version', 'DependencyJustification'),
-      justification: recordText(dependency, 'justification', 'DependencyJustification'),
-      deliverable: recordNumber(dependency, 'deliverable', 'DependencyJustification'),
-    })),
+    deliverables: recordRequiredObjects(record, 'deliverables', 'DeliverableRecord').map(
+      (deliverable) => ({
+        number: recordNumber(deliverable, 'number', 'DeliverableRecord'),
+        title: recordText(deliverable, 'title', 'DeliverableRecord'),
+        intent_gloss: recordText(deliverable, 'intent_gloss', 'DeliverableRecord'),
+        affected_files: recordObjects(deliverable, 'affected_files', 'AffectedFile').map(
+          (file) => ({
+            path: recordText(file, 'path', 'AffectedFile'),
+            intent: recordEnum(file, 'intent', FILE_INTENTS, 'AffectedFile'),
+          }),
+        ),
+        depends_on: recordNumbers(deliverable, 'depends_on', 'DeliverableRecord'),
+        satisfies: recordStrings(deliverable, 'satisfies', 'DeliverableRecord'),
+        verification: optionalRecordText(deliverable, 'verification', 'DeliverableRecord'),
+      }),
+    ),
+    added_dependencies: recordObjects(record, 'added_dependencies', 'DependencyJustification').map(
+      (dependency) => ({
+        name: recordText(dependency, 'name', 'DependencyJustification'),
+        version: optionalRecordText(dependency, 'version', 'DependencyJustification'),
+        justification: recordText(dependency, 'justification', 'DependencyJustification'),
+        deliverable: recordNumber(dependency, 'deliverable', 'DependencyJustification'),
+      }),
+    ),
   };
 }
 
@@ -4047,10 +4054,7 @@ export class ApiClient {
    * @returns the record, or `null` where refine has not written one yet
    */
   public async getPlanIntent(planId: string): Promise<PlanIntentRecord | null> {
-    return this.readRecord(
-      `/api/v1/plans/${encodeURIComponent(planId)}/intent`,
-      readPlanIntent,
-    );
+    return this.readRecord(`/api/v1/plans/${encodeURIComponent(planId)}/intent`, readPlanIntent);
   }
 
   /**
@@ -4060,10 +4064,7 @@ export class ApiClient {
    * @returns the record, or `null` where outline has not written one yet
    */
   public async getPlanOutline(planId: string): Promise<OutlineRecord | null> {
-    return this.readRecord(
-      `/api/v1/plans/${encodeURIComponent(planId)}/outline`,
-      readOutline,
-    );
+    return this.readRecord(`/api/v1/plans/${encodeURIComponent(planId)}/outline`, readOutline);
   }
 
   /**
@@ -4333,10 +4334,7 @@ export class ApiClient {
    */
   public async endChat(subjectId: string): Promise<ChatReadBack> {
     return normaliseChat(
-      await this.request<WireChatResource>(
-        'POST',
-        `${ApiClient.subjectChatPath(subjectId)}/end`,
-      ),
+      await this.request<WireChatResource>('POST', `${ApiClient.subjectChatPath(subjectId)}/end`),
     );
   }
 
