@@ -548,6 +548,20 @@ describe('tokens.css: the design system v2 contract', () => {
     });
   });
 
+  describe('control tokens (components-fields.adoc, control-tokens)', () => {
+    it('declares the four control tokens in :root', () => {
+      expect(themes.root['--control-height']).toBe('34px');
+      expect(themes.root['--control-radius']).toBe('var(--radius-md)');
+      expect(themes.root['--control-bg']).toBe('var(--color-bg-surface)');
+      expect(themes.root['--control-border']).toBe('var(--color-border-strong)');
+    });
+
+    it('sets --control-height to 44px on phone (below 768px)', () => {
+      const phoneBlock = blockOf(withoutComments(css), '@media (max-width: 767px)');
+      expect(phoneBlock).toContain('--control-height: 44px');
+    });
+  });
+
   describe('layer tokens', () => {
     it.each(Object.entries(LAYER_TOKENS))(
       'declares the layer token %s with value %i',
