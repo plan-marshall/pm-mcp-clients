@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -713,6 +714,151 @@ class IntentContractTest {
                     () -> assertEquals(List.of(), intent.openBuilderQuestions()),
                     () -> assertFalse(intent.toMap().containsKey(PlanIntentResource.FIELD_BUILDER_CHECK)),
                     () -> assertFalse(intent.toJson().contains("\"builder_check\"")));
+        }
+    }
+
+    @Nested
+    @DisplayName("The optional members of the intent records")
+    class OptionalMembers {
+
+        @Test
+        @DisplayName("the readers answer an absent, a null, a blank and a wrong-typed member as the contract says")
+        void readersKeepTheirOwnRules() {
+            var blankEvidence = new LinkedHashMap<String, Object>();
+            blankEvidence.put("evidence", " ");
+            var adr = new LinkedHashMap<String, Object>();
+            adr.put("adr_id", "ADR-0001");
+
+            assertAll(
+                    () -> assertNull(IntentJson.optionalRawText(Map.of(), "evidence", "T")),
+                    () -> assertEquals(" ", IntentJson.optionalRawText(blankEvidence, "evidence", "T")),
+                    () -> assertNull(IntentJson.optionalText(blankEvidence, "evidence", "T")),
+                    () -> assertNull(IntentJson.optionalDouble(Map.of(), "proposed_multiple", "T")),
+                    () -> assertEquals(2.5, IntentJson.optionalDouble(Map.of("proposed_multiple", 2.5),
+                            "proposed_multiple", "T")),
+                    () -> assertNull(IntentJson.optionalObject(Map.of(), "adr", "T")),
+                    () -> assertEquals(adr, IntentJson.optionalObject(Map.of("adr", adr), "adr", "T")),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> IntentJson.optionalRawText(Map.of("evidence", 7), "evidence", "T")),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> IntentJson.optionalDouble(Map.of("proposed_multiple", "two"),
+                                    "proposed_multiple", "T")),
+                    () -> assertThrows(JsonFormatException.class,
+                            () -> IntentJson.optionalObject(Map.of("adr", "ADR-0001"), "adr", "T")));
+        }
+
+        @Test
+        @DisplayName("an explicit null for adr, evidence and reason reads as absent, as the engine writes it")
+        void explicitNullsReadAsAbsent() throws Exception {
+            var intent = PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-040\",\"text\":\"" + sentence() + "\",\"decider\":\"role\","
+                            + "\"options_weighed\":[],\"question_id\":null,\"evidence\":null,\"adr\":null}"));
+
+            var decision = intent.decisions().getFirst();
+            assertAll(
+                    () -> assertNull(decision.adr()),
+                    () -> assertNull(decision.evidence()),
+                    () -> assertNull(decision.questionId()),
+                    () -> assertFalse(decision.toMap().containsKey("adr")),
+                    () -> assertFalse(decision.toMap().containsKey("evidence")));
+
+            var check = BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"pending\",\"questions\":[],\"reason\":null}");
+            assertNull(check.reason(), "an explicit null reason is absent, not a value");
+
+            var distribution = OverSizeDistributionResource.fromJson(
+                    "{\"project_id\":\"p\",\"role\":\"r\",\"current_multiple\":3.0,"
+                            + "\"proposed_multiple\":null,\"buckets\":[{\"label\":\"0-1x\",\"from_multiple\":0.0,"
+                            + "\"to_multiple\":1.0,\"task_count\":1,\"flagged_tasks\":0}]}");
+            assertNull(distribution.proposedMultiple(),
+                    "an explicit null proposal is absent, not a proposal of zero");
+        }
+
+        @Test
+        @DisplayName("a non-object adr is refused, naming the field")
+        void nonObjectAdrIsRefused() {
+            var thrown = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-041\",\"text\":\"" + sentence() + "\",\"decider\":\"operator\","
+                            + "\"options_weighed\":[],\"question_id\":\"Q-041\",\"adr\":\"ADR-0001\"}")));
+
+            assertTrue(thrown.getMessage().contains("adr"), thrown.getMessage());
+        }
+
+        @Test
+        @DisplayName("a wrong-typed member of a record is refused, naming the field")
+        void wrongTypedMembersAreRefused() {
+            var refused = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-042\",\"text\":\"" + sentence() + "\",\"decider\":\"fact\","
+                            + "\"options_weighed\":[],\"evidence\":7}")));
+            assertTrue(refused.getMessage().contains("evidence"), refused.getMessage());
+
+            var adrId = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-043\",\"text\":\"" + sentence() + "\",\"decider\":\"operator\","
+                            + "\"options_weighed\":[],\"question_id\":\"Q-043\","
+                            + "\"adr\":{\"adr_id\":7,\"relation\":\"follows\"}}")));
+            assertTrue(adrId.getMessage().contains("adr_id"), adrId.getMessage());
+
+            var multiple = assertThrows(JsonFormatException.class,
+                    () -> OverSizeDistributionResource.fromJson(
+                            "{\"project_id\":\"p\",\"role\":\"r\",\"current_multiple\":\"three\","
+                                    + "\"buckets\":[{\"label\":\"0-1x\",\"from_multiple\":0.0,"
+                                    + "\"to_multiple\":1.0,\"task_count\":1,\"flagged_tasks\":0}]}"));
+            assertTrue(multiple.getMessage().contains("current_multiple"), multiple.getMessage());
+
+            var reason = assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"not_run\",\"questions\":[],\"reason\":42}"));
+            assertTrue(reason.getMessage().contains("reason"), reason.getMessage());
+        }
+
+        @Test
+        @DisplayName("a fact decision with an explicit null evidence is refused, naming the field")
+        void nullEvidenceOfAFactIsRefused() {
+            var thrown = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(intentJson(
+                    "{\"id\":\"DC-044\",\"text\":\"" + sentence() + "\",\"decider\":\"fact\","
+                            + "\"options_weighed\":[],\"evidence\":null}")));
+
+            assertTrue(thrown.getMessage().contains("requires its evidence"), thrown.getMessage());
+        }
+
+        @Test
+        @DisplayName("an empty non-goal list is refused at record level, naming the field")
+        void emptyNonGoalsAreRefused() {
+            var thrown = assertThrows(IllegalArgumentException.class,
+                    () -> intentWith(List.of(), List.of()));
+
+            assertTrue(thrown.getMessage().contains("non_goals must not be empty"), thrown.getMessage());
+            var fromWire = assertThrows(JsonFormatException.class,
+                    () -> PlanIntentResource.fromJson(intentJsonWithNonGoals("[]")));
+            assertTrue(fromWire.getMessage().contains("non_goals must not be empty"),
+                    fromWire.getMessage());
+        }
+
+        @Test
+        @DisplayName("the choices travel as decisions on the wire, and a choices member is refused")
+        void choicesIsNoAlias() {
+            var intent = intentWith(List.of(new PlanIntentResource.Decision("DC-045", sentence(),
+                    IntentDecider.ROLE, List.of(), null, null, null)));
+
+            assertTrue(intent.toJson().contains("\"decisions\":["), intent.toJson());
+            assertFalse(intent.toJson().contains("\"choices\""));
+            var thrown = assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
+                    intentJsonWithNonGoals("[{\"id\":\"NG-1\",\"text\":\"n\"}]")
+                            .replace("\"deferred\":[]", "\"deferred\":[],\"choices\":[]")));
+            assertTrue(thrown.getMessage().contains("choices"), thrown.getMessage());
+        }
+
+        @Test
+        @DisplayName("a not_run builder check carries no questions, and one that does is refused")
+        void notRunCarriesNoQuestions() {
+            var questions = List.of(question());
+
+            assertThrows(IllegalArgumentException.class, () -> new BuilderCheckResource(
+                    BuilderCheckResource.Resolution.NOT_RUN, questions, "The check task was lost."));
+            var thrown = assertThrows(JsonFormatException.class, () -> BuilderCheckResource.fromJson(
+                    "{\"resolution\":\"not_run\",\"reason\":\"The check task was lost.\",\"questions\":["
+                            + "{\"id\":\"BQ-001\",\"text\":\"Which timeout applies?\",\"sort\":\"operator\","
+                            + "\"recommended\":false,\"state\":\"open\"}]}"));
+            assertTrue(thrown.getMessage().contains("questions"), thrown.getMessage());
         }
     }
 
