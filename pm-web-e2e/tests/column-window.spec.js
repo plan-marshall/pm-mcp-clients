@@ -135,8 +135,32 @@ test.describe('The column window (navigation.adoc#window)', () => {
     }
   }
 
-  test('shows one column on a 390 px phone', async ({ page, request }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  test('opens the names popover under its own control, not at the bottom of the column', async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openReportsWithDetail(page, request);
+    await page.goto('/dev/components');
+
+    const engine = page.locator('[data-testid="column-engine-fixture"]').first();
+    await expect(engine).toBeVisible();
+
+    const names = engine.getByRole('button', { name: 'Names' });
+    await names.click();
+    const popover = engine.getByRole('group', { name: 'Names' });
+    await expect(popover).toBeVisible();
+
+    const buttonBox = await names.boundingBox();
+    const popoverBox = await popover.boundingBox();
+    expect(buttonBox).not.toBeNull();
+    expect(popoverBox).not.toBeNull();
+    // The popover opens at the control's own bottom, not at the bottom of the tallest column.
+    expect(popoverBox.y).toBeGreaterThanOrEqual(buttonBox.y + buttonBox.height - 1);
+    expect(popoverBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(40);
+  });
+
+  test('shows one column on a 390 px phone', async ({ page, request }) => {    await page.setViewportSize({ width: 390, height: 844 });
     await openReportsWithDetail(page, request, true);
 
     await expect(page.getByTestId('nav-rail')).toBeHidden();
