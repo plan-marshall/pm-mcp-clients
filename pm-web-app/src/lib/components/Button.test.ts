@@ -296,6 +296,14 @@ describe('Button', () => {
       ).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  it('asserts the md button and a TextField have the same height token', () => {
+    const btnStyle = styleOf(path.resolve(__dirname, './Button.svelte'));
+    const textFieldStyle = styleOf(path.resolve(__dirname, './TextField.svelte'));
+
+    expect(ruleOf(btnStyle, '.btn--md')).toContain('var(--control-height)');
+    expect(ruleOf(textFieldStyle, '.text-field__input')).toContain('var(--control-height)');
+  });
 });
 
 describe('IconButton', () => {

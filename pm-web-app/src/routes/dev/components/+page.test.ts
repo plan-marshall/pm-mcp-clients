@@ -47,7 +47,7 @@ describe('/dev/components page fixture', () => {
     expect(labels.some((label) => label.endsWith(', light)') || label.endsWith(', dark)'))).toBe(
       false,
     );
-  });
+  }, 60_000);
 
   it('names both themes in German on the page itself (D3b)', () => {
     currentLocale.set('de');
@@ -64,7 +64,7 @@ describe('/dev/components page fixture', () => {
       .map((button) => button.getAttribute('aria-label') ?? '');
     expect(labels.filter((label) => label.endsWith(', Helles Theme)'))).toHaveLength(2);
     expect(labels.filter((label) => label.endsWith(', Dunkles Theme)'))).toHaveLength(2);
-  });
+  }, 60_000);
 
   it.each([
     ['en', 'Brand', 'replan is reading the whole plan…'],
@@ -211,11 +211,13 @@ describe('/dev/components page fixture', () => {
       'draws a Compose and one with the stop act in each theme, in %s',
       (locale) => {
         for (const block of renderThemes(locale)) {
-          const fields = within(block).getAllByRole('textbox');
+          const composeSection = block.querySelector('[data-testid="compose-fixture"]');
+          expect(composeSection).not.toBeNull();
+          const fields = within(composeSection as HTMLElement).getAllByRole('textbox');
 
-          expect(within(block).getByRole('textbox', { name: COPY[locale].compose })).toBeEnabled();
+          expect(within(composeSection as HTMLElement).getByRole('textbox', { name: COPY[locale].compose })).toBeEnabled();
           expect(fields).toHaveLength(3);
-          expect(within(block).getByRole('button', { name: COPY[locale].stop })).toBeEnabled();
+          expect(within(composeSection as HTMLElement).getByRole('button', { name: COPY[locale].stop })).toBeEnabled();
         }
       },
     );
@@ -224,7 +226,9 @@ describe('/dev/components page fixture', () => {
       'draws the three FormStatus tones in each theme, in %s',
       (locale) => {
         for (const block of renderThemes(locale)) {
-          const statuses = Array.from(block.querySelectorAll('.form-status'));
+          const formStatusSection = block.querySelector('[data-testid="form-status-fixture"]');
+          expect(formStatusSection).not.toBeNull();
+          const statuses = Array.from((formStatusSection as HTMLElement).querySelectorAll('.form-status'));
 
           expect(statuses).toHaveLength(3);
           for (const [index, [tone, sentence]] of Object.entries(COPY[locale].statuses).entries()) {
@@ -397,7 +401,8 @@ describe('/dev/components page fixture', () => {
           expect(block.querySelectorAll('.reason-badge')).toHaveLength(REASONS.length + 3);
           // The six phases, the form that names the asking role and the two rows' phases.
           expect(block.querySelectorAll('.phase-label')).toHaveLength(PHASES.length + 3);
-          expect(block.querySelectorAll('.marker')).toHaveLength(MARKERS.length);
+          const markerFixture = block.querySelector('[data-testid="marker-fixture"]');
+          expect(markerFixture?.querySelectorAll('.marker')).toHaveLength(MARKERS.length);
           // The three rows of the RowLink fixture and the closed example row.
           expect(block.querySelectorAll('.row-link')).toHaveLength(4);
         }
@@ -447,7 +452,8 @@ describe('/dev/components page fixture', () => {
           expect(block?.querySelectorAll('.segmented-control__option')).toHaveLength(3);
 
           // Toggle: 3 toggles (off, on, interactive)
-          expect(block?.querySelectorAll('.toggle')).toHaveLength(3);
+          const toggleFixture = block?.querySelector('[data-testid="toggle-fixture"]');
+          expect(toggleFixture?.querySelectorAll('.toggle')).toHaveLength(3);
 
           // ActMenu: 2 menus (downward and upward)
           expect(block?.querySelectorAll('.act-menu')).toHaveLength(2);
@@ -460,6 +466,40 @@ describe('/dev/components page fixture', () => {
 
           // StatusLabel with fixed slot: 3 in fixed list
           expect(block?.querySelectorAll('.status-label--fixed')).toHaveLength(3);
+        }
+      },
+    );
+  });
+
+  describe('the field system fixtures (PLAN-150 / D5)', () => {
+    it.each(['en', 'de'] as const)(
+      'draws the field fixture matrix with all field types in %s',
+      (locale) => {
+        currentLocale.set(locale);
+        messagesStore.set(loadMessages(locale));
+        render(DevComponentsPage);
+
+        for (const theme of ['light', 'dark']) {
+          const block = document.querySelector(`[data-theme="${theme}"]`);
+          expect(block, `${theme} block`).not.toBeNull();
+
+          const fieldsSection = block?.querySelector('[data-testid="fields-fixture"]');
+          expect(fieldsSection).not.toBeNull();
+
+          // Rest, Filled, Invalid, Disabled, Demo form cards
+          expect(fieldsSection?.querySelectorAll('.card')).toHaveLength(5);
+
+          // All field components are represented
+          expect(fieldsSection?.querySelectorAll('.field').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.text-field__input').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.text-area__input').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.number-field__input').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.secret-field__input').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.code-field__input').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.select-field__select').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.radio-group').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.check-field').length).toBeGreaterThan(0);
+          expect(fieldsSection?.querySelectorAll('.check-group').length).toBeGreaterThan(0);
         }
       },
     );

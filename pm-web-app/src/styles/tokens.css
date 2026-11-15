@@ -55,6 +55,12 @@
   --radius-lg: 12px;
   --radius-full: 9999px;
 
+  /* Control tokens (PLAN-150, components-fields.adoc, README.adoc § #control-tokens) */
+  --control-height: 34px;
+  --control-radius: var(--radius-md);
+  --control-bg: var(--color-bg-surface);
+  --control-border: var(--color-border-strong);
+
   /* VD-P-04 motion; the reduced-motion block below turns it off */
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -266,5 +272,11 @@
   :root {
     --duration-fast: 0ms;
     --duration-base: 0ms;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --control-height: 44px;
   }
 }
