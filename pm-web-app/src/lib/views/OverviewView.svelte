@@ -29,6 +29,7 @@
     openEndedPlanView,
     openCompletionReport,
   } from '../stores/runtime';
+  import { readRememberedPlace, writeRememberedPlace } from '../navigation/rememberedPlace';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
@@ -199,9 +200,11 @@
   // The app renders in the browser only (`ssr = false` in the root layout), so the view reaches
   // `localStorage` without asking whether a window exists.
   onMount(async () => {
-    const savedMode = localStorage.getItem('pm_overview_view_mode');
-    if (savedMode === 'plan' || savedMode === 'epic') {
-      viewMode = savedMode;
+    // The place the operator left is read through its own store: project, grouping and the
+    // selected object, never the mode.
+    const place = readRememberedPlace();
+    if (place.group === 'epic') {
+      viewMode = 'epic';
     }
     // A figure of the system view asked for the plans or the epics; consume it once.
     const focus = get(runtimeStore).overviewFocus;
@@ -212,9 +215,8 @@
       viewMode = 'epic';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
     }
-    const savedProj = localStorage.getItem('pm_overview_selected_project');
-    if (savedProj) {
-      selectedProjectId = savedProj;
+    if (place.project) {
+      selectedProjectId = place.project;
     }
     // A view that opened the plan or the project came back to Running Work returns to the
     // section it left: Ended Work, on the page it showed.
@@ -352,7 +354,7 @@
     endedPage = null;
     endedError = null;
     currentEndedPage = 1;
-    localStorage.setItem('pm_overview_selected_project', projectId);
+    writeRememberedPlace({ ...readRememberedPlace(), project: projectId });
     localStorage.setItem('pm_overview_show_ended', '0');
     localStorage.setItem('pm_overview_ended_page', '1');
     void loadProjectDetail(projectId);
@@ -401,7 +403,7 @@
 
   function setViewMode(mode: 'plan' | 'epic') {
     viewMode = mode;
-    localStorage.setItem('pm_overview_view_mode', mode);
+    writeRememberedPlace({ ...readRememberedPlace(), group: mode });
   }
 
   async function openEndedWork() {

@@ -14,11 +14,26 @@ import {
   pathForRoute,
   type Address,
   type AppRoute,
-  type PathMatch,
   type RouteParams,
   type StartPath,
 } from '../routes';
-import { currentAddress, intentFor, parentOf, writeAddress } from '../navigation/history';
+import {
+  carriesAppMark,
+  currentAddress,
+  intentFor,
+  parentOf,
+  writeAddress,
+  type WriteIntent,
+} from '../navigation/history';
+import {
+  readRememberedPlace,
+  runningWorkAddress,
+  startAddress,
+  unfilledLensAddress,
+  writeRememberedPlace,
+  type PlaceFacts,
+  type RememberedPlace,
+} from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 import { actFailureReason } from '../api/errors';
 
@@ -396,32 +411,55 @@ function machineNameOf(status: StatusResponse): string {
 }
 
 /**
- * The route the app opens on for a paired browser.
+ * The one start rule of the app, as a route.
  *
- * A paired browser never lands on the pairing page or the entry: it opens on the overview when
- * work is running or waiting and the explorer otherwise. The onboarding comes first while the
- * machine is not onboarded.
+ * The remembered place fills a mark-less load at `/` or at the bare `/overview`; a full address
+ * opens what it names, and without a place the app opens what waits — until PLAN-49 registers `/`,
+ * the overview while work runs or waits and the projects otherwise. The onboarding comes first
+ * while the machine is not onboarded.
  *
- * @param requested the route the address bar named, if it named one
+ * @param requested the address the bar names, if it names one
  * @param onboarded whether the machine is onboarded
  * @param workRunning whether the machine reports running work or work that waits for the operator
+ * @param place the remembered place
+ * @param facts what the runtime knows about the remembered objects
+ * @param fromOutside whether the load carries no mark of the app
  * @returns the route to open
  */
-export function landingRoute(
-  requested: PathMatch | null,
+export function startRouteFor(
+  requested: Address | null,
   onboarded: boolean,
   workRunning: boolean,
+  place: RememberedPlace,
+  facts: PlaceFacts,
+  fromOutside: boolean,
 ): AppRoute {
-  if (!onboarded) {
-    return 'onboarding';
-  }
-  if (requested?.route === 'onboarding') {
-    return 'onboarding';
-  }
-  if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
-    return requested.route;
-  }
-  return workRunning ? 'overview' : 'projects';
+  const start = startAddress({ fromOutside, requested, onboarded, place, facts });
+  // `/` becomes a route of its own with PLAN-49; until then the start rule's fallback stands.
+  return start.route ?? (workRunning ? 'overview' : 'projects');
+}
+
+/**
+ * What the start needs to know about the remembered place: the work it names and the work of its
+ * project.
+ *
+ * @param summary the projects summary, or `null` when it could not be read
+ * @param place the remembered place
+ * @returns the facts the fall-backs read
+ */
+export function factsOf(summary: ProjectOverviewResponse | null, place: RememberedPlace): PlaceFacts {
+  const projects = summary?.projects ?? [];
+  const project = place.project
+    ? projects.find((entry) => entry.project_id === place.project)
+    : undefined;
+  const projectRuns = project ? hasWork({ projects: [project] }) : false;
+  return {
+    workRunning: hasWork(summary),
+    projectRuns,
+    // The summary names no plan, so a remembered plan opens while its project still runs work and
+    // falls back to the project otherwise.
+    planEnded: projectRuns ? false : undefined,
+  };
 }
 
 /**
@@ -445,19 +483,83 @@ function hasWork(summary: ProjectOverviewResponse | null): boolean {
 /**
  * Opens the operator's start page by the same rule as a first visit.
  *
- * Opens the overview while work runs or waits and the projects otherwise. A route already shown
- * is not pushed again, so the brand click adds no duplicate history entry.
+ * The brand click names no address of its own: the start rule decides, so a click never fills the
+ * remembered place (that is the Running work entry's job). A route already shown is not written
+ * again, so the brand click adds no history entry.
  */
 export async function openStartPage(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
-  const onboarded = get(runtimeStore).isOnboarded;
-  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
-  const target = landingRoute(null, onboarded, hasWork(summary));
+  const state = get(runtimeStore);
+  const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const place = readRememberedPlace();
+  const target = startRouteFor(
+    null,
+    state.isOnboarded,
+    hasWork(summary),
+    place,
+    factsOf(summary, place),
+    false,
+  );
   if (target !== get(runtimeStore).currentRoute) {
-    navigateTo(target);
+    show({ route: target }, 'replace');
   }
+}
+
+/**
+ * Shows an address and writes it to the bare, as the app's own navigation.
+ *
+ * @param address the address to show
+ * @param intent whether the change pushes a history entry or replaces the current one
+ */
+function show(address: Address, intent: WriteIntent): void {
+  applyRoute(address.route ?? 'overview', address);
+  runtimeStore.update((s) => ({ ...s, ...fieldsOfAddress(address) }));
+  writeAddress(address, intent);
+}
+
+/**
+ * The store fields an address names, so the bar and the store never disagree.
+ *
+ * @param address the address that was read or written
+ * @returns the fields it sets
+ */
+function fieldsOfAddress(address: Address): Partial<RuntimeState> {
+  return {
+    lensMode: address.mode ?? null,
+    lensGroup: address.group ?? null,
+    lensFollow: address.follow ?? false,
+    objectTab: address.tab ?? null,
+    openObject: address.open ?? null,
+    phaseNode: address.node ?? null,
+    changeFile: address.file ?? null,
+    chatOpen: address.chat ?? false,
+    chatTurn: address.turn ?? null,
+  };
+}
+
+/**
+ * Opens Running work and fills it from the remembered place, by a push.
+ *
+ * The rail's entry and the phone's bottom bar both call it; the pushed entry carries the app's
+ * mark, so a reload of it stays as it is.
+ */
+export async function openRunningWork(): Promise<void> {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  const summary = await apiClient.getProjects().catch(() => null);
+  const place = readRememberedPlace();
+  show(runningWorkAddress(place, factsOf(summary, place)), 'push');
+}
+
+/**
+ * Opens the lens's own list with nothing selected, by a push: what Up and the breadcrumb's lens
+ * segment do, and PLAN-144 calls it.
+ */
+export function openLensList(): void {
+  show(unfilledLensAddress(), 'push');
 }
 
 /**
@@ -580,14 +682,25 @@ export async function initRuntime(): Promise<void> {
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
 
     // A person who moved while the reads were in flight stays where they went.
+    const place = readRememberedPlace();
+    const facts = factsOf(summary, place);
+    const start = startAddress({
+      fromOutside: !carriesAppMark(),
+      requested: currentAddress(),
+      onboarded,
+      place,
+      facts,
+    });
     const route = navigatedSince(mark)
       ? {}
       : {
-          currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-          selectedPlanId: requested?.planId ?? null,
-          selectedEpicId: requested?.epicId ?? null,
-          startProjectId: requested?.projectId ?? null,
-          startEntryId: requested?.entryId ?? null,
+          currentRoute: start.route ?? (facts.workRunning ? 'overview' : 'projects'),
+          ...fieldsOfAddress(start),
+          selectedPlanId: start.planId ?? null,
+          selectedEpicId: start.epicId ?? null,
+          selectedTaskId: start.taskId ?? null,
+          startProjectId: start.projectId ?? null,
+          startEntryId: start.entryId ?? null,
         };
 
     runtimeStore.update((s) => ({
@@ -908,6 +1021,7 @@ export async function pairBrowser(code: string): Promise<void> {
   // deep link opened with the code keeps its route and its identifiers.
   const requested = matchPath(window.location.pathname);
   const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const place = readRememberedPlace();
 
   // The recorded interface language is settled before the shell first renders, so the app never
   // paints one language and then switches under the operator.
@@ -921,8 +1035,15 @@ export async function pairBrowser(code: string): Promise<void> {
     deviceLabel: res.label,
     machineName,
     isOnboarded: onboarded,
-    currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-    selectedPlanId: requested?.planId ?? null,
+    currentRoute: startRouteFor(
+      currentAddress(),
+      onboarded,
+      hasWork(summary),
+      place,
+      factsOf(summary, place),
+      false,
+    ),
+    selectedPlanId: currentAddress()?.planId ?? requested?.planId ?? null,
     selectedEpicId: requested?.epicId ?? null,
     startProjectId: requested?.projectId ?? null,
     startEntryId: requested?.entryId ?? null,
@@ -1300,6 +1421,8 @@ export async function withdrawConsent(kind: string): Promise<MachineSettingsUpda
 
 export function openPlanView(planId: string, taskId?: string | null): void {
   runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
+  // The plan the operator selected is the object the remembered place keeps.
+  writeRememberedPlace({ ...readRememberedPlace(), planId, epicId: null });
   pushRoute('plan', { planId, taskId: taskId ?? undefined });
 }
 
@@ -1314,6 +1437,7 @@ export function openEndedPlanView(info: EndedPlanInfo): void {
 }
 
 export function openEpicView(epicId: string): void {
+  writeRememberedPlace({ ...readRememberedPlace(), epicId, planId: null });
   pushRoute('epic', { epicId });
 }
 
