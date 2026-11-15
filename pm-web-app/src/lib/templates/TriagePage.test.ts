@@ -391,7 +391,8 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(get(runtimeStore).quietNavigationNotice).toBe(before);
   });
 
-  it('leaves the keys to a focused field', async () => {    render(TriagePageFixture, {
+  it('leaves the keys to a focused field', async () => {
+    render(TriagePageFixture, {
       props: {
         levels: LEVELS,
         label: 'Levels',

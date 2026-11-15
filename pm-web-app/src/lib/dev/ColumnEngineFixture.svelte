@@ -9,6 +9,14 @@
    * address, and it is drawn only in development (`lib/dev/devRouteExclusion.ts`).
    */
 
+  /** Whether the chat is open; the fixture's own state, so _Hide the chat_ works on a phone. */
+  let sideOpen = $state(true);
+
+  /** Hides the chat, as a view replaces the address. */
+  function hideSide(): void {
+    sideOpen = false;
+  }
+
   /** The five levels of the chain, the object column last. */
   const LEVELS: Level[] = [
     { key: 'lens', kind: 'report', title: 'reports', href: '/reports', state: 'two new' },
@@ -51,7 +59,8 @@
     column={columnPane}
     object={objectPane}
     side={sidePane}
-    sideOpen
+    {sideOpen}
+    onHideSide={hideSide}
   />
 </div>
 
