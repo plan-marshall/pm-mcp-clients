@@ -1,4 +1,4 @@
-<script module lang="ts">
+<script context="module" lang="ts">
   export interface SegmentedControlOption {
     id: string;
     label: string;

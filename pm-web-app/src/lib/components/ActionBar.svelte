@@ -1,9 +1,5 @@
-<script lang="ts">
-  import { tick } from 'svelte';
-  import Button from './Button.svelte';
-  import IconButton from './IconButton.svelte';
-  import ActMenu, { type ActMenuItem } from './ActMenu.svelte';
-  import { t } from '../i18n';
+<script context="module" lang="ts">
+  import type { ActMenuItem } from './ActMenu.svelte';
 
   /**
    * The visual bar of acts (VD-P-05, UX-P-04): one primary, up to three secondary, and the rest in
@@ -22,6 +18,14 @@
     /** Where the act sits; without a role the order decides, as before. */
     role?: 'primary' | 'secondary' | 'overflow';
   }
+</script>
+
+<script lang="ts">
+  import { tick } from 'svelte';
+  import Button from './Button.svelte';
+  import IconButton from './IconButton.svelte';
+  import ActMenu from './ActMenu.svelte';
+  import { t } from '../i18n';
 
   /** The acts, most important first. */
   export let acts: ActionBarAct[] = [];
@@ -74,7 +78,7 @@
         disabledReason={primary.disabledReason}
         title={primary.advisory}
         data-testid={`action-${primary.id}`}
-        on:click={(event) => chooseAct(primary.id, event.currentTarget)}
+        on:click={(event) => chooseAct(primary.id, event.currentTarget as HTMLElement)}
       >
         {primary.label}
       </Button>
@@ -87,7 +91,7 @@
         disabledReason={act.disabledReason}
         title={act.advisory}
         data-testid={`action-${act.id}`}
-        on:click={(event) => chooseAct(act.id, event.currentTarget)}
+        on:click={(event) => chooseAct(act.id, event.currentTarget as HTMLElement)}
       >
         {act.label}
       </Button>

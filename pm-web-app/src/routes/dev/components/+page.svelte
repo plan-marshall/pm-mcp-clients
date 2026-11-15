@@ -101,7 +101,7 @@
   ];
 
   let segmentedValue: Record<string, string> = { light: 'all', dark: 'all' };
-  let toggleChecked: Record<string, boolean> = { light: false, dark: true };
+  let togglePressed: Record<string, boolean> = { light: false, dark: true };
   let actMenuOpenState: Record<string, boolean> = { light: true, dark: true };
 
   $: segmentedOptions = [
@@ -608,10 +608,9 @@
       <h3 class="dev__section-title">{$t('dev.section.segmented_control')}</h3>
       <div class="dev__row">
         <SegmentedControl
-          name="filter-{theme}"
           options={segmentedOptions}
           bind:value={segmentedValue[theme]}
-          ariaLabel={$t('dev.section.segmented_control')}
+          label={$t('dev.section.segmented_control')}
         />
       </div>
 
@@ -619,15 +618,18 @@
       <div class="dev__row">
         <Toggle
           label="{$t('dev.toggle.label')} (off)"
-          checked={false}
+          icon="star"
+          pressed={false}
         />
         <Toggle
           label="{$t('dev.toggle.label')} (on)"
-          checked={true}
+          icon="star"
+          pressed={true}
         />
         <Toggle
           label="{$t('dev.toggle.label')} (interactive)"
-          bind:checked={toggleChecked[theme]}
+          icon="star"
+          bind:pressed={togglePressed[theme]}
         />
       </div>
 

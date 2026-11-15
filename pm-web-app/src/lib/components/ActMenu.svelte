@@ -83,7 +83,7 @@
       return;
     }
     close(true);
-    let promise: void | Promise<void>;
+    let promise: void | Promise<void> = undefined;
     if (item.onclick) {
       promise = item.onclick(event);
     }
@@ -99,7 +99,7 @@
     confirmingItem = null;
     close(true);
     if (item) {
-      let promise: void | Promise<void>;
+      let promise: void | Promise<void> = undefined;
       if (item.onclick) {
         promise = item.onclick(new MouseEvent('click'));
       }
