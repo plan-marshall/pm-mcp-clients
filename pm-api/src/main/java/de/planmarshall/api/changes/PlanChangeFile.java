@@ -93,6 +93,9 @@ public record PlanChangeFile(
         }
         var hunks = new ArrayList<PlanChangeHunk>();
         var rows = JsonTree.asArray(map.get(FIELD_HUNKS));
+        if (rows == null && map.containsKey(FIELD_HUNKS)) {
+            throw new JsonFormatException(FIELD_HUNKS + " must be an array");
+        }
         if (rows != null) {
             for (var row : rows) {
                 var hunk = JsonTree.asObject(row);
@@ -102,16 +105,15 @@ public record PlanChangeFile(
                 hunks.add(PlanChangeHunk.fromMap(hunk));
             }
         }
-        var linesOmitted = JsonTree.integer(map, FIELD_LINES_OMITTED);
-        if (linesOmitted != null && linesOmitted < 0) {
-            throw new JsonFormatException("A count of omitted lines is never negative");
-        }
+        var linesOmitted = map.containsKey(FIELD_LINES_OMITTED)
+                ? (int) JsonTree.integralNumber(map, FIELD_LINES_OMITTED, 0, Integer.MAX_VALUE)
+                : 0;
         return new PlanChangeFile(
                 path,
                 hunks,
                 Boolean.TRUE.equals(map.get(FIELD_BINARY)),
                 Boolean.TRUE.equals(map.get(FIELD_TRUNCATED)),
-                linesOmitted != null ? linesOmitted : 0);
+                linesOmitted);
     }
 
     /**

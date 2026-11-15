@@ -202,6 +202,26 @@ class PlanChangesContractTest {
 
             assertThrows(IOException.class, () -> PlanChangesAnswer.fromMap(map));
         }
+
+        @Test
+        @DisplayName("a files member that is no array is refused, never read as an empty list")
+        void filesNotAnArrayRefused() throws Exception {
+            var map = JsonTree.asObject(JsonTree.parse(
+                    "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c\",\"base_ref\":\"main\","
+                            + "\"files\":{}}"));
+
+            assertThrows(IOException.class, () -> PlanChangesAnswer.fromMap(map));
+        }
+
+        @Test
+        @DisplayName("a fractional figure is refused, never truncated to a whole one")
+        void fractionalFigureRefused() throws Exception {
+            var map = JsonTree.asObject(JsonTree.parse(
+                    "{\"plan_id\":\"fix-relay\",\"head\":\"9f3c\",\"files_total\":12,"
+                            + "\"insertions_total\":340.5,\"deletions_total\":27,\"unplanned_total\":2}"));
+
+            assertThrows(IOException.class, () -> PlanChangeCapturedEvent.fromMap(map));
+        }
     }
 
     @Nested

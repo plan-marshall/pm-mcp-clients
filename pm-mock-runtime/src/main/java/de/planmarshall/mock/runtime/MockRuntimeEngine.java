@@ -2612,12 +2612,23 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * @param path   the request path
      * @param suffix the route's suffix
-     * @return the plan id between the plans prefix and the suffix, or {@code null} when the path
-     *         names no single plan segment
+     * @return the plan id between the plans prefix and the suffix, decoded once, or {@code null}
+     *         when the path names no single, validly encoded plan segment
      */
     private static @Nullable String planIdOf(String path, String suffix) {
-        var planId = path.substring(PATH_PLANS_PREFIX.length(), path.length() - suffix.length());
-        return planId.isEmpty() || planId.contains("/") ? null : planId;
+        var end = path.length() - suffix.length();
+        if (end <= PATH_PLANS_PREFIX.length()) {
+            return null;
+        }
+        var segment = path.substring(PATH_PLANS_PREFIX.length(), end);
+        if (segment.contains("/")) {
+            return null;
+        }
+        try {
+            return URLDecoder.decode(segment, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
     }
 
     private void answerPlanChanges(MockHttpResponse response, String planId) throws IOException {
@@ -2640,15 +2651,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void answerPlanChangeFile(MockHttpRequest request, MockHttpResponse response, String planId)
             throws IOException {
+        var filePath = planChangePathOf(request);
+        if (filePath == null) {
+            response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
+                    KEY_MESSAGE, "A file's path is required, and it must be validly encoded"));
+            return;
+        }
         PlanChangeFile file;
         synchronized (planChangesLock) {
             var files = planChangeFiles.get(planId);
-            var filePath = queryValue(request, QUERY_PATH);
-            if (filePath == null) {
-                response.json(400, Map.of(KEY_ERROR, ApiErrorCode.INVALID_ARGUMENTS.wire(),
-                        KEY_MESSAGE, "A file's path is required"));
-                return;
-            }
             file = files != null ? files.get(filePath) : null;
         }
         if (file == null) {
@@ -2657,6 +2668,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         response.json(200, file.toMap());
+    }
+
+    /**
+     * @param request the request
+     * @return the file's path from the query, or {@code null} when it is absent or not decodable
+     */
+    private static @Nullable String planChangePathOf(MockHttpRequest request) {
+        try {
+            return queryValue(request, QUERY_PATH);
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
     }
 
     /**

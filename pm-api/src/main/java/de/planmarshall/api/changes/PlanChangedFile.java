@@ -102,20 +102,14 @@ public record PlanChangedFile(
         if (status == null) {
             throw new JsonFormatException("Unknown " + FIELD_STATUS + " of a changed file: " + statusWire);
         }
-        var added = JsonTree.integer(map, FIELD_ADDED);
-        var removed = JsonTree.integer(map, FIELD_REMOVED);
-        if (added == null || removed == null) {
-            throw new JsonFormatException("A changed file names its lines added and removed");
-        }
-        if (added < 0 || removed < 0) {
-            throw new JsonFormatException("A count of changed lines is never negative");
-        }
+        var added = JsonTree.integralNumber(map, FIELD_ADDED, 0, Integer.MAX_VALUE);
+        var removed = JsonTree.integralNumber(map, FIELD_REMOVED, 0, Integer.MAX_VALUE);
         return new PlanChangedFile(
                 path,
                 JsonTree.string(map, FIELD_RENAMED_FROM),
                 status,
-                added,
-                removed,
+                (int) added,
+                (int) removed,
                 Boolean.TRUE.equals(map.get(FIELD_BINARY)),
                 Boolean.TRUE.equals(map.get(FIELD_UNPLANNED)));
     }

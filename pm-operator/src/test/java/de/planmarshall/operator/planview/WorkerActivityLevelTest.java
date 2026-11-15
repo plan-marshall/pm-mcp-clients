@@ -148,7 +148,7 @@ class WorkerActivityLevelTest {
                             () -> assertTrue(text.contains("pom.xml, README.md"), text),
                             () -> assertTrue(text.contains("submit:TASK-9"), text),
                             () -> assertTrue(text.contains("answer received"), text),
-                            () -> assertTrue(text.contains("another model answered: deepseek → gemini"), text),
+                            () -> assertTrue(text.contains("answered by gemini instead of deepseek"), text),
                             () -> assertTrue(text.contains("pytest tests/"), text)
         );
     }

@@ -99,6 +99,8 @@ public class ScenarioLoader {
     /** The engine-only fixtures a state's runtime fixture may carry. */
     private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
     private static final String FIXTURE_CONTENTS = "contents";
+    /** The state-specific route overrides a state's runtime fixture may carry. */
+    private static final String FIXTURE_ROUTES = "routes";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -256,6 +258,9 @@ public class ScenarioLoader {
         var sizes = new LinkedHashMap<String, List<ChangeSize>>();
         try {
             routes.values().forEach(route -> collectPlanSizes(route.representation(), sizes));
+            for (var state : states.values()) {
+                collectStateRouteSizes(state, sizes);
+            }
         } catch (IllegalArgumentException e) {
             throw new ScenarioValidationException(scenario, null, "change",
                     "a plan's size of change is not a measurement: " + e.getMessage());
@@ -357,6 +362,26 @@ public class ScenarioLoader {
             map.values().forEach(member -> collectPlanSizes(member, sizes));
         } else if (value instanceof List<?> list) {
             list.forEach(member -> collectPlanSizes(member, sizes));
+        }
+    }
+
+    /**
+     * Collects the sizes of change a state's own route overrides spell
+     * ({@code facts.runtime.routes}, which the engine serves in preference to the static routes),
+     * so a state cannot serve a size its capture's totals disagree with.
+     *
+     * @param state the state
+     * @param sizes the collected sizes
+     */
+    private static void collectStateRouteSizes(StateDefinition state, Map<String, List<ChangeSize>> sizes) {
+        var representation = JsonTree.asObject(state.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+        var overrides = runtime == null ? null : JsonTree.asObject(runtime.get(FIXTURE_ROUTES));
+        if (overrides != null) {
+            overrides.values().forEach(value -> collectPlanSizes(value, sizes));
         }
     }
 

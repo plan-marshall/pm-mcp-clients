@@ -105,6 +105,9 @@ public record PlanChanges(String head, String baseRef, List<PlanChangedFile> fil
         }
         var files = new ArrayList<PlanChangedFile>();
         var rows = JsonTree.asArray(map.get(FIELD_FILES));
+        if (rows == null && map.containsKey(FIELD_FILES)) {
+            throw new JsonFormatException(FIELD_FILES + " must be an array");
+        }
         if (rows != null) {
             for (var row : rows) {
                 var file = JsonTree.asObject(row);

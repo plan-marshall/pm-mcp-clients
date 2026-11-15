@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -261,6 +262,45 @@ class PlanChangesScenarioTest {
                                 JsonTree.string(JsonTree.asObject(JsonTree.parse(unknown.body())), "error")));
             }
         }
+
+        @Test
+        @DisplayName("refuses a path that is not validly encoded rather than failing")
+        void refusesAMalformedPath() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var response = get(runtime, PlanChangesRoutes.plan(FIX_RELAY).list() + "/file?path=%");
+
+                assertEquals(400, response.status(), response.bodyText());
+                assertEquals("invalid_arguments",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error"));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a route shape that names no plan, never answering a fault")
+        void refusesAPlanlessPath() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var list = get(runtime, "/api/v1/plans/changes");
+                var file = get(runtime, "/api/v1/plans/changes/file");
+
+                assertAll(
+                        () -> assertEquals(404, list.status(), list.bodyText()),
+                        () -> assertEquals(404, file.status(), file.bodyText()));
+            }
+        }
+
+        @Test
+        @DisplayName("answers a capture at a percent-encoded plan segment")
+        void decodesThePlanSegment() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var response = get(runtime, "/api/v1/plans/%66ix-relay/changes");
+
+                assertEquals(200, response.status(), response.bodyText());
+                assertEquals(FIX_RELAY,
+                        assertInstanceOf(PlanChangesCaptured.class,
+                                PlanChangesAnswer.fromMap(JsonTree.asObject(JsonTree.parse(response.body()))))
+                                .planId());
+            }
+        }
     }
 
     @Nested
@@ -420,6 +460,28 @@ class PlanChangesScenarioTest {
             assertAll(
                     () -> assertTrue(refused.getMessage().contains(FIX_RELAY), refused.getMessage()),
                     () -> assertTrue(refused.getMessage().contains("insertions"), refused.getMessage()));
+        }
+
+        @Test
+        @DisplayName("refuses a state route override whose size contradicts the capture")
+        void refusesAContradictingStateRoute() throws Exception {
+            var valid = scenarioJson();
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var runtime = JsonTree.object(JsonTree.object(JsonTree.object(
+                    JsonTree.object(JsonTree.object(root, "states"), "running_work.active"),
+                    "representation"), "facts"), "runtime");
+            var override = new LinkedHashMap<String, Object>();
+            override.put("plan_id", FIX_RELAY);
+            override.put("change", Map.of("files", 12, "insertions", 341, "deletions", 27, "unplanned", 2));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/fix-relay/process", override);
+            runtime.put("routes", routes);
+            var contradicting = JsonTree.write(root);
+            assertNotEquals(valid, contradicting, "the fixture carries the state the test overrides");
+
+            var refused = assertThrows(ScenarioValidationException.class,
+                    () -> ScenarioLoader.load(contradicting, StandardScenarios.RUNNING_WORK));
+            assertTrue(refused.getMessage().contains(FIX_RELAY), refused.getMessage());
         }
 
         @Test

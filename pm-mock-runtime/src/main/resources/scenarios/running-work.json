@@ -3258,6 +3258,198 @@
                     "binary": false,
                     "truncated": true,
                     "lines_omitted": 120
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangeFile.java",
+                    "hunks": [
+                      {
+                        "old_start": 1,
+                        "old_len": 0,
+                        "new_start": 1,
+                        "new_len": 2,
+                        "lines": [
+                          {
+                            "kind": "added",
+                            "text": "package de.planmarshall.api.changes;"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "import java.util.List;"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangesAnswer.java",
+                    "hunks": [
+                      {
+                        "old_start": 1,
+                        "old_len": 0,
+                        "new_start": 1,
+                        "new_len": 2,
+                        "lines": [
+                          {
+                            "kind": "added",
+                            "text": "package de.planmarshall.api.changes;"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "public sealed interface PlanChangesAnswer {"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangesRoutes.java",
+                    "hunks": [
+                      {
+                        "old_start": 1,
+                        "old_len": 0,
+                        "new_start": 1,
+                        "new_len": 2,
+                        "lines": [
+                          {
+                            "kind": "added",
+                            "text": "package de.planmarshall.api.changes;"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "public final class PlanChangesRoutes {"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/event/EventName.java",
+                    "hunks": [
+                      {
+                        "old_start": 41,
+                        "old_len": 2,
+                        "new_start": 41,
+                        "new_len": 1,
+                        "lines": [
+                          {
+                            "kind": "removed",
+                            "text": " * The catalogue's plan.change_captured is not a member yet."
+                          },
+                          {
+                            "kind": "added",
+                            "text": " * The catalogue's plan.change_captured is the event of the changes package."
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntryKind.java",
+                    "hunks": [
+                      {
+                        "old_start": 23,
+                        "old_len": 1,
+                        "new_start": 23,
+                        "new_len": 2,
+                        "lines": [
+                          {
+                            "kind": "context",
+                            "text": "    LINK(\"link\"),"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "    MODEL_DIFFERS(\"model_differs\");"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntry.java",
+                    "hunks": [
+                      {
+                        "old_start": 45,
+                        "old_len": 1,
+                        "new_start": 45,
+                        "new_len": 3,
+                        "lines": [
+                          {
+                            "kind": "context",
+                            "text": "        List<String> questions"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "        , @Nullable String launchModel"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "        , @Nullable String servedModel"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-mock-runtime/src/main/resources/scenarios/running-work.json",
+                    "hunks": [
+                      {
+                        "old_start": 3069,
+                        "old_len": 1,
+                        "new_start": 3069,
+                        "new_len": 2,
+                        "lines": [
+                          {
+                            "kind": "context",
+                            "text": "            ],"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "            \"plan_changes\": ["
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
+                  },
+                  {
+                    "path": "pm-web-app/src/lib/plan-changes.ts",
+                    "hunks": [
+                      {
+                        "old_start": 1,
+                        "old_len": 2,
+                        "new_start": 1,
+                        "new_len": 3,
+                        "lines": [
+                          {
+                            "kind": "removed",
+                            "text": "export const tabs = [];"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "export const tabs = ['changes'];"
+                          },
+                          {
+                            "kind": "added",
+                            "text": "// the plan's changes, read from the runtime"
+                          }
+                        ]
+                      }
+                    ],
+                    "binary": false,
+                    "truncated": false
                   }
                 ]
               },

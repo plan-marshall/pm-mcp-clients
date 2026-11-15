@@ -123,10 +123,8 @@ public record PlanChangeCapturedEvent(
     }
 
     private static int requireFigure(Map<String, Object> map, String field) throws IOException {
-        var value = JsonTree.integer(map, field);
-        if (value == null) {
-            throw new JsonFormatException("Missing " + field + " in " + EVENT_NAME);
-        }
-        return value;
+        // An exact integral figure within int range: a fractional or out-of-range number is no
+        // measurement of a size, never a truncated one.
+        return (int) JsonTree.integralNumber(map, field, 0, Integer.MAX_VALUE);
     }
 }

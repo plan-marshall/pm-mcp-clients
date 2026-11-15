@@ -82,6 +82,9 @@ public record PlanChangeHunk(
         Objects.requireNonNull(map, "map");
         var lines = new ArrayList<PlanChangeLine>();
         var rows = JsonTree.asArray(map.get(FIELD_LINES));
+        if (rows == null && map.containsKey(FIELD_LINES)) {
+            throw new JsonFormatException(FIELD_LINES + " must be an array");
+        }
         if (rows != null) {
             for (var row : rows) {
                 var line = JsonTree.asObject(row);
@@ -100,13 +103,6 @@ public record PlanChangeHunk(
     }
 
     private static int requireCount(Map<String, Object> map, String field) throws IOException {
-        var value = JsonTree.integer(map, field);
-        if (value == null) {
-            throw new JsonFormatException("Missing " + field + " in a hunk");
-        }
-        if (value < 0) {
-            throw new JsonFormatException("A hunk's position and length are never negative: " + field);
-        }
-        return value;
+        return (int) JsonTree.integralNumber(map, field, 0, Integer.MAX_VALUE);
     }
 }
