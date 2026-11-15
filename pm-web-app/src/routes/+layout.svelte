@@ -9,14 +9,14 @@
     initRuntime,
     adoptRouteFromLocation,
     advanceLifecycleEpoch,
+    addressOfState,
     lifecycleEpochOf,
     lifecycleFieldsOf,
-    routeParamsOf,
     stopRuntimeRecovery,
-    syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
-  import { pathForRoute, ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import { ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import { writeAddress } from '../lib/navigation/history';
   import {
     applyTheme,
     readThemeChoice,
@@ -264,10 +264,10 @@
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path = pathForRoute(route, routeParamsOf($runtimeStore));
-    if (!path) return;
-    // The URL the popstate handler just adopted is already in the address bar; syncUrl leaves it.
-    syncUrl(path, !addressBarSettled);
+    const address = addressOfState($runtimeStore);
+    // The URL the popstate handler just adopted is already in the address bar; the writer leaves
+    // it, and a write always replaces the entry the view stands on.
+    writeAddress(address, 'replace');
     addressBarSettled = true;
   }
 

@@ -602,6 +602,9 @@ export function formatAddress(address: Address): string | null {
           epicId: address.epicId,
           taskId: address.taskId,
           reportId: address.reportId,
+          reportPlanId: address.reportPlanId,
+          explorerProjectId: address.explorerProjectId,
+          onboardingStep: address.onboardingStep,
           // A list route's decision travels in the path of its own route, never in the old query.
           decisionId: address.route === 'decision' ? address.decisionId : undefined,
         });
@@ -612,7 +615,7 @@ export function formatAddress(address: Address): string | null {
     if (value) parts.push(`${key}=${encodeValue(value)}`);
   };
 
-  add('project', address.project);
+  add('project', address.route === 'overview' || address.route === 'designer' ? address.project : undefined);
   add('mode', address.mode);
   add('group', address.group);
   if (address.follow) add('follow', 'on');

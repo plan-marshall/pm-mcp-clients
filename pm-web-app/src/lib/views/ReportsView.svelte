@@ -13,7 +13,8 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
-  import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
+  import { runtimeStore, refreshReportsCount, navigateTo } from '../stores/runtime';
+  import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
 
@@ -359,7 +360,7 @@
     flushRetainedReads();
     activeDetailPlanId = null;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
-    syncUrl('/reports', true);
+    writeAddress({ route: 'reports' }, 'replace');
   }
 
   // The reports route stays the same while its detail changes (a header visit to Reports, the

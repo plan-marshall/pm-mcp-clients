@@ -12,11 +12,13 @@ import {
 import {
   matchPath,
   pathForRoute,
+  type Address,
   type AppRoute,
   type PathMatch,
   type RouteParams,
   type StartPath,
 } from '../routes';
+import { currentAddress, intentFor, parentOf, writeAddress } from '../navigation/history';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 import { actFailureReason } from '../api/errors';
 
@@ -112,6 +114,20 @@ export interface RuntimeState {
   selectedDecisionId?: string | null;
   /** The work kind a figure asked the overview to show, consumed when it opens. */
   overviewFocus?: 'plans' | 'epics' | null;
+  /** The lens's mode, scope and follow, as the address carries them. */
+  lensMode?: 'ended' | null;
+  lensGroup?: 'epic' | null;
+  lensFollow?: boolean;
+  /** The tab of the object column the address names. */
+  objectTab?: string | null;
+  /** The object the address opens in place beside its caller. */
+  openObject?: { kind: string; id: string } | null;
+  /** The node of the plan's phase tree and the file of its changes, as the address names them. */
+  phaseNode?: string | null;
+  changeFile?: string | null;
+  /** Whether the chat stands as a side column, and the turn it scrolls to. */
+  chatOpen?: boolean;
+  chatTurn?: string | null;
 }
 
 /** An ended plan as Ended Work names it, for the plan view it opens. */
@@ -167,6 +183,15 @@ const initialState: RuntimeState = {
   cleanupPreviewItemId: null,
   cleanupHighlightItemId: null,
   overviewFocus: null,
+  lensMode: null,
+  lensGroup: null,
+  lensFollow: false,
+  objectTab: null,
+  openObject: null,
+  phaseNode: null,
+  changeFile: null,
+  chatOpen: false,
+  chatTurn: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -314,7 +339,9 @@ async function probeExistingPairing(): Promise<PairingProbe> {
 
 /** Drops the code fragment after the browser is known to be paired. */
 function dropCodeFragment(): void {
-  history.replaceState(null, '', window.location.pathname);
+  // The fragment is not part of the address the app writes, so the pairing code never reaches the
+  // history; the entry the app leaves carries its mark, like every other entry it creates.
+  writeAddress(currentAddress() ?? { route: 'pair' }, 'replace');
   runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 }
 
@@ -704,6 +731,24 @@ export function announceNavigation(text: string): void {
   runtimeStore.update((s) => ({ ...s, quietNavigationNotice: text }));
 }
 
+/**
+ * Falls back to the parent when the object the address shows was deleted.
+ *
+ * The fallback replaces the address rather than pushing, so the browser's Back never returns to
+ * the deleted object, and the frame's live region says what went away (`web.nav.gone`).
+ *
+ * @param name the object's name, as the notice prints it
+ * @returns `true` when the address moved to the parent
+ */
+export function fallBackFromDeletedObject(name: string): boolean {
+  const parent = parentOf(addressOfState(get(runtimeStore)));
+  if (!parent?.route) return false;
+  applyRoute(parent.route, parent);
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+  announceNavigation(translate(get(currentLocale), 'web.nav.gone', { name }));
+  return true;
+}
+
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
 function handleReportEvent(event: string, data: unknown): void {
   if (event === 'report.sent') {
@@ -966,7 +1011,33 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
 }
 
 /**
- * Moves to a route and pushes the one left behind on the caller's navigation stack.
+ * The address the store holds: the route and its identifiers, and the query fields the address
+ * carries for the object it shows.
+ *
+ * @param state the runtime state
+ * @returns the address to write
+ */
+export function addressOfState(state: RuntimeState): Address {
+  return {
+    route: state.currentRoute,
+    ...routeParamsOf(state),
+    ...(state.lensMode ? { mode: state.lensMode } : {}),
+    ...(state.lensGroup ? { group: state.lensGroup } : {}),
+    ...(state.lensFollow ? { follow: true } : {}),
+    ...(state.objectTab ? { tab: state.objectTab as Address['tab'] } : {}),
+    ...(state.openObject ? { open: state.openObject as Address['open'] } : {}),
+    ...(state.phaseNode ? { node: state.phaseNode } : {}),
+    ...(state.changeFile ? { file: state.changeFile } : {}),
+    ...(state.chatOpen ? { chat: true } : {}),
+    ...(state.chatTurn ? { turn: state.chatTurn } : {}),
+  };
+}
+
+/**
+ * Moves to a route and writes the address it names.
+ *
+ * The writer decides whether the change pushes or replaces: a change of depth or of lens pushes, a
+ * sibling in the same column replaces.
  *
  * @param route the route to show
  * @param params the identifiers it names, e.g. a plan's id
@@ -977,10 +1048,8 @@ export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
     navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
   }
   applyRoute(route, params);
-  const path = pathForRoute(route, params);
-  if (path) {
-    syncUrl(path, false);
-  }
+  const next = addressOfState(get(runtimeStore));
+  writeAddress(next, intentFor(currentAddress(), next));
 }
 
 /**
@@ -1001,11 +1070,8 @@ export function goBack(): boolean {
     return false;
   }
   applyRoute(previous.route, previous.params);
-  const path = pathForRoute(previous.route, previous.params);
-  if (path) {
-    // The current entry is replaced, so the browser's Back does not lead into a loop.
-    syncUrl(path, true);
-  }
+  // The current entry is replaced, so the browser's Back does not lead into a loop.
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
   return true;
 }
 
@@ -1020,25 +1086,6 @@ export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
 }
 
 /**
- * Puts a path in the address bar without reloading the view.
- *
- * The history API is used directly: every route page mounts the same dispatcher, so a history
- * entry alone moves between views, and `popstate` reads it back.
- *
- * @param path the path to show
- * @param replace `true` to replace the current entry instead of pushing one
- */
-export function syncUrl(path: string, replace: boolean): void {
-  // The address is the same only when path and query both match: a plain path must drop a stale
-  // query (a report's plan, a project in the explorer) rather than leave it in the bar.
-  if (`${window.location.pathname}${window.location.search}` === path) {
-    return;
-  }
-  const method = replace ? 'replaceState' : 'pushState';
-  window.history[method]({ path }, '', path);
-}
-
-/**
  * Shows the designer for a project and keeps the address bar on it without a history entry.
  *
  * The local selector and a refused route change both converge on the project the designer
@@ -1049,20 +1096,22 @@ export function syncUrl(path: string, replace: boolean): void {
  */
 export function replaceDesignerProject(projectId: string | null): void {
   runtimeStore.update((s) => ({ ...s, designerProjectId: projectId }));
-  const path = pathForRoute('designer', { projectId: projectId ?? undefined });
-  if (path) {
-    syncUrl(path, true);
-  }
+  writeAddress({ route: 'designer', projectId: projectId ?? undefined }, 'replace');
 }
 
 /**
  * Takes the route the address bar names, if it names one of the app's routes.
+ *
+ * The whole address is read: the selection, the lens's mode and grouping, the tab, the object
+ * opened in place, the node, the file and the chat, so a reload and the browser's back return the
+ * view exactly as it was.
  *
  * @returns the route taken, or `null` when the path names none
  */
 export function adoptRouteFromLocation(): AppRoute | null {
   const match = matchPath(window.location.pathname);
   if (match) {
+    const address = currentAddress();
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
@@ -1084,8 +1133,18 @@ export function adoptRouteFromLocation(): AppRoute | null {
       onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
+      selectedTaskId: match.taskId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,
       startEntryId: match.entryId ?? s.startEntryId ?? null,
+      lensMode: address?.mode ?? null,
+      lensGroup: address?.group ?? null,
+      lensFollow: address?.follow ?? false,
+      objectTab: address?.tab ?? null,
+      openObject: address?.open ?? null,
+      phaseNode: address?.node ?? null,
+      changeFile: address?.file ?? null,
+      chatOpen: address?.chat ?? false,
+      chatTurn: address?.turn ?? null,
     }));
   }
   return match?.route ?? null;
@@ -1309,7 +1368,10 @@ export function openOnboardingStep(step: number): void {
   runtimeStore.update((s) => ({ ...s, onboardingStep: step }));
   pushRoute('onboarding');
   // The step travels in the address bar too, so a reload opens the same aspect.
-  syncUrl(`/onboarding?step=${step}`, true);
+  writeAddress(
+    { route: 'onboarding', onboardingStep: step },
+    intentFor(currentAddress(), { route: 'onboarding', onboardingStep: step }),
+  );
 }
 
 /**
