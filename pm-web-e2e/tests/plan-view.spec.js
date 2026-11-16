@@ -161,9 +161,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     const epicView = page.locator('[data-testid="epic-view"]');
     await expect(epicView).toBeVisible();
 
-    // Verify epic breadcrumbs and title
-    await expect(page.locator('[data-testid="breadcrumb-project"]')).toHaveText('pm-mcp-clients');
-    await expect(page.locator('[data-testid="breadcrumb-epic"]')).toHaveText('relay-hardening');
+    // The epic's head draws no path of its own; it names the epic and its state.
     await expect(page.locator('[data-testid="epic-title"]')).toHaveText('Relay Hardening');
     await expect(page.locator('[data-testid="epic-state"]')).toHaveText('running');
 
@@ -200,12 +198,11 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.locator('[data-testid="epic-events"]')).toBeVisible();
 
-    // The epic's head draws no Back: the history returns to the plan it was opened from
-    await page.goBack();
-    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
-
-    // The plan's own back then returns to Running Work, where it was opened
-    await page.locator('[data-testid="back-btn"]').click();
+    // The epic's head draws no Back (D6): the rail's lens returns to Running Work
+    await page
+      .locator('.nav-rail')
+      .getByRole('button', { name: /Running work/i })
+      .click();
     await expect(page.locator('.overview')).toBeVisible();
   });
 

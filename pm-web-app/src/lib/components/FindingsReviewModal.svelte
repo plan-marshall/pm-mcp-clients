@@ -677,6 +677,13 @@
   }
 
   @media (max-width: 768px) {
+    /* The phone scrolls the overlay, so the head — and its Close — stay reachable however long the
+       review is: a centred panel taller than the viewport would put its own head off-screen. */
+    .review-modal {
+      align-items: flex-start;
+      overflow-y: auto;
+    }
+
     .review-modal__panel {
       margin: 0;
       border-radius: 0;

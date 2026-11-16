@@ -34,8 +34,8 @@ import de.planmarshall.api.json.JsonTree;
 class WorkRowTest {
 
     private static WorkRow row(String status) {
-        return new WorkRow(Generators.nonBlankStrings().next(), null, status, null, null, null, null, null, null,
-                null, null, null, null);
+        return new WorkRow(Generators.nonBlankStrings().next(), null, status, null, null, null, null, null,
+                null, null, null, null, null, null);
     }
 
     @ParameterizedTest(name = "a {0} row is locked: {1}")
@@ -65,9 +65,19 @@ class WorkRowTest {
     void shouldCarryTheChange() throws Exception {
         var change = "+" + Generators.integers(1, 999).next() + " -" + Generators.integers(1, 999).next();
         var row = new WorkRow(Generators.nonBlankStrings().next(), null, "staged", null, null, null, null, null,
-                change, null, null, null, null);
+                null, change, null, null, null, null);
 
         assertEquals(change, WorkRow.fromJson(row.toJson()).change());
+    }
+
+    @Test
+    @DisplayName("should carry the instant a row began to wait through its JSON")
+    void shouldCarryTheWaitSince() throws Exception {
+        var since = "2026-10-16T09:40:00Z";
+        var row = new WorkRow(Generators.nonBlankStrings().next(), null, "staged", "dependency", null, since,
+                null, null, null, null, null, null, null, null);
+
+        assertEquals(since, WorkRow.fromJson(row.toJson()).waitSince());
     }
 
     @Test
