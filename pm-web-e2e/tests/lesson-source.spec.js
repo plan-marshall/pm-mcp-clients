@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  addSource,
   continueAndStart,
   openProject,
   openStartSources,
@@ -16,7 +17,7 @@ test.describe('Web Client Lesson Sources (UC-STA-8)', () => {
 
   test('lists the unclaimed lessons newest first', async ({ page }) => {
     await openStartSources(page);
-    await page.getByTestId('add-lesson').click();
+    await addSource(page, 'lesson');
 
     const panel = page.getByTestId('lessons-panel');
     await expect(panel).toBeVisible();
@@ -35,13 +36,21 @@ test.describe('Web Client Lesson Sources (UC-STA-8)', () => {
 
   test('adds a lesson as a source and starts the plan', async ({ page }) => {
     await openStartSources(page);
-    await page.getByTestId('add-lesson').click();
+    await addSource(page, 'lesson');
     await expect(page.getByTestId('lessons-panel')).toBeVisible();
 
     await page.getByTestId('lesson-select-les-0007').click();
 
     await expect(page.getByTestId('lessons-panel')).toHaveCount(0);
     await expect(page.getByTestId('source-list')).toContainText('Retire lessons when a plan lands');
+
+    // The sources step keeps its one primary act, and Back from the ready step returns to it.
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await page.getByTestId('source-continue').click();
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
 
     await continueAndStart(page);
 

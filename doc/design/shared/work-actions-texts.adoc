@@ -214,6 +214,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |The epic is still being read; the next plan cannot start yet.
 |Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.
 
+|`control.epic.next_unreadable`
+|The epic could not be read; try again before the next plan starts.
+|Das Epic konnte nicht gelesen werden; versuche es erneut, bevor der nächste Plan startet.
+
 |`control.epic.auto`
 |Automatic: {mode, select, on {on} other {off}}
 |Automatischer Start: {mode, select, on {an} other {aus}}

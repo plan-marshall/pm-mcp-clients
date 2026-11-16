@@ -17,10 +17,7 @@
   export let onTitle: (value: string) => void = () => {};
   export let onId: (value: string) => void = () => {};
   export let onParameter: (name: string, value: string) => void = () => {};
-  export let onContinue: () => void = () => {};
-  export let onStart: () => void = () => {};
 
-  $: impossible = parameters.filter((parameter) => !parameter.available);
   $: recipeName = recipe?.name ?? '';
 
   function valueOf(parameter: RecipeParameter): string {
@@ -71,17 +68,6 @@
           {/if}
         </label>
       {/each}
-    </div>
-
-    <div class="recipe-ready__actions">
-      <button
-        type="button"
-        data-testid="recipe-continue"
-        disabled={busy || impossible.length > 0}
-        on:click={onContinue}
-      >
-        {$t('start.sources.continue')}
-      </button>
     </div>
   {:else}
     {#if sources.length > 0}
@@ -138,18 +124,6 @@
         })}
       </p>
     {/if}
-
-    <div class="recipe-ready__actions">
-      <button type="button" data-testid="ready-start" disabled={busy} on:click={onStart}>
-        {$t(
-          recipe
-            ? 'start.recipe.run'
-            : kind === 'epic'
-              ? 'start.ready.start_epic'
-              : 'start.ready.start_plan',
-        )}
-      </button>
-    </div>
   {/if}
 </section>
 
@@ -224,11 +198,5 @@
 
   .recipe-ready__chosen dd {
     margin: 0 0 var(--space-1, 0.25rem) 0;
-  }
-
-  .recipe-ready__actions button {
-    min-height: 44px;
-    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-    cursor: pointer;
   }
 </style>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import StartView from './StartView.svelte';
 import { apiClient, type EpicDecomposition } from '../api/client';
@@ -59,32 +59,43 @@ describe('StartView', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
-  it('draws skeletons while the entry is still being read', async () => {
+  it('draws the setup gate with its spinner while the entry is still being opened', async () => {
     vi.spyOn(apiClient, 'openEntry').mockReturnValue(new Promise(() => {}));
     vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
 
     render(StartView, { projectId: PROJECT, kind: 'plan' });
 
     const loading = await screen.findByTestId('start-loading');
-    expect(loading.querySelector('[data-testid="skeleton"]')).not.toBeNull();
+    expect(loading).toHaveTextContent("Checking the project's setup…");
+    expect(
+      within(screen.getByTestId('start-gate-checking')).getByRole('status'),
+    ).toBeInTheDocument();
   });
 
-  it('offers the projects when the start names none, and opens the one chosen', async () => {
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: 'ent-old' }));
-    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
-      projects: [
-        { project_id: 'pm-mcp-core', display_name: 'PM-MCP core' },
-        { project_id: PROJECT, display_name: 'PM-MCP clients' },
-      ],
-    } as Awaited<ReturnType<typeof apiClient.getProjects>>);
+  it('bounds the setup gate at 20 seconds', async () => {
+    const open = vi.spyOn(apiClient, 'openEntry').mockResolvedValue(sources());
+    vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+
+    render(StartView, { projectId: PROJECT, kind: 'plan' });
+    await screen.findByTestId('source-list');
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const [, request, signal, timeoutMs] = open.mock.calls[0];
+    expect(request).toEqual({ kind: 'plan' });
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(timeoutMs).toBe(20_000);
+  });
+
+  it('draws the error pattern with its act when the start names no project, and leads to the projects', async () => {
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: null }));
 
     render(StartView, {});
 
-    const choice = await screen.findByTestId('start-project-choice');
-    expect(choice).toHaveTextContent('Projects');
-    await fireEvent.click(screen.getByRole('button', { name: 'PM-MCP core' }));
+    const pattern = await screen.findByTestId('start-no-project');
+    expect(pattern).toHaveTextContent('There is no project to start work in');
+    await fireEvent.click(screen.getByRole('button', { name: 'Choose a project' }));
 
-    expect(get(runtimeStore)).toMatchObject({ startProjectId: 'pm-mcp-core', startEntryId: null });
+    expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 
   it('adopts the project of an entry opened by its id', async () => {
@@ -95,6 +106,20 @@ describe('StartView', () => {
 
     await screen.findByTestId('source-list');
     expect(get(runtimeStore).startProjectId).toBe(PROJECT);
+  });
+
+  it("closes the abandon question when another entry is addressed", async () => {
+    arrangeOpen(sources());
+    const rendered = render(StartView, { projectId: PROJECT, kind: 'plan' });
+    await screen.findByTestId('source-list');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Abandon' }));
+    await fireEvent.click(await screen.findByTestId('action-abandon'));
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+
+    await rendered.rerender({ entryId: 'ent-other', projectId: null, kind: 'plan' });
+
+    await vi.waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
   });
 
   describe('the live entry', () => {

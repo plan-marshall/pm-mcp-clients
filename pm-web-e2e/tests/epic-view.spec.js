@@ -2,10 +2,11 @@ import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 /**
- * The epic view, UC-PLN-5: the whole epic at a glance — its head, workstreams and members, sources,
- * landings, findings and watches, tokens, and events — read from `GET /api/v1/epics/{id}` and
- * refreshed by the runtime's events. Both canonical scenarios carry the epic: `running-work` as the
- * overview's working case, `fully-onboarded` as the showroom's.
+ * The epic page, UC-PLN-5 and UX-P-10: the epic as an object page — its head, the tokens line with
+ * its plan-by-plan disclosure, and the five tabs of `epic-view.adoc#tabs` — with its plans grouped
+ * by workstream, each row's title first, its id as a chip and what it waits for with since when.
+ * Both canonical scenarios carry the epic: `running-work` as the overview's working case,
+ * `fully-onboarded` as the showroom's.
  */
 
 const MOCK = MOCK_RUNTIME_URL;
@@ -29,7 +30,7 @@ async function pair(page, request, scenario) {
 }
 
 /**
- * Opens Running Work and, from there, the epic's view.
+ * Opens Running Work and, from there, the epic's page.
  *
  * @param page the page
  * @param title the epic's title as the overview writes it
@@ -49,7 +50,7 @@ async function openEpicFromOverview(page, title = 'Relay Hardening') {
   await expect(page.getByTestId('epic-view')).toBeVisible();
 }
 
-test.describe('Epic View (UC-PLN-5)', () => {
+test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
   test.afterAll(async ({ request }) => {
     try {
       await request.post(`${MOCK}/mock/scenario`, { data: { scenario: 'onboarding' } });
@@ -58,40 +59,30 @@ test.describe('Epic View (UC-PLN-5)', () => {
     }
   });
 
-  test('opens from Running Work with the path, title, and head of the epic', async ({
+  test('opens from Running Work with the object page head and no path of its own', async ({
     page,
     request,
   }) => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
 
-    await expect(page.getByTestId('breadcrumb-project')).toHaveText('pm-mcp-clients');
-    await expect(page.getByTestId('breadcrumb-epic')).toHaveText('relay-hardening');
-    await expect(page.getByTestId('epic-title')).toHaveText('Relay Hardening');
-    await expect(page.getByTestId('epic-state')).toHaveText('running');
+    await expect(page.getByTestId('object-page')).toBeVisible();
+    await expect(page.getByTestId('object-page-kind')).toContainText('epic');
+    await expect(page.getByTestId('object-page-title')).toHaveText('Relay Hardening');
+    await expect(page.getByTestId('object-page-id')).toHaveText('relay-hardening');
+    await expect(page.getByTestId('epic-state')).toContainText('running');
     await expect(page.getByTestId('epic-mode')).toContainText('Automatic: on');
     await expect(page.getByTestId('epic-scope')).toContainText('of 3 at once');
     await expect(page.getByTestId('epic-next-plan')).toContainText(
       'Next plan: relay-reconnect-metrics',
     );
+
+    // The path is the top bar's, never the page's (`navigation.adoc#up`).
+    await expect(page.getByTestId('epic-breadcrumb')).toHaveCount(0);
+    await expect(page.getByTestId('back-btn')).toHaveCount(0);
   });
 
-  test('leads to the project in one step and back to the overview', async ({ page, request }) => {
-    await pair(page, request, 'running-work');
-    await openEpicFromOverview(page);
-
-    await page.getByTestId('breadcrumb-project').click();
-    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients/);
-    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
-
-    await page
-      .locator('.nav-rail')
-      .getByRole('button', { name: /Running work/i })
-      .click();
-    await expect(page.locator('.overview')).toBeVisible();
-  });
-
-  test('folds and unfolds a workstream and names what a staged plan waits for', async ({
+  test('draws the plans with the title first, the id as a chip and the wait with its since', async ({
     page,
     request,
   }) => {
@@ -99,53 +90,96 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await openEpicFromOverview(page);
 
     const reconnect = page.getByTestId('workstream-WS-1');
-    const auth = page.getByTestId('workstream-WS-2');
-    await expect(reconnect).toContainText('WS-1');
     await expect(reconnect).toContainText('Reconnect');
     await expect(page.getByTestId('workstream-counts-WS-1')).toContainText(
       '1 shipped · 1 running · 1 paused · 1 staged',
     );
-    await expect(auth).toContainText('Authentication');
 
-    await expect(page.getByTestId('epic-row-relay-reconnect-backoff')).toContainText('shipped');
-    await expect(page.getByTestId('epic-row-relay-auth-v2')).toContainText('waiting for you');
+    // The title comes first, before the id chip and the state; the mock's title differs from the id.
+    const row = page.getByTestId('epic-row-relay-reconnect-backoff');
+    await expect(row).toHaveText(/^\s*Reconnect backoff/);
+    await expect(page.getByTestId('epic-plan-chip-relay-reconnect-backoff')).toContainText(
+      'relay-reconnect-backoff',
+    );
+    await expect(page.getByTestId('epic-plan-status-relay-reconnect-backoff')).toContainText(
+      'shipped',
+    );
+
     await expect(page.getByTestId('wait-relay-token-rotation')).toContainText(
       'waits for relay-auth-v2',
     );
     await expect(page.getByTestId('wait-relay-docs')).toContainText(
       'waits: overlap with relay-auth-v2',
     );
+    // Each wait says since when, as the served instant and a relative figure.
+    const since = page.getByTestId('wait-since-relay-docs');
+    await expect(since).toHaveAttribute('datetime', '2026-10-16T09:40:00Z');
+    await expect(since).not.toBeEmpty();
 
     await page.getByTestId('workstream-toggle-WS-2').click();
     await expect(page.getByTestId('epic-row-relay-auth-v2')).toHaveCount(0);
     await expect(page.getByTestId('workstream-counts-WS-2')).toContainText('2 staged');
-
     await page.getByTestId('workstream-toggle-WS-2').click();
     await expect(page.getByTestId('epic-row-relay-auth-v2')).toBeVisible();
   });
 
-  test('opens a plan in its view in one step and returns to the epic', async ({
+  test('shows the five tabs, Plans the default and each tab its own panel', async ({
     page,
     request,
   }) => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
 
-    await page.getByTestId('epic-row-relay-reconnect-backoff').getByRole('button').click();
-    await expect(page.getByTestId('plan-view')).toBeVisible();
-    await expect(page.getByTestId('breadcrumb-plan')).toHaveText('relay-reconnect-backoff');
+    const tabs = page.getByRole('tab');
+    await expect(tabs).toHaveCount(5);
+    await expect(tabs.nth(0)).toHaveText('Plans');
+    await expect(tabs.nth(1)).toHaveText('Intent');
+    await expect(tabs.nth(2)).toHaveText('Landings');
+    await expect(tabs.nth(3)).toHaveText('Reviews');
+    await expect(tabs.nth(4)).toHaveText('Events');
+    await expect(page.getByTestId('epic-panel-plans')).toBeVisible();
 
-    await page.getByTestId('back-btn').click();
-    await expect(page.getByTestId('epic-view')).toBeVisible();
-    await expect(page.getByTestId('breadcrumb-epic')).toHaveText('relay-hardening');
+    await page.getByRole('tab', { name: 'Intent' }).click();
+    await expect(page.getByTestId('epic-panel-intent')).toBeVisible();
+    await expect(page.getByTestId('epic-intent-sources')).toContainText('2 documents');
+
+    await page.getByRole('tab', { name: 'Landings' }).click();
+    await expect(page.getByTestId('epic-panel-landings')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
+    await expect(page.getByTestId('epic-panel-reviews')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Events' }).click();
+    await expect(page.getByTestId('epic-panel-events')).toBeVisible();
+    await expect(page.getByTestId('epic-events')).toContainText('relay-auth-v2 asks a decision');
   });
 
-  test('shows the landings with their pull requests as external links', async ({
+  test('writes the chosen tab into the address by a replace, and a reload keeps it', async ({
     page,
     request,
   }) => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
+
+    await page.getByRole('tab', { name: 'Intent' }).click();
+
+    await expect(page).toHaveURL(/\/epics\/relay-hardening\?.*tab=intent$/);
+    await page.reload();
+    await expect(page.getByTestId('epic-panel-intent')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Intent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  test('shows the landings with their pull requests and the analysis of the epic', async ({
+    page,
+    request,
+  }) => {
+    await pair(page, request, 'running-work');
+    await openEpicFromOverview(page);
+
+    await page.getByRole('tab', { name: 'Landings' }).click();
 
     await expect(page.getByTestId('epic-landing-count')).toHaveText('1 landing');
 
@@ -160,12 +194,14 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  test('opens the findings and the watches review from the registers', async ({
+  test('opens the findings review on its first open item, with the counts of the card', async ({
     page,
     request,
   }) => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
 
     await expect(page.getByTestId('epic-findings')).toContainText('0 new · 1 open · 1 kept');
     await expect(page.getByTestId('epic-watches')).toContainText('4 open · 0 kept');
@@ -173,21 +209,22 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await page.getByTestId('open-findings-review').click();
     await expect(page.getByTestId('review-modal')).toBeVisible();
     await expect(page.getByTestId('review-title')).toContainText('findings review');
-    await expect(page.getByTestId('review-item-F-0004')).toContainText(
+    // F-0004 is the first item that is still open, and the panel opens on it.
+    await expect(page.getByTestId('review-statement')).toContainText(
       'Reconnect loses the last event',
     );
+    await expect(page.getByTestId('review-open-count')).toHaveText('1 open');
     await page.getByTestId('review-close').click();
     await expect(page.getByTestId('review-modal')).toHaveCount(0);
 
     await page.getByTestId('open-watches-review').click();
-    await expect(page.getByTestId('review-modal')).toBeVisible();
     await expect(page.getByTestId('review-title')).toContainText('watches review');
     await expect(page.getByTestId('review-item-W-0001')).toContainText(
       'The reconnect backoff grows without bound',
     );
   });
 
-  test('writes the tokens as a floor with its coverage and the split per plan', async ({
+  test('writes the tokens as a floor with its coverage, and the split per plan in one step', async ({
     page,
     request,
   }) => {
@@ -198,6 +235,9 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await expect(page.getByTestId('epic-tokens')).toContainText('3.52 M in');
     await expect(page.getByTestId('epic-tokens')).toContainText('0.34 M out');
     await expect(page.getByTestId('epic-tokens-unmeasured')).toContainText('1 task not measured');
+
+    await page.getByTestId('epic-tokens-disclosure').click();
+
     await expect(page.getByTestId('epic-own-tokens')).toContainText('120 k');
     await expect(page.getByTestId('epic-plan-tokens-relay-reconnect-backoff')).toContainText(
       '1.40 M',
@@ -225,6 +265,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
 
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
+    await page.getByRole('tab', { name: 'Events' }).click();
 
     await expect(page.getByTestId('epic-events')).toContainText('relay-auth-v2 asks a decision');
     await expect(page.getByTestId('epic-events')).not.toContainText(
@@ -242,6 +283,33 @@ test.describe('Epic View (UC-PLN-5)', () => {
     );
   });
 
+  test('shows the epic as a list column with only its plans while one of them is open beside it', async ({
+    page,
+    request,
+  }) => {
+    await pair(page, request, 'running-work');
+    await page.goto('/epics/relay-hardening?open=plan:relay-cursor-order');
+
+    await expect(page.getByTestId('epic-list-column')).toBeVisible();
+    await expect(page.getByTestId('workstream-WS-1')).toContainText('Reconnect');
+    await expect(page.getByTestId('epic-row-relay-cursor-order')).toBeVisible();
+    // Nothing of the other tabs stands in the list column.
+    await expect(page.getByRole('tab')).toHaveCount(0);
+    await expect(page.getByTestId('epic-tokens')).toHaveCount(0);
+  });
+
+  test('leads to a plan in one step and back to the epic', async ({ page, request }) => {
+    await pair(page, request, 'running-work');
+    await openEpicFromOverview(page);
+
+    await page.getByTestId('epic-open-relay-reconnect-backoff').click();
+    await expect(page.getByTestId('plan-view')).toBeVisible();
+
+    // The epic's head draws no Back (D6): the plan's own path leads back to its epic.
+    await page.locator('[data-testid="breadcrumb-epic"]').click();
+    await expect(page.getByTestId('epic-view')).toBeVisible();
+  });
+
   test('shows the showroom epic with its third workstream and its events', async ({
     page,
     request,
@@ -252,6 +320,8 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await expect(page.getByTestId('workstream-WS-3')).toContainText('Observability');
     await expect(page.getByTestId('epic-row-relay-metrics')).toContainText('paused');
     await expect(page.getByTestId('epic-row-relay-metrics-docs')).toContainText('staged');
+
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.getByTestId('epic-events')).toContainText('landed');
   });
 
@@ -261,8 +331,9 @@ test.describe('Epic View (UC-PLN-5)', () => {
 
     await page.setViewportSize({ width: 320, height: 800 });
     await expect(page.getByTestId('epic-workstreams')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
     await expect(page.getByTestId('epic-registers')).toBeVisible();
-    await expect(page.getByTestId('epic-token-breakdown')).toBeVisible();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

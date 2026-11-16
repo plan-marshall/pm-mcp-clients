@@ -9,7 +9,12 @@ import { displayError } from '../display';
  * in the `common.error.*` area of the catalogue, and every view reads them through the same
  * `displayError` seam as the daemon's codes.
  */
-export const CLIENT_ERROR_CODES = ['timeout', 'network_offline', 'unauthorized'] as const;
+export const CLIENT_ERROR_CODES = [
+  'timeout',
+  'network_offline',
+  'unauthorized',
+  'no_project_to_start',
+] as const;
 
 /** One code of the client's own closed set. */
 export type ClientErrorCode = (typeof CLIENT_ERROR_CODES)[number];

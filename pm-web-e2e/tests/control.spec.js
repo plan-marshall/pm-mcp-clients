@@ -230,13 +230,26 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('epic-workstreams')).toBeVisible();
     await expect(page.getByTestId('workstream-WS-1')).toContainText('Reconnect');
     await expect(page.getByTestId('epic-row-relay-cursor-order')).toBeVisible();
-    await expect(page.getByTestId('epic-sources')).toContainText('2 documents');
+    await expect(page.getByTestId('epic-mode')).toContainText('Automatic: on');
+
+    // The sources, the landings, the reviews and the events are the epic's tabs (D6-1).
+    await page.getByRole('tab', { name: 'Intent' }).click();
+    await expect(page.getByTestId('epic-intent-sources')).toContainText('2 documents');
+
+    await page.getByRole('tab', { name: 'Landings' }).click();
     await expect(page.getByTestId('epic-landing-count')).toHaveText('1 landing');
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
     await expect(page.getByTestId('epic-findings')).toHaveText(/0 new · \d+ open · \d+ kept/);
     await expect(page.getByTestId('epic-watches')).toContainText('4 open');
-    await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.getByTestId('epic-events')).toContainText('relay-auth-v2 asks a decision');
-    await expect(page.getByTestId('epic-mode')).toContainText('Automatic: on');
+
+    // The tokens are the head line, with its one-step disclosure per plan.
+    await expect(page.getByTestId('epic-tokens')).toBeVisible();
+    await page.getByTestId('epic-tokens-disclosure').click();
+    await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
 
     await expect(page.getByTestId('action-next')).toBeVisible();
     const menu = await openOverflow(page.getByTestId('control-actions'));
@@ -326,6 +339,8 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await pairBrowser(page, request);
     await page.goto('/epics/relay-hardening');
 
+    // The reviews are the epic's Reviews tab (D6-1).
+    await page.getByRole('tab', { name: 'Reviews' }).click();
     await page.getByTestId('open-findings-review').click();
 
     await expect(page.getByTestId('review-modal')).toBeVisible();

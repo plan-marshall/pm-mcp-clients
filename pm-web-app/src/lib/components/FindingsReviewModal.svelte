@@ -66,6 +66,26 @@
     }
   });
 
+  // The review opens on its first open item: a review is read by working through what is still
+  // open, so the panel never opens on a decided item, or on nothing at all. A selection the person
+  // made stays theirs — only an empty one, or one the review no longer carries, is replaced.
+  $effect(() => {
+    if (!open) {
+      // A close — whether the modal's own or a parent's — forgets the selection, so the next open
+      // selects its own first open item instead of a decided one it still remembers.
+      selectedId = null;
+      return;
+    }
+    const items = review?.items ?? [];
+    if (selectedId !== null && items.some((item) => item.item_id === selectedId)) {
+      return;
+    }
+    const firstOpen = items.find((item) => item.state === 'open');
+    if (firstOpen !== undefined) {
+      selectedId = firstOpen.item_id;
+    }
+  });
+
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       close();
@@ -166,6 +186,9 @@
             total: review?.total ?? 0,
           })}
         </span>
+        <span class="review-modal__open" data-testid="review-open-count">
+          {$t('control.review.open_count', { count: openItems.length })}
+        </span>
         <button type="button" data-testid="review-close" onclick={close}>
           {$t('common.close')}
         </button>
@@ -186,6 +209,7 @@
                     type="button"
                     class="review-modal__item"
                     class:selected={selectedId === item.item_id}
+                    aria-current={selectedId === item.item_id ? 'true' : undefined}
                     data-testid={`review-item-${item.item_id}`}
                     onclick={() => select(item)}
                   >
@@ -481,6 +505,11 @@
     color: var(--color-text-secondary);
   }
 
+  .review-modal__open {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
   .review-modal__body {
     display: grid;
     grid-template-columns: minmax(14rem, 20rem) 1fr;
@@ -652,6 +681,13 @@
   }
 
   @media (max-width: 768px) {
+    /* The phone scrolls the overlay, so the head — and its Close — stay reachable however long the
+       review is: a centred panel taller than the viewport would put its own head off-screen. */
+    .review-modal {
+      align-items: flex-start;
+      overflow-y: auto;
+    }
+
     .review-modal__panel {
       margin: 0;
       border-radius: 0;

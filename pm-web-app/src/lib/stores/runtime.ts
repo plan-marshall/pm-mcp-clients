@@ -14,6 +14,7 @@ import {
   SETTINGS_TABS,
   type Address,
   type AppRoute,
+  type ObjectTab,
   type RouteParams,
   type StartPath,
 } from '../routes';
@@ -22,6 +23,7 @@ import {
   intentFor,
   openedFromOutside,
   parentOf,
+  switchTab,
   writeAddress,
   type WriteIntent,
 } from '../navigation/history';
@@ -1574,6 +1576,24 @@ export function openEndedPlanView(info: EndedPlanInfo): void {
 export function openEpicView(epicId: string): void {
   writeRememberedPlace({ ...readRememberedPlace(), epicId, planId: null });
   pushRoute('epic', { epicId });
+}
+
+/**
+ * Selects a tab of the object column, and writes it into the address by a replace.
+ *
+ * A tab is not a level: switching it leaves the history where it is, so Back leaves the object
+ * rather than walking through its tabs (`navigation.adoc#url`). The store follows the address, so
+ * the tab survives a reload of the same object.
+ *
+ * @param tab the tab to show
+ */
+export function selectObjectTab(tab: ObjectTab): void {
+  runtimeStore.update((s) => ({ ...s, objectTab: tab }));
+  const current = currentAddress();
+  if (!current) {
+    return;
+  }
+  writeAddress(switchTab(current, tab), 'replace');
 }
 
 /**
