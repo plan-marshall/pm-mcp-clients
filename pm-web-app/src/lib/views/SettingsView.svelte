@@ -1682,13 +1682,6 @@
     color: var(--color-text-secondary);
   }
 
-  .choice-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
   .field-row {
     display: flex;
     flex-wrap: wrap;
@@ -1739,22 +1732,6 @@
 
   .form-footer > :first-child {
     margin-inline-end: auto;
-  }
-
-  .choice {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-  }
-
-  .choice input[type='number'] {
-    width: 5rem;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
   }
 
   .hint-text {
