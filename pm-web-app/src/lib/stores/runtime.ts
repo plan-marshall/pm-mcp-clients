@@ -1519,23 +1519,29 @@ export interface MachineSettingsWriteResult extends MachineSettingsUpdateResult 
 export async function updateMachineSetting(
   key: string,
   value: string | null,
+  revision?: number,
 ): Promise<MachineSettingsWriteResult> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  // The caller may name the revision its edit was aimed at, so a refresh between the read and the
+  // write cannot turn another client's change into an overwrite.
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.updateMachineSetting(key, value, revision);
+    const result = await apiClient.updateMachineSetting(key, value, target);
     await loadMachineSettings();
     return result;
   } catch (err: unknown) {
     // A refusal keeps its wire code, so the page can name the rule the value missed instead of
     // showing the generic failure. Nothing was applied.
-    return { applied: false, conflict: false, revision, errorCode: errorCodeOf(err) };
+    return { applied: false, conflict: false, revision: target, errorCode: errorCodeOf(err) };
   }
 }
 
-export async function withdrawConsent(kind: string): Promise<MachineSettingsUpdateResult | null> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+export async function withdrawConsent(
+  kind: string,
+  revision?: number,
+): Promise<MachineSettingsUpdateResult | null> {
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.withdrawConsent(kind, revision);
+    const result = await apiClient.withdrawConsent(kind, target);
     await loadMachineSettings();
     return result;
   } catch {

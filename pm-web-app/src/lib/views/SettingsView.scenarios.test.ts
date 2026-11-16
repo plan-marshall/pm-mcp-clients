@@ -175,7 +175,7 @@ describe('the settings panels against the mock runtime states', () => {
     await fireEvent.click(screen.getByTestId('conflict-apply'));
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 4);
+      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 9);
     });
     await waitFor(() => expect(screen.queryByTestId('conflict-dialog')).not.toBeInTheDocument());
   });
@@ -259,7 +259,7 @@ describe('the settings panels against the mock runtime states', () => {
     await fireEvent.click(screen.getByTestId('conflict-apply'));
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 4);
+      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 9);
     });
   });
 
@@ -335,7 +335,7 @@ describe('the settings panels against the mock runtime states', () => {
 
     await fireEvent.click(screen.getByTestId('conflict-apply'));
     await waitFor(() =>
-      expect(updateSpy).toHaveBeenLastCalledWith('consent:scan_harnesses', null, 4),
+      expect(updateSpy).toHaveBeenLastCalledWith('consent:scan_harnesses', null, 9),
     );
   });
 

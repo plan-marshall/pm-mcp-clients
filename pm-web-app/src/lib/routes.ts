@@ -86,7 +86,10 @@ export type EpicTab = 'plans' | 'intent' | 'landings' | 'reviews' | 'events';
  * The tabs of the one settings view (`/settings?tab=…`); the first is the default. Unlike a
  * plan's or an epic's tab, every settings tab is written, so the page has one spelling.
  */
-export type SettingsTab = 'setup' | 'access' | 'credentials' | 'consents' | 'retention';
+export const SETTINGS_TABS = ['setup', 'access', 'credentials', 'consents', 'retention'] as const;
+
+/** One tab of the settings view, derived from the list so the two can never drift. */
+export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 /** The tab of an object column, whichever object it belongs to. */
 export type ObjectTab = PlanTab | EpicTab | SettingsTab;
@@ -96,15 +99,6 @@ export const PLAN_TABS: ReadonlyArray<PlanTab> = ['process', 'intent', 'changes'
 
 /** Every tab of an epic, first the default that an address omits. */
 export const EPIC_TABS: ReadonlyArray<EpicTab> = ['plans', 'intent', 'landings', 'reviews', 'events'];
-
-/** Every tab of the one settings view, first the default; every one is written in the address. */
-export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
-  'setup',
-  'access',
-  'credentials',
-  'consents',
-  'retention',
-];
 
 /** The mode of a lens's list: running work is the default and is never written. */
 export type LensMode = 'ended';

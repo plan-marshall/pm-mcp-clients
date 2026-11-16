@@ -3,6 +3,7 @@
   import { t, currentLocale, hasMessage } from '../i18n';
   import Tabs from '../components/Tabs.svelte';
   import Button from '../components/Button.svelte';
+  import Dialog from '../components/Dialog.svelte';
   import RadioGroup from '../components/RadioGroup.svelte';
   import NumberField from '../components/NumberField.svelte';
   import SecretField from '../components/SecretField.svelte';
@@ -65,6 +66,10 @@
     wantedValue: string | null;
     /** The cleanup categories the operator changed, which applying again sends over the current record. */
     changedFields?: CleanupDurationsRecord;
+    /** The revision the refused write was aimed at; the resend applies to the newer one. */
+    revision: number;
+    /** The sentence a value refusal shows, kept so a retried refusal says the same. */
+    refusal?: string;
   }
 
   /** The cleanup durations as one record of days, `-1` for a category that is never offered. */
@@ -142,6 +147,7 @@
   /** Whether the status read said how the listener stands; a failed read leaves it unknown. */
   let listenerKnown = false;
   let lanModalOpen = false;
+  let listenerOffPending = false;
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
   /** Whether the confirmed revoke runs; the dialog stays open and refuses a second confirm. */
   let revoking = false;
@@ -230,6 +236,7 @@
         withinBound(
           apiClient.getStatus(signal).catch(() => null),
           null,
+          () => controller.abort(),
         ),
       ]);
       if (!isMounted || sequence !== loadSequence) return;
@@ -271,11 +278,16 @@
    *
    * @param read the status read
    * @param fallback the value to answer with when the bound is reached
+   * @param onBound what to do at the bound, so the read that lost is ended rather than left open
    * @returns the read's answer, or the fallback at the bound
    */
-  function withinBound<T>(read: Promise<T>, fallback: T): Promise<T> {
+  function withinBound<T>(read: Promise<T>, fallback: T, onBound?: () => void): Promise<T> {
     return new Promise<T>((resolve) => {
-      const timer = setTimeout(() => resolve(fallback), STATUS_READ_BOUND_MS);
+      const timer = setTimeout(() => {
+        // The read can no longer report: end it, or it outlives the controller this view keeps.
+        onBound?.();
+        resolve(fallback);
+      }, STATUS_READ_BOUND_MS);
       read.then(
         (value) => {
           clearTimeout(timer);
@@ -366,6 +378,7 @@
         loadSequence += 1;
         loadController?.abort();
         loadController = null;
+        isLoadingDevices = false;
         devices = devices.filter((d) => isThisBrowser(d));
         pendingRevokeTarget = null;
       } catch (err: unknown) {
@@ -533,17 +546,29 @@
   let tokenNotice = '';
   let tokenError = '';
 
-  /** Whether the last save of each form succeeded, so the form's own line can say _Saved_. */
+  /** Whether the documents choice is a loopback-only one: a move deletes the operator's files. */
+  const loopbackSession =
+    typeof window !== 'undefined'
+      ? ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(window.location.hostname)
+      : true;
+
+  /** Whether the form of the documents mode currently shows a change. */
   let documentsSaved = false;
   let cleanupSaved = false;
   /** The documents mode the page last read, which its changed mark is measured against. */
   let readDocuments = 'ask';
   /** The cleanup record the page last read, the base of the changed set and of the resend. */
   let readDurations: CleanupDurationsRecord | undefined = undefined;
-  /** The documents modes as the radio group draws them. */
+  /** The revision the page last read, which every write of its forms is aimed at. */
+  let readRevision = 0;
+  /** The documents modes as the radio group draws them; a move is refused on the network. */
   $: documentsOptions = ['copy', 'move', 'ask'].map((mode) => ({
     value: mode,
     label: $t(`web.settings.documents.${mode}`),
+    disabled: mode === 'move' && !loopbackSession,
+    disabledReason: mode === 'move' && !loopbackSession
+      ? $t('web.settings.documents.loopback_only')
+      : undefined,
   }));
 
   $: settings = $runtimeStore.machineSettings;
@@ -599,6 +624,7 @@
     // against, so a settings event that refreshes the store cannot turn a stale field into the
     // operator's own change.
     readDurations = value.cleanup_durations ? { ...value.cleanup_durations } : undefined;
+    readRevision = value.revision;
   }
 
   /**
@@ -687,17 +713,22 @@
     value: string | null,
     changedFields?: CleanupDurationsRecord,
     refusal?: string,
+    revision?: number,
   ): Promise<boolean> {
     error = '';
     notice = '';
     conflict = null;
-    const result = await updateMachineSetting(key, value);
+    // The write is aimed at the revision the page read: a change another client made meanwhile is
+    // a conflict, never an overwrite.
+    const result = await updateMachineSetting(key, value, revision ?? readRevision);
     if (result.conflict) {
       conflict = {
         key,
         currentValue: result.current_value ?? '',
         wantedValue: value,
         changedFields,
+        revision: result.revision,
+        refusal,
       };
       return false;
     }
@@ -713,11 +744,13 @@
   }
 
   async function saveDocumentsMode(): Promise<void> {
-    const applied = await applySetting('documents_mode', documentsMode);
+    // The value submitted is the one the page records, even if the operator resets the field while
+    // the write runs.
+    const submitted = documentsMode;
+    const applied = await applySetting('documents_mode', submitted);
     if (applied) {
-      // The page's read is now the mode it saved, so the mark clears and a later reset does not
-      // jump back to a value the machine no longer holds.
-      readDocuments = documentsMode;
+      readDocuments = submitted;
+      readRevision = $runtimeStore.machineSettings?.revision ?? readRevision;
     }
     documentsSaved = applied;
   }
@@ -759,10 +792,13 @@
       return;
     }
     const recorded = settings?.cleanup_durations;
-    // The saved record starts from the one the runtime holds, so a category this page does not show
-    // keeps its value instead of being rebuilt from a fixed list of keys.
+    // The saved record starts from the record this page read (not the store, which a settings event
+    // may have refreshed), with the two figures the operator edits over it. A category the page
+    // does not show therefore keeps the value the page saw, and a write that would lose the other
+    // client's change is refused by the revision instead.
+    const edited = overriddenDurations(days, remind);
     const durations: CleanupDurationsRecord = {
-      ...(recorded ?? {
+      ...(readDurations ?? {
         plans_after_days: days,
         epics_after_days: days,
         logs_after_days: days,
@@ -770,20 +806,20 @@
         unenrolled_after_days: days,
         remind_after_days: remind,
       }),
-      ...overriddenDurations(days, remind),
+      ...edited,
     };
-    // Only what the operator changed travels again after a conflict; the other categories keep
-    // the value the other client recorded.
+    // Only the editable figures are the operator's change; the categories the page carried along
+    // are never sent as a change of theirs.
     const applied = await applySetting(
       'cleanup_durations',
       JSON.stringify(durations),
-      // Measured against the record this page read, not against a store a settings event refreshed.
-      changedCleanupFields(durations, readDurations),
+      changedCleanupFields(edited, readDurations),
       $t('system.cleanup.durations.minimum', { min: MINIMUM_RETENTION_DAYS, kind: 'plans' }),
     );
     if (applied) {
       // The page's read is now the record it saved.
       readDurations = { ...durations };
+      readRevision = $runtimeStore.machineSettings?.revision ?? readRevision;
     }
     cleanupSaved = applied;
   }
@@ -811,6 +847,8 @@
     if (!conflict) return;
     const key = conflict.key;
     const changed = conflict.changedFields;
+    const revision = conflict.revision;
+    const refusal = conflict.refusal;
     let wanted = conflict.wantedValue;
     if (key === 'cleanup_durations' && changed) {
       // The resend rides on the record the other client left; when that value is not a record, the
@@ -830,8 +868,9 @@
     }
     conflict = null;
     // A second conflict keeps the changed set: the categories the operator did not touch must
-    // follow the record the other client left again, not the one this resend was built from.
-    const applied = await applySetting(key, wanted, changed);
+    // follow the record the other client left again, not the one this resend was built from. The
+    // refusal sentence travels too, so a retried refusal says the same as the first one.
+    const applied = await applySetting(key, wanted, changed, refusal, revision);
     if (applied) {
       // The fields show the record the runtime now holds, so the next save does not resend a value
       // this resend deliberately kept from the other client.
@@ -886,13 +925,14 @@
   async function withdraw(consent: ConsentRecord): Promise<void> {
     error = '';
     notice = '';
-    const result = await withdrawConsent(consent.kind);
+    const result = await withdrawConsent(consent.kind, readRevision);
     if (result?.conflict) {
       conflict = {
         key: `consent:${consent.kind}`,
         currentValue: result.current_value ?? '',
         // A withdrawal sends nothing, never an empty string.
         wantedValue: null,
+        revision: result.revision,
       };
       return;
     }
@@ -919,14 +959,17 @@
 
   async function saveToken(): Promise<void> {
     if (!rotating || !rotatingSecret || isSavingToken) return;
+    // The credential the operator submitted is the one the completion speaks about, even if the
+    // modal is reopened meanwhile.
+    const target = rotating;
     isSavingToken = true;
     tokenError = '';
     // A rotation keeps the recorded kind; a replacement records the chosen one.
     const kind = rotatingMode === 'replace' ? rotatingKind : null;
-    const result = await storeCredential(rotating.key, rotatingSecret, kind);
+    const result = await storeCredential(target.key, rotatingSecret, kind);
     isSavingToken = false;
     if (result.ok) {
-      tokenNotice = $t('web.settings.credentials.rotated', { key: rotating.key });
+      tokenNotice = $t('web.settings.credentials.rotated', { key: target.key });
       rotatingSecret = '';
       rotating = null;
       if (result.kindFailed || result.refreshFailed) {
@@ -1156,10 +1199,12 @@
           <div>
             <h2 class="settings-section__title">{$t('web.settings.devices.title')}</h2>
             <p class="settings-section__subtitle" data-testid="devices-summary">
-              {$t('web.settings.devices.summary', {
-                count: devices.length,
-                lan: lanListenerOn ? 'on' : 'off',
-              })}
+              {listenerKnown
+                ? $t('web.settings.devices.summary', {
+                    count: devices.length,
+                    lan: lanListenerOn ? 'on' : 'off',
+                  })
+                : $t('web.settings.devices.summary_unknown', { count: devices.length })}
             </p>
           </div>
           {#if otherDevicesCount > 0}
@@ -1270,7 +1315,14 @@
             {#if listenerKnown && lanListenerOn}
               <Button
                 variant="secondary"
-                on:click={turnListenerOff}
+                on:click={() => {
+                  // A browser on the network loses its own access with the listener: it asks first.
+                  if (loopbackSession) {
+                    void turnListenerOff();
+                  } else {
+                    listenerOffPending = true;
+                  }
+                }}
                 data-testid="listener-off-button"
               >
                 {$t('devices.act.listener_off')}
@@ -1516,97 +1568,121 @@
     onClose={cancelRevoke}
   />
 
-  {#if rotating}
-    <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="rotate-modal">
-      <div class="modal-card">
-        <h2 class="modal-title">
-          {$t(
-            rotatingMode === 'replace'
-              ? 'web.settings.credentials.replace_title'
-              : 'web.settings.credentials.rotate_title',
-            { key: credentialProvider(rotating) },
-          )}
-        </h2>
-        <dl class="rotate-details">
+  <ConfirmDialog
+    open={listenerOffPending}
+    title={$t('devices.listener_off.confirm_title')}
+    consequences={[$t('devices.listener_off.confirm_explain')]}
+    actionLabel={$t('devices.act.listener_off')}
+    cancelLabel={$t('devices.revoke.keep')}
+    onConfirm={() => {
+      listenerOffPending = false;
+      void turnListenerOff();
+    }}
+    onClose={() => (listenerOffPending = false)}
+  />
+
+  <Dialog
+    open={rotating !== null}
+    title={rotating
+      ? $t(
+          rotatingMode === 'replace'
+            ? 'web.settings.credentials.replace_title'
+            : 'web.settings.credentials.rotate_title',
+          { key: credentialProvider(rotating) },
+        )
+      : ''}
+    onClose={closeRotate}
+    testid="rotate-modal"
+  >
+    {#if rotating}
+      <dl class="rotate-details">
+        <div class="rotate-details__row">
+          <dt>
+            {$t('web.settings.credentials.entry', {
+              key: credentialProvider(rotating),
+              provider: rotating.provider,
+            })}
+          </dt>
+          <dd>
+            {$t(
+              rotatingMode === 'replace'
+                ? 'web.settings.credentials.replace_explain'
+                : 'web.settings.credentials.rotate_explain',
+            )}
+          </dd>
+        </div>
+        {#if rotatingMode === 'replace'}
           <div class="rotate-details__row">
             <dt>
-              {$t('web.settings.credentials.entry', {
-                key: credentialProvider(rotating),
-                provider: rotating.provider,
-              })}
+              <label class="rotate-label" for="replace-kind">
+                {$t('web.settings.credentials.kind')}
+              </label>
             </dt>
             <dd>
-              {$t(
-                rotatingMode === 'replace'
-                  ? 'web.settings.credentials.replace_explain'
-                  : 'web.settings.credentials.rotate_explain',
-              )}
+              <input
+                id="replace-kind"
+                type="text"
+                class="rotate-input"
+                bind:value={rotatingKind}
+                data-testid="replace-kind"
+              />
             </dd>
           </div>
-          {#if rotatingMode === 'replace'}
-            <div class="rotate-details__row">
-              <dt>
-                <label class="rotate-label" for="replace-kind">
-                  {$t('web.settings.credentials.kind')}
-                </label>
-              </dt>
-              <dd>
-                <input
-                  id="replace-kind"
-                  type="text"
-                  class="rotate-input"
-                  bind:value={rotatingKind}
-                  data-testid="replace-kind"
-                />
-              </dd>
-            </div>
-          {:else}
-            <div class="rotate-details__row">
-              <dt>{$t('web.settings.credentials.kind')}</dt>
-              <dd>{credentialKind(rotating)}</dd>
-            </div>
-          {/if}
+        {:else}
           <div class="rotate-details__row">
-            <dt>
-              {$t('web.settings.credentials.now', {
-                kind: credentialKind(rotating),
-                expiry: expiryLabel(rotating),
-              })}
-            </dt>
-            <dd></dd>
+            <dt>{$t('web.settings.credentials.kind')}</dt>
+            <dd>{credentialKind(rotating)}</dd>
           </div>
-        </dl>
-
-        <SecretField
-          id="rotate-secret"
-          bind:value={rotatingSecret}
-          label={$t('web.settings.credentials.secret')}
-          hint={$t('web.settings.credentials.secret_hint')}
-          testid="rotate-secret"
-        />
-        <p class="hint-text">
-          {$t('web.settings.credentials.lan', {
-            command: `pm-operator credentials rotate ${rotating.key}`,
-          })}
-        </p>
-
-        <div class="modal-actions">
-          <Button variant="ghost" on:click={closeRotate} data-testid="rotate-cancel">
-            {$t('web.settings.back')}
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!rotatingSecret}
-            loading={isSavingToken}
-            on:click={saveToken}
-            data-testid="rotate-save"
-          >
-            {$t('web.settings.credentials.store')}
-          </Button>
+        {/if}
+        <div class="rotate-details__row">
+          <dt>
+            {$t('web.settings.credentials.now', {
+              kind: credentialKind(rotating),
+              expiry: expiryLabel(rotating),
+            })}
+          </dt>
+          <dd></dd>
         </div>
-      </div>
-    </div>
-  {/if}
+      </dl>
+
+      <SecretField
+        id="rotate-secret"
+        bind:value={rotatingSecret}
+        label={$t('web.settings.credentials.secret')}
+        hint={$t('web.settings.credentials.secret_hint')}
+        testid="rotate-secret"
+      />
+      <p class="hint-text">
+        {$t('web.settings.credentials.lan', {
+          command: `pm-operator credentials rotate ${rotating.key}`,
+        })}
+      </p>
+
+      {#if tokenError}
+        <p class="error-text" role="alert" data-testid="rotate-error">{tokenError}</p>
+      {/if}
+    {/if}
+
+    <svelte:fragment slot="footer">
+      <Button
+        variant="ghost"
+        disabled={isSavingToken}
+        on:click={closeRotate}
+        data-testid="rotate-cancel"
+      >
+        {$t('web.settings.back')}
+      </Button>
+      <Button
+        variant="primary"
+        disabled={!rotatingSecret}
+        loading={isSavingToken}
+        on:click={saveToken}
+        data-testid="rotate-save"
+      >
+        {$t('web.settings.credentials.store')}
+      </Button>
+    </svelte:fragment>
+  </Dialog>
 </div>
 
 <style>

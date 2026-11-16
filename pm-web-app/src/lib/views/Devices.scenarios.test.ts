@@ -280,10 +280,12 @@ describe('Paired devices against the mock runtime scenarios', () => {
 
   it('guards a read that settles after the view is gone', () => {
     // The destroy guard is what keeps a read's continuation from writing to a view the operator
-    // has left. Its write is component-local and invisible to the page, so the guard is pinned at
-    // its source: the test fails exactly when the guard is reverted.
+    // has left. Its write is component-local and invisible to the page, so the guards are pinned at
+    // their source: the test fails exactly when the entry guard or either continuation guard is
+    // reverted.
     const source = fs.readFileSync(path.resolve(__dirname, 'SettingsView.svelte'), 'utf8');
     expect(source).toContain('if (!isMounted) return;');
+    expect(source.match(/if \(!isMounted \|\| sequence !== loadSequence\) return;/g)).toHaveLength(2);
   });
 
   it('aborts the status read when the devices read fails', async () => {
