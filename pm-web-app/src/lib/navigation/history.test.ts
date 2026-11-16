@@ -80,7 +80,10 @@ describe('the writer of the address', () => {
   it('reports the address the bar shows', () => {
     window.history.replaceState(null, '', '/plans/fix-relay?tab=intent');
     expect(currentAddress()).toEqual({ route: 'plan', planId: 'fix-relay', tab: 'intent' });
+    // The root is the list of what waits, an address of the scheme like any other.
     window.history.replaceState(null, '', '/');
+    expect(currentAddress()).toEqual({ route: 'inbox' });
+    window.history.replaceState(null, '', '/nowhere');
     expect(currentAddress()).toBeNull();
   });
 });

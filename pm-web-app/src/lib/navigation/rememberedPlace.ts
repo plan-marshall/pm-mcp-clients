@@ -154,7 +154,8 @@ export function addressOfPlace(place: RememberedPlace, facts: PlaceFacts): Addre
 /** The bare addresses the remembered place may fill: `/` and the unfilled `/overview`. */
 export function isFillableStart(address: Address | null): boolean {
   if (!address) return false;
-  if (address.route === null) return address.lens === undefined;
+  // `/` is the list of what waits; `/?lens=waits` is a full address and is never filled.
+  if (address.route === 'inbox') return address.lens === undefined;
   return (
     address.route === 'overview' &&
     !address.project &&
@@ -185,8 +186,8 @@ export interface StartInput {
  *
  * The remembered place fills the start at a mark-less load, at `/` or at the bare `/overview`. A
  * full address opens what it names, and `/?lens=waits` is such an address. Without a place the app
- * opens what waits, and until PLAN-49 registers `/` the present rule stands: the overview while
- * work runs or waits, the projects otherwise.
+ * opens what waits: its start page, the list of what waits at `/` (needs-and-find.adoc, The Start
+ * Page Is What Waits).
  *
  * @param input what the start reads
  * @returns the address to open
@@ -195,7 +196,10 @@ export function startAddress(input: StartInput): Address {
   if (!input.onboarded) return { route: 'onboarding' };
   const requested = input.requested;
   if (requested?.route === 'onboarding') return requested;
-  const present = (): Address => ({ route: input.facts.workRunning ? 'overview' : 'projects' });
+  // Without a remembered place the start is what waits; a bare `/overview` keeps the lens the
+  // address names, so an operator who opened `/overview` stays there.
+  const present = (): Address =>
+    requested?.route === 'overview' ? { route: 'overview' } : { route: 'inbox' };
   if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
     // `/?lens=waits` names its lens, so it is a full address and is never filled.
     if (isFillableStart(requested)) {
@@ -203,7 +207,6 @@ export function startAddress(input: StartInput): Address {
         const filled = addressOfPlace(input.place, input.facts);
         if (filled) return filled;
       }
-      // Without a place the start is what waits; until PLAN-49 registers `/`, the present rule.
       return present();
     }
     return requested;
