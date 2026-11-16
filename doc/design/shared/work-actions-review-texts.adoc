@@ -26,6 +26,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |{done} of {total} decided
 |{done} von {total} entschieden
 
+|`control.review.open_count`
+|{count, plural, one {# open} other {# open}}
+|{count, plural, one {# offen} other {# offen}}
+
 |`control.review.statement`
 |Statement
 |Aussage

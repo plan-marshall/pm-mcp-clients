@@ -670,7 +670,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await epicCard.click();
           await expect(page.getByTestId('epic-view')).toBeVisible();
 
-          // 4. Assert findings review button ("Review" / "Prüfen")
+          // 4. Open the Reviews tab and assert the findings review button ("Review" / "Prüfen")
+          await page.getByRole('tab', { name: /Reviews|Prüfungen/ }).click();
           const reviewBtn = page.getByTestId('open-findings-review');
           await expect(reviewBtn).toBeVisible();
 

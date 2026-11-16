@@ -38,6 +38,8 @@
     scope?: number;
     /** Whether the epic's own resource is read; without it the scope and the count are unknown. */
     scopeKnown?: boolean;
+    /** Whether that read failed, so the bar says the true thing instead of "still being read". */
+    resourceFailed?: boolean;
     /** How many of the epic's plans run; `null` when the view does not know, and then the raise dialogue says the count is unknown. */
     running?: number | null;
     nextPlan?: string;
@@ -57,6 +59,7 @@
     ended = false,
     scope = 0,
     scopeKnown = true,
+    resourceFailed = false,
     running = null,
     nextPlan = '',
     pullRequestNumber = null,
@@ -176,7 +179,11 @@
       role: spec.role,
       destructive: spec.destructive,
       disabled: spec.disabled || waitingForEpic,
-      disabledReason: waitingForEpic ? $t('control.epic.next_waiting') : spec.disabledReason,
+      disabledReason: waitingForEpic
+        ? $t(
+            resourceFailed ? 'control.epic.next_unreadable' : 'control.epic.next_waiting',
+          )
+        : spec.disabledReason,
     };
   }
 
