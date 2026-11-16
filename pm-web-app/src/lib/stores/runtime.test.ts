@@ -1241,18 +1241,23 @@ describe('the machine settings the store writes', () => {
     expect(result).toEqual({ ok: true, cause: '', kindFailed: true, refreshFailed: true });
   });
 
-  it('answers nothing when the runtime refuses a setting read at no revision', async () => {
+  it('keeps the refusal’s code when the runtime refuses a setting at no revision', async () => {
     // Arrange: the store has read no settings yet, so the change applies to revision 0
     runtimeStore.set(makeRuntimeState({ machineSettings: null }));
     const update = vi
       .spyOn(apiClient, 'updateMachineSetting')
-      .mockRejectedValue(new Error('conflict'));
+      .mockRejectedValue(new Error('invalid_value'));
 
     // Act
     const result = await updateMachineSetting('documents_mode', 'copy');
 
-    // Assert
-    expect(result).toBeNull();
+    // Assert: nothing was applied, and the page can name the rule the value missed.
+    expect(result).toEqual({
+      applied: false,
+      conflict: false,
+      revision: 0,
+      errorCode: 'invalid_value',
+    });
     expect(update).toHaveBeenCalledWith('documents_mode', 'copy', 0);
   });
 

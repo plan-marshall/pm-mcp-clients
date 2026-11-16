@@ -289,8 +289,9 @@ describe('the settings panels against the mock runtime states', () => {
     const sent = JSON.parse(updateSpy.mock.calls[1]?.[1] ?? '{}') as Record<string, number>;
     expect(sent.plans_after_days).toBe(45);
     // The stored record's categories stand in for the unreadable value.
-    expect(sent.epics_after_days).toBe(settings.cleanup_durations.epics_after_days);
-    expect(sent.remind_after_days).toBe(settings.cleanup_durations.remind_after_days);
+    const stored = settingsRecord();
+    expect(sent.epics_after_days).toBe(stored.cleanup_durations.epics_after_days);
+    expect(sent.remind_after_days).toBe(stored.cleanup_durations.remind_after_days);
   });
 
   it('shows in the Yours line what the resend will send, not the page’s old record', async () => {
@@ -315,11 +316,11 @@ describe('the settings panels against the mock runtime states', () => {
     await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
     await fireEvent.click(screen.getByTestId('save-cleanup'));
 
-    const dialog = await screen.findByTestId('conflict-dialog');
+    const yours = await screen.findByTestId('conflict-yours');
     // The resend sends the operator's plans over the other client's record, so the line names 90,
     // not the 30 the page read before the other client changed it.
-    expect(dialog).toHaveTextContent('Archived epics: 90 days');
-    expect(dialog).toHaveTextContent('Ask me again after 4 days');
+    expect(yours).toHaveTextContent('Archived epics: 90 days');
+    expect(yours).toHaveTextContent('Ask me again after 4 days');
   });
 
   it('names the minimum when the server refuses a duration as invalid', async () => {
@@ -338,9 +339,10 @@ describe('the settings panels against the mock runtime states', () => {
   });
 
   it('keeps a category added to the record when the page saves', async () => {
+    const stored = settingsRecord();
     vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(
       settingsRecord({
-        cleanup_durations: { ...settings.cleanup_durations, custom_after_days: 12 },
+        cleanup_durations: { ...stored.cleanup_durations, custom_after_days: 12 },
       }),
     );
     const updateSpy = vi
@@ -384,11 +386,12 @@ describe('the settings panels against the mock runtime states', () => {
 
     // A settings event refreshes the store meanwhile; the page's read is still the one that says
     // what the operator changed.
+    const refreshed = settingsRecord();
     runtimeStore.update((state) => ({
       ...state,
       machineSettings: {
-        ...settings,
-        cleanup_durations: { ...settings.cleanup_durations, remind_after_days: 5 },
+        ...refreshed,
+        cleanup_durations: { ...refreshed.cleanup_durations, remind_after_days: 5 },
       },
     }));
 

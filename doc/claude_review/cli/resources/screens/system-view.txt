@@ -17,9 +17,9 @@ System · pm-mcpd 0.9.1                                                         
   Jobs      build  1 of 2 slots · 1 queued · test  0 of 1 slot · locks  3 held
           build  1 of 2 slots · 1 queued
           test  0 of 1 slot
-  Models    Last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
-          claude:opus-4.5        42 calls   2.02 M tokens (1.90 M in · 120 k out)    1 retry
-          claude:sonnet-4.5      118 calls   3.61 M tokens (3.20 M in · 410 k out)
+  Models    Last hour · 172 calls · tokens ≥ 5.63 M (≥ 5.10 M in · ≥ 0.53 M out)
+          claude:opus-4.5        42 calls   tokens 2.02 M (1.90 M in · 0.12 M out)    1 retry
+          claude:sonnet-4.5      118 calls   tokens 3.61 M (3.20 M in · 0.41 M out)
           codex:gpt-5            12 calls   not measured   1 error   12 calls not measured
   Cleanup   due: 12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project · frees 1.8 GB
           4 kept for good · last sweep today 03:00

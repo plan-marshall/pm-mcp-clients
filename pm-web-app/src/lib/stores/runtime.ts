@@ -35,7 +35,7 @@ import {
   type RememberedPlace,
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
-import { actFailureReason } from '../api/errors';
+import { actFailureReason, errorCodeOf } from '../api/errors';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -1514,8 +1514,10 @@ export async function updateMachineSetting(
     const result = await apiClient.updateMachineSetting(key, value, revision);
     await loadMachineSettings();
     return result;
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    // A refusal keeps its wire code, so the page can name the rule the value missed instead of
+    // showing the generic failure. Nothing was applied.
+    return { applied: false, conflict: false, revision, errorCode: errorCodeOf(err) };
   }
 }
 

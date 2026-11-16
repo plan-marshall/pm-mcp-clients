@@ -166,6 +166,10 @@
   let loadController: AbortController | null = null;
   /** The number of the newest read; an older answer never reaches the view. */
   let loadSequence = 0;
+  /** How many events changed the list, so a read that started before one cannot replace it. */
+  let eventEpoch = 0;
+  /** How long the status read is given before the listener counts as unknown. */
+  const STATUS_READ_BOUND_MS = 10_000;
 
   onMount(() => {
     isMounted = true;
@@ -197,6 +201,8 @@
     if (event === 'device.renamed') {
       const payload = data as { device_id: string; label: string };
       if (payload?.device_id && payload?.label) {
+        // The event is newer than every read in flight: its answer must not replace this change.
+        eventEpoch += 1;
         devices = devices.map((d) =>
           d.device_id === payload.device_id ? { ...d, label: payload.label } : d,
         );
@@ -204,6 +210,7 @@
     } else if (event === 'device.revoked') {
       const payload = data as { device_id: string };
       if (payload?.device_id) {
+        eventEpoch += 1;
         devices = devices.filter((d) => d.device_id !== payload.device_id);
       }
     }
@@ -225,13 +232,22 @@
     isLoadingDevices = true;
     loadAttempts += 1;
     loadError = null;
+    const epoch = eventEpoch;
     try {
       const signal = controller.signal;
       const [devList, status] = await Promise.all([
         apiClient.getDevices(signal),
-        apiClient.getStatus(signal).catch(() => null),
+        withinBound(
+          apiClient.getStatus(signal).catch(() => null),
+          null,
+        ),
       ]);
       if (!isMounted || sequence !== loadSequence) return;
+      if (hasShownDevices && epoch !== eventEpoch) {
+        // An event changed the list after this read started, so the snapshot predates the event:
+        // keep what the event left rather than replacing it.
+        return;
+      }
       devices = Array.isArray(devList) ? devList : [];
       hasShownDevices = true;
       listenerKnown = Boolean(status?.web && typeof status.web.lan === 'boolean');
@@ -252,6 +268,49 @@
         isLoadingDevices = false;
       }
     }
+  }
+
+  /**
+   * Ends a read that never answers at a bound of its own.
+   *
+   * The client bounds its own requests, but a runtime that accepts the read and never answers costs
+   * the page its list: the devices behind a status read that does not settle are shown with the
+   * listener unknown rather than after a wait that has no end.
+   *
+   * @param read the status read
+   * @param fallback the value to answer with when the bound is reached
+   * @returns the read's answer, or the fallback at the bound
+   */
+  function withinBound<T>(read: Promise<T>, fallback: T): Promise<T> {
+    return new Promise<T>((resolve) => {
+      const timer = setTimeout(() => resolve(fallback), STATUS_READ_BOUND_MS);
+      read.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        () => {
+          clearTimeout(timer);
+          resolve(fallback);
+        },
+      );
+    });
+  }
+
+  /**
+   * Drops a device this page ended and marks every read in flight as superseded.
+   *
+   * A read that started before the revoke still carries the row; without the new number its answer
+   * would re-add the device the operator just removed.
+   *
+   * @param deviceId the device to drop
+   */
+  function forgetDevice(deviceId: string): void {
+    loadSequence += 1;
+    loadController?.abort();
+    loadController = null;
+    isLoadingDevices = false;
+    devices = devices.filter((d) => d.device_id !== deviceId);
   }
 
   function isThisBrowser(device: PairedDevice): boolean {
@@ -311,6 +370,10 @@
     if (pendingRevokeTarget === 'others') {
       try {
         await apiClient.revokeOtherDevices();
+        // Every other row is gone; a read that started before it must not bring them back.
+        loadSequence += 1;
+        loadController?.abort();
+        loadController = null;
         devices = devices.filter((d) => isThisBrowser(d));
         pendingRevokeTarget = null;
       } catch (err: unknown) {
@@ -327,7 +390,7 @@
     const isCurrent = isThisBrowser(device);
     try {
       await apiClient.revokeDevice(device.device_id);
-      devices = devices.filter((d) => d.device_id !== device.device_id);
+      forgetDevice(device.device_id);
       pendingRevokeTarget = null;
       if (isCurrent) {
         apiClient.clearAuth();
@@ -480,6 +543,10 @@
   /** Whether the last save of each form succeeded, so the form's own line can say _Saved_. */
   let documentsSaved = false;
   let cleanupSaved = false;
+  /** The documents mode the page last read, which its changed mark is measured against. */
+  let readDocuments = 'ask';
+  /** The cleanup record the page last read, the base of the changed set and of the resend. */
+  let readDurations: CleanupDurationsRecord | undefined = undefined;
   /** The documents modes as the radio group draws them. */
   $: documentsOptions = ['copy', 'move', 'ask'].map((mode) => ({
     value: mode,
@@ -487,13 +554,12 @@
   }));
 
   $: settings = $runtimeStore.machineSettings;
-  /** The values the machine holds, which the forms show until the operator changes one. */
-  $: recordedDocuments = settings?.documents_mode || 'ask';
-  $: recordedPlans = settings?.cleanup_durations?.plans_after_days ?? 30;
-  $: recordedRemind = settings?.cleanup_durations?.remind_after_days ?? 3;
-  $: documentsChanged = documentsMode !== recordedDocuments;
-  $: plansChanged = Number(cleanupDays) !== Number(recordedPlans);
-  $: remindChanged = Number(cleanupRemindDays) !== Number(recordedRemind);
+  /** The values the page last read; a store the runtime refreshed meanwhile does not move them. */
+  $: readPlans = readDurations?.plans_after_days ?? 30;
+  $: readRemind = readDurations?.remind_after_days ?? 3;
+  $: documentsChanged = documentsMode !== readDocuments;
+  $: plansChanged = Number(cleanupDays) !== Number(readPlans);
+  $: remindChanged = Number(cleanupRemindDays) !== Number(readRemind);
   $: cleanupChanged = plansChanged || remindChanged;
   // The dependency is written out, so a settings record that arrives after the mount fills both
   // tabs: a helper call would hide it from the template's own update.
@@ -523,8 +589,13 @@
   function applyLocal(value: MachineSettingsRecord | null): void {
     if (!value) return;
     documentsMode = value.documents_mode || 'ask';
+    readDocuments = documentsMode;
     cleanupDays = value.cleanup_durations?.plans_after_days ?? 30;
     cleanupRemindDays = value.cleanup_durations?.remind_after_days ?? 3;
+    // The record the page last read is what its changed marks and its resends are measured
+    // against, so a settings event that refreshes the store cannot turn a stale field into the
+    // operator's own change.
+    readDurations = value.cleanup_durations ? { ...value.cleanup_durations } : undefined;
   }
 
   /**
@@ -612,6 +683,7 @@
     key: string,
     value: string | null,
     changedFields?: CleanupDurationsRecord,
+    refusal?: string,
   ): Promise<boolean> {
     error = '';
     notice = '';
@@ -626,8 +698,9 @@
       };
       return false;
     }
-    if (!result) {
-      error = $t('web.settings.update_failed');
+    if (!result?.applied) {
+      // A refusal that names the rule the value missed says it; anything else stays generic.
+      error = result?.errorCode && refusal ? refusal : $t('web.settings.update_failed');
       return false;
     }
     notice = $t('web.settings.saved');
@@ -641,7 +714,7 @@
 
   /** Drops the documents change and shows the value the machine holds again. */
   function resetDocumentsMode(): void {
-    documentsMode = recordedDocuments;
+    documentsMode = readDocuments;
     documentsSaved = false;
   }
 
@@ -682,8 +755,14 @@
     const applied = await applySetting(
       'cleanup_durations',
       JSON.stringify(durations),
-      changedCleanupFields(durations, recorded),
+      // Measured against the record this page read, not against a store a settings event refreshed.
+      changedCleanupFields(durations, readDurations),
+      $t('system.cleanup.durations.minimum', { min: MINIMUM_RETENTION_DAYS, kind: 'plans' }),
     );
+    if (applied) {
+      // The page's read is now the record it saved.
+      readDurations = { ...durations };
+    }
     cleanupSaved = applied;
   }
 
@@ -698,8 +777,8 @@
 
   /** Drops the cleanup change and shows the durations the machine holds again. */
   function resetCleanup(): void {
-    cleanupDays = recordedPlans;
-    cleanupRemindDays = recordedRemind;
+    cleanupDays = readPlans;
+    cleanupRemindDays = readRemind;
     cleanupSaved = false;
   }
 
@@ -710,7 +789,19 @@
     const changed = conflict.changedFields;
     let wanted = conflict.wantedValue;
     if (key === 'cleanup_durations' && changed) {
-      const current = parseCleanupRecord(conflict.currentValue) ?? {};
+      // The resend rides on the record the other client left; when that value is not a record, the
+      // record this page last read stands in rather than an empty one, which would reset every
+      // category the operator did not touch to the defaults.
+      const current =
+        parseCleanupRecord(conflict.currentValue) ??
+        readDurations ??
+        settings?.cleanup_durations;
+      if (!current) {
+        // Nothing the resend could be built on: refuse it, with the reason the page shows.
+        error = $t('web.settings.conflict.no_record');
+        conflict = null;
+        return;
+      }
       wanted = JSON.stringify({ ...current, ...changed });
     }
     conflict = null;
@@ -722,6 +813,19 @@
       // this resend deliberately kept from the other client.
       applyLocal($runtimeStore.machineSettings ?? null);
     }
+  }
+
+  /**
+   * @param state the conflict the page shows
+   * @returns the value the resend will send, in the catalogue's words
+   */
+  function conflictYoursWords(state: ConflictState): string {
+    if (state.key !== 'cleanup_durations' || !state.changedFields) {
+      return cleanupWords(state.wantedValue);
+    }
+    const current =
+      parseCleanupRecord(state.currentValue) ?? readDurations ?? settings?.cleanup_durations ?? {};
+    return cleanupWords(JSON.stringify({ ...current, ...state.changedFields }));
   }
 
   /** Keeps the other client's value and closes the dialogue, without writing anything. */
@@ -885,11 +989,11 @@
   {#if conflict}
     <div class="conflict" role="alert" data-testid="conflict-dialog">
       <h2 class="conflict__title">{$t('web.settings.conflict.title')}</h2>
-      <p class="conflict__line">
+      <p class="conflict__line" data-testid="conflict-current">
         {$t('web.settings.conflict.current', { value: cleanupWords(conflict.currentValue) })}
       </p>
-      <p class="conflict__line">
-        {$t('web.settings.conflict.yours', { value: cleanupWords(conflict.wantedValue) })}
+      <p class="conflict__line" data-testid="conflict-yours">
+        {$t('web.settings.conflict.yours', { value: conflictYoursWords(conflict) })}
       </p>
       <div class="conflict__actions">
         <Button variant="ghost" on:click={keepCurrentValue} data-testid="conflict-keep">

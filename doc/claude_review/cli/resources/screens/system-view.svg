@@ -139,9 +139,9 @@
 <text x="8.0" y="293" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">  Jobs      build  1 of 2 slots · 1 queued · test  0 of 1 slot · locks  3 held                                          </text>
 <text x="8.0" y="310" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          build  1 of 2 slots · 1 queued                                                                                </text>
 <text x="8.0" y="327" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          test  0 of 1 slot                                                                                             </text>
-<text x="8.0" y="344" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">  Models    Last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)                                         </text>
-<text x="8.0" y="361" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          claude:opus-4.5        42 calls   2.02 M tokens (1.90 M in · 120 k out)    1 retry                            </text>
-<text x="8.0" y="378" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          claude:sonnet-4.5      118 calls   3.61 M tokens (3.20 M in · 410 k out)                                      </text>
+<text x="8.0" y="344" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">  Models    Last hour · 172 calls · tokens ≥ 5.63 M (≥ 5.10 M in · ≥ 0.53 M out)                                         </text>
+<text x="8.0" y="361" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          claude:opus-4.5        42 calls   tokens 2.02 M (1.90 M in · 0.12 M out)    1 retry                            </text>
+<text x="8.0" y="378" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          claude:sonnet-4.5      118 calls   tokens 3.61 M (3.20 M in · 0.41 M out)                                      </text>
 <text x="8.0" y="395" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          codex:gpt-5            12 calls   not measured   1 error   12 calls not measured                              </text>
 <text x="8.0" y="412" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">  Cleanup   due: 12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project · frees 1.8 GB                    </text>
 <text x="8.0" y="429" xml:space="preserve" textLength="1008.0" fill="#d4d4d4">          4 kept for good · last sweep today 03:00                                                                      </text>
