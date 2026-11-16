@@ -1154,8 +1154,13 @@
       <section class="settings-section" data-testid="paired-devices-section">
         <div class="section-header">
           <div>
-            <h2 class="settings-section__title">{$t('devices.list.title')}</h2>
-            <p class="settings-section__subtitle">{$t('devices.list.subtitle')}</p>
+            <h2 class="settings-section__title">{$t('web.settings.devices.title')}</h2>
+            <p class="settings-section__subtitle" data-testid="devices-summary">
+              {$t('web.settings.devices.summary', {
+                count: devices.length,
+                lan: lanListenerOn ? 'on' : 'off',
+              })}
+            </p>
           </div>
           {#if otherDevicesCount > 0}
             <div data-testid="devices-section-acts">
