@@ -54,7 +54,7 @@ import de.planmarshall.api.intent.BuilderCheckResource;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
-import de.planmarshall.api.intent.OverSizeDistributionResource;
+import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
@@ -112,8 +112,10 @@ class FullyOnboardedScenarioTest {
             assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
                     intent.decisions().getLast().adr().relation());
 
-            var distribution = OverSizeDistributionResource.fromJson(
-                    get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText());
+            var distribution = OverSizeDistributionsResource.fromJson(
+                    get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText())
+                    .of("implement");
+            assertNotNull(distribution);
             assertNull(distribution.proposedMultiple());
             assertEquals(0, distribution.flaggedTasks());
             assertEquals(0.0, distribution.flaggedShare(), 0.0001);
@@ -212,7 +214,7 @@ class FullyOnboardedScenarioTest {
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/intent",
                         body -> EpicIntentResource.fromJson(body)));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/metrics/oversize",
-                        body -> OverSizeDistributionResource.fromJson(body)));
+                        OverSizeDistributionsResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/decisions", FullyOnboardedScenarioTest::assertDecisions));
                 endpoints.add(new Endpoint("/api/v1/decisions/Q-007",
                         body -> DecisionEnvelope.fromJson(body)));

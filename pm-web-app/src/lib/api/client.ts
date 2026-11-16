@@ -2355,7 +2355,8 @@ export interface OverSizeBucketRecord {
 /**
  * The `over_size` distribution of a role, as the runtime serves it
  * (`OverSizeDistributionResource` of `pm-api`): the multiple in force, the proposed one where the
- * runtime serves a proposal, and the measured buckets.
+ * runtime serves a proposal, and the measured buckets. A role without measured tasks carries no
+ * bucket, which the chart shows as `intent.oversize.empty` rather than as a zero bar.
  */
 export interface OverSizeDistributionRecord {
   project_id: string;
@@ -2363,6 +2364,15 @@ export interface OverSizeDistributionRecord {
   current_multiple: number;
   proposed_multiple?: number;
   buckets: OverSizeBucketRecord[];
+}
+
+/**
+ * The `over_size` distributions of a project, one per role whose multiple the project sets
+ * (`OverSizeDistributionsResource` of `pm-api`), in the runtime's order.
+ */
+export interface OverSizeDistributionsRecord {
+  project_id: string;
+  distributions: OverSizeDistributionRecord[];
 }
 
 /**
@@ -2809,17 +2819,31 @@ function readEpicIntent(raw: unknown): EpicIntentRecord {
 
 /**
  * @param raw the record the runtime sent
- * @returns the distribution, every member of the contract read
+ * @returns the distributions, every member of the contract read
  */
-function readOverSize(raw: unknown): OverSizeDistributionRecord {
-  const type = 'OverSizeDistributionResource';
+function readOverSize(raw: unknown): OverSizeDistributionsRecord {
+  const type = 'OverSizeDistributionsResource';
   const record = recordObject(raw, type);
+  return {
+    project_id: recordText(record, 'project_id', type),
+    distributions: recordObjects(record, 'distributions', type).map((entry) =>
+      readOverSizeDistribution(entry),
+    ),
+  };
+}
+
+/**
+ * @param record one role's distribution of the served set
+ * @returns it, every member of the contract read; a role without measured tasks carries no bucket
+ */
+function readOverSizeDistribution(record: Record<string, unknown>): OverSizeDistributionRecord {
+  const type = 'OverSizeDistributionResource';
   return {
     project_id: recordText(record, 'project_id', type),
     role: recordText(record, 'role', type),
     current_multiple: recordNumber(record, 'current_multiple', type),
     proposed_multiple: optionalRecordNumber(record, 'proposed_multiple', type),
-    buckets: recordRequiredObjects(record, 'buckets', 'TokenBucket').map((bucket) => ({
+    buckets: recordObjects(record, 'buckets', type).map((bucket) => ({
       label: recordText(bucket, 'label', 'TokenBucket'),
       from_multiple: recordNumber(bucket, 'from_multiple', 'TokenBucket'),
       to_multiple: recordNumber(bucket, 'to_multiple', 'TokenBucket'),
@@ -4078,13 +4102,14 @@ export class ApiClient {
   }
 
   /**
-   * Reads the `over_size` distribution of a project's role (design `intent-and-outline.adoc`, The
-   * `over_size` Distribution).
+   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (design
+   * `intent-and-outline.adoc`, The `over_size` Distribution).
    *
    * @param projectId the project
-   * @returns the distribution, or `null` where the runtime measures none yet
+   * @returns the roles' distributions, or `null` where the runtime has no such record; a project it
+   *     measures no role of answers an empty `distributions` list
    */
-  public async getOverSize(projectId: string): Promise<OverSizeDistributionRecord | null> {
+  public async getOverSize(projectId: string): Promise<OverSizeDistributionsRecord | null> {
     return this.readRecord(
       `/api/v1/projects/${encodeURIComponent(projectId)}/metrics/oversize`,
       readOverSize,
