@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   EPIC_TABS,
   PLAN_TABS,
+  SETTINGS_TABS,
   canonicalAddress,
   formatAddress,
   matchPath,
@@ -12,18 +13,18 @@ import {
 } from './routes';
 
 describe('the routes of the app', () => {
-  it('resolves the onboarding, the entry and the machine settings by path', () => {
+  it('resolves the onboarding, the entry and the settings by path', () => {
     expect(routeForPath('/onboarding')).toBe('onboarding');
     expect(routeForPath('/onboarding/')).toBe('onboarding');
     expect(routeForPath('/entry')).toBe('entry');
     expect(routeForPath('/pair')).toBe('pair');
-    expect(routeForPath('/settings/machine')).toBe('machine-settings');
     expect(routeForPath('/settings')).toBe('settings');
   });
 
-  it('resolves the machine settings before its parent', () => {
-    // `/settings/machine` must not be read as the devices page.
-    expect(routeForPath('/settings/machine')).not.toBe('settings');
+  it('replaces the old machine settings address instead of resolving it', () => {
+    // The two pages are one view now: the old path is a legacy address, not a route.
+    expect(routeForPath('/settings/machine')).toBeNull();
+    expect(replaceLegacyAddress('/settings/machine')).toBe('/settings?tab=setup');
     expect(routeForPath('/system/cleanup')).toBe('cleanup');
     expect(routeForPath('/system/cleanup')).not.toBe('system');
   });
@@ -48,7 +49,7 @@ describe('the routes of the app', () => {
     expect(pathForRoute('onboarding')).toBe('/onboarding');
     expect(pathForRoute('entry')).toBe('/entry');
     expect(pathForRoute('pair')).toBe('/pair');
-    expect(pathForRoute('machine-settings')).toBe('/settings/machine');
+    expect(pathForRoute('settings')).toBe('/settings');
     expect(pathForRoute('project-onboarding')).toBe('/projects/onboard');
     expect(pathForRoute('overview')).toBe('/overview');
     expect(pathForRoute('decisions')).toBe('/decisions');
@@ -196,6 +197,8 @@ describe('the address model', () => {
     '/plans/fix-relay/tasks/TASK-4?chat=open',
     '/?lens=waits',
     '/epics/relay-hardening?tab=events',
+    '/settings?tab=access',
+    '/settings?tab=setup',
   ])('round-trips %s', (address) => {
     const parsed = parseAddress(address);
     expect(parsed, `address ${address} is not one of the scheme`).not.toBeNull();
@@ -255,6 +258,17 @@ describe('the address model', () => {
         `/epics/relay-hardening?tab=${tab}`,
       );
     }
+  });
+
+  it('names every tab of the settings, and writes every one of them', () => {
+    expect(SETTINGS_TABS).toEqual(['setup', 'access', 'credentials', 'consents', 'retention']);
+    // Unlike a plan's first tab, the settings' first tab is written too: one spelling per tab.
+    for (const tab of SETTINGS_TABS) {
+      expect(canonicalAddress(`/settings?tab=${tab}`)).toBe(`/settings?tab=${tab}`);
+    }
+    expect(parseAddress('/settings?tab=access')).toEqual({ route: 'settings', tab: 'access' });
+    // A tab no view carries is dropped like any other value the scheme does not know.
+    expect(canonicalAddress('/settings?tab=bogus')).toBe('/settings');
   });
 
   it('writes node only with the Process tab and file only with Changes', () => {

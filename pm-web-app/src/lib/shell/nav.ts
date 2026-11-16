@@ -126,7 +126,7 @@ export const BOTTOM_ITEMS: readonly ShellNavItem[] = ALL_NAV_ITEMS.filter((item)
  * The route a destination is selected for.
  *
  * A detail page keeps the destination it belongs to highlighted: a plan or an epic is work, the
- * cleanup is part of the system, and a machine setting is a setting.
+ * cleanup is part of the system, and the settings are the settings view.
  *
  * @param route the route the store shows
  * @returns the route of the destination that stays selected
@@ -147,8 +147,6 @@ export function activeNavRoute(route: AppRoute): AppRoute {
       return 'reports';
     case 'cleanup':
       return 'system';
-    case 'machine-settings':
-      return 'settings';
     case 'project-onboarding':
       return 'projects';
     default:

@@ -307,7 +307,7 @@
             <p class="state-card__next">{$t('onboard.completed.next')}</p>
 
             <div class="state-card__actions state-card__actions--center">
-              <Button variant="secondary" on:click={() => navigateTo('machine-settings')}>
+              <Button variant="secondary" on:click={() => navigateTo('settings')}>
                 {$t('onboard.completed.machine_settings')}
               </Button>
               <Button variant="primary" on:click={() => navigateTo('projects')}>

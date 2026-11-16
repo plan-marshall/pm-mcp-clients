@@ -627,6 +627,7 @@ test.describe('S12 mascot evidence', () => {
           await openShell(page, request, { scenario: 'paired-devices', locale, theme });
           await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
+          await page.getByRole('tab', { name: 'Access' }).click();
           const row = page.getByTestId('device-row-dev-1');
           await row.getByTestId('action-bar-overflow').click();
           await row.getByTestId('action-revoke').click();

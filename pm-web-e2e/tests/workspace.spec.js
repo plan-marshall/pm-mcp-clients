@@ -53,21 +53,19 @@ test.describe('Routing, History & Frame', () => {
     await expect(page.getByTestId('system-view')).toBeVisible();
 
     await page.goto('/settings/machine');
-    await expect(page).toHaveURL(/\/settings\/machine$/);
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\?tab=setup$/);
+    await expect(page.getByTestId('settings-view')).toBeVisible();
   });
 
-  test('navigates to the settings and the machine settings by their own paths', async ({
-    page,
-  }) => {
+  test('navigates to the settings and their tabs by their own addresses', async ({ page }) => {
     await page.getByRole('button', { name: 'Settings' }).click();
-    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page).toHaveURL(/\/settings\?tab=setup$/);
     await expect(page.locator('.settings-view')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Paired devices' })).toBeVisible();
+    await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
 
-    await page.getByTestId('machine-settings-button').click();
-    await expect(page).toHaveURL(/\/settings\/machine$/);
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Access' }).click();
+    await expect(page).toHaveURL(/\/settings\?tab=access$/);
+    await expect(page.getByRole('heading', { name: 'Paired devices' })).toBeVisible();
   });
 
   test('switches the theme between the three choices', async ({ page }) => {

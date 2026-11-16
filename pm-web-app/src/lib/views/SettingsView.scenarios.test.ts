@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import MachineSettingsView from './MachineSettingsView.svelte';
+import SettingsView from './SettingsView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type MachineSettingsRecord } from '../api/client';
 
 /**
- * The machine settings as a view test against the states `pm-mock-runtime` reports
- * (`onboarding-settings-conflict` and the settings record of `onboarding`).
+ * The machine settings' panels of the one settings view as a view test against the states
+ * `pm-mock-runtime` reports (`onboarding-settings-conflict` and the settings record of
+ * `onboarding`).
  */
 
 function settingsRecord(partial: Partial<MachineSettingsRecord> = {}): MachineSettingsRecord {
@@ -74,7 +75,14 @@ function settingsRecord(partial: Partial<MachineSettingsRecord> = {}): MachineSe
   };
 }
 
-describe('MachineSettingsView against the mock runtime states', () => {
+/**
+ * @param name the visible label of the tab
+ */
+async function openTab(name: string): Promise<void> {
+  await fireEvent.click(screen.getByRole('tab', { name }));
+}
+
+describe('the settings panels against the mock runtime states', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
@@ -86,7 +94,8 @@ describe('MachineSettingsView against the mock runtime states', () => {
         isOnboarded: true,
         deviceLabel: 'Firefox on mbp-oliver',
         machineName: 'mbp-oliver',
-        currentRoute: 'machine-settings',
+        currentRoute: 'settings',
+        objectTab: 'setup',
         currentState: null,
         isRevoked: false,
         revokedReason: '',
@@ -100,26 +109,24 @@ describe('MachineSettingsView against the mock runtime states', () => {
     );
 
     vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(settingsRecord());
+    vi.spyOn(apiClient, 'getDevices').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      status: 'ready',
+      web: { enabled: true, lan: false, port: 7420 },
+    });
   });
 
-  it('shows all seven aspects with their recorded summary', async () => {
-    render(MachineSettingsView);
+  it('shows every aspect once, split over the tabs that carry them', async () => {
+    render(SettingsView);
 
     await waitFor(() => expect(screen.getByTestId('aspect-list')).toBeInTheDocument());
+    // The setup carries the records of the onboarding's own steps.
+    expect(screen.getByText('3 models on 2 harnesses')).toBeInTheDocument();
+    expect(screen.getByText('36 roles')).toBeInTheDocument();
+    expect(screen.queryByText('macOS Keychain')).not.toBeInTheDocument();
 
-    for (const aspect of [
-      'language',
-      'harness',
-      'catalogue',
-      'roles',
-      'store',
-      'providers',
-      'defaults',
-    ]) {
-      expect(
-        screen.getByTestId('aspect-list').querySelector(`[data-aspect="${aspect}"]`),
-      ).not.toBeNull();
-    }
+    // The credentials carry the store and the providers.
+    await openTab('Credentials');
     expect(screen.getByText('macOS Keychain')).toBeInTheDocument();
     expect(screen.getByText('GitHub (gh)')).toBeInTheDocument();
   });
@@ -134,7 +141,8 @@ describe('MachineSettingsView against the mock runtime states', () => {
       .mockResolvedValueOnce(settingsRecord())
       .mockResolvedValueOnce(settingsRecord({ revision: 5, consents: [] }));
 
-    render(MachineSettingsView);
+    render(SettingsView);
+    await openTab('Consents');
 
     await waitFor(() => expect(screen.getByTestId('withdraw-scan_harnesses')).toBeInTheDocument());
     await fireEvent.click(screen.getByTestId('withdraw-scan_harnesses'));
@@ -153,7 +161,7 @@ describe('MachineSettingsView against the mock runtime states', () => {
       .mockResolvedValueOnce({ applied: false, conflict: true, revision: 9, current_value: 'copy' })
       .mockResolvedValueOnce({ applied: true, conflict: false, revision: 10 });
 
-    render(MachineSettingsView);
+    render(SettingsView);
     await waitFor(() => expect(screen.getByTestId('save-documents')).toBeInTheDocument());
 
     await fireEvent.click(screen.getByTestId('save-documents'));
@@ -182,7 +190,7 @@ describe('MachineSettingsView against the mock runtime states', () => {
       .spyOn(apiClient, 'getMachineSettings')
       .mockResolvedValue(settingsRecord({ documents_mode: 'copy' }));
 
-    render(MachineSettingsView);
+    render(SettingsView);
     await waitFor(() => expect(screen.getByTestId('save-documents')).toBeInTheDocument());
     await fireEvent.click(screen.getByTestId('save-documents'));
     await waitFor(() => expect(screen.getByTestId('conflict-keep')).toBeInTheDocument());
@@ -194,7 +202,8 @@ describe('MachineSettingsView against the mock runtime states', () => {
   });
 
   it('marks an expired token with the plans it holds and offers rotate and replace', async () => {
-    render(MachineSettingsView);
+    render(SettingsView);
+    await openTab('Credentials');
 
     await waitFor(() => expect(screen.getByTestId('rotate-sonar')).toBeInTheDocument());
     expect(screen.getByText(/expired: holds 1 plan/)).toBeInTheDocument();
@@ -210,7 +219,8 @@ describe('MachineSettingsView against the mock runtime states', () => {
       revision: 5,
     });
 
-    render(MachineSettingsView);
+    render(SettingsView);
+    await openTab('Credentials');
     await waitFor(() => expect(screen.getByTestId('rotate-github')).toBeInTheDocument());
 
     await fireEvent.click(screen.getByTestId('rotate-github'));
@@ -226,13 +236,15 @@ describe('MachineSettingsView against the mock runtime states', () => {
     expect(screen.queryByTestId('rotate-modal')).not.toBeInTheDocument();
   });
 
-  it('shows the documents modes and the cleanup durations', async () => {
-    render(MachineSettingsView);
+  it('shows the documents modes and the cleanup durations on their tabs', async () => {
+    render(SettingsView);
 
     await waitFor(() => expect(screen.getByTestId('documents-section')).toBeInTheDocument());
     expect(screen.getByLabelText('Copy')).toBeInTheDocument();
     expect(screen.getByLabelText('Move')).toBeInTheDocument();
     expect(screen.getByLabelText('Ask each time')).toBeInTheDocument();
-    expect(screen.getByTestId('cleanup-days')).toHaveValue(30);
+
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('cleanup-days')).toHaveValue(30));
   });
 });

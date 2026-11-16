@@ -3,7 +3,6 @@
   import PairingView from './PairingView.svelte';
   import OnboardingView from './OnboardingView.svelte';
   import SettingsView from './SettingsView.svelte';
-  import MachineSettingsView from './MachineSettingsView.svelte';
   import ProcessDesigner from './ProcessDesigner.svelte';
   import RevokedView from './RevokedView.svelte';
   import ListenerOffView from './ListenerOffView.svelte';
@@ -52,8 +51,6 @@
   <DecisionView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
-{:else if $runtimeStore.currentRoute === 'machine-settings'}
-  <MachineSettingsView />
 {:else if $runtimeStore.currentRoute === 'system'}
   <SystemView />
 {:else if $runtimeStore.currentRoute === 'cleanup'}

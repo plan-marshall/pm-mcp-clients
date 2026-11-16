@@ -52,6 +52,7 @@ function arrange(partial: Record<string, unknown> = {}): void {
       deviceLabel: 'Firefox on mbp-oliver',
       machineName: 'mbp-oliver',
       currentRoute: 'settings',
+      objectTab: 'access',
       currentState: null,
       isRevoked: false,
       revokedReason: '',

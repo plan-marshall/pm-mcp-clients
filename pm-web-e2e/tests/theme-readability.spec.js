@@ -367,12 +367,13 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.getByTestId('settings-view')).toBeVisible();
+      await page.getByRole('tab', { name: 'Access' }).click();
       await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('SettingsView');
 
-      await page.getByTestId('machine-settings-button').click();
-      await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+      await page.getByRole('tab', { name: 'Setup' }).click();
+      await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
       // The devices line carries its own loading text; recording it would record a placeholder.
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('MachineSettingsView');
@@ -505,6 +506,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.locator('.settings-view')).toBeVisible();
+      await page.getByRole('tab', { name: 'Access' }).click();
 
       const row = page.getByTestId('device-row-dev-1');
       await row.getByTestId('action-bar-overflow').click();
@@ -845,11 +847,12 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.getByTestId('settings-view')).toBeVisible();
+          await page.getByRole('tab', { name: 'Access' }).click();
 
           await auditView(page, testInfo, { view: 'SettingsView', theme, viewport: vp });
 
-          await page.getByTestId('machine-settings-button').click();
-          await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+          await page.getByRole('tab', { name: 'Setup' }).click();
+          await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'MachineSettingsView', theme, viewport: vp });
         });
@@ -860,8 +863,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           await page.goto('/settings');
-          await page.getByTestId('machine-settings-button').click();
-          await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+          await expect(page.getByTestId('settings-view')).toBeVisible();
           await page.getByTestId('open-designer-btn').click();
           await expect(page.getByTestId('process-designer')).toBeVisible();
 
@@ -977,6 +979,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
+          await page.getByRole('tab', { name: 'Access' }).click();
 
           const row = page.getByTestId('device-row-dev-1');
           await row.getByTestId('action-bar-overflow').click();

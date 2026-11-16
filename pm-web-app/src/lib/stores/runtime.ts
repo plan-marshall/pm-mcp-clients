@@ -11,6 +11,7 @@ import {
 } from '../api/client';
 import {
   matchPath,
+  SETTINGS_TABS,
   type Address,
   type AppRoute,
   type RouteParams,
@@ -1196,7 +1197,18 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
       : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
     ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
+    // A settings tab belongs to the settings view. A tab of a plan that is still in the store is
+    // not one, so opening the settings starts on its first tab instead of carrying it there.
+    ...(route === 'settings' && !isSettingsTab(s.objectTab) ? { objectTab: null } : {}),
   }));
+}
+
+/**
+ * @param tab a tab id, or nothing
+ * @returns whether it names a tab of the settings view
+ */
+function isSettingsTab(tab: string | null | undefined): boolean {
+  return typeof tab === 'string' && (SETTINGS_TABS as ReadonlyArray<string>).includes(tab);
 }
 
 /**
@@ -1276,6 +1288,19 @@ export function goBack(): boolean {
  */
 export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
   pushRoute(route, start);
+}
+
+/**
+ * Shows a tab of the object column on the current route.
+ *
+ * A tab is a change inside one view, so the address is replaced rather than pushed, and the
+ * browser's Back does not walk through the tabs a person visited.
+ *
+ * @param tab the tab to show, or `null` for the view's first tab
+ */
+export function selectObjectTab(tab: string | null): void {
+  runtimeStore.update((s) => ({ ...s, objectTab: tab }));
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
 }
 
 /**

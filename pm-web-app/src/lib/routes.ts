@@ -2,8 +2,8 @@
  * The routes of the app, and the one address model the store, the router and the views share.
  *
  * Every view has a canonical path: the pairing and entry pages (`/pair`, `/entry`), the
- * onboarding (`/onboarding`), the settings and the machine settings (`/settings`,
- * `/settings/machine`), the projects and one project page (`/projects`, `/projects/{id}`), a
+ * onboarding (`/onboarding`), the settings (`/settings`), the projects and one project page
+ * (`/projects`, `/projects/{id}`), a
  * project's onboarding (`/projects/onboard`), the overview (`/overview`), a plan and an epic by
  * their id (`/plans/{id}`, `/epics/{id}`), a task of a plan (`/plans/{id}/tasks/{task}`), the
  * decisions and one decision (`/decisions`, `/decisions/{id}`), the reports and one report
@@ -31,7 +31,6 @@ export type AppRoute =
   | 'onboarding'
   | 'project-onboarding'
   | 'settings'
-  | 'machine-settings'
   | 'projects'
   | 'project'
   | 'overview'
@@ -83,14 +82,29 @@ export type PlanTab = 'process' | 'intent' | 'changes';
 /** The tabs of an epic's object column; the first is the default. */
 export type EpicTab = 'plans' | 'intent' | 'landings' | 'reviews' | 'events';
 
+/**
+ * The tabs of the one settings view (`/settings?tab=…`); the first is the default. Unlike a
+ * plan's or an epic's tab, every settings tab is written, so the page has one spelling.
+ */
+export type SettingsTab = 'setup' | 'access' | 'credentials' | 'consents' | 'retention';
+
 /** The tab of an object column, whichever object it belongs to. */
-export type ObjectTab = PlanTab | EpicTab;
+export type ObjectTab = PlanTab | EpicTab | SettingsTab;
 
 /** Every tab of a plan, first the default that an address omits. */
 export const PLAN_TABS: ReadonlyArray<PlanTab> = ['process', 'intent', 'changes'];
 
 /** Every tab of an epic, first the default that an address omits. */
 export const EPIC_TABS: ReadonlyArray<EpicTab> = ['plans', 'intent', 'landings', 'reviews', 'events'];
+
+/** Every tab of the one settings view, first the default; every one is written in the address. */
+export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
+  'setup',
+  'access',
+  'credentials',
+  'consents',
+  'retention',
+];
 
 /** The mode of a lens's list: running work is the default and is never written. */
 export type LensMode = 'ended';
@@ -229,7 +243,6 @@ export const ROUTE_TITLES: Record<AppRoute, (state: TitleState) => RouteTitle> =
       state.selectedOnboardingId,
     ),
   settings: () => plainTitle('web.settings.page.title'),
-  'machine-settings': () => plainTitle('web.settings.page.title'),
   projects: () => plainTitle('project.explorer.title'),
   // The project page is the Projects lens's object column, so it carries the lens's own name.
   project: () => plainTitle('project.explorer.title'),
@@ -262,7 +275,6 @@ const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
   onboarding: '/onboarding',
   'project-onboarding': '/projects/onboard',
   settings: '/settings',
-  'machine-settings': '/settings/machine',
   projects: '/projects',
   overview: '/overview',
   // The decomposition has a path of its own, so an epic called `decompose` is an id.
@@ -275,8 +287,7 @@ const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
 };
 
 /**
- * The fixed paths, longest first, so `/settings/machine` is resolved before `/settings` and
- * `/system/cleanup` before `/system`.
+ * The fixed paths, longest first, so `/system/cleanup` is resolved before `/system`.
  */
 const FIXED_PATHS: ReadonlyArray<{ path: string; route: AppRoute }> = (
   Object.entries(FIXED_ROUTE_PATHS) as Array<[AppRoute, string]>
@@ -490,6 +501,9 @@ function tabOf(route: AppRoute | null, raw: string | undefined): ObjectTab | und
   if (route === 'epic' && (EPIC_TABS as ReadonlyArray<string>).includes(raw)) {
     return raw as EpicTab;
   }
+  if (route === 'settings' && (SETTINGS_TABS as ReadonlyArray<string>).includes(raw)) {
+    return raw as SettingsTab;
+  }
   return undefined;
 }
 
@@ -590,6 +604,14 @@ function encodeValue(value: string): string {
   return encodeURIComponent(value).replaceAll('%2F', '/').replaceAll('%3A', ':');
 }
 
+/** The tab a route writes when it is the default and is therefore never written. */
+function omittedTabOf(route: AppRoute | null): ObjectTab | undefined {
+  if (route === 'plan') return 'process';
+  if (route === 'epic') return 'plans';
+  // Every settings tab is written, so the settings view has one spelling per tab.
+  return undefined;
+}
+
 /**
  * Writes an address canonically.
  *
@@ -640,7 +662,7 @@ function queryParts(address: Address): string[] {
   if (lensRoute && address.follow) add('follow', 'on');
 
   const tab = tabOf(address.route, address.tab);
-  const defaultTab = address.route === 'plan' ? 'process' : 'plans';
+  const defaultTab = omittedTabOf(address.route);
   if (tab && tab !== defaultTab) add('tab', tab);
 
   if (address.open) add('open', `${address.open.kind}:${address.open.id}`);
@@ -673,8 +695,8 @@ export function canonicalAddress(url: string): string | null {
  * The address that replaces an old address of a moved view, when this address is one.
  *
  * Pre-1.0 there is no other compatibility: the caller replaces the address bar once, when the
- * address is opened. The onboarding addresses of the projects (`/projects/onboard`) and the two
- * settings paths belong to other plans and are not replaced here.
+ * address is opened. The onboarding addresses of the projects (`/projects/onboard`) belong to
+ * another plan and are not replaced here.
  *
  * @param url a path with an optional query
  * @returns the replacement address, or `null` when the address is not one of the old ones
@@ -685,6 +707,11 @@ export function replaceLegacyAddress(url: string): string | null {
 
   if (path === '/epics/decompose') {
     return '/decomposition';
+  }
+  // The two settings pages are one view with a tab per part: the machine settings' content is the
+  // setup tab. `browser` arrives with `PLAN-85`.
+  if (path === '/settings/machine') {
+    return '/settings?tab=setup';
   }
   if (path === '/decisions') {
     const decision = valueOf(split.query, 'decision');

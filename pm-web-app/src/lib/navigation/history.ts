@@ -139,7 +139,6 @@ export function lensOf(address: Address): string {
     case 'report':
       return 'reports';
     case 'settings':
-    case 'machine-settings':
       return 'settings';
     case 'system':
     case 'cleanup':
