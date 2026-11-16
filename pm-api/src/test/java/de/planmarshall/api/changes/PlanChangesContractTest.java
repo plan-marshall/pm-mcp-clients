@@ -53,7 +53,7 @@ class PlanChangesContractTest {
             + "\"added\":0,\"removed\":0,\"binary\":true,\"unplanned\":true}]}";
 
     private static final String FILE = "{\"path\":\"pm-api/src/main/java/de/planmarshall/api/changes/"
-            + "PlanChanges.java\",\"hunks\":[{\"old_start\":1,\"old_len\":0,\"new_start\":1,\"new_len\":3,"
+            + "PlanChanges.java\",\"hunks\":[{\"old_start\":1,\"old_len\":1,\"new_start\":1,\"new_len\":3,"
             + "\"lines\":[{\"kind\":\"added\",\"text\":\"package de.planmarshall.api.changes;\"},"
             + "{\"kind\":\"context\",\"text\":\"import de.planmarshall.api.json.JsonTree;\"},"
             + "{\"kind\":\"added\",\"text\":\"" + CONTROL_JSON + "hover\"}]}],\"binary\":false,"
@@ -264,6 +264,21 @@ class PlanChangesContractTest {
         @DisplayName("a list that names one path twice is refused")
         void duplicatePath() {
             assertThrows(IOException.class, () -> PlanChangesAnswer.fromJson(DUPLICATE_PATHS));
+        }
+
+        @Test
+        @DisplayName("a hunk whose lengths contradict its lines is refused")
+        void hunkLengths() {
+            var coherent = "{\"old_start\":1,\"old_len\":1,\"new_start\":1,\"new_len\":2,\"lines\":["
+                    + "{\"kind\":\"context\",\"text\":\"a\"},{\"kind\":\"added\",\"text\":\"b\"}]}";
+            var wrongOld = coherent.replace("\"old_len\":1", "\"old_len\":2");
+            var wrongNew = coherent.replace("\"new_len\":2", "\"new_len\":1");
+
+            assertAll(
+                    () -> assertTrue(PlanChangeHunk.fromJson(coherent).lines().size() == 2,
+                            "the matched positive control decodes"),
+                    () -> assertThrows(IOException.class, () -> PlanChangeHunk.fromJson(wrongOld)),
+                    () -> assertThrows(IOException.class, () -> PlanChangeHunk.fromJson(wrongNew)));
         }
 
         @Test

@@ -47,6 +47,20 @@ public record PlanChangeHunk(
             throw new IllegalArgumentException("A hunk's position and length are never negative");
         }
         lines = lines != null ? List.copyOf(lines) : List.of();
+        var onTheOldSide = 0;
+        var onTheNewSide = 0;
+        for (var line : lines) {
+            if (line.kind() != PlanChangeLineKind.ADDED) {
+                onTheOldSide++;
+            }
+            if (line.kind() != PlanChangeLineKind.REMOVED) {
+                onTheNewSide++;
+            }
+        }
+        if (oldLen != onTheOldSide || newLen != onTheNewSide) {
+            throw new IllegalArgumentException("A hunk's lengths are the counts of its lines: old "
+                    + oldLen + " vs " + onTheOldSide + ", new " + newLen + " vs " + onTheNewSide);
+        }
     }
 
     /**
@@ -94,15 +108,33 @@ public record PlanChangeHunk(
                 lines.add(PlanChangeLine.fromMap(line));
             }
         }
-        return new PlanChangeHunk(
-                requireCount(map, FIELD_OLD_START),
-                requireCount(map, FIELD_OLD_LEN),
-                requireCount(map, FIELD_NEW_START),
-                requireCount(map, FIELD_NEW_LEN),
-                lines);
+        try {
+            return new PlanChangeHunk(
+                    requireCount(map, FIELD_OLD_START),
+                    requireCount(map, FIELD_OLD_LEN),
+                    requireCount(map, FIELD_NEW_START),
+                    requireCount(map, FIELD_NEW_LEN),
+                    lines);
+        } catch (IllegalArgumentException incoherent) {
+            // A wire hunk that contradicts itself is no hunk: it is refused like a malformed one.
+            throw new JsonFormatException(incoherent.getMessage(), incoherent);
+        }
     }
 
     private static int requireCount(Map<String, Object> map, String field) throws IOException {
         return (int) JsonTree.integralNumber(map, field, 0, Integer.MAX_VALUE);
+    }
+
+    /**
+     * @param json the JSON object
+     * @return the parsed hunk
+     * @throws IOException on parse failure or a missing member
+     */
+    public static PlanChangeHunk fromJson(String json) throws IOException {
+        var map = JsonTree.asObject(JsonTree.parse(json));
+        if (map == null) {
+            throw new JsonFormatException("Expected a JSON object for a hunk");
+        }
+        return fromMap(map);
     }
 }
