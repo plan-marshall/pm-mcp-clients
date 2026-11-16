@@ -6,7 +6,6 @@
     type ChatReadBack,
     type EpicDecomposition,
     type LocalChangesPreview,
-    type ProjectSummary,
     type RecipeRef,
     type StagedPlanRecord,
     type StartReadyResource,
@@ -25,18 +24,44 @@
   import ConfinedFilePicker from '../components/ConfinedFilePicker.svelte';
   import GrantModal from '../components/GrantModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
-  import MarkdownPreview from '../components/MarkdownPreview.svelte';
   import RecipeReadyView from './RecipeReadyView.svelte';
   import EpicAdoptView from './EpicAdoptView.svelte';
   import DecompositionReviewView from './DecompositionReviewView.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
+  import Spinner from '../components/Spinner.svelte';
+  import Button from '../components/Button.svelte';
+  import Card from '../components/Card.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
+  import RowMenu from '../components/RowMenu.svelte';
+  import WizardPage from '../templates/WizardPage.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { remoteInfo, readForgeReference, type RemoteInfo } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
   export let entryId: string | null = null;
   export let kind: 'plan' | 'epic' = 'plan';
+
+  /**
+   * The bound of the setup gate (UX-P-07): the opening call is the gate, and an answer that does
+   * not arrive within this limit is the gate's slow case, shown with its cause and _Try again_.
+   */
+  const GATE_BOUND_MS = 20_000;
+
+  /** One step of the wizard, as the view draws it. */
+  type StartStep =
+    | 'no-project'
+    | 'checking'
+    | 'error'
+    | 'refused'
+    | 'choose'
+    | 'sources'
+    | 'recipe'
+    | 'parameters'
+    | 'ready'
+    | 'started'
+    | 'adopt'
+    | 'decomposition';
 
   let state: StartState | null = null;
   let loading = true;
@@ -47,12 +72,9 @@
   let loadAttempts = 0;
   let actionError = '';
 
-  let projects: ProjectSummary[] = [];
-
   let projectRemote: RemoteInfo | null = null;
 
   let descriptionText = '';
-  let showPreview = false;
   let addDescriptionOpen = false;
 
   let pickerOpen = false;
@@ -98,6 +120,9 @@
   let createdId = '';
   let createdTitle = '';
 
+  /** Whether the abandon question is open; the entry is deleted only on its confirm. */
+  let abandonOpen = false;
+
   let showDecomposition = false;
   let decomposition: EpicDecomposition | null = null;
   let decompositionReadBack: {
@@ -139,9 +164,65 @@
   $: ready = state?.ready ?? null;
   $: recipes = state?.recipes ?? [];
   $: currentProject = entry?.project_id ?? projectId ?? '';
+  $: epic = (entry?.kind ?? kind) === 'epic';
+  $: step = stepOf(
+    projectId,
+    entryId,
+    loading,
+    loadError,
+    state,
+    showDecomposition,
+    decompositionCommitted,
+    justCreated,
+  );
+
+  /**
+   * @returns the step the wizard stands on, derived from what the entry resource holds
+   */
+  function stepOf(
+    project: string | null,
+    entryIdent: string | null,
+    isLoading: boolean,
+    error: string | null,
+    resource: StartState | null,
+    showsDecomposition: boolean,
+    committed: boolean,
+    created: boolean,
+  ): StartStep {
+    if (project === null && entryIdent === null) return 'no-project';
+    if (isLoading) return 'checking';
+    if (error !== null) return 'error';
+    if (resource?.refusal) return 'refused';
+    if (showsDecomposition || committed) return 'decomposition';
+    if (created) return 'started';
+    const id = resource?.entry?.state ?? '';
+    if (id === 'start-epic.adopt' || id === 'start-epic.adopt-failed') return 'adopt';
+    if (id === 'start.choose') return 'choose';
+    if (id === 'start.recipe' || id === 'recipe.choose') return 'recipe';
+    if (id === 'recipe.parameters') return 'parameters';
+    if (id === 'start.ready' || id === 'start.recipe-create') return 'ready';
+    return 'sources';
+  }
+
+  /**
+   * @returns the catalogue key of the step's name, for the step bar and the page's own line
+   */
+  function stepKeyOf(current: StartStep): string {
+    if (current === 'ready' || current === 'parameters' || current === 'recipe') {
+      return 'start.step.ready';
+    }
+    if (current === 'started') return 'start.step.started';
+    if (current === 'decomposition') return 'start.step.decomposition';
+    return 'start.step.sources';
+  }
 
   onMount(() => {
     mounted = true;
+    if (projectId === null && entryId === null) {
+      // Nothing to open: the page shows the error pattern with its act, which is no read.
+      loading = false;
+      return;
+    }
     void load(++entryGeneration);
   });
 
@@ -179,7 +260,14 @@
         }
         subscribeEntry(requestedEntryId);
       } else if (projectId) {
-        const opened = await apiClient.openEntry(projectId, { kind });
+        // The opening call is the setup gate. It carries the gate's own bound beside the client's,
+        // so a gate that never answers is the slow case, not a request held for the client's limit.
+        const opened = await apiClient.openEntry(
+          projectId,
+          { kind },
+          AbortSignal.timeout(GATE_BOUND_MS),
+          GATE_BOUND_MS,
+        );
         if (destroyed || generation !== entryGeneration) return;
         apply(opened);
         const id = opened.start.entry?.entry_id;
@@ -188,10 +276,6 @@
           runtimeStore.update((current) => ({ ...current, startEntryId: id }));
           subscribeEntry(id);
         }
-      } else {
-        const overview = await apiClient.getProjects();
-        if (destroyed || generation !== entryGeneration) return;
-        projects = overview.projects ?? [];
       }
       await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
@@ -362,15 +446,6 @@
     }
   }
 
-  function openProject(id: string): void {
-    // AppRouter re-keys StartView on the project; the new instance opens the entry.
-    runtimeStore.update((current) => ({
-      ...current,
-      startProjectId: id,
-      startEntryId: null,
-    }));
-  }
-
   function addSource(sourceKind: string): void {
     actionError = '';
     switch (sourceKind) {
@@ -403,7 +478,6 @@
     if (result) {
       descriptionText = '';
       addDescriptionOpen = false;
-      showPreview = false;
     }
   }
 
@@ -421,6 +495,11 @@
 
   async function continueToReady(): Promise<void> {
     await act('start');
+  }
+
+  /** Goes back one step: the server owns the steps, so Back is its own act. */
+  async function goBack(): Promise<void> {
+    await act('back');
   }
 
   async function addDocuments(paths: string[]): Promise<void> {
@@ -659,6 +738,7 @@
   }
 
   async function abandon(): Promise<void> {
+    abandonOpen = false;
     if (chat && chat.state !== 'chat.end' && chat.state !== 'chat.carried') {
       await endChat();
     }
@@ -667,7 +747,7 @@
   }
 
   function follow(): void {
-    if (kind === 'epic' || entry?.kind === 'epic') {
+    if (epic) {
       openEpicView(createdId);
     } else {
       openPlanView(createdId);
@@ -785,81 +865,208 @@
   }
 </script>
 
+{#snippet sidePane()}
+  <div class="start-view__chat" data-testid="start-chat">
+    <ChatPanel
+      open={chatOpen}
+      role={chat?.role ?? (epic ? 'decompose' : 'refine')}
+      subject={$t('start.chat.subject', {
+        kind: epic ? 'epic' : 'plan',
+        project: currentProject,
+      })}
+      turns={chat?.turns ?? []}
+      proposal={chat?.proposal ?? null}
+      available={entry?.chat_available ?? false}
+      disabledReason={entry?.chat_disabled_reason ?? 'start.chat.waits'}
+      {busy}
+      onSend={sendChat}
+      onEnd={endChat}
+      onAccept={() => void answerProposal(true)}
+      onReject={() => void answerProposal(false)}
+      onToggle={openChat}
+      onClose={() => (chatOpen = false)}
+    />
+  </div>
+{/snippet}
+
 <div class="start-view" data-testid="start-view">
-  {#if loading}
-    <div class="start-view__loading" data-testid="start-loading">
-      <Skeleton shape="card" rows={3} label={$t('start.state.loading')} />
+  <WizardPage
+    sideOpen={chatOpen}
+    onHideSide={() => (chatOpen = false)}
+    side={entry !== null ? sidePane : undefined}
+  >
+    <div slot="steps" class="start-view__steps" data-testid="start-step-trail">
+      <span class="start-view__step" data-testid="start-step">
+        ① {$t(stepKeyOf(step))}
+      </span>
+      <span class="start-view__step" aria-hidden="true">─</span>
+      <span class="start-view__step">② {$t('start.step.ready')}</span>
+      {#if epic}
+        <span class="start-view__step" aria-hidden="true">─</span>
+        <span class="start-view__step">✓ {$t('start.step.started')}</span>
+      {/if}
     </div>
-  {:else if loadError !== null}
-    <div class="start-view__error" data-testid="start-error">
-      <ErrorState
-        code={loadError}
-        actionLabel={$t('common.action.retry')}
-        onAct={() => void load(++entryGeneration)}
-        titleLevel={2}
-        announce={state !== null || loadAttempts > 1}
-      />
-    </div>
-  {:else if !entry && !state?.refusal}
-    <section class="start-view__projects" data-testid="start-project-choice">
-      <h1 class="start-view__title">{$t('project.explorer.title')}</h1>
-      <ul>
-        {#each projects as project (project.project_id)}
-          <li>
-            <button
-              type="button"
-              data-testid={`start-project-${project.project_id}`}
-              on:click={() => openProject(project.project_id)}
-            >
-              {project.display_name}
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </section>
-  {:else}
-    <header class="start-view__head">
-      <div>
-        <p class="start-view__step" data-testid="start-step">
-          {#if state?.refusal}
-            {$t('start.step.sources')}
-          {:else if showDecomposition || decompositionCommitted}
-            {$t('start.step.decomposition')}
-          {:else if justCreated}
-            {$t('start.step.started')}
-          {:else if entry?.state === 'start.ready' || entry?.state === 'recipe.parameters'}
-            {$t('start.step.ready')}
-          {:else}
-            {$t('start.step.sources')}
-          {/if}
-        </p>
-        <h1 class="start-view__title" data-testid="start-title">
-          {$t(entry?.kind === 'epic' ? 'start.epic.title' : 'start.plan.title', {
-            project: currentProject,
-          })}
-        </h1>
+
+    {#if step === 'no-project'}
+      <div class="start-view__error" data-testid="start-no-project">
+        <ErrorState code="no_project_to_start" titleLevel={2} announce={false} />
       </div>
-    </header>
-
-    {#if actionError}
-      <p class="start-view__error" data-testid="start-action-error">
-        {$t('start.error', { cause: actionError })}
-      </p>
-    {/if}
-
-    {#if state?.refusal}
+    {:else if step === 'checking'}
+      <div class="start-view__loading" data-testid="start-loading">
+        <div class="start-view__gate-check" data-testid="start-gate-checking">
+          <Spinner label={$t('start.gate.checking')} />
+          <p class="start-view__status">{$t('start.gate.checking')}</p>
+        </div>
+        <Skeleton shape="card" rows={3} label={$t('start.state.loading')} />
+      </div>
+    {:else if step === 'error'}
+      <div class="start-view__error" data-testid="start-error">
+        {#if loadError === 'timeout'}
+          <p class="start-view__gate" data-testid="start-gate-cause">{$t('start.gate.slow')}</p>
+        {/if}
+        <ErrorState
+          code={loadError}
+          titleLevel={2}
+          announce={state !== null || loadAttempts > 1}
+        />
+      </div>
+    {:else if step === 'refused' && state?.refusal}
       {@const refusal = state.refusal}
       <section class="start-view__panel" data-testid="start-refused">
+        <h2 class="start-view__subtitle">{$t('start.step.sources')}</h2>
         <p class="start-view__gate">{refusalText(refusal)}</p>
-        <button
-          type="button"
-          data-testid="refusal-action"
-          on:click={() => openRefusalAction(refusal)}
-        >
-          {$t(refusal.action_key)}
-        </button>
       </section>
-    {:else if showDecomposition}
+    {:else if step === 'choose'}
+      <section class="start-view__panel" data-testid="start-choose">
+        <h2 class="start-view__subtitle">{$t('start.choose.title')}</h2>
+        <div class="start-view__cards">
+          <Card>
+            <h3 class="start-view__card-title">{$t('start.mode.sources')}</h3>
+            <Button
+              variant="primary"
+              data-testid="choose-sources"
+              disabled={busy}
+              on:click={() => void act('sources')}
+            >
+              {$t('start.choose.sources_act')}
+            </Button>
+          </Card>
+          <Card>
+            <h3 class="start-view__card-title">{$t('start.recipe.list')}</h3>
+            {#if recipes.length === 0}
+              <p class="start-view__hint">
+                {$t('start.choose.no_recipe', { project: currentProject })}
+              </p>
+            {/if}
+            <Button
+              variant="secondary"
+              data-testid="choose-recipe"
+              disabled={busy || recipes.length === 0}
+              disabledReason={recipes.length === 0
+                ? $t('start.choose.no_recipe', { project: currentProject })
+                : undefined}
+              on:click={() => void act('recipe')}
+            >
+              {$t('start.choose.recipe_act')}
+            </Button>
+          </Card>
+        </div>
+      </section>
+    {:else if step === 'recipe'}
+      <section class="start-view__panel" data-testid="start-recipe">
+        <h2 class="start-view__subtitle">{$t('start.recipe.choose.title')}</h2>
+        {#if recipes.length === 0}
+          <p class="start-view__hint">
+            {$t('start.choose.no_recipe', { project: currentProject })}
+          </p>
+        {:else}
+          <ul class="start-view__recipes">
+            {#each recipes as recipe (recipe.key)}
+              <li class="start-view__recipe" data-testid={`recipe-${recipe.key}`}>
+                <span class="start-view__recipe-name">{recipe.name}</span>
+                <span class="start-view__recipe-description">{recipe.description}</span>
+                <span class="start-view__recipe-origin">{recipe.origin}</span>
+                {#if recipeUnavailable(recipe)}
+                  <span class="start-view__error" data-testid={`recipe-unavailable-${recipe.key}`}>
+                    {#each recipe.parameters as parameter}
+                      {$t('start.recipe.no_option', {
+                        parameter: parameter.name,
+                        reason: parameter.reason ?? $t('start.recipe.no_module'),
+                      })}
+                    {/each}
+                  </span>
+                {/if}
+                <Button
+                  variant="secondary"
+                  data-testid={`recipe-choose-${recipe.key}`}
+                  disabled={busy || recipeUnavailable(recipe)}
+                  on:click={() => void chooseRecipe(recipe)}
+                >
+                  {$t('start.choose.recipe_act')}
+                </Button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+    {:else if step === 'parameters'}
+      <RecipeReadyView
+        mode="parameters"
+        recipe={entry?.recipe ?? null}
+        parameters={entry?.recipe?.parameters ?? []}
+        kind={epic ? 'epic' : 'plan'}
+        {busy}
+        onParameter={(name, value) => (parameters = { ...parameters, [name]: value })}
+      />
+    {:else if step === 'ready'}
+      <RecipeReadyView
+        mode="ready"
+        recipe={ready?.recipe ?? null}
+        parameters={ready?.parameters ?? []}
+        sources={entry?.sources ?? []}
+        planId={readyId}
+        idEditable={ready?.id_editable ?? true}
+        idFromTitle={ready?.id_from_title ?? false}
+        title={readyTitle}
+        kind={epic ? 'epic' : 'plan'}
+        epicAutoStart={ready?.epic_auto_start ?? null}
+        epicAutoStartOrigin={ready?.epic_auto_start_origin ?? null}
+        {busy}
+        onTitle={(value) => {
+          readyTouched = true;
+          readyTitle = value;
+        }}
+        onId={(value) => {
+          readyTouched = true;
+          readyId = value;
+        }}
+      />
+      {#if ready?.landing && ready.landing === 'landing.files'}
+        <p class="start-view__hint" data-testid="ready-landing">
+          {$t('start.sources.local_changes_landing', { landing: ready.landing })}
+        </p>
+      {/if}
+    {:else if step === 'started'}
+      <section class="start-view__panel" data-testid="start-started">
+        <p class="start-view__started" data-testid="started-title">
+          {$t('start.started.title', { name: createdTitle || createdId })}
+        </p>
+        <div class="start-view__actions">
+          {#if epic}
+            <Button variant="secondary" data-testid="started-decompose" on:click={loadDecomposition}>
+              {$t('start.step.decomposition')}
+            </Button>
+          {/if}
+          <Button
+            variant="ghost"
+            data-testid="started-back"
+            on:click={() => navigateTo('projects')}
+          >
+            {$t('start.started.back')}
+          </Button>
+        </div>
+      </section>
+    {:else if step === 'decomposition'}
       {#if decompositionCommitted}
         <section class="start-view__panel" data-testid="decomposition-committed">
           <p>{$t('start.decomposition.committed')}</p>
@@ -900,42 +1107,19 @@
       {:else if decompositionError}
         <div class="start-view__error" data-testid="decomposition-error">
           <p>{decompositionError}</p>
-          <button
-            type="button"
-            data-testid="decomposition-retry"
-            on:click={() => void loadDecomposition()}
-          >
+          <Button variant="secondary" data-testid="decomposition-retry" on:click={() => void loadDecomposition()}>
             {$t('common.action.retry')}
-          </button>
+          </Button>
         </div>
       {:else}
         <p class="start-view__status" data-testid="decomposition-loading">
           {$t('start.decomposition.drafting', { workstream: '' })}
         </p>
       {/if}
-    {:else if justCreated}
-      <section class="start-view__panel" data-testid="start-started">
-        <p class="start-view__started" data-testid="started-title">
-          {$t('start.started.title', { name: createdTitle || createdId })}
-        </p>
-        <div class="start-view__actions">
-          <button type="button" data-testid="started-follow" on:click={follow}>
-            {$t('start.started.follow')}
-          </button>
-          {#if entry?.kind === 'epic'}
-            <button type="button" data-testid="started-decompose" on:click={loadDecomposition}>
-              {$t('start.step.decomposition')}
-            </button>
-          {/if}
-          <button type="button" data-testid="started-back" on:click={() => navigateTo('projects')}>
-            {$t('start.started.back')}
-          </button>
-        </div>
-      </section>
-    {:else if entry?.state === 'start-epic.adopt' || entry?.state === 'start-epic.adopt-failed'}
+    {:else if step === 'adopt'}
       <EpicAdoptView
-        epics={entry.adoptable_epics ?? []}
-        failure={state?.adoption_failure ?? entry.adoption_failure ?? null}
+        epics={entry?.adoptable_epics ?? []}
+        failure={state?.adoption_failure ?? entry?.adoption_failure ?? null}
         projectId={currentProject}
         {busy}
         onAdopt={(epicId) => void adoptEpic(epicId)}
@@ -944,340 +1128,292 @@
         onBack={() => void act('back')}
         onAbandon={abandon}
       />
-    {:else if entry?.state === 'start.choose'}
-      <section class="start-view__panel" data-testid="start-choose">
-        <h2>{$t('start.choose.title')}</h2>
-        <div class="start-view__actions">
-          <button type="button" data-testid="choose-sources" on:click={() => void act('sources')}>
-            {$t('start.choose.sources')}
-          </button>
-          <button
-            type="button"
-            data-testid="choose-recipe"
-            disabled={recipes.length === 0}
-            title={recipes.length === 0
-              ? $t('start.choose.no_recipe', { project: currentProject })
-              : undefined}
-            on:click={() => void act('recipe')}
-          >
-            {$t('start.choose.recipe')}
-          </button>
-        </div>
-      </section>
-    {:else if entry?.state === 'start.recipe' || entry?.state === 'recipe.choose'}
-      <section class="start-view__panel" data-testid="start-recipe">
-        <h2 class="start-view__subtitle">{$t('start.recipe.choose.title')}</h2>
-        {#if recipes.length === 0}
-          <p class="start-view__hint">
-            {$t('start.choose.no_recipe', { project: currentProject })}
-          </p>
-        {:else}
-          <ul class="start-view__recipes">
-            {#each recipes as recipe (recipe.key)}
-              <li class="start-view__recipe" data-testid={`recipe-${recipe.key}`}>
-                <span class="start-view__recipe-name">{recipe.name}</span>
-                <span class="start-view__recipe-description">{recipe.description}</span>
-                <span class="start-view__recipe-origin">{recipe.origin}</span>
-                {#if recipeUnavailable(recipe)}
-                  <span class="start-view__error" data-testid={`recipe-unavailable-${recipe.key}`}>
-                    {#each recipe.parameters as parameter}
-                      {$t('start.recipe.no_option', {
-                        parameter: parameter.name,
-                        reason: parameter.reason ?? $t('start.recipe.no_module'),
-                      })}
-                    {/each}
-                  </span>
-                {/if}
-                <button
-                  type="button"
-                  data-testid={`recipe-choose-${recipe.key}`}
-                  disabled={busy || recipeUnavailable(recipe)}
-                  on:click={() => void chooseRecipe(recipe)}
+    {:else}
+      <section class="start-view__sources" data-testid="start-sources-step">
+        <h2 class="start-view__subtitle" data-testid="sources-title">
+          {$t('start.sources.title', { kind: epic ? 'epic' : 'plan' })}
+        </h2>
+
+        <SourceList
+          sources={entry?.sources ?? []}
+          offers={entry?.kind_offers ?? []}
+          canContinue={entry?.can_continue ?? false}
+          chatAvailable={entry?.chat_available ?? false}
+          chatDisabledReason={entry?.chat_disabled_reason ?? ''}
+          {busy}
+          onAdd={addSource}
+          onRemove={removeSource}
+          onRetry={retrySource}
+          onAccept={acceptSource}
+          onChat={openChat}
+        />
+
+        {#if addDescriptionOpen || (entry?.sources.length ?? 0) === 0}
+          <section class="start-view__panel" data-testid="description-editor">
+            <label class="start-view__field">
+              <span>{$t('start.field.prompt')}</span>
+              <textarea
+                data-testid="description-input"
+                bind:value={descriptionText}
+                disabled={busy}
+                rows="4"
+              ></textarea>
+            </label>
+            <div class="start-view__actions">
+              <Button
+                variant="secondary"
+                data-testid="description-add"
+                disabled={busy || !descriptionText.trim()}
+                on:click={addDescription}
+              >
+                {$t('start.source.add', { kind: $t('start.source.description') })}
+              </Button>
+            </div>
+          </section>
+        {/if}
+
+        {#if issueOpen}
+          <section class="start-view__panel" data-testid="issue-panel">
+            <label class="start-view__field">
+              <span>{$t('start.issue.field')}</span>
+              <input type="text" data-testid="issue-input" bind:value={issueReference} />
+            </label>
+            {#if issueReference.trim()}
+              {@const parsed = referenceOf(issueReference)}
+              {#if parsed}
+                <p class="start-view__hint" data-testid="issue-forge">
+                  {parsed.forge} · {parsed.repository}
+                </p>
+              {/if}
+            {/if}
+            {#if issueError}
+              <p class="start-view__error" data-testid="issue-error">{issueError}</p>
+            {/if}
+            <div class="start-view__actions">
+              <Button
+                variant="secondary"
+                data-testid="issue-submit"
+                disabled={busy}
+                on:click={submitIssue}
+              >
+                {$t('start.source.add', { kind: $t('start.source.issue') })}
+              </Button>
+            </div>
+          </section>
+        {/if}
+
+        {#if prOpen}
+          <section class="start-view__panel" data-testid="pr-panel">
+            <label class="start-view__field">
+              <span>{$t('start.pr.field')}</span>
+              <input type="text" data-testid="pr-input" bind:value={prReference} />
+            </label>
+            {#if prError}
+              <p class="start-view__error" data-testid="pr-error">{prError}</p>
+            {/if}
+            <div class="start-view__actions">
+              <Button
+                variant="secondary"
+                data-testid="pr-submit"
+                disabled={busy}
+                on:click={submitPullRequest}
+              >
+                {$t('start.source.add', { kind: $t('start.source.pull_request') })}
+              </Button>
+            </div>
+          </section>
+        {/if}
+
+        {#if documentModeOpen}
+          <section class="start-view__panel" data-testid="documents-mode">
+            <h3>{$t('start.documents.mode.title')}</h3>
+            <label class="start-view__radio">
+              <input
+                type="radio"
+                name="documents-mode"
+                checked
+                on:click={() => chooseDocumentsMode('copy')}
+              />
+              <span>{$t('start.documents.mode.copy')}</span>
+              <em>{$t('start.documents.mode.preselected')}</em>
+            </label>
+            <label class="start-view__radio">
+              <input
+                type="radio"
+                name="documents-mode"
+                on:click={() => chooseDocumentsMode('move')}
+              />
+              <span>{$t('start.documents.mode.move')}</span>
+            </label>
+            <label class="start-view__checkbox">
+              <input
+                type="checkbox"
+                data-testid="documents-always"
+                bind:checked={alwaysDocumentsMode}
+              />
+              <span>{$t('start.documents.mode.always')}</span>
+            </label>
+          </section>
+        {/if}
+
+        {#if localOpen}
+          <section class="start-view__panel" data-testid="local-changes-panel">
+            {#if localLoading}
+              <p class="start-view__status">{$t('start.state.checking')}</p>
+            {:else if localPreview}
+              <p class="start-view__hint" data-testid="local-changes-summary">
+                {localPreview.changed_files.length} · {localPreview.branch}
+              </p>
+              <ul class="start-view__files">
+                {#each localPreview.changed_files as file}
+                  <li>{file.path} · +{file.additions} −{file.deletions}</li>
+                {/each}
+              </ul>
+              {#if !localPreview.eligible}
+                <p class="start-view__error" data-testid="local-changes-ineligible">
+                  {$t('start.sources.local_changes_landing', {
+                    landing: localPreview.landing ?? '',
+                  })}
+                </p>
+              {/if}
+              <div class="start-view__actions">
+                <Button
+                  variant="secondary"
+                  data-testid="local-changes-add"
+                  disabled={busy || !localPreview.eligible}
+                  on:click={addLocalChanges}
                 >
-                  {$t('start.choose.recipe')}
-                </button>
-              </li>
-            {/each}
-          </ul>
+                  {$t('start.local_changes.add')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  data-testid="local-changes-close"
+                  on:click={() => (localOpen = false)}
+                >
+                  {$t('start.local_changes.not_now')}
+                </Button>
+              </div>
+            {/if}
+          </section>
+        {/if}
+
+        {#if lessonsOpen}
+          <section class="start-view__panel" data-testid="lessons-panel">
+            {#if lessonsLoading}
+              <p class="start-view__status">{$t('start.state.checking')}</p>
+            {:else if lessons.length === 0}
+              <p class="start-view__hint">{$t('start.sources.no_lessons')}</p>
+            {:else}
+              <ul class="start-view__lessons">
+                {#each lessons as lesson (lesson.lesson_id)}
+                  <li>
+                    <span>{lesson.title}</span>
+                    <Button
+                      variant="secondary"
+                      data-testid={`lesson-select-${lesson.lesson_id}`}
+                      disabled={busy}
+                      on:click={() => void chooseLesson(lesson)}
+                    >
+                      {$t('start.source.add', { kind: $t('start.source.lesson') })}
+                    </Button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
         {/if}
       </section>
-    {:else if entry?.state === 'recipe.parameters'}
-      <RecipeReadyView
-        mode="parameters"
-        recipe={entry.recipe ?? null}
-        parameters={entry.recipe?.parameters ?? []}
-        kind={entry.kind}
-        {busy}
-        onParameter={(name, value) => (parameters = { ...parameters, [name]: value })}
-        onContinue={continueFromParameters}
-      />
-    {:else if entry?.state === 'start.ready' || entry?.state === 'start.recipe-create'}
-      <RecipeReadyView
-        mode="ready"
-        recipe={ready?.recipe ?? null}
-        parameters={ready?.parameters ?? []}
-        sources={entry?.sources ?? []}
-        planId={readyId}
-        idEditable={ready?.id_editable ?? true}
-        idFromTitle={ready?.id_from_title ?? false}
-        title={readyTitle}
-        kind={entry?.kind ?? kind}
-        epicAutoStart={ready?.epic_auto_start ?? null}
-        epicAutoStartOrigin={ready?.epic_auto_start_origin ?? null}
-        {busy}
-        onTitle={(value) => {
-          readyTouched = true;
-          readyTitle = value;
-        }}
-        onId={(value) => {
-          readyTouched = true;
-          readyId = value;
-        }}
-        onStart={create}
-      />
-      {#if ready?.landing && ready.landing === 'landing.files'}
-        <p class="start-view__hint" data-testid="ready-landing">
-          {$t('start.sources.local_changes_landing', { landing: ready.landing })}
-        </p>
-      {/if}
-    {:else}
-      <div class="start-view__sources" class:with-chat={chatOpen}>
-        <div class="start-view__main">
-          <h2 class="start-view__subtitle" data-testid="sources-title">
-            {$t('start.sources.title', { kind: entry?.kind ?? kind })}
-          </h2>
-
-          <SourceList
-            sources={entry?.sources ?? []}
-            offers={entry?.kind_offers ?? []}
-            canContinue={entry?.can_continue ?? false}
-            chatAvailable={entry?.chat_available ?? false}
-            chatDisabledReason={entry?.chat_disabled_reason ?? ''}
-            {busy}
-            onAdd={addSource}
-            onRemove={removeSource}
-            onRetry={retrySource}
-            onAccept={acceptSource}
-            onChat={openChat}
-            onContinue={continueToReady}
-          />
-
-          {#if addDescriptionOpen || (entry?.sources.length ?? 0) === 0}
-            <section class="start-view__panel" data-testid="description-editor">
-              <label class="start-view__field">
-                <span>{$t('start.field.prompt')}</span>
-                <textarea
-                  data-testid="description-input"
-                  bind:value={descriptionText}
-                  disabled={busy}
-                  rows="4"
-                ></textarea>
-              </label>
-              <div class="start-view__actions">
-                <button
-                  type="button"
-                  data-testid="description-preview"
-                  on:click={() => (showPreview = !showPreview)}
-                >
-                  {$t('start.source.description')}
-                </button>
-                <button
-                  type="button"
-                  data-testid="description-add"
-                  disabled={busy || !descriptionText.trim()}
-                  on:click={addDescription}
-                >
-                  {$t('start.source.add', { kind: $t('start.source.description') })}
-                </button>
-              </div>
-              {#if showPreview}
-                <MarkdownPreview value={descriptionText} />
-              {/if}
-            </section>
-          {/if}
-
-          {#if issueOpen}
-            <section class="start-view__panel" data-testid="issue-panel">
-              <label class="start-view__field">
-                <span>{$t('start.issue.field')}</span>
-                <input type="text" data-testid="issue-input" bind:value={issueReference} />
-              </label>
-              {#if issueReference.trim()}
-                {@const parsed = referenceOf(issueReference)}
-                {#if parsed}
-                  <p class="start-view__hint" data-testid="issue-forge">
-                    {parsed.forge} · {parsed.repository}
-                  </p>
-                {/if}
-              {/if}
-              {#if issueError}
-                <p class="start-view__error" data-testid="issue-error">{issueError}</p>
-              {/if}
-              <div class="start-view__actions">
-                <button
-                  type="button"
-                  data-testid="issue-submit"
-                  disabled={busy}
-                  on:click={submitIssue}
-                >
-                  {$t('start.source.add', { kind: $t('start.source.issue') })}
-                </button>
-              </div>
-            </section>
-          {/if}
-
-          {#if prOpen}
-            <section class="start-view__panel" data-testid="pr-panel">
-              <label class="start-view__field">
-                <span>{$t('start.pr.field')}</span>
-                <input type="text" data-testid="pr-input" bind:value={prReference} />
-              </label>
-              {#if prError}
-                <p class="start-view__error" data-testid="pr-error">{prError}</p>
-              {/if}
-              <div class="start-view__actions">
-                <button
-                  type="button"
-                  data-testid="pr-submit"
-                  disabled={busy}
-                  on:click={submitPullRequest}
-                >
-                  {$t('start.source.add', { kind: $t('start.source.pull_request') })}
-                </button>
-              </div>
-            </section>
-          {/if}
-
-          {#if documentModeOpen}
-            <section class="start-view__panel" data-testid="documents-mode">
-              <h3>{$t('start.documents.mode.title')}</h3>
-              <label class="start-view__radio">
-                <input
-                  type="radio"
-                  name="documents-mode"
-                  checked
-                  on:click={() => chooseDocumentsMode('copy')}
-                />
-                <span>{$t('start.documents.mode.copy')}</span>
-                <em>{$t('start.documents.mode.preselected')}</em>
-              </label>
-              <label class="start-view__radio">
-                <input
-                  type="radio"
-                  name="documents-mode"
-                  on:click={() => chooseDocumentsMode('move')}
-                />
-                <span>{$t('start.documents.mode.move')}</span>
-              </label>
-              <label class="start-view__checkbox">
-                <input
-                  type="checkbox"
-                  data-testid="documents-always"
-                  bind:checked={alwaysDocumentsMode}
-                />
-                <span>{$t('start.documents.mode.always')}</span>
-              </label>
-            </section>
-          {/if}
-
-          {#if localOpen}
-            <section class="start-view__panel" data-testid="local-changes-panel">
-              {#if localLoading}
-                <p class="start-view__status">{$t('start.state.checking')}</p>
-              {:else if localPreview}
-                <p class="start-view__hint" data-testid="local-changes-summary">
-                  {localPreview.changed_files.length} · {localPreview.branch}
-                </p>
-                <ul class="start-view__files">
-                  {#each localPreview.changed_files as file}
-                    <li>{file.path} · +{file.additions} −{file.deletions}</li>
-                  {/each}
-                </ul>
-                {#if !localPreview.eligible}
-                  <p class="start-view__error" data-testid="local-changes-ineligible">
-                    {$t('start.sources.local_changes_landing', {
-                      landing: localPreview.landing ?? '',
-                    })}
-                  </p>
-                {/if}
-                <div class="start-view__actions">
-                  <button
-                    type="button"
-                    data-testid="local-changes-add"
-                    disabled={busy || !localPreview.eligible}
-                    on:click={addLocalChanges}
-                  >
-                    {$t('start.local_changes.add')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="local-changes-close"
-                    on:click={() => (localOpen = false)}
-                  >
-                    {$t('start.local_changes.not_now')}
-                  </button>
-                </div>
-              {/if}
-            </section>
-          {/if}
-
-          {#if lessonsOpen}
-            <section class="start-view__panel" data-testid="lessons-panel">
-              {#if lessonsLoading}
-                <p class="start-view__status">{$t('start.state.checking')}</p>
-              {:else if lessons.length === 0}
-                <p class="start-view__hint">{$t('start.sources.no_lessons')}</p>
-              {:else}
-                <ul class="start-view__lessons">
-                  {#each lessons as lesson (lesson.lesson_id)}
-                    <li>
-                      <span>{lesson.title}</span>
-                      <button
-                        type="button"
-                        data-testid={`lesson-select-${lesson.lesson_id}`}
-                        disabled={busy}
-                        on:click={() => void chooseLesson(lesson)}
-                      >
-                        {$t('start.source.add', { kind: $t('start.source.lesson') })}
-                      </button>
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-            </section>
-          {/if}
-
-          <div class="start-view__abandon">
-            <button type="button" data-testid="entry-abandon" on:click={abandon}>
-              {$t('start.entry.abandon')}
-            </button>
-          </div>
-        </div>
-
-        <div class="start-view__chat">
-          <ChatPanel
-            open={chatOpen}
-            role={chat?.role ?? (entry?.kind === 'epic' ? 'decompose' : 'refine')}
-            subject={$t('start.chat.subject', {
-              kind: entry?.kind ?? kind,
-              project: currentProject,
-            })}
-            turns={chat?.turns ?? []}
-            proposal={chat?.proposal ?? null}
-            available={entry?.chat_available ?? false}
-            disabledReason={entry?.chat_disabled_reason ?? 'start.chat.waits'}
-            {busy}
-            onSend={sendChat}
-            onEnd={endChat}
-            onAccept={() => void answerProposal(true)}
-            onReject={() => void answerProposal(false)}
-            onToggle={openChat}
-            onClose={() => (chatOpen = false)}
-          />
-        </div>
-      </div>
     {/if}
-  {/if}
+
+    {#if actionError}
+      <p class="start-view__error" data-testid="start-action-error">
+        {$t('start.error', { cause: actionError })}
+      </p>
+    {/if}
+
+    <div slot="back">
+      {#if step === 'ready' || step === 'recipe' || step === 'parameters'}
+        <Button variant="ghost" data-testid="start-back" disabled={busy} on:click={() => void goBack()}>
+          {$t('start.action.back')}
+        </Button>
+      {/if}
+    </div>
+
+    <div slot="secondary">
+      {#if step === 'choose' || step === 'sources' || step === 'recipe' || step === 'parameters' || step === 'ready'}
+        <RowMenu
+          label={$t('start.entry.abandon')}
+          advisory={$t('start.entry.abandon')}
+          items={[
+            {
+              id: 'abandon',
+              label: $t('start.entry.abandon'),
+              disabled: busy,
+              onclick: () => (abandonOpen = true),
+            },
+          ]}
+        />
+      {/if}
+    </div>
+
+    <div slot="primary">
+      {#if step === 'no-project'}
+        <Button
+          variant="primary"
+          data-testid="start-choose-project"
+          on:click={() => navigateTo('projects')}
+        >
+          {$t('start.gate.choose_project')}
+        </Button>
+      {:else if step === 'error'}
+        <Button
+          variant="primary"
+          data-testid="start-gate-retry"
+          on:click={() => void load(++entryGeneration)}
+        >
+          {$t('common.action.retry')}
+        </Button>
+      {:else if step === 'sources'}
+        <Button
+          variant="primary"
+          data-testid="source-continue"
+          disabled={busy || !(entry?.can_continue ?? false)}
+          on:click={continueToReady}
+        >
+          {$t('start.sources.continue')}
+        </Button>
+      {:else if step === 'parameters'}
+        <Button
+          variant="primary"
+          data-testid="recipe-continue"
+          disabled={busy || (entry?.recipe?.parameters ?? []).some((parameter) => !parameter.available)}
+          on:click={continueFromParameters}
+        >
+          {$t('start.sources.continue')}
+        </Button>
+      {:else if step === 'ready'}
+        <Button variant="primary" data-testid="ready-start" disabled={busy} on:click={create}>
+          {$t(ready?.recipe
+            ? 'start.recipe.run'
+            : epic
+              ? 'start.ready.start_epic'
+              : 'start.ready.start_plan')}
+        </Button>
+      {:else if step === 'started'}
+        <Button variant="primary" data-testid="started-follow" on:click={follow}>
+          {$t('start.started.follow')}
+        </Button>
+      {:else if step === 'refused' && state?.refusal}
+        <Button
+          variant="primary"
+          data-testid="refusal-action"
+          on:click={() => state?.refusal && openRefusalAction(state.refusal)}
+        >
+          {$t(state.refusal.action_key)}
+        </Button>
+      {/if}
+    </div>
+  </WizardPage>
 </div>
 
 <ConfinedFilePicker
@@ -1294,56 +1430,67 @@
   onRefuse={refuseGrant}
 />
 
+<ConfirmDialog
+  open={abandonOpen}
+  title={$t('start.entry.abandon_title')}
+  consequences={[$t('start.entry.abandon_consequence')]}
+  actionLabel={$t('start.entry.abandon')}
+  cancelLabel={$t('web.common.cancel')}
+  {busy}
+  onConfirm={abandon}
+  onClose={() => (abandonOpen = false)}
+/>
+
 <style>
   .start-view {
     display: flex;
     flex-direction: column;
     gap: var(--space-4, 1rem);
-    padding: var(--space-4, 1rem);
-    max-width: 72rem;
-    width: 100%;
-    margin: 0 auto;
+    inline-size: 100%;
+    min-inline-size: 0;
   }
 
-  .start-view__head {
+  .start-view__steps {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--space-2, 0.5rem);
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .start-view__step {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
+    white-space: nowrap;
   }
 
-  .start-view__title {
-    margin: 0;
-    font-size: var(--text-xl);
-  }
-
-  .start-view__subtitle {
-    margin: 0;
-    font-size: var(--text-lg);
-  }
-
-  .start-view__sources {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
-  }
-
-  .start-view__sources.with-chat {
-    grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
-  }
-
-  .start-view__main,
-  .start-view__chat {
+  .start-view__loading,
+  .start-view__error {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    min-width: 0;
+  }
+
+  .start-view__gate-check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .start-view__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-3);
+  }
+
+  .start-view__card-title {
+    margin: 0;
+    font-size: var(--text-md);
+  }
+
+  .start-view__sources {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .start-view__panel {
@@ -1377,14 +1524,6 @@
     gap: var(--space-2);
   }
 
-  .start-view__actions button,
-  .start-view__abandon button,
-  .start-view__panel button {
-    min-height: 44px;
-    padding: var(--space-1) var(--space-3);
-    cursor: pointer;
-  }
-
   .start-view__hint,
   .start-view__status {
     margin: 0;
@@ -1401,8 +1540,7 @@
 
   .start-view__recipes,
   .start-view__lessons,
-  .start-view__files,
-  .start-view__projects ul {
+  .start-view__files {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1440,11 +1578,6 @@
     min-height: 44px;
   }
 
-  .start-view__abandon {
-    display: flex;
-    justify-content: flex-end;
-  }
-
   .start-view__gate {
     margin: 0;
     font-weight: 600;
@@ -1455,15 +1588,14 @@
     font-weight: 700;
   }
 
-  @media (max-width: 1024px) {
-    .start-view__sources.with-chat {
-      grid-template-columns: minmax(0, 1fr);
-    }
+  .start-view__subtitle {
+    margin: 0;
+    font-size: var(--text-lg);
   }
 
-  @media (max-width: 640px) {
-    .start-view {
-      padding: var(--space-2, 0.5rem);
-    }
+  .start-view__chat {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
   }
 </style>

@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
+  addDescription,
+  addSource,
   continueAndStart,
   openProject,
   openStartSources,
@@ -16,7 +18,7 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
 
   test('adds a pull request with its changed files and starts the plan', async ({ page }) => {
     await openStartSources(page);
-    await page.getByTestId('add-pull_request').click();
+    await addSource(page, 'pull_request');
 
     await expect(page.getByTestId('pr-panel')).toBeVisible();
     await page
@@ -30,6 +32,9 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
     await expect(page.locator('[data-testid^="pr-files-"]')).toBeVisible();
     await expect(page.locator('[data-testid^="pr-files-"]')).toContainText('untrusted');
 
+    // The sources step keeps its one primary act, and Continue is it.
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
     await continueAndStart(page);
 
     await expect(page.getByTestId('started-title')).toBeVisible();
@@ -37,7 +42,7 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
 
   test('previews and adds the local changes', async ({ page }) => {
     await openStartSources(page);
-    await page.getByTestId('add-local_changes').click();
+    await addSource(page, 'local_changes');
 
     const panel = page.getByTestId('local-changes-panel');
     await expect(panel).toBeVisible();
@@ -49,7 +54,17 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
     await expect(page.getByTestId('local-changes-panel')).toHaveCount(0);
     await expect(page.getByTestId('source-list')).toContainText('2 files changed');
 
-    await continueAndStart(page);
+    // Back from the ready step returns to the sources, whose one primary is Continue again.
+    await page.getByTestId('source-continue').click();
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
+    await page.getByTestId('source-continue').click();
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('ready-start').click();
     await expect(page.getByTestId('started-title')).toBeVisible();
   });
 });

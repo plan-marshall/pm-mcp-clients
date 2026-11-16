@@ -72,7 +72,8 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('source-src-lesson-1')).toBeVisible();
 
     // The confined file picker lists the checkout's files.
-    await page.getByTestId('add-documents').click();
+    await page.getByTestId('source-add-menu').click();
+    await page.getByTestId('action-documents').click();
     await expect(page.getByTestId('confined-file-picker')).toBeVisible();
     await expect(page.getByTestId('picker-row-doc')).toBeVisible();
     await expect(page.getByTestId('picker-row-pom.xml')).toBeVisible();

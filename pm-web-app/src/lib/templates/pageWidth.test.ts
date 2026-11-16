@@ -21,6 +21,7 @@ const CONTROL_DIR = path.resolve(__dirname, '../../test/fixtures/templateViews')
 const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'SystemView.svelte', root: '.system-container' },
   { file: 'ReportsView.svelte', root: '.reports-view' },
+  { file: 'StartView.svelte', root: '.start-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */

@@ -69,22 +69,16 @@ describe('StartView', () => {
     expect(loading.querySelector('[data-testid="skeleton"]')).not.toBeNull();
   });
 
-  it('offers the projects when the start names none, and opens the one chosen', async () => {
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: 'ent-old' }));
-    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
-      projects: [
-        { project_id: 'pm-mcp-core', display_name: 'PM-MCP core' },
-        { project_id: PROJECT, display_name: 'PM-MCP clients' },
-      ],
-    } as Awaited<ReturnType<typeof apiClient.getProjects>>);
+  it('draws the error pattern with its act when the start names no project, and leads to the projects', async () => {
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: null }));
 
     render(StartView, {});
 
-    const choice = await screen.findByTestId('start-project-choice');
-    expect(choice).toHaveTextContent('Projects');
-    await fireEvent.click(screen.getByRole('button', { name: 'PM-MCP core' }));
+    const pattern = await screen.findByTestId('start-no-project');
+    expect(pattern).toHaveTextContent('There is no project to start work in');
+    await fireEvent.click(screen.getByRole('button', { name: 'Choose a project' }));
 
-    expect(get(runtimeStore)).toMatchObject({ startProjectId: 'pm-mcp-core', startEntryId: null });
+    expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 
   it('adopts the project of an entry opened by its id', async () => {
