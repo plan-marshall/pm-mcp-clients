@@ -3,6 +3,8 @@
   import { t, currentLocale, hasMessage } from '../i18n';
   import Tabs from '../components/Tabs.svelte';
   import Button from '../components/Button.svelte';
+  import RadioGroup from '../components/RadioGroup.svelte';
+  import FormStatus from '../components/FormStatus.svelte';
   import ActionBar from '../components/ActionBar.svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import LanListenerModal from '../components/LanListenerModal.svelte';
@@ -475,7 +477,24 @@
   let tokenNotice = '';
   let tokenError = '';
 
+  /** Whether the last save of each form succeeded, so the form's own line can say _Saved_. */
+  let documentsSaved = false;
+  let cleanupSaved = false;
+  /** The documents modes as the radio group draws them. */
+  $: documentsOptions = ['copy', 'move', 'ask'].map((mode) => ({
+    value: mode,
+    label: $t(`web.settings.documents.${mode}`),
+  }));
+
   $: settings = $runtimeStore.machineSettings;
+  /** The values the machine holds, which the forms show until the operator changes one. */
+  $: recordedDocuments = settings?.documents_mode || 'ask';
+  $: recordedPlans = settings?.cleanup_durations?.plans_after_days ?? 30;
+  $: recordedRemind = settings?.cleanup_durations?.remind_after_days ?? 3;
+  $: documentsChanged = documentsMode !== recordedDocuments;
+  $: plansChanged = Number(cleanupDays) !== Number(recordedPlans);
+  $: remindChanged = Number(cleanupRemindDays) !== Number(recordedRemind);
+  $: cleanupChanged = plansChanged || remindChanged;
   // The dependency is written out, so a settings record that arrives after the mount fills both
   // tabs: a helper call would hide it from the template's own update.
   $: setupAspects = (settings?.aspects ?? []).filter((aspect) =>
@@ -616,7 +635,14 @@
   }
 
   async function saveDocumentsMode(): Promise<void> {
-    await applySetting('documents_mode', documentsMode);
+    const applied = await applySetting('documents_mode', documentsMode);
+    documentsSaved = applied;
+  }
+
+  /** Drops the documents change and shows the value the machine holds again. */
+  function resetDocumentsMode(): void {
+    documentsMode = recordedDocuments;
+    documentsSaved = false;
   }
 
   /**
@@ -648,21 +674,33 @@
       return;
     }
     const recorded = settings?.cleanup_durations;
-    const durations = {
-      plans_after_days: days,
-      epics_after_days: recorded?.epics_after_days ?? days,
-      logs_after_days: recorded?.logs_after_days ?? days,
-      reports_after_days: recorded?.reports_after_days ?? days,
-      unenrolled_after_days: recorded?.unenrolled_after_days ?? days,
-      remind_after_days: remind,
-    };
+    // The saved record starts from the one the runtime holds, so a category this page does not show
+    // keeps its value instead of being rebuilt from a fixed list of keys.
+    const durations: CleanupDurationsRecord = { ...(recorded ?? {}), ...overriddenDurations(days, remind) };
     // Only what the operator changed travels again after a conflict; the other categories keep
     // the value the other client recorded.
-    await applySetting(
+    const applied = await applySetting(
       'cleanup_durations',
       JSON.stringify(durations),
       changedCleanupFields(durations, recorded),
     );
+    cleanupSaved = applied;
+  }
+
+  /**
+   * @param days the retention the page shows
+   * @param remind the reminder the page shows
+   * @returns the two categories the page edits, over whatever the record carries
+   */
+  function overriddenDurations(days: number, remind: number): CleanupDurationsRecord {
+    return { plans_after_days: days, remind_after_days: remind };
+  }
+
+  /** Drops the cleanup change and shows the durations the machine holds again. */
+  function resetCleanup(): void {
+    cleanupDays = recordedPlans;
+    cleanupRemindDays = recordedRemind;
+    cleanupSaved = false;
   }
 
   /** Applies the value this page wanted, on the revision the other client left behind. */
@@ -902,19 +940,47 @@
         </section>
 
         <section class="settings-section" data-testid="documents-section">
-          <h2 class="settings-section__title">{$t('web.settings.documents.title')}</h2>
-          <div class="choice-row">
-            {#each ['copy', 'move', 'ask'] as mode}
-              <label class="choice">
-                <input type="radio" name="documents_mode" value={mode} bind:group={documentsMode} />
-                {$t(`web.settings.documents.${mode}`)}
-              </label>
-            {/each}
-            <Button variant="secondary" on:click={saveDocumentsMode} data-testid="save-documents">
+          <RadioGroup
+            legend={$t('web.settings.documents.title')}
+            name="documents_mode"
+            bind:value={documentsMode}
+            options={documentsOptions}
+            testid="documents-choice"
+          />
+          <p class="hint-text">{$t('web.settings.documents.loopback_only')}</p>
+          {#if documentsChanged}
+            <p class="changed-mark" data-testid="documents-changed">
+              {$t('web.settings.form.changed')}
+            </p>
+          {/if}
+          <div class="form-footer">
+            <div data-testid="documents-form-status">
+              <FormStatus
+                message={documentsChanged
+                  ? ''
+                  : documentsSaved
+                    ? $t('web.settings.saved')
+                    : $t('web.settings.form.unchanged')}
+                tone={documentsSaved && !documentsChanged ? 'success' : 'neutral'}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              disabled={!documentsChanged}
+              on:click={resetDocumentsMode}
+              data-testid="documents-reset"
+            >
+              {$t('web.settings.form.reset')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!documentsChanged}
+              on:click={saveDocumentsMode}
+              data-testid="save-documents"
+            >
               {$t('web.common.save')}
             </Button>
           </div>
-          <p class="hint-text">{$t('web.settings.documents.loopback_only')}</p>
         </section>
       {/if}
     </div>
@@ -1207,28 +1273,67 @@
       {:else}
         <section class="settings-section" data-testid="cleanup-section">
           <h2 class="settings-section__title">{$t('web.settings.cleanup.title')}</h2>
-          <div class="choice-row">
-            <label class="choice">
+          <div class="field-row">
+            <label class="field-label" for="cleanup-days">
               {$t('web.settings.cleanup.keep')}
-              <input
-                type="number"
-                bind:value={cleanupDays}
-                data-testid="cleanup-days"
-                aria-label={$t('web.settings.cleanup.title')}
-              />
-              {$t('web.settings.cleanup.days')}
             </label>
-            <label class="choice">
+            <input
+              id="cleanup-days"
+              type="number"
+              bind:value={cleanupDays}
+              data-testid="cleanup-days"
+            />
+            <span class="field-unit">{$t('web.settings.cleanup.days')}</span>
+            {#if plansChanged}
+              <span class="changed-mark" data-testid="cleanup-changed-plans">
+                {$t('web.settings.form.changed')}
+              </span>
+            {/if}
+          </div>
+          <div class="field-row">
+            <label class="field-label" for="cleanup-remind-days">
               {$t('web.settings.cleanup.remind')}
-              <input
-                type="number"
-                min="1"
-                bind:value={cleanupRemindDays}
-                data-testid="cleanup-remind-days"
-              />
-              {$t('web.settings.cleanup.days_after')}
             </label>
-            <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">
+            <input
+              id="cleanup-remind-days"
+              type="number"
+              min="1"
+              bind:value={cleanupRemindDays}
+              data-testid="cleanup-remind-days"
+            />
+            <span class="field-unit">{$t('web.settings.cleanup.days_after')}</span>
+            {#if remindChanged}
+              <span class="changed-mark" data-testid="cleanup-changed-remind">
+                {$t('web.settings.form.changed')}
+              </span>
+            {/if}
+          </div>
+          <p class="hint-text">{$t('web.settings.cleanup.hint')}</p>
+          <div class="form-footer">
+            <div data-testid="cleanup-form-status">
+              <FormStatus
+                message={cleanupChanged
+                  ? ''
+                  : cleanupSaved
+                    ? $t('web.settings.saved')
+                    : $t('web.settings.form.unchanged')}
+                tone={cleanupSaved && !cleanupChanged ? 'success' : 'neutral'}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              disabled={!cleanupChanged}
+              on:click={resetCleanup}
+              data-testid="cleanup-reset"
+            >
+              {$t('web.settings.form.reset')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!cleanupChanged}
+              on:click={saveCleanup}
+              data-testid="save-cleanup"
+            >
               {$t('web.settings.cleanup.save')}
             </Button>
           </div>
@@ -1582,6 +1687,58 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4);
+  }
+
+  .field-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .field-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--color-text-primary);
+  }
+
+  .field-row input[type='number'] {
+    width: 5rem;
+    min-height: var(--control-height);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--control-border);
+    border-radius: var(--control-radius);
+    background-color: var(--control-bg);
+    color: var(--color-text-primary);
+  }
+
+  .field-unit {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .changed-mark {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--color-primary);
+    background-color: var(--color-primary-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1px var(--space-2);
+    margin: 0;
+  }
+
+  .form-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .form-footer > :first-child {
+    margin-inline-end: auto;
   }
 
   .choice {
