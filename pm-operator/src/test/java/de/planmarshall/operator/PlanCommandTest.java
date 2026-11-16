@@ -1012,6 +1012,29 @@ class PlanCommandTest {
                                                     out.toString()));
         }
 
+        @Test
+        @DisplayName("a binary file answers its row, never a missing file")
+        void printsABinaryRow() throws Exception {
+            var list = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c2ab41d7e\","
+                                + "\"base_ref\":\"main\",\"files\":[{\"path\":\"doc/relay.png\",\"status\":\"modified\","
+                                + "\"added\":0,\"removed\":0,\"binary\":true,\"unplanned\":false}]}";
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans/fix-relay/changes".equals(request.target())) {
+                    response.json(200, list);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            int code = execute("plan", "fix-relay", "--changes", "--file", "doc/relay.png");
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("B  doc/relay.png"), out.toString()),
+                                () -> assertTrue(out.toString().contains("binary"), out.toString()),
+                                () -> assertFalse(out.toString().contains("No such file"), out.toString()));
+        }
+
         /**
          * @param runtime the mock runtime
          * @param args    the verb and its arguments

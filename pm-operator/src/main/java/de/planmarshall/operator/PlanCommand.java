@@ -315,6 +315,13 @@ public final class PlanCommand implements Callable<Integer> {
             out.flush();
             return 0;
         }
+        // A binary file answers no lines: its row is the whole answer (plan-view.adoc § The Changes).
+        var binaryRow = level.fileRowOf(changesFile, locale);
+        if (binaryRow != null && isBinary((PlanChangesCaptured) answer, changesFile)) {
+            out.println("  " + binaryRow.line());
+            out.flush();
+            return 0;
+        }
         var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
         if (fileResponse.status() == 404) {
             out.printf("No such file in the plan's changes: %s%n",
@@ -337,6 +344,19 @@ public final class PlanCommand implements Callable<Integer> {
                             OutputSafety.stripControlSequences(changesFile));
         out.flush();
         return 1;
+    }
+
+    /**
+     * @param captured the list
+     * @param path     the file's path
+     * @return {@code true} when the list marks the file binary
+     */
+    private static boolean isBinary(PlanChangesCaptured captured, String path) {
+        return captured.files().stream()
+                            .filter(file -> file.path().equals(path))
+                            .findFirst()
+                            .map(file -> file.binary())
+                            .orElse(false);
     }
 
     /**

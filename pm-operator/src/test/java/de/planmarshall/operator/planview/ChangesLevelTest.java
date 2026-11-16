@@ -243,19 +243,22 @@ class ChangesLevelTest {
     class Live {
 
         @Test
-        @DisplayName("a new capture keeps an open file whose row did not change, and names the new head")
+        @DisplayName("a new capture keeps an open file whose row did not change, and names the new head and figures")
         void keepsAnUnchangedRow() throws Exception {
             var level = level();
             level.showFile(PlanChangeFile.fromJson(FILE));
             var fresh = LIST.replace("\"head\":\"9f3c2ab41d7e\"", "\"head\":\"a1b2c3d4e5f6\"");
+            var figures = new ChangeSize(4, 150, 15, 1);
 
             assertAll(
-                                () -> assertFalse(level.update(PlanChangesAnswer.fromJson(fresh)),
+                                () -> assertFalse(level.update(PlanChangesAnswer.fromJson(fresh), figures),
                                                     "the open file's row did not change"),
                                 () -> assertTrue(level.hasOpenFile()),
                                 () -> assertTrue(text(level).contains("@@ -20,2 +20,2 @@"), text(level)),
                                 () -> assertTrue(level.breadcrumb("en").contains("a1b2c3d"),
-                                                    level.breadcrumb("en")));
+                                                    level.breadcrumb("en")),
+                                () -> assertTrue(level.breadcrumb("en").contains("+150"),
+                                                    "the figures are the capture's: " + level.breadcrumb("en")));
         }
 
         @Test
@@ -267,10 +270,28 @@ class ChangesLevelTest {
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
 
             assertAll(
-                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(fresh)),
+                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(fresh), null),
                                                     "the open file's row changed"),
                                 () -> assertFalse(level.hasOpenFile(), "the hunks wait for the read"),
                                 () -> assertEquals(4, level.rows("en").size(), "the list is shown again"));
+        }
+
+        @Test
+        @DisplayName("a read that did not land is asked for again on the next capture")
+        void retriesAFailedRead() throws Exception {
+            var level = level();
+            level.showFile(PlanChangeFile.fromJson(FILE));
+            var changed = LIST.replace("\"status\":\"renamed\",\"added\":3,\"removed\":3",
+                                "\"status\":\"renamed\",\"added\":5,\"removed\":3");
+            assertTrue(level.update(PlanChangesAnswer.fromJson(changed), null));
+            // The runtime refused the file read: the hunks are still open, the row did not move.
+            assertFalse(level.hasOpenFile());
+
+            assertAll(
+                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(changed), null),
+                                                    "a missing read is asked for again"),
+                                () -> assertEquals("pm-relay/src/main/java/de/planmarshall/relay/Frame.java",
+                                                    level.openFilePath()));
         }
 
         @Test
@@ -278,7 +299,7 @@ class ChangesLevelTest {
         void refusalAfterACapture() throws Exception {
             var level = level();
 
-            level.update(PlanChangesAnswer.fromJson(UNAVAILABLE));
+            level.update(PlanChangesAnswer.fromJson(UNAVAILABLE), null);
 
             assertAll(
                                 () -> assertEquals(1, level.rows("en").size()),

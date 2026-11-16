@@ -238,7 +238,7 @@ public class ScenarioLoader {
 
         validateTransitions(states, identifier);
 
-        validatePlanChanges(routes, states, identifier);
+        validatePlanChanges(routes, states, start, identifier);
 
         return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
     }
@@ -248,15 +248,17 @@ public class ScenarioLoader {
      * the size the plan carries can only ever be one measurement
      * ({@code 01-processes-and-transport.adoc#plan-changes}): the files, their lines added and removed
      * and their count beyond the footprint are added up and compared with every {@code change} the
-     * scenario's static routes spell for that plan. The fixture is decoded with the {@code pm-api}
-     * codecs either way, so a malformed changes fixture fails the load.
+     * state serves for that plan — the scenario's static routes and the state's own overrides. The
+     * fixture is decoded with the {@code pm-api} codecs either way, so a malformed changes fixture
+     * fails the load.
      *
-     * @param routes  the scenario's static routes, which carry the plans' sizes of change
-     * @param states  the scenario's states, whose runtime fixtures may carry {@code plan_changes}
-     * @param scenario the scenario identifier for error reporting
+     * @param routes      the scenario's static routes, which carry the plans' sizes of change
+     * @param states      the scenario's states, whose runtime fixtures may carry {@code plan_changes}
+     * @param startState  the state the scenario starts at, whose captures the other states inherit
+     * @param scenario    the scenario identifier for error reporting
      */
     private static void validatePlanChanges(Map<String, RouteDefinition> routes,
-            Map<String, StateDefinition> states, String scenario) {
+            Map<String, StateDefinition> states, String startState, String scenario) {
         var staticSizes = new LinkedHashMap<String, List<ChangeSize>>();
         try {
             routes.values().forEach(route -> collectPlanSizes(route.representation(), staticSizes));
@@ -264,13 +266,13 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, null, "change",
                     "a plan's size of change is not a measurement: " + e.getMessage());
         }
+        // The engine seeds a state from the start state's fixture and then applies the state's own,
+        // so a state without a plan_changes member serves the start state's captures.
+        var baseEntries = planChangesOf(states.get(startState), scenario);
         for (var state : states.values()) {
-            var representation = JsonTree.asObject(state.representation());
-            var facts = representation == null
-                    ? null
-                    : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
-            var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
-            if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+            var ownEntries = planChangesOf(state, scenario);
+            var effective = ownEntries != null ? ownEntries : baseEntries;
+            if (effective == null) {
                 continue;
             }
             // A size belongs to the state that serves it: a plan captured in one state says nothing
@@ -283,7 +285,7 @@ public class ScenarioLoader {
                         "a plan's size of change is not a measurement: " + e.getMessage());
             }
             var seen = new HashSet<String>();
-            for (var entry : fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario)) {
+            for (var entry : effective) {
                 var planId = JsonTree.string(entry, "plan_id");
                 if (planId != null && !seen.add(planId)) {
                     throw new ScenarioValidationException(scenario, null,
@@ -293,6 +295,27 @@ public class ScenarioLoader {
                 validateOnePlansChanges(entry, sizes, scenario);
             }
         }
+    }
+
+    /**
+     * @param state    the state, or {@code null} for a name the scenario does not hold
+     * @param scenario the scenario identifier for error reporting
+     * @return the state's own {@code plan_changes} entries, or {@code null} when it declares none
+     */
+    private static @Nullable List<Map<String, Object>> planChangesOf(@Nullable StateDefinition state,
+            String scenario) {
+        if (state == null) {
+            return null;
+        }
+        var representation = JsonTree.asObject(state.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+        if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+            return null;
+        }
+        return fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario);
     }
 
     private static Map<String, List<ChangeSize>> copyOf(Map<String, List<ChangeSize>> sizes) {

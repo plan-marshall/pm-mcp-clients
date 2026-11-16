@@ -757,17 +757,18 @@ class PlanChangesScenarioTest {
         }
 
         @Test
-        @DisplayName("a size of change in another state does not condemn a refusal in this one")
-        void refusesOnlyWithinItsState() throws Exception {
+        @DisplayName("a state that declares its own capture is held to its own size, never the state it inherits from")
+        void refusesOnlyWithinItsOwnCapture() throws Exception {
             var valid = scenarioJson();
             assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
 
-            // drop-legacy-api is not_captured in the start state; a later state captures it with a
-            // size, which says nothing about the start state's answer.
+            // drop-legacy-api is not_captured where the scenario starts; a later state declares its
+            // own capture of the same plan, with the size that capture carries.
             var root = JsonTree.asObject(JsonTree.parse(valid));
             var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
                             JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
                     "runtime");
+            other.put("plan_changes", List.of(capturedDropLegacyApi()));
             var override = new LinkedHashMap<String, Object>();
             override.put("plan_id", "drop-legacy-api");
             override.put("change", Map.of("files", 1, "insertions", 2, "deletions", 0, "unplanned", 0));
@@ -775,7 +776,62 @@ class PlanChangesScenarioTest {
             routes.put("GET /api/v1/plans/drop-legacy-api/process", override);
             other.put("routes", routes);
 
-            assertDoesNotThrow(() -> ScenarioLoader.load(JsonTree.write(root), StandardScenarios.RUNNING_WORK));
+            // Its own capture agrees with its own size, and the start state's refusal stands alone.
+            var ownedScenario = JsonTree.write(root);
+            assertDoesNotThrow(() -> ScenarioLoader.load(ownedScenario, StandardScenarios.RUNNING_WORK));
+
+            // A size the state serves over a capture it only inherits is still refused.
+            root = JsonTree.asObject(JsonTree.parse(valid));
+            var inherited = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            var contradicting = new LinkedHashMap<String, Object>();
+            contradicting.put("plan_id", FIX_RELAY);
+            contradicting.put("change", Map.of("files", 13, "insertions", 341, "deletions", 27, "unplanned", 2));
+            var inheritedRoutes = new LinkedHashMap<String, Object>();
+            inheritedRoutes.put("GET /api/v1/plans/fix-relay/process", contradicting);
+            inherited.put("routes", inheritedRoutes);
+            var inheritedScenario = JsonTree.write(root);
+
+            refusesTheLoad(inheritedScenario, FIX_RELAY);
+        }
+
+        /**
+         * @return a capture of one added file, its hunks and its size, as the fixture spells one
+         */
+        private static Map<String, Object> capturedDropLegacyApi() {
+            var line = new LinkedHashMap<String, Object>();
+            line.put("kind", "added");
+            line.put("text", "package pm.api;");
+            var second = new LinkedHashMap<String, Object>();
+            second.put("kind", "added");
+            second.put("text", "class A {}");
+            var hunk = new LinkedHashMap<String, Object>();
+            hunk.put("old_start", 1);
+            hunk.put("old_len", 0);
+            hunk.put("new_start", 1);
+            hunk.put("new_len", 2);
+            hunk.put("lines", List.of(line, second));
+            var content = new LinkedHashMap<String, Object>();
+            content.put("path", "pm-api/src/A.java");
+            content.put("hunks", List.of(hunk));
+            content.put("binary", false);
+            content.put("truncated", false);
+            var file = new LinkedHashMap<String, Object>();
+            file.put("path", "pm-api/src/A.java");
+            file.put("status", "added");
+            file.put("added", 2);
+            file.put("removed", 0);
+            file.put("binary", false);
+            file.put("unplanned", false);
+            var capture = new LinkedHashMap<String, Object>();
+            capture.put("plan_id", "drop-legacy-api");
+            capture.put("state", "captured");
+            capture.put("head", "a1b2c3d4e5f6");
+            capture.put("base_ref", "main");
+            capture.put("files", List.of(file));
+            capture.put("contents", List.of(content));
+            return capture;
         }
 
         @Test

@@ -1828,7 +1828,8 @@ public final class OverviewFullScreenApp {
 
     /**
      * Reads the plan's changes again after a capture ({@code plan-view.adoc} § Live): the list keeps
-     * the selected file by its path, and an open file is read again only when its row changed.
+     * the selected file by its path, the head's figures come from the plan, and an open file is read
+     * again only when its row changed.
      *
      * @param runtime the runtime client
      */
@@ -1838,27 +1839,59 @@ public final class OverviewFullScreenApp {
             return;
         }
         try {
-            var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).list()));
-            if (response.status() != 200) {
+            var list = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).list()));
+            if (list.status() != 200) {
                 return;
             }
-            var openPath = changes.openFilePath();
-            var rowChanged = changes.update(PlanChangesAnswer.fromJson(response.bodyText()));
-            if (rowChanged && openPath != null) {
-                var file = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(openPath)));
+            var fresh = PlanChangesAnswer.fromJson(list.bodyText());
+            var size = readPlanChangeSize(runtime, changes.planId());
+            final boolean needsRead;
+            final @Nullable String openPath;
+            synchronized (this) {
+                needsRead = changes.update(fresh, size);
+                openPath = changes.openFilePath();
+            }
+            if (needsRead && openPath != null) {
+                var file = runtime.send(HttpRequest.get(
+                                    PlanChangesRoutes.plan(changes.planId()).file(openPath)));
                 if (file.status() == 200) {
-                    changes.showFile(PlanChangeFile.fromJson(file.bodyText()));
+                    var content = PlanChangeFile.fromJson(file.bodyText());
+                    synchronized (this) {
+                        changes.showFile(content);
+                    }
                 }
             }
             synchronized (this) {
-                stack.refresh(changes.rows(locale));
-                if (openPath != null) {
+                var selectedBefore = stack.selected() != null ? stack.selected().id() : null;
+                var rows = changes.rows(locale);
+                stack.refresh(rows);
+                var selectionVanished = selectedBefore != null
+                                    && rows.stream().noneMatch(row -> row.id().equals(selectedBefore));
+                if (selectionVanished && openPath != null) {
                     stack.select(ChangesLevel.FILE_PREFIX + openPath);
                 }
             }
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException | IllegalArgumentException _) {
             // best-effort refresh
+        }
+    }
+
+    /**
+     * @param runtime the runtime client
+     * @param planId  the plan
+     * @return the size of change the plan carries, or {@code null} when it carries none
+     */
+    private static @Nullable ChangeSize readPlanChangeSize(RuntimeClient runtime, String planId) {
+        try {
+            var response = runtime.send(HttpRequest.get(
+                                PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId) + "/process"));
+            if (response.status() != 200) {
+                return null;
+            }
+            return ProcessTree.fromJson(response.bodyText()).change();
+        } catch (IOException | IllegalArgumentException _) {
+            return null;
         }
     }
 
@@ -2793,19 +2826,10 @@ public final class OverviewFullScreenApp {
 
         /**
          * @param response a refused read
-         * @return the runtime's own message, cleaned for the status line
+         * @return the refusal as the view's own texts name it
          */
-        private static String refusalOf(HttpResponse response) {
-            try {
-                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-                var message = map != null ? JsonTree.string(map, "message") : null;
-                if (message != null) {
-                    return OutputSafety.stripControlSequences(message);
-                }
-            } catch (IOException _) {
-                // A refusal that carries no JSON still has its status.
-            }
-            return "read refused: " + response.status();
+        private String refusalOf(HttpResponse response) {
+            return LoadRefusal.of(locale, response, PLAN_LEVEL).line();
         }
 
         private void changesCloseFile() {

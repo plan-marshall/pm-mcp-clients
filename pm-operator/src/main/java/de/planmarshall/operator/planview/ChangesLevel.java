@@ -67,7 +67,7 @@ public final class ChangesLevel {
 
     private final String planId;
     private PlanChangesAnswer answer;
-    private final @Nullable ChangeSize size;
+    private @Nullable ChangeSize size;
     private @Nullable String openPath;
     private @Nullable PlanChangeFile openFile;
     private @Nullable PlanChangedFile openRow;
@@ -136,14 +136,17 @@ public final class ChangesLevel {
 
     /**
      * Replaces the list after a capture ({@code plan-view.adoc} § Live): an open file stays open
-     * while its row is unchanged, and its hunks are read again only when the row changed.
+     * while its row is unchanged, and its hunks are read again only when the row changed or when an
+     * earlier read did not land.
      *
-     * @param fresh the list the runtime answered after the capture
-     * @return {@code true} when an open file's row changed and its hunks must be read again
+     * @param fresh      the list the runtime answered after the capture
+     * @param freshSize  the figures the plan carries after the capture, or {@code null}
+     * @return {@code true} when an open file's hunks must be read again
      */
-    public boolean update(PlanChangesAnswer fresh) {
+    public boolean update(PlanChangesAnswer fresh, @Nullable ChangeSize freshSize) {
         var previousRow = openRow;
         this.answer = Objects.requireNonNull(fresh, "fresh");
+        this.size = freshSize;
         if (openPath == null) {
             return false;
         }
@@ -155,12 +158,26 @@ public final class ChangesLevel {
             openRow = null;
             return true;
         }
-        if (row.equals(previousRow)) {
+        if (openFile != null && row.equals(previousRow)) {
             return false;
         }
+        // The hunks wait for the read: a read that did not land is asked for again on the next capture.
         openFile = null;
         openRow = row;
         return true;
+    }
+
+    /**
+     * @param path   the file's path
+     * @param locale the interface locale
+     * @return the row the list serves for the path, or {@code null} when it names none
+     */
+    public @Nullable TuiRow fileRowOf(String path, String locale) {
+        if (!(answer instanceof PlanChangesCaptured captured)) {
+            return null;
+        }
+        var row = rowOf(captured, path);
+        return row != null ? fileRow(row, locale) : null;
     }
 
     /**
