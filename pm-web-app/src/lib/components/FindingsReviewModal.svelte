@@ -66,6 +66,23 @@
     }
   });
 
+  // The review opens on its first open item: a review is read by working through what is still
+  // open, so the panel never opens on a decided item, or on nothing at all. A selection the person
+  // made stays theirs — only an empty one, or one the review no longer carries, is replaced.
+  $effect(() => {
+    if (!open) {
+      return;
+    }
+    const items = review?.items ?? [];
+    if (selectedId !== null && items.some((item) => item.item_id === selectedId)) {
+      return;
+    }
+    const firstOpen = items.find((item) => item.state === 'open');
+    if (firstOpen !== undefined) {
+      selectedId = firstOpen.item_id;
+    }
+  });
+
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       close();
@@ -165,6 +182,9 @@
             done: review?.decided ?? 0,
             total: review?.total ?? 0,
           })}
+        </span>
+        <span class="review-modal__open" data-testid="review-open-count">
+          {$t('control.review.open_count', { count: openItems.length })}
         </span>
         <button type="button" data-testid="review-close" onclick={close}>
           {$t('common.close')}
@@ -477,6 +497,11 @@
   }
 
   .review-modal__progress {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .review-modal__open {
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
   }

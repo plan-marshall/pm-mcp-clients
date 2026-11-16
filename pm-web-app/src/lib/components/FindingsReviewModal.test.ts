@@ -43,10 +43,47 @@ describe('FindingsReviewModal component', () => {
       'relay-hardening · findings review',
     );
     expect(screen.getByTestId('review-progress')).toHaveTextContent('2 of 3 decided');
+    expect(screen.getByTestId('review-open-count')).toHaveTextContent('1 open');
     expect(screen.getByTestId('review-item-F-0004')).toHaveTextContent(
       'Reconnect loses the last event',
     );
     expect(screen.getByTestId('review-item-F-0005')).toHaveTextContent('kept');
+  });
+
+  it('opens on its first open item, never on a decided one', () => {
+    // The first item is decided: the panel opens on F-0005, the first one still open.
+    const decidedFirst: ReviewResource = {
+      ...review,
+      items: [
+        {
+          item_id: 'F-0003',
+          register: 'findings',
+          statement: 'The retry count is not bounded',
+          rules: [],
+          origin: 'review comment of #212',
+          trust: 'trusted',
+          state: 'kept',
+        },
+        {
+          item_id: 'F-0004',
+          register: 'findings',
+          statement: 'Reconnect loses the last event',
+          rules: [],
+          origin: 'landing of relay-reconnect (#211)',
+          trust: 'trusted',
+          state: 'open',
+        },
+      ],
+    };
+
+    render(FindingsReviewModal, {
+      props: { epicId: 'relay-hardening', review: decidedFirst, open: true },
+    });
+
+    expect(screen.getByTestId('review-statement')).toHaveTextContent(
+      'Reconnect loses the last event',
+    );
+    expect(screen.getByTestId('review-item-F-0004')).toHaveClass('selected');
   });
 
   it('shows the item, its rules, origin, and proposal', async () => {
