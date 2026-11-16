@@ -66,6 +66,8 @@
   let busy = false;
   /** The code of the failed load, which `ErrorState` resolves to its words. */
   let loadError: string | null = null;
+  /** How many reads completed: a failure after a shown state is announced, a cold one is not. */
+  let completedReads = 0;
   let actionError = '';
 
   let projectRemote: RemoteInfo | null = null;
@@ -222,7 +224,7 @@
     return 'start.step.sources';
   }
 
-  /** Whether the step offers the contract's own Back; `start.recipe-create` offers only `create`. */
+  /** Whether the step offers the contract's own Back; `recipe-create` offers only `create`. */
   $: backShown =
     (step === 'ready' && entry?.state !== 'start.recipe-create') ||
     step === 'recipe' ||
@@ -296,6 +298,9 @@
     } finally {
       if (generation === entryGeneration) {
         loading = false;
+        if (loadError === null) {
+          completedReads += 1;
+        }
       }
     }
   }
@@ -909,10 +914,10 @@
     side={entry !== null ? sidePane : undefined}
   >
     <div slot="steps" class="start-view__steps" data-testid="start-step-trail">
+      <h1 class="sr-only">
+        {$t(epic ? 'start.epic.title' : 'start.plan.title', { project: currentProject })}
+      </h1>
       {#if step !== 'no-project' && step !== 'checking' && step !== 'error' && step !== 'refused'}
-        <h1 class="sr-only">
-          {$t(epic ? 'start.epic.title' : 'start.plan.title', { project: currentProject })}
-        </h1>
         <span class="start-view__step" data-testid="start-step">{$t(stepKeyOf(step))}</span>
         <span class="start-view__marks" aria-hidden="true">
           <span class="start-view__mark" class:start-view__mark--done={stepNumber(step) > 1}>
@@ -922,11 +927,13 @@
           <span class="start-view__mark" class:start-view__mark--active={stepNumber(step) === 2}>
             {#if stepNumber(step) > 2}✓{:else}②{/if}
           </span>
+          <span>─</span>
+          <span class="start-view__mark" class:start-view__mark--active={stepNumber(step) === 3}>
+            ✓
+          </span>
           {#if epic}
             <span>─</span>
-            <span class="start-view__mark" class:start-view__mark--active={stepNumber(step) === 3}>
-              ✓
-            </span>
+            <span class="start-view__mark">③</span>
           {/if}
         </span>
       {/if}
@@ -950,7 +957,11 @@
             {$t('start.gate.slow')}
           </p>
         {/if}
-        <ErrorState code={loadError} titleLevel={2} announce={true} />
+        <ErrorState
+          code={loadError}
+          titleLevel={2}
+          announce={loadError === 'timeout' || completedReads > 0}
+        />
       </div>
     {:else if step === 'refused' && state?.refusal}
       {@const refusal = state.refusal}
@@ -1075,7 +1086,11 @@
         </p>
         <div class="start-view__actions">
           {#if epic}
-            <Button variant="secondary" data-testid="started-decompose" on:click={loadDecomposition}>
+          <Button
+            variant="secondary"
+            data-testid="started-decompose"
+            on:click={loadDecomposition}
+          >
               {$t('start.step.decomposition')}
             </Button>
           {/if}
@@ -1119,7 +1134,8 @@
             }
           }}
           onDiscard={discardReadBack}
-          onDraftAgain={(instruction) => void instructDecomposition(null, instruction, 'rewrite')}
+          onDraftAgain={(instruction) =>
+            void instructDecomposition(null, instruction, 'rewrite')}
           onAgree={commitDecomposition}
           onChat={() => (chatOpen = true)}
         />
@@ -1129,7 +1145,11 @@
       {:else if decompositionError}
         <div class="start-view__error" data-testid="decomposition-error">
           <p>{decompositionError}</p>
-          <Button variant="secondary" data-testid="decomposition-retry" on:click={() => void loadDecomposition()}>
+          <Button
+            variant="secondary"
+            data-testid="decomposition-retry"
+            on:click={() => void loadDecomposition()}
+          >
             {$t('common.action.retry')}
           </Button>
         </div>
@@ -1359,14 +1379,23 @@
 
     <div slot="back">
       {#if backShown}
-        <Button variant="ghost" data-testid="start-back" disabled={busy} on:click={() => void goBack()}>
+        <Button
+          variant="ghost"
+          data-testid="start-back"
+          disabled={busy}
+          on:click={() => void goBack()}
+        >
           {$t('web.common.back')}
         </Button>
       {/if}
     </div>
 
     <div slot="secondary">
-      {#if step === 'choose' || step === 'sources' || step === 'recipe' || step === 'parameters' || step === 'ready'}
+      {#if step === 'choose' ||
+        step === 'sources' ||
+        step === 'recipe' ||
+        step === 'parameters' ||
+        step === 'ready'}
         <RowMenu
           label={$t('start.entry.abandon')}
           advisory={$t('start.entry.abandon')}
@@ -1414,7 +1443,8 @@
         <Button
           variant="primary"
           data-testid="recipe-continue"
-          disabled={busy || (entry?.recipe?.parameters ?? []).some((parameter) => !parameter.available)}
+          disabled={busy ||
+            (entry?.recipe?.parameters ?? []).some((parameter) => !parameter.available)}
           on:click={continueFromParameters}
         >
           {$t('start.sources.continue')}
@@ -1520,6 +1550,14 @@
 
   .start-view__choice + .start-view__choice {
     border-inline-start: 1px solid var(--color-border);
+  }
+
+  /* One column: the divider between the choices becomes the line above the second one. */
+  @media (max-width: 640px) {
+    .start-view__choice + .start-view__choice {
+      border-inline-start: none;
+      border-block-start: 1px solid var(--color-border);
+    }
   }
 
   .start-view__marks {

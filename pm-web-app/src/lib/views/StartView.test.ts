@@ -67,7 +67,9 @@ describe('StartView', () => {
 
     const loading = await screen.findByTestId('start-loading');
     expect(loading).toHaveTextContent("Checking the project's setup…");
-    expect(within(screen.getByTestId('start-gate-checking')).getByRole('status')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('start-gate-checking')).getByRole('status'),
+    ).toBeInTheDocument();
   });
 
   it('bounds the setup gate at 20 seconds', async () => {

@@ -46,6 +46,19 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
   });
 
+  test("goes back from the recipe choice to the sources", async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('choose-recipe').click();
+    await expect(page.getByTestId('start-recipe')).toBeVisible();
+
+    // The recipe choice offers no `back` link; Back sends the sources act the contract does offer.
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.getByTestId('start-back')).toHaveCount(0);
+  });
+
   test("goes back from a recipe's parameters to the sources", async ({ page }) => {
     await page.getByRole('button', { name: 'Start the plan' }).click();
     await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
