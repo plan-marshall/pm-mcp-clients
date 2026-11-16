@@ -52,6 +52,15 @@ public record PlanChangeFile(
             throw new IllegalArgumentException("A count of omitted lines is never negative");
         }
         hunks = hunks != null ? List.copyOf(hunks) : List.of();
+        if (binary && !hunks.isEmpty()) {
+            throw new IllegalArgumentException("A binary file carries no hunks");
+        }
+        if (truncated && linesOmitted == 0) {
+            throw new IllegalArgumentException("A cut file names the lines it left out");
+        }
+        if (!truncated && linesOmitted > 0) {
+            throw new IllegalArgumentException("A file that left nothing out names no omitted line");
+        }
     }
 
     /**
@@ -108,12 +117,17 @@ public record PlanChangeFile(
         var linesOmitted = map.containsKey(FIELD_LINES_OMITTED)
                 ? (int) JsonTree.integralNumber(map, FIELD_LINES_OMITTED, 0, Integer.MAX_VALUE)
                 : 0;
-        return new PlanChangeFile(
-                path,
-                hunks,
-                Boolean.TRUE.equals(map.get(FIELD_BINARY)),
-                Boolean.TRUE.equals(map.get(FIELD_TRUNCATED)),
-                linesOmitted);
+        try {
+            return new PlanChangeFile(
+                    path,
+                    hunks,
+                    PlanChangedFile.requireBoolean(map, FIELD_BINARY),
+                    PlanChangedFile.requireBoolean(map, FIELD_TRUNCATED),
+                    linesOmitted);
+        } catch (IllegalArgumentException incoherent) {
+            // A wire answer that contradicts itself is no answer: it is refused like a malformed one.
+            throw new JsonFormatException(incoherent.getMessage(), incoherent);
+        }
     }
 
     /**
