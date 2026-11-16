@@ -1985,36 +1985,6 @@
     margin-top: var(--space-3);
   }
 
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    max-width: 34rem;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-4);
-  }
-
   .rotate-details {
     display: flex;
     flex-direction: column;
@@ -2055,14 +2025,6 @@
     color: var(--color-text-primary);
   }
 
-  .modal-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    margin-top: var(--space-4);
-  }
-
   @media (max-width: 768px) {
     .settings-view {
       padding: var(--space-4) var(--space-3);
@@ -2079,8 +2041,7 @@
       display: none;
     }
 
-    .conflict__actions,
-    .modal-actions {
+    .conflict__actions {
       flex-direction: column-reverse;
       align-items: stretch;
     }

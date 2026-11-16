@@ -1293,19 +1293,6 @@ export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
 }
 
 /**
- * Shows a tab of the object column on the current route.
- *
- * A tab is a change inside one view, so the address is replaced rather than pushed, and the
- * browser's Back does not walk through the tabs a person visited.
- *
- * @param tab the tab to show, or `null` for the view's first tab
- */
-export function selectObjectTab(tab: string | null): void {
-  runtimeStore.update((s) => ({ ...s, objectTab: tab }));
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-}
-
-/**
  * Shows the designer for a project and keeps the address bar on it without a history entry.
  *
  * The local selector and a refused route change both converge on the project the designer
