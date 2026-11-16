@@ -10,6 +10,8 @@ import {
   loadAttention,
   loadMoreAttention,
   resetAttention,
+  type AttentionItem,
+  type AttentionKind,
 } from './attention';
 import type { NeedsOperatorItem, NeedsOperatorPage } from '../api/client';
 
@@ -21,7 +23,7 @@ import type { NeedsOperatorItem, NeedsOperatorPage } from '../api/client';
 
 /** A page of the list, as `GET /api/v1/machine/needs-operator` answers it. */
 function pageOf(
-  items: NeedsOperatorItem[],
+  items: Array<AttentionItem | NeedsOperatorItem>,
   extra: Partial<NeedsOperatorPage> = {},
 ): NeedsOperatorPage {
   return {
@@ -36,8 +38,17 @@ function pageOf(
 }
 
 /** One item of a kind, with the object it belongs to where the kind needs one. */
-function itemOf(kind: string, overrides: Partial<NeedsOperatorItem> = {}): NeedsOperatorItem {
-  return { kind, ...overrides };
+function itemOf(kind: AttentionKind, overrides: Partial<AttentionItem> = {}): AttentionItem {
+  return {
+    kind,
+    link: null,
+    project: null,
+    epic: null,
+    plan: null,
+    since: null,
+    blocks: null,
+    ...overrides,
+  };
 }
 
 /** Answers every read with the given page. */
@@ -67,7 +78,7 @@ describe('the attention store', () => {
   });
 
   it('turns every kind the runtime serves into an item with the act of its place', () => {
-    const items: NeedsOperatorItem[] = [
+    const items: AttentionItem[] = [
       itemOf('cleanup_due', { link: '/api/v1/system/cleanup' }),
       itemOf('credential', { link: '/api/v1/credentials/github' }),
       itemOf('decision', {
@@ -135,7 +146,7 @@ describe('the attention store', () => {
     servePages(
       pageOf([
         itemOf('decision', { plan: { id: 'a', title: 'A' } }),
-        itemOf('report', { link: '/api/v1/reports/7' }),
+        { kind: 'report', link: '/api/v1/reports/7' },
       ]),
     );
 
