@@ -890,6 +890,7 @@
             <span class="workstream__marker" aria-hidden="true">
               {isWorkstreamOpen(workstream) ? '▾' : '▸'}
             </span>
+            <span class="workstream__id mono">{workstream.id}</span>
             <span class="workstream__name">{workstream.name}</span>
           </button>
           <span class="workstream__counts" data-testid={`workstream-counts-${workstream.id}`}>
@@ -1146,6 +1147,10 @@
 
   .workstream__marker {
     width: 1ch;
+    color: var(--color-text-muted);
+  }
+
+  .workstream__id {
     color: var(--color-text-muted);
   }
 
