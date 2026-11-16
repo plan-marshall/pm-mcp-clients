@@ -38,6 +38,7 @@ import {
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
+import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -773,6 +774,7 @@ export async function initRuntime(): Promise<void> {
     subscribeToEvents();
     void refreshReportsCount();
     void refreshDecisionsCount();
+    void loadAttention();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       stopRuntimeRecovery();
@@ -1053,6 +1055,10 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     void loadOnboardingState();
   } else if (event === 'machine.settings_changed') {
     void loadMachineSettings();
+  } else if (event === 'needs_operator.changed') {
+    // The list of what waits is the shell's count and the start page's rows: it follows every
+    // change the runtime announces, whoever resolved the item.
+    void handleNeedsOperatorChanged();
   }
 }
 
@@ -1104,6 +1110,7 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
+  void loadAttention();
 }
 
 /**
