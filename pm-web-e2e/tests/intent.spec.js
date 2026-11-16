@@ -266,6 +266,14 @@ test.describe('The plan intent and outline panels', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openFixtureIn(page, 'en');
 
+    // The audit reads the DOM as it stands, so both fixtures wait for their served content first:
+    // a wrapper alone can be there while the record is still loading.
+    for (const index of [0, 1]) {
+      const fixture = page.getByTestId(FIXTURE).nth(index);
+      await expect(fixture.getByTestId(EPIC_FIXTURE).getByTestId('epic-destination')).toBeVisible();
+      await expect(fixture.getByTestId(CHART_FIXTURE).getByTestId('over-size-chart')).toHaveCount(3);
+    }
+
     const { violations, failing } = await auditViewA11y(page, {
       include: [`[data-testid="${EPIC_FIXTURE}"]`, `[data-testid="${CHART_FIXTURE}"]`],
     });

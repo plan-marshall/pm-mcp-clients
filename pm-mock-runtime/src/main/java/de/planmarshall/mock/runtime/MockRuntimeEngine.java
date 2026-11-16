@@ -6315,7 +6315,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var copy = new LinkedHashMap<String, Object>(representation);
         copy.put(OverSizeDistributionsResource.FIELD_PROJECT_ID, projectId);
         copy.put(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS,
-                JsonTree.asArray(representation.get(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS)).stream()
+                Optional.ofNullable(
+                                JsonTree.asArray(representation.get(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS)))
+                        .orElseGet(List::of).stream()
                         .map(element -> {
                             var distribution = new LinkedHashMap<String, Object>(JsonTree.asObject(element));
                             distribution.put(OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
