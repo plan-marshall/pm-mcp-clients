@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangeLineKind;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.chat.ChatEndedEvent;
@@ -274,7 +276,14 @@ public class ScenarioLoader {
             if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
                 continue;
             }
+            var seen = new HashSet<String>();
             for (var entry : fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario)) {
+                var planId = JsonTree.string(entry, "plan_id");
+                if (planId != null && !seen.add(planId)) {
+                    throw new ScenarioValidationException(scenario, null,
+                            "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                            "the fixture names the capture of " + planId + " twice");
+                }
                 validateOnePlansChanges(entry, sizes, scenario);
             }
         }
@@ -313,20 +322,31 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the plan's changes do not decode with the pm-api codec: " + e.getMessage());
         }
+        var declared = sizes.get(answer.planId());
         if (!(answer instanceof PlanChangesCaptured captured)) {
+            // Before the first capture the plan carries no size, and a capture that is gone carries
+            // none either: a refusal beside a size of change is a contradiction.
+            if (declared != null) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the plan " + answer.planId() + " answers " + answer.state()
+                                + " and carries a size of change");
+            }
             return;
         }
+        requirePathOrder(captured, scenario);
+        var contents = new LinkedHashMap<String, PlanChangeFile>();
         try {
             if (entry.containsKey(FIXTURE_CONTENTS)) {
-                for (var content : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
-                    PlanChangeFile.fromMap(content);
+                for (var contentEntry : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
+                    var content = PlanChangeFile.fromMap(contentEntry);
+                    contents.put(content.path(), content);
                 }
             }
         } catch (IOException | IllegalArgumentException e) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
         }
-        var declared = sizes.get(captured.planId());
+        requireContentsForEveryFile(captured, contents, scenario);
         if (declared == null) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the plan " + captured.planId() + " carries no size of change for its list to agree with");
@@ -342,6 +362,80 @@ public class ScenarioLoader {
                                 + ", unplanned " + totals.unplanned() + "/" + size.unplanned());
             }
         }
+    }
+
+    /**
+     * Holds the list to the order the contract serves it in: the files in path order, each path
+     * once.
+     *
+     * @param captured the decoded capture
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requirePathOrder(PlanChangesCaptured captured, String scenario) {
+        var files = captured.files();
+        for (int index = 1; index < files.size(); index++) {
+            var previous = files.get(index - 1).path();
+            var path = files.get(index).path();
+            if (previous.compareTo(path) >= 0) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the files of " + captured.planId() + " are not in path order: " + previous
+                                + " then " + path);
+            }
+        }
+    }
+
+    /**
+     * Holds every file of the list to its contents, so the file route can answer each row: a content
+     * names a path of the list, and every non-binary file of the list has one. A cut file's hunks are
+     * no more than its counts, because the runtime cut them.
+     *
+     * @param captured the decoded capture
+     * @param contents the decoded contents by path
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireContentsForEveryFile(PlanChangesCaptured captured,
+            Map<String, PlanChangeFile> contents, String scenario) {
+        for (var content : contents.values()) {
+            var inTheList = captured.files().stream().anyMatch(file -> file.path().equals(content.path()));
+            if (!inTheList) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the contents of " + captured.planId() + " name a path the list does not: "
+                                + content.path());
+            }
+        }
+        for (var file : captured.files()) {
+            if (file.binary()) {
+                continue;
+            }
+            var content = contents.get(file.path());
+            if (content == null) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the non-binary file " + file.path() + " of " + captured.planId()
+                                + " has no contents");
+            }
+            var added = countLines(content, PlanChangeLineKind.ADDED);
+            var removed = countLines(content, PlanChangeLineKind.REMOVED);
+            var agrees = content.truncated()
+                    ? added <= file.added() && removed <= file.removed()
+                    : added == file.added() && removed == file.removed();
+            if (!agrees) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the hunks of " + file.path() + " add " + added + " and remove " + removed
+                                + ", the list says " + file.added() + " and " + file.removed());
+            }
+        }
+    }
+
+    private static int countLines(PlanChangeFile file, PlanChangeLineKind kind) {
+        var count = 0;
+        for (var hunk : file.hunks()) {
+            for (var line : hunk.lines()) {
+                if (line.kind() == kind) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     /**
