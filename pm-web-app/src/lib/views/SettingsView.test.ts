@@ -539,9 +539,11 @@ describe('the machine settings panels of the one settings view', () => {
     await waitFor(() => expect(screen.getByTestId('aspect-list')).toBeInTheDocument());
 
     for (const aspect of ['language', 'harness', 'catalogue', 'roles', 'defaults']) {
-      expect(screen.getByTestId('aspect-list').querySelector(`[data-aspect="${aspect}"]`)).not.toBe(
-        null,
-      );
+      expect(
+        screen.getByTestId('aspect-list').querySelector(`[data-aspect="${aspect}"]`)?.getAttribute(
+          'data-aspect',
+        ),
+      ).toBe(aspect);
     }
     expect(screen.getByTestId('documents-section')).toBeInTheDocument();
     expect(screen.getByLabelText('Copy')).toBeInTheDocument();
