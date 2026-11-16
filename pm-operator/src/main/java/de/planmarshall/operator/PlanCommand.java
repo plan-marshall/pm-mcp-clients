@@ -56,6 +56,7 @@ import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.planview.ChangesLevel;
+import de.planmarshall.operator.planview.PlanChangeSizes;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -365,17 +366,7 @@ public final class PlanCommand implements Callable<Integer> {
      * @return the size of change the plan carries, or {@code null} when it carries none
      */
     private @Nullable ChangeSize readChangeSize(RuntimeClient runtime, String planId) {
-        try {
-            var response = runtime.send(HttpRequest.get(
-                                PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process"));
-            if (response.status() != 200) {
-                return null;
-            }
-            return ProcessTree.fromJson(response.bodyText()).change();
-        } catch (IOException | IllegalArgumentException _) {
-            // The figures are the plan's; without them the list still shows the head.
-            return null;
-        }
+        return PlanChangeSizes.sizeOf(runtime, planId);
     }
 
     private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {

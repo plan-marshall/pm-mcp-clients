@@ -284,7 +284,7 @@ class ChangesLevelTest {
             var changed = LIST.replace("\"status\":\"renamed\",\"added\":3,\"removed\":3",
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
             assertTrue(level.update(PlanChangesAnswer.fromJson(changed), null));
-            // The runtime refused the file read: the hunks are still open, the row did not move.
+            // The read did not land: the hunks are still open, the row did not move.
             assertFalse(level.hasOpenFile());
 
             assertAll(
@@ -292,6 +292,21 @@ class ChangesLevelTest {
                                                     "a missing read is asked for again"),
                                 () -> assertEquals("pm-relay/src/main/java/de/planmarshall/relay/Frame.java",
                                                     level.openFilePath()));
+        }
+
+        @Test
+        @DisplayName("a figures read that did not land keeps the plan's last figures")
+        void keepsTheFigures() throws Exception {
+            var level = level();
+            var fresh = LIST.replace("\"head\":\"9f3c2ab41d7e\"", "\"head\":\"a1b2c3d4e5f6\"");
+
+            level.update(PlanChangesAnswer.fromJson(fresh), null);
+
+            assertAll(
+                                () -> assertTrue(level.breadcrumb("en").contains("4 files"),
+                                                    level.breadcrumb("en")),
+                                () -> assertTrue(level.breadcrumb("en").contains("+147"),
+                                                    level.breadcrumb("en")));
         }
 
         @Test

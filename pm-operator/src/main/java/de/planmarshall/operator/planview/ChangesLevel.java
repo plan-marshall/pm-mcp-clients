@@ -136,17 +136,23 @@ public final class ChangesLevel {
 
     /**
      * Replaces the list after a capture ({@code plan-view.adoc} § Live): an open file stays open
-     * while its row is unchanged, and its hunks are read again only when the row changed or when an
+     * while its row is unchanged, and its hunks are read again only when the row changed, or when an
      * earlier read did not land.
      *
-     * @param fresh      the list the runtime answered after the capture
-     * @param freshSize  the figures the plan carries after the capture, or {@code null}
+     * @param fresh     the list the runtime answered after the capture
+     * @param freshSize the figures the plan carries after the capture, or {@code null} when the read
+     *                  that names them did not land
      * @return {@code true} when an open file's hunks must be read again
      */
     public boolean update(PlanChangesAnswer fresh, @Nullable ChangeSize freshSize) {
         var previousRow = openRow;
+        var previousSize = size;
         this.answer = Objects.requireNonNull(fresh, "fresh");
-        this.size = freshSize;
+        // A captured plan's figures are its own: a read that did not land keeps the last ones, a
+        // refusal has none.
+        this.size = freshSize != null || !(fresh instanceof PlanChangesCaptured)
+                            ? freshSize
+                            : previousSize;
         if (openPath == null) {
             return false;
         }
