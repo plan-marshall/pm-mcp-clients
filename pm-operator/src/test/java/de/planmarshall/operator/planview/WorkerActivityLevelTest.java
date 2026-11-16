@@ -176,7 +176,7 @@ class WorkerActivityLevelTest {
      */
     private static String fixtureActivity() throws IOException {
         try (var in = WorkerActivityLevelTest.class.getClassLoader()
-                            .getResourceAsStream("scenarios/running-work.json")) {
+                                 .getResourceAsStream("scenarios/running-work.json")) {
             assertNotNull(in, "the running-work fixture is on the classpath");
             var root = JsonTree.asObject(JsonTree.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)));
             var route = JsonTree.object(JsonTree.object(root, "routes"),

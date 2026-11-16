@@ -15,16 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-import java.util.stream.Stream;
 
 import de.planmarshall.api.process.JobOutcome;
 import de.planmarshall.api.process.JobStatus;
@@ -49,7 +48,7 @@ class PlanViewCatalogueTest {
      */
     static Stream<Arguments> designRows() throws IOException {
         return SpecificationTables.rows(PLAN_VIEW_DESIGN, "plan.").stream()
-                            .map(row -> Arguments.of(row.key(), row));
+                .map(row -> Arguments.of(row.key(), row));
     }
 
 
@@ -93,7 +92,7 @@ class PlanViewCatalogueTest {
 
     @Test
     @DisplayName("the design's Texts table yields rows, so an unreadable table never passes")
-    void designTableYieldsRows() throws IOException {
+    void designTableYieldsRows() throws Exception {
         assertFalse(SpecificationTables.rows(PLAN_VIEW_DESIGN, "plan.").isEmpty(),
                 "no plan.* row read from " + PLAN_VIEW_DESIGN);
         assertFalse(SpecificationTables.rows(PLAN_VIEW_DESIGN, CHANGES_PREFIX).isEmpty(),
@@ -102,15 +101,15 @@ class PlanViewCatalogueTest {
 
     @Test
     @DisplayName("the packs hold no plan.changes.* key the design does not name")
-    void noChangesKeyBeyondTheDesign() throws IOException {
+    void noChangesKeyBeyondTheDesign() throws Exception {
         var design = new TreeSet<String>();
         SpecificationTables.rows(PLAN_VIEW_DESIGN, CHANGES_PREFIX).forEach(row -> design.add(row.key()));
 
         for (var locale : List.of("en", "de")) {
             var pack = new TreeSet<String>();
             MessageCatalogue.getMessages(locale, "plan_view").keySet().stream()
-                                .filter(packKey -> packKey.startsWith(CHANGES_PREFIX))
-                                .forEach(pack::add);
+                    .filter(packKey -> packKey.startsWith(CHANGES_PREFIX))
+                    .forEach(pack::add);
             assertEquals(design, pack, "the " + locale + " pack's " + CHANGES_PREFIX + "* keys are the design's");
         }
     }

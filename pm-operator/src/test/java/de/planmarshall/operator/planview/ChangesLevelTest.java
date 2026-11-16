@@ -15,17 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
 import java.util.stream.Collectors;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.changes.PlanChangeFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.operator.tui.TuiRow;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 @DisplayName("ChangesLevel")
 class ChangesLevelTest {
@@ -36,33 +35,33 @@ class ChangesLevelTest {
     private static final String BIDI_OVERRIDE = "\u202e";
 
     private static final String LIST = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\","
-            + "\"head\":\"9f3c2ab41d7e\",\"base_ref\":\"main\",\"files\":["
-            + "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Transport.java\","
-            + "\"status\":\"modified\",\"added\":48,\"removed\":12,\"binary\":false,\"unplanned\":false},"
-            + "{\"path\":\"pm-relay/src/test/java/de/planmarshall/relay/TransportTest.java\","
-            + "\"status\":\"added\",\"added\":96,\"removed\":0,\"binary\":false,\"unplanned\":false},"
-            + "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Frame.java\","
-            + "\"renamed_from\":\"pm-relay/src/main/java/de/planmarshall/relay/Packet.java\","
-            + "\"status\":\"renamed\",\"added\":3,\"removed\":3,\"binary\":false,\"unplanned\":false},"
-            + "{\"path\":\"doc/resources/relay.png\",\"status\":\"modified\",\"added\":0,\"removed\":0,"
-            + "\"binary\":true,\"unplanned\":true}]}";
+                        + "\"head\":\"9f3c2ab41d7e\",\"base_ref\":\"main\",\"files\":["
+                        + "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Transport.java\","
+                        + "\"status\":\"modified\",\"added\":48,\"removed\":12,\"binary\":false,\"unplanned\":false},"
+                        + "{\"path\":\"pm-relay/src/test/java/de/planmarshall/relay/TransportTest.java\","
+                        + "\"status\":\"added\",\"added\":96,\"removed\":0,\"binary\":false,\"unplanned\":false},"
+                        + "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Frame.java\","
+                        + "\"renamed_from\":\"pm-relay/src/main/java/de/planmarshall/relay/Packet.java\","
+                        + "\"status\":\"renamed\",\"added\":3,\"removed\":3,\"binary\":false,\"unplanned\":false},"
+                        + "{\"path\":\"doc/resources/relay.png\",\"status\":\"modified\",\"added\":0,\"removed\":0,"
+                        + "\"binary\":true,\"unplanned\":true}]}";
 
     private static final String NOT_CAPTURED = "{\"plan_id\":\"fix-relay\",\"state\":\"not_captured\"}";
 
     private static final String UNAVAILABLE = "{\"plan_id\":\"fix-relay\",\"state\":\"unavailable\","
-            + "\"reason\":\"the captured commit 4c1d7e0 is no longer in the repository\"}";
+                        + "\"reason\":\"the captured commit 4c1d7e0 is no longer in the repository\"}";
 
     private static final String FILE = "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Frame.java\","
-            + "\"hunks\":[{\"old_start\":20,\"old_len\":2,\"new_start\":20,\"new_len\":2,\"lines\":["
-            + "{\"kind\":\"context\",\"text\":\"    private final String name;\"},"
-            + "{\"kind\":\"removed\",\"text\":\"    // the packet \\u2028name\"},"
-            + "{\"kind\":\"added\",\"text\":\"\\u001b[2J    // the frame \\u202ename\"}]}],"
-            + "\"binary\":false,\"truncated\":false}";
+                        + "\"hunks\":[{\"old_start\":20,\"old_len\":2,\"new_start\":20,\"new_len\":2,\"lines\":["
+                        + "{\"kind\":\"context\",\"text\":\"    private final String name;\"},"
+                        + "{\"kind\":\"removed\",\"text\":\"    // the packet \\u2028name\"},"
+                        + "{\"kind\":\"added\",\"text\":\"\\u001b[2J    // the frame \\u202ename\"}]}],"
+                        + "\"binary\":false,\"truncated\":false}";
 
     private static final String CUT_FILE = "{\"path\":\"pm-relay/src/main/java/de/planmarshall/relay/Frame.java\","
-            + "\"hunks\":[{\"old_start\":20,\"old_len\":1,\"new_start\":20,\"new_len\":1,\"lines\":["
-            + "{\"kind\":\"context\",\"text\":\"    private final String name;\"}]}],"
-            + "\"binary\":false,\"truncated\":true,\"lines_omitted\":120}";
+                        + "\"hunks\":[{\"old_start\":20,\"old_len\":1,\"new_start\":20,\"new_len\":1,\"lines\":["
+                        + "{\"kind\":\"context\",\"text\":\"    private final String name;\"}]}],"
+                        + "\"binary\":false,\"truncated\":true,\"lines_omitted\":120}";
 
     private static ChangesLevel level() throws Exception {
         return new ChangesLevel("fix-relay", PlanChangesAnswer.fromJson(LIST), new ChangeSize(4, 147, 15, 1));
@@ -82,10 +81,10 @@ class ChangesLevelTest {
             var level = level();
 
             assertAll(
-                    () -> assertEquals("fix-relay \u203a changes \u00b7 at 9f3c2ab \u00b7 4 files \u00b7 +147 \u221215"
-                                        + " \u00b7 1 unplanned", level.breadcrumb("en")),
-                    () -> assertEquals("fix-relay \u203a \u00c4nderungen \u00b7 bei 9f3c2ab \u00b7 4 Dateien"
-                                        + " \u00b7 +147 \u221215 \u00b7 1 ungeplant", level.breadcrumb("de")));
+                                () -> assertEquals("fix-relay \u203a changes \u00b7 at 9f3c2ab \u00b7 4 files \u00b7 +147 \u221215"
+                                                    + " \u00b7 1 unplanned", level.breadcrumb("en")),
+                                () -> assertEquals("fix-relay \u203a \u00c4nderungen \u00b7 bei 9f3c2ab \u00b7 4 Dateien"
+                                                    + " \u00b7 +147 \u221215 \u00b7 1 ungeplant", level.breadcrumb("de")));
         }
 
         @Test
@@ -102,21 +101,21 @@ class ChangesLevelTest {
             var rows = level().rows("en");
 
             assertAll(
-                    () -> assertEquals(4, rows.size()),
-                    () -> assertTrue(rows.get(0).line().startsWith("M  pm-relay/\u2026/relay/Transport.java"),
-                            rows.get(0).line()),
-                    () -> assertTrue(rows.get(0).line().endsWith("+48 \u221212"), rows.get(0).line()),
-                    () -> assertTrue(rows.get(1).line().startsWith("A  pm-relay/\u2026/relay/TransportTest.java"),
-                            rows.get(1).line()),
-                    () -> assertTrue(rows.get(1).line().endsWith("+96"), rows.get(1).line()),
-                    () -> assertTrue(rows.get(2).line().startsWith("R  "), rows.get(2).line()),
-                    () -> assertTrue(rows.get(2).line().contains("\u2026/Frame.java"), rows.get(2).line()),
-                    () -> assertTrue(rows.get(2).line().contains("\u2026/Packet.java"),
-                                        "a renamed file names the path it came from"),
-                    () -> assertTrue(rows.get(3).line().startsWith("B  doc/resources/relay.png"),
-                            rows.get(3).line()),
-                    () -> assertTrue(rows.get(3).line().contains("binary"), rows.get(3).line()),
-                    () -> assertTrue(rows.get(3).line().contains("unplanned"), rows.get(3).line()));
+                                () -> assertEquals(4, rows.size()),
+                                () -> assertTrue(rows.get(0).line().startsWith("M  pm-relay/\u2026/relay/Transport.java"),
+                                                    rows.get(0).line()),
+                                () -> assertTrue(rows.get(0).line().endsWith("+48 \u221212"), rows.get(0).line()),
+                                () -> assertTrue(rows.get(1).line().startsWith("A  pm-relay/\u2026/relay/TransportTest.java"),
+                                                    rows.get(1).line()),
+                                () -> assertTrue(rows.get(1).line().endsWith("+96"), rows.get(1).line()),
+                                () -> assertTrue(rows.get(2).line().startsWith("R  "), rows.get(2).line()),
+                                () -> assertTrue(rows.get(2).line().contains("\u2026/Frame.java"), rows.get(2).line()),
+                                () -> assertTrue(rows.get(2).line().contains("\u2026/Packet.java"),
+                                                    "a renamed file names the path it came from"),
+                                () -> assertTrue(rows.get(3).line().startsWith("B  doc/resources/relay.png"),
+                                                    rows.get(3).line()),
+                                () -> assertTrue(rows.get(3).line().contains("binary"), rows.get(3).line()),
+                                () -> assertTrue(rows.get(3).line().contains("unplanned"), rows.get(3).line()));
         }
 
         @Test
@@ -125,12 +124,12 @@ class ChangesLevelTest {
             var level = level();
 
             assertAll(
-                    () -> assertEquals("pm-relay/src/main/java/de/planmarshall/relay/Transport.java",
-                                        level.fileOf(ChangesLevel.FILE_PREFIX
+                                () -> assertEquals("pm-relay/src/main/java/de/planmarshall/relay/Transport.java",
+                                                    level.fileOf(ChangesLevel.FILE_PREFIX
                                                                         + "pm-relay/src/main/java/de/planmarshall/relay/Transport.java")),
-                    () -> assertNull(level.fileOf(ChangesLevel.FILE_PREFIX + "doc/resources/relay.png"),
-                                        "a binary file answers no lines"),
-                    () -> assertNull(level.fileOf("summary:plan")));
+                                () -> assertNull(level.fileOf(ChangesLevel.FILE_PREFIX + "doc/resources/relay.png"),
+                                                    "a binary file answers no lines"),
+                                () -> assertNull(level.fileOf("summary:plan")));
         }
     }
 
@@ -147,12 +146,12 @@ class ChangesLevelTest {
             var text = text(level);
 
             assertAll(
-                    () -> assertTrue(level.hasOpenFile()),
-                    () -> assertTrue(text.contains("@@ -20,2 +20,2 @@"), text),
-                    () -> assertTrue(text.contains("\u2212    // the packet name"), text),
-                    () -> assertTrue(text.contains("+    // the frame name"), text),
-                    () -> assertTrue(text.contains("     private final String name;"), text),
-                    () -> assertEquals(4 + 4, level.rows("en").size(), "the list, plus the file's four lines"));
+                                () -> assertTrue(level.hasOpenFile()),
+                                () -> assertTrue(text.contains("@@ -20,2 +20,2 @@"), text),
+                                () -> assertTrue(text.contains("\u2212    // the packet name"), text),
+                                () -> assertTrue(text.contains("+    // the frame name"), text),
+                                () -> assertTrue(text.contains("     private final String name;"), text),
+                                () -> assertEquals(4 + 4, level.rows("en").size(), "the list, plus the file's four lines"));
         }
 
         @Test
@@ -164,8 +163,8 @@ class ChangesLevelTest {
             var text = text(level);
 
             assertAll(
-                    () -> assertTrue(text.contains("120 more lines not shown"), text),
-                    () -> assertTrue(text.contains("@@ -20,1 +20,1 @@"), text));
+                                () -> assertTrue(text.contains("120 more lines not shown"), text),
+                                () -> assertTrue(text.contains("@@ -20,1 +20,1 @@"), text));
         }
 
         @Test
@@ -175,9 +174,9 @@ class ChangesLevelTest {
             level.showFile(PlanChangeFile.fromJson(FILE));
 
             assertAll(
-                    () -> assertTrue(level.closeFile()),
-                    () -> assertFalse(level.closeFile(), "there is nothing left to close"),
-                    () -> assertEquals(4, level.rows("en").size()));
+                                () -> assertTrue(level.closeFile()),
+                                () -> assertFalse(level.closeFile(), "there is nothing left to close"),
+                                () -> assertEquals(4, level.rows("en").size()));
         }
 
         @Test
@@ -187,8 +186,8 @@ class ChangesLevelTest {
             var elsewhere = FILE.replace("relay/Frame.java", "relay/Nowhere.java");
 
             assertAll(
-                    () -> assertFalse(level.showFile(PlanChangeFile.fromJson(elsewhere))),
-                    () -> assertEquals(4, level.rows("en").size()));
+                                () -> assertFalse(level.showFile(PlanChangeFile.fromJson(elsewhere))),
+                                () -> assertEquals(4, level.rows("en").size()));
         }
 
         @Test
@@ -200,9 +199,9 @@ class ChangesLevelTest {
             var rows = level.openFileRows("en");
 
             assertAll(
-                    () -> assertEquals(5, rows.size()),
-                    () -> assertTrue(rows.getFirst().line().startsWith("R  "), rows.getFirst().line()),
-                    () -> assertTrue(rows.get(1).line().startsWith("@@"), rows.get(1).line()));
+                                () -> assertEquals(5, rows.size()),
+                                () -> assertTrue(rows.getFirst().line().startsWith("R  "), rows.getFirst().line()),
+                                () -> assertTrue(rows.get(1).line().startsWith("@@"), rows.get(1).line()));
         }
     }
 
@@ -216,9 +215,9 @@ class ChangesLevelTest {
             var level = new ChangesLevel("fix-relay", PlanChangesAnswer.fromJson(NOT_CAPTURED), null);
 
             assertAll(
-                    () -> assertEquals(1, level.rows("en").size()),
-                    () -> assertEquals("No changes captured yet", level.rows("en").getFirst().line()),
-                    () -> assertEquals("Noch keine \u00c4nderungen erfasst", level.rows("de").getFirst().line()));
+                                () -> assertEquals(1, level.rows("en").size()),
+                                () -> assertEquals("No changes captured yet", level.rows("en").getFirst().line()),
+                                () -> assertEquals("Noch keine \u00c4nderungen erfasst", level.rows("de").getFirst().line()));
         }
 
         @Test
@@ -227,9 +226,9 @@ class ChangesLevelTest {
             var level = new ChangesLevel("fix-relay", PlanChangesAnswer.fromJson(UNAVAILABLE), null);
 
             assertAll(
-                    () -> assertEquals(1, level.rows("en").size()),
-                    () -> assertEquals("The changes are no longer in the repository",
-                                        level.rows("en").getFirst().line()));
+                                () -> assertEquals(1, level.rows("en").size()),
+                                () -> assertEquals("The changes are no longer in the repository",
+                                                    level.rows("en").getFirst().line()));
         }
     }
 
@@ -248,9 +247,9 @@ class ChangesLevelTest {
             var text = text(level);
 
             assertAll(
-                    () -> assertFalse(text.contains(ESCAPE), text),
-                    () -> assertFalse(text.contains(LINE_SEPARATOR), text),
-                    () -> assertTrue(text.contains("relay/Transport.java"), text));
+                                () -> assertFalse(text.contains(ESCAPE), text),
+                                () -> assertFalse(text.contains(LINE_SEPARATOR), text),
+                                () -> assertTrue(text.contains("relay/Transport.java"), text));
         }
 
         @Test
@@ -262,10 +261,10 @@ class ChangesLevelTest {
             var text = text(level);
 
             assertAll(
-                    () -> assertFalse(text.contains(ESCAPE), text),
-                    () -> assertFalse(text.contains(LINE_SEPARATOR), text),
-                    () -> assertFalse(text.contains(BIDI_OVERRIDE), text),
-                    () -> assertTrue(text.contains("+    // the frame name"), text));
+                                () -> assertFalse(text.contains(ESCAPE), text),
+                                () -> assertFalse(text.contains(LINE_SEPARATOR), text),
+                                () -> assertFalse(text.contains(BIDI_OVERRIDE), text),
+                                () -> assertTrue(text.contains("+    // the frame name"), text));
         }
     }
 }

@@ -922,8 +922,8 @@ class PlanCommandTest {
                                                         + " \u2190 \u2026/PlanChangesContractTest.java"), text),
                                     () -> assertTrue(text.contains("binary"), text),
                                     () -> assertEquals(2, text.lines()
-                                                        .filter(line -> line.startsWith("  ") && line.contains("unplanned"))
-                                                        .count(),
+                                                                            .filter(line -> line.startsWith("  ") && line.contains("unplanned"))
+                                                                            .count(),
                                                         "the two files beyond the plan's footprint are marked"),
                                     () -> assertTrue(text.contains("doc/\u2026/shared/plan-changes.svg"), text));
             }
@@ -993,7 +993,7 @@ class PlanCommandTest {
          * @return the exit code
          */
         private int executeOn(MockRuntime runtime, String... args) throws IOException {
-            var environment = new java.util.HashMap<String, String>();
+            var environment = new HashMap<String, String>();
             environment.put(MachinePaths.ENV_BASE, runtime.base().toString());
             var self = ProcessHandle.current();
             var start = self.info().startInstant().orElseThrow();

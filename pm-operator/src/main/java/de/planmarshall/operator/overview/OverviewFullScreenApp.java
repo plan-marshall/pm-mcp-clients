@@ -2706,7 +2706,7 @@ public final class OverviewFullScreenApp {
         }
 
         private boolean openChanges(RuntimeClient runtime, String planId, @Nullable ChangeSize size)
-                        throws IOException {
+                            throws IOException {
             var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
             if (response.status() != 200) {
                 return false;

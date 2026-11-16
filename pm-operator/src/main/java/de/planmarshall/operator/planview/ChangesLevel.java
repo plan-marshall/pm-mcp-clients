@@ -10,6 +10,7 @@
 package de.planmarshall.operator.planview;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -211,7 +212,7 @@ public final class ChangesLevel {
      *         plan carries none
      */
     private String title(String locale) {
-        var params = new java.util.LinkedHashMap<String, Object>();
+        var params = new LinkedHashMap<String, Object>();
         params.put("head", shortHead());
         params.put("size", sizeText(locale));
         var title = MessageCatalogue.format(locale, "plan.changes.title", params);

@@ -275,8 +275,7 @@ class PlanChangesContractTest {
             var wrongNew = coherent.replace("\"new_len\":2", "\"new_len\":1");
 
             assertAll(
-                    () -> assertTrue(PlanChangeHunk.fromJson(coherent).lines().size() == 2,
-                            "the matched positive control decodes"),
+                    () -> assertEquals(2, PlanChangeHunk.fromJson(coherent).lines().size(), "the matched positive control decodes"),
                     () -> assertThrows(IOException.class, () -> PlanChangeHunk.fromJson(wrongOld)),
                     () -> assertThrows(IOException.class, () -> PlanChangeHunk.fromJson(wrongNew)));
         }

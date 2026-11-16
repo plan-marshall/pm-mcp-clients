@@ -624,7 +624,7 @@ class PlanChangesScenarioTest {
          */
         private static Map<String, Object> startRuntime(Map<String, Object> root) {
             return JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
-                    JsonTree.object(root, "states"), "running_work.active"), "representation"), "facts"),
+                            JsonTree.object(root, "states"), "running_work.active"), "representation"), "facts"),
                     "runtime");
         }
 
