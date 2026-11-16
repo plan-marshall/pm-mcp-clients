@@ -46,8 +46,14 @@ async function openReportsWithDetail(page, request, narrow = false) {
   await page.goto('/#code=KXQB-MRTN');
   await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-  const navigation = narrow ? page.getByTestId('bottom-bar') : page.locator('.nav-rail');
-  await navigation.getByRole('button', { name: /Reports/i }).click();
+  // The reports sit in the phone's More sheet, so a narrow screen opens it there; the desktop
+  // rail carries the destination itself.
+  if (narrow) {
+    await page.getByTestId('bottom-more').click();
+    await page.getByTestId('sheet-reports').click();
+  } else {
+    await page.getByTestId('nav-reports-btn').click();
+  }
   await expect(page.locator('.reports-view')).toBeVisible();
 
   await page

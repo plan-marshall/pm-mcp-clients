@@ -98,10 +98,9 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await useScenario(request, 'reports');
       await pair(page);
 
-      await page
-        .locator('.bottom-bar')
-        .getByRole('button', { name: /Reports/i })
-        .click();
+      // The reports sit in the More sheet on a phone (needs-and-find.adoc, The Route and the Rail).
+      await page.getByTestId('bottom-more').click();
+      await page.getByTestId('sheet-reports').click();
       await expect(page.locator('.reports-view')).toBeVisible();
       await expect(page.locator('[data-testid="triage-page"]')).toBeVisible();
 

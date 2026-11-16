@@ -33,6 +33,8 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('nav-decisions-btn-count')).toHaveText('3');
     await expect(page.getByTestId('nav-reports-btn-count')).toHaveText('5');
 
+    // The app opens on what waits; the running work is one step away, from the rail.
+    await page.getByTestId('nav-overview-btn').click();
     await expect(page.locator('.overview')).toBeVisible();
     await expect(page.locator('.project-list')).toBeVisible();
     await expect(
@@ -95,6 +97,8 @@ test.describe('Fully onboarded showroom', () => {
   });
 
   test('walks the six-phase process tree of the running plan', async ({ page }) => {
+    // The app opens on what waits; the plan is opened from the running work beside it.
+    await page.goto('/overview');
     // The runtime serves the plans that need the operator first, so the plan is named, not its
     // position: this walk is about fix-relay's six phases.
     const planCard = page
