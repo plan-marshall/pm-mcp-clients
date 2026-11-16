@@ -39,6 +39,7 @@ import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ChangeSize;
@@ -125,7 +126,10 @@ public final class OverviewFullScreenApp {
     private static final String PLAN_LEVEL = "plan";
     private static final String EXPLORER_LEVEL = "explorer";
     private static final Set<String> STRUCTURAL_EVENTS = Set.of("activity.changed", "tokens.changed",
-                        "state.entered", "state.left", "instance.changed", "needs_operator.changed", "reset");
+                        "state.entered", "state.left", "instance.changed", "needs_operator.changed",
+                        // A capture moves the plan's changes: an open list is read again
+                        // (plan-view.adoc § Live).
+                        "plan.change_captured", "reset");
 
     /**
      * Initial CLI selection state.
@@ -1646,6 +1650,10 @@ public final class OverviewFullScreenApp {
                 refreshActivity(runtime);
                 return;
             }
+            if (targetKind == TuiLevel.Kind.PLAN_CHANGES) {
+                refreshChanges(runtime);
+                return;
+            }
             if (targetKind == TuiLevel.Kind.EPIC) {
                 refreshEpic();
                 return;
@@ -1810,6 +1818,42 @@ public final class OverviewFullScreenApp {
                 stack.refresh(rows);
                 if (follow && !rows.isEmpty()) {
                     stack.select(rows.getLast().id());
+                }
+            }
+            terminal.raise(Terminal.Signal.WINCH);
+        } catch (IOException | IllegalArgumentException _) {
+            // best-effort refresh
+        }
+    }
+
+    /**
+     * Reads the plan's changes again after a capture ({@code plan-view.adoc} § Live): the list keeps
+     * the selected file by its path, and an open file is read again only when its row changed.
+     *
+     * @param runtime the runtime client
+     */
+    private void refreshChanges(RuntimeClient runtime) {
+        var changes = currentChanges.get();
+        if (changes == null) {
+            return;
+        }
+        try {
+            var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).list()));
+            if (response.status() != 200) {
+                return;
+            }
+            var openPath = changes.openFilePath();
+            var rowChanged = changes.update(PlanChangesAnswer.fromJson(response.bodyText()));
+            if (rowChanged && openPath != null) {
+                var file = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(openPath)));
+                if (file.status() == 200) {
+                    changes.showFile(PlanChangeFile.fromJson(file.bodyText()));
+                }
+            }
+            synchronized (this) {
+                stack.refresh(changes.rows(locale));
+                if (openPath != null) {
+                    stack.select(ChangesLevel.FILE_PREFIX + openPath);
                 }
             }
             terminal.raise(Terminal.Signal.WINCH);
@@ -2709,6 +2753,7 @@ public final class OverviewFullScreenApp {
                             throws IOException {
             var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
             if (response.status() != 200) {
+                statusMessage = refusalOf(response);
                 return false;
             }
             var answer = PlanChangesAnswer.fromJson(response.bodyText());
@@ -2734,6 +2779,7 @@ public final class OverviewFullScreenApp {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
                 if (response.status() != 200) {
+                    statusMessage = refusalOf(response);
                     return true;
                 }
                 if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()))) {
@@ -2743,6 +2789,23 @@ public final class OverviewFullScreenApp {
                 statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
             }
             return true;
+        }
+
+        /**
+         * @param response a refused read
+         * @return the runtime's own message, cleaned for the status line
+         */
+        private static String refusalOf(HttpResponse response) {
+            try {
+                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                var message = map != null ? JsonTree.string(map, "message") : null;
+                if (message != null) {
+                    return OutputSafety.stripControlSequences(message);
+                }
+            } catch (IOException _) {
+                // A refusal that carries no JSON still has its status.
+            }
+            return "read refused: " + response.status();
         }
 
         private void changesCloseFile() {

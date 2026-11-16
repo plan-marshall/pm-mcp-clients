@@ -24,7 +24,12 @@ import de.planmarshall.api.json.JsonTree;
  * answers it ({@code 01-processes-and-transport.adoc#plan-changes}).
  * <p>
  * A binary file answers no lines. A file whose lines exceed the runtime's compiled bound answers the
- * hunks up to it and {@code truncated} with the count of the lines left out.
+ * hunks up to it and {@code truncated} with the count of the lines left out; the runtime cuts whole
+ * hunks, so every hunk it answers is coherent with its own lines even where the file is cut.
+ * <p>
+ * The answer carries no {@code head}: the list of the same capture names it, and a client opens a
+ * file only from a row of the list it holds at that head, re-reading an open file only when its row
+ * changed ({@code doc/design/shared/plan-view.adoc}, Live).
  *
  * @param path         the file's path in the capture
  * @param hunks        the file's hunks in order, empty for a binary file
@@ -54,6 +59,9 @@ public record PlanChangeFile(
         hunks = hunks != null ? List.copyOf(hunks) : List.of();
         if (binary && !hunks.isEmpty()) {
             throw new IllegalArgumentException("A binary file carries no hunks");
+        }
+        if (binary && truncated) {
+            throw new IllegalArgumentException("A binary file has no lines to cut");
         }
         if (truncated && linesOmitted == 0) {
             throw new IllegalArgumentException("A cut file names the lines it left out");

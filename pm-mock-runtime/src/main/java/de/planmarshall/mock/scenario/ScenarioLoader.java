@@ -257,12 +257,9 @@ public class ScenarioLoader {
      */
     private static void validatePlanChanges(Map<String, RouteDefinition> routes,
             Map<String, StateDefinition> states, String scenario) {
-        var sizes = new LinkedHashMap<String, List<ChangeSize>>();
+        var staticSizes = new LinkedHashMap<String, List<ChangeSize>>();
         try {
-            routes.values().forEach(route -> collectPlanSizes(route.representation(), sizes));
-            for (var state : states.values()) {
-                collectStateRouteSizes(state, sizes);
-            }
+            routes.values().forEach(route -> collectPlanSizes(route.representation(), staticSizes));
         } catch (IllegalArgumentException e) {
             throw new ScenarioValidationException(scenario, null, "change",
                     "a plan's size of change is not a measurement: " + e.getMessage());
@@ -276,6 +273,15 @@ public class ScenarioLoader {
             if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
                 continue;
             }
+            // A size belongs to the state that serves it: a plan captured in one state says nothing
+            // about the same plan before its capture in another.
+            var sizes = copyOf(staticSizes);
+            try {
+                collectStateRouteSizes(state, sizes);
+            } catch (IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, null, "change",
+                        "a plan's size of change is not a measurement: " + e.getMessage());
+            }
             var seen = new HashSet<String>();
             for (var entry : fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario)) {
                 var planId = JsonTree.string(entry, "plan_id");
@@ -287,6 +293,12 @@ public class ScenarioLoader {
                 validateOnePlansChanges(entry, sizes, scenario);
             }
         }
+    }
+
+    private static Map<String, List<ChangeSize>> copyOf(Map<String, List<ChangeSize>> sizes) {
+        var copy = new LinkedHashMap<String, List<ChangeSize>>();
+        sizes.forEach((planId, declared) -> copy.put(planId, new ArrayList<>(declared)));
+        return copy;
     }
 
     /**
@@ -339,7 +351,12 @@ public class ScenarioLoader {
             if (entry.containsKey(FIXTURE_CONTENTS)) {
                 for (var contentEntry : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
                     var content = PlanChangeFile.fromMap(contentEntry);
-                    contents.put(content.path(), content);
+                    if (contents.put(content.path(), content) != null) {
+                        throw new ScenarioValidationException(scenario, null,
+                                "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                                "the contents of " + captured.planId() + " name " + content.path()
+                                        + " twice");
+                    }
                 }
             }
         } catch (IOException | IllegalArgumentException e) {
@@ -396,11 +413,18 @@ public class ScenarioLoader {
     private static void requireContentsForEveryFile(PlanChangesCaptured captured,
             Map<String, PlanChangeFile> contents, String scenario) {
         for (var content : contents.values()) {
-            var inTheList = captured.files().stream().anyMatch(file -> file.path().equals(content.path()));
-            if (!inTheList) {
+            var row = captured.files().stream()
+                    .filter(file -> file.path().equals(content.path()))
+                    .findFirst().orElse(null);
+            if (row == null) {
                 throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                         "the contents of " + captured.planId() + " name a path the list does not: "
                                 + content.path());
+            }
+            if (row.binary() != content.binary()) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the contents of " + content.path() + " answer binary " + content.binary()
+                                + ", the list says " + row.binary());
             }
         }
         for (var file : captured.files()) {

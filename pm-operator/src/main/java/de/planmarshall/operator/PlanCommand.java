@@ -329,9 +329,14 @@ public final class PlanCommand implements Callable<Integer> {
             for (var row : level.openFileRows(locale)) {
                 out.println("  " + row.line());
             }
+            out.flush();
+            return 0;
         }
+        // The list moved between the two reads: the file it answered is no longer one of its rows.
+        out.printf("No such file in the plan's changes: %s%n",
+                            OutputSafety.stripControlSequences(changesFile));
         out.flush();
-        return 0;
+        return 1;
     }
 
     /**

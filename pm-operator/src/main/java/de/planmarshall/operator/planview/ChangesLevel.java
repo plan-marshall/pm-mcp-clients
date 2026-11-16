@@ -66,10 +66,11 @@ public final class ChangesLevel {
     private static final int SHORT_HEAD = 7;
 
     private final String planId;
-    private final PlanChangesAnswer answer;
+    private PlanChangesAnswer answer;
     private final @Nullable ChangeSize size;
     private @Nullable String openPath;
     private @Nullable PlanChangeFile openFile;
+    private @Nullable PlanChangedFile openRow;
 
     /**
      * @param planId the plan whose changes these are
@@ -92,16 +93,20 @@ public final class ChangesLevel {
         return answer;
     }
 
-    /** @return {@code true} when the plan has an open file */
+    /** @return {@code true} while a file's hunks are shown */
     public boolean hasOpenFile() {
-        return openPath != null;
+        return openFile != null;
     }
 
     /**
      * @param locale the interface locale
-     * @return the header: the plan, and the list's title with the head and the plan's figures
+     * @return the header: the plan, and the list's title with the head and the plan's figures; a
+     *         refusal names the plan alone, having no head to name
      */
     public String breadcrumb(String locale) {
+        if (!(answer instanceof PlanChangesCaptured)) {
+            return PlanViewFormatting.clean(planId);
+        }
         return PlanViewFormatting.clean(planId) + PlanViewFormatting.PATH_SEPARATOR + title(locale);
     }
 
@@ -127,6 +132,35 @@ public final class ChangesLevel {
             }
         }
         return List.copyOf(rows);
+    }
+
+    /**
+     * Replaces the list after a capture ({@code plan-view.adoc} § Live): an open file stays open
+     * while its row is unchanged, and its hunks are read again only when the row changed.
+     *
+     * @param fresh the list the runtime answered after the capture
+     * @return {@code true} when an open file's row changed and its hunks must be read again
+     */
+    public boolean update(PlanChangesAnswer fresh) {
+        var previousRow = openRow;
+        this.answer = Objects.requireNonNull(fresh, "fresh");
+        if (openPath == null) {
+            return false;
+        }
+        var row = answer instanceof PlanChangesCaptured captured ? rowOf(captured, openPath) : null;
+        if (row == null) {
+            // The file is gone from the list: the row and its hunks go with it.
+            openPath = null;
+            openFile = null;
+            openRow = null;
+            return true;
+        }
+        if (row.equals(previousRow)) {
+            return false;
+        }
+        openFile = null;
+        openRow = row;
+        return true;
     }
 
     /**
@@ -158,13 +192,25 @@ public final class ChangesLevel {
         if (!(answer instanceof PlanChangesCaptured captured)) {
             return false;
         }
-        var known = captured.files().stream().anyMatch(entry -> entry.path().equals(file.path()));
-        if (!known) {
+        var row = rowOf(captured, file.path());
+        if (row == null) {
             return false;
         }
         openPath = file.path();
         openFile = file;
+        openRow = row;
         return true;
+    }
+
+    /**
+     * @param captured the list
+     * @param path     the file's path
+     * @return the row the list serves for the path, or {@code null} when it names none
+     */
+    private static @Nullable PlanChangedFile rowOf(PlanChangesCaptured captured, String path) {
+        return captured.files().stream()
+                            .filter(candidate -> candidate.path().equals(path))
+                            .findFirst().orElse(null);
     }
 
     /**
@@ -176,6 +222,7 @@ public final class ChangesLevel {
         }
         openPath = null;
         openFile = null;
+        openRow = null;
         return true;
     }
 
@@ -184,6 +231,11 @@ public final class ChangesLevel {
      */
     public @Nullable String openFileRowId() {
         return openPath != null ? FILE_PREFIX + openPath : null;
+    }
+
+    /** @return the path of the open file, or {@code null} when no file is open */
+    public @Nullable String openFilePath() {
+        return openPath;
     }
 
     /**
@@ -265,11 +317,31 @@ public final class ChangesLevel {
 
     private static String pathCell(PlanChangedFile file) {
         var renamedFrom = file.renamedFrom();
-        if (renamedFrom != null) {
-            // Both names stay visible where the path column is narrow: the names it carries.
-            return abbreviatedName(file.path()) + ARROW + abbreviatedName(renamedFrom);
+        if (renamedFrom == null) {
+            return abbreviatedPath(file.path());
         }
-        return abbreviatedPath(file.path());
+        var fromName = abbreviatedName(renamedFrom);
+        if (!fromName.equals(abbreviatedName(file.path()))) {
+            // The names differ: both fit beside the counts.
+            return abbreviatedName(file.path()) + ARROW + fromName;
+        }
+        // A move inside the project keeps the name: the row names the directory it came from.
+        return abbreviatedName(file.path()) + ARROW + "\u2026/" + parentName(renamedFrom) + "/\u2026";
+    }
+
+    /**
+     * @param path the file's path
+     * @return the name of the directory that holds the file
+     */
+    private static String parentName(String path) {
+        var safe = TuiLayout.sanitizeCell(path);
+        var cut = safe.lastIndexOf('/');
+        if (cut < 0) {
+            return safe;
+        }
+        var parent = safe.substring(0, cut);
+        var parentCut = parent.lastIndexOf('/');
+        return parentCut < 0 ? parent : parent.substring(parentCut + 1);
     }
 
     /**
