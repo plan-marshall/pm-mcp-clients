@@ -2,10 +2,10 @@
   "id": "PLAN-53",
   "slug": "web-start-wizard",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-53-web-start-wizard",
+  "pr": "455",
+  "landing": "landings/PLAN-53.md",
   "seq": 53
 }
