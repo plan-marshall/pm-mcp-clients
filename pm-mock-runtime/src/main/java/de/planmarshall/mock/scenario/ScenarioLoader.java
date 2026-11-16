@@ -35,7 +35,6 @@ import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
 import de.planmarshall.api.chat.ChatTurnCompletedEvent;
-import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.api.chat.ChatTurnDeltaEvent;
 import de.planmarshall.api.chat.ChatTurnProgressEvent;
 import de.planmarshall.api.chat.ChatTurnStartedEvent;
@@ -63,6 +62,8 @@ import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.SystemSnapshot;
+import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.runtime.MockRuntimeEngine;
 
 /**
  * Loads and validates scenario files against the closed scenario format specification
@@ -268,7 +269,7 @@ public class ScenarioLoader {
         }
         // The engine merges the base fixture below a case state's own, so a state without a
         // plan_changes member serves the base state's captures.
-        var baseEntries = planChangesOf(states.get(StandardScenarios.RUNNING_WORK_ACTIVE), scenario);
+        var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
         for (var state : states.values()) {
             var ownEntries = planChangesOf(state, scenario);
             var effective = ownEntries != null ? ownEntries : baseEntries;

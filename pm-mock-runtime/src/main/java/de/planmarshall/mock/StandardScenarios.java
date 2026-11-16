@@ -211,12 +211,6 @@ public final class StandardScenarios {
     public static final String RUNNING_WORK = "running-work";
 
     /**
-     * The state a case scenario's fixture is merged onto: a state declares only what differs from
-     * it, and the engine applies its {@code facts.runtime} below the state's own.
-     */
-    public static final String RUNNING_WORK_ACTIVE = "running_work.active";
-
-    /**
      * Operator reports scenario demonstrating unread reports list, mark-read actions,
      * arrival notices, and plan completion reports.
      */
