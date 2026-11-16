@@ -397,7 +397,8 @@ describe('EpicView component', () => {
     expect(window.location.pathname).toBe('/epics/relay-hardening');
     expect(window.location.search).toBe('?tab=intent');
     // A tab is not a level: it replaces the entry instead of adding one.
-    expect(window.history.length).toBe(entriesBefore);
+    const entriesAfter = window.history.length;
+    expect(entriesAfter).toBe(entriesBefore);
     expect(get(runtimeStore).objectTab).toBe('intent');
   });
 
@@ -672,6 +673,28 @@ describe('EpicView component', () => {
     // Its head is the compact one.
     expect(screen.getByTestId('object-page')).toBeInTheDocument();
     expect(screen.queryByTestId('object-page-id')).not.toBeInTheDocument();
+  });
+
+  it('says a rejected refresh failed while the last read stays on screen', async () => {
+    let deliver: ((event: string) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((onEvent) => {
+      deliver = onEvent as (event: string) => void;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getEpicResource')
+      .mockResolvedValueOnce(mockResource)
+      .mockRejectedValueOnce(new ClientError('network_offline'));
+
+    render(EpicView);
+    await screen.findByTestId('epic-workstreams');
+
+    deliver!('epic.row_changed');
+
+    const stale = await screen.findByTestId('epic-resource-stale');
+    expect(stale).toHaveTextContent('The epic could not be read; what stands below is the last read.');
+    // The last read stays on screen rather than being replaced by a blank page.
+    expect(screen.getByTestId('epic-workstreams')).toBeInTheDocument();
+    expect(screen.getByTestId('epic-resource-retry')).toBeInTheDocument();
   });
 
   it('reloads the epic on a row change and ignores an event it does not show', async () => {

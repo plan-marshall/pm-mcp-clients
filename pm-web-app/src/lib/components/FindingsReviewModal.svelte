@@ -71,6 +71,9 @@
   // made stays theirs — only an empty one, or one the review no longer carries, is replaced.
   $effect(() => {
     if (!open) {
+      // A close — whether the modal's own or a parent's — forgets the selection, so the next open
+      // selects its own first open item instead of a decided one it still remembers.
+      selectedId = null;
       return;
     }
     const items = review?.items ?? [];

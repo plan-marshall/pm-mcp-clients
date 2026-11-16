@@ -102,35 +102,55 @@
   const newFindings = $derived(resource?.findings.new ?? 0);
 
   /** Whether the epic has ended: its tabs stand, and none of them opens an act. */
-  const ended = $derived(resource?.state === 'ended');
+  const ended = $derived((resource?.state ?? epic?.state ?? '') === 'ended');
 
-  // A review opened while the epic ran closes when the epic ends on an event: its keeps, drops and
-  // promotions belong to a running epic (`epic-view.adoc#tabs`).
+  // A review or its chat opened while the epic ran closes when the epic ends on an event (or a
+  // read reports it): their acts belong to a running epic (`epic-view.adoc#tabs`).
   $effect(() => {
-    if (ended && reviewOpen) {
-      reviewOpen = false;
+    if (!ended) {
+      return;
     }
+    reviewOpen = false;
+    reviewChatOpen = false;
+    reviewChat = null;
   });
 
   /** The five tabs of the epic's object column, the `! n` badge while findings are new. */
-  const tabItems = $derived<TabItem[]>([
-    { id: 'plans', label: $t('overview.epic.tab.plans'), panelId: panelIdOf('plans') },
-    { id: 'intent', label: $t('intent.tab.title'), panelId: panelIdOf('intent') },
-    { id: 'landings', label: $t('overview.epic.landings'), panelId: panelIdOf('landings') },
-    {
-      id: 'reviews',
-      label: $t('overview.epic.tab.reviews'),
-      panelId: panelIdOf('reviews'),
-      ...(newFindings > 0 && !ended
+  const tabItems = $derived<TabItem[]>(
+    // The strip is derived from the route model's own tab set, so a tab the address accepts can
+    // never be missing here and one here can never be unknown to the address.
+    EPIC_TABS.map((tab) => ({
+      id: tab,
+      label: tabLabel(tab),
+      panelId: panelIdOf(tab),
+      ...(tab === 'reviews' && newFindings > 0 && !ended
         ? {
             count: newFindings,
             attention: true,
             countLabel: $t('overview.epic.new_findings', { count: newFindings }),
           }
         : {}),
-    },
-    { id: 'events', label: $t('overview.epic.events'), panelId: panelIdOf('events') },
-  ]);
+    })),
+  );
+
+  /**
+   * @param tab a tab of the epic's column
+   * @returns its visible label, from the catalogue
+   */
+  function tabLabel(tab: EpicTab): string {
+    switch (tab) {
+      case 'plans':
+        return $t('overview.epic.tab.plans');
+      case 'intent':
+        return $t('intent.tab.title');
+      case 'landings':
+        return $t('overview.epic.landings');
+      case 'reviews':
+        return $t('overview.epic.tab.reviews');
+      case 'events':
+        return $t('overview.epic.events');
+    }
+  }
 
   /**
    * Writes the chosen tab into the address, by a replace.
@@ -247,6 +267,9 @@
     }
     if (epicResource.status === 'fulfilled') {
       resource = epicResource.value;
+      // A read that answers clears the failure of one that was still in flight: the retry the
+      // panel names would otherwise stay on offer beside content that is current.
+      resourceErrorCode = null;
     } else {
       // A read that failed says so and can be retried: a page that showed the epic's head while
       // its resource stayed null would claim the epic "is still being read" for ever.
@@ -737,6 +760,19 @@
       </div>
 
       {#if resource}
+        {#if resourceErrorCode !== null}
+          <p class="epic-view__stale" data-testid="epic-resource-stale" role="status">
+            <span>{$t('epic.views.read_failed')}</span>
+            <button
+              type="button"
+              class="review-open"
+              data-testid="epic-resource-retry"
+              onclick={() => void loadEpic(false)}
+            >
+              {$t('common.action.retry')}
+            </button>
+          </p>
+        {/if}
         {#if activeTab === 'plans'}
           <div id="epic-panel-plans" role="tabpanel" data-testid="epic-panel-plans">
             {@render plans(true)}
@@ -801,6 +837,9 @@
                 </div>
               </section>
             {/if}
+            <p class="text-muted" data-testid="epic-analysis-missing">
+              {$t('epic.views.analysis_missing')}
+            </p>
           </div>
         {:else if activeTab === 'reviews'}
           <div id="epic-panel-reviews" role="tabpanel" data-testid="epic-panel-reviews">
@@ -1035,12 +1074,26 @@
 
   .epic-view__loading,
   .epic-view__error,
-  .epic-view__resource-error {    display: flex;
+  .epic-view__resource-error {
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: var(--space-8);
     gap: var(--space-4);
+  }
+
+  .epic-view__stale {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
   }
 
   .epic-state {

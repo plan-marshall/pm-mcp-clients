@@ -96,6 +96,8 @@ class EpicViewCatalogueTest {
                 "epic.views.tabs",
                 "epic.views.no_landings",
                 "epic.views.alongside",
+                "epic.views.analysis_missing",
+                "epic.views.read_failed",
                 "overview.epic.tab.plans",
                 "overview.epic.tab.reviews",
                 "overview.epic.new_findings"

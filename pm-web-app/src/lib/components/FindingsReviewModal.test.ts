@@ -50,6 +50,49 @@ describe('FindingsReviewModal component', () => {
     expect(screen.getByTestId('review-item-F-0005')).toHaveTextContent('kept');
   });
 
+  it('opens on its first open item again after a parent closed it', async () => {
+    // The parent closes the modal (as the epic's commit does) and the item it had selected is
+    // decided by the time it reopens: the next open must be the one selected, not the old one.
+    const both: ReviewResource = {
+      ...review,
+      items: [
+        {
+          item_id: 'F-0004',
+          register: 'findings',
+          statement: 'Reconnect loses the last event',
+          rules: [],
+          origin: 'landing of relay-reconnect (#211)',
+          trust: 'trusted',
+          state: 'open',
+        },
+        {
+          item_id: 'F-0005',
+          register: 'findings',
+          statement: 'The retry count is not bounded',
+          rules: [],
+          origin: 'review comment of #212',
+          trust: 'trusted',
+          state: 'open',
+        },
+      ],
+    };
+    const decided: ReviewResource = {
+      ...both,
+      items: [{ ...both.items[0], state: 'kept' }, both.items[1]],
+    };
+
+    const { rerender } = render(FindingsReviewModal, {
+      props: { epicId: 'relay-hardening', review: both, open: true },
+    });
+    expect(screen.getByTestId('review-item-F-0004')).toHaveAttribute('aria-current', 'true');
+
+    await rerender({ epicId: 'relay-hardening', review: decided, open: false });
+    await rerender({ epicId: 'relay-hardening', review: decided, open: true });
+
+    expect(screen.getByTestId('review-item-F-0005')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByTestId('review-item-F-0004')).not.toHaveAttribute('aria-current');
+  });
+
   it('opens on its first open item, never on a decided one', () => {
     // The first item is decided: the panel opens on F-0005, the first one still open.
     const decidedFirst: ReviewResource = {
