@@ -263,6 +263,146 @@ describe('the settings panels against the mock runtime states', () => {
     });
   });
 
+  it('keeps the stored categories when a conflict’s current value is not a record', async () => {
+    // The other client left a value the page cannot read as a record: the resend must not fall back
+    // to the defaults, or the categories the operator did not touch would be reset to 30/3.
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: '30',
+      })
+      .mockResolvedValueOnce({ applied: true, conflict: false, revision: 10 });
+
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+    await waitFor(() => expect(screen.getByTestId('conflict-apply')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(2));
+    const sent = JSON.parse(updateSpy.mock.calls[1]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    // The stored record's categories stand in for the unreadable value.
+    expect(sent.epics_after_days).toBe(settings.cleanup_durations.epics_after_days);
+    expect(sent.remind_after_days).toBe(settings.cleanup_durations.remind_after_days);
+  });
+
+  it('shows in the Yours line what the resend will send, not the page’s old record', async () => {
+    vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValueOnce({
+      applied: false,
+      conflict: true,
+      revision: 9,
+      current_value: JSON.stringify({
+        plans_after_days: 35,
+        epics_after_days: 90,
+        logs_after_days: 90,
+        reports_after_days: 30,
+        unenrolled_after_days: 30,
+        remind_after_days: 4,
+      }),
+    });
+
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
+    // Only the plans value is the operator's.
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    const dialog = await screen.findByTestId('conflict-dialog');
+    // The resend sends the operator's plans over the other client's record, so the line names 90,
+    // not the 30 the page read before the other client changed it.
+    expect(dialog).toHaveTextContent('Archived epics: 90 days');
+    expect(dialog).toHaveTextContent('Ask me again after 4 days');
+  });
+
+  it('names the minimum when the server refuses a duration as invalid', async () => {
+    vi.spyOn(apiClient, 'updateMachineSetting').mockRejectedValue(new Error('invalid_value'));
+
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    // The runtime's refusal names what the client pre-check names: the contract's minimum.
+    await waitFor(() => {
+      expect(screen.getByText('At least 7 days, or never.')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps a category added to the record when the page saves', async () => {
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(
+      settingsRecord({
+        cleanup_durations: { ...settings.cleanup_durations, custom_after_days: 12 },
+      }),
+    );
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalled());
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.custom_after_days).toBe(12);
+  });
+
+  it('does not turn a store refresh into the operator’s change of the reminder', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: JSON.stringify({
+          plans_after_days: 35,
+          epics_after_days: 30,
+          logs_after_days: 30,
+          reports_after_days: 30,
+          unenrolled_after_days: 30,
+          remind_after_days: 7,
+        }),
+      })
+      .mockResolvedValue({ applied: true, conflict: false, revision: 10 });
+
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
+    // The operator changes the plans only; the page read a reminder of 3.
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+
+    // A settings event refreshes the store meanwhile; the page's read is still the one that says
+    // what the operator changed.
+    runtimeStore.update((state) => ({
+      ...state,
+      machineSettings: {
+        ...settings,
+        cleanup_durations: { ...settings.cleanup_durations, remind_after_days: 5 },
+      },
+    }));
+
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+    await waitFor(() => expect(screen.getByTestId('conflict-apply')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(2));
+    const sent = JSON.parse(updateSpy.mock.calls[1]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    // The reminder the operator did not touch keeps the other client's value.
+    expect(sent.remind_after_days).toBe(7);
+  });
+
   it('shows the documents modes and the cleanup durations on their tabs', async () => {
     render(SettingsView);
 

@@ -545,4 +545,18 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
       'Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.',
     );
   });
+
+  it('pins the German wording of the token figure literally', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    // The token figure is the shared label plus its unit; the German one is a literal, not a copy
+    // of the English spelling with the number inserted.
+    expect(de['common.tokens.total']).toBe('Tokens {figure}');
+    expect(de['common.tokens.millions']).toBe('{value} Mio.');
+    expect(de['common.tokens.thousands']).toBe('{value} Tsd.');
+    expect(de['common.tokens.split']).toBe('{total} ({in} rein \u00b7 {out} raus)');
+    expect(en['common.tokens.total']).toBe('tokens {figure}');
+    expect(en['common.tokens.millions']).toBe('{value} M');
+  });
 });
