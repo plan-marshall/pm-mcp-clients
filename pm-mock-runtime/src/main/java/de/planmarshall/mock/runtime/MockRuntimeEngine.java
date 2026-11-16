@@ -2658,12 +2658,20 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     KEY_MESSAGE, "A file's path is required, and it must be validly encoded"));
             return;
         }
+        if (!knowsPlan(planId)) {
+            // An unknown plan is a missing scope on both routes, so a client maps the two the same way.
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+            return;
+        }
         PlanChangeFile file;
         synchronized (planChangesLock) {
             var files = planChangeFiles.get(planId);
             file = files != null ? files.get(filePath) : null;
         }
         if (file == null) {
+            // A plan whose changes were never captured, or whose capture is gone, holds no file:
+            // the list route answers that state, and the file route names the missing target.
             response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(),
                     KEY_MESSAGE, "No such file in the plan's changes: " + planId));
             return;
