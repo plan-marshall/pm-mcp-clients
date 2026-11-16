@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.changes;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -168,6 +169,109 @@ class PlanChangesContractTest {
             assertEquals(TRUNCATED_FILE, JsonTree.write(file.toMap()));
             assertTrue(file.truncated());
             assertEquals(120, file.linesOmitted());
+        }
+    }
+
+    @Nested
+    @DisplayName("Coherence on decode")
+    class CoherenceOnDecode {
+
+        private static final String RENAMED_WITHOUT_SOURCE = "{\"path\":\"a/B.java\",\"status\":\"renamed\","
+                + "\"added\":1,\"removed\":0,\"binary\":false,\"unplanned\":false}";
+
+        private static final String SOURCE_ON_AN_ADDED_FILE = "{\"path\":\"a/B.java\",\"renamed_from\":\"a/A.java\","
+                + "\"status\":\"added\",\"added\":1,\"removed\":0,\"binary\":false,\"unplanned\":false}";
+
+        private static final String BINARY_WITH_COUNTS = "{\"path\":\"doc/x.png\",\"status\":\"modified\","
+                + "\"added\":2,\"removed\":0,\"binary\":true,\"unplanned\":false}";
+
+        private static final String BINARY_WITH_HUNKS = "{\"path\":\"doc/x.png\",\"hunks\":[{\"old_start\":1,"
+                + "\"old_len\":1,\"new_start\":1,\"new_len\":1,\"lines\":[{\"kind\":\"context\",\"text\":\"x\"}]}],"
+                + "\"binary\":true,\"truncated\":false}";
+
+        private static final String TRUNCATED_WITHOUT_A_COUNT = "{\"path\":\"a/B.java\",\"hunks\":[],"
+                + "\"binary\":false,\"truncated\":true}";
+
+        private static final String OMITTED_WITHOUT_TRUNCATION = "{\"path\":\"a/B.java\",\"hunks\":[],"
+                + "\"binary\":false,\"truncated\":false,\"lines_omitted\":3}";
+
+        private static final String NOT_A_BOOLEAN_BINARY = "{\"path\":\"a/B.java\",\"status\":\"added\","
+                + "\"added\":1,\"removed\":0,\"binary\":\"true\",\"unplanned\":false}";
+
+        private static final String MISSING_UNPLANNED = "{\"path\":\"a/B.java\",\"status\":\"added\","
+                + "\"added\":1,\"removed\":0,\"binary\":false}";
+
+        private static final String MISSING_TRUNCATED = "{\"path\":\"a/B.java\",\"hunks\":[],\"binary\":false}";
+
+        private static final String DUPLICATE_PATHS = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\","
+                + "\"head\":\"9f3c2ab41d7e\",\"base_ref\":\"main\",\"files\":["
+                + "{\"path\":\"a/B.java\",\"status\":\"added\",\"added\":1,\"removed\":0,\"binary\":false,"
+                + "\"unplanned\":false},"
+                + "{\"path\":\"a/B.java\",\"status\":\"modified\",\"added\":1,\"removed\":1,\"binary\":false,"
+                + "\"unplanned\":false}]}";
+
+        @Test
+        @DisplayName("a renamed file that names no path it came from is refused")
+        void renamedWithoutSource() {
+            assertThrows(IOException.class, () -> PlanChangedFile.fromJson(RENAMED_WITHOUT_SOURCE));
+        }
+
+        @Test
+        @DisplayName("a file that is not renamed carries no path it came from")
+        void sourceOnAnotherStatus() {
+            assertThrows(IOException.class, () -> PlanChangedFile.fromJson(SOURCE_ON_AN_ADDED_FILE));
+        }
+
+        @Test
+        @DisplayName("a binary file carries no counts")
+        void binaryWithCounts() {
+            assertThrows(IOException.class, () -> PlanChangedFile.fromJson(BINARY_WITH_COUNTS));
+        }
+
+        @Test
+        @DisplayName("a binary file carries no hunks")
+        void binaryWithHunks() {
+            assertThrows(IOException.class, () -> PlanChangeFile.fromJson(BINARY_WITH_HUNKS));
+        }
+
+        @Test
+        @DisplayName("a cut file names the lines it left out")
+        void truncatedWithoutACount() {
+            assertThrows(IOException.class, () -> PlanChangeFile.fromJson(TRUNCATED_WITHOUT_A_COUNT));
+        }
+
+        @Test
+        @DisplayName("a file that left nothing out names no omitted line")
+        void omittedWithoutTruncation() {
+            assertThrows(IOException.class, () -> PlanChangeFile.fromJson(OMITTED_WITHOUT_TRUNCATION));
+        }
+
+        @Test
+        @DisplayName("a mark that is no boolean is refused, never read as false")
+        void nonBooleanMark() {
+            assertThrows(IOException.class, () -> PlanChangedFile.fromJson(NOT_A_BOOLEAN_BINARY));
+        }
+
+        @Test
+        @DisplayName("a missing mark is refused, never read as false")
+        void missingMarks() {
+            assertAll(
+                    () -> assertThrows(IOException.class, () -> PlanChangedFile.fromJson(MISSING_UNPLANNED)),
+                    () -> assertThrows(IOException.class, () -> PlanChangeFile.fromJson(MISSING_TRUNCATED)));
+        }
+
+        @Test
+        @DisplayName("a list that names one path twice is refused")
+        void duplicatePath() {
+            assertThrows(IOException.class, () -> PlanChangesAnswer.fromJson(DUPLICATE_PATHS));
+        }
+
+        @Test
+        @DisplayName("a JSON value that is no object is an IOException, never a NullPointerException")
+        void nonObjectJson() {
+            assertAll(
+                    () -> assertThrows(IOException.class, () -> PlanChanges.fromJson("[1,2]")),
+                    () -> assertThrows(IOException.class, () -> PlanChanges.fromJson("42")));
         }
     }
 
