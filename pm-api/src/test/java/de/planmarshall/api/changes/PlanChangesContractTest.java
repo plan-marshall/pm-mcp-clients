@@ -362,6 +362,17 @@ class PlanChangesContractTest {
         }
 
         @Test
+        @DisplayName("the payload's wire is the catalogue's, in the catalogue's order")
+        void eventWire() {
+            var event = new PlanChangeCapturedEvent("fix-relay", "9f3c2ab41d7e", 12, 340, 27, 2);
+
+            assertEquals("{\"plan_id\":\"fix-relay\",\"head\":\"9f3c2ab41d7e\",\"files_total\":12,"
+                    + "\"insertions_total\":340,\"deletions_total\":27,\"unplanned_total\":2}", event.toJson());
+            assertEquals(List.of("plan_id", "head", "files_total", "insertions_total", "deletions_total",
+                    "unplanned_total"), List.copyOf(event.toMap().keySet()));
+        }
+
+        @Test
         @DisplayName("the activity kind model_differs resolves, with both models")
         void modelDiffers() throws Exception {
             assertEquals(ActivityEntryKind.MODEL_DIFFERS, ActivityEntryKind.fromValue("model_differs"));

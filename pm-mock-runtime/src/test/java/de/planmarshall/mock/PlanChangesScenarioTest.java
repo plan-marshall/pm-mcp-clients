@@ -268,6 +268,37 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a file of a plan the scenario does not know, as the list route does")
+        void refusesAFileOfAnUnknownPlan() throws Exception {
+            var unknown = Generators.letterStrings(6, 12).next().toLowerCase();
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var response = get(runtime, PlanChangesRoutes.plan(unknown).file("pm-api/src/PlanChanges.java"));
+
+                assertEquals(404, response.status(), response.bodyText());
+                assertEquals("scope_not_found",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error"),
+                        "an unknown plan is a missing scope on both routes");
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a file of a plan whose changes were never captured, and of a gone capture")
+        void refusesAFileOfACaptureThatIsNotThere() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var notCaptured = get(runtime, PlanChangesRoutes.plan("drop-legacy-api").file("a/B.java"));
+                var unavailable = get(runtime, PlanChangesRoutes.plan("docs-typo").file("a/B.java"));
+
+                assertAll(
+                        () -> assertEquals(404, notCaptured.status(), notCaptured.bodyText()),
+                        () -> assertEquals("target_not_found",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(notCaptured.body())), "error")),
+                        () -> assertEquals(404, unavailable.status(), unavailable.bodyText()),
+                        () -> assertEquals("target_not_found",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(unavailable.body())), "error")));
+            }
+        }
+
+        @Test
         @DisplayName("refuses a path that is not validly encoded rather than failing")
         void refusesAMalformedPath() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
