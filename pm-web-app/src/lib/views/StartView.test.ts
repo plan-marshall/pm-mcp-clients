@@ -108,6 +108,20 @@ describe('StartView', () => {
     expect(get(runtimeStore).startProjectId).toBe(PROJECT);
   });
 
+  it("closes the abandon question when another entry is addressed", async () => {
+    arrangeOpen(sources());
+    const rendered = render(StartView, { projectId: PROJECT, kind: 'plan' });
+    await screen.findByTestId('source-list');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Abandon' }));
+    await fireEvent.click(await screen.findByTestId('action-abandon'));
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+
+    await rendered.rerender({ entryId: 'ent-other', projectId: null, kind: 'plan' });
+
+    await vi.waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+  });
+
   describe('the live entry', () => {
     /** @returns the listener the view registered for the entry's events */
     function arrangeEvents(): { emit: (event: string) => void } {

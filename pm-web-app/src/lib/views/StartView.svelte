@@ -68,6 +68,8 @@
   let loadError: string | null = null;
   /** How many reads completed: a failure after a shown state is announced, a cold one is not. */
   let completedReads = 0;
+  /** Whether the operator asked for the read again, whose own failure is announced in turn. */
+  let retried = false;
   let actionError = '';
 
   let projectRemote: RemoteInfo | null = null;
@@ -248,6 +250,8 @@
     // transcript or proposal turn can never travel to it.
     chat = null;
     chatOpen = false;
+    // A confirmation opened for the entry that was shown does not carry to the one now addressed.
+    abandonOpen = false;
     void load(++entryGeneration);
   }
 
@@ -290,7 +294,9 @@
           subscribeEntry(id);
         }
       }
-      await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
+      // The page is drawn now: the project's forge reference is read beside it, so a slow explorer
+      // read never keeps the gate's spinner on screen.
+      void resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
       if (generation === entryGeneration) {
         loadError = errorCodeOf(e);
@@ -969,7 +975,7 @@
         <ErrorState
           code={loadError}
           titleLevel={2}
-          announce={loadError === 'timeout' || completedReads > 0}
+          announce={loadError === 'timeout' || completedReads > 0 || retried}
         />
       </div>
     {:else if step === 'refused' && state?.refusal}
@@ -1177,7 +1183,7 @@
         onNew={() => void act('new')}
         onRetry={() => void act('retry')}
         onBack={() => void act('back')}
-        onAbandon={abandon}
+        onAbandon={() => (abandonOpen = true)}
       />
     {:else}
       <section class="start-view__sources" data-testid="start-sources-step">
@@ -1435,7 +1441,10 @@
         <Button
           variant="primary"
           data-testid="start-gate-retry"
-          on:click={() => void load(++entryGeneration)}
+          on:click={() => {
+            retried = true;
+            void load(++entryGeneration);
+          }}
         >
           {$t('common.action.retry')}
         </Button>

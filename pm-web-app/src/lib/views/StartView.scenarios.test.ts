@@ -742,6 +742,12 @@ describe('start-epic-adopt: adopting an epic and its failure', () => {
     expect(screen.getByTestId('adopt-retry')).toBeInTheDocument();
     expect(screen.getByTestId('adopt-back')).toBeInTheDocument();
     expect(screen.getByTestId('adopt-abandon')).toBeInTheDocument();
+
+    // Abandon asks first, as it does at the sources step: the failure route is not an exemption.
+    const act = vi.spyOn(apiClient, 'actEntry');
+    await fireEvent.click(screen.getByTestId('adopt-abandon'));
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+    expect(act).not.toHaveBeenCalled();
   });
 });
 
