@@ -38,7 +38,6 @@ export const DECLARED_VIEWS = [
   'SystemView',
   'CleanupView',
   'SettingsView',
-  'MachineSettingsView',
   'ProcessDesigner',
   'ProjectExplorerView',
   'StartView',
@@ -367,12 +366,12 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.getByTestId('settings-view')).toBeVisible();
-      await page.getByRole('tab', { name: 'Access' }).click();
+      await page.getByRole('tab').nth(1).click();
       await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('SettingsView');
 
-      await page.getByRole('tab', { name: 'Setup' }).click();
+      await page.getByRole('tab').nth(0).click();
       await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
       // The devices line carries its own loading text; recording it would record a placeholder.
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
@@ -506,7 +505,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.locator('.settings-view')).toBeVisible();
-      await page.getByRole('tab', { name: 'Access' }).click();
+      await page.getByRole('tab').nth(1).click();
 
       const row = page.getByTestId('device-row-dev-1');
       await row.getByTestId('action-bar-overflow').click();
@@ -847,11 +846,11 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.getByTestId('settings-view')).toBeVisible();
-          await page.getByRole('tab', { name: 'Access' }).click();
+          await page.getByRole('tab').nth(1).click();
 
           await auditView(page, testInfo, { view: 'SettingsView', theme, viewport: vp });
 
-          await page.getByRole('tab', { name: 'Setup' }).click();
+          await page.getByRole('tab').nth(0).click();
           await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'MachineSettingsView', theme, viewport: vp });
@@ -979,7 +978,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
-          await page.getByRole('tab', { name: 'Access' }).click();
+          await page.getByRole('tab').nth(1).click();
 
           const row = page.getByTestId('device-row-dev-1');
           await row.getByTestId('action-bar-overflow').click();
@@ -1210,7 +1209,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
   });
 
   test.describe('Declared View Coverage Guard', () => {
-    test('all 23 declared views in src/lib/views/ are present and were audited', () => {
+    test('all 22 declared views in src/lib/views/ are present and were audited', () => {
       const viewsDir = path.resolve(__dirname, '../../pm-web-app/src/lib/views');
       const viewFiles = fs
         .readdirSync(viewsDir)
