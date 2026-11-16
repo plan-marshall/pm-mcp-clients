@@ -238,6 +238,31 @@ describe('the settings panels against the mock runtime states', () => {
     expect(screen.queryByTestId('rotate-modal')).not.toBeInTheDocument();
   });
 
+  it('shows the other client’s value in the conflict notice and applies yours again', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({ applied: false, conflict: true, revision: 9, current_value: 'copy' })
+      .mockResolvedValueOnce({ applied: true, conflict: false, revision: 10 });
+
+    render(SettingsView);
+    await waitFor(() => expect(screen.getByTestId('save-documents')).toBeInTheDocument());
+    await fireEvent.click(screen.getByLabelText('Move'));
+    await fireEvent.click(screen.getByTestId('save-documents'));
+
+    const dialog = await screen.findByTestId('conflict-dialog');
+    // The refusal names both values, so the operator sees what the other client left behind.
+    expect(dialog).toHaveTextContent('Current value: copy');
+    expect(dialog).toHaveTextContent('Your value: move');
+    expect(dialog).toHaveTextContent('Apply yours again');
+    expect(dialog).toHaveTextContent('Keep the current value');
+
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 4);
+    });
+  });
+
   it('shows the documents modes and the cleanup durations on their tabs', async () => {
     render(SettingsView);
 
