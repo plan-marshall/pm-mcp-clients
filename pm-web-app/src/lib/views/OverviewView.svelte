@@ -836,25 +836,31 @@
             <p class="empty-text" data-testid="ended-filter-empty">{$t('common.filter.empty')}</p>
           {:else}
             <div class="ended-table-wrap">
-              <table class="data-table">
+              <table class="data-table" data-layout="fixed">
+                <colgroup>
+                  <col data-column="kind" />
+                  <col data-column="title" />
+                  <col data-column="outcome" />
+                  <col data-column="pull_request" />
+                  <col data-column="ended" />
+                  <col data-column="actions" />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>{$t('overview.ended.col.kind')}</th>
-                    <th>{$t('overview.ended.col.title')}</th>
-                    <th>{$t('overview.ended.col.outcome')}</th>
-                    <th>{$t('overview.ended.col.pull_request')}</th>
-                    <th>{$t('overview.ended.col.ended')}</th>
-                    <th>{$t('overview.ended.col.actions')}</th>
+                    <th scope="col">{$t('overview.ended.col.kind')}</th>
+                    <th scope="col">{$t('overview.ended.col.title')}</th>
+                    <th scope="col">{$t('overview.ended.col.outcome')}</th>
+                    <th scope="col">{$t('overview.ended.col.pull_request')}</th>
+                    <th scope="col">{$t('overview.ended.col.ended')}</th>
+                    <th scope="col">{$t('overview.ended.col.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {#each filteredEndedItems as item}
                     <tr class="ended-row" data-testid="ended-item">
                       <td>
-                        <span class="badge badge--kind badge--{item.kind}">
-                          {item.kind === 'epic'
-                            ? '◇ ' + $t('overview.kind.epic')
-                            : '▸ ' + $t('overview.kind.plan')}
+                        <span class="badge--kind badge--{item.kind}">
+                          <KindMark kind={item.kind === 'epic' ? 'epic' : 'plan'} />
                         </span>
                       </td>
                       <td>
@@ -1281,10 +1287,11 @@
                 <h4 class="section-subtitle">{$t('overview.group.alongside')}</h4>
                 {#each detail.alongside_landings as landing}
                   <div class="alongside-row">
+                    <KindMark kind="side_job" />
                     {#if landing.state === 'failed'}
-                      <span class="badge badge--attention"
-                        >! {$t('overview.needs.landing_failed')}</span
-                      >
+                      <span class="badge--attention needs-slot">
+                        <ReasonBadge reason="landing_failed" />
+                      </span>
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}
@@ -1665,6 +1672,56 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow-x: auto;
+  }
+
+  .ended-table-wrap .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 680px;
+  }
+
+  .ended-table-wrap .data-table th,
+  .ended-table-wrap .data-table td {
+    padding: var(--space-2) var(--space-3);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .ended-table-wrap .data-table th {
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .ended-table-wrap .data-table tbody tr + tr td {
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .ended-table-wrap .data-table th:nth-child(1),
+  .ended-table-wrap .data-table td:nth-child(1) {
+    width: 4.5rem;
+  }
+
+  .ended-table-wrap .data-table th:nth-child(3),
+  .ended-table-wrap .data-table td:nth-child(3) {
+    width: 12rem;
+  }
+
+  .ended-table-wrap .data-table th:nth-child(4),
+  .ended-table-wrap .data-table td:nth-child(4) {
+    width: 5.5rem;
+  }
+
+  .ended-table-wrap .data-table th:nth-child(5),
+  .ended-table-wrap .data-table td:nth-child(5) {
+    width: 7rem;
+  }
+
+  .ended-table-wrap .data-table th:nth-child(6),
+  .ended-table-wrap .data-table td:nth-child(6) {
+    width: 7.5rem;
   }
 
   .ended-reason {

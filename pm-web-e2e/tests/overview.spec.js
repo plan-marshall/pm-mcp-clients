@@ -116,10 +116,46 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(endedLink).toBeVisible();
     await endedLink.click();
 
-    // Verify Ended work table is displayed
+    // Verify Ended work table is displayed and columns are aligned
     const endedView = page.locator('.ended-view');
     await expect(endedView).toBeVisible();
-    await expect(endedView.locator('table.data-table')).toBeVisible();
+    const table = endedView.locator('table.data-table');
+    await expect(table).toBeVisible();
+
+    const tableMetrics = await table.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      const ths = Array.from(el.querySelectorAll('thead th'));
+      const firstRowTds = Array.from(el.querySelectorAll('tbody tr:first-child td'));
+      const thRects = ths.map((th) => {
+        const r = th.getBoundingClientRect();
+        const cs = window.getComputedStyle(th);
+        return { x: Math.round(r.x), width: Math.round(r.width), paddingLeft: parseFloat(cs.paddingLeft) };
+      });
+      const tdRects = firstRowTds.map((td) => {
+        const r = td.getBoundingClientRect();
+        const cs = window.getComputedStyle(td);
+        return { x: Math.round(r.x), width: Math.round(r.width), paddingLeft: parseFloat(cs.paddingLeft) };
+      });
+      return {
+        tableLayout: style.tableLayout,
+        borderCollapse: style.borderCollapse,
+        thRects,
+        tdRects,
+        hasKindMark: el.querySelectorAll('tbody tr .kind-mark').length,
+        rowCount: el.querySelectorAll('tbody tr').length,
+      };
+    });
+    expect(tableMetrics.tableLayout).toBe('fixed');
+    expect(tableMetrics.borderCollapse).toBe('collapse');
+    expect(tableMetrics.hasKindMark).toBe(tableMetrics.rowCount);
+    expect(tableMetrics.thRects.length).toBe(6);
+    expect(tableMetrics.tdRects.length).toBe(6);
+    for (let i = 0; i < 6; i += 1) {
+      expect(Math.abs(tableMetrics.thRects[i].x - tableMetrics.tdRects[i].x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(tableMetrics.thRects[i].width - tableMetrics.tdRects[i].width)).toBeLessThanOrEqual(1);
+      expect(tableMetrics.thRects[i].paddingLeft).toBeGreaterThanOrEqual(12);
+      expect(tableMetrics.tdRects[i].paddingLeft).toBeGreaterThanOrEqual(12);
+    }
 
     // Verify outcomes (merged, cancelled)
     await expect(page.getByText('fix-relay')).toBeVisible();

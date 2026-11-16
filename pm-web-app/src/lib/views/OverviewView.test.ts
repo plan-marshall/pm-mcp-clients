@@ -517,6 +517,47 @@ describe('OverviewView component', () => {
     });
   });
 
+  it('renders KindMark in ended-work and alongside rows, ReasonBadge for landing_failed, and fixed table layout for ended-work columns', async () => {
+    const { container } = render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alongside-section')).toBeInTheDocument();
+    });
+
+    const alongsideRows = container.querySelectorAll('.alongside-row');
+    expect(alongsideRows.length).toBeGreaterThanOrEqual(2);
+    for (const row of alongsideRows) {
+      expect(row.querySelector('.kind-mark')).not.toBeNull();
+    }
+    const landingBadge = alongsideRows[0].querySelector('.reason-badge.reason-badge--danger');
+    expect(landingBadge).not.toBeNull();
+    expect(landingBadge?.textContent?.trim()).toBe('! landing failed');
+
+    await fireEvent.click(screen.getByText('Ended work'));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
+    });
+
+    const endedRows = screen.getAllByTestId('ended-item');
+    for (const row of endedRows) {
+      expect(row.querySelector('.kind-mark')).not.toBeNull();
+    }
+
+    const table = container.querySelector('.ended-table-wrap table.data-table');
+    expect(table).not.toBeNull();
+    expect(table).toHaveAttribute('data-layout', 'fixed');
+    const columns = Array.from(table!.querySelectorAll('col'));
+    expect(columns.map((c) => c.getAttribute('data-column'))).toEqual([
+      'kind',
+      'title',
+      'outcome',
+      'pull_request',
+      'ended',
+      'actions',
+    ]);
+  });
+
   it('opens an ended plan as it ended and its completion report in one step', async () => {
     render(OverviewView);
 
