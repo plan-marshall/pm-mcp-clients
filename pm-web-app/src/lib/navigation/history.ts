@@ -103,9 +103,13 @@ let startMark: boolean | null = initialMarked ? false : null;
 
 /**
  * Forgets the answer of `openedFromOutside`, for a test that simulates another load of the app.
+ *
+ * The answer returns to what the module read at load: a load that began as a reload of the app's
+ * own entry (`initialMarked`) keeps answering so, and any other load answers from the mark the
+ * entry carries at the next call.
  */
 export function resetOpenedFromOutside(): void {
-  startMark = null;
+  startMark = initialMarked ? false : null;
 }
 
 /**

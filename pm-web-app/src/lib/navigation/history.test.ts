@@ -200,34 +200,40 @@ describe('the mark of a load', () => {
     expect(window.history.state).toBeNull();
   });
 
-  it('treats a reload of a marked entry as the app’s own', async () => {
+  it('answers the app’s own for an entry that still carries the mark', async () => {
     window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
-    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      { type: 'reload' } as unknown as PerformanceNavigationTiming,
-    ]);
 
     const { openedFromOutside } = await import('./history');
 
     expect(openedFromOutside()).toBe(false);
   });
 
-  it('re-applies the mark the framework dropped on hydration', async () => {
-    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
-    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      { type: 'reload' } as unknown as PerformanceNavigationTiming,
-    ]);
-    const { openedFromOutside } = await import('./history');
+  it.each(['reload', 'back_forward'] as const)(
+    're-applies the mark the framework dropped on hydration of a %s, by a replace',
+    async (type) => {
+      window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+      vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+        { type } as unknown as PerformanceNavigationTiming,
+      ]);
+      const { openedFromOutside } = await import('./history');
 
-    // SvelteKit replaces `history.state` on client hydration, so the mark is gone from the entry.
-    window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+      const replaceSpy = vi.spyOn(window.history, 'replaceState');
+      const pushSpy = vi.spyOn(window.history, 'pushState');
+      // SvelteKit replaces `history.state` on client hydration, so the mark is gone from the entry.
+      window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+      replaceSpy.mockClear();
 
-    expect(openedFromOutside()).toBe(false);
-    expect(window.history.state).toMatchObject({
-      from: 'sveltekit',
-      path: '/overview',
-      [APP_MARK]: true,
-    });
-  });
+      expect(openedFromOutside()).toBe(false);
+      expect(window.history.state).toMatchObject({
+        from: 'sveltekit',
+        path: '/overview',
+        [APP_MARK]: true,
+      });
+      // The address does not change: the entry is the same one, marked again.
+      expect(replaceSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).not.toHaveBeenCalled();
+    },
+  );
 
   it('keeps a fresh navigation’s answer even after the app writes the mark', async () => {
     const { openedFromOutside, writeAddress: write } = await import('./history');
