@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { runtimeStore, navigateTo, openRunningWork } from '../stores/runtime';
   import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
   import { RAIL_GROUPS, BOTTOM_ITEMS, activeNavRoute, type ShellNavItem } from './nav';
@@ -97,6 +97,10 @@
    */
   function open(item: ShellNavItem): void {
     sheetOpen = false;
+    if (item.id === 'running') {
+      void openRunningWork();
+      return;
+    }
     navigateTo(item.route);
   }
 </script>

@@ -47,18 +47,54 @@ export function carriesAppMark(state: unknown = history.state): boolean {
 /**
  * Whether this load was opened from outside the app: read once, at start, and remembered.
  *
- * The answer is taken before the app writes anything, so a write of this same load (the pairing
- * fragment dropped, the first address written) never changes it.
+ * The answer is taken before the app writes anything (and before SvelteKit replaces
+ * `history.state` on client hydration), so a write of this same load (the pairing fragment dropped,
+ * the first address written) never changes it.
  *
  * @returns `true` when the load carried no mark of the app
  */
 export function openedFromOutside(): boolean {
   startMark ??= !carriesAppMark();
+  if (
+    startMark === false &&
+    typeof window !== 'undefined' &&
+    typeof history !== 'undefined' &&
+    !carriesAppMark(history.state)
+  ) {
+    window.history.replaceState(
+      {
+        ...(typeof history.state === 'object' && history.state !== null ? history.state : {}),
+        path: `${window.location.pathname}${window.location.search}`,
+        [APP_MARK]: true,
+      },
+      '',
+    );
+  }
   return startMark ?? false;
 }
 
+/**
+ * Whether the current document load came from a browser reload or history traversal rather than a
+ * fresh document navigation (`navigate`).
+ *
+ * @returns `true` when the navigation timing entry is `'reload'` or `'back_forward'`
+ */
+function isReloadOrHistoryTraversal(): boolean {
+  if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') {
+    return false;
+  }
+  const nav = performance.getEntriesByType('navigation')[0] as
+    | PerformanceNavigationTiming
+    | undefined;
+  return nav?.type === 'reload' || nav?.type === 'back_forward';
+}
+
 /** The answer of the first `openedFromOutside` of this load. */
-let startMark: boolean | null = null;
+const initialMarked =
+  typeof history !== 'undefined' &&
+  isReloadOrHistoryTraversal() &&
+  carriesAppMark(history.state);
+let startMark: boolean | null = initialMarked ? false : null;
 
 /**
  * Forgets the answer of `openedFromOutside`, for a test that simulates another load of the app.

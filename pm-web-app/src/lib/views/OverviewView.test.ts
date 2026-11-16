@@ -481,7 +481,6 @@ describe('OverviewView component', () => {
       reason: null,
       ended_at: '2026-10-14T10:00:00Z',
     });
-    expect(localStorage.getItem('pm_overview_show_ended')).toBe('1');
 
     await fireEvent.click(screen.getByTestId('ended-report-pln-relay-drops'));
 
@@ -490,19 +489,30 @@ describe('OverviewView component', () => {
     expect(state.selectedReportDetailPlanId).toBe('pln-relay-drops');
   });
 
-  it('restores the ended work page from the address, never from storage', async () => {
-    // The mode is the address's: a stored ended section is no longer a remembered place, so the
-    // address is what opens it (the page still remembers which page it showed).
+  it('never reads or writes pm_overview_show_ended or pm_overview_ended_page in localStorage', async () => {
     localStorage.setItem('pm_overview_show_ended', '1');
     localStorage.setItem('pm_overview_ended_page', '2');
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
     runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
 
     render(OverviewView);
 
     await waitFor(() => {
-      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 2);
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 1);
       expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
     });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+    await fireEvent.click(screen.getByTestId('ended-open-pln-relay-drops'));
+    await fireEvent.click(screen.getByText('Back'));
+
+    const readKeys = getItemSpy.mock.calls.map(([key]) => key);
+    const writtenKeys = setItemSpy.mock.calls.map(([key]) => key);
+    expect(readKeys).not.toContain('pm_overview_show_ended');
+    expect(readKeys).not.toContain('pm_overview_ended_page');
+    expect(writtenKeys).not.toContain('pm_overview_show_ended');
+    expect(writtenKeys).not.toContain('pm_overview_ended_page');
   });
 
   it('opens running work when the address names no ended mode, even after ended work was seen', async () => {

@@ -83,13 +83,19 @@ describe('PhaseLabel', () => {
     expect(container.textContent?.trim()).toBe('');
   });
 
-  it('lets no wire token reach the DOM for an unknown role', () => {
-    useCatalogue('en');
-    const { container } = render(PhaseLabel, { props: { phase: 'execute', role: 'teleported' } });
+  it.each([
+    ['en', 'execute · unknown'],
+    ['de', 'execute · unbekannt'],
+  ] as const)(
+    'lets no wire token reach the DOM and renders state.unknown for an unknown role in %s',
+    (locale, expected) => {
+      useCatalogue(locale);
+      const { container } = render(PhaseLabel, { props: { phase: 'execute', role: 'teleported' } });
 
-    expect(container.innerHTML).not.toContain('teleported');
-    expect(container.querySelector('.phase-label')).toHaveTextContent('execute');
-  });
+      expect(container.innerHTML).not.toContain('teleported');
+      expect(container.querySelector('.phase-label')).toHaveTextContent(expected);
+    },
+  );
 
   it('draws no box and takes the secondary text colour', () => {
     expect(ruleOf(STYLE, '.phase-label')).toContain('color: var(--color-text-secondary)');

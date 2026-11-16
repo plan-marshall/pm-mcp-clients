@@ -8,8 +8,12 @@
   import { errorCodeOf } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
-  import WorkflowIcon from '../components/WorkflowIcon.svelte';
-  import { phaseIconId } from '../icons/workflowIcons';
+  import KindMark from '../components/KindMark.svelte';
+  import ReasonBadge from '../components/ReasonBadge.svelte';
+  import PhaseLabel from '../components/PhaseLabel.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import SegmentedControl from '../components/SegmentedControl.svelte';
+  import IconButton from '../components/IconButton.svelte';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { displayState, displayUnit, hasUnitName } from '../display';
   import { formatDuration, formatTime } from '../display/format';
@@ -28,9 +32,10 @@
     openEpicView,
     openEndedPlanView,
     openCompletionReport,
+    type RuntimeState,
   } from '../stores/runtime';
   import { readRememberedPlace, writeRememberedPlace } from '../navigation/rememberedPlace';
-  import { writeAddress } from '../navigation/history';
+  import { carriesAppMark, openedFromOutside, writeAddress } from '../navigation/history';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
@@ -44,6 +49,15 @@
   let currentEndedPage = 1;
   let detailRequestGeneration = 0;
   let endedRequestGeneration = 0;
+  let mounted = false;
+  let lastStoreEnded = false;
+  let lastStoreGroup: 'epic' | null = null;
+  let lastStoreProject: string | null = null;
+
+  $: viewOptions = [
+    { id: 'plan', label: $t('overview.view.by_plan') },
+    { id: 'epic', label: $t('overview.view.by_epic') },
+  ];
 
   let isLoadingProjects = false;
   let isLoadingDetail = false;
@@ -200,14 +214,63 @@
 
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
+  function syncFromAddress(address: RuntimeState): void {
+    const storeEnded = address.lensMode === 'ended';
+    if (storeEnded !== lastStoreEnded) {
+      lastStoreEnded = storeEnded;
+      if (storeEnded) {
+        showEnded = true;
+        if (selectedProjectId) {
+          void loadEndedWork(selectedProjectId, currentEndedPage);
+        }
+      } else {
+        showEnded = false;
+        currentEndedPage = 1;
+        endedRequestGeneration += 1;
+        endedPage = null;
+        endedError = null;
+      }
+    }
+
+    const storeGroup = address.lensGroup ?? null;
+    if (storeGroup !== lastStoreGroup) {
+      lastStoreGroup = storeGroup;
+      viewMode = storeGroup === 'epic' ? 'epic' : 'plan';
+    }
+
+    const storeProject = address.lensProject ?? null;
+    if (storeProject !== lastStoreProject) {
+      lastStoreProject = storeProject;
+      if (
+        storeProject &&
+        storeProject !== selectedProjectId &&
+        projects.some((p) => p.project_id === storeProject)
+      ) {
+        detailRequestGeneration += 1;
+        selectedProjectId = storeProject;
+        void loadProjectDetail(storeProject);
+      }
+    }
+  }
+
+  $: if (mounted && $runtimeStore.currentRoute === 'overview') {
+    syncFromAddress($runtimeStore);
+  }
+
   // The app renders in the browser only (`ssr = false` in the root layout), so the view reaches
   // `localStorage` without asking whether a window exists.
   onMount(async () => {
     // The address wins over the remembered place: the lens's grouping and its scope are read from
-    // it, and only where it names neither does the place decide.
+    // it, and only where it names neither — and the history entry is not a marked bare /overview —
+    // does the place decide.
     const address = get(runtimeStore);
     const place = readRememberedPlace();
-    if (address.lensGroup === 'epic' || place.group === 'epic') {
+    const markedBareOverview =
+      typeof window !== 'undefined' &&
+      (carriesAppMark(window.history.state) || !openedFromOutside()) &&
+      window.location.pathname === '/overview' &&
+      window.location.search === '';
+    if (address.lensGroup === 'epic' || (!markedBareOverview && place.group === 'epic')) {
       viewMode = 'epic';
     }
     // A figure of the system view asked for the plans or the epics; consume it once.
@@ -219,21 +282,16 @@
       viewMode = 'epic';
       runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
     }
-    if (address.selectedProjectId) {
+    if (address.lensProject) {
+      selectedProjectId = address.lensProject;
+    } else if (address.selectedProjectId) {
       selectedProjectId = address.selectedProjectId;
-    } else if (place.project) {
+    } else if (!markedBareOverview && place.project) {
       selectedProjectId = place.project;
     }
     // The mode is the address's, never the remembered place's: a running-work address opens
     // running work even after the operator looked at Ended Work last time.
     showEnded = address.lensMode === 'ended';
-    const savedEndedPage = Number.parseInt(
-      localStorage.getItem('pm_overview_ended_page') ?? '',
-      10,
-    );
-    if (Number.isInteger(savedEndedPage) && savedEndedPage > 0) {
-      currentEndedPage = savedEndedPage;
-    }
     // The store names the project another view opened one step ago; it wins over the one this
     // browser last selected.
     const fromStore = get(runtimeStore).selectedProjectId;
@@ -243,6 +301,11 @@
       // later visit falls back to the browser's own selection rather than snapping back.
       runtimeStore.update((s) => ({ ...s, selectedProjectId: null }));
     }
+
+    lastStoreEnded = address.lensMode === 'ended';
+    lastStoreGroup = address.lensGroup ?? null;
+    lastStoreProject = address.lensProject ?? null;
+    mounted = true;
 
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
       if (
@@ -360,21 +423,30 @@
     endedPage = null;
     endedError = null;
     currentEndedPage = 1;
-    writeRememberedPlace({ ...readRememberedPlace(), project: projectId, planId: null, epicId: null });
+    writeRememberedPlace({
+      ...readRememberedPlace(),
+      project: projectId,
+      planId: null,
+      epicId: null,
+    });
     // The scope is the address's: the writer replaces `/overview` with the project it names.
-    runtimeStore.update((s) => ({ ...s, lensProject: projectId, selectedProjectId: projectId, lensMode: null }));
-    writeAddress({ route: 'overview', project: projectId }, 'replace');
-    localStorage.setItem('pm_overview_show_ended', '0');
-    localStorage.setItem('pm_overview_ended_page', '1');
+    lastStoreProject = projectId;
+    lastStoreEnded = false;
+    runtimeStore.update((s) => ({
+      ...s,
+      lensProject: projectId,
+      selectedProjectId: projectId,
+      lensMode: null,
+    }));
+    writeAddress(
+      {
+        route: 'overview',
+        project: projectId,
+        group: viewMode === 'epic' ? 'epic' : undefined,
+      },
+      'replace',
+    );
     void loadProjectDetail(projectId);
-  }
-
-  /**
-   * Remembers the Ended Work section while the operator opens one of its plans or reports.
-   */
-  function rememberEndedState() {
-    localStorage.setItem('pm_overview_show_ended', showEnded ? '1' : '0');
-    localStorage.setItem('pm_overview_ended_page', String(currentEndedPage));
   }
 
   /**
@@ -385,7 +457,6 @@
   function openEndedItem(item: EndedWorkPage['items'][number]) {
     const id = item.id ?? item.item_id;
     if (!id) return;
-    rememberEndedState();
     if (item.kind === 'epic') {
       openEpicView(id);
       return;
@@ -406,7 +477,6 @@
   function openEndedReport(item: EndedWorkPage['items'][number]) {
     const id = item.id ?? item.item_id;
     if (!id) return;
-    rememberEndedState();
     openCompletionReport(id);
   }
 
@@ -415,12 +485,14 @@
     writeRememberedPlace({ ...readRememberedPlace(), group: mode });
     // The grouping is the address's too, so a reload opens the same list.
     const project = get(runtimeStore).lensProject;
+    lastStoreGroup = mode === 'epic' ? 'epic' : null;
     runtimeStore.update((s) => ({ ...s, lensGroup: mode === 'epic' ? 'epic' : null }));
     writeAddress(
       {
         route: 'overview',
         project: project ?? undefined,
         group: mode === 'epic' ? 'epic' : undefined,
+        mode: showEnded ? 'ended' : undefined,
       },
       'replace',
     );
@@ -429,12 +501,20 @@
   async function openEndedWork() {
     showEnded = true;
     currentEndedPage = 1;
-    rememberEndedState();
     // The mode is the address's: the view writes it so a reload and the browser's back return to
     // Ended Work, and a click on Running work (a push of an address without it) leaves it.
     const project = selectedProjectId ?? undefined;
+    lastStoreEnded = true;
     runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
-    writeAddress({ route: 'overview', project, mode: 'ended' }, 'replace');
+    writeAddress(
+      {
+        route: 'overview',
+        project,
+        mode: 'ended',
+        group: viewMode === 'epic' ? 'epic' : undefined,
+      },
+      'replace',
+    );
     if (selectedProjectId) {
       await loadEndedWork(selectedProjectId, 1);
     }
@@ -446,10 +526,17 @@
     endedRequestGeneration += 1;
     endedPage = null;
     endedError = null;
-    rememberEndedState();
     // Leaving Ended Work drops the mode from the address.
+    lastStoreEnded = false;
     runtimeStore.update((s) => ({ ...s, lensMode: null }));
-    writeAddress({ route: 'overview', project: selectedProjectId ?? undefined }, 'replace');
+    writeAddress(
+      {
+        route: 'overview',
+        project: selectedProjectId ?? undefined,
+        group: viewMode === 'epic' ? 'epic' : undefined,
+      },
+      'replace',
+    );
   }
 
   async function loadEndedWork(projectId: string, page: number) {
@@ -461,7 +548,6 @@
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = res;
         currentEndedPage = page;
-        rememberEndedState();
       }
     } catch (err: unknown) {
       // A page that could not be read is a failure with its code, never "no ended work".
@@ -533,20 +619,6 @@
     return item.needs_operator_kind ?? '';
   }
 
-  /**
-   * The reason badge of a row (components-tags, ReasonBadge): one catalogue key with the count and
-   * the reason's word; the `!` comes from the catalogue. A row that names no reason reads `other`.
-   *
-   * @param item the plan or epic that needs the operator
-   * @returns the badge's text
-   */
-  function needsBadge(item: ActivePlanSummary | ActiveEpicSummary): string {
-    return $t('overview.needs.badge', {
-      count: getNeedsOperatorCount(item),
-      reason: $t(`overview.needs.${getNeedsOperatorKind(item) || 'other'}`),
-    });
-  }
-
   function getPlanTasksTotal(p: ActivePlanSummary): number {
     return p.tasks_total ?? 0;
   }
@@ -573,6 +645,34 @@
 
   function getPlanPhaseEnteredAt(p: ActivePlanSummary): string | null {
     return p.phase_entered_at || null;
+  }
+
+  /**
+   * Maps a plan phase state to its `StatusLabel` tone (`components-tags.adoc#status-label`).
+   *
+   * @param state the runtime's plan state value
+   * @returns the matching semantic tone
+   */
+  function planStateTone(state: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    switch (state) {
+      case 'running':
+      case 'pausing':
+        return 'running';
+      case 'waiting':
+      case 'waiting_for_you':
+      case 'held':
+      case 'stalled':
+        return 'attention';
+      case 'failed':
+      case 'aborted':
+        return 'danger';
+      case 'done':
+      case 'merged':
+      case 'completed':
+        return 'success';
+      default:
+        return 'neutral';
+    }
   }
 
   function getEpicRunningCount(e: ActiveEpicSummary): number {
@@ -836,28 +936,12 @@
           </div>
 
           <div class="project-header__actions">
-            <div class="view-toggle" role="radiogroup" aria-label={$t('overview.view.label')}>
-              <button
-                class="toggle-btn"
-                class:toggle-btn--active={viewMode === 'plan'}
-                role="radio"
-                aria-checked={viewMode === 'plan'}
-                data-advisory={$t('overview.view.by_plan.title')}
-                on:click={() => setViewMode('plan')}
-              >
-                {$t('overview.view.by_plan')}
-              </button>
-              <button
-                class="toggle-btn"
-                class:toggle-btn--active={viewMode === 'epic'}
-                role="radio"
-                aria-checked={viewMode === 'epic'}
-                data-advisory={$t('overview.view.by_epic.title')}
-                on:click={() => setViewMode('epic')}
-              >
-                {$t('overview.view.by_epic')}
-              </button>
-            </div>
+            <SegmentedControl
+              label={$t('overview.view.label')}
+              value={viewMode}
+              options={viewOptions}
+              onChange={(id) => setViewMode(id as 'plan' | 'epic')}
+            />
 
             <Button
               variant="secondary"
@@ -931,6 +1015,141 @@
           <p class="empty-text">{$t('overview.projects.none_active')}</p>
         {:else}
           <!-- Cards Container -->
+          {#snippet planRow(plan: ActivePlanSummary, inEpic: boolean)}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div
+              class="work-card work-card--plan plan-card"
+              class:nested-plan-row={inEpic}
+              data-testid="plan-card"
+              on:click={(event) => {
+                if (!inEpic) {
+                  event.stopPropagation();
+                  openPlanView(planIdOf(plan));
+                }
+              }}
+            >
+              <div class="plan-row">
+                <div class="plan-row__col plan-row__col--main" data-testid="col-main">
+                  <div class="plan-row__heading">
+                    <KindMark kind="plan" />
+                    <h3 class="work-card__title">
+                      <button
+                        type="button"
+                        class="work-card__open"
+                        on:click={(event) => {
+                          if (!inEpic) {
+                            event.stopPropagation();
+                            openPlanView(planIdOf(plan));
+                          }
+                        }}
+                      >
+                        {plan.title}
+                      </button>
+                    </h3>
+                  </div>
+                  {#if (!inEpic && getPlanEpicTitle(plan)) || getPlanPrNumber(plan)}
+                    <div class="plan-row__sub">
+                      {#if !inEpic && getPlanEpicTitle(plan)}
+                        <span class="plan-row__meta">
+                          {$t('overview.plan.belongs_to', {
+                            epic: getPlanEpicTitle(plan),
+                          })}
+                        </span>
+                      {/if}
+                      {#if getPlanPrNumber(plan)}
+                        <a
+                          href={getPlanPrUrl(plan)}
+                          target="_blank"
+                          rel="noreferrer"
+                          class="pr-link"
+                          on:click|stopPropagation
+                        >
+                          #{getPlanPrNumber(plan)}
+                        </a>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="plan-row__col plan-row__col--needs" data-testid="col-needs">
+                  {#if getNeedsOperatorCount(plan) > 0}
+                    <span
+                      class="badge--attention needs-slot"
+                      data-testid="needs-badge-{plan.plan_id}"
+                    >
+                      <ReasonBadge
+                        reason={getNeedsOperatorKind(plan) || 'other'}
+                        count={getNeedsOperatorCount(plan)}
+                      />
+                    </span>
+                  {/if}
+                  {#if getPlanOffTrack(plan)}
+                    <span
+                      class="badge badge--warning badge--off-track"
+                      data-testid="off-track-badge"
+                    >
+                      {$t('overview.plan.off_track', {
+                        signal: displayState('signal', getPlanOffTrack(plan), $t),
+                      })}
+                    </span>
+                  {/if}
+                </div>
+
+                <div class="plan-row__col plan-row__col--phase" data-testid="col-phase">
+                  <span class="badge--phase phase-slot">
+                    <PhaseLabel phase={getPlanPhase(plan)} />
+                  </span>
+                </div>
+
+                <div class="plan-row__col plan-row__col--state" data-testid="col-state">
+                  <span class="badge--state badge--state-{getPlanState(plan)} state-slot">
+                    <StatusLabel
+                      label={displayState('plan', getPlanState(plan), $t)}
+                      tone={planStateTone(getPlanState(plan))}
+                      fixed={true}
+                    />
+                  </span>
+                </div>
+
+                <div class="plan-row__col plan-row__col--progress" data-testid="col-progress">
+                  {#if getPlanTasksTotal(plan) > 0}
+                    <span class="plan-row__meta">
+                      {$t('overview.progress.tasks', {
+                        done: getPlanTasksDone(plan),
+                        total: getPlanTasksTotal(plan),
+                      })}
+                    </span>
+                  {/if}
+                </div>
+
+                <div class="plan-row__col plan-row__col--since" data-testid="col-since">
+                  {#if getPlanPhaseEnteredAt(plan)}
+                    <span class="plan-row__meta">
+                      {$t('overview.time.in_phase', {
+                        phase: getPlanPhase(plan),
+                        duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
+                      })}
+                    </span>
+                  {/if}
+                </div>
+
+                <div class="plan-row__col plan-row__col--actions card-action" data-testid="col-actions">
+                  <IconButton
+                    icon="act.more"
+                    size="sm"
+                    label={$t('control.actions.open')}
+                    advisory={$t('control.actions.open.title')}
+                    data-testid="overview-actions-{plan.plan_id}"
+                    on:click={(event) => {
+                      event.stopPropagation();
+                      openControls('plan', plan.plan_id);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          {/snippet}
+
           <div class="cards-container">
             {#if (viewMode === 'plan' ? detail.plans.length : detail.epics.length) > 0}
               <FilterInput
@@ -950,102 +1169,7 @@
               {:else}
                 <div class="plan-cards">
                   {#each filteredPlans as plan}
-                    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                    <div
-                      class="work-card work-card--plan plan-card"
-                      data-testid="plan-card"
-                      on:click={() => openPlanView(planIdOf(plan))}
-                    >
-                      <div class="work-card__header">
-                        <div class="work-card__title-group">
-                          <span class="work-card__glyph">▸</span>
-                          <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                          <h3 class="work-card__title">
-                            <button
-                              type="button"
-                              class="work-card__open"
-                              on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
-                            >
-                              {plan.title}
-                            </button>
-                          </h3>
-                        </div>
-                        <button
-                          type="button"
-                          class="card-action"
-                          data-testid="overview-actions-{plan.plan_id}"
-                          data-advisory={$t('control.actions.open.title')}
-                          on:click|stopPropagation={() => openControls('plan', plan.plan_id)}
-                        >
-                          {$t('control.actions.open')}
-                        </button>
-
-                        <div class="work-card__badges">
-                          {#if getNeedsOperatorCount(plan) > 0}
-                            <span
-                              class="badge badge--attention"
-                              data-testid="needs-badge-{plan.plan_id}"
-                            >
-                              {needsBadge(plan)}
-                            </span>
-                          {/if}
-                          <span class="badge badge--phase">
-                            <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                            {getPlanPhase(plan)}
-                          </span>
-                          <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                            {displayState('plan', getPlanState(plan), $t)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="work-card__details">
-                        {#if getPlanPhaseEnteredAt(plan)}
-                          <span class="detail-item">
-                            {$t('overview.time.in_phase', {
-                              phase: getPlanPhase(plan),
-                              duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
-                            })}
-                          </span>
-                        {/if}
-                        {#if getPlanTasksTotal(plan) > 0}
-                          <span class="detail-item">
-                            {$t('overview.progress.tasks', {
-                              done: getPlanTasksDone(plan),
-                              total: getPlanTasksTotal(plan),
-                            })}
-                          </span>
-                        {/if}
-                        {#if getPlanEpicTitle(plan)}
-                          <span class="detail-item">
-                            {$t('overview.plan.belongs_to', {
-                              epic: '◇ ' + getPlanEpicTitle(plan),
-                            })}
-                          </span>
-                        {/if}
-                        {#if getPlanOffTrack(plan)}
-                          <span
-                            class="badge badge--warning badge--off-track"
-                            data-testid="off-track-badge"
-                          >
-                            {$t('overview.plan.off_track', {
-                              signal: displayState('signal', getPlanOffTrack(plan), $t),
-                            })}
-                          </span>
-                        {/if}
-                        {#if getPlanPrNumber(plan)}
-                          <a
-                            href={getPlanPrUrl(plan)}
-                            target="_blank"
-                            rel="noreferrer"
-                            class="pr-link"
-                            on:click|stopPropagation
-                          >
-                            #{getPlanPrNumber(plan)}
-                          </a>
-                        {/if}
-                      </div>
-                    </div>
+                    {@render planRow(plan, false)}
                   {/each}
                 </div>
               {/if}
@@ -1066,10 +1190,7 @@
                     >
                       <div class="work-card__header">
                         <div class="work-card__title-group">
-                          <span class="work-card__glyph">◇</span>
-                          <span class="badge badge--kind badge--epic"
-                            >{$t('overview.kind.epic')}</span
-                          >
+                          <KindMark kind="epic" />
                           <h3 class="work-card__title">
                             <button
                               type="button"
@@ -1080,23 +1201,17 @@
                             </button>
                           </h3>
                         </div>
-                        <button
-                          type="button"
-                          class="card-action"
-                          data-testid="overview-actions-epic-{epicIdOf(epic)}"
-                          data-advisory={$t('control.actions.open.title')}
-                          on:click|stopPropagation={() => openControls('epic', epicIdOf(epic))}
-                        >
-                          {$t('control.actions.open')}
-                        </button>
 
                         <div class="work-card__badges">
                           {#if getNeedsOperatorCount(epic) > 0}
                             <span
-                              class="badge badge--attention"
+                              class="badge--attention needs-slot"
                               data-testid="needs-badge-epic-{epicIdOf(epic)}"
                             >
-                              {needsBadge(epic)}
+                              <ReasonBadge
+                                reason={getNeedsOperatorKind(epic) || 'other'}
+                                count={getNeedsOperatorCount(epic)}
+                              />
                             </span>
                           {/if}
                           <span class="badge badge--counts">
@@ -1105,48 +1220,27 @@
                               staged: getEpicStagedCount(epic),
                             })}
                           </span>
+                          <div class="plan-row__col plan-row__col--actions card-action">
+                            <IconButton
+                              icon="act.more"
+                              size="sm"
+                              label={$t('control.actions.open')}
+                              advisory={$t('control.actions.open.title')}
+                              data-testid="overview-actions-epic-{epicIdOf(epic)}"
+                              on:click={(event) => {
+                                event.stopPropagation();
+                                openControls('epic', epicIdOf(epic));
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
 
                       <!-- Nested Plans -->
                       {#if epic.plans && epic.plans.length > 0}
                         <div class="nested-plans">
-                          {#each epic.plans as childPlan, idx}
-                            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                            <div
-                              class="nested-plan-row"
-                              on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
-                            >
-                              <span class="nested-tree-char"
-                                >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
-                              >
-                              <button
-                                type="button"
-                                class="work-card__open nested-plan-title"
-                                on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
-                              >
-                                {childPlan.title}
-                              </button>
-                              <span class="badge badge--phase">
-                                <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
-                                {getPlanPhase(childPlan)}
-                              </span>
-                              <span
-                                class="badge badge--state badge--state-{getPlanState(childPlan)}"
-                              >
-                                {displayState('plan', getPlanState(childPlan), $t)}
-                              </span>
-                              <button
-                                type="button"
-                                class="card-action"
-                                data-testid="overview-actions-{planIdOf(childPlan)}"
-                                data-advisory={$t('control.actions.open.title')}
-                                on:click|stopPropagation={() =>
-                                  openControls('plan', planIdOf(childPlan))}
-                              >
-                                {$t('control.actions.open')}
-                              </button>
-                            </div>
+                          {#each epic.plans as childPlan}
+                            {@render planRow(childPlan, true)}
                           {/each}
                         </div>
                       {/if}
@@ -1157,41 +1251,11 @@
                   {#if filteredPlans.some((p) => !p.epic_id)}
                     <div class="without-epic-section">
                       <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
-                      {#each filteredPlans.filter((p) => !p.epic_id) as plan}
-                        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-                        <div
-                          class="work-card work-card--plan"
-                          on:click={() => openPlanView(planIdOf(plan))}
-                        >
-                          <div class="work-card__header">
-                            <div class="work-card__title-group">
-                              <span class="work-card__glyph">▸</span>
-                              <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                              <h3 class="work-card__title">
-                                <button
-                                  type="button"
-                                  class="work-card__open"
-                                  on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
-                                >
-                                  {plan.title}
-                                </button>
-                              </h3>
-                            </div>
-                            <div class="work-card__badges">
-                              {#if getNeedsOperatorCount(plan) > 0}
-                                <span class="badge badge--attention">{needsBadge(plan)}</span>
-                              {/if}
-                              <span class="badge badge--phase">
-                                <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
-                                {getPlanPhase(plan)}
-                              </span>
-                              <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                                {displayState('plan', getPlanState(plan), $t)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      {/each}
+                      <div class="plan-cards">
+                        {#each filteredPlans.filter((p) => !p.epic_id) as plan}
+                          {@render planRow(plan, false)}
+                        {/each}
+                      </div>
                     </div>
                   {/if}
                 </div>
@@ -1340,6 +1404,7 @@
   /* Main Panel */
   .overview-main {
     flex: 1;
+    min-width: 0;
     overflow-y: auto;
     padding: var(--space-6);
   }
@@ -1379,33 +1444,19 @@
     gap: var(--space-3);
   }
 
-  .view-toggle {
-    display: flex;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-
-  .toggle-btn {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    background: var(--color-bg-surface);
-    color: var(--color-text-secondary);
-    border: none;
-    cursor: pointer;
-  }
-
-  .toggle-btn--active {
-    background: var(--color-primary);
-    color: var(--color-primary-text);
-  }
-
   /* Cards */
   .cards-container {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+  }
+
+  .plan-cards,
+  .epic-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .work-card {
@@ -1414,6 +1465,76 @@
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     box-shadow: var(--shadow-sm);
+  }
+
+  .plan-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .plan-row__col {
+    min-width: 0;
+  }
+
+  .plan-row__col--main {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .plan-row__heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .plan-row__sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .plan-row__meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .plan-row__col--needs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .plan-row__col--actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  @container (min-width: 760px) {
+    .plan-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 128px 112px 136px 88px 120px 28px;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .plan-row__col--main {
+      flex: none;
+    }
+
+    .plan-row__col--actions {
+      margin-left: 0;
+    }
   }
 
   .work-card__header {
@@ -1429,15 +1550,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  .work-card__glyph {
-    color: var(--color-primary);
-    font-weight: bold;
-  }
-
-  .work-card--epic .work-card__glyph {
-    color: var(--color-kind-epic);
   }
 
   .work-card__title {
@@ -1464,29 +1576,11 @@
     gap: var(--space-2);
   }
 
-  .work-card__details {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-  }
-
-  .detail-item::after {
-    content: '·';
-    margin-left: var(--space-3);
-  }
-
-  .detail-item:last-child::after {
-    content: '';
-    margin-left: 0;
-  }
-
   /* Nested Plans */
   .nested-plans {
     margin-top: var(--space-3);
-    padding-top: var(--space-2);
+    padding-top: var(--space-3);
+    padding-left: 0;
     border-top: 1px solid var(--color-border-subtle);
     display: flex;
     flex-direction: column;
@@ -1494,21 +1588,8 @@
   }
 
   .nested-plan-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-    padding-left: var(--space-4);
-  }
-
-  .nested-tree-char {
-    font-family: var(--font-mono);
-    color: var(--color-text-muted);
-  }
-
-  .nested-plan-title {
-    flex: 1;
-    color: var(--color-text-primary);
+    box-shadow: none;
+    padding: var(--space-2) var(--space-3);
   }
 
   /* Alongside Section */
@@ -1631,20 +1712,24 @@
     font-weight: 600;
   }
 
+  .needs-slot {
+    background-color: transparent;
+  }
+
   .badge--kind {
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
-  }
-
-  .badge--epic {
-    background-color: var(--color-bg-subtle);
-    color: var(--color-kind-epic);
   }
 
   .badge--phase {
     background-color: var(--color-bg-inset);
     color: var(--color-text-primary);
     font-family: var(--font-mono);
+  }
+
+  .badge--phase.phase-slot {
+    background-color: transparent;
+    font-family: inherit;
   }
 
   .badge--state {
@@ -1667,6 +1752,10 @@
   .badge--state-pausing {
     background-color: var(--color-bg-inset);
     color: var(--color-text-secondary);
+  }
+
+  .badge--state.state-slot {
+    background-color: transparent;
   }
 
   .badge--warning {
