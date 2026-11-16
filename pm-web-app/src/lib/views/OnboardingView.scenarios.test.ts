@@ -557,4 +557,28 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
     expect(document.body.textContent).not.toContain('entry.lan-open');
   });
+
+  it('reviews the recorded setup of every step on the summary screen', () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.summary',
+        summary: 'Review the setup of this machine',
+        aspects: [
+          { aspect: 'language', step: 1, summary: 'Deutsch, models English' },
+          { aspect: 'roles', step: 4, summary: '31 roles assigned' },
+        ],
+        links: { done: { href: '/api/v1/onboarding/summary/done', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Review the setup of this machine',
+    );
+    const summary = screen.getByTestId('setup-summary');
+    expect(summary).toHaveTextContent('Deutsch, models English');
+    expect(summary).toHaveTextContent('31 roles assigned');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
 });

@@ -10,12 +10,14 @@
  * `pm-mock-runtime`'s `onboarding.json` and fails for a state that resolves to nothing, so a state
  * added to the mock without a screen is a red build, never a generic card in the running app.
  *
- * Two groups are answered by the fallback on purpose:
+ * Two groups are answered by the fallback on purpose, and both are named one id at a time, so a
+ * state added to either group is a red build until someone decides what it is:
  *
  * - `entry.*` states have no web screen by the operator's decision of 2026-11-10; the fallback
  *   names the terminal command that shows them (PLAN-64, Operator Decisions);
- * - `settings.*`, `wait.*` and `web.*` states belong to the settings frame, the decision waits and
- *   the pairing page. The onboarding frame cannot draw them, so it says so rather than guessing.
+ * - the states of the settings frame, the decision waits and the pairing page, listed in
+ *   `OTHER_FRAME_STATES`. The onboarding frame cannot draw them, so it says so rather than
+ *   guessing.
  */
 
 import type { Component } from 'svelte';
@@ -24,8 +26,10 @@ import './screens.css';
 
 /** The runtime's onboarding state, re-exported for the screens and the tests that read it. */
 export type { OnboardingState };
+
 import MissingScreen from './MissingScreen.svelte';
 import ModeScreen from './ModeScreen.svelte';
+import SummaryScreen from './SummaryScreen.svelte';
 import ConsentScreen from './ConsentScreen.svelte';
 import CompletedScreen from './CompletedScreen.svelte';
 import WorkingScreen from './WorkingScreen.svelte';
@@ -63,8 +67,6 @@ export interface OfferedLink {
 export interface OnboardingScreenContext {
   /** The state the runtime reports, or `null` before the first read. */
   state: OnboardingState | null;
-  /** The state's id, as the runtime reports it. */
-  stateId: string;
   /** The links the state offers, in the runtime's order. */
   links: OfferedLink[];
   /** Whether a step call is in flight. */
@@ -109,7 +111,7 @@ export interface ScreenRule {
   /** The screen's name, for the registry test and the progress record. */
   id: string;
   /** Whether the rule claims this state. */
-  claims: (stateId: string, state: OnboardingState | null) => boolean;
+  claims: (stateId: string) => boolean;
   /** The screen the rule draws. */
   screen: Component<ScreenProps>;
 }
@@ -141,10 +143,35 @@ const WORKING_STATES = new Set([
 const STATUS_STATES = new Set(['harness.none', 'providers.credentials', 'providers.verified', 'sonar.key']);
 
 /**
+ * The states of the frames beside the onboarding, which the onboarding frame answers with the
+ * fallback. Named one id at a time: a state added to one of those families has to be added here
+ * deliberately, and until it is, the registry test is red.
+ */
+export const OTHER_FRAME_STATES = new Set([
+  'settings.choose',
+  'settings.store-credential',
+  'settings.verify-providers',
+  'settings.conflict',
+  'settings.withdraw',
+  'settings.documents-mode',
+  'settings.plan-defaults',
+  'settings.cleanup-durations',
+  'settings.record',
+  'wait.choose',
+  'wait.check',
+  'wait.moved',
+  'wait.cancelled',
+  'web.pair',
+  'web.paired',
+  'status.only',
+]);
+
+/**
  * The registry, in order: the first rule that claims a state draws it.
  *
  * A rule is a pattern where the states share their design (a consent is a consent, whatever step
- * asks it) and an id where the state is one screen of its own.
+ * asks it) and an id where the state is one screen of its own. No rule is a catch-all: an id no
+ * rule names is a screen nobody designed, and the test says so.
  */
 export const SCREEN_RULES: readonly ScreenRule[] = [
   {
@@ -158,9 +185,13 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
     screen: ConsentScreen,
   },
   {
+    id: 'summary',
+    claims: (stateId) => stateId === 'onboard.summary',
+    screen: SummaryScreen,
+  },
+  {
     id: 'mode',
-    claims: (stateId) =>
-      stateId === 'onboard.mode' || stateId === 'onboard.entry' || stateId === 'onboard.summary',
+    claims: (stateId) => stateId === 'onboard.mode' || stateId === 'onboard.entry',
     screen: ModeScreen,
   },
   {
@@ -239,10 +270,7 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'working',
-    // A working state reports what it does; the runtime marks it with its `kind` where it sends
-    // one, and the states of this design carry it otherwise.
-    claims: (stateId, state) =>
-      state?.kind === 'working' || WORKING_STATES.has(stateId),
+    claims: (stateId) => WORKING_STATES.has(stateId),
     screen: WorkingScreen,
   },
   {
@@ -252,13 +280,7 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'missing',
-    // The frames beside the onboarding own these states; the onboarding frame says so.
-    claims: (stateId) =>
-      stateId.startsWith('entry.') ||
-      stateId.startsWith('settings.') ||
-      stateId.startsWith('wait.') ||
-      stateId.startsWith('web.') ||
-      stateId === 'status.only',
+    claims: (stateId) => stateId.startsWith('entry.') || OTHER_FRAME_STATES.has(stateId),
     screen: MissingScreen,
   },
 ];
@@ -270,30 +292,22 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
  * the state's id as content.
  *
  * @param stateId the state's id, as the runtime reports it
- * @param state the state's representation, when the runtime reported one
  * @returns the screen, or `null` for a state no screen claims
  */
-export function screenFor(
-  stateId: string,
-  state: OnboardingState | null = null,
-): Component<ScreenProps> | null {
+export function screenFor(stateId: string): Component<ScreenProps> | null {
   for (const rule of SCREEN_RULES) {
-    if (rule.claims(stateId, state)) return rule.screen;
+    if (rule.claims(stateId)) return rule.screen;
   }
   return null;
 }
 
 /**
  * @param stateId the state's id, as the runtime reports it
- * @param state the state's representation, when the runtime reported one
  * @returns the name of the screen drawing the state, or `missing` for one no screen claims
  */
-export function screenNameFor(
-  stateId: string,
-  state: OnboardingState | null = null,
-): string {
+export function screenNameFor(stateId: string): string {
   for (const rule of SCREEN_RULES) {
-    if (rule.claims(stateId, state)) return rule.id;
+    if (rule.claims(stateId)) return rule.id;
   }
   return 'missing';
 }

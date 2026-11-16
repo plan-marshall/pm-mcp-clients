@@ -14,7 +14,7 @@
 <div class="state-card">
   <div class="state-card__header">
     <h1 class="state-card__title">
-      {view.field('summary') || $t('onboard.step.models')}
+      {view.field('summary') || $t('onboard.state.details')}
     </h1>
   </div>
   <div class="model-working">

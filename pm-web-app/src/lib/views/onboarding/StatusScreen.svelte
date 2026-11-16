@@ -17,6 +17,12 @@
     </h1>
   </div>
   <dl class="detail-list">
+    {#if view.field('provider')}
+      <div class="detail-row">
+        <dt>{$t('onboard.providers.field')}</dt>
+        <dd>{view.field('provider')}</dd>
+      </div>
+    {/if}
     {#if view.field('cause')}
       <div class="detail-row">
         <dt>{$t('onboard.state.cause')}</dt>

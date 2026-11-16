@@ -57,7 +57,7 @@
   $: doneSteps = completedStepNumbers($runtimeStore.completedSteps);
 
   // The one screen of the current state; `null` draws the fallback.
-  $: screen = screenFor(stateId, (currentState ?? null) as OnboardingState | null);
+  $: screen = screenFor(stateId);
 
   $: offeredLinks = getLinks(currentState);
 
@@ -239,7 +239,6 @@
   // Everything a screen reads and reports: the runtime conversation stays with this view.
   $: view = {
     state: (currentState ?? null) as OnboardingState | null,
-    stateId,
     links: offeredLinks,
     busy: isSubmitting,
     doneSteps,
