@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
   ATTENTION_KINDS,
+  attentionActLabelOf,
   attentionFallbackKeyOf,
   attentionStore,
   attentionTargetOf,
@@ -121,6 +122,40 @@ describe('the attention store', () => {
     expect(attentionTargetOf(item)).toBe('/decisions/Q-016');
     expect(attentionTitleOf(item)).toBe('');
     expect(attentionFallbackKeyOf(item)).toBe('overview.needs.decision');
+    // The act names the decision by its id, never by the rail's own word.
+    expect(attentionActLabelOf(item)).toEqual({
+      key: 'overview.needs.decision',
+      args: { id: 'Q-016' },
+    });
+  });
+
+  it('gives every kind the runtime serves a place and an act', () => {
+    for (const kind of ATTENTION_KINDS) {
+      const item = itemOf(kind);
+
+      expect(attentionTargetOf(item), `kind ${kind} names no place`).toMatch(/^\//);
+      expect(attentionActLabelOf(item).key, `kind ${kind} names no act`).toMatch(
+        /^[a-z]+\.[a-z.]+$/,
+      );
+    }
+  });
+
+  it('maps every wire spelling of a kind to the one the client reads', async () => {
+    servePages(
+      pageOf([
+        { kind: 'waiver_request' },
+        { kind: 'operator_wait' },
+        { kind: 'something_new' },
+      ]),
+    );
+
+    await loadAttention();
+
+    expect(get(attentionStore).items.map((item) => item.kind)).toEqual([
+      'waiver',
+      'waits_for_you',
+      'other',
+    ]);
   });
 
   it('keeps the order the runtime served, blocking first', async () => {

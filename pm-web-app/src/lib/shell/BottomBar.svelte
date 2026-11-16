@@ -28,6 +28,9 @@
 
   const active = $derived(activeNavRoute($runtimeStore.currentRoute));
 
+  /** Whether the route's destination is one the sheet holds, so More stands selected for it. */
+  const moreActive = $derived(!BOTTOM_ITEMS.some((item) => active === item.route));
+
   /** The same condition the rail uses: a destination is offered only where it can open. */
   const canNavigate = $derived(
     $runtimeStore.isPaired &&
@@ -145,10 +148,11 @@
     <button
       type="button"
       class="bottom-bar__item"
+      class:bottom-bar__item--active={moreActive}
       data-testid="bottom-more"
-      data-unread={$runtimeStore.unreadReportsCount > 0 ? 'true' : 'false'}
       aria-haspopup="dialog"
       aria-expanded={sheetOpen}
+      aria-current={moreActive ? 'page' : undefined}
       onclick={() => (sheetOpen = true)}
     >
       <Icon name="act.more" size={20} />

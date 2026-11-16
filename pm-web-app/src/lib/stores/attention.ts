@@ -82,7 +82,7 @@ export interface AttentionState {
   isLoading: boolean;
   /** The code of a failed read; the list keeps what it had. */
   loadError: string | null;
-  /** The kind of the item that left because another client resolved it, once. */
+  /** The kind of the item that last left because another client resolved it. */
   leftNotice: AttentionKind | null;
 }
 
@@ -273,20 +273,28 @@ export interface AttentionActLabel {
 /**
  * The words of an item's act: those of the place the act opens, never a word of the list.
  *
+ * Where the place is a decision, the place has no name of its own in the catalogue, so the act
+ * carries the decision's id beside the kind's word — a name no other control of the shell shows,
+ * so the row's act and the rail's Decisions entry never share an accessible name.
+ *
  * @param item one item of the list
  * @returns the key and arguments of the act's label
  */
 export function attentionActLabelOf(item: AttentionItem): AttentionActLabel {
-  if (item.kind === 'cleanup_due') return { key: 'system.cleanup.title' };
-  if (item.kind === 'credential') return { key: 'web.settings.tab.credentials' };
-  if (item.plan?.id) {
+  const target = attentionTargetOf(item);
+  if (target === '/system/cleanup') return { key: 'system.cleanup.title' };
+  if (target.startsWith('/settings')) return { key: 'web.settings.tab.credentials' };
+  if (target.startsWith('/decisions/')) {
+    return { key: 'overview.needs.decision', args: { id: target.slice('/decisions/'.length) } };
+  }
+  if (target.startsWith('/plans/') && item.plan?.id) {
     return { key: 'plan.view.title', args: { plan: attentionTitleOf(item) || item.plan.id } };
   }
-  if (item.epic?.id) {
+  if (target.startsWith('/epics/') && item.epic?.id) {
     return { key: 'epic.view.title', args: { epic: attentionTitleOf(item) || item.epic.id } };
   }
-  if (item.project?.id) return { key: 'project.explorer.title' };
-  return { key: 'decisions.list.title' };
+  if (target.startsWith('/projects/')) return { key: 'project.explorer.title' };
+  return { key: 'overview.needs.title' };
 }
 
 /**
@@ -364,6 +372,15 @@ export async function loadMoreAttention(): Promise<void> {
 }
 
 /**
+ * @param item one item of the list
+ * @returns the identity its row keeps: its kind, its link and its since, so a neighbour does not
+ *   take the key of the item that left
+ */
+function identityOf(item: AttentionItem): string {
+  return `${item.kind}\u0000${item.link ?? ''}\u0000${item.since ?? ''}`;
+}
+
+/**
  * @param state the state before the read
  * @param items the items the read served
  * @returns the kind of the first item that left the list, or `null` when none did
@@ -372,8 +389,8 @@ function leftOf(state: AttentionState, items: AttentionItem[]): AttentionKind | 
   if (!state.loaded) {
     return null;
   }
-  const kept = new Set(items.map((item) => `${item.kind}\u0000${item.link ?? ''}`));
-  const gone = state.items.find((item) => !kept.has(`${item.kind}\u0000${item.link ?? ''}`));
+  const kept = new Set(items.map(identityOf));
+  const gone = state.items.find((item) => !kept.has(identityOf(item)));
   return gone?.kind ?? null;
 }
 
@@ -421,10 +438,3 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
   }
 }
 
-/**
- * @param state the state of the list
- * @returns the count the rail entry, the tab title and the tab icon carry
- */
-export function attentionTotalOf(state: AttentionState): number {
-  return state.total;
-}

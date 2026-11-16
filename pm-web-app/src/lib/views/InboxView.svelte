@@ -81,6 +81,25 @@
   });
 
   /**
+   * @param project a project with running work
+   * @returns the overview's own sentence for its counts, so the two views name them alike
+   */
+  function runningCountsOf(project: ProjectSummary): string {
+    const plans = Number(project.active_plans_count ?? 0);
+    const epics = Number(project.active_epics_count ?? 0);
+    if (plans > 0 && epics > 0) {
+      return $t('overview.project.counts', { plans, epics });
+    }
+    if (plans > 0) {
+      return $t('overview.project.plans_only', { plans });
+    }
+    if (epics > 0) {
+      return $t('overview.project.epics_only', { epics });
+    }
+    return '';
+  }
+
+  /**
    * @param item one item of the list
    * @returns the name the row shows: the object's title, or the item's own word
    */
@@ -90,11 +109,13 @@
 
   /**
    * @param item one item of the list
-   * @returns the words of its act: those of the place the act opens
+   * @returns the words of its act: those of the place the act opens, and the decision's id where
+   *   the place is a decision
    */
   function actLabelOf(item: AttentionItem): string {
     const label = attentionActLabelOf(item);
-    return $t(label.key, label.args);
+    const base = $t(label.key, label.args);
+    return label.args?.id ? `${base} ${label.args.id}` : base;
   }
 
   /**
@@ -137,13 +158,9 @@
     }
   }
 
-  /**
-   * @param item one item of the list
-   * @param index its position in the list
-   * @returns the key of its row, so an item resolved elsewhere does not move its neighbours
-   */
-  function rowKey(item: AttentionItem, index: number): string {
-    return `${item.kind}\u0000${item.link ?? ''}\u0000${index}`;
+  /** @param item one item of the list @returns the key its row keeps while the item waits */
+  function rowKey(item: AttentionItem): string {
+    return `${item.kind}\u0000${item.link ?? ''}\u0000${item.since ?? ''}`;
   }
 </script>
 
@@ -198,8 +215,7 @@
                 <RowLink href={`/projects/${project.project_id}`} title={project.display_name}>
                   {#snippet kind()}<KindMark kind="project" wordHidden />{/snippet}
                   {#snippet tags()}
-                    <span>{project.active_plans_count}</span>
-                    <span>{project.active_epics_count}</span>
+                    <span>{runningCountsOf(project)}</span>
                   {/snippet}
                 </RowLink>
               </li>
@@ -209,7 +225,7 @@
       </div>
     {:else}
       <ul class="inbox__rows" data-testid="inbox-rows">
-        {#each $attentionStore.items as item, index (rowKey(item, index))}
+        {#each $attentionStore.items as item (rowKey(item))}
           <li class="inbox__row" data-testid="inbox-row" data-kind={item.kind}>
             <RowLink href={attentionTargetOf(item)} title={nameOf(item)}>
               {#snippet kind()}

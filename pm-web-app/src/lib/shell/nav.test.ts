@@ -88,6 +88,12 @@ describe('the shell navigation model', () => {
       { key: 'web.frame.rail.groups.work' },
       { key: 'web.inbox.title', args: { count: '4' } },
     ]);
+    // The top bar hands the store's own state, which carries no attention total: the trail names
+    // the page, and the count is the tab title's and the rail's.
+    expect(pathOf('inbox', {})).toEqual([
+      { key: 'web.frame.rail.groups.work' },
+      { key: 'overview.needs.title' },
+    ]);
 
     expect(pathOf('plan', state)).toEqual([
       { key: 'web.frame.rail.groups.work' },

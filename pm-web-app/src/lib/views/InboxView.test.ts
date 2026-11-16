@@ -146,10 +146,12 @@ describe('InboxView component', () => {
     expect(await screen.findByText('Nothing waits for you.')).toBeInTheDocument();
     const running = await screen.findByTestId('inbox-running-projects');
     expect(running).toHaveTextContent('pm-mcp-clients');
+    // The overview's own sentence names the counts, never two naked figures.
+    expect(running).toHaveTextContent('2 plans');
     expect(running).not.toHaveTextContent('quiet');
   });
 
-  it('reads the next page only where the runtime reports one', async () => {
+  it('offers Show more only where the runtime reports an older page', async () => {
     seedList([itemOf()], { hasOlder: true, total: 2 });
 
     render(InboxView);
