@@ -181,12 +181,13 @@ test.describe('Fully onboarded showroom', () => {
   test('verifies the machine settings and the paired devices', async ({ page }) => {
     await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByTestId('settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Access' }).click();
     await expect(page.getByTestId('devices-table')).toBeVisible();
     await expect(page.getByText('Primary Desktop Browser')).toBeVisible();
     await expect(page.getByText('Terminal Companion')).toBeVisible();
 
-    await page.getByTestId('machine-settings-button').click();
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Setup' }).click();
+    await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
     await expect(page.getByTestId('aspect-list')).toContainText('31 roles');
     await expect(page.getByTestId('aspect-list')).toContainText('Claude Code');
   });

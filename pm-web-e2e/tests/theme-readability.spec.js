@@ -38,7 +38,6 @@ export const DECLARED_VIEWS = [
   'SystemView',
   'CleanupView',
   'SettingsView',
-  'MachineSettingsView',
   'ProcessDesigner',
   'ProjectExplorerView',
   'StartView',
@@ -359,23 +358,18 @@ const GUARD_JOURNEYS = [
     },
   },
   {
-    title: 'settings, machine settings and designer',
-    views: ['SettingsView', 'MachineSettingsView', 'ProcessDesigner'],
+    title: 'settings and designer',
+    views: ['SettingsView', 'ProcessDesigner'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'designer', locale);
     },
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.getByTestId('settings-view')).toBeVisible();
-      await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
+      // The setup panel carries the aspects and the forms; its loading line is not the page's text.
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('SettingsView');
-
-      await page.getByTestId('machine-settings-button').click();
-      await expect(page.getByTestId('machine-settings-view')).toBeVisible();
-      // The devices line carries its own loading text; recording it would record a placeholder.
-      await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
-      await record('MachineSettingsView');
 
       await page.getByTestId('open-designer-btn').click();
       await expect(page.getByTestId('process-designer')).toBeVisible();
@@ -505,6 +499,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.locator('.settings-view')).toBeVisible();
+      await page.getByRole('tab').nth(1).click();
 
       const row = page.getByTestId('device-row-dev-1');
       await row.getByTestId('action-bar-overflow').click();
@@ -836,7 +831,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await auditView(page, testInfo, { view: 'CleanupView', theme, viewport: vp });
         });
 
-        test(`SettingsView and MachineSettingsView in ${theme} (${vp.name})`, async ({
+        test(`SettingsView (access and setup) in ${theme} (${vp.name})`, async ({
           page,
           request,
         }, testInfo) => {
@@ -846,13 +841,14 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.getByTestId('settings-view')).toBeVisible();
+          await page.getByRole('tab').nth(1).click();
 
           await auditView(page, testInfo, { view: 'SettingsView', theme, viewport: vp });
 
-          await page.getByTestId('machine-settings-button').click();
-          await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+          await page.getByRole('tab').nth(0).click();
+          await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
 
-          await auditView(page, testInfo, { view: 'MachineSettingsView', theme, viewport: vp });
+          await auditView(page, testInfo, { view: 'SettingsView (setup)', theme, viewport: vp });
         });
 
         test(`ProcessDesigner in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
@@ -861,8 +857,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           await page.goto('/settings');
-          await page.getByTestId('machine-settings-button').click();
-          await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+          await expect(page.getByTestId('settings-view')).toBeVisible();
           await page.getByTestId('open-designer-btn').click();
           await expect(page.getByTestId('process-designer')).toBeVisible();
 
@@ -978,6 +973,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
+          await page.getByRole('tab').nth(1).click();
 
           const row = page.getByTestId('device-row-dev-1');
           await row.getByTestId('action-bar-overflow').click();
@@ -1208,7 +1204,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
   });
 
   test.describe('Declared View Coverage Guard', () => {
-    test('all 23 declared views in src/lib/views/ are present and were audited', () => {
+    test('all 22 declared views in src/lib/views/ are present and were audited', () => {
       const viewsDir = path.resolve(__dirname, '../../pm-web-app/src/lib/views');
       const viewFiles = fs
         .readdirSync(viewsDir)

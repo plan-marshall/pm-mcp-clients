@@ -38,6 +38,7 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
     });
     await page.goto('/settings');
     await expect(page.locator('.settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Access' }).click();
 
     await page.getByTestId('lan-details-button').click();
 
@@ -53,6 +54,7 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
       data: { scenario: 'entry-device-lifecycle' },
     });
     await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Credentials' }).click();
     await expect(page.getByTestId('credentials-section')).toBeVisible();
     await expect(page.getByTestId('credential-entry')).toBeVisible();
     await expect(page.getByTestId('credential-form')).toBeVisible();

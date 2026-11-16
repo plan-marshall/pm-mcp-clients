@@ -11,6 +11,7 @@ import {
 } from '../api/client';
 import {
   matchPath,
+  SETTINGS_TABS,
   type Address,
   type AppRoute,
   type ObjectTab,
@@ -36,7 +37,7 @@ import {
   type RememberedPlace,
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
-import { actFailureReason } from '../api/errors';
+import { actFailureReason, errorCodeOf } from '../api/errors';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -1198,7 +1199,18 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
       : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
     ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
+    // A settings tab belongs to the settings view. A tab of a plan that is still in the store is
+    // not one, so opening the settings starts on its first tab instead of carrying it there.
+    ...(route === 'settings' && !isSettingsTab(s.objectTab) ? { objectTab: null } : {}),
   }));
+}
+
+/**
+ * @param tab a tab id, or nothing
+ * @returns whether it names a tab of the settings view
+ */
+function isSettingsTab(tab: string | null | undefined): boolean {
+  return typeof tab === 'string' && (SETTINGS_TABS as ReadonlyArray<string>).includes(tab);
 }
 
 /**
@@ -1482,24 +1494,43 @@ export async function loadMachineSettings(): Promise<MachineSettingsRecord | nul
   }
 }
 
+/**
+ * The result of writing one machine setting, with the wire code of a refusal the store read.
+ *
+ * The client's own result type stays the wire shape; a refusal is the store's finding, because only
+ * the store catches the throw and reads its code.
+ */
+export interface MachineSettingsWriteResult extends MachineSettingsUpdateResult {
+  /** The wire code of a refusal the client read, when the runtime answered with one. */
+  errorCode?: string;
+}
+
 export async function updateMachineSetting(
   key: string,
   value: string | null,
-): Promise<MachineSettingsUpdateResult | null> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  revision?: number,
+): Promise<MachineSettingsWriteResult> {
+  // The caller may name the revision its edit was aimed at, so a refresh between the read and the
+  // write cannot turn another client's change into an overwrite.
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.updateMachineSetting(key, value, revision);
+    const result = await apiClient.updateMachineSetting(key, value, target);
     await loadMachineSettings();
     return result;
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    // A refusal keeps its wire code, so the page can name the rule the value missed instead of
+    // showing the generic failure. Nothing was applied.
+    return { applied: false, conflict: false, revision: target, errorCode: errorCodeOf(err) };
   }
 }
 
-export async function withdrawConsent(kind: string): Promise<MachineSettingsUpdateResult | null> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+export async function withdrawConsent(
+  kind: string,
+  revision?: number,
+): Promise<MachineSettingsUpdateResult | null> {
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.withdrawConsent(kind, revision);
+    const result = await apiClient.withdrawConsent(kind, target);
     await loadMachineSettings();
     return result;
   } catch {
