@@ -2,10 +2,10 @@
   "id": "PLAN-146",
   "slug": "web-intent-epic-and-oversize",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-146-web-intent-epic-and-oversize",
+  "pr": "449",
+  "landing": "landings/PLAN-146.md",
   "seq": 146
 }
