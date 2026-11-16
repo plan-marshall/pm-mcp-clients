@@ -2,10 +2,10 @@
   "id": "PLAN-166",
   "slug": "web-column-engine-fixes",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-166-web-column-engine-fixes",
+  "pr": "450",
+  "landing": "landings/PLAN-166.md",
   "seq": 166
 }
