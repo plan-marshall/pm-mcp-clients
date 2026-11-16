@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   addDescription,
+  addSource,
   continueAndStart,
   openProject,
   openStartSources,
@@ -45,6 +46,33 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
   });
 
+  test("goes back from the recipe choice to the sources", async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('choose-recipe').click();
+    await expect(page.getByTestId('start-recipe')).toBeVisible();
+
+    // The recipe choice offers no `back` link; Back sends the sources act the contract does offer.
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.getByTestId('start-back')).toHaveCount(0);
+  });
+
+  test("goes back from a recipe's parameters to the sources", async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('choose-recipe').click();
+    await page.getByTestId('recipe-choose-code-review').click();
+    await expect(page.getByTestId('recipe-parameters')).toBeVisible();
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.getByTestId('start-back')).toHaveCount(0);
+  });
+
   test('starts an epic and reports it', async ({ page }) => {
     await openStartSources(page, 'epic');
     await addDescription(page, 'Relay hardening');
@@ -72,5 +100,60 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await expect(page.getByTestId('start-error')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('start-error')).toContainText('This act is not possible now');
     await expect(page.getByTestId('start-error')).toContainText('act_not_available');
+  });
+
+  test('keeps one primary act per step and goes back from the ready step to the sources', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+
+    // ① asks what the plan starts from: one primary act, the choice of sources.
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
+    await page.getByTestId('choose-sources').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
+    await addDescription(page, 'Add a Codeberg provider for issues');
+    await page.getByTestId('source-continue').click();
+
+    // ② Ready: one primary act, the start of the plan.
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await expect(page.getByTestId('ready-start')).toBeVisible();
+
+    // Back returns to the sources, whose own primary is the only one again.
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.getByTestId('start-back')).toHaveCount(0);
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+  });
+
+  test('shows the setup gate with its cause and its retry after 20 s without an answer', async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    // The gate is the opening call: an entry call that never answers is the slow case.
+    await page.route('**/api/v1/projects/*/entries', () => {});
+
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-gate-checking')).toBeVisible();
+
+    await expect(page.getByTestId('start-gate-cause')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId('start-error')).toContainText('The request took too long');
+    await expect(page.getByTestId('start-gate-retry')).toHaveText('Try again');
+  });
+
+  test('shows the error pattern with its act for a start without a project', async ({ page }) => {
+    await page.goto('/start');
+
+    const pattern = page.getByTestId('start-no-project');
+    await expect(pattern).toBeVisible();
+    await expect(pattern).toContainText('There is no project to start work in');
+    await expect(pattern).toContainText('A start needs a project');
+
+    await page.getByTestId('start-choose-project').click();
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible({ timeout: 15000 });
   });
 });
