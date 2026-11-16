@@ -11,6 +11,7 @@
   import Skeleton from '../components/Skeleton.svelte';
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, type ProjectSummary } from '../api/client';
+  import { projectCountsText } from '../display/projectCounts';
   import { parseAddress } from '../routes';
   import { openAddress } from '../stores/runtime';
   import {
@@ -20,6 +21,7 @@
     attentionStore,
     attentionTargetOf,
     attentionTitleOf,
+    identityOf,
     loadAttention,
     loadMoreAttention,
     type AttentionItem,
@@ -85,18 +87,7 @@
    * @returns the overview's own sentence for its counts, so the two views name them alike
    */
   function runningCountsOf(project: ProjectSummary): string {
-    const plans = Number(project.active_plans_count ?? 0);
-    const epics = Number(project.active_epics_count ?? 0);
-    if (plans > 0 && epics > 0) {
-      return $t('overview.project.counts', { plans, epics });
-    }
-    if (plans > 0) {
-      return $t('overview.project.plans_only', { plans });
-    }
-    if (epics > 0) {
-      return $t('overview.project.epics_only', { epics });
-    }
-    return '';
+    return projectCountsText(project, $t);
   }
 
   /**
@@ -115,7 +106,7 @@
   function actLabelOf(item: AttentionItem): string {
     const label = attentionActLabelOf(item);
     const base = $t(label.key, label.args);
-    return label.args?.id ? `${base} ${label.args.id}` : base;
+    return label.append ? `${base} ${label.append}` : base;
   }
 
   /**
@@ -158,9 +149,12 @@
     }
   }
 
-  /** @param item one item of the list @returns the key its row keeps while the item waits */
+  /**
+   * @param item one item of the list
+   * @returns the identity its row keeps, shared with the notice of an item that left
+   */
   function rowKey(item: AttentionItem): string {
-    return `${item.kind}\u0000${item.link ?? ''}\u0000${item.since ?? ''}`;
+    return identityOf(item);
   }
 </script>
 

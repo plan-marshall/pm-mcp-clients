@@ -125,7 +125,7 @@ describe('the attention store', () => {
     // The act names the decision by its id, never by the rail's own word.
     expect(attentionActLabelOf(item)).toEqual({
       key: 'overview.needs.decision',
-      args: { id: 'Q-016' },
+      append: 'Q-016',
     });
   });
 

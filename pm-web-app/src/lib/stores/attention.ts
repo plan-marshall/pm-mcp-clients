@@ -262,36 +262,53 @@ export function attentionFallbackKeyOf(item: AttentionItem): string {
   return `overview.needs.${item.kind}`;
 }
 
-/** A catalogue key with the names its text carries. */
+/** A catalogue key with the names its text carries, and an id appended where the text has none. */
 export interface AttentionActLabel {
   /** The catalogue key of the act's words: the words of the place it opens. */
   key: string;
   /** The names the text carries. */
   args?: Record<string, string>;
+  /** The id the act shows after its words, where the place has no catalogue text of its own. */
+  append?: string;
+}
+
+/**
+ * @param target an app path
+ * @returns the id its last segment names, decoded, or the path itself
+ */
+function segmentOf(target: string): string {
+  const segment = target.split('/').filter(Boolean).pop() ?? '';
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 /**
  * The words of an item's act: those of the place the act opens, never a word of the list.
  *
- * Where the place is a decision, the place has no name of its own in the catalogue, so the act
- * carries the decision's id beside the kind's word — a name no other control of the shell shows,
- * so the row's act and the rail's Decisions entry never share an accessible name.
+ * The label follows the target, not the kind: an item whose link names its decision is named by
+ * that decision, and one whose link names its plan by the plan. Where the place is a decision the
+ * catalogue has no text of its own, so the act carries the decision's id after the kind's word — a
+ * name no other control of the shell shows, so the row's act and the rail's Decisions entry never
+ * share an accessible name.
  *
  * @param item one item of the list
- * @returns the key and arguments of the act's label
+ * @returns the key, its arguments and the id it appends
  */
 export function attentionActLabelOf(item: AttentionItem): AttentionActLabel {
   const target = attentionTargetOf(item);
   if (target === '/system/cleanup') return { key: 'system.cleanup.title' };
   if (target.startsWith('/settings')) return { key: 'web.settings.tab.credentials' };
   if (target.startsWith('/decisions/')) {
-    return { key: 'overview.needs.decision', args: { id: target.slice('/decisions/'.length) } };
+    return { key: 'overview.needs.decision', append: segmentOf(target) };
   }
-  if (target.startsWith('/plans/') && item.plan?.id) {
-    return { key: 'plan.view.title', args: { plan: attentionTitleOf(item) || item.plan.id } };
+  if (target.startsWith('/plans/')) {
+    return { key: 'plan.view.title', args: { plan: attentionTitleOf(item) || segmentOf(target) } };
   }
-  if (target.startsWith('/epics/') && item.epic?.id) {
-    return { key: 'epic.view.title', args: { epic: attentionTitleOf(item) || item.epic.id } };
+  if (target.startsWith('/epics/')) {
+    return { key: 'epic.view.title', args: { epic: attentionTitleOf(item) || segmentOf(target) } };
   }
   if (target.startsWith('/projects/')) return { key: 'project.explorer.title' };
   return { key: 'overview.needs.title' };
@@ -376,7 +393,7 @@ export async function loadMoreAttention(): Promise<void> {
  * @returns the identity its row keeps: its kind, its link and its since, so a neighbour does not
  *   take the key of the item that left
  */
-function identityOf(item: AttentionItem): string {
+export function identityOf(item: AttentionItem): string {
   return `${item.kind}\u0000${item.link ?? ''}\u0000${item.since ?? ''}`;
 }
 
