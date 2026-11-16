@@ -19,6 +19,8 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,8 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
@@ -872,6 +876,111 @@ class PlanCommandTest {
         int code = execute("plan", "report", "plain-plan");
         assertEquals(0, code);
         assertTrue(out.toString().contains("Raw completion report text"));
+    }
+
+    @Nested
+    @DisplayName("plan <id> --changes on the mock")
+    class Changes {
+
+        @Test
+        @DisplayName("prints the list as designed, with the capture's head and the plan's figures")
+        void printsTheList() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                int code = executeOn(runtime, "plan", "fix-relay", "--changes");
+                var text = out.toString();
+
+                assertAll(
+                                    () -> assertEquals(0, code, err.toString()),
+                                    () -> assertTrue(text.contains("fix-relay \u203a changes \u00b7 at 9f3c2ab"
+                                                        + " \u00b7 12 files \u00b7 +340 \u221227 \u00b7 2 unplanned"), text),
+                                    () -> assertTrue(text.contains("A  pm-api/\u2026/changes/PlanChangeFile.java"),
+                                                        text),
+                                    () -> assertTrue(text.contains("+54"), text),
+                                    () -> assertTrue(text.contains("R  \u2026/PlanChangesContractTest.java"
+                                                        + " \u2190 \u2026/PlanChangesContractTest.java"), text),
+                                    () -> assertTrue(text.contains("binary"), text),
+                                    () -> assertEquals(2, text.lines()
+                                                        .filter(line -> line.startsWith("  ") && line.contains("unplanned"))
+                                                        .count(),
+                                                        "the two files beyond the plan's footprint are marked"),
+                                    () -> assertTrue(text.contains("doc/\u2026/shared/plan-changes.svg"), text));
+            }
+        }
+
+        @Test
+        @DisplayName("prints one file's hunks, and a planted control sequence in a line is removed")
+        void printsOneFile() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                int code = executeOn(runtime, "plan", "fix-relay", "--changes",
+                                    "--file", "pm-web-app/src/lib/plan-changes.ts");
+                var text = out.toString();
+
+                assertAll(
+                                    () -> assertEquals(0, code, err.toString()),
+                                    () -> assertTrue(text.contains("\u2212export const tabs = [];"), text),
+                                    () -> assertTrue(text.contains("+export const tabs = ['changes'];"), text),
+                                    () -> assertTrue(text.contains("+// the plan's changes, read from the runtime"),
+                                                        text),
+                                    () -> assertFalse(text.contains("\u001b"), "no control sequence survives"),
+                                    () -> assertFalse(text.contains("pm-api/\u2026/changes/PlanChangeFile.java"),
+                                                        "one file's hunks, never the whole list"));
+            }
+        }
+
+        @Test
+        @DisplayName("not_captured prints its text, also for a file of that plan")
+        void printsNotCaptured() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var noFile = executeOn(runtime, "plan", "drop-legacy-api", "--changes");
+                var listText = out.toString();
+                out.getBuffer().setLength(0);
+                var withFile = executeOn(runtime, "plan", "drop-legacy-api", "--changes", "--file", "a/B.java");
+                var fileText = out.toString();
+
+                assertAll(
+                                    () -> assertEquals(0, noFile, err.toString()),
+                                    () -> assertTrue(listText.contains("No changes captured yet"), listText),
+                                    () -> assertEquals(0, withFile, err.toString()),
+                                    () -> assertTrue(fileText.contains("No changes captured yet"),
+                                                        "a file of that plan is its state's text, never a transport error"));
+            }
+        }
+
+        @Test
+        @DisplayName("unavailable prints its text, and an unknown plan is not found")
+        void printsUnavailableAndUnknown() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var unavailable = executeOn(runtime, "plan", "docs-typo", "--changes");
+                var unavailableText = out.toString();
+                out.getBuffer().setLength(0);
+                var unknown = executeOn(runtime, "plan", "not-a-plan", "--changes");
+                var unknownText = out.toString();
+
+                assertAll(
+                                    () -> assertEquals(0, unavailable, err.toString()),
+                                    () -> assertTrue(unavailableText.contains(
+                                                        "The changes are no longer in the repository"), unavailableText),
+                                    () -> assertEquals(1, unknown, err.toString()),
+                                    () -> assertTrue(unknownText.contains("Plan not-a-plan not found."), unknownText));
+            }
+        }
+
+        /**
+         * @param runtime the mock runtime
+         * @param args    the verb and its arguments
+         * @return the exit code
+         */
+        private int executeOn(MockRuntime runtime, String... args) throws IOException {
+            var environment = new java.util.HashMap<String, String>();
+            environment.put(MachinePaths.ENV_BASE, runtime.base().toString());
+            var self = ProcessHandle.current();
+            var start = self.info().startInstant().orElseThrow();
+            Files.writeString(runtime.paths().runtimeRecord(),
+                                "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}",
+                                StandardCharsets.UTF_8);
+            var context = new OperatorContext(environment, tempDir, true);
+            return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        }
     }
 }
 
