@@ -679,6 +679,7 @@ describe('the machine settings panels of the one settings view', () => {
       expect(screen.getByTestId('save-documents')).toBeInTheDocument();
     });
 
+    await fireEvent.click(screen.getByLabelText('Move'));
     await fireEvent.click(screen.getByTestId('save-documents'));
 
     await waitFor(() => {

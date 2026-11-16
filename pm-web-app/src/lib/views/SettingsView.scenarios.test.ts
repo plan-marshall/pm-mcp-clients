@@ -163,18 +163,19 @@ describe('the settings panels against the mock runtime states', () => {
 
     render(SettingsView);
     await waitFor(() => expect(screen.getByTestId('save-documents')).toBeInTheDocument());
+    await fireEvent.click(screen.getByLabelText('Move'));
 
     await fireEvent.click(screen.getByTestId('save-documents'));
 
     await waitFor(() => expect(screen.getByTestId('conflict-dialog')).toBeInTheDocument());
     expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: copy');
-    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Your value: ask');
+    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Your value: move');
 
     // Apply again: the value this page wanted, on the revision the other client left behind.
     await fireEvent.click(screen.getByTestId('conflict-apply'));
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'ask', 4);
+      expect(updateSpy).toHaveBeenLastCalledWith('documents_mode', 'move', 4);
     });
     await waitFor(() => expect(screen.queryByTestId('conflict-dialog')).not.toBeInTheDocument());
   });
@@ -192,6 +193,7 @@ describe('the settings panels against the mock runtime states', () => {
 
     render(SettingsView);
     await waitFor(() => expect(screen.getByTestId('save-documents')).toBeInTheDocument());
+    await fireEvent.click(screen.getByLabelText('Move'));
     await fireEvent.click(screen.getByTestId('save-documents'));
     await waitFor(() => expect(screen.getByTestId('conflict-keep')).toBeInTheDocument());
 
@@ -246,5 +248,48 @@ describe('the settings panels against the mock runtime states', () => {
 
     await openTab('Retention');
     await waitFor(() => expect(screen.getByTestId('cleanup-days')).toHaveValue(30));
+  });
+
+  it('keeps the documents Save disabled until the mode changes, and resets to the inherited value', async () => {
+    render(SettingsView);
+
+    const save = await screen.findByTestId('save-documents');
+    // One Save per form, disabled until something changed, with the reason in the form's line.
+    expect(save).toBeDisabled();
+    expect(screen.getByTestId('documents-form-status')).toHaveTextContent('Nothing has changed yet.');
+
+    await fireEvent.click(screen.getByLabelText('Copy'));
+
+    expect(save).toBeEnabled();
+    // The changed field carries its mark beside it.
+    expect(screen.getByTestId('documents-changed')).toBeInTheDocument();
+
+    // Use the inherited value drops the change and returns to the recorded one.
+    await fireEvent.click(screen.getByTestId('documents-reset'));
+
+    expect(save).toBeDisabled();
+    expect(screen.getByLabelText('Ask each time')).toBeChecked();
+    expect(screen.queryByTestId('documents-changed')).not.toBeInTheDocument();
+  });
+
+  it('keeps the cleanup Save disabled until a duration changes, marks it, and resets it', async () => {
+    render(SettingsView);
+    await openTab('Retention');
+
+    const save = await screen.findByTestId('save-cleanup');
+    expect(save).toBeDisabled();
+
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+
+    expect(save).toBeEnabled();
+    expect(screen.getByTestId('cleanup-changed-plans')).toBeInTheDocument();
+    // The field the operator did not touch carries no mark.
+    expect(screen.queryByTestId('cleanup-changed-remind')).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('cleanup-reset'));
+
+    expect(save).toBeDisabled();
+    expect(screen.getByTestId('cleanup-days')).toHaveValue(30);
+    expect(screen.queryByTestId('cleanup-changed-plans')).not.toBeInTheDocument();
   });
 });
