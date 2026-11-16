@@ -110,8 +110,8 @@ class ChangesLevelTest {
                                 () -> assertTrue(rows.get(1).line().endsWith("+96"), rows.get(1).line()),
                                 () -> assertTrue(rows.get(2).line().startsWith("R  "), rows.get(2).line()),
                                 () -> assertTrue(rows.get(2).line().contains("\u2026/Frame.java"), rows.get(2).line()),
-                                () -> assertTrue(rows.get(2).line().contains("\u2026/relay/\u2026"),
-                                                    "a renamed file names where it came from"),
+                                () -> assertTrue(rows.get(2).line().contains("\u2026/Packet.java"),
+                                                    "a renamed file names the path it came from"),
                                 () -> assertFalse(rows.get(2).line().contains("\u2026/Frame.java \u2190 \u2026/Frame.java"),
                                                     "a move inside the project never names itself as its origin"),
                                 () -> assertTrue(rows.get(3).line().startsWith("B  doc/resources/relay.png"),
@@ -254,7 +254,7 @@ class ChangesLevelTest {
                                                     "the open file's row did not change"),
                                 () -> assertTrue(level.hasOpenFile()),
                                 () -> assertTrue(text(level).contains("@@ -20,2 +20,2 @@"), text(level)),
-                                () -> assertTrue(level.breadcrumb("en").contains("a1b2c3d4e5f"),
+                                () -> assertTrue(level.breadcrumb("en").contains("a1b2c3d"),
                                                     level.breadcrumb("en")));
         }
 

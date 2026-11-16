@@ -748,7 +748,7 @@ class PlanChangesScenarioTest {
             for (var row : contents) {
                 var content = JsonTree.asObject(row);
                 if (content != null
-                                    && JsonTree.string(content, "path").endsWith("plan-changes.svg")) {
+                        && JsonTree.string(content, "path").endsWith("plan-changes.svg")) {
                     content.put("binary", false);
                 }
             }
@@ -766,7 +766,7 @@ class PlanChangesScenarioTest {
             // size, which says nothing about the start state's answer.
             var root = JsonTree.asObject(JsonTree.parse(valid));
             var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
-                    JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
                     "runtime");
             var override = new LinkedHashMap<String, Object>();
             override.put("plan_id", "drop-legacy-api");
