@@ -13,8 +13,10 @@
  * - every selection the app makes on its own (the fallback after a deletion, filling a bare lens,
  *   the next decision) replaces, even when it changes the depth.
  *
- * A pairing code lives in the fragment and is redeemed before the first write; no write of this
- * module ever puts a fragment in the address, so the code never reaches the history.
+ * One write does not change the address: `openedFromOutside` re-applies the mark to the current
+ * entry when the framework dropped it on hydration, so a reload of the app's own entry stays the
+ * app's own. A pairing code lives in the fragment and is redeemed before the first write; no write
+ * of this module ever puts a fragment in the address, so the code never reaches the history.
  */
 
 import { type Address, type ObjectTab, formatAddress, parseAddress } from '../routes';
@@ -47,9 +49,12 @@ export function carriesAppMark(state: unknown = history.state): boolean {
 /**
  * Whether this load was opened from outside the app: read once, at start, and remembered.
  *
- * The answer is taken before the app writes anything (and before SvelteKit replaces
- * `history.state` on client hydration), so a write of this same load (the pairing fragment dropped,
- * the first address written) never changes it.
+ * A fresh document load answers from `history.state` before the app writes anything, so a write of
+ * this same load (the pairing fragment dropped, the first address written) never changes it. A
+ * reload or a history traversal of an entry the app wrote answers `false` from the mark the entry
+ * carried at start (`initialMarked`), because SvelteKit replaces `history.state` on client
+ * hydration: the answer is fixed for the load, and the mark is re-applied to the current entry so
+ * the next reload of it stays the app's own (a reload of an unfilled lens stays unfilled).
  *
  * @returns `true` when the load carried no mark of the app
  */

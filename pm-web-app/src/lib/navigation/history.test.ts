@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Address } from '../routes';
 import { formatAddress, parseAddress } from '../routes';
 import {
@@ -183,5 +183,59 @@ describe('a tab switch', () => {
 
   it('replaces the address rather than pushing', () => {
     expect(intentFor(PLAN, switchTab(PLAN, 'intent'))).toBe('replace');
+  });
+});
+
+describe('the mark of a load', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/');
+    vi.resetModules();
+  });
+
+  it('treats a load without the mark as opened from outside and writes none', async () => {
+    const { openedFromOutside } = await import('./history');
+
+    expect(openedFromOutside()).toBe(true);
+    expect(window.history.state).toBeNull();
+  });
+
+  it('treats a reload of a marked entry as the app’s own', async () => {
+    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+      { type: 'reload' } as unknown as PerformanceNavigationTiming,
+    ]);
+
+    const { openedFromOutside } = await import('./history');
+
+    expect(openedFromOutside()).toBe(false);
+  });
+
+  it('re-applies the mark the framework dropped on hydration', async () => {
+    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+      { type: 'reload' } as unknown as PerformanceNavigationTiming,
+    ]);
+    const { openedFromOutside } = await import('./history');
+
+    // SvelteKit replaces `history.state` on client hydration, so the mark is gone from the entry.
+    window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+
+    expect(openedFromOutside()).toBe(false);
+    expect(window.history.state).toMatchObject({
+      from: 'sveltekit',
+      path: '/overview',
+      [APP_MARK]: true,
+    });
+  });
+
+  it('keeps a fresh navigation’s answer even after the app writes the mark', async () => {
+    const { openedFromOutside, writeAddress: write } = await import('./history');
+
+    expect(openedFromOutside()).toBe(true);
+    write(OVERVIEW, 'replace');
+
+    expect(carriesAppMark()).toBe(true);
+    expect(openedFromOutside()).toBe(true);
   });
 });
