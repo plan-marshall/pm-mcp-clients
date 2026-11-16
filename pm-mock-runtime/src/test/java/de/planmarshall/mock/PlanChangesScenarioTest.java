@@ -725,6 +725,60 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses two contents for one path")
+        void refusesADuplicateContent() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            contents.add(contents.getFirst());
+
+            refusesTheLoad(JsonTree.write(root), "twice");
+        }
+
+        @Test
+        @DisplayName("refuses a content whose binary mark disagrees with its row")
+        void refusesABinaryMarkThatDisagrees() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            for (var row : contents) {
+                var content = JsonTree.asObject(row);
+                if (content != null
+                                    && JsonTree.string(content, "path").endsWith("plan-changes.svg")) {
+                    content.put("binary", false);
+                }
+            }
+
+            refusesTheLoad(JsonTree.write(root), "plan-changes.svg");
+        }
+
+        @Test
+        @DisplayName("a size of change in another state does not condemn a refusal in this one")
+        void refusesOnlyWithinItsState() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            // drop-legacy-api is not_captured in the start state; a later state captures it with a
+            // size, which says nothing about the start state's answer.
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                    JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            var override = new LinkedHashMap<String, Object>();
+            override.put("plan_id", "drop-legacy-api");
+            override.put("change", Map.of("files", 1, "insertions", 2, "deletions", 0, "unplanned", 0));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/drop-legacy-api/process", override);
+            other.put("routes", routes);
+
+            assertDoesNotThrow(() -> ScenarioLoader.load(JsonTree.write(root), StandardScenarios.RUNNING_WORK));
+        }
+
+        @Test
         @DisplayName("refuses a size of change on a plan whose changes were never captured")
         void refusesASizeOnAPlanWithoutACapture() throws Exception {
             var valid = scenarioJson();

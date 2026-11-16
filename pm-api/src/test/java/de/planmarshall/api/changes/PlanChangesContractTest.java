@@ -281,6 +281,18 @@ class PlanChangesContractTest {
         }
 
         @Test
+        @DisplayName("a binary file that is cut is refused")
+        void binaryAndTruncated() {
+            var cut = "{\"path\":\"doc/x.png\",\"hunks\":[],\"binary\":true,\"truncated\":false}";
+            var cutBinary = "{\"path\":\"doc/x.png\",\"hunks\":[],\"binary\":true,\"truncated\":true,"
+                    + "\"lines_omitted\":3}";
+
+            assertAll(
+                    () -> assertTrue(PlanChangeFile.fromJson(cut).binary(), "the matched positive control"),
+                    () -> assertThrows(IOException.class, () -> PlanChangeFile.fromJson(cutBinary)));
+        }
+
+        @Test
         @DisplayName("a JSON value that is no object is an IOException, never a NullPointerException")
         void nonObjectJson() {
             assertAll(

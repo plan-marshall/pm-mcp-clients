@@ -919,7 +919,7 @@ class PlanCommandTest {
                                                         text),
                                     () -> assertTrue(text.contains("+54"), text),
                                     () -> assertTrue(text.contains("R  \u2026/PlanChangesContractTest.java"
-                                                        + " \u2190 \u2026/PlanChangesContractTest.java"), text),
+                                                        + " \u2190 \u2026/overview/\u2026"), text),
                                     () -> assertTrue(text.contains("binary"), text),
                                     () -> assertEquals(2, text.lines()
                                                                             .filter(line -> line.startsWith("  ") && line.contains("unplanned"))
@@ -985,6 +985,31 @@ class PlanCommandTest {
                                     () -> assertEquals(1, unknown, err.toString()),
                                     () -> assertTrue(unknownText.contains("Plan not-a-plan not found."), unknownText));
             }
+        }
+
+        @Test
+        @DisplayName("a file the held list does not name is not found, never a silent success")
+        void refusesAFileOutsideTheList() throws Exception {
+            var list = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c2ab41d7e\","
+                                + "\"base_ref\":\"main\",\"files\":[{\"path\":\"a/B.java\",\"status\":\"added\","
+                                + "\"added\":1,\"removed\":0,\"binary\":false,\"unplanned\":false}]}";
+            var file = "{\"path\":\"a/C.java\",\"hunks\":[],\"binary\":false,\"truncated\":false}";
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans/fix-relay/changes".equals(request.target())) {
+                    response.json(200, list);
+                } else if (request.target().startsWith("/api/v1/plans/fix-relay/changes/file?")) {
+                    response.json(200, file);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            int code = execute("plan", "fix-relay", "--changes", "--file", "a/C.java");
+
+            assertAll(
+                                () -> assertEquals(1, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("No such file in the plan's changes: a/C.java"),
+                                                    out.toString()));
         }
 
         /**
