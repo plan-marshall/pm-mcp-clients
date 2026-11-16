@@ -88,18 +88,28 @@
   /** The tab this page draws. */
   const activeTab = $derived(epicTab($runtimeStore.objectTab));
 
+  /**
+   * @param tab a tab of the epic
+   * @returns the id of its panel while that tab is the shown one, and none for the others
+   */
+  function panelIdOf(tab: EpicTab): string | undefined {
+    // Only the shown tab has a panel in the document, so only it may name one: a tab whose
+    // `aria-controls` pointed at an absent panel would tell an assistive reader it controls nothing.
+    return tab === activeTab ? `epic-panel-${tab}` : undefined;
+  }
+
   /** The number of findings that are new since the last review, or `0` where none is. */
   const newFindings = $derived(resource?.findings.new ?? 0);
 
   /** The five tabs of the epic's object column, the `! n` badge while findings are new. */
   const tabItems = $derived<TabItem[]>([
-    { id: 'plans', label: $t('overview.epic.tab.plans'), panelId: 'epic-panel-plans' },
-    { id: 'intent', label: $t('intent.tab.title'), panelId: 'epic-panel-intent' },
-    { id: 'landings', label: $t('overview.epic.landings'), panelId: 'epic-panel-landings' },
+    { id: 'plans', label: $t('overview.epic.tab.plans'), panelId: panelIdOf('plans') },
+    { id: 'intent', label: $t('intent.tab.title'), panelId: panelIdOf('intent') },
+    { id: 'landings', label: $t('overview.epic.landings'), panelId: panelIdOf('landings') },
     {
       id: 'reviews',
       label: $t('overview.epic.tab.reviews'),
-      panelId: 'epic-panel-reviews',
+      panelId: panelIdOf('reviews'),
       ...(newFindings > 0
         ? {
             count: newFindings,
@@ -108,7 +118,7 @@
           }
         : {}),
     },
-    { id: 'events', label: $t('overview.epic.events'), panelId: 'epic-panel-events' },
+    { id: 'events', label: $t('overview.epic.events'), panelId: panelIdOf('events') },
   ]);
 
   /**
@@ -178,15 +188,16 @@
     ]);
   }
 
-  /** A landing row: a row the runtime served a pull request number for. */
+  /** A landing row: a shipped row the runtime served a pull request number for. */
   type LandingRow = EpicWorkRow & { pull_request_number: number };
 
-  /** The epic's landings: the rows that carry a pull request. */
+  /** The epic's landings: the shipped rows that carry a pull request. */
   let landings = $derived(
     resource
       ? resource.workstreams.flatMap((workstream) =>
           workstream.rows.filter(
-            (row): row is LandingRow => typeof row.pull_request_number === 'number',
+            (row): row is LandingRow =>
+              rowStatusKey(row.status) === 'shipped' && typeof row.pull_request_number === 'number',
           ),
         )
       : [],
@@ -685,6 +696,7 @@
               </span>
             {/if}
             {#if resource.tokens.plans.length > 0 || resource.tokens.own.measured}
+              <span class="tokens-sep" aria-hidden="true">·</span>
               <button
                 type="button"
                 class="tokens-more"
@@ -693,7 +705,7 @@
                 data-advisory={$t('epic.views.tokens_disclosure.title')}
                 onclick={() => (tokensOpen = !tokensOpen)}
               >
-                {$t('epic.views.tokens_disclosure')}
+                {$t('overview.epic.tokens_detail')}
               </button>
             {/if}
           </div>
@@ -768,7 +780,7 @@
             {/if}
             {#if epic.alongside_landings && epic.alongside_landings.length > 0}
               <section class="epic-facts" data-testid="epic-analysis">
-                <h2 class="section-title">{$t('epic.views.analysis')}</h2>
+                <h2 class="section-title">{$t('epic.views.alongside')}</h2>
                 <div class="alongside-list">
                   {#each epic.alongside_landings as landing}
                     <div class="alongside-item mono" data-testid="alongside-item">{landing}</div>
@@ -789,15 +801,17 @@
                     kept: resource.findings.kept,
                   })}
                 </p>
-                <button
-                  type="button"
-                  class="review-open"
-                  data-testid="open-findings-review"
-                  data-advisory={$t('epic.views.review_open.title')}
-                  onclick={() => void openReview('findings')}
-                >
-                  {$t('epic.views.review_open')}
-                </button>
+                {#if resource.state !== 'ended'}
+                  <button
+                    type="button"
+                    class="review-open"
+                    data-testid="open-findings-review"
+                    data-advisory={$t('epic.views.review_open.title')}
+                    onclick={() => void openReview('findings')}
+                  >
+                    {$t('epic.views.review_open')}
+                  </button>
+                {/if}
               </div>
               <div class="register" data-testid="epic-watches">
                 <h2 class="section-title">{$t('overview.epic.watches')}</h2>
@@ -807,15 +821,17 @@
                     kept: resource.watches.kept,
                   })}
                 </p>
-                <button
-                  type="button"
-                  class="review-open"
-                  data-testid="open-watches-review"
-                  data-advisory={$t('epic.views.review_watches.title')}
-                  onclick={() => void openReview('watches')}
-                >
-                  {$t('epic.views.review_open')}
-                </button>
+                {#if resource.state !== 'ended'}
+                  <button
+                    type="button"
+                    class="review-open"
+                    data-testid="open-watches-review"
+                    data-advisory={$t('epic.views.review_watches.title')}
+                    onclick={() => void openReview('watches')}
+                  >
+                    {$t('epic.views.review_open')}
+                  </button>
+                {/if}
               </div>
             </section>
           </div>
@@ -920,6 +936,7 @@
                       <span>{waitLabel(row)}</span>
                     {/if}
                     {#if row.wait_since && waitSince(row.wait_since)}
+                      <span class="workstream__sep" aria-hidden="true">·</span>
                       <time
                         class="workstream__since"
                         datetime={row.wait_since}
@@ -1203,6 +1220,14 @@
 
   .workstream__since {
     color: var(--color-text-secondary);
+  }
+
+  .workstream__sep {
+    color: var(--color-text-muted);
+  }
+
+  .tokens-sep {
+    color: var(--color-text-muted);
   }
 
   .pr-link {

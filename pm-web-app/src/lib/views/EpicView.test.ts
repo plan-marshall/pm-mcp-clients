@@ -65,15 +65,23 @@ describe('EpicView component', () => {
         open: true,
         rows: [
           {
-            plan_id: 'relay-cursor-order',
-            title: 'relay-cursor-order',
-            status: 'running',
+            plan_id: 'relay-reconnect-backoff',
+            title: 'Reconnect backoff',
+            status: 'shipped',
             pull_request_number: 211,
             pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
           },
           {
+            // A running row that carries a pull request is no landing: only a shipped row is.
+            plan_id: 'relay-cursor-order',
+            title: 'Cursor order',
+            status: 'running',
+            pull_request_number: 300,
+            pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/300',
+          },
+          {
             plan_id: 'relay-docs',
-            title: 'relay-docs',
+            title: 'Relay docs',
             status: 'staged',
             wait_reason: 'overlap',
             wait_plan_id: 'relay-auth-v2',
@@ -82,7 +90,7 @@ describe('EpicView component', () => {
           },
           {
             plan_id: 'relay-reconnect-metrics',
-            title: 'relay-reconnect-metrics',
+            title: 'Reconnect metrics',
             status: 'staged',
             wait_reason: 'none',
           },
@@ -286,8 +294,8 @@ describe('EpicView component', () => {
     render(EpicView);
 
     const row = await screen.findByTestId('epic-row-relay-docs');
-    // The plan's title comes first, before the id, the state and what it waits for.
-    expect(row.textContent?.trim()).toMatch(/^relay-docs/);
+    // The plan's title comes first — here a title that differs from its id, so the order shows.
+    expect(row.textContent?.trim()).toMatch(/^Relay docs/);
     expect(screen.getByTestId('epic-plan-chip-relay-docs')).toHaveTextContent('relay-docs');
     expect(screen.getByTestId('epic-plan-status-relay-docs')).toHaveTextContent('staged');
     expect(screen.getByTestId('wait-relay-docs')).toHaveTextContent(
@@ -298,8 +306,8 @@ describe('EpicView component', () => {
     expect(since).toHaveAttribute('datetime', '2026-10-16T09:40:00Z');
     expect(since.textContent ?? '').toMatch(/last|ago|since|\d/);
 
-    expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveTextContent('#211');
-    expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveAttribute(
+    expect(screen.getByTestId('epic-pr-relay-reconnect-backoff')).toHaveTextContent('#211');
+    expect(screen.getByTestId('epic-pr-relay-reconnect-backoff')).toHaveAttribute(
       'href',
       'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
     );
@@ -308,18 +316,20 @@ describe('EpicView component', () => {
     );
   });
 
-  it('counts the landings from the rows it lists, not from the served figure', async () => {
+  it('counts the landings from the shipped rows it lists, not from the served figure', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
     await screen.findByTestId('epic-title');
 
     await fireEvent.click(screen.getByRole('tab', { name: 'Landings' }));
 
+    // Two rows carry a pull request; only the shipped one is a landing.
     expect(await screen.findByTestId('epic-landing-count')).toHaveTextContent('1 landing');
-    expect(screen.getByTestId('epic-landing-relay-cursor-order')).toHaveTextContent('#211');
+    expect(screen.getByTestId('epic-landing-relay-reconnect-backoff')).toHaveTextContent('#211');
     expect(
-      screen.getByTestId('epic-landing-relay-cursor-order').querySelector('a'),
+      screen.getByTestId('epic-landing-relay-reconnect-backoff').querySelector('a'),
     ).toHaveAttribute('href', 'https://github.com/plan-marshall/pm-mcp-clients/pull/211');
+    expect(screen.queryByTestId('epic-landing-relay-cursor-order')).not.toBeInTheDocument();
   });
 
   it('draws the analysis of the epic beside its landings', async () => {
@@ -552,7 +562,9 @@ describe('EpicView component', () => {
     await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
 
     expect(screen.queryByTestId('epic-row-relay-cursor-order')).not.toBeInTheDocument();
-    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 running · 2 staged');
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent(
+      '1 shipped · 1 running · 2 staged',
+    );
 
     await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
     expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
@@ -619,9 +631,16 @@ describe('EpicView component', () => {
 
     expect(await screen.findByTestId('epic-state')).toHaveTextContent('ended');
     expect(screen.getByTestId('epic-end')).toHaveTextContent('completed');
-    // The same five tabs, read-only: no act of the running epic's bar.
+    // The same five tabs, read-only: no act of the running epic's bar, and no way into a review
+    // that would offer the review's acts (`epic-view.adoc#tabs`).
     expect(screen.getAllByRole('tab')).toHaveLength(5);
     expect(screen.queryByTestId('action-next')).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Reviews/ }));
+
+    expect(await screen.findByTestId('epic-findings')).toHaveTextContent('0 new · 2 open · 1 kept');
+    expect(screen.queryByTestId('open-findings-review')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('open-watches-review')).not.toBeInTheDocument();
   });
 
   it('draws the list-column form with only the plans grouped by workstream', async () => {
@@ -705,7 +724,7 @@ describe('EpicView component', () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
     await screen.findByTestId('workstream-WS-1');
-    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(4);
 
     await typeFilter('relay-docs');
     expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
@@ -717,7 +736,7 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
 
     await typeFilter('Reconnect');
-    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(4);
   });
 
   it('filters the workstream plans by a wait reason and its overlap file', async () => {

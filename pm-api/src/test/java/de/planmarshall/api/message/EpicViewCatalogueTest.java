@@ -90,10 +90,15 @@ class EpicViewCatalogueTest {
                 "epic.views.no_events",
                 "epic.views.no_sources",
                 "epic.views.not_measured",
-                "epic.views.not_measured_all",
                 "epic.views.mode",
                 "epic.views.open_plan",
-                "epic.views.pr"
+                "epic.views.pr",
+                "epic.views.tabs",
+                "epic.views.no_landings",
+                "epic.views.alongside",
+                "overview.epic.tab.plans",
+                "overview.epic.tab.reviews",
+                "overview.epic.new_findings"
         };
 
         for (String key : requiredKeys) {

@@ -206,6 +206,7 @@
                     type="button"
                     class="review-modal__item"
                     class:selected={selectedId === item.item_id}
+                    aria-current={selectedId === item.item_id ? 'true' : undefined}
                     data-testid={`review-item-${item.item_id}`}
                     onclick={() => select(item)}
                   >

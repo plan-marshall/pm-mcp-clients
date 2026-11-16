@@ -247,6 +247,10 @@ Keys of the area `overview`, shared by both clients.
 |`overview.epic.tab.reviews`
 |Reviews
 |Prüfungen
+
+|`overview.epic.new_findings`
+|{count, plural, one {# new finding} other {# new findings}}
+|{count, plural, one {# neues Finding} other {# neue Findings}}
 |===
 
-The tabs _Landings_ and _Events_ take `overview.epic.landings` and `overview.epic.events`, the tab _Intent_ `intent.tab.title` (link:intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]).
+The tabs _Landings_ and _Events_ take `overview.epic.landings` and `overview.epic.events`, the tab _Intent_ `intent.tab.title` (link:intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]). The `! n` badge of the _Reviews_ tab names its number with `overview.epic.new_findings`; the tokens line's one-step disclosure is `overview.epic.tokens_detail`, and the landings that stand beside the epic are `epic.views.alongside`.

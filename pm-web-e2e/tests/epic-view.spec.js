@@ -95,9 +95,9 @@ test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
       '1 shipped · 1 running · 1 paused · 1 staged',
     );
 
-    // The title comes first, before the id chip and the state.
+    // The title comes first, before the id chip and the state; the mock's title differs from the id.
     const row = page.getByTestId('epic-row-relay-reconnect-backoff');
-    await expect(row).toHaveText(/^\s*relay-reconnect-backoff/);
+    await expect(row).toHaveText(/^\s*Reconnect backoff/);
     await expect(page.getByTestId('epic-plan-chip-relay-reconnect-backoff')).toContainText(
       'relay-reconnect-backoff',
     );
