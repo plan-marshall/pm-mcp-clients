@@ -158,7 +158,9 @@ test.describe('Web chrome, navigation and action advisories', () => {
 
     await page.getByTestId('brand-home').click();
 
-    await expect(page).toHaveURL(/\/(overview|projects)$/);
+    // The start page is what waits (needs-and-find.adoc, The Start Page Is What Waits).
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId('inbox-view')).toBeVisible();
   });
 
   test('opens the designer from the rail and from a plan, keeping the project across a reload', async ({
@@ -260,6 +262,26 @@ test.describe('The app shell on fully-onboarded', () => {
     await page.goto('/plans/fix-relay');
     await expect(topBar).toContainText('Work');
     await expect(topBar).toContainText('fix-relay');
+  });
+
+  test('shows the bottom bar on the phone, with What waits first', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/overview');
+    await expect(page.getByTestId('nav-rail')).toBeHidden();
+
+    const bar = page.getByTestId('bottom-bar');
+    await expect(bar).toBeVisible();
+    await expect(bar.getByRole('button')).toHaveCount(4);
+    const labels = await bar
+      .getByRole('button')
+      .evaluateAll((buttons) => buttons.map((button) => (button.textContent ?? '').trim()));
+    expect(labels[0]).toContain('What waits');
+    expect(labels[1]).toContain('Running work');
+    expect(labels[2]).toContain('Decisions');
+    expect(labels[3]).toContain('More');
+
+    // The reports moved into the More sheet, so More carries their unread count.
+    await expect(page.getByTestId('bottom-more-count')).toHaveText('5');
   });
 });
 

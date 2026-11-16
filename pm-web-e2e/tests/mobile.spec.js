@@ -136,7 +136,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
     const bar = page.getByTestId('bottom-bar');
     await expect(bar).toBeVisible();
     await expect(bar.getByRole('button')).toHaveCount(4);
-    for (const name of [/Running work/i, /Decisions/i, /Reports/i, /More/i]) {
+    for (const name of [/What waits/i, /Running work/i, /Decisions/i, /More/i]) {
       const item = bar.getByRole('button', { name });
       await expect(item).toBeVisible();
       await expect(item).toHaveText(/\S/);
@@ -145,8 +145,9 @@ test.describe('Mobile viewports (WEB-1)', () => {
     await expect(page.getByTestId('nav-rail')).toBeHidden();
 
     // The rail is hidden on a phone, so the counts it carries must stand beside the labels here.
+    // The reports moved into the More sheet, so More carries their unread count.
     await expect(page.getByTestId('bottom-decisions-count')).toHaveText('3');
-    await expect(page.getByTestId('bottom-reports-count')).toHaveText('5');
+    await expect(page.getByTestId('bottom-more-count')).toHaveText('5');
 
     await bar.getByRole('button', { name: /More/i }).click();
     const sheet = page.getByTestId('dialog');
