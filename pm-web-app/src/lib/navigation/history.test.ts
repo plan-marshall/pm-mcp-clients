@@ -244,4 +244,20 @@ describe('the mark of a load', () => {
     expect(carriesAppMark()).toBe(true);
     expect(openedFromOutside()).toBe(true);
   });
+
+  it('returns the answer to the load’s own state after a reset', async () => {
+    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+      { type: 'reload' } as unknown as PerformanceNavigationTiming,
+    ]);
+    const { openedFromOutside, resetOpenedFromOutside } = await import('./history');
+    expect(openedFromOutside()).toBe(false);
+
+    // The framework dropped the mark, and a test asks for another load of the app: the load began
+    // as a reload of the app's own entry, so it still answers so.
+    window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+    resetOpenedFromOutside();
+
+    expect(openedFromOutside()).toBe(false);
+  });
 });
