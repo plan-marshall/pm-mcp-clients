@@ -530,6 +530,8 @@ export interface EpicWorkRow {
   status: string;
   wait_reason?: string | null;
   wait_plan_id?: string | null;
+  /** The instant the row began to wait, so the view can say since when. */
+  wait_since?: string | null;
   overlap_files?: string[];
   pull_request_number?: number | null;
   pull_request_url?: string | null;

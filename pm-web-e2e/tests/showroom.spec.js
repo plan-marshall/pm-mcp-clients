@@ -122,8 +122,11 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('epic-tokens')).toContainText('Tokens');
     await expect(page.getByTestId('epic-workstreams')).toBeVisible();
     await expect(page.getByTestId('workstream-WS-1')).toBeVisible();
+    // The split sits one step behind the tokens line (D6-1).
+    await page.getByTestId('epic-tokens-disclosure').click();
     await expect(page.getByTestId('epic-token-breakdown')).toBeVisible();
     await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.getByTestId('epic-events')).toBeVisible();
   });
 

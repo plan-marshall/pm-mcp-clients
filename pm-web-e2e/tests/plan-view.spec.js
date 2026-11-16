@@ -183,18 +183,25 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
       'relay-auth-v2',
     );
 
-    // Verify sources, landings, registers, tokens, and events
-    await expect(page.locator('[data-testid="epic-sources"]')).toBeVisible();
+    // Verify sources, landings, registers, tokens, and events on their tabs (D6-1)
+    await page.getByRole('tab', { name: 'Intent' }).click();
+    await expect(page.locator('[data-testid="epic-intent-sources"]')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Landings' }).click();
     await expect(page.locator('[data-testid="epic-landing-count"]')).toHaveText('1 landing');
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
     await expect(page.locator('[data-testid="epic-findings"]')).toBeVisible();
     await expect(page.locator('[data-testid="epic-watches"]')).toBeVisible();
+
+    await page.locator('[data-testid="epic-tokens-disclosure"]').click();
     await expect(page.locator('[data-testid="epic-token-breakdown"]')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.locator('[data-testid="epic-events"]')).toBeVisible();
 
-    // Back returns to the plan the epic was opened from, not to the overview
-    const backBtn = page.locator('[data-testid="back-btn"]');
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    // The epic's head draws no Back: the history returns to the plan it was opened from
+    await page.goBack();
     await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
 
     // The plan's own back then returns to Running Work, where it was opened

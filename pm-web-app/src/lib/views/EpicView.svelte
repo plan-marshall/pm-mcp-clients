@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
-  import Button from '../components/Button.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
   import { errorCodeOf, actFailureText } from '../api/errors';
@@ -9,11 +8,14 @@
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
-  import WorkflowIcon from '../components/WorkflowIcon.svelte';
-  import Icon from '../components/Icon.svelte';
-  import { phaseIconId } from '../icons/workflowIcons';
-  import type { UiIconId } from '../icons/uiIcons';
+  import Chip from '../components/Chip.svelte';
+  import KindMark from '../components/KindMark.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import EpicIntentPanel from '../components/EpicIntentPanel.svelte';
+  import Tabs, { type TabItem } from '../components/Tabs.svelte';
+  import ObjectPage from '../templates/ObjectPage.svelte';
   import { displayState } from '../display';
+  import { EPIC_TABS, type EpicTab } from '../routes';
   import {
     apiClient,
     type ChatReadBack,
@@ -26,12 +28,10 @@
   import {
     runtimeStore,
     openPlanView,
-    openProjectInExplorer,
     openEpicDecomposition,
-    goBack,
-    navigateTo,
+    selectObjectTab,
   } from '../stores/runtime';
-  import { formatSplit, formatTokens, formatTime } from '../display/format';
+  import { formatSplit, formatTime } from '../display/format';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { refreshesEpicView } from './epicEvents';
 
@@ -40,6 +40,8 @@
   let resource = $state<EpicResource | null>(null);
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
+  /** The code of a failed epic-resource read: the page keeps the epic's head and says so. */
+  let resourceErrorCode = $state<string | null>(null);
 
   let unsubscribeEvents: (() => void) | null = null;
 
@@ -53,6 +55,9 @@
   let reviewChatOpen = $state(false);
   let reviewChatBusy = $state(false);
 
+  /** Whether the tokens line shows its plan-by-plan disclosure. */
+  let tokensOpen = $state(false);
+
   /** The workstreams the operator has folded or unfolded, overriding the resource's own default. */
   let workstreamToggles = $state<Record<string, boolean>>({});
 
@@ -61,6 +66,70 @@
 
   /** The normalized query tokens, computed once per keystroke. */
   const queryTokens = $derived(tokenize(query));
+
+  /**
+   * Whether the epic stands as a list column: one of its plans is open to its right, which the
+   * address carries as an object opened in place (`navigation.adoc#url`).
+   */
+  const listColumn = $derived($runtimeStore.openObject?.kind === 'plan');
+
+  /**
+   * The tab the address names, or the default one the address omits.
+   *
+   * @param value the store's tab, if it carries one
+   * @returns the tab this page draws
+   */
+  function epicTab(value: string | null | undefined): EpicTab {
+    return (EPIC_TABS as ReadonlyArray<string>).includes(value ?? '')
+      ? (value as EpicTab)
+      : 'plans';
+  }
+
+  /** The tab this page draws. */
+  const activeTab = $derived(epicTab($runtimeStore.objectTab));
+
+  /** The number of findings that are new since the last review, or `0` where none is. */
+  const newFindings = $derived(resource?.findings.new ?? 0);
+
+  /** The five tabs of the epic's object column, the `! n` badge while findings are new. */
+  const tabItems = $derived<TabItem[]>([
+    { id: 'plans', label: $t('overview.epic.tab.plans'), panelId: 'epic-panel-plans' },
+    { id: 'intent', label: $t('intent.tab.title'), panelId: 'epic-panel-intent' },
+    { id: 'landings', label: $t('overview.epic.landings'), panelId: 'epic-panel-landings' },
+    {
+      id: 'reviews',
+      label: $t('overview.epic.tab.reviews'),
+      panelId: 'epic-panel-reviews',
+      ...(newFindings > 0
+        ? {
+            count: newFindings,
+            attention: true,
+            countLabel: $t('overview.epic.new_findings', { count: newFindings }),
+          }
+        : {}),
+    },
+    { id: 'events', label: $t('overview.epic.events'), panelId: 'epic-panel-events' },
+  ]);
+
+  /**
+   * Writes the chosen tab into the address, by a replace.
+   *
+   * The tab is not a level: switching it replaces the current entry, so Back leaves the epic
+   * rather than walking through its tabs (`navigation.adoc#url`).
+   *
+   * @param id the tab a person chose
+   */
+  function selectTab(id: string): void {
+    selectObjectTab(epicTab(id));
+  }
+
+  /** The tokens line's figure: the sums the resource carries, never a figure of this view's own. */
+  function totalLine(figure: TokenFigure | null | undefined): string {
+    if (!figure || !figure.measured) {
+      return $t('common.tokens.not_measured');
+    }
+    return formatSplit(figure.total, figure.input, figure.output, figure.floor, $currentLocale);
+  }
 
   /**
    * The workstreams whose rows match the filter; an empty workstream disappears with the rows
@@ -112,7 +181,7 @@
   /** A landing row: a row the runtime served a pull request number for. */
   type LandingRow = EpicWorkRow & { pull_request_number: number };
 
-  /** The epic's landings: the shipped rows that carry a pull request. */
+  /** The epic's landings: the rows that carry a pull request. */
   let landings = $derived(
     resource
       ? resource.workstreams.flatMap((workstream) =>
@@ -146,6 +215,7 @@
     if (!epicId) return;
     if (initial) isLoading = true;
     errorCode = null;
+    resourceErrorCode = null;
     const [process, epicResource] = await Promise.allSettled([
       apiClient.getEpicProcess(epicId),
       apiClient.getEpicResource(epicId),
@@ -155,8 +225,13 @@
     }
     if (epicResource.status === 'fulfilled') {
       resource = epicResource.value;
-    } else if (initial) {
-      resource = null;
+    } else {
+      // A read that failed says so and can be retried: a page that showed the epic's head while
+      // its resource stayed null would claim the epic "is still being read" for ever.
+      resourceErrorCode = errorCodeOf(epicResource.reason);
+      if (initial) {
+        resource = null;
+      }
     }
     if (!epic) {
       errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
@@ -164,21 +239,8 @@
     if (initial) isLoading = false;
   }
 
-  /**
-   * Goes back to the view the epic was opened from, and to Running Work when it has no caller.
-   */
-  function goBackToCaller() {
-    if (!goBack()) {
-      navigateTo('overview');
-    }
-  }
-
   function openPlan(pId: string) {
     openPlanView(pId);
-  }
-
-  function openProject(projectId: string) {
-    openProjectInExplorer(projectId);
   }
 
   function decompose() {
@@ -204,25 +266,38 @@
     return known.includes(key) ? $t(`epic.views.row.${key}`) : status;
   }
 
-  /** The marker of a row's status, as the design writes the workstream rows. */
-  function statusIcon(status: string): UiIconId {
-    switch (status) {
+  /** The dot colour a row's status takes, as the design system's state palette names it. */
+  function rowTone(status: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    switch (rowStatusKey(status)) {
       case 'shipped':
-        return 'state.check';
+        return 'success';
       case 'running':
       case 'pausing':
-        return 'act.start';
-      case 'paused':
-        return 'act.pause';
+        return 'running';
       case 'waiting':
-      case 'waiting for you':
       case 'held':
-        return 'state.alert';
+        return 'attention';
       case 'cancelled':
       case 'abandoned':
-        return 'state.error';
+        return 'danger';
       default:
-        return 'state.dot';
+        return 'neutral';
+    }
+  }
+
+  /** The dot colour the epic's own state takes. */
+  function stateTone(state: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    switch (state) {
+      case 'running':
+      case 'landing':
+        return 'running';
+      case 'waiting':
+      case 'held':
+        return 'attention';
+      case 'ended':
+        return 'neutral';
+      default:
+        return 'neutral';
     }
   }
 
@@ -245,6 +320,17 @@
       default:
         return '';
     }
+  }
+
+  /**
+   * Since when a row waits, in the interface's relative notation.
+   *
+   * @param at the instant the row began to wait
+   * @returns `9 d ago`, `since 11:25`, or nothing where the moment has not begun
+   */
+  function waitSince(at: string | null | undefined): string {
+    if (!at) return '';
+    return formatTime(at, 'relative', $currentLocale);
   }
 
   /** The plan the epic would start next: the first staged row that waits for nothing. */
@@ -528,435 +614,345 @@
       />
     </div>
   {:else if epic}
-    <!-- Path Navigation Header -->
-    <header class="epic-header" data-testid="epic-header">
-      <div class="epic-header__top">
-        <nav
-          class="epic-breadcrumb mono"
-          aria-label={$t('common.breadcrumb')}
-          data-testid="epic-breadcrumb"
-        >
-          <button
-            class="breadcrumb-link"
-            onclick={() => openProject(resource?.project_id ?? epic!.project)}
-            data-testid="breadcrumb-project"
-          >
-            {resource?.display_name ?? epic.project}
-          </button>
-          <span class="breadcrumb-sep">›</span>
-          <span class="breadcrumb-current font-semibold" data-testid="breadcrumb-epic">
-            {epic.epic_id}
-          </span>
-        </nav>
+    <ObjectPage compact={listColumn}>
+      <span slot="kind"><KindMark kind="epic" /></span>
+      <span slot="title" data-testid="epic-title">{epic.title}</span>
+      <span slot="id">{epic.epic_id}</span>
 
-        <div class="epic-header__actions">
-          {#if epic.review_ready}
-            <span class="badge badge--success" data-testid="review-ready-badge">
-              {$t('epic.review.ready')}
+      <div slot="state" class="epic-state" data-testid="epic-state-line">
+        <span data-testid="epic-state">
+          <StatusLabel
+            tone={stateTone(resource?.state ?? epic.state)}
+            label={displayState('epic', resource?.state ?? epic.state, $t)}
+          />
+        </span>
+        {#if epic.review_ready}
+          <span class="epic-state__word" data-testid="review-ready-badge">
+            {$t('epic.review.ready')}
+          </span>
+        {/if}
+        {#if resource}
+          <span class="epic-state__word" data-testid="epic-mode">
+            {$t('epic.views.mode', {
+              mode: resource.auto_start ? $t('epic.views.mode_on') : $t('epic.views.mode_off'),
+            })}
+          </span>
+          <span class="epic-state__word" data-testid="epic-scope">
+            {$t('overview.epic.at_once', {
+              running: resource.running ?? '?',
+              scope: resource.scope,
+            })}
+          </span>
+          {#if resource.state === 'ended' && resource.terminal_reason}
+            <span class="epic-state__word" data-testid="epic-end">
+              {$t('overview.ended.epic_end', { end: resource.terminal_reason })}
             </span>
           {/if}
-          <Button
-            variant="ghost"
-            onclick={goBackToCaller}
-            data-testid="back-btn"
-            data-advisory={$t('common.actions.back.title')}
-          >
-            {$t('common.actions.back')}
-          </Button>
-        </div>
+          {#if nextPlanId()}
+            <span class="epic-state__word" data-testid="epic-next-plan">
+              {$t('epic.views.next_plan', { plan: nextPlanId() })}
+            </span>
+          {/if}
+        {/if}
       </div>
 
-      <!-- Epic Title and Headline -->
-      <div class="epic-headline">
-        <div class="epic-title-group">
-          <span class="work-glyph">◇</span>
-          <h1 class="epic-title" data-testid="epic-title">{epic.title}</h1>
-        </div>
-        <div class="epic-status-tags">
-          <span class="badge badge--kind badge--epic">{$t('overview.kind.epic')}</span>
-          <span
-            class="badge badge--state badge--state-{resource?.state ?? epic.state}"
-            data-testid="epic-state"
-          >
-            {displayState('epic', resource?.state ?? epic.state, $t)}
-          </span>
-          {#if resource}
-            <span class="badge badge--mode" data-testid="epic-mode">
-              {$t('epic.views.mode', {
-                mode: resource.auto_start ? $t('epic.views.mode_on') : $t('epic.views.mode_off'),
-              })}
-            </span>
-            <span class="badge badge--counts" data-testid="epic-scope">
-              {$t('overview.epic.at_once', {
-                running: resource.running ?? '?',
-                scope: resource.scope,
-              })}
-            </span>
-            {#if resource.state === 'ended' && resource.terminal_reason}
-              <span class="badge badge--ended" data-testid="epic-end">
-                {$t('overview.ended.epic_end', { end: resource.terminal_reason })}
-              </span>
-            {/if}
-            {#if nextPlanId()}
-              <span class="badge badge--next" data-testid="epic-next-plan">
-                {$t('epic.views.next_plan', { plan: nextPlanId() })}
-              </span>
-            {/if}
-          {/if}
-        </div>
+      <div slot="primary" class="epic-acts">
+        <WorkControlPanel
+          subjectId={epic.epic_id}
+          subjectKind="epic"
+          projectId={resource?.project_id ?? epic.project}
+          ended={resource?.state === 'ended'}
+          scope={resource?.scope ?? 0}
+          scopeKnown={resource !== null}
+          resourceFailed={resourceErrorCode !== null}
+          running={resource?.running ?? null}
+          nextPlan={nextPlanId()}
+          autoStart={resource?.auto_start ?? null}
+          onReview={(register) => void openReview(register)}
+          onDecompose={decompose}
+          onChanged={() => void loadEpic(false)}
+        />
       </div>
 
-      <!-- The epic's own actions, holds, and chats -->
-      <WorkControlPanel
-        subjectId={epic.epic_id}
-        subjectKind="epic"
-        projectId={resource?.project_id ?? epic.project}
-        ended={resource?.state === 'ended'}
-        scope={resource?.scope ?? 0}
-        scopeKnown={resource !== null}
-        running={resource?.running ?? null}
-        nextPlan={nextPlanId()}
-        autoStart={resource?.auto_start ?? null}
-        onReview={(register) => void openReview(register)}
-        onDecompose={decompose}
-        onChanged={() => void loadEpic(false)}
-      />
-
-      <!-- Tokens Summary -->
-      {#if resource && resource.tokens.total.measured}
-        <div class="epic-tokens mono" data-testid="epic-tokens">
-          <span class="tokens-label">{$t('overview.epic.tokens')}:</span>
-          <span class="tokens-value">{figureLine(resource.tokens.total)}</span>
-          {#if resource.tokens.total.not_measured_tasks > 0}
-            <span class="tokens-unmeasured" data-testid="epic-tokens-unmeasured">
-              {unmeasuredLine(resource.tokens.total.not_measured_tasks)}
-            </span>
-          {/if}
-        </div>
-      {:else if epic.tokens_so_far && !epic.tokens_so_far.none_yet}
-        <div class="epic-tokens mono" data-testid="epic-tokens">
-          <span class="tokens-label">{$t('overview.epic.tokens')}:</span>
-          <span class="tokens-value">
-            {formatSplit(
-              epic.tokens_so_far.total,
-              epic.tokens_so_far.input,
-              epic.tokens_so_far.output,
-              epic.tokens_so_far.floor,
-              $currentLocale,
-            )}
-          </span>
-        </div>
-      {/if}
-    </header>
-
-    <!-- Main Content -->
-    <main class="epic-content">
-      {#if resource}
-        <!-- Workstreams and member plans -->
-        <section class="plans-section" data-testid="epic-workstreams">
-          <h2 class="section-title">{$t('epic.views.workstreams')}</h2>
-          {#if resource.workstreams.length > 0}
-            <FilterInput
-              value={query}
-              label={$t('common.filter.label')}
-              placeholder={$t('common.filter.placeholder')}
-              resultCount={matchingPlanCount}
-              onchange={(value) => (query = value)}
-            />
-          {/if}
-          {#if filteredWorkstreams.length === 0}
-            <p class="text-muted" data-testid="epic-filter-empty">{$t('common.filter.empty')}</p>
-          {/if}
-          {#each filteredWorkstreams as workstream (workstream.id)}
-            <div class="workstream" data-testid={`workstream-${workstream.id}`}>
-              <h3 class="workstream__title">
-                <button
-                  type="button"
-                  class="workstream__toggle"
-                  aria-expanded={isWorkstreamOpen(workstream)}
-                  data-testid={`workstream-toggle-${workstream.id}`}
-                  data-advisory={$t('epic.views.toggle_workstream.title')}
-                  onclick={() => toggleWorkstream(workstream)}
-                >
-                  <span class="workstream__marker" aria-hidden="true">
-                    {isWorkstreamOpen(workstream) ? '▾' : '▸'}
-                  </span>
-                  <span class="workstream__id mono">{workstream.id}</span>
-                  <span class="workstream__name">{workstream.name}</span>
-                </button>
-                <span class="workstream__counts" data-testid={`workstream-counts-${workstream.id}`}>
-                  {countsText(workstream.rows)}
-                </span>
-              </h3>
-              {#if queryTokens.length > 0 || isWorkstreamOpen(workstream)}
-                <div class="workstream__rows">
-                  {#each workstream.rows as row (row.plan_id)}
-                    <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>
-                      <button
-                        type="button"
-                        class="workstream__plan"
-                        data-advisory={$t('epic.views.open_plan.title')}
-                        onclick={() => openPlan(row.plan_id)}
-                      >
-                        <span class="plan-glyph"
-                          ><Icon name={statusIcon(row.status)} size={16} /></span
-                        >
-                        <span class="plan-title font-semibold">{row.title}</span>
-                      </button>
-                      <span class="badge badge--state badge--state-{rowStatusKey(row.status)}">
-                        {rowStatus(row.status)}
-                      </span>
-                      {#if waitLabel(row)}
-                        <span class="workstream__wait" data-testid={`wait-${row.plan_id}`}>
-                          {waitLabel(row)}
-                        </span>
-                      {/if}
-                      {#if row.pull_request_number}
-                        {#if pullRequestUrl(row.pull_request_url)}
-                          <a
-                            class="pr-link mono"
-                            href={pullRequestUrl(row.pull_request_url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            data-testid={`epic-pr-${row.plan_id}`}
-                          >
-                            {$t('epic.views.pr', { number: row.pull_request_number })}
-                          </a>
-                        {:else}
-                          <span class="pr-link mono" data-testid={`epic-pr-${row.plan_id}`}>
-                            {$t('epic.views.pr', { number: row.pull_request_number })}
-                          </span>
-                        {/if}
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          {/each}
-        </section>
-
-        <!-- Sources and landings -->
-        <section class="epic-facts" data-testid="epic-sources">
-          <h2 class="section-title">{$t('overview.epic.sources')}</h2>
-          {#if resource.sources.length > 0}
-            <ul class="fact-list">
-              {#each resource.sources as source}
-                <li>{source}</li>
-              {/each}
-            </ul>
-          {:else}
-            <p class="text-muted" data-testid="epic-sources-empty">{$t('epic.views.no_sources')}</p>
-          {/if}
-        </section>
-
-        <section class="epic-facts" data-testid="epic-landings">
-          <h2 class="section-title">{$t('overview.epic.landings')}</h2>
-          <p data-testid="epic-landing-count">
-            {$t('epic.views.landing_count', { count: resource.landings })}
-          </p>
-          {#if landings.length > 0}
-            <ul class="landing-list">
-              {#each landings as landing (landing.plan_id)}
-                <li class="landing-item" data-testid={`epic-landing-${landing.plan_id}`}>
-                  <span class="landing-item__plan mono">{landing.plan_id}</span>
-                  {#if pullRequestUrl(landing.pull_request_url)}
-                    <a
-                      class="landing-item__pr"
-                      href={pullRequestUrl(landing.pull_request_url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {$t('epic.views.pr', { number: landing.pull_request_number })}
-                    </a>
-                  {:else}
-                    <span class="landing-item__pr mono">
-                      {$t('epic.views.pr', { number: landing.pull_request_number })}
-                    </span>
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </section>
-
-        <!-- Registers -->
-        <section class="epic-registers" data-testid="epic-registers">
-          <div class="register" data-testid="epic-findings">
-            <h2 class="section-title">{$t('overview.epic.findings')}</h2>
-            <p class="register__counts">
-              {$t('overview.epic.findings_counts', {
-                new: resource.findings.new,
-                open: resource.findings.open,
-                kept: resource.findings.kept,
-              })}
-            </p>
-            <button
-              type="button"
-              class="review-open"
-              data-testid="open-findings-review"
-              data-advisory={$t('epic.views.review_open.title')}
-              onclick={() => void openReview('findings')}
-            >
-              {$t('epic.views.review_open')}
-            </button>
+      <div slot="tabs" class="epic-tabstrip">
+        {#if resource}
+          <div class="epic-tokens mono" data-testid="epic-tokens">
+            <span class="tokens-label">{$t('overview.epic.tokens')}:</span>
+            <span class="tokens-value">{totalLine(resource.tokens.total)}</span>
+            {#if resource.tokens.total.not_measured_tasks > 0}
+              <span class="tokens-unmeasured" data-testid="epic-tokens-unmeasured">
+                {unmeasuredLine(resource.tokens.total.not_measured_tasks)}
+              </span>
+            {/if}
+            {#if resource.tokens.plans.length > 0 || resource.tokens.own.measured}
+              <button
+                type="button"
+                class="tokens-more"
+                aria-expanded={tokensOpen}
+                data-testid="epic-tokens-disclosure"
+                data-advisory={$t('epic.views.tokens_disclosure.title')}
+                onclick={() => (tokensOpen = !tokensOpen)}
+              >
+                {$t('epic.views.tokens_disclosure')}
+              </button>
+            {/if}
           </div>
-          <div class="register" data-testid="epic-watches">
-            <h2 class="section-title">{$t('overview.epic.watches')}</h2>
-            <p class="register__counts">
-              {$t('overview.epic.watches_counts', {
-                open: resource.watches.open,
-                kept: resource.watches.kept,
-              })}
-            </p>
-            <button
-              type="button"
-              class="review-open"
-              data-testid="open-watches-review"
-              onclick={() => void openReview('watches')}
-            >
-              {$t('epic.views.review_open')}
-            </button>
-          </div>
-        </section>
-
-        <!-- Tokens per plan and the epic's own -->
-        <section class="epic-tokens-detail" data-testid="epic-token-breakdown">
-          <h2 class="section-title">{$t('overview.epic.tokens')}</h2>
-          {#if !resource.tokens.not_measured}
-            <dl class="token-facts">
+          {#if tokensOpen}
+            <dl class="token-facts" data-testid="epic-token-breakdown">
               <dt>{$t('epic.views.tokens_own')}</dt>
               <dd data-testid="epic-own-tokens">{figureLine(resource.tokens.own)}</dd>
               {#each resource.tokens.plans as plan (plan.plan_id)}
                 <dt class="mono">{plan.plan_id}</dt>
-                <dd data-testid={`epic-plan-tokens-${plan.plan_id}`}>
-                  {figureLine(plan.figure)}
-                </dd>
+                <dd data-testid={`epic-plan-tokens-${plan.plan_id}`}>{figureLine(plan.figure)}</dd>
               {/each}
             </dl>
-          {:else}
-            <p class="text-muted" data-testid="epic-tokens-not-measured">
-              {$t('epic.views.not_measured_all')}
-              {#if resource.tokens.not_measured_count > 0}
-                {unmeasuredLine(resource.tokens.not_measured_count)}
-              {/if}
-            </p>
           {/if}
-        </section>
-
-        <!-- Events -->
-        <section class="epic-events" data-testid="epic-events">
-          <h2 class="section-title">{$t('overview.epic.events')}</h2>
-          {#if resource.events.length > 0}
-            <ol class="event-list">
-              {#each resource.events as event}
-                <li class="event-item">
-                  <span class="event-time mono">{formatEventTime(event.at)}</span>
-                  <span class="event-text">{event.text}</span>
-                </li>
-              {/each}
-            </ol>
-          {:else}
-            <p class="text-muted">{$t('epic.views.no_events')}</p>
-          {/if}
-        </section>
-      {:else}
-        <!-- Running Plans -->
-        <section class="plans-section" data-testid="running-plans-section">
-          <h2 class="section-title">
-            {$t('epic.plans.running')}
-            <span class="section-count">({epic.running_plans ? epic.running_plans.length : 0})</span
-            >
-          </h2>
-          {#if !epic.running_plans || epic.running_plans.length === 0}
-            <div class="plans-empty text-muted">{$t('epic.plans.none')}</div>
-          {:else}
-            <div class="plans-grid">
-              {#each epic.running_plans as plan}
-                <button
-                  class="plan-card work-card work-card--running"
-                  onclick={() => openPlan(plan.plan_id)}
-                  data-testid="running-plan-{plan.plan_id}"
-                >
-                  <div class="plan-card__head">
-                    <span class="plan-glyph"><Icon name="act.start" size={16} /></span>
-                    <span class="plan-title font-semibold">{plan.title}</span>
-                    <span class="badge badge--phase">
-                      <WorkflowIcon id={phaseIconId(plan.current_phase)} size={16} />
-                      {plan.current_phase}
-                    </span>
-                    <span class="badge badge--state badge--state-{plan.phase_state}"
-                      >{displayState('plan', plan.phase_state, $t)}</span
-                    >
-                  </div>
-                  <div class="plan-card__progress">
-                    <span>
-                      {$t('overview.progress.tasks', {
-                        done: plan.tasks_done,
-                        total: plan.tasks_total,
-                      })}
-                    </span>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </section>
-
-        <!-- Staged Plans -->
-        <section class="plans-section" data-testid="staged-plans-section">
-          <h2 class="section-title">
-            {$t('epic.plans.staged')}
-            <span class="section-count">({epic.staged_plans ? epic.staged_plans.length : 0})</span>
-          </h2>
-          {#if !epic.staged_plans || epic.staged_plans.length === 0}
-            <div class="plans-empty text-muted">{$t('epic.plans.none')}</div>
-          {:else}
-            <div class="plans-grid">
-              {#each epic.staged_plans as plan}
-                <button
-                  class="plan-card work-card work-card--staged"
-                  onclick={() => openPlan(plan.plan_id)}
-                  data-testid="staged-plan-{plan.plan_id}"
-                >
-                  <div class="plan-card__head">
-                    <span class="plan-glyph"><Icon name="state.dot" size={16} /></span>
-                    <span class="plan-title font-semibold">{plan.title}</span>
-                    <span class="badge badge--state badge--state-staged"
-                      >{displayState('plan', plan.phase_state || 'staged', $t)}</span
-                    >
-                  </div>
-                  <div class="plan-card__progress">
-                    <span>
-                      {$t('overview.progress.tasks', {
-                        done: plan.tasks_done,
-                        total: plan.tasks_total,
-                      })}
-                    </span>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </section>
-
-        <!-- Alongside Landings -->
-        {#if epic.alongside_landings && epic.alongside_landings.length > 0}
-          <section class="alongside-section" data-testid="epic-alongside-section">
-            <h2 class="section-title">{$t('overview.epic.landings')}</h2>
-            <div class="alongside-list">
-              {#each epic.alongside_landings as landing}
-                <div class="alongside-item mono" data-testid="alongside-item">
-                  {landing}
-                </div>
-              {/each}
-            </div>
-          </section>
+          <Tabs tabs={tabItems} active={activeTab} label={$t('epic.views.tabs')} onSelect={selectTab} />
         {/if}
+      </div>
+
+      {#if resource}
+        {#if activeTab === 'plans'}
+          <div id="epic-panel-plans" role="tabpanel" data-testid="epic-panel-plans">
+            {@render plans(true)}
+          </div>
+        {:else if activeTab === 'intent'}
+          <div id="epic-panel-intent" role="tabpanel" data-testid="epic-panel-intent">
+            <section class="epic-facts" data-testid="epic-intent-sources">
+              <h2 class="section-title">{$t('overview.epic.sources')}</h2>
+              {#if resource.sources.length > 0}
+                <ul class="fact-list">
+                  {#each resource.sources as source}
+                    <li>{source}</li>
+                  {/each}
+                </ul>
+              {:else}
+                <p class="text-muted" data-testid="epic-sources-empty">
+                  {$t('epic.views.no_sources')}
+                </p>
+              {/if}
+            </section>
+            <EpicIntentPanel {epicId} />
+          </div>
+        {:else if activeTab === 'landings'}
+          <div id="epic-panel-landings" role="tabpanel" data-testid="epic-panel-landings">
+            <p data-testid="epic-landing-count">
+              {$t('epic.views.landing_count', { count: landings.length })}
+            </p>
+            {#if landings.length > 0}
+              <ul class="landing-list">
+                {#each landings as landing (landing.plan_id)}
+                  <li class="landing-item" data-testid={`epic-landing-${landing.plan_id}`}>
+                    <span class="landing-item__plan mono">{landing.plan_id}</span>
+                    {#if pullRequestUrl(landing.pull_request_url)}
+                      <a
+                        class="landing-item__pr"
+                        href={pullRequestUrl(landing.pull_request_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {$t('epic.views.pr', { number: landing.pull_request_number })}
+                      </a>
+                    {:else}
+                      <span class="landing-item__pr mono">
+                        {$t('epic.views.pr', { number: landing.pull_request_number })}
+                      </span>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {:else}
+              <p class="text-muted" data-testid="epic-landings-empty">
+                {$t('epic.views.no_landings')}
+              </p>
+            {/if}
+            {#if epic.alongside_landings && epic.alongside_landings.length > 0}
+              <section class="epic-facts" data-testid="epic-analysis">
+                <h2 class="section-title">{$t('epic.views.analysis')}</h2>
+                <div class="alongside-list">
+                  {#each epic.alongside_landings as landing}
+                    <div class="alongside-item mono" data-testid="alongside-item">{landing}</div>
+                  {/each}
+                </div>
+              </section>
+            {/if}
+          </div>
+        {:else if activeTab === 'reviews'}
+          <div id="epic-panel-reviews" role="tabpanel" data-testid="epic-panel-reviews">
+            <section class="epic-registers" data-testid="epic-registers">
+              <div class="register" data-testid="epic-findings">
+                <h2 class="section-title">{$t('overview.epic.findings')}</h2>
+                <p class="register__counts">
+                  {$t('overview.epic.findings_counts', {
+                    new: resource.findings.new,
+                    open: resource.findings.open,
+                    kept: resource.findings.kept,
+                  })}
+                </p>
+                <button
+                  type="button"
+                  class="review-open"
+                  data-testid="open-findings-review"
+                  data-advisory={$t('epic.views.review_open.title')}
+                  onclick={() => void openReview('findings')}
+                >
+                  {$t('epic.views.review_open')}
+                </button>
+              </div>
+              <div class="register" data-testid="epic-watches">
+                <h2 class="section-title">{$t('overview.epic.watches')}</h2>
+                <p class="register__counts">
+                  {$t('overview.epic.watches_counts', {
+                    open: resource.watches.open,
+                    kept: resource.watches.kept,
+                  })}
+                </p>
+                <button
+                  type="button"
+                  class="review-open"
+                  data-testid="open-watches-review"
+                  data-advisory={$t('epic.views.review_watches.title')}
+                  onclick={() => void openReview('watches')}
+                >
+                  {$t('epic.views.review_open')}
+                </button>
+              </div>
+            </section>
+          </div>
+        {:else}
+          <div id="epic-panel-events" role="tabpanel" data-testid="epic-panel-events">
+            <section class="epic-events" data-testid="epic-events">
+              <h2 class="section-title">{$t('overview.epic.events')}</h2>
+              {#if resource.events.length > 0}
+                <ol class="event-list">
+                  {#each resource.events as event}
+                    <li class="event-item">
+                      <span class="event-time mono">{formatEventTime(event.at)}</span>
+                      <span class="event-text">{event.text}</span>
+                    </li>
+                  {/each}
+                </ol>
+              {:else}
+                <p class="text-muted" data-testid="epic-events-empty">{$t('epic.views.no_events')}</p>
+              {/if}
+            </section>
+          </div>
+        {/if}
+      {:else if resourceErrorCode !== null}
+        <div class="epic-view__resource-error" data-testid="epic-resource-error">
+          <ErrorState
+            code={resourceErrorCode}
+            actionLabel={$t('common.action.retry')}
+            onAct={() => loadEpic(true)}
+            titleLevel={2}
+            announce={true}
+          />
+        </div>
       {/if}
-    </main>
+    </ObjectPage>
+
+    {#if listColumn && resource}
+      <div class="epic-list-column" data-testid="epic-list-column">
+        {@render plans(false)}
+      </div>
+    {/if}
   {/if}
 </div>
+
+{#snippet plans(withTitle: boolean)}
+  <section class="plans-section" data-testid="epic-workstreams">
+    {#if withTitle}
+      <h2 class="section-title">{$t('epic.views.workstreams')}</h2>
+    {/if}
+    {#if resource && resource.workstreams.length > 0}
+      <FilterInput
+        value={query}
+        label={$t('common.filter.label')}
+        placeholder={$t('common.filter.placeholder')}
+        resultCount={matchingPlanCount}
+        onchange={(value) => (query = value)}
+      />
+    {/if}
+    {#if filteredWorkstreams.length === 0}
+      <p class="text-muted" data-testid="epic-filter-empty">{$t('common.filter.empty')}</p>
+    {/if}
+    {#each filteredWorkstreams as workstream (workstream.id)}
+      <div class="workstream" data-testid={`workstream-${workstream.id}`}>
+        <h3 class="workstream__title">
+          <button
+            type="button"
+            class="workstream__toggle"
+            aria-expanded={isWorkstreamOpen(workstream)}
+            data-testid={`workstream-toggle-${workstream.id}`}
+            data-advisory={$t('epic.views.toggle_workstream.title')}
+            onclick={() => toggleWorkstream(workstream)}
+          >
+            <span class="workstream__marker" aria-hidden="true">
+              {isWorkstreamOpen(workstream) ? '▾' : '▸'}
+            </span>
+            <span class="workstream__name">{workstream.name}</span>
+          </button>
+          <span class="workstream__counts" data-testid={`workstream-counts-${workstream.id}`}>
+            {countsText(workstream.rows)}
+          </span>
+        </h3>
+        {#if queryTokens.length > 0 || isWorkstreamOpen(workstream)}
+          <div class="workstream__rows">
+            {#each workstream.rows as row (row.plan_id)}
+              <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>
+                <button
+                  type="button"
+                  class="workstream__plan"
+                  data-testid={`epic-open-${row.plan_id}`}
+                  data-advisory={$t('epic.views.open_plan.title')}
+                  onclick={() => openPlan(row.plan_id)}
+                >
+                  <span class="plan-title font-semibold">{row.title}</span>
+                </button>
+                <span data-testid={`epic-plan-chip-${row.plan_id}`}><Chip value={row.plan_id} /></span>
+                <span data-testid={`epic-plan-status-${row.plan_id}`}>
+                  <StatusLabel tone={rowTone(row.status)} label={rowStatus(row.status)} fixed />
+                </span>
+                {#if waitLabel(row) || row.wait_since}
+                  <span class="workstream__wait" data-testid={`wait-${row.plan_id}`}>
+                    {#if waitLabel(row)}
+                      <span>{waitLabel(row)}</span>
+                    {/if}
+                    {#if row.wait_since && waitSince(row.wait_since)}
+                      <time
+                        class="workstream__since"
+                        datetime={row.wait_since}
+                        data-testid={`wait-since-${row.plan_id}`}
+                        >{waitSince(row.wait_since)}</time
+                      >
+                    {/if}
+                  </span>
+                {/if}
+                {#if row.pull_request_number}
+                  {#if pullRequestUrl(row.pull_request_url)}
+                    <a
+                      class="pr-link mono"
+                      href={pullRequestUrl(row.pull_request_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid={`epic-pr-${row.plan_id}`}
+                    >
+                      {$t('epic.views.pr', { number: row.pull_request_number })}
+                    </a>
+                  {:else}
+                    <span class="pr-link mono" data-testid={`epic-pr-${row.plan_id}`}>
+                      {$t('epic.views.pr', { number: row.pull_request_number })}
+                    </span>
+                  {/if}
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </section>
+{/snippet}
 
 <FindingsReviewModal
   {epicId}
@@ -1008,8 +1004,8 @@
   }
 
   .epic-view__loading,
-  .epic-view__error {
-    display: flex;
+  .epic-view__error,
+  .epic-view__resource-error {    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1017,83 +1013,42 @@
     gap: var(--space-4);
   }
 
-  .epic-header {
-    background-color: var(--color-bg-surface);
-    border-bottom: 1px solid var(--color-border);
+  .epic-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .epic-state__word {
+    color: var(--color-text-secondary);
+  }
+
+  .epic-acts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The list column's own body, under the compact head (`epic-view.adoc#tabs`). Its inset comes
+     from the engine's column once the column chain renders it; until then it keeps the page's. */
+  .epic-list-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
     padding: var(--space-4) var(--space-6);
+    min-inline-size: 0;
+  }
+
+  /* The tokens line and the tabs share the region between the head and the body (D6-1). */
+  .epic-tabstrip {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-
-  .epic-header__top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .epic-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-  }
-
-  .breadcrumb-link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--color-accent);
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: inherit;
-    font-family: inherit;
-  }
-
-  .breadcrumb-link:hover {
-    color: var(--color-accent-hover);
-  }
-
-  .breadcrumb-sep {
-    color: var(--color-text-muted);
-  }
-
-  .breadcrumb-current {
-    color: var(--color-text-primary);
-  }
-
-  .epic-headline {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .epic-title-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .work-glyph {
-    font-size: 1.25rem;
-    color: var(--color-accent);
-  }
-
-  .epic-title {
-    font-size: var(--text-xl, 1.25rem);
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .epic-status-tags {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
+    min-inline-size: 0;
   }
 
   .epic-tokens {
@@ -1102,6 +1057,7 @@
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
+    align-items: baseline;
   }
 
   .tokens-label {
@@ -1116,18 +1072,29 @@
     color: var(--color-text-muted);
   }
 
-  .epic-content {
-    padding: var(--space-6);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    overflow-y: auto;
+  .tokens-more {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .tokens-more:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .token-facts {
+    display: grid;
+    grid-template-columns: minmax(8rem, max-content) 1fr;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    font-size: var(--text-sm);
   }
 
   .plans-section,
   .epic-facts,
-  .epic-registers,
-  .epic-tokens-detail,
   .epic-events {
     display: flex;
     flex-direction: column;
@@ -1141,11 +1108,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  .section-count {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
   }
 
   .workstream {
@@ -1187,10 +1149,6 @@
     color: var(--color-text-muted);
   }
 
-  .workstream__id {
-    color: var(--color-text-muted);
-  }
-
   .workstream__name {
     font-weight: 600;
   }
@@ -1226,13 +1184,20 @@
     color: inherit;
     font: inherit;
     text-align: left;
-    flex: 1 1 12rem;
+    flex: 0 1 auto;
   }
 
   .workstream__wait {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
     flex: 1 1 12rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .workstream__since {
+    color: var(--color-text-secondary);
   }
 
   .pr-link {
@@ -1269,6 +1234,7 @@
   }
 
   .epic-registers {
+    display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: var(--space-4);
@@ -1303,14 +1269,6 @@
     color: var(--color-primary-hover);
   }
 
-  .token-facts {
-    display: grid;
-    grid-template-columns: minmax(8rem, max-content) 1fr;
-    gap: var(--space-1) var(--space-3);
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
   .event-list {
     list-style: none;
     margin: 0;
@@ -1334,73 +1292,6 @@
     font-size: var(--text-xs);
   }
 
-  .plans-empty {
-    padding: var(--space-4);
-    font-size: var(--text-sm);
-  }
-
-  .plans-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-    gap: var(--space-3);
-  }
-
-  .plan-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md, 6px);
-    padding: var(--space-3) var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    cursor: pointer;
-    text-align: left;
-    transition:
-      transform 0.1s ease,
-      box-shadow 0.1s ease;
-  }
-
-  .plan-card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-    border-color: var(--color-accent);
-  }
-
-  .plan-card__head {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .badge--phase {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-  }
-
-  .plan-glyph {
-    font-family: monospace;
-    font-weight: bold;
-    color: var(--color-accent);
-  }
-
-  .plan-title {
-    font-size: var(--text-sm);
-    flex: 1;
-  }
-
-  .plan-card__progress {
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-  }
-
-  .alongside-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
   .alongside-list {
     display: flex;
     flex-direction: column;
@@ -1415,31 +1306,11 @@
     font-size: var(--text-xs);
   }
 
-  @media (max-width: 768px) {
-    .epic-content {
-      padding: var(--space-3);
-    }
-
-    .plans-grid {
-      grid-template-columns: 1fr;
-    }
+  .plan-title {
+    font-size: var(--text-sm);
   }
 
   @media (max-width: 480px) {
-    .epic-header {
-      padding: var(--space-3);
-    }
-
-    .epic-content {
-      padding: var(--space-2);
-      gap: var(--space-4);
-    }
-
-    .epic-headline {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
     .workstream {
       padding: var(--space-2);
     }
@@ -1465,10 +1336,6 @@
     }
 
     .token-facts {
-      grid-template-columns: 1fr;
-    }
-
-    .plans-grid {
       grid-template-columns: 1fr;
     }
 
