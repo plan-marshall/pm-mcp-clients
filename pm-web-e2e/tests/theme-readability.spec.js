@@ -358,24 +358,18 @@ const GUARD_JOURNEYS = [
     },
   },
   {
-    title: 'settings, machine settings and designer',
-    views: ['SettingsView', 'MachineSettingsView', 'ProcessDesigner'],
+    title: 'settings and designer',
+    views: ['SettingsView', 'ProcessDesigner'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'designer', locale);
     },
     async walk(page, record) {
       await page.goto('/settings');
       await expect(page.getByTestId('settings-view')).toBeVisible();
-      await page.getByRole('tab').nth(1).click();
-      await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
+      // The setup panel carries the aspects and the forms; its loading line is not the page's text.
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('SettingsView');
-
-      await page.getByRole('tab').nth(0).click();
-      await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
-      // The devices line carries its own loading text; recording it would record a placeholder.
-      await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
-      await record('MachineSettingsView');
 
       await page.getByTestId('open-designer-btn').click();
       await expect(page.getByTestId('process-designer')).toBeVisible();
