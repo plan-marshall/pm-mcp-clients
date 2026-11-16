@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  addDescription,
   addSource,
   continueAndStart,
   openProject,

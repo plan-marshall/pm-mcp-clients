@@ -237,6 +237,8 @@
     <Button
       variant="secondary"
       data-testid="source-add-menu"
+      aria-haspopup="menu"
+      aria-expanded={addOpen ? 'true' : 'false'}
       disabled={busy || addItems.length === 0}
       bind:buttonElement={addTrigger}
       on:click={() => (addOpen = !addOpen)}

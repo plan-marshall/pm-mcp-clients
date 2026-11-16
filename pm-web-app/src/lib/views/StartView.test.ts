@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import StartView from './StartView.svelte';
 import { apiClient, type EpicDecomposition } from '../api/client';
@@ -59,14 +59,29 @@ describe('StartView', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
-  it('draws skeletons while the entry is still being read', async () => {
+  it('draws the setup gate with its spinner while the entry is still being opened', async () => {
     vi.spyOn(apiClient, 'openEntry').mockReturnValue(new Promise(() => {}));
     vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
 
     render(StartView, { projectId: PROJECT, kind: 'plan' });
 
     const loading = await screen.findByTestId('start-loading');
-    expect(loading.querySelector('[data-testid="skeleton"]')).not.toBeNull();
+    expect(loading).toHaveTextContent("Checking the project's setup…");
+    expect(within(screen.getByTestId('start-gate-checking')).getByRole('status')).toBeInTheDocument();
+  });
+
+  it('bounds the setup gate at 20 seconds', async () => {
+    const open = vi.spyOn(apiClient, 'openEntry').mockResolvedValue(sources());
+    vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+
+    render(StartView, { projectId: PROJECT, kind: 'plan' });
+    await screen.findByTestId('source-list');
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const [, request, signal, timeoutMs] = open.mock.calls[0];
+    expect(request).toEqual({ kind: 'plan' });
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(timeoutMs).toBe(20_000);
   });
 
   it('draws the error pattern with its act when the start names no project, and leads to the projects', async () => {

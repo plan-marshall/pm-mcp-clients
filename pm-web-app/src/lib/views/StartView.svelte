@@ -28,10 +28,8 @@
   import EpicAdoptView from './EpicAdoptView.svelte';
   import DecompositionReviewView from './DecompositionReviewView.svelte';
   import ErrorState from '../components/ErrorState.svelte';
-  import Skeleton from '../components/Skeleton.svelte';
   import Spinner from '../components/Spinner.svelte';
   import Button from '../components/Button.svelte';
-  import Card from '../components/Card.svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import RowMenu from '../components/RowMenu.svelte';
   import WizardPage from '../templates/WizardPage.svelte';
@@ -68,8 +66,6 @@
   let busy = false;
   /** The code of the failed load, which `ErrorState` resolves to its words. */
   let loadError: string | null = null;
-  /** How many reads this page ran, so a failed retry is announced even before the first success. */
-  let loadAttempts = 0;
   let actionError = '';
 
   let projectRemote: RemoteInfo | null = null;
@@ -205,7 +201,17 @@
   }
 
   /**
-   * @returns the catalogue key of the step's name, for the step bar and the page's own line
+   * @returns the number of the step the wizard stands on (`1` for ①, `2` for ②, `3` for the
+   *   steps after the start)
+   */
+  function stepNumber(current: StartStep): number {
+    if (current === 'ready') return 2;
+    if (current === 'started' || current === 'decomposition') return 3;
+    return 1;
+  }
+
+  /**
+   * @returns the catalogue key of the step's name, for the step bar's own line
    */
   function stepKeyOf(current: StartStep): string {
     if (current === 'ready' || current === 'parameters' || current === 'recipe') {
@@ -215,6 +221,12 @@
     if (current === 'decomposition') return 'start.step.decomposition';
     return 'start.step.sources';
   }
+
+  /** Whether the step offers the contract's own Back; `start.recipe-create` offers only `create`. */
+  $: backShown =
+    (step === 'ready' && entry?.state !== 'start.recipe-create') ||
+    step === 'recipe' ||
+    step === 'parameters';
 
   onMount(() => {
     mounted = true;
@@ -246,7 +258,6 @@
   async function load(generation: number): Promise<void> {
     const requestedEntryId = entryId;
     loading = true;
-    loadAttempts += 1;
     loadError = null;
     try {
       if (requestedEntryId) {
@@ -499,7 +510,9 @@
 
   /** Goes back one step: the server owns the steps, so Back is its own act. */
   async function goBack(): Promise<void> {
-    await act('back');
+    // The contract offers `sources` in the recipe choice, and `back` everywhere else it offers a
+    // way back at all.
+    await act(step === 'recipe' ? 'sources' : 'back');
   }
 
   async function addDocuments(paths: string[]): Promise<void> {
@@ -897,15 +910,25 @@
   >
     <div slot="steps" class="start-view__steps" data-testid="start-step-trail">
       {#if step !== 'no-project' && step !== 'checking' && step !== 'error' && step !== 'refused'}
-        <span class="start-view__step" data-testid="start-step">
-          ① {$t(stepKeyOf(step))}
+        <h1 class="sr-only">
+          {$t(epic ? 'start.epic.title' : 'start.plan.title', { project: currentProject })}
+        </h1>
+        <span class="start-view__step" data-testid="start-step">{$t(stepKeyOf(step))}</span>
+        <span class="start-view__marks" aria-hidden="true">
+          <span class="start-view__mark" class:start-view__mark--done={stepNumber(step) > 1}>
+            {#if stepNumber(step) > 1}✓{:else}①{/if}
+          </span>
+          <span>─</span>
+          <span class="start-view__mark" class:start-view__mark--active={stepNumber(step) === 2}>
+            {#if stepNumber(step) > 2}✓{:else}②{/if}
+          </span>
+          {#if epic}
+            <span>─</span>
+            <span class="start-view__mark" class:start-view__mark--active={stepNumber(step) === 3}>
+              ✓
+            </span>
+          {/if}
         </span>
-        <span class="start-view__step" aria-hidden="true">─</span>
-        <span class="start-view__step">② {$t('start.step.ready')}</span>
-        {#if epic}
-          <span class="start-view__step" aria-hidden="true">─</span>
-          <span class="start-view__step">✓ {$t('start.step.started')}</span>
-        {/if}
       {/if}
     </div>
 
@@ -919,18 +942,15 @@
           <Spinner label={$t('start.gate.checking')} />
           <p class="start-view__status">{$t('start.gate.checking')}</p>
         </div>
-        <Skeleton shape="card" rows={3} label={$t('start.state.loading')} />
       </div>
     {:else if step === 'error'}
       <div class="start-view__error" data-testid="start-error">
         {#if loadError === 'timeout'}
-          <p class="start-view__gate" data-testid="start-gate-cause">{$t('start.gate.slow')}</p>
+          <p class="start-view__gate" role="status" data-testid="start-gate-cause">
+            {$t('start.gate.slow')}
+          </p>
         {/if}
-        <ErrorState
-          code={loadError}
-          titleLevel={2}
-          announce={state !== null || loadAttempts > 1}
-        />
+        <ErrorState code={loadError} titleLevel={2} announce={true} />
       </div>
     {:else if step === 'refused' && state?.refusal}
       {@const refusal = state.refusal}
@@ -941,8 +961,8 @@
     {:else if step === 'choose'}
       <section class="start-view__panel" data-testid="start-choose">
         <h2 class="start-view__subtitle">{$t('start.choose.title')}</h2>
-        <div class="start-view__cards">
-          <Card>
+        <div class="start-view__choices">
+          <div class="start-view__choice" data-testid="choice-sources">
             <h3 class="start-view__card-title">{$t('start.mode.sources')}</h3>
             <Button
               variant="primary"
@@ -952,9 +972,9 @@
             >
               {$t('start.choose.sources_act')}
             </Button>
-          </Card>
-          <Card>
-            <h3 class="start-view__card-title">{$t('start.choose.recipe')}</h3>
+          </div>
+          <div class="start-view__choice" data-testid="choice-recipe">
+            <h3 class="start-view__card-title">{$t('start.mode.recipe')}</h3>
             {#if recipes.length === 0}
               <p class="start-view__hint">
                 {$t('start.choose.no_recipe', { project: currentProject })}
@@ -971,7 +991,7 @@
             >
               {$t('start.choose.recipe_act')}
             </Button>
-          </Card>
+          </div>
         </div>
       </section>
     {:else if step === 'recipe'}
@@ -1165,6 +1185,7 @@
               <Button
                 variant="secondary"
                 data-testid="description-add"
+                aria-label={`${$t('start.source.add_act')} ${$t('start.source.description')}`}
                 disabled={busy || !descriptionText.trim()}
                 on:click={addDescription}
               >
@@ -1195,6 +1216,7 @@
               <Button
                 variant="secondary"
                 data-testid="issue-submit"
+                aria-label={`${$t('start.source.add_act')} ${$t('start.source.issue')}`}
                 disabled={busy}
                 on:click={submitIssue}
               >
@@ -1217,6 +1239,7 @@
               <Button
                 variant="secondary"
                 data-testid="pr-submit"
+                aria-label={`${$t('start.source.add_act')} ${$t('start.source.pull_request')}`}
                 disabled={busy}
                 on:click={submitPullRequest}
               >
@@ -1313,6 +1336,7 @@
                     <Button
                       variant="secondary"
                       data-testid={`lesson-select-${lesson.lesson_id}`}
+                      aria-label={`${$t('start.source.add_act')} ${lesson.title}`}
                       disabled={busy}
                       on:click={() => void chooseLesson(lesson)}
                     >
@@ -1334,9 +1358,9 @@
     {/if}
 
     <div slot="back">
-      {#if step === 'ready' || step === 'recipe' || step === 'parameters'}
+      {#if backShown}
         <Button variant="ghost" data-testid="start-back" disabled={busy} on:click={() => void goBack()}>
-          {$t('start.action.back')}
+          {$t('web.common.back')}
         </Button>
       {/if}
     </div>
@@ -1480,10 +1504,38 @@
     gap: var(--space-2);
   }
 
-  .start-view__cards {
+  .start-view__choices {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    gap: var(--space-3);
+    gap: 0;
+  }
+
+  .start-view__choice {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .start-view__choice + .start-view__choice {
+    border-inline-start: 1px solid var(--color-border);
+  }
+
+  .start-view__marks {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+  }
+
+  .start-view__mark--active {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .start-view__mark--done {
+    color: var(--color-success);
   }
 
   .start-view__card-title {

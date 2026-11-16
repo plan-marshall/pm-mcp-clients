@@ -46,6 +46,20 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
   });
 
+  test("goes back from a recipe's parameters to the sources", async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('choose-recipe').click();
+    await page.getByTestId('recipe-choose-code-review').click();
+    await expect(page.getByTestId('recipe-parameters')).toBeVisible();
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+
+    await page.getByTestId('start-back').click();
+    await expect(page.getByTestId('source-list')).toBeVisible();
+    await expect(page.getByTestId('start-back')).toHaveCount(0);
+  });
+
   test('starts an epic and reports it', async ({ page }) => {
     await openStartSources(page, 'epic');
     await addDescription(page, 'Relay hardening');

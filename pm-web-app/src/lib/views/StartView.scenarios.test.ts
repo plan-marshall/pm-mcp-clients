@@ -27,7 +27,8 @@ async function pickSource(kind: string): Promise<void> {
   await fireEvent.click(screen.getByTestId(`action-${kind}`));
 }
 
-function arrangeOpen(repr: ReturnType<typeof sources>): void {  vi.spyOn(apiClient, 'openEntry').mockResolvedValue(repr);
+function arrangeOpen(repr: ReturnType<typeof sources>): void {
+  vi.spyOn(apiClient, 'openEntry').mockResolvedValue(repr);
   vi.spyOn(apiClient, 'getEntry').mockResolvedValue(repr);
   vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
   vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
