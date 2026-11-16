@@ -396,6 +396,16 @@ public final class PlanCommand implements Callable<Integer> {
                     var target = OutputSafety.stripControlSequences(entry.toolTarget());
                     out.printf("  %s  link       %s%n", ts, target != null ? target : "");
                 }
+                case MODEL_DIFFERS -> {
+                    // The harness answered a turn with another model: name both, information only.
+                    var served = OutputSafety.stripControlSequences(entry.servedModel());
+                    var launched = OutputSafety.stripControlSequences(entry.launchModel());
+                    out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()),
+                                        MessageCatalogue.format(context.clientEnvironment().locale(),
+                                                            "plan.activity.model_differs",
+                                                            Map.of("served", served != null ? served : "",
+                                                                                "launched", launched != null ? launched : "")));
+                }
                 default -> {
                     var content = OutputSafety.stripControlSequences(entry.content());
                     out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()), content != null ? content : "");
