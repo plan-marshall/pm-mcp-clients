@@ -3091,18 +3091,28 @@ export class ApiClient {
   /**
    * Opens an entry under its project, addressed by its id from then on.
    *
+   * The setup gate is the opening call, so the view brings its own bound
+   * (`AbortSignal.timeout`): the client's own limit applies beside it, and the one that fires
+   * decides the failure both report.
+   *
    * @param projectId the project the entry starts in
    * @param request the kind of work and what the operator already said
+   * @param signal the caller's bound, where the gate brings one
+   * @param timeoutMs the client's own bound for this call
    * @returns the entry's representation
    */
   public async openEntry(
     projectId: string,
     request: EntryOpenRequest,
+    signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
   ): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
       `/api/v1/projects/${encodeURIComponent(projectId)}/entries`,
       request,
+      signal,
+      timeoutMs,
     );
   }
 

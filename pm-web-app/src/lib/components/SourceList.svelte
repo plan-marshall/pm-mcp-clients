@@ -4,6 +4,8 @@
   import type { SourceKindOffer, StartSource } from '../api/client';
   import { failureMessage, offerReason, resetTime } from '../start/sourceLabels';
   import Icon from './Icon.svelte';
+  import Button from './Button.svelte';
+  import ActMenu, { type ActMenuItem } from './ActMenu.svelte';
 
   export let sources: StartSource[] = [];
   export let offers: SourceKindOffer[] = [];
@@ -16,7 +18,23 @@
   export let onRetry: (sourceId: string) => void = () => {};
   export let onAccept: (sourceId: string, reason: string) => void = () => {};
   export let onChat: () => void = () => {};
-  export let onContinue: () => void = () => {};
+
+  /**
+   * The one "Add a source" menu: the kinds the entry offers, each disabled with its reason where
+   * it does not combine with the sources already listed (`starting-work.adoc#sources`).
+   */
+  let addOpen = false;
+  let addTrigger: HTMLButtonElement | null = null;
+
+  $: addItems = offers.map(
+    (offer): ActMenuItem => ({
+      id: offer.kind,
+      label: $t('start.source.add', { kind: $t(`start.source.${offer.kind}`) }),
+      disabled: !offer.available,
+      disabledReason: offer.available ? undefined : offerReason(offer, $t),
+      onclick: () => onAdd(offer.kind),
+    }),
+  );
 
   let now = Date.now();
   let acceptSourceId = '';
@@ -127,18 +145,20 @@
 
         <span class="source-line__actions">
           {#if source.state === 'failed' && source.failure?.cause !== 'no_local_changes'}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               data-testid={`retry-${source.source_id}`}
               disabled={busy}
               on:click={() => onRetry(source.source_id)}
             >
               {$t('start.source.retry')}
-            </button>
+            </Button>
           {/if}
           {#if source.state === 'flagged' || source.state === 'unscreened'}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               data-testid={`accept-${source.source_id}`}
               disabled={busy}
               on:click={() => beginAccept(source.source_id)}
@@ -146,16 +166,17 @@
               {source.state === 'flagged'
                 ? $t('start.issue.flagged.accept')
                 : $t('start.unscreened.accept')}
-            </button>
+            </Button>
           {/if}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             data-testid={`remove-${source.source_id}`}
             disabled={busy}
             on:click={() => onRemove(source.source_id)}
           >
             {$t('start.source.remove_it')}
-          </button>
+          </Button>
         </span>
 
         {#if source.state === 'flagged' && (source.spans?.length ?? 0) > 0}
@@ -197,14 +218,15 @@
                 bind:value={acceptReason}
               />
             </label>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               data-testid={`accept-confirm-${source.source_id}`}
               disabled={!acceptReason.trim()}
               on:click={confirmAccept}
             >
               {$t('start.decomposition.accept')}
-            </button>
+            </Button>
           </div>
         {/if}
       </li>
@@ -212,44 +234,37 @@
   </ul>
 
   <div class="source-list__add" data-testid="source-add">
-    {#each offers as offer (offer.kind)}
-      <span class="source-list__offer">
-        <button
-          type="button"
-          data-testid={`add-${offer.kind}`}
-          disabled={!offer.available || busy}
-          title={offer.available ? undefined : offerReason(offer, $t)}
-          on:click={() => onAdd(offer.kind)}
-        >
-          {$t('start.source.add', { kind: $t(`start.source.${offer.kind}`) })}
-        </button>
-        {#if !offer.available}
-          <span class="source-list__offer-reason" data-testid={`offer-${offer.kind}-reason`}>
-            {offerReason(offer, $t)}
-          </span>
-        {/if}
-      </span>
-    {/each}
+    <Button
+      variant="secondary"
+      data-testid="source-add-menu"
+      aria-haspopup="menu"
+      aria-expanded={addOpen ? 'true' : 'false'}
+      disabled={busy || addItems.length === 0}
+      bind:buttonElement={addTrigger}
+      on:click={() => (addOpen = !addOpen)}
+    >
+      {$t('start.action.add_source')}
+    </Button>
+    <ActMenu
+      items={addItems}
+      label={$t('start.action.add_source')}
+      open={addOpen}
+      {busy}
+      triggerElement={addTrigger}
+      onClose={() => (addOpen = false)}
+    />
   </div>
 
   <div class="source-list__footer">
-    <button
-      type="button"
+    <Button
+      variant="ghost"
       data-testid="source-chat"
       disabled={!chatAvailable || busy}
-      title={chatAvailable ? undefined : $t(chatDisabledReason || 'start.chat.waits')}
+      disabledReason={chatAvailable ? undefined : $t(chatDisabledReason || 'start.chat.waits')}
       on:click={onChat}
     >
       {$t('start.sources.chat')}
-    </button>
-    <button
-      type="button"
-      data-testid="source-continue"
-      disabled={!canContinue || busy}
-      on:click={onContinue}
-    >
-      {$t('start.sources.continue')}
-    </button>
+    </Button>
     {#if !canContinue}
       <span class="source-list__waits" data-testid="source-waits">
         {$t('start.sources.waits', { count: waiting })}
@@ -323,15 +338,6 @@
     gap: var(--space-1);
   }
 
-  .source-line__actions button,
-  .source-list__footer button,
-  .source-list__add button,
-  .source-line__accept button {
-    min-height: 44px;
-    padding: var(--space-1) var(--space-3);
-    cursor: pointer;
-  }
-
   .source-line__flagged,
   .source-line__files,
   .source-line__accept {
@@ -348,8 +354,7 @@
 
   .source-line__span,
   .source-line__reason,
-  .source-list__waits,
-  .source-list__offer-reason {
+  .source-list__waits {
     margin: 0;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
@@ -381,10 +386,8 @@
     gap: var(--space-2, 0.5rem);
   }
 
-  .source-list__offer {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 2px;
+  .source-list__add {
+    position: relative;
   }
 
   @media (max-width: 640px) {
