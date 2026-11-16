@@ -84,6 +84,7 @@ describe('FindingsReviewModal component', () => {
       'Reconnect loses the last event',
     );
     expect(screen.getByTestId('review-item-F-0004')).toHaveClass('selected');
+    expect(screen.getByTestId('review-item-F-0004')).toHaveAttribute('aria-current', 'true');
   });
 
   it('shows the item, its rules, origin, and proposal', async () => {

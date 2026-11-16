@@ -332,18 +332,18 @@ describe('EpicView component', () => {
     expect(screen.queryByTestId('epic-landing-relay-cursor-order')).not.toBeInTheDocument();
   });
 
-  it('draws the analysis of the epic beside its landings', async () => {
+  it('draws the landings that stand alongside the epic beside its landings', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
     await screen.findByTestId('epic-title');
 
     await fireEvent.click(screen.getByRole('tab', { name: 'Landings' }));
 
-    const analysis = await screen.findByTestId('epic-analysis');
+    const alongside = await screen.findByTestId('epic-alongside');
     const items = screen.getAllByTestId('alongside-item');
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent('landing doc/update.md · done');
-    expect(analysis).toBeInTheDocument();
+    expect(alongside).toBeInTheDocument();
   });
 
   it('draws five tabs with Plans as the default and no Tokens tab', async () => {
@@ -356,6 +356,12 @@ describe('EpicView component', () => {
     expect(tabs).not.toContain('Tokens');
 
     expect(screen.getByRole('tab', { name: 'Plans' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Plans' })).toHaveAttribute(
+      'aria-controls',
+      'epic-panel-plans',
+    );
+    // Only the shown tab names a panel: the others' panels are not in the document.
+    expect(screen.getByRole('tab', { name: 'Intent' })).not.toHaveAttribute('aria-controls');
     expect(screen.getByTestId('epic-panel-plans')).toBeInTheDocument();
     // The tokens are the head line with its one-step disclosure, never a tab.
     expect(screen.getByTestId('epic-tokens')).toBeInTheDocument();
@@ -607,6 +613,8 @@ describe('EpicView component', () => {
               title: 'relay-auth-v2',
               status: 'waiting for you',
             },
+            // The queue's own word for a landed plan is `merged`: the row reads and counts as shipped.
+            { plan_id: 'relay-landed', title: 'relay-landed', status: 'merged' },
           ],
         },
       ],
@@ -618,7 +626,10 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('epic-plan-status-relay-auth-v2')).toHaveTextContent(
       'waiting for you',
     );
-    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 waiting for you');
+    expect(screen.getByTestId('epic-plan-status-relay-landed')).toHaveTextContent('shipped');
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent(
+      '1 shipped · 1 waiting for you',
+    );
   });
 
   it('marks an ended epic with how it ended, and keeps its tabs read-only', async () => {

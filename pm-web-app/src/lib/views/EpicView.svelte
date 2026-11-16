@@ -101,6 +101,17 @@
   /** The number of findings that are new since the last review, or `0` where none is. */
   const newFindings = $derived(resource?.findings.new ?? 0);
 
+  /** Whether the epic has ended: its tabs stand, and none of them opens an act. */
+  const ended = $derived(resource?.state === 'ended');
+
+  // A review opened while the epic ran closes when the epic ends on an event: its keeps, drops and
+  // promotions belong to a running epic (`epic-view.adoc#tabs`).
+  $effect(() => {
+    if (ended && reviewOpen) {
+      reviewOpen = false;
+    }
+  });
+
   /** The five tabs of the epic's object column, the `! n` badge while findings are new. */
   const tabItems = $derived<TabItem[]>([
     { id: 'plans', label: $t('overview.epic.tab.plans'), panelId: panelIdOf('plans') },
@@ -110,7 +121,7 @@
       id: 'reviews',
       label: $t('overview.epic.tab.reviews'),
       panelId: panelIdOf('reviews'),
-      ...(newFindings > 0
+      ...(newFindings > 0 && !ended
         ? {
             count: newFindings,
             attention: true,
@@ -399,6 +410,8 @@
     // The queue writes the two two-word statuses with a space; the vocabulary keys them with `_`.
     if (status === 'waiting for you') return 'waiting';
     if (status === 'handed back') return 'handed_back';
+    // A row the queue reports as `merged` or `completed` has shipped (`epic-view.adoc#layout`).
+    if (status === 'merged' || status === 'completed') return 'shipped';
     return status;
   }
 
@@ -702,7 +715,7 @@
                 class="tokens-more"
                 aria-expanded={tokensOpen}
                 data-testid="epic-tokens-disclosure"
-                data-advisory={$t('epic.views.tokens_disclosure.title')}
+                data-advisory={$t('epic.views.tokens_detail.title')}
                 onclick={() => (tokensOpen = !tokensOpen)}
               >
                 {$t('overview.epic.tokens_detail')}
@@ -779,7 +792,7 @@
               </p>
             {/if}
             {#if epic.alongside_landings && epic.alongside_landings.length > 0}
-              <section class="epic-facts" data-testid="epic-analysis">
+              <section class="epic-facts" data-testid="epic-alongside">
                 <h2 class="section-title">{$t('epic.views.alongside')}</h2>
                 <div class="alongside-list">
                   {#each epic.alongside_landings as landing}
@@ -930,11 +943,9 @@
                 <span data-testid={`epic-plan-status-${row.plan_id}`}>
                   <StatusLabel tone={rowTone(row.status)} label={rowStatus(row.status)} fixed />
                 </span>
-                {#if waitLabel(row) || row.wait_since}
+                {#if waitLabel(row)}
                   <span class="workstream__wait" data-testid={`wait-${row.plan_id}`}>
-                    {#if waitLabel(row)}
-                      <span>{waitLabel(row)}</span>
-                    {/if}
+                    <span>{waitLabel(row)}</span>
                     {#if row.wait_since && waitSince(row.wait_since)}
                       <span class="workstream__sep" aria-hidden="true">·</span>
                       <time
@@ -947,6 +958,7 @@
                   </span>
                 {/if}
                 {#if row.pull_request_number}
+                  <!-- A row shows its pull request whatever its state; only a shipped row is a landing. -->
                   {#if pullRequestUrl(row.pull_request_url)}
                     <a
                       class="pr-link mono"
