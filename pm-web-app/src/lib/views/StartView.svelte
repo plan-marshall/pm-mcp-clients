@@ -896,14 +896,16 @@
     side={entry !== null ? sidePane : undefined}
   >
     <div slot="steps" class="start-view__steps" data-testid="start-step-trail">
-      <span class="start-view__step" data-testid="start-step">
-        ① {$t(stepKeyOf(step))}
-      </span>
-      <span class="start-view__step" aria-hidden="true">─</span>
-      <span class="start-view__step">② {$t('start.step.ready')}</span>
-      {#if epic}
+      {#if step !== 'no-project' && step !== 'checking' && step !== 'error' && step !== 'refused'}
+        <span class="start-view__step" data-testid="start-step">
+          ① {$t(stepKeyOf(step))}
+        </span>
         <span class="start-view__step" aria-hidden="true">─</span>
-        <span class="start-view__step">✓ {$t('start.step.started')}</span>
+        <span class="start-view__step">② {$t('start.step.ready')}</span>
+        {#if epic}
+          <span class="start-view__step" aria-hidden="true">─</span>
+          <span class="start-view__step">✓ {$t('start.step.started')}</span>
+        {/if}
       {/if}
     </div>
 
@@ -952,7 +954,7 @@
             </Button>
           </Card>
           <Card>
-            <h3 class="start-view__card-title">{$t('start.recipe.list')}</h3>
+            <h3 class="start-view__card-title">{$t('start.choose.recipe')}</h3>
             {#if recipes.length === 0}
               <p class="start-view__hint">
                 {$t('start.choose.no_recipe', { project: currentProject })}
@@ -1166,7 +1168,7 @@
                 disabled={busy || !descriptionText.trim()}
                 on:click={addDescription}
               >
-                {$t('start.source.add', { kind: $t('start.source.description') })}
+                {$t('start.source.add_act')}
               </Button>
             </div>
           </section>
@@ -1196,7 +1198,7 @@
                 disabled={busy}
                 on:click={submitIssue}
               >
-                {$t('start.source.add', { kind: $t('start.source.issue') })}
+                {$t('start.source.add_act')}
               </Button>
             </div>
           </section>
@@ -1218,7 +1220,7 @@
                 disabled={busy}
                 on:click={submitPullRequest}
               >
-                {$t('start.source.add', { kind: $t('start.source.pull_request') })}
+                {$t('start.source.add_act')}
               </Button>
             </div>
           </section>
@@ -1314,7 +1316,7 @@
                       disabled={busy}
                       on:click={() => void chooseLesson(lesson)}
                     >
-                      {$t('start.source.add', { kind: $t('start.source.lesson') })}
+                      {$t('start.source.add_act')}
                     </Button>
                   </li>
                 {/each}
