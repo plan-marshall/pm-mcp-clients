@@ -915,7 +915,16 @@
   >
     <div slot="steps" class="start-view__steps" data-testid="start-step-trail">
       <h1 class="sr-only">
-        {$t(epic ? 'start.epic.title' : 'start.plan.title', { project: currentProject })}
+        {$t(
+          currentProject
+            ? epic
+              ? 'start.epic.title'
+              : 'start.plan.title'
+            : epic
+              ? 'start.epic.title.loading'
+              : 'start.plan.title.loading',
+          currentProject ? { project: currentProject } : {},
+        )}
       </h1>
       {#if step !== 'no-project' && step !== 'checking' && step !== 'error' && step !== 'refused'}
         <span class="start-view__step" data-testid="start-step">{$t(stepKeyOf(step))}</span>
