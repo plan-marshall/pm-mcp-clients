@@ -324,6 +324,64 @@ describe('OverviewView component', () => {
     });
   });
 
+  it('renders by-plan and by-epic from one plan list and derives the epic head count from its rows', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      epics: [
+        {
+          epic_id: 'epc-client-work',
+          title: 'client work',
+          running_plans_count: 5,
+          staged_plans_count: 3,
+          plans_done: 0,
+          plans_total: 5,
+          plans: [
+            {
+              plan_id: 'pln-overview-resource',
+              title: 'Overview resource of the runtime',
+              current_phase: 'execute',
+              phase_state: 'running',
+            },
+          ],
+        },
+      ],
+    });
+
+    const { container } = render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('plan-card')).toHaveLength(3);
+    });
+
+    const byPlanTitles = Array.from(
+      container.querySelectorAll('[data-testid="plan-card"] .work-card__open'),
+    ).map((el) => el.textContent?.trim() ?? '');
+    expect(byPlanTitles).toEqual([
+      'Console history of answers',
+      'Overview resource of the runtime',
+      'Message catalogue',
+    ]);
+
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('epic-card')).toBeInTheDocument();
+    });
+
+    const byEpicTitles = Array.from(
+      container.querySelectorAll('[data-testid="plan-card"] .work-card__open'),
+    ).map((el) => el.textContent?.trim() ?? '');
+    expect(new Set(byEpicTitles)).toEqual(new Set(byPlanTitles));
+    expect(byEpicTitles).toHaveLength(byPlanTitles.length);
+
+    const epicCard = screen.getByTestId('epic-card');
+    const epicRows = epicCard.querySelectorAll('[data-testid="plan-card"]');
+    expect(epicRows).toHaveLength(2);
+    expect(epicCard.querySelector('.badge--counts')?.textContent?.trim()).toBe(
+      `${epicRows.length} running · 3 staged`,
+    );
+  });
+
   it('puts a phase icon in every phase badge', async () => {
     const { container } = render(OverviewView);
 

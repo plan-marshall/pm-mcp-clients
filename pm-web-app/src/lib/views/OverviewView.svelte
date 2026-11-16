@@ -132,13 +132,14 @@
    * @returns every visible value
    */
   function epicFilterFields(epic: ActiveEpicSummary): Array<string | null | undefined> {
+    const epicPlans = getEpicPlans(epic, detail?.plans ?? []);
     return [
       epic.epic_id,
       epic.title,
       selectedProject?.display_name,
       selectedProject?.project_id,
       epic.needs_operator_kind,
-      ...(epic.plans ?? []).flatMap((plan) => [plan.title, plan.plan_id]),
+      ...epicPlans.flatMap((plan) => [plan.title, plan.plan_id]),
     ];
   }
 
@@ -675,8 +676,20 @@
     }
   }
 
-  function getEpicRunningCount(e: ActiveEpicSummary): number {
-    return e.running_plans_count;
+  function getEpicPlans(
+    e: ActiveEpicSummary,
+    plans: ActivePlanSummary[] = filteredPlans,
+  ): ActivePlanSummary[] {
+    return plans.filter(
+      (p) => p.epic_id === e.epic_id || (!p.epic_id && Boolean(e.title) && p.epic_title === e.title),
+    );
+  }
+
+  function getEpicRunningCount(
+    e: ActiveEpicSummary,
+    plans: ActivePlanSummary[] = filteredPlans,
+  ): number {
+    return getEpicPlans(e, plans).length;
   }
 
   function getEpicStagedCount(e: ActiveEpicSummary): number {
@@ -1151,7 +1164,7 @@
           {/snippet}
 
           <div class="cards-container">
-            {#if (viewMode === 'plan' ? detail.plans.length : detail.epics.length) > 0}
+            {#if (viewMode === 'plan' ? detail.plans.length : detail.epics.length + detail.plans.length) > 0}
               <FilterInput
                 value={runningQuery}
                 label={$t('common.filter.label')}
@@ -1175,7 +1188,7 @@
               {/if}
             {:else}
               <!-- By Epic List -->
-              {#if filteredEpics.length === 0}
+              {#if filteredEpics.length === 0 && filteredPlans.length === 0}
                 <p class="empty-text" data-testid="running-filter-empty">
                   {$t('common.filter.empty')}
                 </p>
@@ -1216,7 +1229,7 @@
                           {/if}
                           <span class="badge badge--counts">
                             {$t('overview.epic.plans', {
-                              running: getEpicRunningCount(epic),
+                              running: getEpicRunningCount(epic, filteredPlans),
                               staged: getEpicStagedCount(epic),
                             })}
                           </span>
@@ -1237,9 +1250,9 @@
                       </div>
 
                       <!-- Nested Plans -->
-                      {#if epic.plans && epic.plans.length > 0}
+                      {#if getEpicPlans(epic, filteredPlans).length > 0}
                         <div class="nested-plans">
-                          {#each epic.plans as childPlan}
+                          {#each getEpicPlans(epic, filteredPlans) as childPlan}
                             {@render planRow(childPlan, true)}
                           {/each}
                         </div>
@@ -1248,11 +1261,11 @@
                   {/each}
 
                   <!-- Without Epic Section -->
-                  {#if filteredPlans.some((p) => !p.epic_id)}
+                  {#if filteredPlans.some((p) => !filteredEpics.some((e) => getEpicPlans(e, [p]).length > 0))}
                     <div class="without-epic-section">
                       <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
                       <div class="plan-cards">
-                        {#each filteredPlans.filter((p) => !p.epic_id) as plan}
+                        {#each filteredPlans.filter((p) => !filteredEpics.some((e) => getEpicPlans(e, [p]).length > 0)) as plan}
                           {@render planRow(plan, false)}
                         {/each}
                       </div>

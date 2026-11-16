@@ -78,10 +78,15 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await byEpicBtn.click();
     await expect(byEpicBtn).toHaveAttribute('aria-checked', 'true');
 
-    // In by-epic view, verify epic card
-    const epicTitle = page.getByTestId('epic-card').getByText('Relay Hardening');
+    // In by-epic view, verify epic card and that both groupings hold the same plans and epic head count equals its rows
+    const epicCard = page.getByTestId('epic-card');
+    const epicTitle = epicCard.getByText('Relay Hardening');
     await expect(epicTitle).toBeVisible();
-    await expect(page.getByText('1 running · 3 staged', { exact: true })).toBeVisible();
+    await expect(epicCard.locator('[data-testid="plan-card"]')).toHaveCount(2);
+    await expect(page.getByText('2 running · 3 staged', { exact: true })).toBeVisible();
+    await expect(page.getByText('Fix Relay Transport')).toBeVisible();
+    await expect(page.getByText('Drop the legacy endpoints')).toBeVisible();
+    await expect(page.getByText('Relay metrics')).toBeVisible();
 
     // Switch back to by-plan
     await byPlanBtn.click();
