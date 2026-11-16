@@ -1242,8 +1242,6 @@ export interface MachineSettingsUpdateResult {
   conflict: boolean;
   revision: number;
   current_value?: string;
-  /** The wire code of a refusal the client read, when the runtime answered with one. */
-  errorCode?: string;
 }
 
 export interface OnboardingLink {

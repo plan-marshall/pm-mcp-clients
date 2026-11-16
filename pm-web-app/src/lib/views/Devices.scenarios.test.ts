@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tick } from 'svelte';
+import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import ListenerOffView from './ListenerOffView.svelte';
@@ -283,6 +284,30 @@ describe('Paired devices against the mock runtime scenarios', () => {
     // has left; it is pinned at its source, because the write it prevents is invisible to the page.
     const source = fs.readFileSync(path.resolve(__dirname, 'SettingsView.svelte'), 'utf8');
     expect(source).toContain('if (!isMounted) return;');
+  });
+
+  it('writes nothing when a load settles after the view is gone', async () => {
+    // Arrange: a devices read that answers only when the test says so.
+    let settle: (rows: PairedDevice[]) => void = () => {};
+    vi.spyOn(apiClient, 'getDevices').mockImplementation(
+      () =>
+        new Promise<PairedDevice[]>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const before = get(runtimeStore);
+
+    const view = render(SettingsView);
+    await waitFor(() => expect(apiClient.getDevices).toHaveBeenCalled());
+
+    // Act: the operator leaves the view, then the read answers.
+    view.unmount();
+    settle(devices);
+    await settleMicrotasks();
+
+    // Assert: nothing was written and nothing rendered.
+    expect(get(runtimeStore)).toBe(before);
+    expect(screen.queryByTestId('devices-table')).not.toBeInTheDocument();
   });
 
   it('aborts the status read when the devices read fails', async () => {

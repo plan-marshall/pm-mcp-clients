@@ -4,6 +4,8 @@
   import Tabs from '../components/Tabs.svelte';
   import Button from '../components/Button.svelte';
   import RadioGroup from '../components/RadioGroup.svelte';
+  import NumberField from '../components/NumberField.svelte';
+  import SecretField from '../components/SecretField.svelte';
   import FormStatus from '../components/FormStatus.svelte';
   import ActionBar from '../components/ActionBar.svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
@@ -53,26 +55,14 @@
     retention: 'web.settings.tab.retention',
   };
 
-  /** The aspects the setup tab shows, in the design's order; the rest belong to the credentials. */
-  const SETUP_ASPECTS: ReadonlyArray<string> = [
-    'language',
-    'harness',
-    'harnesses',
-    'catalogue',
-    'models',
-    'roles',
-    'defaults',
-    'plans',
-  ];
-
   /** The aspects the credentials tab shows: the store the tokens live in, and the providers. */
   const CREDENTIAL_ASPECTS: ReadonlyArray<string> = ['store', 'credentials', 'providers'];
-
   /** A setting changed here that another client changed meanwhile. */
   interface ConflictState {
     key: string;
     currentValue: string;
-    wantedValue: string;
+    /** The value the page wanted, or `null` for a withdrawal. */
+    wantedValue: string | null;
     /** The cleanup categories the operator changed, which applying again sends over the current record. */
     changedFields?: CleanupDurationsRecord;
   }
@@ -243,9 +233,11 @@
         ),
       ]);
       if (!isMounted || sequence !== loadSequence) return;
-      if (hasShownDevices && epoch !== eventEpoch) {
-        // An event changed the list after this read started, so the snapshot predates the event:
-        // keep what the event left rather than replacing it.
+      if (epoch !== eventEpoch) {
+        // An event changed the list after this read started, so the snapshot predates the event.
+        // Keep what the event left and, when there was no list before this read, ask once more:
+        // dropping the first answer would leave the operator with an empty list.
+        if (!hasShownDevices) void loadData();
         return;
       }
       devices = Array.isArray(devList) ? devList : [];
@@ -563,8 +555,8 @@
   $: cleanupChanged = plansChanged || remindChanged;
   // The dependency is written out, so a settings record that arrives after the mount fills both
   // tabs: a helper call would hide it from the template's own update.
-  $: setupAspects = (settings?.aspects ?? []).filter((aspect) =>
-    SETUP_ASPECTS.includes(aspect.aspect),
+  $: setupAspects = (settings?.aspects ?? []).filter(
+    (aspect) => !CREDENTIAL_ASPECTS.includes(aspect.aspect),
   );
   $: credentialAspects = (settings?.aspects ?? []).filter((aspect) =>
     CREDENTIAL_ASPECTS.includes(aspect.aspect),
@@ -689,18 +681,20 @@
     notice = '';
     conflict = null;
     const result = await updateMachineSetting(key, value);
-    if (result?.conflict) {
+    if (result.conflict) {
       conflict = {
         key,
         currentValue: result.current_value ?? '',
-        wantedValue: value ?? '',
+        wantedValue: value,
         changedFields,
       };
       return false;
     }
-    if (!result?.applied) {
-      // A refusal that names the rule the value missed says it; anything else stays generic.
-      error = result?.errorCode && refusal ? refusal : $t('web.settings.update_failed');
+    if (!result.applied) {
+      // Only a refusal of the value itself names the rule it missed; a lost connection or a read
+      // that timed out says nothing about the contract and keeps the generic sentence.
+      const refusedOnValue = result.errorCode === 'invalid_value' || result.errorCode === 'invalid_arguments';
+      error = refusedOnValue && refusal ? refusal : $t('web.settings.update_failed');
       return false;
     }
     notice = $t('web.settings.saved');
@@ -709,6 +703,11 @@
 
   async function saveDocumentsMode(): Promise<void> {
     const applied = await applySetting('documents_mode', documentsMode);
+    if (applied) {
+      // The page's read is now the mode it saved, so the mark clears and a later reset does not
+      // jump back to a value the machine no longer holds.
+      readDocuments = documentsMode;
+    }
     documentsSaved = applied;
   }
 
@@ -716,6 +715,7 @@
   function resetDocumentsMode(): void {
     documentsMode = readDocuments;
     documentsSaved = false;
+    notice = '';
   }
 
   /**
@@ -749,7 +749,17 @@
     const recorded = settings?.cleanup_durations;
     // The saved record starts from the one the runtime holds, so a category this page does not show
     // keeps its value instead of being rebuilt from a fixed list of keys.
-    const durations: CleanupDurationsRecord = { ...(recorded ?? {}), ...overriddenDurations(days, remind) };
+    const durations: CleanupDurationsRecord = {
+      ...(recorded ?? {
+        plans_after_days: days,
+        epics_after_days: days,
+        logs_after_days: days,
+        reports_after_days: days,
+        unenrolled_after_days: days,
+        remind_after_days: remind,
+      }),
+      ...overriddenDurations(days, remind),
+    };
     // Only what the operator changed travels again after a conflict; the other categories keep
     // the value the other client recorded.
     const applied = await applySetting(
@@ -780,6 +790,7 @@
     cleanupDays = readPlans;
     cleanupRemindDays = readRemind;
     cleanupSaved = false;
+    notice = '';
   }
 
   /** Applies the value this page wanted, on the revision the other client left behind. */
@@ -817,11 +828,23 @@
 
   /**
    * @param state the conflict the page shows
+   * @param value one of the two wire values it carries
+   * @returns the value in the catalogue's words, never a raw enum or JSON
+   */
+  function conflictValueWords(state: ConflictState, value: string): string {
+    if (state.key === 'documents_mode' && hasMessage(`web.settings.documents.${value}`)) {
+      return $t(`web.settings.documents.${value}`);
+    }
+    return cleanupWords(value);
+  }
+
+  /**
+   * @param state the conflict the page shows
    * @returns the value the resend will send, in the catalogue's words
    */
   function conflictYoursWords(state: ConflictState): string {
     if (state.key !== 'cleanup_durations' || !state.changedFields) {
-      return cleanupWords(state.wantedValue);
+      return conflictValueWords(state, state.wantedValue ?? '');
     }
     const current =
       parseCleanupRecord(state.currentValue) ?? readDurations ?? settings?.cleanup_durations ?? {};
@@ -847,7 +870,8 @@
       conflict = {
         key: `consent:${consent.kind}`,
         currentValue: result.current_value ?? '',
-        wantedValue: '',
+        // A withdrawal sends nothing, never an empty string.
+        wantedValue: null,
       };
       return;
     }
@@ -924,6 +948,15 @@
     return hasMessage(key) ? $t(key) : credential.provider;
   }
 
+  /**
+   * @param credential a token's status
+   * @returns the kind in the catalogue's words, or the kind the runtime records
+   */
+  function credentialKind(credential: MachineCredentialStatus): string {
+    const key = `web.settings.credentials.kind.${credential.kind.replace(/\s+/g, '_')}`;
+    return hasMessage(key) ? $t(key) : credential.kind;
+  }
+
   function expiryLabel(credential: MachineCredentialStatus): string {
     if (credential.expired) {
       const held = credential.held_plan ? 1 : 0;
@@ -990,7 +1023,7 @@
     <div class="conflict" role="alert" data-testid="conflict-dialog">
       <h2 class="conflict__title">{$t('web.settings.conflict.title')}</h2>
       <p class="conflict__line" data-testid="conflict-current">
-        {$t('web.settings.conflict.current', { value: cleanupWords(conflict.currentValue) })}
+        {$t('web.settings.conflict.current', { value: conflictValueWords(conflict, conflict.currentValue) })}
       </p>
       <p class="conflict__line" data-testid="conflict-yours">
         {$t('web.settings.conflict.yours', { value: conflictYoursWords(conflict) })}
@@ -1016,7 +1049,7 @@
       tabindex="0"
     >
       {#if isLoadingSettings}
-        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
+        <p class="loading-text">{$t('web.settings.loading')}</p>
       {:else if !settings}
         <p class="empty-text">{$t('web.settings.aspects.empty')}</p>
       {:else}
@@ -1234,7 +1267,7 @@
       tabindex="0"
     >
       {#if isLoadingSettings}
-        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
+        <p class="loading-text">{$t('web.settings.loading')}</p>
       {:else if !settings}
         <p class="empty-text">{$t('web.settings.aspects.empty')}</p>
       {:else}
@@ -1270,7 +1303,7 @@
               {#each settings.credentials as credential}
                 <li class="credential-row" data-credential={credential.key}>
                   <span class="credential-row__main">
-                    {credentialProvider(credential)} · {credential.kind}
+                    {credentialProvider(credential)} · {credentialKind(credential)}
                   </span>
                   <span class="credential-row__expiry" class:warn={credential.expired}>
                     {expiryLabel(credential)}
@@ -1321,7 +1354,7 @@
       tabindex="0"
     >
       {#if isLoadingSettings}
-        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
+        <p class="loading-text">{$t('web.settings.loading')}</p>
       {:else if !settings}
         <p class="empty-text">{$t('web.settings.aspects.empty')}</p>
       {:else}
@@ -1371,23 +1404,21 @@
       tabindex="0"
     >
       {#if isLoadingSettings}
-        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
+        <p class="loading-text">{$t('web.settings.loading')}</p>
       {:else if !settings}
         <p class="empty-text">{$t('web.settings.aspects.empty')}</p>
       {:else}
         <section class="settings-section" data-testid="cleanup-section">
           <h2 class="settings-section__title">{$t('web.settings.cleanup.title')}</h2>
           <div class="field-row">
-            <label class="field-label" for="cleanup-days">
-              {$t('web.settings.cleanup.keep')}
-            </label>
-            <input
+            <NumberField
               id="cleanup-days"
-              type="number"
               bind:value={cleanupDays}
-              data-testid="cleanup-days"
+              label={$t('web.settings.cleanup.keep')}
+              unit={$t('web.settings.cleanup.days')}
+              hint={$t('web.settings.cleanup.hint')}
+              testid="cleanup-days"
             />
-            <span class="field-unit">{$t('web.settings.cleanup.days')}</span>
             {#if plansChanged}
               <span class="changed-mark" data-testid="cleanup-changed-plans">
                 {$t('web.settings.form.changed')}
@@ -1395,24 +1426,20 @@
             {/if}
           </div>
           <div class="field-row">
-            <label class="field-label" for="cleanup-remind-days">
-              {$t('web.settings.cleanup.remind')}
-            </label>
-            <input
+            <NumberField
               id="cleanup-remind-days"
-              type="number"
-              min="1"
               bind:value={cleanupRemindDays}
-              data-testid="cleanup-remind-days"
+              label={$t('web.settings.cleanup.remind')}
+              unit={$t('web.settings.cleanup.days_after')}
+              min={MINIMUM_REMIND_DAYS}
+              testid="cleanup-remind-days"
             />
-            <span class="field-unit">{$t('web.settings.cleanup.days_after')}</span>
             {#if remindChanged}
               <span class="changed-mark" data-testid="cleanup-changed-remind">
                 {$t('web.settings.form.changed')}
               </span>
             {/if}
           </div>
-          <p class="hint-text">{$t('web.settings.cleanup.hint')}</p>
           <div class="form-footer">
             <div data-testid="cleanup-form-status">
               <FormStatus
@@ -1509,13 +1536,13 @@
           {:else}
             <div class="rotate-details__row">
               <dt>{$t('web.settings.credentials.kind')}</dt>
-              <dd>{rotating.kind}</dd>
+              <dd>{credentialKind(rotating)}</dd>
             </div>
           {/if}
           <div class="rotate-details__row">
             <dt>
               {$t('web.settings.credentials.now', {
-                kind: rotating.kind,
+                kind: credentialKind(rotating),
                 expiry: expiryLabel(rotating),
               })}
             </dt>
@@ -1523,18 +1550,13 @@
           </div>
         </dl>
 
-        <label class="rotate-label" for="rotate-secret">
-          {$t('web.settings.credentials.secret')}
-        </label>
-        <input
+        <SecretField
           id="rotate-secret"
-          type="password"
-          class="rotate-input"
-          autocomplete="off"
           bind:value={rotatingSecret}
-          data-testid="rotate-secret"
+          label={$t('web.settings.credentials.secret')}
+          hint={$t('web.settings.credentials.secret_hint')}
+          testid="rotate-secret"
         />
-        <p class="hint-text">{$t('web.settings.credentials.secret_hint')}</p>
         <p class="hint-text">
           {$t('web.settings.credentials.lan', {
             command: `pm-operator credentials rotate ${rotating.key}`,
@@ -1789,30 +1811,13 @@
   .field-row {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
+    align-items: flex-start;
+    gap: var(--space-3);
     margin-bottom: var(--space-3);
   }
 
-  .field-label {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--color-text-primary);
-  }
-
-  .field-row input[type='number'] {
-    width: 5rem;
-    min-height: var(--control-height);
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--control-border);
-    border-radius: var(--control-radius);
-    background-color: var(--control-bg);
-    color: var(--color-text-primary);
-  }
-
-  .field-unit {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
+  .field-row > :first-child {
+    flex: 1 1 20rem;
   }
 
   .changed-mark {

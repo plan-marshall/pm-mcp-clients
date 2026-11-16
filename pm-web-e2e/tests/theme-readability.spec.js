@@ -830,7 +830,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await auditView(page, testInfo, { view: 'CleanupView', theme, viewport: vp });
         });
 
-        test(`SettingsView and MachineSettingsView in ${theme} (${vp.name})`, async ({
+        test(`SettingsView (access and setup) in ${theme} (${vp.name})`, async ({
           page,
           request,
         }, testInfo) => {
@@ -847,7 +847,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await page.getByRole('tab').nth(0).click();
           await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
 
-          await auditView(page, testInfo, { view: 'MachineSettingsView', theme, viewport: vp });
+          await auditView(page, testInfo, { view: 'SettingsView (setup)', theme, viewport: vp });
         });
 
         test(`ProcessDesigner in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {

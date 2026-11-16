@@ -1505,10 +1505,21 @@ export async function loadMachineSettings(): Promise<MachineSettingsRecord | nul
   }
 }
 
+/**
+ * The result of writing one machine setting, with the wire code of a refusal the store read.
+ *
+ * The client's own result type stays the wire shape; a refusal is the store's finding, because only
+ * the store catches the throw and reads its code.
+ */
+export interface MachineSettingsWriteResult extends MachineSettingsUpdateResult {
+  /** The wire code of a refusal the client read, when the runtime answered with one. */
+  errorCode?: string;
+}
+
 export async function updateMachineSetting(
   key: string,
   value: string | null,
-): Promise<MachineSettingsUpdateResult | null> {
+): Promise<MachineSettingsWriteResult> {
   const revision = get(runtimeStore).machineSettings?.revision ?? 0;
   try {
     const result = await apiClient.updateMachineSetting(key, value, revision);

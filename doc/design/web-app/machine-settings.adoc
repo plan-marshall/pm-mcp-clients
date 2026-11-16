@@ -244,7 +244,7 @@ Terminal: `pm-operator credentials rotate|set <credential_key>` (link:../termina
 [#devices]
 == Paired Devices
 
-The count of paired devices and whether the network listener is on; *Manage* opens the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]); from a browser on the network turning it off asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`, link:../shared/paired-devices.adoc#listener-off[Paired Devices, The Network Listener Turned Off]), and the browser then shows link:entry.adoc#listener-off[Entry, The Network Listener Turned Off]. The list is no state of the settings: it reads and acts through the devices' own endpoints (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[CLI, Coordination & Security, Devices in Both Clients]); leaving it returns to `settings.choose`, unchanged.
+The count of paired devices and whether the network listener is on; the *Access* tab shows the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]); from a browser on the network turning it off asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`, link:../shared/paired-devices.adoc#listener-off[Paired Devices, The Network Listener Turned Off]), and the browser then shows link:entry.adoc#listener-off[Entry, The Network Listener Turned Off]. The list is no state of the settings: it reads and acts through the devices' own endpoints (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[CLI, Coordination & Security, Devices in Both Clients]); the tab follows the devices' events without leaving the settings.
 
 Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, transcript]).
 
@@ -258,8 +258,8 @@ Keys of the area `web`; the cleanup's durations use the shared `system.cleanup.d
 |Key |English |German
 
 |`web.settings.page.title`
-|Machine settings
-|Einstellungen der Maschine
+|Settings
+|Einstellungen
 
 |`web.settings.aspects.title`
 |How this machine is set up

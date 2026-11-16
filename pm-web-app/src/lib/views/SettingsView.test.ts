@@ -685,7 +685,7 @@ describe('the machine settings panels of the one settings view', () => {
     await waitFor(() => {
       expect(screen.getByTestId('conflict-dialog')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: copy');
+    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: Copy');
     expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
     expect(screen.getByTestId('conflict-keep')).toBeInTheDocument();
   });
@@ -698,8 +698,8 @@ describe('the machine settings panels of the one settings view', () => {
     expect(screen.getByText(/expired: holds 1 plan/)).toBeInTheDocument();
     expect(screen.getByText(/token expires in 9 days/)).toBeInTheDocument();
     expect(screen.getByTestId('replace-github')).toBeInTheDocument();
-    // The row names the provider, never the machine key it is stored under.
-    expect(screen.getByText(/GitHub · fine-grained/)).toBeInTheDocument();
+    // The row names the provider, never the machine key it is stored under, and the kind in words.
+    expect(screen.getByText(/GitHub · Fine-grained/)).toBeInTheDocument();
   });
 
   it('stores a rotated token and never shows it again', async () => {

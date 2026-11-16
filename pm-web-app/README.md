@@ -8,8 +8,7 @@
 
 - **Onboarding route**: `/onboarding` renders the state the runtime reports — start, consents, language, harnesses with their token reporting, models, roles, credentials, providers, plan defaults, the automatic run, and the done screen with read-only step summaries.
 - **Entry & pairing**: `/pair` and `/entry` pair a browser with a code (or the URL fragment), present the pairing URL as a QR code, and hold the loopback credential entry. The browser's own TLS warning carries the certificate fingerprint before pairing; the listener fingerprint is shown in Settings after pairing.
-- **Machine settings**: `/settings/machine` shows the seven aspects, the remembered consents with their withdrawal, the documents mode, the cleanup durations, the tokens with rotate/replace, and the paired devices; a value changed in another client opens the 409 conflict dialogue.
-- **Paired devices**: `/settings` lists the browsers that can act on the machine, renames one inline, revokes one or all others, and turns the network listener off.
+- **Settings**: `/settings?tab=…` is one view with a tab per part — *Setup* (the seven aspects, the documents mode), *Access* (the paired devices, renamed inline, revoked one or all others, the network listener), *Credentials* (the tokens with rotate/replace, the provider check), *Consents* (the remembered consents with their withdrawal) and *Retention* (the cleanup durations). A value changed in another client opens the 409 conflict dialogue; `/settings/machine` is replaced by `?tab=setup`.
 - **Operator dashboard**: real-time status overview of active projects, epics, running plans, questions, and reports.
 - **Mock Runtime Integration**: connects to `pm-mock-runtime` via the Vite reverse-proxy for local development, the scenario view tests, and offline manual testing.
 
@@ -111,7 +110,7 @@ A pairing code works once. When the code was already consumed, `start.sh` asks `
 ### Step 3: Interactive Testing in the Browser
 1. **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to test browser pairing and device pairing.
 2. **Onboarding**: Open `http://localhost:5173/onboarding` and step through the states (language, harnesses, models, roles, credentials, providers, plans).
-3. **Machine settings**: Open `http://localhost:5173/settings/machine` for the aspects, the consents, the documents mode, the tokens, and the paired devices.
+3. **Settings**: Open `http://localhost:5173/settings` and walk its tabs — Setup (the aspects, the documents mode), Access (the paired devices and the listener), Credentials (the tokens, the provider check), Consents (the remembered consents), Retention (the cleanup durations).
 4. **Switching Scenarios**: You can change the mock server scenario on the fly via the mock control API or restarting `pm-mock-runtime` with another scenario:
    ```bash
    ./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario status-only --web-port 7420"
