@@ -183,6 +183,16 @@ describe('the attention store', () => {
     expect(get(attentionStore).total).toBe(2);
   });
 
+  it('counts the rows a page serves when the runtime carries no total', async () => {
+    // A state of the mock runtime serves only `items`; a total it does not carry is its rows.
+    servePages({ items: [itemOf('cleanup_due'), itemOf('credential')] } as NeedsOperatorPage);
+
+    await loadAttention();
+
+    expect(get(attentionStore).total).toBe(2);
+    expect(get(attentionStore).hasOlder).toBe(false);
+  });
+
   it('keeps the list it had when a read fails, and says the read failed', async () => {
     servePages(pageOf([itemOf('cleanup_due')]));
     await loadAttention();

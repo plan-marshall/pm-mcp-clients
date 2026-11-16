@@ -290,6 +290,15 @@ export function attentionActLabelOf(item: AttentionItem): AttentionActLabel {
 }
 
 /**
+ * @param value the figure the runtime served
+ * @param fallback the figure to use when the runtime served none
+ * @returns the served figure, or the fallback for an absent or unreadable one
+ */
+function countOf(value: number | null | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+/**
  * Reads one page of the list.
  *
  * Page 1 replaces the list; a later page is read by {@link loadMoreAttention}. A failed read
@@ -305,12 +314,13 @@ export async function loadAttention(page = 1): Promise<void> {
   try {
     const answer: NeedsOperatorPage = await apiClient.getNeedsOperator(page);
     const items = itemsOf(answer.items);
+    const total = countOf(answer.total, items.length);
     attentionStore.update((state) =>
       page <= 1
         ? {
             ...state,
             items,
-            total: answer.total,
+            total,
             page: 1,
             hasOlder: answer.has_older === true,
             loaded: true,
@@ -321,7 +331,7 @@ export async function loadAttention(page = 1): Promise<void> {
         : {
             ...state,
             items: [...state.items, ...items],
-            total: answer.total,
+            total,
             page,
             hasOlder: answer.has_older === true,
             loaded: true,
@@ -394,8 +404,8 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
     attentionStore.update((current) => ({
       ...current,
       items,
-      total: answer.total,
-      page: Math.max(1, answer.page),
+      total: countOf(answer.total, items.length),
+      page: Math.max(1, countOf(answer.page, 1)),
       hasOlder: answer.has_older === true,
       loaded: true,
       isLoading: false,
