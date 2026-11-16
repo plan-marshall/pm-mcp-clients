@@ -12,10 +12,14 @@ package de.planmarshall.operator.planview;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.TaskActivity;
 import de.planmarshall.operator.tui.TuiRow;
 
@@ -151,6 +155,34 @@ class WorkerActivityLevelTest {
                             () -> assertTrue(text.contains("answered by gemini instead of deepseek"), text),
                             () -> assertTrue(text.contains("pytest tests/"), text)
         );
+    }
+
+    @Test
+    @DisplayName("the PLAN-162 fixture names both models, and the head keeps the launch model")
+    void fixtureModels() throws Exception {
+        var level = new WorkerActivityLevel("fix-relay", "execute",
+                            TaskActivity.fromJson(fixtureActivity()));
+        var text = text(level);
+
+        assertAll(
+                            () -> assertTrue(text.contains("implement \u00b7 claude sonnet \u00b7 attempt 1"),
+                                                "the head keeps the model the worker was launched with: " + text),
+                            () -> assertTrue(text.contains("answered by sonnet-5.5 instead of sonnet"), text));
+    }
+
+    /**
+     * @return the activity the PLAN-162 fixture serves for {@code TASK-003}, as the wire spells it
+     * @throws IOException when the fixture is not on the classpath
+     */
+    private static String fixtureActivity() throws IOException {
+        try (var in = WorkerActivityLevelTest.class.getClassLoader()
+                            .getResourceAsStream("scenarios/running-work.json")) {
+            assertNotNull(in, "the running-work fixture is on the classpath");
+            var root = JsonTree.asObject(JsonTree.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)));
+            var route = JsonTree.object(JsonTree.object(root, "routes"),
+                                "GET /api/v1/plans/fix-relay/tasks/TASK-003/activity");
+            return JsonTree.write(JsonTree.object(route, "representation"));
+        }
     }
 
     @Test

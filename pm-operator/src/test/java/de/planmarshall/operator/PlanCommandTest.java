@@ -230,6 +230,28 @@ class PlanCommandTest {
                                 () -> assertFalse(accepted.contains(body), accepted)
             );
         }
+
+        @Test
+        @DisplayName("a model_differs entry names both models, and the head keeps the launch model")
+        void modelDiffersNamesBothModels() throws Exception {
+            var body = "{\"task_id\":\"" + taskId + "\",\"role\":\"implement\",\"harness\":\"claude\","
+                                + "\"model\":\"sonnet\",\"attempt\":1,\"duration_seconds\":360,"
+                                + "\"tokens_so_far\":48000,\"entries\":[{\"timestamp\":\"14:03:30\","
+                                + "\"kind\":\"model_differs\",\"launch_model\":\"sonnet\","
+                                + "\"served_model\":\"sonnet-5.5\"}]}";
+            serve(path, body);
+
+            int code = execute("plan", planId, "--task", taskId);
+            var text = out.toString();
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(text.contains("implement \u00b7 claude sonnet \u00b7 attempt 1"),
+                                                    "the head keeps the launch model: " + text),
+                                () -> assertTrue(text.contains("answered by sonnet-5.5 instead of sonnet"), text),
+                                () -> assertFalse(text.contains("answered by sonnet instead of sonnet"),
+                                                    "the served model is never lost: " + text));
+        }
     }
 
     @Nested
