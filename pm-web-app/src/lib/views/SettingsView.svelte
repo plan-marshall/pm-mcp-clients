@@ -521,8 +521,9 @@
   let notice = '';
   let error = '';
   let documentsMode = 'ask';
-  let cleanupDays = 30;
-  let cleanupRemindDays = 3;
+  /** The retention durations, or `null` for a category that is never offered. */
+  let cleanupDays: number | null = 30;
+  let cleanupRemindDays: number | null = 3;
   let conflict: ConflictState | null = null;
   let rotating: MachineCredentialStatus | null = null;
   let rotatingMode: 'rotate' | 'replace' = 'rotate';
@@ -550,9 +551,17 @@
   $: readPlans = readDurations?.plans_after_days ?? 30;
   $: readRemind = readDurations?.remind_after_days ?? 3;
   $: documentsChanged = documentsMode !== readDocuments;
-  $: plansChanged = Number(cleanupDays) !== Number(readPlans);
+  $: plansChanged = retentionOf(cleanupDays) !== Number(readPlans);
   $: remindChanged = Number(cleanupRemindDays) !== Number(readRemind);
   $: cleanupChanged = plansChanged || remindChanged;
+
+  /**
+   * @param days the value a retention field shows
+   * @returns the duration that travels, with `null` (never) read as the contract's `-1`
+   */
+  function retentionOf(days: number | null): number {
+    return days === null ? NEVER : Number(days);
+  }
   // The dependency is written out, so a settings record that arrives after the mount fills both
   // tabs: a helper call would hide it from the template's own update.
   $: setupAspects = (settings?.aspects ?? []).filter(
@@ -582,7 +591,9 @@
     if (!value) return;
     documentsMode = value.documents_mode || 'ask';
     readDocuments = documentsMode;
-    cleanupDays = value.cleanup_durations?.plans_after_days ?? 30;
+    const recordedPlans = value.cleanup_durations?.plans_after_days ?? 30;
+    // The contract's `-1` is the field's own "never", so no view ever shows a negative figure.
+    cleanupDays = recordedPlans === NEVER ? null : recordedPlans;
     cleanupRemindDays = value.cleanup_durations?.remind_after_days ?? 3;
     // The record the page last read is what its changed marks and its resends are measured
     // against, so a settings event that refreshes the store cannot turn a stale field into the
@@ -716,6 +727,7 @@
     documentsMode = readDocuments;
     documentsSaved = false;
     notice = '';
+    error = '';
   }
 
   /**
@@ -727,7 +739,7 @@
    * least one) writes nothing rather than a default the runtime would fill in.
    */
   async function saveCleanup(): Promise<void> {
-    const days = Number(cleanupDays);
+    const days = retentionOf(cleanupDays);
     const remind = Number(cleanupRemindDays);
     if (!Number.isInteger(days) || (days !== NEVER && days < MINIMUM_RETENTION_DAYS)) {
       // The contract's own sentence, with its minimum: a generic failure hides what to change.
@@ -787,10 +799,11 @@
 
   /** Drops the cleanup change and shows the durations the machine holds again. */
   function resetCleanup(): void {
-    cleanupDays = readPlans;
+    cleanupDays = readPlans === NEVER ? null : readPlans;
     cleanupRemindDays = readRemind;
     cleanupSaved = false;
     notice = '';
+    error = '';
   }
 
   /** Applies the value this page wanted, on the revision the other client left behind. */
@@ -832,6 +845,11 @@
    * @returns the value in the catalogue's words, never a raw enum or JSON
    */
   function conflictValueWords(state: ConflictState, value: string): string {
+    if (state.key.startsWith('consent:')) {
+      return value === 'withdrawn'
+        ? $t('web.settings.conflict.state.withdrawn')
+        : $t('web.settings.conflict.state.remembered');
+    }
     if (state.key === 'documents_mode' && hasMessage(`web.settings.documents.${value}`)) {
       return $t(`web.settings.documents.${value}`);
     }
@@ -843,6 +861,9 @@
    * @returns the value the resend will send, in the catalogue's words
    */
   function conflictYoursWords(state: ConflictState): string {
+    if (state.key.startsWith('consent:')) {
+      return $t('web.settings.conflict.withdraw');
+    }
     if (state.key !== 'cleanup_durations' || !state.changedFields) {
       return conflictValueWords(state, state.wantedValue ?? '');
     }
@@ -1417,6 +1438,7 @@
               label={$t('web.settings.cleanup.keep')}
               unit={$t('web.settings.cleanup.days')}
               hint={$t('web.settings.cleanup.hint')}
+              allowNever
               testid="cleanup-days"
             />
             {#if plansChanged}

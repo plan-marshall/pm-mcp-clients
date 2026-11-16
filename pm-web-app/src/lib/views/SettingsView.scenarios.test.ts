@@ -309,6 +309,36 @@ describe('the settings panels against the mock runtime states', () => {
     await waitFor(() => expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(5));
   });
 
+  it('shows a consent conflict in the catalogue’s words and withdraws on apply', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: 'withdrawn',
+      })
+      .mockResolvedValue({ applied: true, conflict: false, revision: 10 });
+
+    render(SettingsView);
+    await openTab('Consents');
+
+    // The other client withdrew the consent meanwhile: the page says so in words, not in the wire
+    // value, and its own resend is the withdrawal.
+    await waitFor(() => expect(screen.getByTestId('withdraw-scan_harnesses')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('withdraw-scan_harnesses'));
+
+    const current = await screen.findByTestId('conflict-current');
+    const yours = await screen.findByTestId('conflict-yours');
+    expect(current).toHaveTextContent('Withdrawn in the other client');
+    expect(yours).toHaveTextContent('Withdraw the consent');
+
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenLastCalledWith('consent:scan_harnesses', null, 4),
+    );
+  });
+
   it('clears the changed mark after the documents mode is saved', async () => {
     vi.spyOn(apiClient, 'getMachineSettings')
       .mockResolvedValueOnce(settingsRecord())
@@ -359,7 +389,8 @@ describe('the settings panels against the mock runtime states', () => {
     render(SettingsView);
     await openTab('Retention');
     await waitFor(() => expect(screen.getByTestId('save-cleanup')).toBeInTheDocument());
-    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '-1' } });
+    // The field's own never choice; `-1` never reaches the view.
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'Never' }));
     await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
     await fireEvent.click(screen.getByTestId('save-cleanup'));
 

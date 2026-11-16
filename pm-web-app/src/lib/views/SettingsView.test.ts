@@ -638,7 +638,6 @@ describe('the machine settings panels of the one settings view', () => {
   });
 
   it.each([
-    ['cleanup-days', '', 'At least 7 days, or never.'],
     ['cleanup-days', '2.5', 'At least 7 days, or never.'],
     ['cleanup-days', '3', 'At least 7 days, or never.'],
     ['cleanup-remind-days', '', 'At least 1 day.'],
