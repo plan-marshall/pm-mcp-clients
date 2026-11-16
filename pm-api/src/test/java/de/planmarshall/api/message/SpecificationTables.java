@@ -31,6 +31,16 @@ final class SpecificationTables {
     private static final String TABLE_DELIMITER = "|===";
     private static final Pattern KEY_CELL = Pattern.compile("^\\|`([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+)`$");
 
+    /**
+     * One row of a document's key table: the key and the English and the German cell.
+     *
+     * @param key     the message-catalogue key
+     * @param english the English text
+     * @param german  the German text
+     */
+    record Row(String key, String english, String german) {
+    }
+
     private SpecificationTables() {
     }
 
@@ -41,19 +51,48 @@ final class SpecificationTables {
      */
     static List<String> keyCells(String relative) throws IOException {
         var keys = new ArrayList<String>();
+        for (var row : rows(relative, "")) {
+            keys.add(row.key());
+        }
+        return keys;
+    }
+
+    /**
+     * Reads the rows of every table of the document whose key starts with the prefix: a key cell
+     * {@code |`key`} followed by the English and the German cell.
+     *
+     * @param relative the document's path below {@code doc/design/}
+     * @param prefix   the prefix the keys start with, or the empty string for every key
+     * @return the rows, in the document's order
+     * @throws IOException when the document cannot be read
+     */
+    static List<Row> rows(String relative, String prefix) throws IOException {
+        var rows = new ArrayList<Row>();
+        var cells = new ArrayList<String>();
         var inTable = false;
         for (var line : Files.readAllLines(document(relative), StandardCharsets.UTF_8)) {
             var stripped = line.strip();
             if (TABLE_DELIMITER.equals(stripped)) {
+                appendRows(cells, prefix, rows);
+                cells.clear();
                 inTable = !inTable;
-            } else if (inTable) {
-                var matcher = KEY_CELL.matcher(stripped);
-                if (matcher.matches()) {
-                    keys.add(matcher.group(1));
-                }
+            } else if (inTable && stripped.startsWith("|")) {
+                cells.add(stripped);
             }
         }
-        return keys;
+        appendRows(cells, prefix, rows);
+        return rows;
+    }
+
+    private static void appendRows(List<String> cells, String prefix, List<Row> rows) {
+        for (int index = 0; index + 2 < cells.size(); index++) {
+            var matcher = KEY_CELL.matcher(cells.get(index));
+            if (matcher.matches() && matcher.group(1).startsWith(prefix)) {
+                rows.add(new Row(matcher.group(1), cells.get(index + 1).substring(1),
+                        cells.get(index + 2).substring(1)));
+                index += 2;
+            }
+        }
     }
 
     private static Path document(String relative) {
