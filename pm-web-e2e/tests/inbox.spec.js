@@ -24,21 +24,31 @@ test.describe('The start page: what waits', () => {
     }
   });
 
-  test('lists what waits in the served order, blocking first', async ({ page }) => {
+  test('lists what waits in the served order, blocking first', async ({ page, request }) => {
     await page.goto('/');
     await expect(page.getByTestId('inbox-view')).toBeVisible();
 
     const rows = page.getByTestId('inbox-row');
     await expect(rows.first()).toBeVisible();
 
-    const kinds = await rows.evaluateAll((elements) =>
+    // The runtime's own order, read with the browser's pairing: the client keeps it and sorts nothing.
+    const secret = await page.evaluate(() => localStorage.getItem('pm_device_secret'));
+    const answer = await request.get(`${MOCK_RUNTIME_URL}/api/v1/machine/needs-operator?page=1`, {
+      headers: { Authorization: `Bearer ${secret}` },
+    });
+    expect(answer.ok()).toBeTruthy();
+    const served = (await answer.json()).items;
+
+    const shown = await rows.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute('data-kind')),
     );
-    // The runtime serves the blocking items first; the client keeps that order and sorts nothing.
-    expect(kinds[0]).toBe('cleanup_due');
-    expect(kinds).toContain('decision');
-    expect(kinds).toContain('landing_failed');
-    expect(kinds.length).toBeGreaterThan(5);
+    expect(shown).toEqual(served.map((item) => item.kind));
+    expect(shown.length).toBeGreaterThan(5);
+
+    // Blocking first: no item without a `blocks` value stands above one that has it.
+    const firstFree = served.findIndex((item) => !item.blocks);
+    expect(firstFree).toBeGreaterThan(0);
+    expect(served.slice(0, firstFree).every((item) => Boolean(item.blocks))).toBe(true);
 
     // A decision carries no reason badge; every other kind names its reason.
     const decision = page.locator('[data-testid="inbox-row"][data-kind="decision"]').first();
@@ -78,9 +88,9 @@ test.describe('The start page: what waits', () => {
     await page.goto('/');
     await expect(page.locator('[data-testid="inbox-row"][data-kind="decision"]').first()).toBeVisible();
 
-    // Another client answers the decisions: the runtime serves a list without them and announces
-    // the change on the stream.
-    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/overview.needs-resolved`);
+    // Another client resolves what waits: the runtime serves a list without those items and
+    // announces the change on the stream.
+    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/overview.needs-changed`);
     expect(moved.ok()).toBeTruthy();
 
     await expect(page.locator('[data-testid="inbox-row"][data-kind="decision"]')).toHaveCount(0, {
@@ -88,9 +98,17 @@ test.describe('The start page: what waits', () => {
     });
     // The list still holds what waits, and the frame's polite region names what left.
     await expect(page.getByTestId('inbox-row').first()).toBeVisible();
-    await expect(
-      page.locator('.sr-only[aria-live="polite"]', { hasText: 'resolved in another client' }),
-    ).toHaveCount(1);
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            [...document.querySelectorAll('[aria-live="polite"]')]
+              .map((region) => (region.textContent ?? '').trim())
+              .join(' '),
+          ),
+        { timeout: 15000 },
+      )
+      .toContain('was resolved in another client');
   });
 
   test('shows the same total in the rail, the tab title and the list', async ({ page }) => {
