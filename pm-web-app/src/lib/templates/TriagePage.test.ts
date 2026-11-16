@@ -346,6 +346,64 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(get(runtimeStore).quietNavigationNotice).toBe('Plan column, plan');
   });
 
+  it('keeps the window honest when a key move after a peek reaches the object', async () => {
+    await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    // The peek at the lens shows the lens, the project and the epic; `]` shifts it to the plan,
+    // which still leaves the object to its right.
+    const epic = screen.getByRole('heading', { name: 'Epic column' });
+    epic.focus();
+    await fireEvent.keyDown(epic, { key: ']' });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+
+    // `]` again reaches the object; the window is then the object's own, not a peek.
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
+
+    const normal = windowFor({ container: 1216, depth: LEVELS.length });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByRole('button', { name: 'report, Lens list' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'project, Project column' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to Object column' })).toBeNull();
+    expect(widthOf(screen.getByTestId('triage-detail'))).toBe(normal.objectWidth);
+  });
+
+  it('clears a peek when a resize leaves one column, so widening shows the object', async () => {
+    const { frame } = await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '0');
+
+    reportBox(frame, 496, 800);
+    await tick();
+    expect(columns()).toHaveLength(1);
+
+    reportBox(frame, 1216, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+  });
+
+  it('clears a peek that ended at the object, so narrowing cannot resurrect it', async () => {
+    const { frame } = await renderWindow(1168);
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+
+    // Two presses of `]` walk the window to the object, which drops the peek from the state.
+    const epic = screen.getByRole('heading', { name: 'Epic column' });
+    epic.focus();
+    await fireEvent.keyDown(epic, { key: ']' });
+    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: ']' });
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+
+    // A window of two columns would hold a stale peek at the plan and hide the object behind it.
+    reportBox(frame, 832, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    expect(screen.getByText('Object body')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to Object column' })).toBeNull();
+  });
+
   it('leaves the keys alone in a one-column window', async () => {
     await renderWindow(496);
     const window_ = document.querySelector('.triage-page__window');
@@ -397,15 +455,125 @@ describe('the gap strip, the peek, the focus and the keys', () => {
     expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', start);
   });
 
-  it('slides a shift for the base duration and not at all under reduced motion', () => {
+  it('slides a shift on the columns and not at all under reduced motion', () => {
     const style = styleOf(SOURCE);
     const source = fs.readFileSync(SOURCE, 'utf-8');
 
-    expect(style).toContain('animation: triage-page-shift var(--duration-base)');
-    // The animation runs on a shift: the window is keyed on the level it starts at.
-    expect(source).toContain('{#key layout.start}');
+    // The slide is replayed on the columns themselves; the window is never keyed on the start, which
+    // remounted every column, the strip and the chat on any shift.
+    expect(ruleOf(style, '.triage-page__column--shift')).toContain(
+      'animation: triage-page-shift var(--duration-base)',
+    );
+    expect(source).not.toContain('{#key layout.start}');
     const reduced = style.slice(style.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(reduced).toContain('animation: none');
+  });
+
+  it('keeps a list column scroll position when the window shifts', async () => {
+    const { frame } = await renderWindow(1168);
+    const plan = document.querySelector('[data-column-index="3"]') as HTMLElement;
+    plan.scrollTop = 120;
+
+    reportBox(frame, 1376, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+    expect(document.querySelector('[data-column-index="3"]')).toBe(plan);
+    expect(plan.scrollTop).toBe(120);
+  });
+
+  it('keeps a chat draft when the window shifts', async () => {
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen: true,
+        sideFieldLabel: 'Chat draft',
+      },
+    });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    const field = screen.getByRole('textbox', { name: 'Chat draft' });
+    await fireEvent.input(field, { target: { value: 'half a thought' } });
+
+    reportBox(frame, 1640, 800);
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '2');
+    expect(screen.getByRole('textbox', { name: 'Chat draft' })).toBe(field);
+    expect(field).toHaveValue('half a thought');
+  });
+
+  it('puts no transformed ancestor above the phone overlay', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    reportBox(screen.getByTestId('triage-page'), 390, 800);
+    await tick();
+    expect(screen.queryByTestId('side-column')).toBeNull();
+
+    // The chat is opened at the phone width: it takes the screen as a fixed overlay.
+    await rendered.rerender({ ...props, sideOpen: true });
+    await tick();
+
+    const overlay = screen.getByTestId('side-column');
+    expect(overlay).toHaveClass('side-column--taken');
+
+    // jsdom lays nothing out, so the stylesheet is the load-bearing witness: the slide animates the
+    // columns, never the group that holds the overlay, and a computed read adds the intent.
+    const style = styleOf(SOURCE);
+    const windowRule = ruleOf(style, '.triage-page__window');
+    expect(windowRule).not.toBe('');
+    expect(windowRule).not.toContain('animation');
+    expect(windowRule).not.toContain('transform');
+
+    const ancestors: HTMLElement[] = [];
+    for (
+      let ancestor = overlay.parentElement;
+      ancestor !== null;
+      ancestor = ancestor.parentElement
+    ) {
+      ancestors.push(ancestor);
+    }
+    expect(ancestors.length).toBeGreaterThan(0);
+    for (const ancestor of ancestors) {
+      const transform = getComputedStyle(ancestor).transform;
+      expect(transform === 'none' || transform === '').toBe(true);
+    }
+  });
+
+  it('replays no slide where the person asked for reduced motion', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+    })) as unknown as typeof window.matchMedia;
+
+    try {
+      const { frame } = await renderWindow(1168);
+      reportBox(frame, 1376, 800);
+      await tick();
+
+      expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '1');
+      expect(document.querySelector('.triage-page__column--shift')).toBeNull();
+      const reduced = styleOf(SOURCE).slice(
+        styleOf(SOURCE).indexOf('@media (prefers-reduced-motion: reduce)'),
+      );
+      expect(reduced).toContain('animation: none');
+      expect(reduced).toContain('transition: none');
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });
 
@@ -486,6 +654,142 @@ describe('the side column of the chat', () => {
 
     await fireEvent.keyDown(screen.getByTestId('side-column'), { key: 'Escape' });
     expect(onHideSide).toHaveBeenCalledTimes(2);
+  });
+
+  it('moves the focus into the chat and back to the column it came from', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    const opener = screen.getByRole('heading', { name: 'Plan column' });
+    opener.focus();
+
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+    expect(document.activeElement).toHaveTextContent('Hide the chat');
+
+    await rendered.rerender({ ...props, sideOpen: false });
+    await tick();
+
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    // The columns unmount under the chat, so the control comes back as the heading of the column
+    // that held the focus — never the page body.
+    expect(document.activeElement?.closest('[data-column-index]')).toHaveAttribute(
+      'data-column-index',
+      '3',
+    );
+    expect(document.activeElement).toHaveTextContent('Plan column');
+  });
+
+  it('leaves an Escape the page already handled to the page', async () => {
+    const onHideSide = vi.fn();
+    render(TriagePageFixture, {
+      props: {
+        levels: LEVELS,
+        label: 'Levels',
+        bodies: BODIES,
+        objectBody: 'Object body',
+        sideBody: 'The chat',
+        sideOpen: true,
+        onHideSide,
+      },
+    });
+    reportBox(screen.getByTestId('triage-page'), 1048, 800);
+    await tick();
+
+    // An open ConfirmDialog also keeps the key, but by stopping it at the window's capture phase
+    // (`Dialog.svelte`), so it never reaches this template's group at all: no assertion here can
+    // tell that stop from this guard. The witness is a widget that marks the key handled and lets
+    // it bubble, which is what separates a handled Escape from a free one.
+    const menu = document.createElement('button');
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+      }
+    });
+    document.querySelector('.triage-page__window')?.append(menu);
+    menu.focus();
+    await fireEvent.keyDown(menu, { key: 'Escape' });
+
+    expect(onHideSide).not.toHaveBeenCalled();
+    menu.remove();
+  });
+
+  it('keeps the focus in a chat that only becomes docked', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideFieldLabel: 'Chat draft',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    screen.getByRole('heading', { name: 'Plan column' }).focus();
+
+    // The chat takes the space, then the container widens until it docks beside the columns: it is
+    // still open, so its own control keeps the focus.
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+    const editor = screen.getByRole('textbox', { name: 'Chat draft' });
+    editor.focus();
+
+    reportBox(frame, 1216, 800);
+    await tick();
+
+    expect(screen.getByTestId('side-column')).not.toHaveClass('side-column--taken');
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it('returns the focus to a column the window shows, not to one it dropped', async () => {
+    const props = {
+      levels: LEVELS,
+      label: 'Levels',
+      bodies: BODIES,
+      objectBody: 'Object body',
+      sideBody: 'The chat',
+      sideOpen: false,
+    };
+    const rendered = render(TriagePageFixture, { props });
+    const frame = screen.getByTestId('triage-page');
+    reportBox(frame, 1216, 800);
+    await tick();
+    // The peek starts the window at the lens, and the chat is opened from there.
+    await fireEvent.click(screen.getByRole('button', { name: 'report, Lens list' }));
+    expect(document.activeElement).toHaveTextContent('Lens list');
+
+    await rendered.rerender({ ...props, sideOpen: true });
+    reportBox(frame, 792, 800);
+    await tick();
+    expect(screen.getByTestId('side-column')).toHaveClass('side-column--taken');
+
+    await rendered.rerender({ ...props, sideOpen: false });
+    await tick();
+
+    // The window is the object's own now, so the lens is gone; the focus goes to a column that is
+    // there rather than falling to the page.
+    expect(document.querySelector('.triage-page__window')).toHaveAttribute('data-start', '3');
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.closest('[data-column-index]')).toHaveAttribute(
+      'data-column-index',
+      '3',
+    );
   });
 
   it('takes the whole screen on a phone, the bottom bar included', async () => {

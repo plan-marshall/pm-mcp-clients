@@ -105,21 +105,21 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 ## Claim Labels
 
 - OBSERVED: `ReportsView.svelte` (1509 lines) uses `Button`, `EmptyState`, `ErrorState`, `FilterInput`, `Icon`, `IconButton`, `RowMenu`, `Skeleton` and has no raw `<button>`, `<a>` or `<input>` — read at the imports and by `git grep -c`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView now 1643 lines; imports Button Icon IconButton RowMenu FilterInput EmptyState ErrorState Skeleton (+TriagePage); no raw button/a/input
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView.svelte 1723 lines; imports Button Icon IconButton RowMenu FilterInput EmptyState ErrorState Skeleton (+TriagePage :13); no raw button/a/input
 - OBSERVED: `CompletionReportView.svelte` (989 lines) uses `Button`, `Icon`, `Spinner`, `StatusLabel`, has no raw tag, and carries 6 lines with tag-like class names — read at the file and by `git grep -cE 'class="[^"]*(badge|pill|chip|tag|state-dot|status)'`
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: CompletionReportView.svelte 1001 lines imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); has raw <a> at :207 and :233; 6 tag-like class lines (:272 :302 :323 :344 :353 :386)
 - OBSERVED: `routes.ts` knows `/reports` and `/reports?plan=` and no `/reports/{id}` — read at `pm-web-app/src/lib/routes.ts:312-315`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: routes.ts:312-315 /reports and /reports?plan= exactly; no /reports/{id}
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: routes.ts:313 has /reports/{id} pattern (builder :433); /reports?plan= is now a legacy read-once address (:438 :580) via PLAN-143 #446
 - OBSERVED: `PLAN-129` (staged) rewrites the mark-all rollback and retention in `ReportsView.svelte`, and its D2 touches `CompletionReportView.svelte` (focus); `PLAN-131` (staged) places the mascot in `ReportsView` — read at both specs
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-129 (#406) and PLAN-131 (#422) landed; ReportsView.svelte:1142 already places mascot=all-clear; no longer staged
 - OBSERVED: `ReportsView.svelte:1171` passes `visibleLabel` and nine `size="small"` values that PLAN-149 removes — read by `git grep`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView passes visibleLabel at :1290 (was 1171) on RowMenu; size=small x9 still in ReportsView
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: ReportsView has no visibleLabel and no size=small (size=sm on 10 lines :1068-1373); PLAN-149 landed (#445)
 - HYPOTHESIS: the unread dot and the semibold subject are drawn by hand in `ReportsView` and move to a `StatusLabel` and a class of the row — confirm/refute at `ReportsView.svelte` § row markup (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView:1183-1184 hand-drawn span report-card__unread-dot plus class report-card--unread at :1177
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView.svelte:1272 hand-drawn span report-card__unread-dot and class report-card--unread :1265; no StatusLabel in the view
 - HYPOTHESIS: the Tokens section of `CompletionReportView` is already a table of its own — confirm/refute at `CompletionReportView.svelte` § tokens (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CompletionReportView tokens-section :400 holds three own breakdown-table tables (:457 :503 :554) and a total card
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: CompletionReportView tokens-section :402 holds three own breakdown-table tables (:459 :505 :556) and tokens-total-card :418
 - Verify-first clause: re-read both views after PLAN-45, PLAN-129, PLAN-131, PLAN-149 to PLAN-152 landed; take the PLAN-151 lint list and a tag-class scan as the work list. If PLAN-129 moved the retention code, rebase deliverable 1 on it.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction, not a code fact
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction not a code fact
 
 ## Expected Surface
 

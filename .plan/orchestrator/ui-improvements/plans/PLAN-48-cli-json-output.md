@@ -53,11 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57 CLI-UX-S-06; proposals.adoc:125-126 CLI-UX-P-07
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 CLI-UX-S-06; cli/ux/proposals.adoc:125-126 CLI-UX-P-07 present
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand.java:45 has --json so it exists; json test dir still absent; --json also on StatusCommand:57 PlansCommand:44 SystemCommand:70; plans --json delegates to status (PlansCommand:144)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause; no code fact
 
 ## Expected Surface
 

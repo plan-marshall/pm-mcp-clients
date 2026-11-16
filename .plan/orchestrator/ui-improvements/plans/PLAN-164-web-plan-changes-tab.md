@@ -30,7 +30,7 @@ Read first:
    - Add `client.ts` calls for the list and a file, and the `plan.change_captured` event (reload the list).
    - Add a `PlanChanges` component: the file list (status, counts, renamed-from, binary, unplanned, cut) and a file's hunks with old and new line numbers.
    - Mount it in `PlanView` as the tab _Changes_, absent before the first capture. The size line opens it.
-   - The address `?tab=changes&file=` survives a reload.
+   - The address `?tab=changes&file=` survives a reload. **Re-scoped 2026-11-15 (cleanup, claim 2 refuted):** the address model already parses `?tab=` (including `changes`) into the runtime store's `objectTab` (`routes.ts:90`, `:485-491`, `:569`; `runtime.ts:571`, PLAN-143 #446), and no view consumes it yet. `PlanView` therefore reads `objectTab` and writes the tab through the address helpers; it adds no address parsing of its own.
    - Every path and line is text, rendered through a text sink only.
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-frontend:css
@@ -64,11 +64,11 @@ Read first:
 ## Claim Labels
 
 - OBSERVED: `PlanView.svelte` has no Changes tab and `client.ts` no changes call — `git grep -n "changes" client.ts PlanView.svelte` at `7adb56c2` finds no route
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (client.ts changes hits are source previews only; KindMark/Link/RowLink/StatusLabel/Chip present)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte has no Changes tab and client.ts no plan changes call (client.ts hits are ChangeSizeRecord :1009 and local-changes :3392-3405)
 - OBSERVED: `KindMark`, `Link`, `RowLink`, `StatusLabel` and `Chip` exist in `pm-web-app/src/lib/components/` — read at `7adb56c2`
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (client.ts changes hits are source previews only; KindMark/Link/RowLink/StatusLabel/Chip present)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: KindMark Link RowLink StatusLabel Chip all exist in pm-web-app/src/lib/components
 - HYPOTHESIS: `PlanView` already reads `tab=` from the address — confirm/refute at `PlanView.svelte` and `lib/routes.ts` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte has no tab handling; the address model parses ?tab= incl. changes (routes.ts:90 :485-491 :569) into runtimeStore objectTab (runtime.ts:571) but no view consumes objectTab
 
 ## Expected Surface
 

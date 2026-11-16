@@ -8,6 +8,7 @@
 *.project
 **/.vscode
 .DS_Store
+node_modules/
 # Playwright MCP browser artifacts (screenshots, traces)
 .playwright-mcp/
 .asciidoctorconfig.adoc

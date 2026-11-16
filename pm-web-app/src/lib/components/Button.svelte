@@ -94,7 +94,7 @@
     font-size: var(--text-sm);
     font-weight: 500;
     line-height: 1.25;
-    border-radius: var(--radius-md);
+    border-radius: var(--control-radius);
     transition: all var(--duration-fast) var(--ease-standard);
     white-space: nowrap;
     border: 1px solid transparent;
@@ -107,7 +107,7 @@
   }
 
   .btn--md {
-    min-height: 34px;
+    min-height: var(--control-height);
   }
 
   .btn--lg {

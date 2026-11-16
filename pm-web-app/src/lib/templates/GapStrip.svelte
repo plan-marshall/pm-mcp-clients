@@ -54,7 +54,7 @@
   /**
    * Opens or closes the popover of names, and moves the focus with it.
    */
-  async function togglePopover(): Promise<void> {
+  function togglePopover(): void {
     popoverOpen = !popoverOpen;
     if (popoverOpen) {
       requestAnimationFrame(() => popover?.querySelector<HTMLElement>('button')?.focus());
@@ -133,7 +133,7 @@
         aria-label={$t('web.nav.strip.names')}
         aria-expanded={popoverOpen}
         aria-controls={popoverId}
-        onclick={() => void togglePopover()}
+        onclick={() => togglePopover()}
       >
         <Icon name="act.more" size={16} />
       </button>

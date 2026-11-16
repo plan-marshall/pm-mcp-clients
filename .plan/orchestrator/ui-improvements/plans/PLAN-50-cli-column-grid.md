@@ -48,11 +48,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:40-41 CLI-VD-S-04; proposals.adoc:76-77 P-03 and :112 P-04
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 CLI-VD-S-04; proposals.adoc:76 CLI-VD-P-03 and :112 P-04
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowLayout absent everywhere; layout/ holds only OperatorLayout and package-info (installation layout); system/ has SystemView, SystemLevel, SystemFormatting. RowLayout belongs in tui/
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowLayout absent in pm-operator; layout/ holds only OperatorLayout and package-info; system/ has SystemView SystemLevel SystemFormatting
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause
 
 ## Expected Surface
 

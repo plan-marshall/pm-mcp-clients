@@ -53,22 +53,22 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-05`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-04` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47-48 CLI-UX-S-05; proposals.adoc:81 CLI-UX-P-04 and :115 CLI-UX-P-06 present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:47-48 CLI-UX-S-05; cli/ux/proposals.adoc:81 CLI-UX-P-04 and :115 CLI-UX-P-06 present
 - Re-grounded note at HEAD 5348e89e (2026-10-30): `cli-gate-scope` (PLAN-14, shipped, PR #277) added a minimal
   `--print` to `plan` on the operator's decision (its terminal check needed `plan fix-relay --print`) and documented
   it in `01-commands`, `16-plan-view` and the `pm-operator` README. Treat `plan <id> --print` as present; the other
   view verbs still lack it. PLAN-14 also changed `PmConsole`, `PlanCommand`, `EpicCommand` and the operator catalogue
   pair that this spec declares: re-read them at HEAD before the first deliverable.
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: plan <id> --print exists (PlanCommand:118) and is documented in 01-commands:118 and 16-plan-view:204, but pm-operator/README.md does not mention --print; find also has it (FindCommand:120) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: plan --print exists PlanCommand:119 and is documented 01-commands.adoc:118 and 16-plan-view.adoc:204 but pm-operator/README.md never mentions --print; find also has it FindCommand:120
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): HelpCommand/HelpCommandTest still absent (created by this plan, correct). --print exists only on PlanCommand; PlanCommand, EpicCommand, SystemCommand, PmConsole, PmOperator changed again via PLAN-26 (SystemView model in operator/system/) and PLAN-91 (interrupt exit 130), so re-read before D1.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HelpCommand and HelpCommandTest absent; other view verbs lack --print; drift: FindCommand:120 (PLAN-84 #397) now also has --print; console help <verb> is a one-line stub PmConsole:594-598
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: HelpCommand and HelpCommandTest are absent as stated; but --print is not only on PlanCommand: FindCommand.java:120 has it; console help is now printHelp PmConsole:620-628
 - HOLD (design audit 2026-11-02): the help 'lists every verb' would fix the extra top-level verbs (start, onboard, enrol, unenrol) into tests and docs that decision D26 folds in or removes. Hold until the D26 clients package, or rescope to the design command tree (terminal-client/01-commands).
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 (d8efe35f) landed; PmOperator registers 24 verbs (incl. find), none named start/onboard/enrol/unenrol top-level | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 landed (#369 2fc2c214); PmOperator.java:43-66 registers 24 verbs and none is named start onboard enrol or unenrol (EnrolHarnessCommand is enrol-harness)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause; no code fact
 
 - Design audit 002 (2026-11-02, `design-audit-002`, archived): the D26 package now exists as `doc/plans/operator-command-tree.adoc` (merged with PR #310, `28634b2a`; open). The hold stands until PLAN-97 deliverable 3 (the package `operator-command-tree`) ships; PLAN-97 was staged on 2026-11-04 on the operator's word. The command tree dropped the `abort` row, spells `runtime stop|restart [--when-done|--now]` and `runtime stop --withdraw`, and has no `--drain`.
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: command tree still lists --drain as alias of --when-done: RuntimeCommand.java:147,261,326 and 01-commands.adoc:92,94,158; --withdraw exists :159; abort dropped | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: Command tree still has --drain: 01-commands.adoc:92 :94 :158 (alias of --when-done); RuntimeCommand.java:147 :261 :326; --withdraw :159 exists; abort row dropped
 
 ## Expected Surface
 

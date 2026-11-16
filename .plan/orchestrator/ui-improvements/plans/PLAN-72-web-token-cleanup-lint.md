@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-08`, `doc/claude_review/visual-design/proposals.adoc#VD-P-02` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; proposals.adoc:28-29 VD-P-02; tokens.css aliases at :113-135 (comment :6) still present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 VD-S-08; visual-design/proposals.adoc:28 VD-P-02
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Many listed components/views now exist or were changed by PLAN-25/35/43 and PLAN-90 (ErrorState, Skeleton, DataTable, Dialog, Tabs, Toast, Chip, etc.); tokens.css still carries the old aliases (line 100), no stylelint dependency yet (package.json), a styles/tokens.test.ts exists. Scope unchanged but the alias sweep now covers more files.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Aliases still at tokens.css:113+ (drift from :100); no stylelint in package.json/pom/eslint config, no .stylelintrc.json; tokens.test.ts ALIASES at :137. Amendment holds: success-subtle own value :88/:205
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css old-alias comment :120 (header :6); no stylelint in pm-web-app/package.json or eslint config and no .stylelintrc; tokens.test.ts:173 ALIASES; success-subtle own value :95
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact to settle
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; no code fact
 
 ## Expected Surface
 

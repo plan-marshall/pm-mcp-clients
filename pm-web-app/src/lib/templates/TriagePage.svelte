@@ -186,6 +186,15 @@
     previousChain = chain;
   });
 
+  // A window of one column has no strip and cannot peek, so a peek is dropped there; and a peek the
+  // window does not render — one that ends at the object, or one a wider window no longer holds — is
+  // dropped too. Widening or narrowing again then shows the object's window rather than a stale peek.
+  $effect(() => {
+    if (peek !== null && (layout.columns <= 1 || !layout.peek)) {
+      peek = null;
+    }
+  });
+
   /** The element tags that hold the focus as a field, where the column keys stay with the field. */
   const FIELD_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
@@ -302,10 +311,144 @@
     announce(next);
   }
 
+  /** Whether a shift is being slid right now. */
+  let shifting = $state(false);
+
+  /** The start the last slide ran for, so a first render and an unchanged start do not slide. */
+  let slidStart = -1;
+
+  /**
+   * @returns whether the person asked for reduced motion
+   */
+  function reducedMotion(): boolean {
+    return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  }
+
+  // A shift slides the columns, never the group that holds them: the chat's phone overlay is
+  // `position: fixed`, and a transformed ancestor would make it the overlay's containing block
+  // instead of the viewport. Nothing is remounted for it — a column's scroll position, a chat draft
+  // and the focused control stay where they are.
+  $effect(() => {
+    const start = layout.start;
+    if (slidStart === start) {
+      return;
+    }
+    const first = slidStart === -1;
+    slidStart = start;
+    if (first || reducedMotion() || layout.columns === 0) {
+      // A window without a column has nothing to slide, and its latch must not stay set: the
+      // columns it renders once it returns would otherwise mount mid-slide.
+      shifting = false;
+      return;
+    }
+    shifting = true;
+  });
+
+  /**
+   * Ends the slide of a shift, so the next one replays the animation from its start.
+   *
+   * @param event the animation's end, which a descendant's own animation also raises
+   */
+  function onAnimationEnd(event: AnimationEvent): void {
+    if (event.target === event.currentTarget) {
+      shifting = false;
+    }
+  }
+
+  /** Whether the chat held the space at the last update, so a takeover is seen once. */
+  let sideTaken = false;
+  /** The control the chat took the focus from, while it is still in the document. */
+  let rememberedFocus: HTMLElement | null = null;
+  /** The column that held the focus when the chat took the space, which it unmounts. */
+  let rememberedIndex: number | null = null;
+  /** The last control of the window that held the focus, and the column it stood in. */
+  let lastControl: HTMLElement | null = null;
+  let lastColumn: number | null = null;
+
+  // The focus a takeover gives back is the one from before it, and the columns are gone from the
+  // document by the time the chat holds the space: so the focus is tracked as it moves.
+  $effect(() => {
+    const element = frame;
+    if (element === null) {
+      return;
+    }
+    const track = (): void => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active === null || !element.contains(active)) {
+        return;
+      }
+      lastControl = active;
+      lastColumn = focusedColumn();
+    };
+    element.addEventListener('focusin', track);
+    return () => element.removeEventListener('focusin', track);
+  });
+
+  /**
+   * @param index the index of the column that held the focus
+   * @returns the index of the column the window shows in its place: the asked one while it is
+   *   rendered, otherwise the nearest edge of the window
+   */
+  function nearestVisible(index: number): number {
+    if (layout.columns === 0) {
+      return index;
+    }
+    const last = layout.start + layout.columns - 1;
+    return Math.min(Math.max(index, layout.start), last);
+  }
+
+  // The focus never falls to the page when the chat takes the space: it moves into the chat, and it
+  // returns to the control it left when the columns come back — as `WizardPage` does
+  // (`navigation.adoc#side-columns`, `#keys`).
+  $effect(() => {
+    const taken = layout.sideTakesSpace;
+    if (taken === sideTaken) {
+      return;
+    }
+    sideTaken = taken;
+    if (taken) {
+      rememberedFocus = lastControl;
+      rememberedIndex = lastColumn;
+      windowEl?.querySelector<HTMLElement>('[data-testid="side-column"] button')?.focus();
+      return;
+    }
+    const remembered = rememberedFocus;
+    const index = rememberedIndex;
+    rememberedFocus = null;
+    rememberedIndex = null;
+    if (sideOpen && side !== undefined) {
+      // The chat only became docked: it is still open, so its own control keeps the focus.
+      return;
+    }
+    if (remembered === null && index === null) {
+      return;
+    }
+    // The focus returns only while it is still the template's: a person who moved to the shell keeps
+    // it there.
+    const active = document.activeElement as HTMLElement | null;
+    const stillOurs =
+      active === null || active === document.body || frame?.contains(active) === true;
+    if (!stillOurs) {
+      return;
+    }
+    if (remembered !== null && remembered.isConnected) {
+      remembered.focus();
+    } else if (index !== null) {
+      // The columns unmount under the chat and come back as new elements, so the column that held
+      // the focus stands in for the control it carried — and where the returning window no longer
+      // shows that column, its nearest neighbour in the window stands in.
+      focusColumn(nearestVisible(index));
+    }
+  });
+
   /**
    * @param event the key press on the window or one of its columns
    */
   function onKeydown(event: KeyboardEvent): void {
+    // An Escape the page's own dialog or menu already handled stays its key.
+    if (event.defaultPrevented) {
+      return;
+    }
     if (event.key === 'Escape' && sideOpen && side !== undefined) {
       event.preventDefault();
       onHideSide();
@@ -336,75 +479,74 @@
   bind:this={frame}
 >
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  {#key layout.start}
-    <div
-      class="triage-page__window"
-      role="group"
-      aria-label={label}
-      data-columns={layout.columns}
-      data-start={layout.start}
-      bind:this={windowEl}
-      onkeydown={onKeydown}
-    >
-      {#if layout.strip !== 'none'}
-        <GapStrip
-          {hidden}
-          names={layout.strip === 'names'}
-          label={$t('web.nav.strip.label')}
-          width={layout.stripWidth}
-          onPeek={(index) => void peekAt(index)}
-        />
-      {/if}
+  <div
+    class="triage-page__window"
+    role="group"
+    aria-label={label}
+    data-columns={layout.columns}
+    data-start={layout.start}
+    bind:this={windowEl}
+    onkeydown={onKeydown}
+  >
+    {#if layout.strip !== 'none'}
+      <GapStrip
+        {hidden}
+        names={layout.strip === 'names'}
+        label={$t('web.nav.strip.label')}
+        width={layout.stripWidth}
+        onPeek={(index) => void peekAt(index)}
+      />
+    {/if}
 
-      {#each visible as entry (entry.level.key)}
-        <section
-          class="triage-page__column"
-          data-column-index={entry.index}
-          data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
-          aria-label={entry.level.title}
-          style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
-        >
-          {#if up && entry.index === layout.start}
-            <div class="triage-page__up">{@render up()}</div>
-          {/if}
+    {#each visible as entry (entry.level.key)}
+      <section
+        class="triage-page__column"
+        class:triage-page__column--shift={shifting}
+        data-column-index={entry.index}
+        data-testid={isObjectColumn(entry.index) ? 'triage-detail' : 'triage-list'}
+        aria-label={entry.level.title}
+        onanimationend={onAnimationEnd}
+        style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
+      >
+        {#if up && entry.index === layout.start}
+          <div class="triage-page__up">{@render up()}</div>
+        {/if}
 
-          {#if carriesPinned(entry.index) && pinned !== null}
-            <p class="triage-page__pinned" data-testid="triage-pinned">
-              <KindMark kind={pinned.level.kind} />
-              <span class="triage-page__pinned-title">{pinned.level.title}</span>
-              <span class="triage-page__pinned-reason">{$t(`web.nav.pinned.${pinned.reason}`)}</span
-              >
-            </p>
-          {/if}
+        {#if carriesPinned(entry.index) && pinned !== null}
+          <p class="triage-page__pinned" data-testid="triage-pinned">
+            <KindMark kind={pinned.level.kind} />
+            <span class="triage-page__pinned-title">{pinned.level.title}</span>
+            <span class="triage-page__pinned-reason">{$t(`web.nav.pinned.${pinned.reason}`)}</span>
+          </p>
+        {/if}
 
-          {#if isObjectColumn(entry.index) && object}
-            {@render object(entry.level)}
-          {:else}
-            {@render column(entry.level)}
-          {/if}
-        </section>
-      {/each}
+        {#if isObjectColumn(entry.index) && object}
+          {@render object(entry.level)}
+        {:else}
+          {@render column(entry.level)}
+        {/if}
+      </section>
+    {/each}
 
-      {#if layout.returnStrip}
-        <GapStrip
-          placement="end"
-          label={$t('web.nav.strip.label')}
-          {objectTitle}
-          width={layout.stripWidth}
-          onReturn={() => void returnToObject()}
-        />
-      {/if}
+    {#if layout.returnStrip}
+      <GapStrip
+        placement="end"
+        label={$t('web.nav.strip.label')}
+        {objectTitle}
+        width={layout.stripWidth}
+        onReturn={() => void returnToObject()}
+      />
+    {/if}
 
-      {#if sideOpen && side}
-        <SideColumn
-          {side}
-          width={layout.sideWidth}
-          takesSpace={layout.sideTakesSpace}
-          onHide={onHideSide}
-        />
-      {/if}
-    </div>
-  {/key}
+    {#if sideOpen && side}
+      <SideColumn
+        {side}
+        width={layout.sideWidth}
+        takesSpace={layout.sideTakesSpace}
+        onHide={onHideSide}
+      />
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -429,7 +571,6 @@
     min-inline-size: 0;
     padding-inline: var(--triage-inset, 0);
     gap: 0;
-    animation: triage-page-shift var(--duration-base) var(--ease-standard);
   }
 
   .triage-page__column {
@@ -438,6 +579,16 @@
     max-block-size: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+
+  /*
+   * A shift slides the columns, and only for one animation: the class is added when the window's
+   * start changes and dropped on `animationend`, so a column keeps its scroll position, the chat its
+   * draft and the window the focus. The group that holds the chat is never animated — its phone
+   * overlay is `position: fixed` and needs the viewport as its containing block.
+   */
+  .triage-page__column--shift {
+    animation: triage-page-shift var(--duration-base) var(--ease-standard);
   }
 
   .triage-page__pinned {
@@ -478,7 +629,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .triage-page__window {
+    .triage-page__column--shift {
       animation: none;
       transition: none;
     }
