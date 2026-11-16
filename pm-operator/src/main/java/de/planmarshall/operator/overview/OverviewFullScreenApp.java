@@ -32,12 +32,16 @@ import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesRoutes;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
@@ -81,6 +85,7 @@ import de.planmarshall.operator.actions.ActionMenus;
 import de.planmarshall.operator.actions.ActionsMenu;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.epicview.EpicViewLevel;
+import de.planmarshall.operator.planview.ChangesLevel;
 import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.planview.PlanViewLevel.EndedInfo;
@@ -227,6 +232,7 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<EndedWorkLevel> currentEndedLevel = new AtomicReference<>();
     private final AtomicReference<PlanViewLevel> currentPlanView = new AtomicReference<>();
     private final AtomicReference<WorkerActivityLevel> currentActivity = new AtomicReference<>();
+    private final AtomicReference<ChangesLevel> currentChanges = new AtomicReference<>();
     private final AtomicReference<PlanCompletionLevel> currentCompletion = new AtomicReference<>();
     private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
     private final AtomicReference<ReportsLevel> currentReports = new AtomicReference<>();
@@ -238,6 +244,7 @@ public final class OverviewFullScreenApp {
     private final Map<String, EndedWorkLevel> endedLevels = new ConcurrentHashMap<>();
     private final Map<String, PlanViewLevel> planViews = new ConcurrentHashMap<>();
     private final Map<String, WorkerActivityLevel> activities = new ConcurrentHashMap<>();
+    private final Map<String, ChangesLevel> changesLevels = new ConcurrentHashMap<>();
     private final Map<String, PlanCompletionLevel> completions = new ConcurrentHashMap<>();
     private final Map<String, EpicViewLevel> epicViews = new ConcurrentHashMap<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
@@ -384,6 +391,7 @@ public final class OverviewFullScreenApp {
         return switch (lvl.kind()) {
             case PLAN -> header(currentPlanView.get(), title, view -> view.breadcrumb(locale, selectedId));
             case PLAN_ACTIVITY -> header(currentActivity.get(), title, view -> view.breadcrumb());
+            case PLAN_CHANGES -> header(currentChanges.get(), title, view -> view.breadcrumb(locale));
             case PLAN_COMPLETION -> header(currentCompletion.get(), title, view -> view.breadcrumb(locale));
             case EPIC -> header(currentEpicView.get(), title, view -> view.level(locale).title());
             case REPORTS -> header(currentReports.get(), title, view -> view.breadcrumb(locale));
@@ -862,7 +870,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION
-                                || kind == TuiLevel.Kind.REPORTS) {
+                                || kind == TuiLevel.Kind.PLAN_CHANGES || kind == TuiLevel.Kind.REPORTS) {
                 // A sub-level of a plan, or the reports, does not describe a place of the
                 // overview; keep the snapshot the operator had before opening it.
                 return;
@@ -1095,6 +1103,13 @@ public final class OverviewFullScreenApp {
                 var activity = currentActivity.get();
                 if (activity != null) {
                     openPlanActions(activity.planId(), selectedId);
+                }
+                return;
+            }
+            if (kind == TuiLevel.Kind.PLAN_CHANGES) {
+                var changes = currentChanges.get();
+                if (changes != null) {
+                    openPlanActions(changes.planId(), selectedId);
                 }
                 return;
             }
@@ -2311,6 +2326,7 @@ public final class OverviewFullScreenApp {
                 case WHERE -> planJumpToWhere();
                 case NON_LANE -> planToggleNonLane();
                 case TOKENS -> planToggleTokens();
+                case CHANGES -> planOpenChanges();
                 case PROJECT -> jumpToProject();
                 case COMPLETION -> planOpenCompletion();
                 case ACTIONS -> openActions();
@@ -2462,6 +2478,9 @@ public final class OverviewFullScreenApp {
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
                 return true;
             }
+            if (kind == TuiLevel.Kind.PLAN_CHANGES) {
+                return changesOpenSelected(selectedId);
+            }
             if (kind == TuiLevel.Kind.REPORTS) {
                 openSelectedReport(selectedId);
                 return true;
@@ -2595,6 +2614,10 @@ public final class OverviewFullScreenApp {
                 }
                 return;
             }
+            if (level().kind() == TuiLevel.Kind.PLAN_CHANGES) {
+                changesCloseFile();
+                return;
+            }
             closePlanRow();
         }
 
@@ -2663,6 +2686,74 @@ public final class OverviewFullScreenApp {
                 return true;
             } catch (IOException | IllegalArgumentException _) {
                 return false;
+            }
+        }
+
+        /**
+         * Opens the plan's changes as a level of the view (`d`, 16-plan-view.adoc#changes). The
+         * head's figures are the plan's own size of change, never a sum over the rows.
+         */
+        private void planOpenChanges() {
+            var view = currentPlanView.get();
+            if (view == null) {
+                return;
+            }
+            try {
+                openChanges(context.runtime(true), view.planId(), view.tree().change());
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        private boolean openChanges(RuntimeClient runtime, String planId, @Nullable ChangeSize size)
+                        throws IOException {
+            var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
+            if (response.status() != 200) {
+                return false;
+            }
+            var answer = PlanChangesAnswer.fromJson(response.bodyText());
+            var changes = new ChangesLevel(planId, answer, size);
+            currentChanges.set(changes);
+            changesLevels.put(planId, changes);
+            var level = TuiLevel.of(TuiLevel.Kind.PLAN_CHANGES, planId, changes.breadcrumb(locale));
+            var rows = changes.rows(locale);
+            stack.push(level, rows, rows.isEmpty() ? null : rows.getFirst().id());
+            return true;
+        }
+
+        private boolean changesOpenSelected(String selectedId) {
+            var changes = currentChanges.get();
+            if (changes == null) {
+                return true;
+            }
+            var path = changes.fileOf(selectedId);
+            if (path == null) {
+                return true;
+            }
+            try {
+                var response = context.runtime(true)
+                                    .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
+                if (response.status() != 200) {
+                    return true;
+                }
+                if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()))) {
+                    stack.refresh(changes.rows(locale));
+                }
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+            return true;
+        }
+
+        private void changesCloseFile() {
+            var changes = currentChanges.get();
+            if (changes == null || !changes.closeFile()) {
+                return;
+            }
+            stack.refresh(changes.rows(locale));
+            var row = changes.openFileRowId();
+            if (row != null) {
+                stack.select(row);
             }
         }
 
@@ -3159,6 +3250,7 @@ public final class OverviewFullScreenApp {
                 case ENDED -> Optional.ofNullable(endedLevels.get(id)).ifPresent(currentEndedLevel::set);
                 case PLAN -> Optional.ofNullable(planViews.get(id)).ifPresent(currentPlanView::set);
                 case PLAN_ACTIVITY -> Optional.ofNullable(activities.get(id)).ifPresent(currentActivity::set);
+                case PLAN_CHANGES -> Optional.ofNullable(changesLevels.get(id)).ifPresent(currentChanges::set);
                 case PLAN_COMPLETION -> Optional.ofNullable(completions.get(id)).ifPresent(currentCompletion::set);
                 case EPIC -> Optional.ofNullable(epicViews.get(id)).ifPresent(currentEpicView::set);
                 default -> {
@@ -3574,6 +3666,15 @@ public final class OverviewFullScreenApp {
             if (!stack.filter().isEmpty()) {
                 stack.back();
                 return true;
+            }
+            // On the changes level Esc closes an open file's hunks first, then the level.
+            var current = stack.level();
+            if (current != null && current.kind() == TuiLevel.Kind.PLAN_CHANGES) {
+                var changes = currentChanges.get();
+                if (changes != null && changes.hasOpenFile()) {
+                    changesCloseFile();
+                    return true;
+                }
             }
             if (stack.depth() > 1) {
                 stack.back();

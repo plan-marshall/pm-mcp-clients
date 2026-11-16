@@ -23,6 +23,10 @@ import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesRoutes;
 import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -31,6 +35,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessNode;
@@ -47,8 +52,10 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.planview.ChangesLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -116,6 +123,13 @@ public final class PlanCommand implements Callable<Integer> {
     @Option(names = "--watch", description = "Watch updates")
     boolean watch;
 
+    @Option(names = "--changes", description = "Print the plan's changes into the scrollback")
+    boolean changes;
+
+    @Option(names = "--file", paramLabel = "<path>", description = "With --changes: print one file's hunks")
+    @Nullable
+    String changesFile;
+
     @Option(names = "--print", description = "Prints the plan into the scrollback instead of opening the full-screen view.")
     boolean print;
 
@@ -133,6 +147,9 @@ public final class PlanCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
+            if (changes || changesFile != null) {
+                return printChanges(out, runtime, planId);
+            }
             if (activity != null && !activity.isBlank()) {
                 var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
                                     + "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
@@ -212,7 +229,8 @@ public final class PlanCommand implements Callable<Integer> {
      */
     private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {
         if (planId == null || planId.isBlank() || print || all || depth != null || activity != null
-                            || tokens || components || watch || !context.isInteractiveTerminal()) {
+                            || tokens || components || watch || changes || changesFile != null
+                            || !context.isInteractiveTerminal()) {
             return null;
         }
         Terminal terminal = null;
@@ -252,6 +270,86 @@ public final class PlanCommand implements Callable<Integer> {
                     // Terminal close failure ignored
                 }
             }
+        }
+    }
+
+    /**
+     * Prints a plan's changes into the scrollback ({@code plan <id> --changes [--file <path>]},
+     * 16-plan-view.adoc#changes). The head's figures are the plan's own size of change, and every
+     * path and line is printed after its control sequences are removed.
+     *
+     * @param out     the writer of the console
+     * @param runtime the runtime client
+     * @param planId  the plan
+     * @return {@code 0} when the changes or the file were printed, {@code 1} for a plan or a file
+     *         the runtime does not hold
+     * @throws IOException when the runtime cannot be read
+     */
+    private int printChanges(PrintWriter out, RuntimeClient runtime, String planId) throws IOException {
+        var locale = context.clientEnvironment().locale();
+        var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
+        if (response.status() == 404) {
+            out.printf("Plan %s not found.%n", OutputSafety.stripControlSequences(planId));
+            out.flush();
+            return 1;
+        }
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("plan changes " + planId, response);
+        }
+        var answer = PlanChangesAnswer.fromJson(response.bodyText());
+        var level = new ChangesLevel(planId, answer, readChangeSize(runtime, planId));
+        out.println(level.breadcrumb(locale));
+        if (changesFile == null || changesFile.isBlank()) {
+            for (var row : level.rows(locale)) {
+                out.println("  " + row.line());
+            }
+            out.flush();
+            return 0;
+        }
+        // A plan whose changes were never captured, or whose capture is gone, holds no file: the
+        // list's own text is the answer, never a transport error.
+        if (!(answer instanceof PlanChangesCaptured)) {
+            for (var row : level.rows(locale)) {
+                out.println("  " + row.line());
+            }
+            out.flush();
+            return 0;
+        }
+        var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
+        if (fileResponse.status() == 404) {
+            out.printf("No such file in the plan's changes: %s%n",
+                                OutputSafety.stripControlSequences(changesFile));
+            out.flush();
+            return 1;
+        }
+        if (fileResponse.status() != 200) {
+            throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
+        }
+        if (level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
+            for (var row : level.openFileRows(locale)) {
+                out.println("  " + row.line());
+            }
+        }
+        out.flush();
+        return 0;
+    }
+
+    /**
+     * @param runtime the runtime client
+     * @param planId  the plan
+     * @return the size of change the plan carries, or {@code null} when it carries none
+     */
+    private @Nullable ChangeSize readChangeSize(RuntimeClient runtime, String planId) {
+        try {
+            var response = runtime.send(HttpRequest.get(
+                                PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process"));
+            if (response.status() != 200) {
+                return null;
+            }
+            return ProcessTree.fromJson(response.bodyText()).change();
+        } catch (IOException | IllegalArgumentException _) {
+            // The figures are the plan's; without them the list still shows the head.
+            return null;
         }
     }
 

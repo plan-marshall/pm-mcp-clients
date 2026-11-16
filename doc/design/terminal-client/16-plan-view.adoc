@@ -239,6 +239,10 @@ The texts of the nodes are those of link:../shared/plan-view.adoc#texts[Plan Vie
 |not in this plan
 |nicht in diesem Plan
 
+|`operator.plan.keys.changes`
+|changes
+|Änderungen
+
 |`operator.plan.keys.actions`
 |actions
 |Aktionen
