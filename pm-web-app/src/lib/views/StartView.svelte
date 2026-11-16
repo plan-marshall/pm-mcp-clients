@@ -1351,7 +1351,9 @@
               id: 'abandon',
               label: $t('start.entry.abandon'),
               disabled: busy,
-              onclick: () => (abandonOpen = true),
+              onclick: () => {
+                abandonOpen = true;
+              },
             },
           ]}
         />
