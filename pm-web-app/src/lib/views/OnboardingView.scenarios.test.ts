@@ -519,4 +519,42 @@ describe('OnboardingView against the mock runtime states', () => {
     });
     expect(screen.getByRole('button', { name: /mit schritt 1 beginnen/i })).toBeInTheDocument();
   });
+
+  it('draws the missing-screen pattern for a state no screen claims, never its id', () => {
+    arrange(
+      onboardingState({
+        state: 'unknown.mystery',
+        summary: 'Something the app does not know',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'This screen is not available in the web app',
+    );
+    // The terminal command that shows the state is named, and a way back is offered.
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    // The state's id is never printed as content.
+    expect(document.body.textContent).not.toContain('unknown.mystery');
+  });
+
+  it('sends every entry state to the fallback with the terminal command', () => {
+    arrange(
+      onboardingState({
+        state: 'entry.lan-open',
+        summary: 'Network listener open with its fingerprint',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(document.body.textContent).not.toContain('entry.lan-open');
+  });
 });
