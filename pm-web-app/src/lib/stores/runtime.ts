@@ -1167,8 +1167,10 @@ export async function primeDecisionAnnouncer(): Promise<void> {
  */
 function announcedDecisionOf(data: unknown): AnnouncedDecision | null {
   const payload = (data ?? {}) as { decision?: AnnouncedDecision } & Partial<AnnouncedDecision>;
-  const decision = payload.decision ?? payload;
-  return decision?.id ? decision : null;
+  const decision = (payload.decision ?? payload) as Partial<AnnouncedDecision>;
+  return decision.id
+    ? { id: decision.id, subject: decision.subject, is_waiver: decision.is_waiver }
+    : null;
 }
 
 /** A new or closed decision: the open count, the announcement, and the quiet notice of an arrival. */

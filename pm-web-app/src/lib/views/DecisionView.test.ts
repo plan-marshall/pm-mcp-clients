@@ -1262,7 +1262,7 @@ describe('DecisionView component', () => {
       widenWindow();
       let finishEnd: () => void = () => {};
       vi.spyOn(apiClient, 'endDecisionChat').mockImplementationOnce(
-        () => new Promise((resolve) => (finishEnd = () => resolve({ status: 'ended' }))),
+        () => new Promise((resolve) => (finishEnd = () => resolve(decisionChat))),
       );
       vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
       const detail = await renderOpen();

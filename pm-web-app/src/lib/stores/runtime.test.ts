@@ -1428,13 +1428,13 @@ describe('the decision announcer', () => {
 
   let shown: Shown[];
   let opened: string[];
-  let openList: ReturnType<typeof vi.fn>;
+  let openList: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     shown = [];
     opened = [];
-    openList = vi.fn();
+    openList = vi.fn<() => void>();
   });
 
   afterEach(() => {
