@@ -1,0 +1,17 @@
+# Screen captures for PLAN-163: A Plan's Changes in the Terminal
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+#
+# D1: the plan's changes as a level of the view, opened with `d` on the `running-work` scenario
+# (16-plan-view.adoc#changes, plan-view.adoc#changes). Each capture writes the view it opens and,
+# as `.after.txt`, the level the keys opened: the list at 80 columns, the whole head at 120, and a
+# file's hunks (`j`, then `Enter`). The list shows one row per file with its mark and counts, the
+# renamed file with where it came from, and the binary and unplanned marks, and the planted control
+# sequence in the binary path is gone. The line that carries the planted sequence is in
+# `pm-web-app/src/lib/plan-changes.ts`, which the scrollback prints (`--changes --file`).
+
+plan-changes-80x30-en | running-work | - | plan fix-relay | q | 80x30 | en_US.UTF-8 | - | d
+plan-changes-80x30-de | running-work | - | plan fix-relay | q | 80x30 | de_DE.UTF-8 | - | d
+plan-changes-120x30-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | d
+plan-changes-120x30-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | d
+plan-changes-file-80x30-en | running-work | - | plan fix-relay | q | 80x30 | en_US.UTF-8 | - | dj\n
+plan-changes-file-80x30-de | running-work | - | plan fix-relay | q | 80x30 | de_DE.UTF-8 | - | dj\n

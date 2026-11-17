@@ -1210,8 +1210,8 @@ describe('the pairing state the store keeps', () => {
 describe('the onboarding step of a state', () => {
   it.each([
     [undefined, 1],
-    ['onboard.mode', 1],
-    ['onboard.entry', 1],
+    ['onboard.mode', 0],
+    ['onboard.entry', 0],
     ['language.choose', 1],
     ['harness.choose', 2],
     ['models.choose', 3],

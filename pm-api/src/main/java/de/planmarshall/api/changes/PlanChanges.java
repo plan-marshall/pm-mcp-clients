@@ -11,11 +11,11 @@ package de.planmarshall.api.changes;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -104,6 +104,7 @@ public record PlanChanges(String head, String baseRef, List<PlanChangedFile> fil
             throw new JsonFormatException("A plan's changes name their head and base_ref");
         }
         var files = new ArrayList<PlanChangedFile>();
+        var paths = new HashSet<String>();
         var rows = JsonTree.asArray(map.get(FIELD_FILES));
         if (rows == null && map.containsKey(FIELD_FILES)) {
             throw new JsonFormatException(FIELD_FILES + " must be an array");
@@ -114,7 +115,11 @@ public record PlanChanges(String head, String baseRef, List<PlanChangedFile> fil
                 if (file == null) {
                     throw new JsonFormatException("A changed file is a JSON object");
                 }
-                files.add(PlanChangedFile.fromMap(file));
+                var changed = PlanChangedFile.fromMap(file);
+                if (!paths.add(changed.path())) {
+                    throw new JsonFormatException("The list names " + changed.path() + " twice");
+                }
+                files.add(changed);
             }
         }
         return new PlanChanges(head, baseRef, files);
@@ -122,10 +127,15 @@ public record PlanChanges(String head, String baseRef, List<PlanChangedFile> fil
 
     /**
      * @param json the JSON object
-     * @return the parsed list, or {@code null} for an empty object
-     * @throws IOException on parse failure
+     * @return the parsed list
+     * @throws IOException if the value is no object, a required member is missing, or a file does
+     *                     not parse
      */
-    public static @Nullable PlanChanges fromJson(String json) throws IOException {
-        return fromMap(JsonTree.asObject(JsonTree.parse(json)));
+    public static PlanChanges fromJson(String json) throws IOException {
+        var parsed = JsonTree.asObject(JsonTree.parse(json));
+        if (parsed == null) {
+            throw new JsonFormatException("Expected a JSON object for a plan's changes");
+        }
+        return fromMap(parsed);
     }
 }

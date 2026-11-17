@@ -39,6 +39,8 @@ public record TuiLevel(Kind kind, @Nullable String id, String title) {
         PLAN,
         /** One task of a plan's leaf, its worker's live activity. */
         PLAN_ACTIVITY,
+        /** One plan's changes: the files of its last capture, and a file's hunks. */
+        PLAN_CHANGES,
         /** One ended plan's completion report. */
         PLAN_COMPLETION,
         /** One epic's view. */
