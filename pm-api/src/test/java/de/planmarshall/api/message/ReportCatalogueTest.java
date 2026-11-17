@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.message;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,6 +35,22 @@ class ReportCatalogueTest {
         var deKeys = new TreeSet<>(de.keySet());
 
         assertEquals(enKeys, deKeys, "Keys in English and German reports message packs must match exactly");
+    }
+
+    @Test
+    void shouldUseTheSharedFilterLabel() {
+        var en = MessageCatalogue.getMessages("en", "reports");
+        var de = MessageCatalogue.getMessages("de", "reports");
+
+        assertAll(
+                () -> assertFalse(en.containsKey("report.filter.label"),
+                        "the filter's label is the shared common.filter.label"),
+                () -> assertFalse(de.containsKey("report.filter.label"),
+                        "the filter's label is the shared common.filter.label"),
+                () -> assertEquals("Filter Reports",
+                        MessageCatalogue.format("en", "common.filter.label", Map.of("what", "Reports"))),
+                () -> assertEquals("Berichte filtern",
+                        MessageCatalogue.format("de", "common.filter.label", Map.of("what", "Berichte"))));
     }
 
     @Test

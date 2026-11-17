@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
@@ -197,6 +199,44 @@ class MessageCatalogueTest {
         assertAll(
                 () -> assertEquals(role, MessageCatalogue.getMessages("en", "common").get(key)),
                 () -> assertEquals(role, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @ParameterizedTest(name = "common.action.{0} is ''{1}'' and ''{2}''")
+    @DisplayName("Carries the shared acts of texts-and-languages.adoc, keys")
+    @CsvSource({
+            "back, Back, Zurück",
+            "cancel, Cancel, Abbrechen",
+            "close, Close, Schließen",
+            "later, Later, Später",
+            "retry, Try again, Erneut versuchen",
+            "save, Save, Speichern"
+    })
+    void shouldCarryTheSharedActs(String act, String english, String german) {
+        var key = "common.action." + act;
+
+        assertAll(
+                () -> assertEquals(english, MessageCatalogue.getMessages("en", "common").get(key)),
+                () -> assertEquals(german, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @Test
+    @DisplayName("Gives the shared acts one key each: no retired act key survives in either pack")
+    void shouldRetireTheDuplicateActKeys() {
+        var retired = List.of(
+                "web.common.back", "web.common.close", "web.common.save", "web.common.cancel",
+                "web.common.retry", "common.actions.back", "common.actions.back.title",
+                "common.back", "common.close", "common.save", "decision.waiver.later");
+        var present = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "all");
+            for (String key : retired) {
+                if (messages.containsKey(key)) {
+                    present.add(locale + ":" + key);
+                }
+            }
+        }
+
+        assertTrue(present.isEmpty(), "a retired act key survives: " + present);
     }
 
     @Test

@@ -63,6 +63,40 @@ class DecisionCatalogueTest {
     }
 
     @Test
+    @DisplayName("the later act is the shared one of the catalogue")
+    void sharedLaterAct() {
+        var en = MessageCatalogue.getMessages("en", "decisions");
+        var de = MessageCatalogue.getMessages("de", "decisions");
+
+        assertAll(
+                () -> assertFalse(en.containsKey("decision.waiver.later"),
+                        "the later act is the shared common.action.later"),
+                () -> assertFalse(de.containsKey("decision.waiver.later"),
+                        "the later act is the shared common.action.later"),
+                () -> assertTrue(en.containsKey("decision.waiver.later.title"),
+                        "the waiver's own advisory says more than the shared act"),
+                () -> assertEquals("Later", MessageCatalogue.format("en", "common.action.later", Map.of())),
+                () -> assertEquals("Später", MessageCatalogue.format("de", "common.action.later", Map.of())));
+    }
+
+    @Test
+    @DisplayName("the filter's label is the shared one of the catalogue")
+    void sharedFilterLabel() {
+        var en = MessageCatalogue.getMessages("en", "decisions");
+        var de = MessageCatalogue.getMessages("de", "decisions");
+
+        assertAll(
+                () -> assertFalse(en.containsKey("decisions.filter.label"),
+                        "the filter's label is the shared common.filter.label"),
+                () -> assertFalse(de.containsKey("decisions.filter.label"),
+                        "the filter's label is the shared common.filter.label"),
+                () -> assertEquals("Filter Decisions",
+                        MessageCatalogue.format("en", "common.filter.label", Map.of("what", "Decisions"))),
+                () -> assertEquals("Entscheidungen filtern",
+                        MessageCatalogue.format("de", "common.filter.label", Map.of("what", "Entscheidungen"))));
+    }
+
+    @Test
     @DisplayName("parameterized formatting works across English and German for decisions")
     void parameterizedFormatting() {
         var enVotes = MessageCatalogue.format("en", "decision.support.votes", Map.of("votes", 2, "total", 3, "models", 2));
