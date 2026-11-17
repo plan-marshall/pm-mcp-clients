@@ -589,8 +589,13 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
 
     expect(en['decision.outcome.answered']).toBe('Decided: {answer}');
     expect(de['decision.outcome.answered']).toBe('Entschieden: {answer}');
-    expect(en['decision.outcome.answered_elsewhere']).toBeUndefined();
-    expect(de['decision.outcome.answered_elsewhere']).toBeUndefined();
+    // An answer from another client names where and how it came (`decisions.adoc#outcomes`).
+    expect(en['decision.outcome.answered_elsewhere']).toBe(
+      'answered in {channel}, {device}: {answer}',
+    );
+    expect(de['decision.outcome.answered_elsewhere']).toBe(
+      'beantwortet in {channel}, {device}: {answer}',
+    );
   });
 
   it('agrees on the German term for the epic waiting text', () => {

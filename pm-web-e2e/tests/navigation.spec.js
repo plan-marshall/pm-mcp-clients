@@ -67,7 +67,10 @@ test.describe('Addresses and the remembered place (D2)', () => {
   test('replaces an old address with the address of the scheme', async ({ page }) => {
     await page.goto('/decisions?decision=Q-007');
     await expect(page).toHaveURL(/\/decisions\/Q-007$/);
-    await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
+    await expect(page.getByTestId('decision-detail')).toHaveAttribute(
+      'data-decision-id',
+      'Q-007',
+    );
   });
 
   test('fills a fresh load at /overview from the remembered place, by a replace', async ({
