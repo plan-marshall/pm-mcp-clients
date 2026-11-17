@@ -230,16 +230,31 @@ describe('the attention store', () => {
 
   it('names no departure when a new item only pushed the others down', async () => {
     servePages(
-      pageOf([itemOf('cleanup_due'), itemOf('credential')]),
-      pageOf([itemOf('decision'), itemOf('cleanup_due')], { total: 2 }),
+      pageOf([itemOf('cleanup_due'), itemOf('credential')], { has_older: true, total: 3 }),
+      pageOf([itemOf('decision'), itemOf('cleanup_due')], { has_older: true, total: 3 }),
     );
 
     await loadAttention();
     await handleNeedsOperatorChanged();
 
-    // The credential is not in the list any more, but the total did not shrink: it moved down.
+    // The credential is not in the page any more, but the read is partial and the total did not
+    // shrink: it moved down, so nothing is announced.
     expect(get(attentionStore).leftNotice).toBeNull();
     expect(get(attentionStore).leftSeq).toBe(0);
+  });
+
+  it('announces a departure of a complete read even when a new item keeps the total', async () => {
+    servePages(
+      pageOf([itemOf('cleanup_due'), itemOf('credential')]),
+      pageOf([itemOf('decision'), itemOf('cleanup_due')]),
+    );
+
+    await loadAttention();
+    await handleNeedsOperatorChanged();
+
+    // The whole list is served, so the absent credential was resolved even though the total is 2.
+    expect(get(attentionStore).leftNotice).toBe('credential');
+    expect(get(attentionStore).leftSeq).toBe(1);
   });
 
   it('reads the next page at the end, so the count and the rows agree', async () => {

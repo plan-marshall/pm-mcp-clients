@@ -524,10 +524,12 @@ export async function openStartPage(): Promise<void> {
     return;
   }
   const state = get(runtimeStore);
+  const intent = beginNavigation();
   const epoch = navigationEpochOf();
   const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
-  // The person moved while the summary was in flight: their choice stands.
-  if (navigationEpochOf() !== epoch) {
+  // The person moved while the summary was in flight, or a later navigation began meanwhile:
+  // their choice stands.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
     return;
   }
   const place = readRememberedPlace();
@@ -587,10 +589,12 @@ export async function openRunningWork(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  const intent = beginNavigation();
   const epoch = navigationEpochOf();
   const summary = await apiClient.getProjects().catch(() => null);
-  // The person picked another destination while the summary was in flight: it wins.
-  if (navigationEpochOf() !== epoch) {
+  // The person picked another destination while the summary was in flight, or a later navigation
+  // began meanwhile: it wins.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
     return;
   }
   const place = readRememberedPlace();
@@ -1161,6 +1165,18 @@ let navigationEpoch = 0;
 /** @returns the number of route applications this store has made so far */
 export function navigationEpochOf(): number {
   return navigationEpoch;
+}
+
+/**
+ * How many navigations this store has begun. A call that awaits a read before it navigates takes
+ * this figure first: the later of two calls wins, whichever answer arrives first.
+ */
+let navigationIntent = 0;
+
+/** @returns the intent figure a navigation begins at */
+function beginNavigation(): number {
+  navigationIntent += 1;
+  return navigationIntent;
 }
 
 /**

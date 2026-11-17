@@ -367,7 +367,7 @@ export async function loadAttention(page = 1): Promise<void> {
             loaded: true,
             isLoading: false,
             loadError: null,
-            ...departureOf(state, items, total),
+            ...departureOf(state, items, total, answer.has_older !== true),
           }
         : {
             ...state,
@@ -435,25 +435,28 @@ function leftOf(state: AttentionState, items: AttentionItem[]): AttentionKind | 
 /**
  * The notice a read owes, if any.
  *
- * A departure is credible only when the list shrank: a new item that pushes others to a later page
- * is a displacement, not a resolution. Every departure counts, so two of one kind are announced
- * twice — the frame changes the text's last character for the second one.
+ * A departure is credible when the served read is complete — the list holds every item — or, for a
+ * partial read, only when the list shrank: a new item that pushes others to a later page is a
+ * displacement, not a resolution. Every departure counts, so two of one kind are announced twice —
+ * the frame changes the text's last character for the second one.
  *
  * @param state the state before the read
  * @param items the items the read served
  * @param total the total the read reported
+ * @param complete whether the read served the whole list
  * @returns the notice fields to write, unchanged when nothing left
  */
 function departureOf(
   state: AttentionState,
   items: AttentionItem[],
   total: number,
+  complete: boolean,
 ): Pick<AttentionState, 'leftNotice' | 'leftSeq'> {
   const kept = {
     leftNotice: state.leftNotice,
     leftSeq: state.leftSeq,
   };
-  if (!state.loaded || total >= state.total) {
+  if (!state.loaded || (!complete && total >= state.total)) {
     return kept;
   }
   const kind = leftOf(state, items);
@@ -501,7 +504,7 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
       loaded: true,
       isLoading: false,
       loadError: null,
-      ...departureOf(state, items, total),
+      ...departureOf(state, items, total, last.has_older !== true),
     }));
   } catch (error: unknown) {
     if (generation !== readGeneration) {

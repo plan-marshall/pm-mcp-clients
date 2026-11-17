@@ -634,6 +634,33 @@ describe('the remembered place at the start', () => {
     expect(get(runtimeStore).currentRoute).toBe('inbox');
   });
 
+  it('lets the start page win when Running work began first', async () => {
+    // Arrange: both reads are held open, and Running work's answer arrives first.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),
+    );
+    const resolvers: Array<(value: ProjectOverviewResponse) => void> = [];
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    // Act: Running work begins first, the start page second.
+    const running = openRunningWork();
+    const start = openStartPage();
+    resolvers[0]?.({ projects: [] });
+    await running;
+    resolvers[1]?.({ projects: [] });
+    await start;
+
+    // Assert: the later choice is where the person stands.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
   it('opens the list of what waits from the rail with its own lens', () => {    // Arrange: a paired browser that is already somewhere else.
     window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
     runtimeStore.set(
