@@ -961,11 +961,12 @@ describe('OnboardingView against the mock runtime states', () => {
     const failures = screen.getByTestId('harness-none-failures');
     expect(failures).toHaveTextContent('Claude Code');
     expect(failures).toHaveTextContent('~/.local/bin/claude');
-    expect(failures).toHaveTextContent('login');
+    expect(failures).toHaveTextContent('the login check');
     expect(failures).toHaveTextContent('not logged in');
     expect(failures).toHaveTextContent('claude login');
     expect(failures).toHaveTextContent('OpenCode');
     expect(failures).toHaveTextContent('/opt/homebrew/bin/opencode');
+    expect(failures).toHaveTextContent('the version check');
     expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
 
     // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
@@ -992,6 +993,47 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(result).toHaveTextContent('Deutsch, models too');
     expect(result).toHaveTextContent('every supported one, the first the default');
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+
+  it('offers a Change per row of auto.result that opens that aspect again', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [
+          { aspect: 'language', value: 'Deutsch, models too', reason: 'detected' },
+          { aspect: 'harness', value: 'Claude Code 2.4.1 (default)', reason: 'all_supported' },
+          { aspect: 'store', value: 'macOS Keychain', reason: 'detected' },
+        ],
+        links: {
+          'reconfigure:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'reconfigure:harnesses': {
+            href: '/api/v1/onboarding/settings/reconfigure/harnesses',
+            next: 'harness.reconfigure-consent',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'auto.result' }));
+
+    render(OnboardingView);
+
+    // One Change per line the state can run again, named after that line; the credentials line
+    // offers none because the state carries no link for it.
+    const changes = screen.getAllByRole('button', { name: /^change /i });
+    expect(changes).toHaveLength(2);
+    expect(changes[0]).toHaveAccessibleName('Change Language');
+    expect(changes[1]).toHaveAccessibleName('Change Harnesses');
+    expect(screen.getByTestId('auto-result')).toHaveTextContent('Credentials');
+
+    await fireEvent.click(changes[1]);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('reconfigure:harnesses', {}));
   });
 
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
