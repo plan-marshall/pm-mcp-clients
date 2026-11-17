@@ -404,11 +404,11 @@
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}
-    {$attentionStore.leftNotice
-      ? $t('overview.needs.left', {
-          kind: $t(`overview.needs.${$attentionStore.leftNotice}`),
-        })
-      : ''}
+    {#if $attentionStore.leftNotice}
+      {$t('overview.needs.left', {
+        kind: $t(`overview.needs.${$attentionStore.leftNotice}`),
+      })}{$attentionStore.leftSeq % 2 === 0 ? '' : '\u200B'}
+    {/if}
   </div>
 
   <div class="sr-only" aria-live="polite">

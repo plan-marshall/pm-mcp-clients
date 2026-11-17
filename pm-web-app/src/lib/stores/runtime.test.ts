@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
+import { apiClient, type ReportsPage, type StatusResponse, type ProjectOverviewResponse } from '../api/client';
 import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
@@ -609,8 +609,32 @@ describe('the remembered place at the start', () => {
     expect(replace).toHaveBeenCalled();
   });
 
-  it('opens the list of what waits from the rail with its own lens', () => {
-    // Arrange: a paired browser that is already somewhere else.
+  it('leaves the destination a person picked while Running work was being read', async () => {
+    // Arrange: the summary read is held open while the person taps What waits.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/', pmApp: true }, '', '/');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'inbox', isPaired: true, isOnboarded: true }),
+    );
+    let release: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    // Act
+    const pending = openRunningWork();
+    openAttention();
+    release({ projects: [] });
+    await pending;
+
+    // Assert: the earlier answer does not move the person back.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
+  it('opens the list of what waits from the rail with its own lens', () => {    // Arrange: a paired browser that is already somewhere else.
     window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
     runtimeStore.set(
       makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),

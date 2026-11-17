@@ -45,10 +45,12 @@ test.describe('The start page: what waits', () => {
     expect(shown).toEqual(served.map((item) => item.kind));
     expect(shown.length).toBeGreaterThan(5);
 
-    // Blocking first: no item without a `blocks` value stands above one that has it.
+    // Blocking first: no item without a `blocks` value stands above one that has it, and
+    // everything below the first free item blocks nothing.
     const firstFree = served.findIndex((item) => !item.blocks);
     expect(firstFree).toBeGreaterThan(0);
     expect(served.slice(0, firstFree).every((item) => Boolean(item.blocks))).toBe(true);
+    expect(served.slice(firstFree).every((item) => !item.blocks)).toBe(true);
 
     // A decision carries no reason badge; every other kind names its reason.
     const decision = page.locator('[data-testid="inbox-row"][data-kind="decision"]').first();

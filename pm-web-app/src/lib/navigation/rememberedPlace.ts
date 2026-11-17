@@ -154,8 +154,23 @@ export function addressOfPlace(place: RememberedPlace, facts: PlaceFacts): Addre
 /** The bare addresses the remembered place may fill: `/` and the unfilled `/overview`. */
 export function isFillableStart(address: Address | null): boolean {
   if (!address) return false;
-  // `/` is the list of what waits; `/?lens=waits` is a full address and is never filled.
-  if (address.route === 'inbox') return address.lens === undefined;
+  // `/` is the list of what waits; `/?lens=waits` is a full address and is never filled, and
+  // neither is an address that carries anything else of the query scheme.
+  if (address.route === 'inbox') {
+    return (
+      address.lens === undefined &&
+      !address.project &&
+      !address.mode &&
+      !address.group &&
+      !address.follow &&
+      !address.open &&
+      !address.chat &&
+      !address.tab &&
+      !address.node &&
+      !address.file &&
+      !address.turn
+    );
+  }
   return (
     address.route === 'overview' &&
     !address.project &&

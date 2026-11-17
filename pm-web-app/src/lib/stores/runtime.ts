@@ -524,7 +524,12 @@ export async function openStartPage(): Promise<void> {
     return;
   }
   const state = get(runtimeStore);
+  const epoch = navigationEpochOf();
   const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
+  // The person moved while the summary was in flight: their choice stands.
+  if (navigationEpochOf() !== epoch) {
+    return;
+  }
   const place = readRememberedPlace();
   const target = startRouteFor(null, state.isOnboarded, place, factsOf(summary, place), false);
   if (target !== get(runtimeStore).currentRoute) {
@@ -582,7 +587,12 @@ export async function openRunningWork(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  const epoch = navigationEpochOf();
   const summary = await apiClient.getProjects().catch(() => null);
+  // The person picked another destination while the summary was in flight: it wins.
+  if (navigationEpochOf() !== epoch) {
+    return;
+  }
   const place = readRememberedPlace();
   show(runningWorkAddress(place, factsOf(summary, place)), 'push');
 }
@@ -1142,6 +1152,18 @@ export interface NavigationEntry {
 const navigationStack: NavigationEntry[] = [];
 
 /**
+ * How many route applications this store has made. A call that awaits a read before it navigates
+ * notes this figure first and writes only while it is unchanged, so a person who picked another
+ * destination meanwhile is not moved back by the older answer.
+ */
+let navigationEpoch = 0;
+
+/** @returns the number of route applications this store has made so far */
+export function navigationEpochOf(): number {
+  return navigationEpoch;
+}
+
+/**
  * The project whose id a route's path carries, if any.
  *
  * The designer names the project it shows, the one project page names the selected project, and
@@ -1188,6 +1210,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
  * @param params the identifiers it names
  */
 function applyRoute(route: AppRoute, params: RouteParams): void {
+  navigationEpoch += 1;
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,

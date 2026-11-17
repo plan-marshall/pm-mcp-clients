@@ -46,6 +46,7 @@ function seedList(items: AttentionItem[], extra: Partial<AttentionState> = {}): 
     isLoading: false,
     loadError: null,
     leftNotice: null,
+    leftSeq: 0,
     ...extra,
   });
 }
@@ -149,6 +150,16 @@ describe('InboxView component', () => {
     // The overview's own sentence names the counts, never two naked figures.
     expect(running).toHaveTextContent('2 plans');
     expect(running).not.toHaveTextContent('quiet');
+  });
+
+  it('shows the failure of a refresh even when the list is empty', () => {
+    seedList([], { loaded: true, loadError: 'network_offline' });
+
+    render(InboxView);
+
+    expect(screen.getByTestId('inbox-error')).toBeInTheDocument();
+    // "Nothing waits for you." is a claim the failed read cannot make.
+    expect(screen.queryByTestId('inbox-empty')).toBeNull();
   });
 
   it('offers Show more only where the runtime reports an older page', async () => {

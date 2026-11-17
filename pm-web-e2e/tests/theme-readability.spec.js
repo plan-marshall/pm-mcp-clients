@@ -773,11 +773,12 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
         test(`InboxView in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
           await switchScenario(request, 'running-work');
           await pair(page, request);
-          await setTheme(page, theme);
 
           await page.goto('/?lens=waits');
           await expect(page.getByTestId('inbox-view')).toBeVisible();
           await expect(page.getByTestId('inbox-row').first()).toBeVisible({ timeout: 15000 });
+          // The theme is applied after the navigation: it writes the current document.
+          await setTheme(page, theme);
 
           await auditView(page, testInfo, { view: 'InboxView', theme, viewport: vp });
         });

@@ -145,6 +145,22 @@ describe('the start rule', () => {
     expect(isFillableStart(waits)).toBe(false);
   });
 
+  it('never fills an inbox address that carries anything else of the scheme', () => {
+    const withOpen: Address = { route: 'inbox', open: { kind: 'plan', id: 'fix-relay' } };
+
+    expect(isFillableStart(withOpen)).toBe(false);
+    // The address opens what it names; the remembered place does not replace its object.
+    expect(
+      startAddress({
+        fromOutside: true,
+        requested: withOpen,
+        onboarded: true,
+        place: PLACE,
+        facts: RUNNING,
+      }),
+    ).toEqual(withOpen);
+  });
+
   it('never fills the lens’s own list pushed by Up or the lens segment on a reload', () => {
     // The push carried the app's mark, so a reload of that entry is not a mark-less load.
     expect(

@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { get } from 'svelte/store';
 import {
   ATTENTION_KINDS,
@@ -177,6 +179,22 @@ describe('the attention store', () => {
     expect(get(attentionStore).total).toBe(3);
   });
 
+  it('carries every kind of the runtime enum, so a new one is noticed here', () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../../../../pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorKind.java',
+      ),
+      'utf8',
+    );
+    const wire = Array.from(source.matchAll(/^\s{4}[A-Z_]+\(['"]([a-z_]+)['"]\)/gm)).map(
+      (match) => match[1],
+    );
+
+    expect(wire.length).toBeGreaterThan(0);
+    expect([...ATTENTION_KINDS]).toEqual(wire);
+  });
+
   it('drops a report, because a report is never an item', async () => {
     servePages(
       pageOf([
@@ -207,6 +225,21 @@ describe('the attention store', () => {
     expect(get(attentionStore).items.map((item) => item.kind)).toEqual(['cleanup_due']);
     expect(get(attentionStore).total).toBe(1);
     expect(get(attentionStore).leftNotice).toBe('decision');
+    expect(get(attentionStore).leftSeq).toBe(1);
+  });
+
+  it('names no departure when a new item only pushed the others down', async () => {
+    servePages(
+      pageOf([itemOf('cleanup_due'), itemOf('credential')]),
+      pageOf([itemOf('decision'), itemOf('cleanup_due')], { total: 2 }),
+    );
+
+    await loadAttention();
+    await handleNeedsOperatorChanged();
+
+    // The credential is not in the list any more, but the total did not shrink: it moved down.
+    expect(get(attentionStore).leftNotice).toBeNull();
+    expect(get(attentionStore).leftSeq).toBe(0);
   });
 
   it('reads the next page at the end, so the count and the rows agree', async () => {

@@ -177,7 +177,7 @@
       {/if}
     </header>
 
-    {#if $attentionStore.loadError !== null && $attentionStore.items.length > 0}
+    {#if $attentionStore.loadError !== null}
       <div class="inbox__error" data-testid="inbox-error">
         <ErrorState
           code={$attentionStore.loadError}
@@ -190,14 +190,7 @@
 
     {#if $attentionStore.isLoading && !$attentionStore.loaded}
       <Skeleton shape="card" rows={3} label={$t('overview.needs.title')} />
-    {:else if $attentionStore.loadError !== null && !$attentionStore.loaded}
-      <ErrorState
-        code={$attentionStore.loadError}
-        actionLabel={$t('common.action.retry')}
-        onAct={() => void loadAttention()}
-        titleLevel={2}
-      />
-    {:else if $attentionStore.items.length === 0}
+    {:else if $attentionStore.items.length === 0 && $attentionStore.loadError === null}
       <div class="inbox__empty" data-testid="inbox-empty">
         <MascotFigure pose="all-clear" crop="bust" height={140} />
         <p class="inbox__empty-title">{$t('overview.needs.empty')}</p>

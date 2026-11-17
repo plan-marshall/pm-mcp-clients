@@ -84,6 +84,8 @@ export interface AttentionState {
   loadError: string | null;
   /** The kind of the item that last left because another client resolved it. */
   leftNotice: AttentionKind | null;
+  /** How many departures the list announced, so two of one kind are announced twice. */
+  leftSeq: number;
 }
 
 const initialState: AttentionState = {
@@ -95,7 +97,11 @@ const initialState: AttentionState = {
   isLoading: false,
   loadError: null,
   leftNotice: null,
+  leftSeq: 0,
 };
+
+/** The newest attention read; an answer an older read superseded never writes the store. */
+let readGeneration = 0;
 
 /** The one store of the list of what waits. */
 export const attentionStore = writable<AttentionState>({ ...initialState });
@@ -308,10 +314,12 @@ export function attentionActLabelOf(item: AttentionItem): AttentionActLabel {
     return { key: 'overview.needs.decision', append: segmentOf(target) };
   }
   if (target.startsWith('/plans/')) {
-    return { key: 'plan.view.title', args: { plan: attentionTitleOf(item) || segmentOf(target) } };
+    const plan = (item.plan?.title ?? '').trim() || segmentOf(target);
+    return { key: 'plan.view.title', args: { plan } };
   }
   if (target.startsWith('/epics/')) {
-    return { key: 'epic.view.title', args: { epic: attentionTitleOf(item) || segmentOf(target) } };
+    const epic = (item.epic?.title ?? '').trim() || segmentOf(target);
+    return { key: 'epic.view.title', args: { epic } };
   }
   if (target.startsWith('/projects/')) return { key: 'project.explorer.title' };
   return { key: 'overview.needs.title' };
@@ -331,6 +339,8 @@ function countOf(value: number | null | undefined, fallback: number): number {
  *
  * Page 1 replaces the list; a later page is read by {@link loadMoreAttention}. A failed read
  * keeps the list it had and names the failure, so the rows never vanish under a lost connection.
+ * Only the newest read writes the store: an answer a later read superseded never changes the rows,
+ * the total, the loading state or the error.
  *
  * @param page the page to read, 1-based
  */
@@ -338,9 +348,13 @@ export async function loadAttention(page = 1): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  const generation = (readGeneration += 1);
   attentionStore.update((state) => ({ ...state, isLoading: true, loadError: null }));
   try {
     const answer: NeedsOperatorPage = await apiClient.getNeedsOperator(page);
+    if (generation !== readGeneration) {
+      return;
+    }
     const items = itemsOf(answer.items);
     const total = countOf(answer.total, items.length);
     attentionStore.update((state) =>
@@ -354,7 +368,7 @@ export async function loadAttention(page = 1): Promise<void> {
             loaded: true,
             isLoading: false,
             loadError: null,
-            leftNotice: leftOf(state, items),
+            ...departureOf(state, items, total),
           }
         : {
             ...state,
@@ -368,6 +382,9 @@ export async function loadAttention(page = 1): Promise<void> {
           },
     );
   } catch (error: unknown) {
+    if (generation !== readGeneration) {
+      return;
+    }
     attentionStore.update((state) => ({
       ...state,
       isLoading: false,
@@ -393,11 +410,13 @@ export async function loadMoreAttention(): Promise<void> {
 
 /**
  * @param item one item of the list
- * @returns the identity its row keeps: its kind, its link and its since, so a neighbour does not
- *   take the key of the item that left
+ * @returns the identity its row keeps — its kind, its link, the objects it belongs to and its since
+ *   — so a neighbour never takes the key of the item that left, and two items of one kind without a
+ *   link stay apart
  */
 export function identityOf(item: AttentionItem): string {
-  return `${item.kind}\u0000${item.link ?? ''}\u0000${item.since ?? ''}`;
+  const where = [item.project?.id ?? '', item.epic?.id ?? '', item.plan?.id ?? ''].join('\u0000');
+  return `${item.kind}\u0000${item.link ?? ''}\u0000${where}\u0000${item.since ?? ''}`;
 }
 
 /**
@@ -415,13 +434,43 @@ function leftOf(state: AttentionState, items: AttentionItem[]): AttentionKind | 
 }
 
 /**
+ * The notice a read owes, if any.
+ *
+ * A departure is credible only when the list shrank: a new item that pushes others to a later page
+ * is a displacement, not a resolution. Every departure counts, so two of one kind are announced
+ * twice — the frame changes the text's last character for the second one.
+ *
+ * @param state the state before the read
+ * @param items the items the read served
+ * @param total the total the read reported
+ * @returns the notice fields to write, unchanged when nothing left
+ */
+function departureOf(
+  state: AttentionState,
+  items: AttentionItem[],
+  total: number,
+): Pick<AttentionState, 'leftNotice' | 'leftSeq'> {
+  const kept = {
+    leftNotice: state.leftNotice,
+    leftSeq: state.leftSeq,
+  };
+  if (!state.loaded || total >= state.total) {
+    return kept;
+  }
+  const kind = leftOf(state, items);
+  if (kind === null) {
+    return kept;
+  }
+  return { leftNotice: kind, leftSeq: state.leftSeq + 1 };
+}
+
+/**
  * Keeps the list in step with the stream, after `needs_operator.changed`.
  *
  * The event's summary counts the machine's items, not the list's rows, so the list is re-read
  * rather than patched: only the read carries the rows' path, since and blocks, and only the read
  * can tell that an item was resolved elsewhere — which is the one case the quiet notice names.
- * Every page the person already opened is read again, so a row resolved above the fold does not
- * shift the ones below it.
+ * Every page the person already opened is read again, and only the newest read writes the store.
  */
 export async function handleNeedsOperatorChanged(): Promise<void> {
   const state = get(attentionStore);
@@ -429,29 +478,37 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  const generation = (readGeneration += 1);
   attentionStore.update((current) => ({ ...current, isLoading: true, loadError: null }));
   try {
     const answers: NeedsOperatorPage[] = [];
     for (let page = 1; page <= pages; page += 1) {
       answers.push(await apiClient.getNeedsOperator(page));
     }
+    if (generation !== readGeneration) {
+      return;
+    }
     const last = answers[answers.length - 1];
     if (last === undefined) {
       return;
     }
     const items = answers.flatMap((answer) => itemsOf(answer.items));
+    const total = countOf(last.total, items.length);
     attentionStore.update((current) => ({
       ...current,
       items,
-      total: countOf(last.total, items.length),
+      total,
       page: Math.max(1, countOf(last.page, 1)),
       hasOlder: last.has_older === true,
       loaded: true,
       isLoading: false,
       loadError: null,
-      leftNotice: leftOf(state, items) ?? current.leftNotice,
+      ...departureOf(state, items, total),
     }));
   } catch (error: unknown) {
+    if (generation !== readGeneration) {
+      return;
+    }
     attentionStore.update((current) => ({
       ...current,
       isLoading: false,
