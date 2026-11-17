@@ -541,8 +541,47 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
     expect(getMessages).not.toHaveBeenCalled();
   });
 
-  it('lets a later choice of the language shown supersede the pending one', async () => {
-    // Arrange: the catalogue store settles on English, then a deferred request keeps German pending.
+  it('drops a response that resolves while the reload starts waiting', async () => {
+    // Arrange: the request leaves the page before the upgrade event, its answer arrives after it.
+    let resolveFetch: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    messagesStore.set({ 'deferred.held.label': 'Alt' });
+    const pending = loadMessages('de', 'all');
+
+    // Act
+    setReloadDeferred(true);
+    resolveFetch({ 'deferred.newer.label': 'Neu' });
+
+    // Assert: the old page keeps what it holds and stores nothing of the newer runtime.
+    await pending;
+    expect(get(messagesStore)).toEqual({ 'deferred.held.label': 'Alt' });
+  });
+
+  it('switches to the held pack of an unknown runtime version instead of fetching', async () => {
+    // Arrange: the runtime version is not known, the German pack is in the browser, and the reload
+    // waits for unsent input.
+    setCatalogueVersion(null);
+    localStorage.setItem(
+      'pm_i18n_messages_de@unversioned',
+      catalogueEntry('de', { 'deferred.unversioned.label': 'Aus dem Speicher' }),
+    );
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('de');
+    expect(get(t)('deferred.unversioned.label')).toBe('Aus dem Speicher');
+  });
+
+  it('lets a later choice of the language shown supersede the pending one', async () => {    // Arrange: the catalogue store settles on English, then a deferred request keeps German pending.
     const getMessages = vi
       .spyOn(apiClient, 'getMessages')
       .mockResolvedValue({ 'deferred.superseded.label': 'English' });

@@ -494,6 +494,12 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   }
   try {
     const msgs = await apiClient.getMessages(locale, area);
+    if (get(reloadDeferred)) {
+      // The reload started waiting while this response was in flight: writing it now would put the
+      // newer runtime's pack on the old release's page, so it is dropped and read again after the
+      // reload.
+      return;
+    }
     const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
     // A slow response must not replace the catalogue of a locale the person has switched to
     // since the request began: the store follows the active locale only.
@@ -588,14 +594,16 @@ function rememberLocaleChoice(locale: Locale): void {
  *
  * A cached catalogue of the runtime version this browser already knows is current by construction
  * (the pack changes only with the runtime), so it is used at once and the switch is instantaneous.
- * Before the version is known the runtime is asked first, and the cache is the offline fallback.
+ * Before the version is known the runtime is asked first, and the cache is the offline fallback —
+ * except while the reload is deferred, where the held pack is what the old page renders and nothing
+ * is fetched at all.
  *
  * @param locale the locale to load
  * @returns its catalogue, or null when neither the cache nor the runtime answered
  */
 async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
   const cached = loadCachedCatalogue(locale);
-  if (cached && catalogueVersion !== null) {
+  if (cached && (catalogueVersion !== null || get(reloadDeferred))) {
     rememberMessages(locale, cached);
     rememberEnglish(locale, cached);
     return cached;
