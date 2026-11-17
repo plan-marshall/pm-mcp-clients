@@ -542,7 +542,8 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
   });
 
   it('drops a response that resolves while the reload starts waiting', async () => {
-    // Arrange: the request leaves the page before the upgrade event, its answer arrives after it.
+    // Arrange: the request for the language the screen shows leaves before the upgrade event, and
+    // its answer arrives after it.
     let resolveFetch: (messages: Record<string, string>) => void = () => {};
     vi.spyOn(apiClient, 'getMessages').mockReturnValue(
       new Promise<Record<string, string>>((resolve) => {
@@ -550,15 +551,39 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
       }),
     );
     messagesStore.set({ 'deferred.held.label': 'Alt' });
-    const pending = loadMessages('de', 'all');
+    const pending = loadMessages('en', 'all');
 
     // Act
     setReloadDeferred(true);
     resolveFetch({ 'deferred.newer.label': 'Neu' });
 
-    // Assert: the old page keeps what it holds and stores nothing of the newer runtime.
+    // Assert: the old page keeps what it holds and caches nothing of the newer runtime.
     await pending;
     expect(get(messagesStore)).toEqual({ 'deferred.held.label': 'Alt' });
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
+  });
+
+  it('keeps the shown language when a switch answer lands after the reload starts waiting', async () => {
+    // Arrange: the switch leaves the page while no reload waits, its answer arrives during one.
+    let resolveFetch: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const pending = setLocale('de');
+
+    // Act
+    setReloadDeferred(true);
+    resolveFetch({ 'deferred.switched.label': 'Deutsch' });
+    await pending;
+
+    // Assert: the screen keeps its language and the newer pack is not cached.
+    expect(get(currentLocale)).toBe('en');
+    expect(get(messagesStore)).not.toHaveProperty('deferred.switched.label');
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
   });
 
   it('switches to the held pack of an unknown runtime version instead of fetching', async () => {
