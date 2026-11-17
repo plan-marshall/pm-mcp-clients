@@ -1732,7 +1732,6 @@ export async function stepOnboarding(
 ): Promise<void> {
   try {
     const next = await apiClient.stepOnboarding(link, body);
-    if (options.adoptLocale) await adoptRecordedLocale();
     applyOnboardingState(next);
   } catch {
     // A refused step leaves the state as it is.
