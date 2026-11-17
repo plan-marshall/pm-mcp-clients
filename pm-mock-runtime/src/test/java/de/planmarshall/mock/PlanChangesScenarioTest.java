@@ -763,12 +763,13 @@ class PlanChangesScenarioTest {
             assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
 
             // drop-legacy-api is not_captured where the scenario starts; a later state declares its
-            // own capture of the same plan, with the size that capture carries.
+            // own capture of the same plan, with the size that capture carries, and carries the
+            // base's capture of fix-relay so the static figure still has its capture.
             var root = JsonTree.asObject(JsonTree.parse(valid));
             var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
                             JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
                     "runtime");
-            other.put("plan_changes", List.of(capturedDropLegacyApi()));
+            other.put("plan_changes", List.of(capturedDropLegacyApi(), fixRelayEntry(startRuntime(root))));
             var override = new LinkedHashMap<String, Object>();
             override.put("plan_id", "drop-legacy-api");
             override.put("change", Map.of("files", 1, "insertions", 2, "deletions", 0, "unplanned", 0));

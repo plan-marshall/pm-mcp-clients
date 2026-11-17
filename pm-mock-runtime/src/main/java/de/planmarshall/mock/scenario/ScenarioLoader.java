@@ -260,13 +260,6 @@ public class ScenarioLoader {
      */
     private static void validatePlanChanges(Map<String, RouteDefinition> routes,
             Map<String, StateDefinition> states, String scenario) {
-        var staticSizes = new LinkedHashMap<String, List<ChangeSize>>();
-        try {
-            routes.values().forEach(route -> collectPlanSizes(route.representation(), staticSizes));
-        } catch (IllegalArgumentException e) {
-            throw new ScenarioValidationException(scenario, null, "change",
-                    "a plan's size of change is not a measurement: " + e.getMessage());
-        }
         // The engine merges the base fixture below a case state's own, so a state without a
         // plan_changes member serves the base state's captures.
         var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
@@ -278,9 +271,9 @@ public class ScenarioLoader {
             }
             // A size belongs to the state that serves it: a plan captured in one state says nothing
             // about the same plan before its capture in another.
-            var sizes = copyOf(staticSizes);
+            final Map<String, List<ChangeSize>> sizes;
             try {
-                collectStateRouteSizes(state, sizes);
+                sizes = effectiveSizes(routes, state);
             } catch (IllegalArgumentException e) {
                 throw new ScenarioValidationException(scenario, null, "change",
                         "a plan's size of change is not a measurement: " + e.getMessage());
@@ -294,6 +287,49 @@ public class ScenarioLoader {
                             "the fixture names the capture of " + planId + " twice");
                 }
                 validateOnePlansChanges(entry, sizes, scenario);
+            }
+            requireEverySizeHasACapture(effective, sizes, scenario);
+        }
+    }
+
+    /**
+     * The sizes of change a state serves: the static routes with the state's own overrides applied by
+     * route key, as the engine serves them.
+     *
+     * @param routes the scenario's static routes
+     * @param state  the state
+     * @return the sizes by plan id
+     */
+    private static Map<String, List<ChangeSize>> effectiveSizes(Map<String, RouteDefinition> routes,
+            StateDefinition state) {
+        var effective = new LinkedHashMap<String, Object>();
+        routes.forEach((key, route) -> effective.put(key, route.representation()));
+        var overrides = stateRoutes(state);
+        if (overrides != null) {
+            effective.putAll(overrides);
+        }
+        var sizes = new LinkedHashMap<String, List<ChangeSize>>();
+        effective.values().forEach(value -> collectPlanSizes(value, sizes));
+        return sizes;
+    }
+
+    /**
+     * Every size a state serves names a capture of that plan in the entries the state serves.
+     *
+     * @param effective the entries the state serves
+     * @param sizes     the sizes the state serves
+     * @param scenario  the scenario identifier for error reporting
+     */
+    private static void requireEverySizeHasACapture(List<Map<String, Object>> effective,
+            Map<String, List<ChangeSize>> sizes, String scenario) {
+        for (var planId : sizes.keySet()) {
+            var captured = effective.stream()
+                    .anyMatch(entry -> planId.equals(JsonTree.string(entry, "plan_id"))
+                            && PlanChangesAnswer.CAPTURED.equals(
+                            JsonTree.string(entry, "state")));
+            if (!captured) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the plan " + planId + " carries a size of change and no capture in this state");
             }
         }
     }
@@ -317,12 +353,6 @@ public class ScenarioLoader {
             return null;
         }
         return fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario);
-    }
-
-    private static Map<String, List<ChangeSize>> copyOf(Map<String, List<ChangeSize>> sizes) {
-        var copy = new LinkedHashMap<String, List<ChangeSize>>();
-        sizes.forEach((planId, declared) -> copy.put(planId, new ArrayList<>(declared)));
-        return copy;
     }
 
     /**
@@ -534,23 +564,17 @@ public class ScenarioLoader {
     }
 
     /**
-     * Collects the sizes of change a state's own route overrides spell
-     * ({@code facts.runtime.routes}, which the engine serves in preference to the static routes),
-     * so a state cannot serve a size its capture's totals disagree with.
-     *
      * @param state the state
-     * @param sizes the collected sizes
+     * @return the route overrides the state's runtime fixture carries ({@code facts.runtime.routes},
+     *         which the engine serves in preference to the static routes), or {@code null}
      */
-    private static void collectStateRouteSizes(StateDefinition state, Map<String, List<ChangeSize>> sizes) {
+    private static @Nullable Map<String, Object> stateRoutes(StateDefinition state) {
         var representation = JsonTree.asObject(state.representation());
         var facts = representation == null
                 ? null
                 : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
         var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
-        var overrides = runtime == null ? null : JsonTree.asObject(runtime.get(FIELD_ROUTES));
-        if (overrides != null) {
-            overrides.values().forEach(value -> collectPlanSizes(value, sizes));
-        }
+        return runtime == null ? null : JsonTree.asObject(runtime.get(FIELD_ROUTES));
     }
 
     private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {

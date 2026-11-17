@@ -51,8 +51,19 @@ final class SpecificationTables {
      */
     static List<String> keyCells(String relative) throws IOException {
         var keys = new ArrayList<String>();
-        for (var row : rows(relative, "")) {
-            keys.add(row.key());
+        var inTable = false;
+        for (var line : Files.readAllLines(document(relative), StandardCharsets.UTF_8)) {
+            var stripped = line.strip();
+            if (TABLE_DELIMITER.equals(stripped)) {
+                inTable = !inTable;
+            } else if (inTable) {
+                var matcher = KEY_CELL.matcher(stripped);
+                if (matcher.matches()) {
+                    // A key cell is a key on its own, whether or not a translation row follows it: a
+                    // table may end with a key, and the translation tables are not the only shape.
+                    keys.add(matcher.group(1));
+                }
+            }
         }
         return keys;
     }

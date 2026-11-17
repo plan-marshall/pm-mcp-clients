@@ -139,20 +139,16 @@ public final class ChangesLevel {
      * while its row is unchanged, and its hunks are read again only when the row changed, or when an
      * earlier read did not land.
      *
-     * @param fresh     the list the runtime answered after the capture
-     * @param freshSize the figures the plan carries after the capture; {@code null} when it carries
-     *                  none or when the read that names them did not land
+     * @param fresh   the list the runtime answered after the capture
+     * @param figures the plan's figures the capture's read answered; a read that did not land keeps
+     *                the last figures, a landed read with none clears them
      * @return {@code true} when an open file's hunks must be read again
      */
-    public boolean update(PlanChangesAnswer fresh, @Nullable ChangeSize freshSize) {
+    public boolean update(PlanChangesAnswer fresh, PlanChangeSizes.Probe figures) {
         var previousRow = openRow;
         var previousSize = size;
         this.answer = Objects.requireNonNull(fresh, "fresh");
-        // A captured plan's figures are its own: a read that did not land keeps the last ones, a
-        // refusal has none.
-        this.size = freshSize != null || !(fresh instanceof PlanChangesCaptured)
-                            ? freshSize
-                            : previousSize;
+        this.size = figures.landed() ? figures.size() : previousSize;
         if (openPath == null) {
             return false;
         }

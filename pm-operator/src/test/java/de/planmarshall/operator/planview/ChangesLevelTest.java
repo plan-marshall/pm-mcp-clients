@@ -251,7 +251,8 @@ class ChangesLevelTest {
             var figures = new ChangeSize(4, 150, 15, 1);
 
             assertAll(
-                                () -> assertFalse(level.update(PlanChangesAnswer.fromJson(fresh), figures),
+                                () -> assertFalse(level.update(PlanChangesAnswer.fromJson(fresh),
+                                                                        PlanChangeSizes.Probe.of(figures)),
                                                     "the open file's row did not change"),
                                 () -> assertTrue(level.hasOpenFile()),
                                 () -> assertTrue(text(level).contains("@@ -20,2 +20,2 @@"), text(level)),
@@ -270,7 +271,8 @@ class ChangesLevelTest {
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
 
             assertAll(
-                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(fresh), null),
+                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(fresh),
+                                                                        PlanChangeSizes.Probe.NOT_LANDED),
                                                     "the open file's row changed"),
                                 () -> assertFalse(level.hasOpenFile(), "the hunks wait for the read"),
                                 () -> assertEquals(4, level.rows("en").size(), "the list is shown again"));
@@ -283,12 +285,13 @@ class ChangesLevelTest {
             level.showFile(PlanChangeFile.fromJson(FILE));
             var changed = LIST.replace("\"status\":\"renamed\",\"added\":3,\"removed\":3",
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
-            assertTrue(level.update(PlanChangesAnswer.fromJson(changed), null));
+            assertTrue(level.update(PlanChangesAnswer.fromJson(changed), PlanChangeSizes.Probe.NOT_LANDED));
             // The read did not land: the hunks are still open, the row did not move.
             assertFalse(level.hasOpenFile());
 
             assertAll(
-                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(changed), null),
+                                () -> assertTrue(level.update(PlanChangesAnswer.fromJson(changed),
+                                                                        PlanChangeSizes.Probe.NOT_LANDED),
                                                     "a missing read is asked for again"),
                                 () -> assertEquals("pm-relay/src/main/java/de/planmarshall/relay/Frame.java",
                                                     level.openFilePath()));
@@ -300,7 +303,7 @@ class ChangesLevelTest {
             var level = level();
             var fresh = LIST.replace("\"head\":\"9f3c2ab41d7e\"", "\"head\":\"a1b2c3d4e5f6\"");
 
-            level.update(PlanChangesAnswer.fromJson(fresh), null);
+            level.update(PlanChangesAnswer.fromJson(fresh), PlanChangeSizes.Probe.NOT_LANDED);
 
             assertAll(
                                 () -> assertTrue(level.breadcrumb("en").contains("4 files"),
@@ -310,11 +313,27 @@ class ChangesLevelTest {
         }
 
         @Test
+        @DisplayName("a figures read that landed without figures clears them")
+        void clearsTheFigures() throws Exception {
+            var level = level();
+            var fresh = LIST.replace("\"head\":\"9f3c2ab41d7e\"", "\"head\":\"a1b2c3d4e5f6\"");
+
+            level.update(PlanChangesAnswer.fromJson(fresh), PlanChangeSizes.Probe.of(null));
+
+            assertAll(
+                                () -> assertTrue(level.breadcrumb("en").contains("a1b2c3d"),
+                                                    level.breadcrumb("en")),
+                                () -> assertFalse(level.breadcrumb("en").contains("+147"),
+                                                    "a plan without figures shows the head alone: "
+                                                                        + level.breadcrumb("en")));
+        }
+
+        @Test
         @DisplayName("a capture that lapses shows the refusal's text, never the stale list")
         void refusalAfterACapture() throws Exception {
             var level = level();
 
-            level.update(PlanChangesAnswer.fromJson(UNAVAILABLE), null);
+            level.update(PlanChangesAnswer.fromJson(UNAVAILABLE), PlanChangeSizes.Probe.of(null));
 
             assertAll(
                                 () -> assertEquals(1, level.rows("en").size()),

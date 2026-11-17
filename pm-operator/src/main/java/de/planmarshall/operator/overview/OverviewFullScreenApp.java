@@ -42,7 +42,6 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.NeedsOperatorItem;
@@ -1845,40 +1844,61 @@ public final class OverviewFullScreenApp {
                 return;
             }
             var fresh = PlanChangesAnswer.fromJson(list.bodyText());
-            var size = PlanChangeSizes.sizeOf(runtime, changes.planId());
+            var figures = PlanChangeSizes.probe(runtime, changes.planId());
             final boolean needsRead;
             final @Nullable String openPath;
             synchronized (this) {
-                needsRead = changes.update(fresh, size);
+                needsRead = changes.update(fresh, figures);
                 openPath = changes.openFilePath();
             }
             if (needsRead && openPath != null) {
-                var file = runtime.send(HttpRequest.get(
-                                    PlanChangesRoutes.plan(changes.planId()).file(openPath)));
-                if (file.status() == 200) {
-                    var content = PlanChangeFile.fromJson(file.bodyText());
-                    synchronized (this) {
-                        // A capture that landed during the read makes the hunks stale: they wait for
-                        // the next event rather than showing lines of the capture before it.
-                        if (changes.answer() == fresh) {
-                            changes.showFile(content);
-                        }
-                    }
-                }
+                readOpenFile(runtime, changes, fresh, openPath);
             }
             synchronized (this) {
-                var selectedBefore = stack.selected() != null ? stack.selected().id() : null;
-                var rows = changes.rows(locale);
-                stack.refresh(rows);
-                var selectionVanished = selectedBefore != null
-                                    && rows.stream().noneMatch(row -> row.id().equals(selectedBefore));
-                if (selectionVanished && openPath != null) {
-                    stack.select(ChangesLevel.FILE_PREFIX + openPath);
+                var top = stack.level();
+                if (top != null && top.kind() == TuiLevel.Kind.PLAN_CHANGES
+                                    && changes.planId().equals(top.id()) && currentChanges.get() == changes) {
+                    var selectedBefore = stack.selected() != null ? stack.selected().id() : null;
+                    var rows = changes.rows(locale);
+                    stack.refresh(rows);
+                    var selectionVanished = selectedBefore != null
+                                        && rows.stream().noneMatch(row -> row.id().equals(selectedBefore));
+                    if (selectionVanished && openPath != null) {
+                        stack.select(ChangesLevel.FILE_PREFIX + openPath);
+                    }
                 }
             }
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException | IllegalArgumentException _) {
             // best-effort refresh
+        }
+    }
+
+    /**
+     * Reads the open file again after a capture whose row changed. A read that fails leaves the hunks
+     * pending and never stops the list's own refresh.
+     *
+     * @param runtime  the runtime client
+     * @param changes  the plan's changes
+     * @param fresh    the list the refresh applied
+     * @param openPath the path that was open when the row changed
+     */
+    private void readOpenFile(RuntimeClient runtime, ChangesLevel changes, PlanChangesAnswer fresh,
+                        String openPath) {
+        try {
+            var file = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(openPath)));
+            if (file.status() != 200) {
+                return;
+            }
+            var content = PlanChangeFile.fromJson(file.bodyText());
+            synchronized (this) {
+                // The capture and the operator's own choice must both still be the ones asked about.
+                if (changes.answer() == fresh && openPath.equals(changes.openFilePath())) {
+                    changes.showFile(content);
+                }
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // The hunks wait for the next capture; the list below is refreshed either way.
         }
     }
 
@@ -2760,21 +2780,22 @@ public final class OverviewFullScreenApp {
                 return;
             }
             try {
-                openChanges(context.runtime(true), view.planId(), view.tree().change());
+                openChanges(context.runtime(true), view.planId());
             } catch (IOException refused) {
                 statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
             }
         }
 
-        private boolean openChanges(RuntimeClient runtime, String planId, @Nullable ChangeSize size)
-                            throws IOException {
+        private boolean openChanges(RuntimeClient runtime, String planId) throws IOException {
             var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
             if (response.status() != 200) {
                 statusMessage = refusalOf(response);
                 return false;
             }
             var answer = PlanChangesAnswer.fromJson(response.bodyText());
-            var changes = new ChangesLevel(planId, answer, size);
+            // The figures are the plan's, read now: a capture may have moved them since the plan
+            // view was read (plan-view.adoc § Live).
+            var changes = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
             currentChanges.set(changes);
             changesLevels.put(planId, changes);
             var level = TuiLevel.of(TuiLevel.Kind.PLAN_CHANGES, planId, changes.breadcrumb(locale));

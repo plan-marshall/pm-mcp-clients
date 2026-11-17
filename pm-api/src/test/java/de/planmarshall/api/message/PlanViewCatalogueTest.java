@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -76,7 +75,7 @@ class PlanViewCatalogueTest {
     @MethodSource("designRows")
     @DisplayName("each key of the design's Texts table is in both packs, and the design's text where this plan adds it")
     void designKeyIsInBothPacks(String key, SpecificationTables.Row row) {
-        for (var locale : List.of("en", "de")) {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             var pack = MessageCatalogue.getMessages(locale, "plan_view");
             assertTrue(pack.containsKey(key), "the " + locale + " pack must hold " + key);
             assertFalse(pack.get(key).isBlank(), "the " + locale + " text of " + key + " must not be blank");
@@ -105,7 +104,7 @@ class PlanViewCatalogueTest {
         var design = new TreeSet<String>();
         SpecificationTables.rows(PLAN_VIEW_DESIGN, CHANGES_PREFIX).forEach(row -> design.add(row.key()));
 
-        for (var locale : List.of("en", "de")) {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             var pack = new TreeSet<String>();
             MessageCatalogue.getMessages(locale, "plan_view").keySet().stream()
                     .filter(packKey -> packKey.startsWith(CHANGES_PREFIX))
