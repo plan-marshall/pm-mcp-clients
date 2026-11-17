@@ -39,6 +39,7 @@ import HarnessBlockedScreen from './HarnessBlockedScreen.svelte';
 import HarnessConfirmScreen from './HarnessConfirmScreen.svelte';
 import ProbeFailedScreen from './ProbeFailedScreen.svelte';
 import HarnessAddScreen from './HarnessAddScreen.svelte';
+import HarnessNoneScreen from './HarnessNoneScreen.svelte';
 import TokensScreen from './TokensScreen.svelte';
 import ModelsScreen from './ModelsScreen.svelte';
 import RolesScreen from './RolesScreen.svelte';
@@ -140,7 +141,7 @@ const WORKING_STATES = new Set([
 ]);
 
 /** States whose design is a read-only summary: the runtime reports what happened, in its words. */
-const STATUS_STATES = new Set(['harness.none', 'providers.credentials', 'providers.verified', 'sonar.key']);
+const STATUS_STATES = new Set(['providers.credentials', 'providers.verified', 'sonar.key']);
 
 /**
  * The states of the frames beside the onboarding, which the onboarding frame answers with the
@@ -227,6 +228,11 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
     id: 'harness-add',
     claims: (stateId) => stateId === 'harness.add' || stateId === 'harness.unknown',
     screen: HarnessAddScreen,
+  },
+  {
+    id: 'harness-none',
+    claims: (stateId) => stateId === 'harness.none',
+    screen: HarnessNoneScreen,
   },
   {
     id: 'harness-tokens',
