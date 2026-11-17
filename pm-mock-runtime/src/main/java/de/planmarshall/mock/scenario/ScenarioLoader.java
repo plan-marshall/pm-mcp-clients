@@ -104,6 +104,8 @@ public class ScenarioLoader {
     private static final String RUNTIME_FIXTURE = "runtime";
     /** The engine-only fixtures a state's runtime fixture may carry. */
     private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
+    /** The member a fixture entry uses to name its plan. */
+    private static final String FIELD_PLAN_ID = "plan_id";
     private static final String FIXTURE_CONTENTS = "contents";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
@@ -253,6 +255,11 @@ public class ScenarioLoader {
      * state serves for that plan — the scenario's static routes and the state's own overrides. The
      * fixture is decoded with the {@code pm-api} codecs either way, so a malformed changes fixture
      * fails the load.
+     * <p>
+     * A scenario that models no captures at all ({@code reports-and-system} and the other case
+     * scenarios) serves sizes without a changes fixture; its plans' changes are not part of what it
+     * demonstrates, and the rule does not apply. Once a scenario declares one capture, every state of
+     * it is held to the capture it serves.
      *
      * @param routes      the scenario's static routes, which carry the plans' sizes of change
      * @param states      the scenario's states, whose runtime fixtures may carry {@code plan_changes}
@@ -263,11 +270,22 @@ public class ScenarioLoader {
         // The engine merges the base fixture below a case state's own, so a state without a
         // plan_changes member serves the base state's captures.
         var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
+        // A scenario that models no captures at all serves sizes without a changes fixture: its
+        // plans' changes are simply not part of what that scenario demonstrates.
+        var modelsCaptures = baseEntries != null
+                || states.values().stream().anyMatch(state -> planChangesOf(state, scenario) != null);
+        if (!modelsCaptures) {
+            return;
+        }
         for (var state : states.values()) {
             var ownEntries = planChangesOf(state, scenario);
-            var effective = ownEntries != null ? ownEntries : baseEntries;
-            if (effective == null) {
-                continue;
+            final List<Map<String, Object>> effective;
+            if (ownEntries != null) {
+                effective = ownEntries;
+            } else if (baseEntries != null) {
+                effective = baseEntries;
+            } else {
+                effective = List.of();
             }
             // A size belongs to the state that serves it: a plan captured in one state says nothing
             // about the same plan before its capture in another.
@@ -280,7 +298,7 @@ public class ScenarioLoader {
             }
             var seen = new HashSet<String>();
             for (var entry : effective) {
-                var planId = JsonTree.string(entry, "plan_id");
+                var planId = JsonTree.string(entry, FIELD_PLAN_ID);
                 if (planId != null && !seen.add(planId)) {
                     throw new ScenarioValidationException(scenario, null,
                             "facts.runtime." + FIXTURE_PLAN_CHANGES,
@@ -306,7 +324,13 @@ public class ScenarioLoader {
         routes.forEach((key, route) -> effective.put(key, route.representation()));
         var overrides = stateRoutes(state);
         if (overrides != null) {
-            effective.putAll(overrides);
+            // The engine replaces a route only with a map-valued override (activeRoute); a fixture
+            // that spells anything else leaves the static route in force, so the sizes follow it.
+            overrides.forEach((key, value) -> {
+                if (value instanceof Map<?, ?>) {
+                    effective.put(key, value);
+                }
+            });
         }
         var sizes = new LinkedHashMap<String, List<ChangeSize>>();
         effective.values().forEach(value -> collectPlanSizes(value, sizes));
@@ -324,7 +348,7 @@ public class ScenarioLoader {
             Map<String, List<ChangeSize>> sizes, String scenario) {
         for (var planId : sizes.keySet()) {
             var captured = effective.stream()
-                    .anyMatch(entry -> planId.equals(JsonTree.string(entry, "plan_id"))
+                    .anyMatch(entry -> planId.equals(JsonTree.string(entry, FIELD_PLAN_ID))
                             && PlanChangesAnswer.CAPTURED.equals(
                             JsonTree.string(entry, "state")));
             if (!captured) {
@@ -552,7 +576,7 @@ public class ScenarioLoader {
     private static void collectPlanSizes(@Nullable Object value, Map<String, List<ChangeSize>> sizes) {
         if (value instanceof Map<?, ?> raw) {
             var map = JsonTree.asObject(raw);
-            var planId = JsonTree.string(map, "plan_id");
+            var planId = JsonTree.string(map, FIELD_PLAN_ID);
             var size = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
             if (planId != null && size != null) {
                 sizes.computeIfAbsent(planId, key -> new ArrayList<>()).add(size);

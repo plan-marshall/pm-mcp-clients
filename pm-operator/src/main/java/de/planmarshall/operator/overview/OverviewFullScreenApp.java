@@ -3338,6 +3338,21 @@ public final class OverviewFullScreenApp {
                 if (level != null) {
                     stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
                 }
+            } else if (lvl.kind() == TuiLevel.Kind.PLAN_CHANGES) {
+                // A capture may have read the list again while another level was on top
+                // (plan-view.adoc § Live): the rows come from the model the level returned to.
+                var level = currentChanges.get();
+                if (level != null) {
+                    var selected = stack.selected() != null ? stack.selected().id() : null;
+                    var rows = level.rows(locale);
+                    stack.refresh(rows);
+                    if (selected == null || rows.stream().noneMatch(row -> row.id().equals(selected))) {
+                        var open = level.openFileRowId();
+                        if (open != null) {
+                            stack.select(open);
+                        }
+                    }
+                }
             }
         }
 

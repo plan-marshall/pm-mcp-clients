@@ -836,6 +836,42 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("a route override that is no object leaves the static route's size in force")
+        void refusesANonObjectOverrideThatWouldHideASize() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            // The engine replaces a route only with a map-valued override (activeRoute); a list
+            // override leaves the static size in force, so a capture that disagrees with it is
+            // refused although the fixture "replaces" the route.
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            other.put("plan_changes", List.of(Map.of("plan_id", FIX_RELAY, "state", "captured",
+                    "head", "9f3c2ab41d7e", "base_ref", "main", "files", List.of(),
+                    "contents", List.of())));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/fix-relay/process", List.of());
+            other.put("routes", routes);
+            var hidden = JsonTree.write(root);
+
+            refusesTheLoad(hidden, "fix-relay");
+        }
+
+        @Test
+        @DisplayName("a scenario that models no captures serves its sizes without a changes fixture")
+        void exemptsAScenarioWithoutCaptures() throws Exception {
+            try (var in = PlanChangesScenarioTest.class.getClassLoader()
+                         .getResourceAsStream("scenarios/reports-and-system.json")) {
+                assertNotNull(in, "the reports-and-system scenario is on the classpath");
+                var reports = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+
+                assertDoesNotThrow(() -> ScenarioLoader.load(reports, StandardScenarios.REPORTS_AND_SYSTEM));
+            }
+        }
+
+        @Test
         @DisplayName("refuses a size of change on a plan whose changes were never captured")
         void refusesASizeOnAPlanWithoutACapture() throws Exception {
             var valid = scenarioJson();
