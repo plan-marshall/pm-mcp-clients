@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
 import {
   apiClient,
+  type PlanChangesAnswer,
+  type PlanChangeFile,
   type PlanCompletionReport,
   type ProcessTree,
   type TaskActivity,
@@ -1338,5 +1340,227 @@ describe('PlanView component', () => {
 
     const badge = await screen.findByTestId('tool-failed');
     expect(badge.textContent?.trim()).toBe('failed');
+  });
+});
+
+describe('PlanView’s Changes tab', () => {
+  const capturedPlan: ProcessTree = {
+    plan_id: 'fix-relay',
+    title: 'fix-relay',
+    project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients' },
+    epic: { epic_id: 'relay-hardening', title: 'relay-hardening' },
+    current_phase: 'execute',
+    phase_state: 'running',
+    instance_version: 1,
+    needs_operator: false,
+    duration_seconds: 7800,
+    tokens_so_far: {
+      total: 412000,
+      input: 380000,
+      output: 32000,
+      floor: false,
+      tasks_total: 10,
+      tasks_measured: 10,
+      none_yet: false,
+      not_measured: false,
+    },
+    current_position_path: ['execute'],
+    nodes: [],
+    change: { files: 12, insertions: 340, deletions: 27, unplanned: 2 },
+  };
+
+  const capture: PlanChangesAnswer = {
+    plan_id: 'fix-relay',
+    state: 'captured',
+    head: '9f3c2ab41d7e',
+    base_ref: 'main',
+    files: [
+      {
+        path: 'pm-relay/src/main/java/Transport.java',
+        status: 'modified',
+        added: 48,
+        removed: 12,
+        binary: false,
+        unplanned: false,
+      },
+    ],
+  };
+
+  const transportFile: PlanChangeFile = {
+    path: 'pm-relay/src/main/java/Transport.java',
+    hunks: [
+      {
+        old_start: 4,
+        old_len: 1,
+        new_start: 4,
+        new_len: 1,
+        lines: [
+          { kind: 'removed', text: 'return transport.send(oldRequest);' },
+          { kind: 'added', text: 'return transport.send(newRequest);' },
+        ],
+      },
+    ],
+    binary: false,
+    truncated: false,
+  };
+
+  /**
+   * @returns the plan's process as a plan before its first capture: it carries no size of change
+   */
+  function planWithoutCapture(): ProcessTree {
+    const tree: ProcessTree = { ...capturedPlan };
+    delete tree.change;
+    return tree;
+  }
+
+  beforeEach(() => {
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'test',
+        machineName: 'test-mac',
+        currentRoute: 'plan',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+        selectedPlanId: 'fix-relay',
+        selectedEpicId: 'relay-hardening',
+        selectedTaskId: null,
+      }),
+    );
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(capturedPlan);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(capture);
+    vi.spyOn(apiClient, 'getPlanChangeFile').mockResolvedValue(transportFile);
+  });
+
+  it('shows no Changes tab and no size line before the first capture', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithoutCapture());
+
+    // Act
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    // Assert
+    expect(screen.queryByTestId('plan-change-size')).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Changes' })).toBeNull();
+  });
+
+  it('opens the Changes tab from the size line and writes the tab into the address', async () => {
+    // Arrange
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    expect(screen.getByTestId('plan-change-size')).toHaveTextContent(
+      '12 files · +340 −27 · 2 unplanned',
+    );
+
+    // Act
+    screen.getByTestId('plan-change-size').click();
+
+    // Assert
+    expect(await screen.findByTestId('plan-changes')).toBeInTheDocument();
+    expect(get(runtimeStore).objectTab).toBe('changes');
+    expect(window.location.search).toContain('tab=changes');
+    expect(screen.getByRole('tab', { name: 'Changes' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens the tab and the file an address names, as a reload shows them', async () => {
+    // Arrange: the runtime the router fills from `?tab=changes&file=…`.
+    runtimeStore.update((state) => ({
+      ...state,
+      objectTab: 'changes',
+      changeFile: 'pm-relay/src/main/java/Transport.java',
+    }));
+    window.history.replaceState(
+      {},
+      '',
+      '/plans/fix-relay?tab=changes&file=pm-relay%2Fsrc%2Fmain%2Fjava%2FTransport.java',
+    );
+
+    // Act
+    render(PlanView);
+
+    // Assert
+    expect(await screen.findByTestId('plan-changes')).toBeInTheDocument();
+    expect(await screen.findByTestId('change-hunks')).toHaveTextContent(
+      'return transport.send(newRequest);',
+    );
+    expect(screen.getByTestId('change-row')).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('opens Process and replaces the address when it names the tab before the first capture', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithoutCapture());
+    runtimeStore.update((state) => ({ ...state, objectTab: 'changes', changeFile: null }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=changes');
+
+    // Act
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    // Assert
+    await waitFor(() => expect(get(runtimeStore).objectTab).toBe('process'));
+    expect(window.location.search).not.toContain('tab=changes');
+    expect(screen.queryByTestId('plan-changes')).toBeNull();
+  });
+
+  it('shows the reason of a capture that is gone inside the tab', async () => {
+    // Arrange
+    const reason = 'the captured commit 4c1d7e0 is no longer in the repository';
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue({
+      plan_id: 'fix-relay',
+      state: 'unavailable',
+      reason,
+    });
+
+    // Act
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    screen.getByTestId('plan-change-size').click();
+
+    // Assert
+    expect(await screen.findByTestId('changes-unavailable')).toHaveTextContent(reason);
+  });
+
+  it('shows both models of a model_differs entry and keeps the launch model in the head', async () => {
+    // Arrange: the PLAN-162 fixture's entry, pinned to the two models it names.
+    runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [
+        {
+          timestamp: '14:03:30',
+          kind: 'model_differs',
+          launch_model: 'sonnet',
+          served_model: 'sonnet-5.5',
+        },
+      ],
+    });
+
+    // Act
+    render(PlanView);
+
+    // Assert
+    expect(await screen.findByTestId('model-differs')).toHaveTextContent(
+      'answered by sonnet-5.5 instead of sonnet',
+    );
+    expect(screen.getByTestId('activity-feed')).toHaveTextContent('claude sonnet');
   });
 });
