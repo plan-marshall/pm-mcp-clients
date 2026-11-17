@@ -30,6 +30,7 @@ const __dirname = path.dirname(__filename);
  */
 export const DECLARED_VIEWS = [
   'OverviewView',
+  'InboxView',
   'PlanView',
   'EpicView',
   'ReportsView',
@@ -276,11 +277,24 @@ const GUARD_JOURNEYS = [
       await page.getByRole('radio', { name: LABELS.byEpic }).click({ force: true });
       const epicCard = page.getByTestId('epic-card').first();
       await expect(epicCard).toBeVisible();
-      await epicCard.click();
+      await epicCard.locator('.work-card__header .work-card__open').click();
       await expect(page.getByTestId('epic-view')).toBeVisible();
       // A static loading placeholder passes the quiet check and would be recorded as the view.
       await expect(page.getByTestId('epic-loading')).toHaveCount(0, { timeout: 15000 });
       await record('EpicView');
+    },
+  },
+  {
+    title: 'what waits',
+    views: ['InboxView'],
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'running-work', locale);
+    },
+    async walk(page, record) {
+      await page.goto('/?lens=waits');
+      await expect(page.getByTestId('inbox-view')).toBeVisible();
+      await expect(page.getByTestId('inbox-row').first()).toBeVisible({ timeout: 15000 });
+      await record('InboxView');
     },
   },
   {
@@ -662,7 +676,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await expect(epicCard).toBeVisible();
 
           // 3. Open epic
-          await epicCard.click();
+          await epicCard.locator('.work-card__header .work-card__open').click();
           await expect(page.getByTestId('epic-view')).toBeVisible();
 
           // 4. Open the Reviews tab and assert the findings review button ("Review" / "Prüfen")
@@ -756,6 +770,19 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await auditView(page, testInfo, { view: 'PlanView', theme, viewport: vp });
         });
 
+        test(`InboxView in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
+          await switchScenario(request, 'running-work');
+          await pair(page, request);
+
+          await page.goto('/?lens=waits');
+          await expect(page.getByTestId('inbox-view')).toBeVisible();
+          await expect(page.getByTestId('inbox-row').first()).toBeVisible({ timeout: 15000 });
+          // The theme is applied after the navigation: it writes the current document.
+          await setTheme(page, theme);
+
+          await auditView(page, testInfo, { view: 'InboxView', theme, viewport: vp });
+        });
+
         test(`EpicView in ${theme} (${vp.name})`, async ({ page, request }, testInfo) => {
           await switchScenario(request, 'running-work');
           await pair(page, request);
@@ -768,7 +795,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await byEpicRadio.click({ force: true });
           const epicCard = page.getByTestId('epic-card').first();
           await expect(epicCard).toBeVisible();
-          await epicCard.click();
+          await epicCard.locator('.work-card__header .work-card__open').click();
 
           await expect(page.getByTestId('epic-view')).toBeVisible();
           await auditView(page, testInfo, { view: 'EpicView', theme, viewport: vp });

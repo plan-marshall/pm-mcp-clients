@@ -24,7 +24,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |Screen |Keys
 
 |xref:onboarding.adoc#frame[frame]
-|the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
+|the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`; the fallback of a state without a web screen `onboard.missing_screen.title`, `.body` (with `{command}`), `.command`, `.back`, and the field labels `onboard.state.cause`, `.fix`
 
 |xref:onboarding.adoc#model-at-work[model-at-work]
 |`common.model.working`, `common.consent.tokens.estimate`, `common.model.no_result`

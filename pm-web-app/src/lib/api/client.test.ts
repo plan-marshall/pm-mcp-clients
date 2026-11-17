@@ -2915,3 +2915,56 @@ describe('ApiClient intent and outline records', () => {
     await expect(client.getOverSize('p')).rejects.toThrow(/invalid_response/);
   });
 });
+
+describe('the list of what waits', () => {
+  /** The URL and page the last read answered. */
+  let requested = '';
+  let answer: unknown = null;
+  /** The client of this block, built on a cleared browser storage. */
+  let thisClient: ApiClient;
+
+  beforeEach(() => {
+    localStorage.clear();
+    thisClient = new ApiClient('http://localhost:7420');
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requested = url;
+      return Promise.resolve({ ok: true, status: 200, json: async () => answer });
+    });
+  });
+
+  it('reads one page with the runtime order, its total and its older page', async () => {
+    answer = {
+      page: 2,
+      total_pages: 3,
+      has_newer: true,
+      has_older: true,
+      total: 21,
+      items: [
+        {
+          kind: 'decision',
+          link: '/api/v1/decisions/Q-009',
+          plan: { id: 'drop-legacy-api', title: 'Drop the legacy endpoints' },
+          since: '2026-10-16T15:05:00Z',
+          blocks: 'plan',
+        },
+        { kind: 'cleanup_due', link: '/api/v1/system/cleanup' },
+      ],
+    };
+
+    const page = await thisClient.getNeedsOperator(2);
+
+    expect(requested).toContain('/api/v1/machine/needs-operator?page=2');
+    expect(page.total).toBe(21);
+    expect(page.has_older).toBe(true);
+    expect(page.items.map((item) => item.kind)).toEqual(['decision', 'cleanup_due']);
+    expect(page.items[0].plan?.title).toBe('Drop the legacy endpoints');
+  });
+
+  it('asks for the first page when the caller names none', async () => {
+    answer = { items: [] };
+
+    await thisClient.getNeedsOperator();
+
+    expect(requested).toContain('/api/v1/machine/needs-operator?page=1');
+  });
+});

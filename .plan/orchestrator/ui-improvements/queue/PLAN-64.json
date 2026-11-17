@@ -2,10 +2,10 @@
   "id": "PLAN-64",
   "slug": "web-onboarding-screen-registry",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-64-web-onboarding-screen-registry",
+  "pr": "462",
+  "landing": "landings/PLAN-64.md",
   "seq": 64
 }

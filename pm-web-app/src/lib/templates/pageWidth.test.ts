@@ -24,6 +24,8 @@ const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'StartView.svelte', root: '.start-view' },
   // PLAN-58 moves the epic onto the object page (`epic-view.adoc#tabs`).
   { file: 'EpicView.svelte', root: '.epic-view' },
+  // The start page is the lens's list column on the column engine (needs-and-find.adoc#route).
+  { file: 'InboxView.svelte', root: '.inbox-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */

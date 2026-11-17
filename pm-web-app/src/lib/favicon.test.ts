@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { FAVICON_ATTENTION_HREF, FAVICON_CALM_HREF, applyFavicon, faviconHref } from './favicon';
+import { ROUTE_TITLES } from './routes';
+import { formatString } from './i18n';
+import { loadMessages } from '../test/catalogue-fixture';
 
 const STATIC_DIR = path.resolve(__dirname, '../../static');
 
@@ -79,6 +82,41 @@ describe('the tab icon', () => {
 
     expect(applyFavicon(1)).toBe(FAVICON_ATTENTION_HREF);
     expect(currentIcon()).toBeNull();
+  });
+});
+
+describe('the attention count the shell shows three times', () => {
+  const catalogue = loadMessages('en');
+
+  /**
+   * @param total the list's total
+   * @returns what the three consumers show: the icon, the title, the rail's entry
+   */
+  function shownFor(total: number): { icon: string; title: string; rail: string } {
+    const title = ROUTE_TITLES.inbox({ attentionTotal: total });
+    return {
+      icon: faviconHref(total),
+      title: formatString(catalogue[title.key] ?? '', title.args),
+      rail: formatString(catalogue['overview.needs.count'] ?? '', { count: total }),
+    };
+  }
+
+  it('keeps the tab icon, the tab title and the rail count on the same total', () => {
+    const calm = shownFor(0);
+    expect(calm.icon).toBe(FAVICON_CALM_HREF);
+    expect(calm.title).toBe('What waits');
+
+    const waiting = shownFor(4);
+    expect(waiting.icon).toBe(FAVICON_ATTENTION_HREF);
+    expect(waiting.title).toBe('4 items wait');
+    expect(waiting.rail).toBe('! 4');
+  });
+
+  it('names one item in the singular in the title and the rail', () => {
+    const one = shownFor(1);
+
+    expect(one.title).toBe('1 item waits');
+    expect(one.rail).toBe('! 1');
   });
 });
 

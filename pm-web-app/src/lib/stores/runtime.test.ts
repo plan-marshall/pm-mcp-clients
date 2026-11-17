@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
+import {
+  apiClient,
+  type ProjectOverviewResponse,
+  type ReportsPage,
+  type StatusResponse,
+} from '../api/client';
 import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
@@ -11,6 +16,7 @@ import {
   isRuntimeRecovering,
   startRouteFor,
   navigateTo,
+  openAttention,
   openEpicDecomposition,
   openRunningWork,
   openStartPage,
@@ -403,16 +409,20 @@ describe('the runtime store', () => {
   it('leaves the address bar alone when the start page is already shown', async () => {
     // Arrange
     localStorage.setItem('pm_device_secret', 'pmw_valid');
-    window.history.replaceState(null, '', '/projects');
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'projects', isPaired: true }));
+    window.history.replaceState(null, '', '/?lens=waits');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'inbox', isPaired: true, isOnboarded: true }),
+    );
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    const push = vi.spyOn(window.history, 'pushState');
 
     // Act
     await openStartPage();
 
     // Assert: the target is the current route, so no duplicate history entry is pushed.
-    expect(window.location.pathname).toBe('/projects');
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    expect(window.location.pathname).toBe('/');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('replaces the designer project in the store and the address bar', () => {
@@ -473,10 +483,10 @@ describe('the runtime store', () => {
     const staleStartRouteKey = ['pm', 'start', 'route'].join('_');
     localStorage.setItem(staleStartRouteKey, 'projects');
 
-    // Act & Assert 1: the start rule lands on overview when work is running, despite the stale key
-    expect(startRouteFor(null, true, true, {}, { workRunning: true }, false)).toBe('overview');
+    // Act & Assert 1: without a remembered place the start rule opens what waits, despite the key
+    expect(startRouteFor(null, true, {}, { workRunning: true }, false)).toBe('inbox');
 
-    // Act & Assert 2: fresh paired browser lands on overview by the rule
+    // Act & Assert 2: a fresh paired browser lands on the list of what waits by the rule
     vi.spyOn(apiClient, 'pair').mockResolvedValue({
       device_secret: 'pmw_fresh',
       device_id: 'dev-1',
@@ -500,9 +510,9 @@ describe('the runtime store', () => {
     vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
 
     await pairBrowser('KXQB-MRTN');
-    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
 
-    // Act & Assert 3: brand click lands on projects when no work runs, despite stale start route
+    // Act & Assert 3: the brand click opens what waits when no work runs, despite the stale key
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     localStorage.setItem(staleStartRouteKey, 'overview');
     runtimeStore.set(
@@ -511,7 +521,7 @@ describe('the runtime store', () => {
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
 
     await openStartPage();
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
   });
 });
 
@@ -590,6 +600,87 @@ describe('the remembered place at the start', () => {
     expect(window.location.pathname).toBe('/');
   });
 
+  it('fills a mark-less load at the start page from the place, by a replace', async () => {
+    // Arrange: a typed `/` carries no mark of the app, and a place was left.
+    window.history.replaceState(null, '', '/');
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    // Act
+    await initRuntime();
+
+    // Assert: the remembered plan opens, and the entry is replaced rather than pushed.
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it('leaves the destination a person picked while Running work was being read', async () => {
+    // Arrange: the summary read is held open while the person taps What waits.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/', pmApp: true }, '', '/');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'inbox', isPaired: true, isOnboarded: true }),
+    );
+    let release: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    // Act
+    const pending = openRunningWork();
+    openAttention();
+    release({ projects: [] });
+    await pending;
+
+    // Assert: the earlier answer does not move the person back.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
+  it('lets the start page win when Running work began first', async () => {
+    // Arrange: both reads are held open, and Running work's answer arrives first.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),
+    );
+    const resolvers: Array<(value: ProjectOverviewResponse) => void> = [];
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    // Act: Running work begins first, the start page second.
+    const running = openRunningWork();
+    const start = openStartPage();
+    resolvers[0]?.({ projects: [] });
+    await running;
+    resolvers[1]?.({ projects: [] });
+    await start;
+
+    // Assert: the later choice is where the person stands.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
+  it('opens the list of what waits from the rail with its own lens', () => {    // Arrange: a paired browser that is already somewhere else.
+    window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),
+    );
+
+    // Act
+    openAttention();
+
+    // Assert: the pushed entry names the lens, so a reload of it stays on the list.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+    expect(window.location.pathname).toBe('/');
+    expect(window.location.search).toBe('?lens=waits');
+  });
+
   it('pushes the filled lens from a click on Running work', async () => {
     // Arrange
     window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
@@ -606,6 +697,51 @@ describe('the remembered place at the start', () => {
       '',
       '/overview?project=p-1',
     );
+  });
+
+  it('keeps a destination opened while the projects are read over Running work', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, and another destination opens before the read answers.
+    const running = openRunningWork();
+    navigateTo('reports');
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the newer destination stands; the late Running work navigation was dropped.
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+    expect(window.location.pathname).toBe('/reports');
+  });
+
+  it('keeps a return navigation that lands on the address Running work started from', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, another destination opens, and Back returns to the entry
+    // Running work started from — the same address, but a newer navigation.
+    const running = openRunningWork();
+    navigateTo('reports');
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+    adoptRouteFromLocation();
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the return navigation stands; Running work did not push the remembered project.
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).lensProject).toBeNull();
   });
 });
 

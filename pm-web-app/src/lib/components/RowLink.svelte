@@ -9,7 +9,9 @@
    *
    * The controls inside the row — its `RowMenu`, a favourite `Toggle`, a copy `Chip` — lie above the
    * link as targets of their own and never open it. The selected row of a list carries
-   * `aria-current="true"` and the brand-subtle ground.
+   * `aria-current="page"` on the title anchor — never on the wrapper, where no assistive technology
+   * would read the link as current — and the brand-subtle ground. A second line (`detail`) takes the
+   * row's whole width below the title, for the path, the since and what the row blocks.
    *
    * `href` is guarded by the exported `isAppPath` of `Link.svelte`: an address that is not a path of
    * the app draws the title as text, never as an anchor. The controls are stacked above the stretched
@@ -28,11 +30,13 @@
     kind?: Snippet;
     /** The detail line: a chip, a phase, a state, a time. */
     tags?: Snippet;
-    /** The row's acts, the last element. */
+    /** The row's acts, the last element of its first line. */
     acts?: Snippet;
+    /** The second line: the path, since and what the row blocks, below the first line. */
+    detail?: Snippet;
   }
 
-  let { href, title, current = false, compact = false, kind, tags, acts }: Props = $props();
+  let { href, title, current = false, compact = false, kind, tags, acts, detail }: Props = $props();
 
   /** The address that was checked and is rendered, without the white space around it. */
   const address = $derived(href.trim());
@@ -44,16 +48,20 @@
   class:row-link--opens={opens}
   class:row-link--current={current}
   class:row-link--compact={compact}
-  aria-current={current ? 'true' : undefined}
 >
   {#if kind}<span class="row-link__kind">{@render kind()}</span>{/if}
   {#if opens}
-    <a class="row-link__title" href={address}>{title}</a>
+    <a
+      class="row-link__title"
+      href={address}
+      aria-current={current ? 'page' : undefined}>{title}</a
+    >
   {:else}
     <span class="row-link__title">{title}</span>
   {/if}
   {#if tags}<span class="row-link__tags">{@render tags()}</span>{/if}
   {#if acts}<span class="row-link__acts">{@render acts()}</span>{/if}
+  {#if detail}<span class="row-link__detail">{@render detail()}</span>{/if}
 </div>
 
 <style>
@@ -83,8 +91,9 @@
     background-color: var(--color-bg-subtle);
   }
 
-  /* The whole row carries the ring while the title link inside it has the focus. */
-  .row-link:focus-within {
+  /* The whole row carries the ring while its title anchor has the keyboard's focus. A mouse click
+     into a nested control does not ring the row, so the anchor's own ring is never doubled. */
+  .row-link:has(a:focus-visible) {
     outline: none;
     box-shadow: var(--focus-ring);
   }
@@ -149,6 +158,21 @@
     align-items: center;
     gap: var(--space-1);
     flex: 0 0 auto;
+  }
+
+  /*
+   * The second line takes the row's whole width, so it wraps below the title line and never squeezes
+   * the title: the first line keeps its fixed height and the row grows by this line alone. It is
+   * text, not a control, so the stretched title target stays the only target of the row.
+   */
+  .row-link__detail {
+    flex: 1 0 100%;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
   }
 
   @media (max-width: 767px) {
