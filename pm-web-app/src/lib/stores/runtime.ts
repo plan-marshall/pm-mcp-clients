@@ -587,7 +587,13 @@ export async function openRunningWork(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  // The projects read is awaited, so another destination can open while it runs: that one is the
+  // operator's newer choice and wins, so this navigation is dropped rather than replacing it.
+  const shownBefore = `${window.location.pathname}${window.location.search}`;
   const summary = await apiClient.getProjects().catch(() => null);
+  if (`${window.location.pathname}${window.location.search}` !== shownBefore) {
+    return;
+  }
   const place = readRememberedPlace();
   show(runningWorkAddress(place, factsOf(summary, place)), 'push');
 }

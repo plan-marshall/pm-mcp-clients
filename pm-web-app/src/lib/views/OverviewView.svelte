@@ -216,13 +216,42 @@
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
   function syncFromAddress(address: RuntimeState): void {
+    const storeGroup = address.lensGroup ?? null;
+    if (storeGroup !== lastStoreGroup) {
+      lastStoreGroup = storeGroup;
+      viewMode = storeGroup === 'epic' ? 'epic' : 'plan';
+    }
+
+    // The project is applied before the mode: an ended page belongs to the project it was read
+    // for, so the mode's read must already see the project the address now names.
+    const storeProject = address.lensProject ?? null;
+    let projectChanged = false;
+    if (storeProject !== lastStoreProject) {
+      if (
+        storeProject &&
+        storeProject !== selectedProjectId &&
+        projects.some((p) => p.project_id === storeProject)
+      ) {
+        // The marker advances only for a project this view applied. A project the address names
+        // while the list is still loading is applied by `loadProjects` when the list arrives.
+        lastStoreProject = storeProject;
+        projectChanged = true;
+        detailRequestGeneration += 1;
+        selectedProjectId = storeProject;
+        void loadProjectDetail(storeProject);
+      } else if (!storeProject) {
+        lastStoreProject = null;
+      }
+    }
+
     const storeEnded = address.lensMode === 'ended';
     if (storeEnded !== lastStoreEnded) {
       lastStoreEnded = storeEnded;
       if (storeEnded) {
         showEnded = true;
+        currentEndedPage = 1;
         if (selectedProjectId) {
-          void loadEndedWork(selectedProjectId, currentEndedPage);
+          void loadEndedWork(selectedProjectId, 1);
         }
       } else {
         showEnded = false;
@@ -231,25 +260,15 @@
         endedPage = null;
         endedError = null;
       }
-    }
-
-    const storeGroup = address.lensGroup ?? null;
-    if (storeGroup !== lastStoreGroup) {
-      lastStoreGroup = storeGroup;
-      viewMode = storeGroup === 'epic' ? 'epic' : 'plan';
-    }
-
-    const storeProject = address.lensProject ?? null;
-    if (storeProject !== lastStoreProject) {
-      lastStoreProject = storeProject;
-      if (
-        storeProject &&
-        storeProject !== selectedProjectId &&
-        projects.some((p) => p.project_id === storeProject)
-      ) {
-        detailRequestGeneration += 1;
-        selectedProjectId = storeProject;
-        void loadProjectDetail(storeProject);
+    } else if (storeEnded && projectChanged) {
+      // The ended page holds the rows of the project it was read for. A new project drops them and
+      // reads its own, so the heading and the rows never name two projects.
+      currentEndedPage = 1;
+      endedRequestGeneration += 1;
+      endedPage = null;
+      endedError = null;
+      if (selectedProjectId) {
+        void loadEndedWork(selectedProjectId, 1);
       }
     }
   }
@@ -343,7 +362,15 @@
       projects = res.projects || [];
       hasShownProjects = true;
       if (projects.length > 0) {
-        if (!selectedProjectId || !projects.some((p) => p.project_id === selectedProjectId)) {
+        // A project the address names wins over the fallback: the address may have changed while
+        // this list was loading, and the first project is only what a silent list falls back to.
+        const addressed = get(runtimeStore).lensProject ?? null;
+        const addressedIsListed =
+          Boolean(addressed) && projects.some((p) => p.project_id === addressed);
+        if (addressedIsListed) {
+          lastStoreProject = addressed;
+          selectedProjectId = addressed;
+        } else if (!selectedProjectId || !projects.some((p) => p.project_id === selectedProjectId)) {
           selectedProjectId = projects[0].project_id;
         }
         await loadProjectDetail(selectedProjectId);

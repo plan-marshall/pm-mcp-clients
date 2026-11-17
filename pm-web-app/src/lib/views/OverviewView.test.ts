@@ -614,6 +614,48 @@ describe('OverviewView component', () => {
     expect(writtenKeys).not.toContain('pm_overview_ended_page');
   });
 
+  it('applies a project the address names while the project list is still loading', async () => {
+    // Arrange: the projects read does not answer before the address has changed.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+
+    render(OverviewView);
+
+    await waitFor(() => expect(apiClient.getProjects).toHaveBeenCalled());
+
+    // Act: the address names another project while the list is still empty, then the list arrives.
+    runtimeStore.update((s) => ({ ...s, lensProject: 'pm-mcp-core' }));
+    answerProjects(mockProjects);
+
+    // Assert: the view follows the address to the project the list turned out to hold.
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('pm-mcp-core');
+    });
+    expect(apiClient.getProjectDetail).toHaveBeenCalledWith('pm-mcp-core');
+  });
+
+  it('reads the new project’s ended page when the address changes project while ended work is open', async () => {
+    render(OverviewView);
+
+    await waitFor(() => expect(screen.getByText('Message catalogue')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: 'Ended work' }));
+
+    await waitFor(() => {
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 1);
+    });
+
+    // The address moves to the other project while the ended section is open.
+    runtimeStore.update((s) => ({ ...s, lensProject: 'pm-mcp-core' }));
+
+    await waitFor(() => {
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-core', 1);
+    });
+  });
+
   it('opens running work when the address names no ended mode, even after ended work was seen', async () => {
     // A running-work address wins over the section the operator looked at last.
     localStorage.setItem('pm_overview_show_ended', '1');
