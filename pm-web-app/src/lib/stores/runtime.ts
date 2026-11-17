@@ -996,6 +996,11 @@ export interface AnnouncedNotification {
 export interface DecisionAnnouncerDeps {
   /** The permission the operator gave, read at the moment a notification would show. */
   permission: () => 'granted' | 'denied' | 'default';
+  /**
+   * Whether the tab stands in front: a notification is for a tab nobody is looking at, while the
+   * quiet notice, the badge and the tab title carry the arrival on the page itself.
+   */
+  visible: () => boolean;
   /** Reads the decisions that are open now, for the silent prime. */
   openDecisions: () => Promise<ReadonlyArray<{ id: string }>>;
   /** Shows one notification and wires its click. */
@@ -1005,7 +1010,6 @@ export interface DecisionAnnouncerDeps {
   /** Opens one decision. */
   openDecision: (id: string) => void;
   setTimer: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>;
-  clearTimer: (handle: ReturnType<typeof setTimeout>) => void;
 }
 
 /** What the store and the views call. */
@@ -1046,7 +1050,7 @@ export function createDecisionAnnouncer(deps: DecisionAnnouncerDeps): DecisionAn
     timer = null;
     const collected = burst;
     burst = [];
-    if (collected.length === 0 || deps.permission() !== 'granted') {
+    if (collected.length === 0 || deps.permission() !== 'granted' || deps.visible()) {
       return;
     }
     if (collected.length === 1) {
@@ -1134,6 +1138,7 @@ function decisionNotifyPermission(): 'granted' | 'denied' | 'default' {
 /** The announcer the app runs: the browser's notification, the runtime's list and the app's routes. */
 const decisionAnnouncer = createDecisionAnnouncer({
   permission: decisionNotifyPermission,
+  visible: () => typeof document !== 'undefined' && document.visibilityState === 'visible',
   openDecisions: async () => await apiClient.getDecisions(),
   notify: ({ title, onclick }) => {
     try {
@@ -1149,7 +1154,6 @@ const decisionAnnouncer = createDecisionAnnouncer({
   openList: () => pushRoute('decisions', {}),
   openDecision: (id) => pushRoute('decision', { decisionId: id }),
   setTimer: (callback, ms) => setTimeout(callback, ms),
-  clearTimer: (handle) => clearTimeout(handle),
 });
 
 /**

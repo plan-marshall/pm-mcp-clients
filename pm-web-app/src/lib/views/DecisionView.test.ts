@@ -516,6 +516,17 @@ describe('DecisionView component', () => {
       await waitFor(() => expect(rowOf('dec-101')).toBeNull());
       expect(window.location.pathname).toBe('/decisions/WR-001');
     });
+
+    it('keeps a selection the filter hides as a pinned row', async () => {
+      await renderOpen('dec-101');
+
+      await fireEvent.input(screen.getByTestId('filter-input'), { target: { value: 'waiver' } });
+
+      const pinned = await screen.findByTestId('triage-pinned');
+      expect(pinned).toHaveTextContent('Select merge strategy');
+      expect(pinned).toHaveTextContent('hidden by the filter');
+      expect(screen.getByTestId('decision-detail')).toBeInTheDocument();
+    });
   });
 
   describe('the decision in the object column', () => {
@@ -550,6 +561,8 @@ describe('DecisionView component', () => {
 
       expect(within(detail).getByTestId('recommendation-hidden-dec-costly')).toBeInTheDocument();
       expect(within(detail).queryByTestId('recommendation-dec-costly')).toBeNull();
+      // The marker is part of the recommendation: it stays behind the disclosure as well.
+      expect(within(detail).queryByText('recommended')).toBeNull();
 
       await fireEvent.click(within(detail).getByText('Show the recommendation'));
 
@@ -1307,6 +1320,46 @@ describe('DecisionView component', () => {
       );
     });
 
+    it('drops the answers of the earlier revision when a decision is revised', async () => {
+      const emit = captureEvents();
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
+      const detail = await renderOpen('dec-multipart');
+      await fireEvent.click(within(detail).getByText('A file per plan', { exact: true }));
+
+      await emit('decision.changed', {
+        decision: { ...multipartDecision, revision: 2 },
+        change_summary: 'the migration part changed',
+      });
+
+      expect(await screen.findByTestId('decision-revised-dec-multipart')).toHaveTextContent(
+        'The decision changed: the migration part changed. Please answer again.',
+      );
+      expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+    });
+
+    it('records an own-words answer for one part without closing the decision', async () => {
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+        {
+          ...multipartDecision,
+          parts: multipartDecision.parts.map((part) => ({ ...part, allow_own_words: true })),
+        },
+      ]);
+      const detail = await renderOpen('dec-multipart');
+
+      await fireEvent.click(within(detail).getAllByText('in my own words')[0]);
+      await fireEvent.input(screen.getByTestId('own-words-dec-multipart-0'), {
+        target: { value: 'Use a file per plan' },
+      });
+      await fireEvent.click(within(detail).getByRole('button', { name: 'Read back' }));
+
+      expect(await screen.findByText('I understood: Rebase onto main')).toBeInTheDocument();
+      await fireEvent.click(within(detail).getByRole('button', { name: 'Correct' }));
+
+      expect(apiClient.answerDecision).not.toHaveBeenCalled();
+      expect(screen.getAllByText('How is it migrated?').length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+    });
+
     it('drops an interpretation that answers after a revision replaced the question it read', async () => {
       const emit = captureEvents();
       let finish: (reading: {
@@ -1439,6 +1492,15 @@ describe('DecisionView component', () => {
 
     afterEach(() => {
       vi.unstubAllGlobals();
+    });
+
+    it('asks nothing before a decision arrives', async () => {
+      installNotifications('default');
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      // The app never asks at its start: the banner waits for the first decision to arrive.
+      expect(screen.queryByTestId('notify-banner')).toBeNull();
     });
 
     it.each([

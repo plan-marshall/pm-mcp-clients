@@ -7,7 +7,6 @@
     <text x="16" y="46">Diff stat</text>
     <text x="16" y="62">Target branch</text>
     <text x="16" y="78">Source</text>
-    <text x="16" y="100">Votes</text>
   </g>
   <g font-size="9" fill="#1F2328">
     <text x="100" y="46">+12 -4</text>

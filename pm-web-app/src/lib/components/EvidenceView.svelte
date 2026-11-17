@@ -41,6 +41,7 @@
   import ExternalLink from './ExternalLink.svelte';
   import { isWebAddress } from './ExternalLink.svelte';
   import { t } from '../i18n';
+  import { stripControlSequences } from '../utils/outputSafety';
 
   /**
    * The evidence a decision names, as fields with plain labels (`decisions.adoc#order`,
@@ -81,7 +82,7 @@
    * @returns the text a sentence-like field shows
    */
   function textOf(value: string | number | boolean): string {
-    return typeof value === 'string' ? value : String(value);
+    return stripControlSequences(typeof value === 'string' ? value : String(value));
   }
 
   /**
@@ -118,9 +119,11 @@
         return {
           key,
           label,
-          file: String(record[fileKey]),
+          file: stripControlSequences(String(record[fileKey])),
           lines:
-            typeof lines === 'string' || typeof lines === 'number' ? String(lines) : undefined,
+            typeof lines === 'string' || typeof lines === 'number'
+              ? stripControlSequences(String(lines))
+              : undefined,
           href: linkOf(record),
         };
       }
@@ -138,6 +141,14 @@
    */
   function isExternal(field: Field): boolean {
     return field.href !== undefined && isWebAddress(field.href);
+  }
+
+  /**
+   * @param structure an unknown evidence structure
+   * @returns its JSON, without the control sequences a runtime value may carry
+   */
+  function jsonText(structure: unknown): string {
+    return stripControlSequences(JSON.stringify(structure, null, 2));
   }
 </script>
 
@@ -157,7 +168,7 @@
             <details class="evidence__fold" open data-testid="evidence-structure-{field.key}">
               <summary class="evidence__summary">{field.label}</summary>
               <pre class="evidence__json" data-model-text
-                >{JSON.stringify(field.structure, null, 2)}</pre>
+                >{jsonText(field.structure)}</pre>
             </details>
           </div>
         {:else}

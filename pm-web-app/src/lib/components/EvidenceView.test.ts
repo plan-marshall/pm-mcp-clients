@@ -29,6 +29,24 @@ describe('EvidenceView', () => {
     expect(screen.getByText('/api/v1/legacy')).toBeInTheDocument();
   });
 
+  it('strips the control sequences a runtime value may carry', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: {
+          summary: '\u001b[31mred\u001b[0m text',
+          file: { path: '\u001b[32msrc/App.svelte', lines: '1-2' },
+          unknown: { note: '\u001b[33mfolded\u001b[0m' },
+        },
+      },
+    });
+
+    const view = screen.getByTestId('evidence-view');
+    expect(view).toHaveTextContent('red text');
+    expect(view).toHaveTextContent('src/App.svelte:1-2');
+    expect(view.textContent).not.toContain('\u001b');
+  });
+
   it('shows a file with the lines it names', () => {
     useCatalogue('en');
     render(EvidenceView, {

@@ -1444,20 +1444,22 @@ describe('the decision announcer', () => {
   /**
    * @param permission the permission the browser gave
    * @param openDecisions the decisions the silent prime reads
+   * @param visible whether the tab stands in front
    * @returns the announcer under test, over the fake clock and the fake browser
    */
   function announcer(
     permission: 'granted' | 'denied' = 'granted',
     openDecisions: ReadonlyArray<{ id: string }> = [],
+    visible = false,
   ) {
     return createDecisionAnnouncer({
       permission: () => permission,
+      visible: () => visible,
       openDecisions: async () => openDecisions,
       notify: (notification) => shown.push(notification),
       openList,
       openDecision: (id) => opened.push(id),
       setTimer: (callback, ms) => setTimeout(callback, ms),
-      clearTimer: (handle) => clearTimeout(handle),
     });
   }
 
@@ -1575,6 +1577,18 @@ describe('the decision announcer', () => {
   it('shows nothing while the browser gave no permission', () => {
     // Arrange
     const view = announcer('denied');
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
+  });
+
+  it('shows nothing while the tab stands in front', () => {
+    // Arrange: the app's own notice, badge and tab title carry the arrival on the page itself.
+    const view = announcer('granted', [], true);
 
     // Act
     view.decisionOpened({ id: 'dec-1', subject: 'plan one' });

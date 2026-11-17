@@ -17,7 +17,7 @@
   import PhaseLabel from '../components/PhaseLabel.svelte';
   import EvidenceView from '../components/EvidenceView.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
-  import TriagePage, { type Level } from '../templates/TriagePage.svelte';
+  import TriagePage, { type Level, type PinnedRow } from '../templates/TriagePage.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
@@ -111,11 +111,11 @@
   let chatGeneration = $state(0);
 
   /**
-   * The answers this client sent that the runtime has not answered yet, by decision: the request id
-   * it sent and the revision it answered. A `decision.answered` whose `request_id` is one of these
-   * is this client's own answer; every other one was answered elsewhere (`#outcomes`).
+   * The request ids this client sent that the runtime has not answered yet, by decision. A
+   * `decision.answered` whose `request_id` is one of these is this client's own answer; every other
+   * one was answered elsewhere (`#outcomes`).
    */
-  const ownRequests = new Map<string, { requestId: string; revision: number }>();
+  const ownRequests = new Map<string, string>();
 
   /** Invalidates every chat continuation still in flight, as closing the panel does. */
   function invalidateChat(): void {
@@ -207,6 +207,26 @@
         state: '',
       },
     ];
+  });
+
+  /**
+   * A selection the filter hides stays visible as one pinned row at the top of the list
+   * (`navigation.adoc#missing`), so the object column never stands beside a list that lost it.
+   */
+  const pinned = $derived.by<PinnedRow | null>(() => {
+    const active = activeDecision;
+    if (active === null) return null;
+    if (matchingDecisions.some((dec) => dec.id === active.id)) return null;
+    return {
+      level: {
+        key: `decision:${active.id}`,
+        kind: 'decision',
+        title: displayTitle(active),
+        href: `/decisions/${encodeURIComponent(active.id)}`,
+        state: '',
+      },
+      reason: 'filtered',
+    };
   });
 
   /**
@@ -513,7 +533,7 @@
   function isOwnAnswer(id: string, requestId?: string | null): boolean {
     const pending = ownRequests.get(id);
     if (pending === undefined) return false;
-    return requestId ? pending.requestId === requestId : true;
+    return requestId ? pending === requestId : true;
   }
 
   function handleEvent(event: string, data: unknown) {
@@ -753,7 +773,7 @@
     const reason = waiverReasons[id]?.trim() || '';
     if (!reason) return;
     const requestId = newRequestId();
-    ownRequests.set(id, { requestId, revision: decisions.find((dec) => dec.id === id)?.revision ?? 1 });
+    ownRequests.set(id, requestId);
     isSubmitting[id] = true;
     try {
       await apiClient.answerDecision(id, { action, reason, request_id: requestId });
@@ -807,7 +827,7 @@
       return;
     }
     const requestId = newRequestId();
-    ownRequests.set(dec.id, { requestId, revision: dec.revision ?? 1 });
+    ownRequests.set(dec.id, requestId);
     isSubmitting[key] = true;
     try {
       await apiClient.answerDecision(dec.id, {
@@ -830,7 +850,7 @@
     if (!allPartsAnswered(dec)) return;
     const submittingKey = dec.parts[0] ? keyOf(dec, dec.parts[0], 0) : dec.id;
     const requestId = newRequestId();
-    ownRequests.set(dec.id, { requestId, revision: dec.revision ?? 1 });
+    ownRequests.set(dec.id, requestId);
     isSubmitting[submittingKey] = true;
     try {
       if (dec.parts.length === 1) {
@@ -1138,7 +1158,10 @@
         value: option.key,
         label: option.label,
         description: pieces.length > 0 ? pieces.join(' · ') : undefined,
-        marker: part.recommendation === option.key ? ('recommended' as const) : undefined,
+        marker:
+          recommendationVisible(dec) && part.recommendation === option.key
+            ? ('recommended' as const)
+            : undefined,
         disabled,
       };
     });
@@ -1485,7 +1508,7 @@
   </div>
 
   {#if dec.evidence && Object.keys(dec.evidence).length > 0}
-    <EvidenceView evidence={dec.evidence} />
+    <EvidenceView evidence={dec.evidence} titleLevel={2} />
   {/if}
 
   <div class="waiver-form">
@@ -1540,7 +1563,7 @@
   {/if}
 
   {#if dec.evidence && Object.keys(dec.evidence).length > 0}
-    <EvidenceView evidence={dec.evidence} />
+    <EvidenceView evidence={dec.evidence} titleLevel={2} />
   {/if}
 
   {#each dec.parts as part, pIdx (part.part_id || pIdx)}
@@ -1807,6 +1830,7 @@
     label={$t('decisions.list.title')}
     column={listColumn}
     object={activeDecision === null ? undefined : objectColumn}
+    {pinned}
     side={chatOpen ? chatSide : undefined}
     sideOpen={chatOpen}
     onHideSide={closeChatPanel}
