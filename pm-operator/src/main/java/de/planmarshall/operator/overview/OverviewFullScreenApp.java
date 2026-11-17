@@ -3327,31 +3327,47 @@ public final class OverviewFullScreenApp {
         private void refreshPoppedLevel() {
             var lvl = level();
             restoreModel(lvl);
-            if (lvl.kind() == TuiLevel.Kind.REPORTS) {
-                var level = currentReports.get();
-                if (level != null) {
-                    stack.refresh(level.rows(locale));
-                    skipReportHeadings(1);
+            switch (lvl.kind()) {
+                case REPORTS -> refreshReturnedReports();
+                case SYSTEM -> refreshReturnedSystem(lvl);
+                case PLAN_CHANGES -> refreshReturnedChanges();
+                default -> {
+                    // The other levels keep the rows they had.
                 }
-            } else if (lvl.kind() == TuiLevel.Kind.SYSTEM) {
-                var level = currentSystem.get();
-                if (level != null) {
-                    stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
-                }
-            } else if (lvl.kind() == TuiLevel.Kind.PLAN_CHANGES) {
-                // A capture may have read the list again while another level was on top
-                // (plan-view.adoc § Live): the rows come from the model the level returned to.
-                var level = currentChanges.get();
-                if (level != null) {
-                    var selected = stack.selected() != null ? stack.selected().id() : null;
-                    var rows = level.rows(locale);
-                    stack.refresh(rows);
-                    if (selected == null || rows.stream().noneMatch(row -> row.id().equals(selected))) {
-                        var open = level.openFileRowId();
-                        if (open != null) {
-                            stack.select(open);
-                        }
-                    }
+            }
+        }
+
+        private void refreshReturnedReports() {
+            var level = currentReports.get();
+            if (level != null) {
+                stack.refresh(level.rows(locale));
+                skipReportHeadings(1);
+            }
+        }
+
+        private void refreshReturnedSystem(TuiLevel lvl) {
+            var level = currentSystem.get();
+            if (level != null) {
+                stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
+            }
+        }
+
+        /**
+         * A capture may have read the list again while another level was on top
+         * ({@code plan-view.adoc} § Live): the rows come from the model the level returned to.
+         */
+        private void refreshReturnedChanges() {
+            var level = currentChanges.get();
+            if (level == null) {
+                return;
+            }
+            var selected = stack.selected() != null ? stack.selected().id() : null;
+            var rows = level.rows(locale);
+            stack.refresh(rows);
+            if (selected == null || rows.stream().noneMatch(row -> row.id().equals(selected))) {
+                var open = level.openFileRowId();
+                if (open != null) {
+                    stack.select(open);
                 }
             }
         }
