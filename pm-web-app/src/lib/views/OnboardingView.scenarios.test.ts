@@ -558,6 +558,47 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(document.body.textContent).not.toContain('entry.lan-open');
   });
 
+  it('takes the probe-only answer of a consent that offers one', async () => {
+    const state = onboardingState({
+      state: 'catalogue.consent',
+      summary: 'Ask the harnesses for their models, and a model for advice?',
+      kind: 'probe_harness_models',
+      links: {
+        no: { href: '/api/v1/onboarding/catalogue/decline', next: 'catalogue.consent' },
+        no_advice: { href: '/api/v1/onboarding/catalogue/no-advice', next: 'catalogue.select' },
+        yes: { href: '/api/v1/onboarding/catalogue/advice', next: 'catalogue.models' },
+      },
+    });
+    arrange(state);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.select' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(await screen.findByTestId('consent-no-advice'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('no_advice', {}));
+  });
+
+  it('offers no third answer on a consent that states only yes and no', async () => {
+    arrange(
+      onboardingState({
+        state: 'harness.consent',
+        summary: 'Look for harnesses on this machine?',
+        links: {
+          no: { href: '/api/v1/onboarding/harness/decline', next: 'harness.consent' },
+          yes: { href: '/api/v1/onboarding/harness/scan', next: 'harness.choose' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(await screen.findByTestId('consent-box')).toBeInTheDocument();
+    expect(screen.queryByTestId('consent-no-advice')).not.toBeInTheDocument();
+  });
+
   it('reviews the recorded setup of every step on the summary screen', () => {
     arrange(
       onboardingState({

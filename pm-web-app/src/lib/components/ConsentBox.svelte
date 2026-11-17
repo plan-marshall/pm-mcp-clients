@@ -22,6 +22,12 @@
 
   export let onAccept: (remember: boolean) => void = () => {};
   export let onDecline: () => void = () => {};
+  /**
+   * A third answer the state offers beside yes and no (`no_advice` on the catalogue consent): the
+   * label and the act, shown only where the state states it.
+   */
+  export let declineWithoutAdviceLabel: string | undefined = undefined;
+  export let onDeclineWithoutAdvice: (() => void) | undefined = undefined;
 
   let remember = false;
 </script>
@@ -94,6 +100,16 @@
     <Button variant="ghost" on:click={onDecline} disabled={busy}>
       {declineLabel ?? $t('common.consent.no')}
     </Button>
+    {#if onDeclineWithoutAdvice}
+      <Button
+        variant="secondary"
+        on:click={onDeclineWithoutAdvice}
+        disabled={busy}
+        data-testid="consent-no-advice"
+      >
+        {declineWithoutAdviceLabel ?? $t('common.consent.no')}
+      </Button>
+    {/if}
     <Button variant="primary" on:click={() => onAccept(remember)} loading={busy}>
       {primaryLabel ?? $t('common.consent.yes')}
     </Button>

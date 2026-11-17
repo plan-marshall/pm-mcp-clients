@@ -22,6 +22,9 @@
     const target = view.linkBy('no', 'decline') ?? view.links[0];
     if (target) view.onLink(target.id, { remember: false });
   }
+
+  /** The third answer a state may offer: allow the probing, refuse the model's advice. */
+  const noAdvice = $derived(view.linkBy('no_advice'));
 </script>
 
 <ConsentBox
@@ -35,6 +38,8 @@
     view.state?.kind !== 'verify_harness_profile'}
   busy={view.busy}
   primaryLabel={view.consentAction()}
+  declineWithoutAdviceLabel={noAdvice ? view.linkLabel(noAdvice.id) : undefined}
+  onDeclineWithoutAdvice={noAdvice ? () => view.onLink(noAdvice.id) : undefined}
   onAccept={accept}
   onDecline={decline}
 />

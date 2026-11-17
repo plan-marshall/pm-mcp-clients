@@ -20,13 +20,15 @@
   <div class="model-working">
     <Spinner size="2rem" />
     <div class="model-working__details">
-      <p class="model-working__status">
-        {$t('common.model.working', {
-          role: view.field('role') ?? 'steward',
-          harness: view.field('harness') ?? '',
-          model: view.field('model') ?? '',
-        })}
-      </p>
+      {#if view.field('role') || view.field('harness') || view.field('model')}
+        <p class="model-working__status">
+          {$t('common.model.working', {
+            role: view.field('role') ?? 'steward',
+            harness: view.field('harness') ?? '',
+            model: view.field('model') ?? '',
+          })}
+        </p>
+      {/if}
       {#if view.field('tokens')}
         <p class="model-working__estimate">{view.field('tokens')}</p>
       {/if}

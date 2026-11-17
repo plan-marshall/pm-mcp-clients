@@ -76,7 +76,7 @@ describe('OnboardingView component', () => {
     expect(screen.getByRole('button', { name: /not now/i })).toBeInTheDocument();
   });
 
-  it('renders model working indicator when probing', () => {
+  it('renders the progress of a probe without naming a model it never stated', () => {
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,
@@ -101,7 +101,9 @@ describe('OnboardingView component', () => {
     render(OnboardingView);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Checking harnesses');
-    expect(screen.getByText(/steward is working/i)).toBeInTheDocument();
+    // A probe states no role, harness or model, so the screen names none (the model sentence
+    // belongs to the states that do state them, as `catalogue.advise` does).
+    expect(screen.queryByText(/steward is working/i)).not.toBeInTheDocument();
   });
 
   it('renders completed card when onboard.completed is reached', () => {
