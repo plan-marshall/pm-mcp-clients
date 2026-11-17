@@ -303,6 +303,19 @@ describe('DecisionView component', () => {
     } as DOMRect);
   }
 
+  /**
+   * Waits until the object column shows the decision the route names, as selecting its row does.
+   *
+   * @param id the decision the object column must show
+   * @returns the detail's element
+   */
+  async function switchTo(id: string): Promise<HTMLElement> {
+    await waitFor(() =>
+      expect(screen.getByTestId('decision-detail')).toHaveAttribute('data-decision-id', id),
+    );
+    return screen.getByTestId('decision-detail');
+  }
+
   describe('the triage list', () => {
     it('draws the error pattern of a failed list read instead of the empty word', async () => {
       const decisions = vi
@@ -1119,11 +1132,10 @@ describe('DecisionView component', () => {
       expect(await screen.findByTestId('decision-revised-dec-101')).toBeInTheDocument();
     });
 
-    // TODO(PLAN-51 D6): the side column's window hides the list in jsdom; the flow needs a
-    // layout the test harness can drive. Not green yet, so it is skipped rather than weakened.
-    it.skip('keeps the busy marker of one decision while another chat turn finishes', async () => {
+    it('keeps the busy marker of one decision while another chat turn finishes', async () => {
       // Arrange: a wide window, and two decisions whose chat turns both stay in flight.
       widenWindow();
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([mockDecision, multipartDecision]);
       const releases: Array<() => void> = [];
       vi.spyOn(apiClient, 'decisionChatTurn').mockImplementation(
         () =>
@@ -1131,7 +1143,10 @@ describe('DecisionView component', () => {
             releases.push(() => resolve(decisionChat));
           }),
       );
-      vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+      vi.spyOn(apiClient, 'getDecisionChat').mockImplementation(async (id) => ({
+        ...decisionChat,
+        subject_id: id,
+      }));
       const detail = await renderOpen();
       await fireEvent.click(within(detail).getByText('chat about it first'));
       await screen.findByTestId('chat-transcript');
@@ -1141,9 +1156,12 @@ describe('DecisionView component', () => {
 
       // Act: the route moves to the other decision, whose chat is opened and sent in; the first
       // decision's turn finishes while the second one is still in flight.
-      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'WR-001' }));
-      const other = await screen.findByTestId('decision-detail');
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-multipart' }));
+      const other = await switchTo('dec-multipart');
       await fireEvent.click(within(other).getByText('chat about it first'));
+      await waitFor(() =>
+        expect(screen.getByTestId('chat-panel')).toHaveAttribute('aria-label', 'dec-multipart'),
+      );
       await screen.findByTestId('chat-transcript');
       await fireEvent.input(screen.getByTestId('chat-input'), { target: { value: 'Second?' } });
       await fireEvent.click(screen.getByTestId('chat-send'));
@@ -1155,10 +1173,9 @@ describe('DecisionView component', () => {
       await waitFor(() => expect(screen.getByTestId('chat-send')).not.toBeDisabled());
     });
 
-    // TODO(PLAN-51 D6): the side column's window hides the list in jsdom; the flow needs a
-    // layout the test harness can drive. Not green yet, so it is skipped rather than weakened.
-    it.skip('does not put a late chat answer into another decision’s panel', async () => {
+    it('does not put a late chat answer into another decision’s panel', async () => {
       widenWindow();
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([mockDecision, multipartDecision]);
       let finishFirst: (chat: ChatReadBack) => void = () => {};
       vi.spyOn(apiClient, 'decisionChatTurn').mockImplementationOnce(
         () => new Promise((resolve) => (finishFirst = resolve)),
@@ -1173,9 +1190,12 @@ describe('DecisionView component', () => {
       await fireEvent.input(screen.getByTestId('chat-input'), { target: { value: 'First?' } });
       await fireEvent.click(screen.getByTestId('chat-send'));
 
-      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'WR-001' }));
-      const other = await screen.findByTestId('decision-detail');
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-multipart' }));
+      const other = await switchTo('dec-multipart');
       await fireEvent.click(within(other).getByText('chat about it first'));
+      await waitFor(() =>
+        expect(screen.getByTestId('chat-panel')).toHaveAttribute('aria-label', 'dec-multipart'),
+      );
       await screen.findByTestId('chat-transcript');
       await act(() =>
         finishFirst({
@@ -1192,9 +1212,29 @@ describe('DecisionView component', () => {
       );
     });
 
-    // TODO(PLAN-51 D6): the side column's window hides the list in jsdom; the flow needs a
-    // layout the test harness can drive. Not green yet, so it is skipped rather than weakened.
-    it.skip('does not let an earlier chat load settle a reopened panel', async () => {
+    it('applies nothing of a proposed answer that belongs to an earlier revision', async () => {
+      // Arrange: a proposal for part 1, whose acceptance stays in flight while the decision revises.
+      const emit = captureEvents();
+      let finishAnswer: () => void = () => {};
+      vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+      vi.spyOn(apiClient, 'answerDecisionChatProposal').mockImplementationOnce(
+        () => new Promise((resolve) => (finishAnswer = () => resolve(decisionChat))),
+      );
+      const interpret = vi.spyOn(apiClient, 'interpretDecision');
+      const detail = await renderOpen();
+      await fireEvent.click(within(detail).getByText('chat about it first'));
+      await screen.findByTestId('chat-proposal');
+
+      // Act: the decision is revised while the acceptance of revision 1 is still in flight.
+      await fireEvent.click(screen.getByText('Take the proposed answer'));
+      await emit('decision.changed', { decision: { ...mockDecision, revision: 2 } });
+      await act(() => finishAnswer());
+
+      // Assert: the answer to revision 1 applies nothing to the parts of revision 2.
+      expect(interpret).not.toHaveBeenCalled();
+    });
+
+    it('does not let an earlier chat load settle a reopened panel', async () => {
       widenWindow();
       let finishFirst: (chat: ChatReadBack) => void = () => {};
       vi.spyOn(apiClient, 'getDecisionChat')
@@ -1202,8 +1242,9 @@ describe('DecisionView component', () => {
         .mockResolvedValue({ ...decisionChat, turns: [] });
       const detail = await renderOpen();
       await fireEvent.click(within(detail).getByText('chat about it first'));
-      await screen.findByTestId('chat-transcript');
+      await screen.findByTestId('chat-panel');
       await fireEvent.keyDown(window, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByTestId('chat-panel')).toBeNull());
       await fireEvent.click(within(detail).getByText('chat about it first'));
       await screen.findByTestId('chat-transcript');
 
@@ -1217,9 +1258,7 @@ describe('DecisionView component', () => {
       expect(screen.getByTestId('chat-transcript')).not.toHaveTextContent('stale');
     });
 
-    // TODO(PLAN-51 D6): the side column's window hides the list in jsdom; the flow needs a
-    // layout the test harness can drive. Not green yet, so it is skipped rather than weakened.
-    it.skip('closes nothing of a reopened panel when an earlier end answers', async () => {
+    it('closes nothing of a reopened panel when an earlier end answers', async () => {
       widenWindow();
       let finishEnd: () => void = () => {};
       vi.spyOn(apiClient, 'endDecisionChat').mockImplementationOnce(
@@ -1230,8 +1269,10 @@ describe('DecisionView component', () => {
       await fireEvent.click(within(detail).getByText('chat about it first'));
       await screen.findByTestId('chat-transcript');
       await fireEvent.click(screen.getByTestId('chat-end'));
+      await fireEvent.keyDown(window, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByTestId('chat-panel')).toBeNull());
       await fireEvent.click(within(detail).getByText('chat about it first'));
-      await screen.findByTestId('chat-transcript');
+      await screen.findByTestId('chat-panel');
 
       await act(() => finishEnd());
 
