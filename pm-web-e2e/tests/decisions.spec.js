@@ -319,7 +319,7 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
           id: 'Q-097',
           revision: 1,
           title: 'A decision after the reload',
-          subject: 'plan fix-relay',
+          subject: 'plan storage-v2',
           scope: 'plan',
           asking_phase: 'execute',
           asking_role: 'implement',
@@ -331,9 +331,11 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     });
     expect(fresh.ok()).toBeTruthy();
 
-    await page.waitForFunction(() => window.__notifications.length === 1);
+    await page.waitForFunction(() =>
+      window.__notifications.includes('storage-v2 asks a decision'),
+    );
     expect(await page.evaluate(() => window.__notifications)).toEqual([
-      'fix-relay asks a decision',
+      'storage-v2 asks a decision',
     ]);
   });
 });
